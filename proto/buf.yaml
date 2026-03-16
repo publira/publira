@@ -1,0 +1,5 @@
+version: v1
+name: buf.build/publira/publira
+build:
+  excludes:
+    - node_modules

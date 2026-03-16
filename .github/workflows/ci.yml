@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Check and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup / Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Setup / pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup / Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+      - name: Setup / Install buf
+        run: go install github.com/bufbuild/buf/cmd/buf@latest
+
+      - name: Setup / Export GOPATH bin
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Dependencies / Install
+        run: make setup
+
+      - name: Generate / Code
+        run: make gen
+
+      - name: Validate / Lint and Format
+        run: pnpm run check
+
+      - name: Build / Web
+        run: pnpm build
+
+      - name: Build / Server
+        run: cd server && go build ./...

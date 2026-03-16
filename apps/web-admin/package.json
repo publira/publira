@@ -1,0 +1,30 @@
+{
+  "name": "@publira/web-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/publira/publira.git",
+    "directory": "apps/web-admin"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 4000",
+    "start": "next start",
+    "test": "vitest --run",
+    "typegen": "next typegen"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.11.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3"
+  }
+}

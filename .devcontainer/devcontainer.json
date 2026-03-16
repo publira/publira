@@ -1,0 +1,35 @@
+{
+  "name": "Publira Dev",
+  "dockerComposeFile": "compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/kariplatform",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1.7.1": {
+      "version": "24.14.0",
+      "pnpmVersion": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "go.useLanguageServer": true,
+        "go.toolsManagement.checkForUpdates": "local",
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "golang.go",
+        "bufbuild.vscode-buf",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "dart-code.flutter",
+        "dart-code.dart-code"
+      ]
+    }
+  },
+  "forwardPorts": [3000, 4000, 5432, 8080],
+  "postCreateCommand": "make setup"
+}
