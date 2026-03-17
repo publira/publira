@@ -26,7 +26,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
-const defaultDBURL = "postgres://postgres:password@db:5432/kariplatform?sslmode=disable"
+const defaultDBURL = "postgres://postgres:password@db:5432/publira?sslmode=disable"
 
 type apiServer struct {
 	queries *dbmodels.Queries
