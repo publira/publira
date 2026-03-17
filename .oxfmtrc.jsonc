@@ -12,6 +12,7 @@
     "order": "asc",
   },
   "experimentalSortPackageJson": true,
+  "ignorePatterns": ["**/src/gen/**"],
   "jsxSingleQuote": false,
   "printWidth": 80,
   "quoteProps": "as-needed",
