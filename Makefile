@@ -1,4 +1,4 @@
-DB_URL := "postgres://postgres:password@db:5432/kariplatform?sslmode=disable"
+DB_URL := "postgres://postgres:password@db:5432/publira?sslmode=disable"
 
 .PHONY: setup gen db-init db-reset dev-api dev-web run-batch-publish
 

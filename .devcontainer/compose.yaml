@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     command: sleep infinity
     volumes:
-      - ../:/workspaces/kariplatform:cached
+      - ../..:/workspaces:cached
     depends_on:
       - db
 
@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: kariplatform
+      POSTGRES_DB: publira
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
