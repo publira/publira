@@ -82,9 +82,7 @@ jobs:
           migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" up
 
       - name: Validate / sqlc Generated Diff
-        run: |
-          sqlc generate
-          git diff --exit-code -- server/internal/db
+        run: sqlc diff
 
       - name: Validate / Lint and Format
         run: pnpm check
