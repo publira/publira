@@ -63,6 +63,9 @@ const (
 	// AdminSeriesServiceCreateEpisodeProcedure is the fully-qualified name of the AdminSeriesService's
 	// CreateEpisode RPC.
 	AdminSeriesServiceCreateEpisodeProcedure = "/publira.v1.AdminSeriesService/CreateEpisode"
+	// AdminSeriesServiceUploadEpisodeImagesProcedure is the fully-qualified name of the
+	// AdminSeriesService's UploadEpisodeImages RPC.
+	AdminSeriesServiceUploadEpisodeImagesProcedure = "/publira.v1.AdminSeriesService/UploadEpisodeImages"
 	// AdminSeriesServiceUpdateEpisodePublishScheduleProcedure is the fully-qualified name of the
 	// AdminSeriesService's UpdateEpisodePublishSchedule RPC.
 	AdminSeriesServiceUpdateEpisodePublishScheduleProcedure = "/publira.v1.AdminSeriesService/UpdateEpisodePublishSchedule"
@@ -211,6 +214,7 @@ type AdminSeriesServiceClient interface {
 	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
 	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
 	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
+	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 }
 
@@ -255,6 +259,12 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisode")),
 			connect.WithClientOptions(opts...),
 		),
+		uploadEpisodeImages: connect.NewClient[v1.UploadEpisodeImagesRequest, v1.UploadEpisodeImagesResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceUploadEpisodeImagesProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("UploadEpisodeImages")),
+			connect.WithClientOptions(opts...),
+		),
 		updateEpisodePublishSchedule: connect.NewClient[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse](
 			httpClient,
 			baseURL+AdminSeriesServiceUpdateEpisodePublishScheduleProcedure,
@@ -271,6 +281,7 @@ type adminSeriesServiceClient struct {
 	listSeries                   *connect.Client[v1.ListSeriesRequest, v1.ListSeriesResponse]
 	getSeries                    *connect.Client[v1.GetSeriesRequest, v1.GetSeriesResponse]
 	createEpisode                *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
+	uploadEpisodeImages          *connect.Client[v1.UploadEpisodeImagesRequest, v1.UploadEpisodeImagesResponse]
 	updateEpisodePublishSchedule *connect.Client[v1.UpdateEpisodePublishScheduleRequest, v1.UpdateEpisodePublishScheduleResponse]
 }
 
@@ -299,6 +310,11 @@ func (c *adminSeriesServiceClient) CreateEpisode(ctx context.Context, req *conne
 	return c.createEpisode.CallUnary(ctx, req)
 }
 
+// UploadEpisodeImages calls publira.v1.AdminSeriesService.UploadEpisodeImages.
+func (c *adminSeriesServiceClient) UploadEpisodeImages(ctx context.Context, req *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error) {
+	return c.uploadEpisodeImages.CallUnary(ctx, req)
+}
+
 // UpdateEpisodePublishSchedule calls publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule.
 func (c *adminSeriesServiceClient) UpdateEpisodePublishSchedule(ctx context.Context, req *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error) {
 	return c.updateEpisodePublishSchedule.CallUnary(ctx, req)
@@ -311,6 +327,7 @@ type AdminSeriesServiceHandler interface {
 	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
 	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
 	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
+	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
 	UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error)
 }
 
@@ -351,6 +368,12 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		connect.WithSchema(adminSeriesServiceMethods.ByName("CreateEpisode")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminSeriesServiceUploadEpisodeImagesHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceUploadEpisodeImagesProcedure,
+		svc.UploadEpisodeImages,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("UploadEpisodeImages")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminSeriesServiceUpdateEpisodePublishScheduleHandler := connect.NewUnaryHandler(
 		AdminSeriesServiceUpdateEpisodePublishScheduleProcedure,
 		svc.UpdateEpisodePublishSchedule,
@@ -369,6 +392,8 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceGetSeriesHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceCreateEpisodeProcedure:
 			adminSeriesServiceCreateEpisodeHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceUploadEpisodeImagesProcedure:
+			adminSeriesServiceUploadEpisodeImagesHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceUpdateEpisodePublishScheduleProcedure:
 			adminSeriesServiceUpdateEpisodePublishScheduleHandler.ServeHTTP(w, r)
 		default:
@@ -398,6 +423,10 @@ func (UnimplementedAdminSeriesServiceHandler) GetSeries(context.Context, *connec
 
 func (UnimplementedAdminSeriesServiceHandler) CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AdminSeriesService.CreateEpisode is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AdminSeriesService.UploadEpisodeImages is not implemented"))
 }
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateEpisodePublishSchedule(context.Context, *connect.Request[v1.UpdateEpisodePublishScheduleRequest]) (*connect.Response[v1.UpdateEpisodePublishScheduleResponse], error) {

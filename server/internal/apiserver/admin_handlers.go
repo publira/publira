@@ -1,9 +1,17 @@
 package apiserver
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -12,6 +20,7 @@ import (
 
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 func (s *apiServer) CreateSeries(
@@ -43,10 +52,10 @@ func (s *apiServer) CreateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
-		ID: base.ID,
-		Synopsis: sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
+		ID:                 base.ID,
+		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{},
-		IsPublished: req.Msg.IsPublished,
+		IsPublished:        req.Msg.IsPublished,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -79,10 +88,10 @@ func (s *apiServer) UpdateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
-		ID: current.ID,
-		Synopsis: sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
+		ID:                 current.ID,
+		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{},
-		IsPublished: req.Msg.IsPublished,
+		IsPublished:        req.Msg.IsPublished,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -187,12 +196,12 @@ func (s *apiServer) CreateEpisode(
 		status = "scheduled"
 	}
 	listing, err := s.queries.UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
-		EpisodeID: base.ID,
-		Price: req.Msg.Price,
+		EpisodeID:          base.ID,
+		Price:              req.Msg.Price,
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
-		Status: status,
-		ScheduledAt: scheduledAt,
-		PublishedAt: sql.NullTime{},
+		Status:             status,
+		ScheduledAt:        scheduledAt,
+		PublishedAt:        sql.NullTime{},
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -208,6 +217,77 @@ func (s *apiServer) CreateEpisode(
 		episode.PublishedAt = listing.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
 	return connect.NewResponse(&publirav1.CreateEpisodeResponse{Episode: episode}), nil
+}
+
+func (s *apiServer) UploadEpisodeImages(
+	ctx context.Context,
+	req *connect.Request[publirav1.UploadEpisodeImagesRequest],
+) (*connect.Response[publirav1.UploadEpisodeImagesResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if len(req.Msg.Images) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("images are required"))
+	}
+	episode, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	items := make([]*publirav1.EpisodeImage, 0, len(req.Msg.Images))
+	for index, imageUpload := range req.Msg.Images {
+		if len(imageUpload.Data) == 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].data is required", index))
+		}
+		contentType := strings.TrimSpace(imageUpload.ContentType)
+		if contentType == "" {
+			contentType = http.DetectContentType(imageUpload.Data)
+		}
+		if !strings.HasPrefix(contentType, "image/") {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].content_type must be image/*", index))
+		}
+		imageConfig, _, err := image.DecodeConfig(bytes.NewReader(imageUpload.Data))
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d] is not a decodable image", index))
+		}
+		if imageConfig.Width <= 0 || imageConfig.Height <= 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d] has invalid dimensions", index))
+		}
+		displayOrder := imageUpload.DisplayOrder
+		if displayOrder < 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].display_order must be >= 0", index))
+		}
+		ext := strings.ToLower(filepath.Ext(strings.TrimSpace(imageUpload.Filename)))
+		if ext == "" {
+			ext = ".bin"
+		}
+		objectKey := fmt.Sprintf("tenants/%s/episodes/%s/%s%s", tenant.PublicID, req.Msg.EpisodePublicId, uuid.NewString(), ext)
+		uploaded, err := s.storage.Upload(ctx, storage.UploadRequest{ObjectKey: objectKey, ContentType: contentType, Data: imageUpload.Data})
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		created, err := s.queries.CreateEpisodeImage(ctx, dbmodels.CreateEpisodeImageParams{
+			ID:              uuid.New(),
+			TenantID:        tenant.ID,
+			EpisodeID:       episode.ID,
+			StorageProvider: uploaded.Provider,
+			ObjectKey:       uploaded.ObjectKey,
+			ImageUrl:        uploaded.URL,
+			ContentType:     contentType,
+			FileSizeBytes:   uploaded.SizeBytes,
+			DisplayOrder:    displayOrder,
+			Width:           int32(imageConfig.Width),
+			Height:          int32(imageConfig.Height),
+		})
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		items = append(items, toProtoEpisodeImage(created))
+	}
+	return connect.NewResponse(&publirav1.UploadEpisodeImagesResponse{Images: items}), nil
 }
 
 func (s *apiServer) UpdateEpisodePublishSchedule(

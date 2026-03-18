@@ -13,6 +13,7 @@ import (
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 type Querier interface {
@@ -21,6 +22,7 @@ type Querier interface {
 
 type apiServer struct {
 	queries Querier
+	storage storage.Provider
 }
 
 func invalidSessionError() error {
@@ -52,8 +54,8 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirav1.Te
 	return tenant, nil
 }
 
-func NewHandler(queries Querier) http.Handler {
-	server := &apiServer{queries: queries}
+func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler {
+	server := &apiServer{queries: queries, storage: storageProvider}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
