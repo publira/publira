@@ -24,6 +24,8 @@ const (
 	getSessionByTokenHashForTenantQuery = "-- name: GetSessionByTokenHashForTenant :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE tenant_id = $1\n    AND token_hash = $2\nLIMIT 1\n"
 	listSeriesByTenantQuery = "-- name: ListSeriesByTenant :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    sl.synopsis,\n    sl.is_published,\n    sl.published_at\nFROM series s\n    JOIN series_listings sl ON sl.series_id = s.id\nWHERE s.tenant_id = $1\nORDER BY s.created_at DESC\nLIMIT $2 OFFSET $3\n"
 	listActiveSeriesQuery = "-- name: ListActiveSeries :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    sl.synopsis,\n    sl.published_at\nFROM series s\n    JOIN series_listings sl ON s.id = sl.series_id\nWHERE s.tenant_id = $1\n    AND sl.is_published = true\nORDER BY sl.published_at DESC\n"
+	getSeriesByPublicIDForTenantQuery = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    sl.synopsis,\n    sl.is_published,\n    sl.published_at\nFROM series s\n    JOIN series_listings sl ON sl.series_id = s.id\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
+	getEpisodeByPublicIDForTenantQuery = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
 )
 
 func TestAdminSeriesRequiresSession(t *testing.T) {
@@ -105,6 +107,148 @@ func TestCatalogRemainsPublic(t *testing.T) {
 		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Msg.Series[0].PublicId)
 	}
 	assertExpectations(t, mock)
+}
+
+func TestAdminGetSeriesTenantBoundary(t *testing.T) {
+	tests := []struct {
+		name          string
+		publicID      string
+		rows          *sqlmock.Rows
+		wantCode      connect.Code
+		wantSeriesID  string
+		wantSeriesLen int
+	}{
+		{
+			name:     "normal",
+			publicID: "SERIES001",
+			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
+				AddRow(uuid.New(), "SERIES001", "Series Title", "Synopsis", true, time.Now()),
+			wantSeriesID:  "SERIES001",
+			wantSeriesLen: 1,
+		},
+		{
+			name:          "cross-tenant",
+			publicID:      "SERIES_OTHER_TENANT",
+			rows:          sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}),
+			wantCode:      connect.CodeNotFound,
+			wantSeriesLen: 0,
+		},
+		{
+			name:          "not-found",
+			publicID:      "SERIES_MISSING",
+			rows:          sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}),
+			wantCode:      connect.CodeNotFound,
+			wantSeriesLen: 0,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAPIServer(t)
+
+			tenantID := uuid.New()
+			userID := uuid.New()
+			now := time.Now()
+			sessionToken := "session-token"
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+				WithArgs(tenantID, tc.publicID).
+				WillReturnRows(tc.rows)
+
+			client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(&publirav1.GetSeriesRequest{
+				Tenant:   &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				PublicId: tc.publicID,
+			})
+			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+
+			resp, err := client.GetSeries(context.Background(), req)
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("GetSeries: %v", err)
+				}
+				if resp.Msg.Series == nil {
+					t.Fatalf("series is nil")
+				}
+				if resp.Msg.Series.PublicId != tc.wantSeriesID {
+					t.Fatalf("series public_id = %q, want %q", resp.Msg.Series.PublicId, tc.wantSeriesID)
+				}
+			} else {
+				if connect.CodeOf(err) != tc.wantCode {
+					t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+				}
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
+	tests := []struct {
+		name     string
+		publicID string
+		rows     *sqlmock.Rows
+		wantCode connect.Code
+	}{
+		{
+			name:     "normal",
+			publicID: "EPISODE001",
+			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+				AddRow(uuid.New(), "EPISODE001", "Episode Title", int32(1), int32(100), int32(24), "published", nil, time.Now()),
+		},
+		{
+			name:     "cross-tenant",
+			publicID: "EPISODE_OTHER_TENANT",
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}),
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name:     "not-found",
+			publicID: "EPISODE_MISSING",
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}),
+			wantCode: connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAPIServer(t)
+			tenantID := uuid.New()
+			now := time.Now()
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+				WithArgs(tenantID, tc.publicID).
+				WillReturnRows(tc.rows)
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+				Tenant:   &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				PublicId: tc.publicID,
+			}))
+
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("GetEpisodeDetail: %v", err)
+				}
+				if resp.Msg.Episode == nil {
+					t.Fatalf("episode is nil")
+				}
+				if resp.Msg.Episode.PublicId != tc.publicID {
+					t.Fatalf("episode public_id = %q, want %q", resp.Msg.Episode.PublicId, tc.publicID)
+				}
+			} else {
+				if connect.CodeOf(err) != tc.wantCode {
+					t.Fatalf("GetEpisodeDetail code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+				}
+			}
+			assertExpectations(t, mock)
+		})
+	}
 }
 
 func newTestAPIServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {

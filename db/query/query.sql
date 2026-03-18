@@ -121,8 +121,10 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at
 FROM episodes e
+    JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON e.id = el.episode_id
-WHERE e.series_id = $1
+WHERE s.tenant_id = $1
+    AND e.series_id = $2
     AND el.status = 'published'
 ORDER BY e.order_index ASC;
 -- name: GetSeriesDetail :one

@@ -32,14 +32,14 @@ func (s *apiServer) authenticateSession(
 	if !ok {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, auth.HashToken(sessionToken), time.Now())
+	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, auth.HashToken(sessionToken), time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
 		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
 	}
-	if lookup.State != dbmodels.SessionStateActive {
+	if lookup.State != auth.SessionStateActive {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
 	return rpcmiddleware.SessionContext{Tenant: tenant, Session: lookup.Session}, nil
@@ -131,7 +131,7 @@ func (s *apiServer) DeleteSession(
 		return response, nil
 	}
 	tokenHash := auth.HashToken(sessionToken)
-	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, tokenHash, time.Now())
+	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, tokenHash, time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "session_not_found")
@@ -140,7 +140,7 @@ func (s *apiServer) DeleteSession(
 		auth.AuditEvent(req.Header(), "logout", "failure", tenant.PublicID, "", "session_lookup_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if lookup.State == dbmodels.SessionStateRevoked {
+	if lookup.State == auth.SessionStateRevoked {
 		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "already_revoked")
 		return response, nil
 	}
