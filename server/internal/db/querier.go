@@ -14,6 +14,7 @@ import (
 type Querier interface {
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
+	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
@@ -29,6 +30,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 	ListActiveSeries(ctx context.Context, tenantID uuid.UUID) ([]ListActiveSeriesRow, error)
+	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)

@@ -39,6 +39,21 @@ cd server && go mod tidy
 cd server && go build ./...
 ```
 
+## 画像ストレージ設定
+
+`UploadEpisodeImages` は `STORAGE_BACKEND` で保存先を切り替えます。
+
+- `STORAGE_BACKEND=local` (デフォルト)
+  - `LOCAL_STORAGE_DIR` (省略時: `/tmp/publira-storage`)
+  - `LOCAL_STORAGE_BASE_URL` (任意)
+- `STORAGE_BACKEND=s3`
+  - `S3_BUCKET` (必須)
+  - `AWS_REGION` (推奨)
+  - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (必要に応じて)
+  - `S3_ENDPOINT` (任意, MinIO 等)
+  - `S3_FORCE_PATH_STYLE` (任意, `true`/`false`)
+  - `S3_PUBLIC_BASE_URL` (任意)
+
 ## 初期データメモ
 
 - AuthService を使うには、最低限 `tenants` と `users` のデータが必要です。

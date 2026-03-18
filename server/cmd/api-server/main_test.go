@@ -18,17 +18,18 @@ import (
 	"github.com/publira/publira/server/internal/apiserver"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 const (
-	getTenantByPublicIDQuery = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
-	getSessionByTokenHashForTenantQuery = "-- name: GetSessionByTokenHashForTenant :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE tenant_id = $1\n    AND token_hash = $2\nLIMIT 1\n"
-	getLabelByPublicIDForTenantQuery = "-- name: GetLabelByPublicIDForTenant :one\nSELECT id, tenant_id, public_id, name, created_at\nFROM labels\nWHERE tenant_id = $1\n    AND public_id = $2\nLIMIT 1\n"
-	listSeriesByTenantQuery = "-- name: ListSeriesByTenant :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.is_published,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\nORDER BY s.created_at DESC\nLIMIT $2 OFFSET $3\n"
-	listActiveSeriesQuery = "-- name: ListActiveSeries :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.is_published = true\nORDER BY s.published_at DESC\n"
-	getSeriesByPublicIDForTenantQuery = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.is_published,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
-	updateSeriesBaseQuery = "-- name: UpdateSeriesBase :exec\nUPDATE series\nSET title = $2,\n    label_id = $3,\n    updated_at = NOW()\nWHERE id = $1\n"
-	getEpisodeByPublicIDForTenantQuery = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
+	getTenantByPublicIDQuery                             = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
+	getSessionByTokenHashForTenantQuery                  = "-- name: GetSessionByTokenHashForTenant :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE tenant_id = $1\n    AND token_hash = $2\nLIMIT 1\n"
+	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\nSELECT id, tenant_id, public_id, name, created_at\nFROM labels\nWHERE tenant_id = $1\n    AND public_id = $2\nLIMIT 1\n"
+	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.is_published,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\nORDER BY s.created_at DESC\nLIMIT $2 OFFSET $3\n"
+	listActiveSeriesQuery                                = "-- name: ListActiveSeries :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.is_published = true\nORDER BY s.published_at DESC\n"
+	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.is_published,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
+	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\nUPDATE series\nSET title = $2,\n    label_id = $3,\n    updated_at = NOW()\nWHERE id = $1\n"
+	getEpisodeByPublicIDForTenantQuery                   = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
 	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\nUPDATE episode_listings el\nSET status = CASE\n        WHEN $3 IS NULL THEN 'draft'\n        ELSE 'scheduled'\n    END,\n    scheduled_at = $3,\n    published_at = CASE\n        WHEN $3 IS NULL THEN NULL\n        ELSE el.published_at\n    END\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\nWHERE el.episode_id = e.id\n    AND s.tenant_id = $1\n    AND e.public_id = $2\n"
 )
 
@@ -323,10 +324,10 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 
 func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 	tests := []struct {
-		name        string
-		request     *publirav1.CreateEpisodeRequest
-		setup       func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
-		wantCode    connect.Code
+		name     string
+		request  *publirav1.CreateEpisodeRequest
+		setup    func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
+		wantCode connect.Code
 	}{
 		{
 			name: "invalid-title",
@@ -417,12 +418,170 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 	}
 }
 
+func TestUploadEpisodeImagesSuccess(t *testing.T) {
+	testServer, mock := newTestAPIServer(t)
+
+	tenantID := uuid.New()
+	userID := uuid.New()
+	episodeID := uuid.New()
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := "session-token"
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+
+	mock.ExpectQuery("INSERT INTO episode_images").
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/png", int64(67), int32(0), int32(1), int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
+			AddRow(uuid.New(), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(0), int32(1), int32(1), now))
+
+	mock.ExpectQuery("INSERT INTO episode_images").
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", int64(163), int32(1), int32(1), int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
+			AddRow(uuid.New(), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(1), int32(1), int32(1), now))
+
+	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publirav1.UploadEpisodeImagesRequest{
+		Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+		EpisodePublicId: "EPISODE001",
+		Images: []*publirav1.EpisodeImageUpload{
+			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
+			{Filename: "002.jpg", ContentType: "image/jpeg", Data: oneByOneJPEG, DisplayOrder: 1},
+		},
+	})
+	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+
+	resp, err := client.UploadEpisodeImages(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadEpisodeImages: %v", err)
+	}
+	if len(resp.Msg.Images) != 2 {
+		t.Fatalf("images count = %d, want 2", len(resp.Msg.Images))
+	}
+	if resp.Msg.Images[0].Width != 1 || resp.Msg.Images[0].Height != 1 {
+		t.Fatalf("first image size = %dx%d, want 1x1", resp.Msg.Images[0].Width, resp.Msg.Images[0].Height)
+	}
+	if resp.Msg.Images[1].Width != 1 || resp.Msg.Images[1].Height != 1 {
+		t.Fatalf("second image size = %dx%d, want 1x1", resp.Msg.Images[1].Width, resp.Msg.Images[1].Height)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
+	tests := []struct {
+		name     string
+		request  *publirav1.UploadEpisodeImagesRequest
+		setup    func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
+		wantCode connect.Code
+	}{
+		{
+			name: "images-required",
+			request: &publirav1.UploadEpisodeImagesRequest{
+				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				EpisodePublicId: "EPISODE001",
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "episode-not-found",
+			request: &publirav1.UploadEpisodeImagesRequest{
+				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				EpisodePublicId: "EPISODE_NOT_FOUND",
+				Images:          []*publirav1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: 0}},
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "EPISODE_NOT_FOUND").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}))
+			},
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name: "invalid-content-type",
+			request: &publirav1.UploadEpisodeImagesRequest{
+				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				EpisodePublicId: "EPISODE001",
+				Images:          []*publirav1.EpisodeImageUpload{{Filename: "bad.txt", ContentType: "text/plain", Data: oneByOnePNG, DisplayOrder: 0}},
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "EPISODE001").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+						AddRow(uuid.New(), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "undecodable-image-bytes",
+			request: &publirav1.UploadEpisodeImagesRequest{
+				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				EpisodePublicId: "EPISODE001",
+				Images:          []*publirav1.EpisodeImageUpload{{Filename: "bad.png", ContentType: "image/png", Data: []byte("not-an-image"), DisplayOrder: 0}},
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "EPISODE001").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+						AddRow(uuid.New(), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "negative-display-order",
+			request: &publirav1.UploadEpisodeImagesRequest{
+				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				EpisodePublicId: "EPISODE001",
+				Images:          []*publirav1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: -1}},
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "EPISODE001").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+						AddRow(uuid.New(), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAPIServer(t)
+
+			tenantID := uuid.New()
+			userID := uuid.New()
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			sessionToken := "session-token"
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			if tc.setup != nil {
+				tc.setup(mock, tenantID, now)
+			}
+
+			client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(tc.request)
+			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+
+			_, err := client.UploadEpisodeImages(context.Background(), req)
+			if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("UploadEpisodeImages code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 	tests := []struct {
-		name      string
-		scheduled string
-		setup     func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
-		wantCode  connect.Code
+		name        string
+		scheduled   string
+		setup       func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
+		wantCode    connect.Code
 		wantSuccess bool
 	}{
 		{
@@ -652,9 +811,56 @@ func newTestAPIServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(apiserver.NewHandler(dbmodels.New(db)))
+	server := httptest.NewServer(apiserver.NewHandler(dbmodels.New(db), &testStorageProvider{}))
 	t.Cleanup(server.Close)
 	return server, mock
+}
+
+type testStorageProvider struct{}
+
+func (p *testStorageProvider) Upload(_ context.Context, req storage.UploadRequest) (storage.UploadResult, error) {
+	return storage.UploadResult{
+		Provider:  "local",
+		ObjectKey: req.ObjectKey,
+		URL:       "local://" + req.ObjectKey,
+		SizeBytes: int64(len(req.Data)),
+	}, nil
+}
+
+var oneByOnePNG = []byte{
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+	0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+	0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+	0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+	0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+	0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+	0x42, 0x60, 0x82,
+}
+
+var oneByOneJPEG = []byte{
+	0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46,
+	0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x60,
+	0x00, 0x60, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43,
+	0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08,
+	0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0a, 0x0c,
+	0x14, 0x0d, 0x0c, 0x0b, 0x0b, 0x0c, 0x19, 0x12,
+	0x13, 0x0f, 0x14, 0x1d, 0x1a, 0x1f, 0x1e, 0x1d,
+	0x1a, 0x1c, 0x1c, 0x20, 0x24, 0x2e, 0x27, 0x20,
+	0x22, 0x2c, 0x23, 0x1c, 0x1c, 0x28, 0x37, 0x29,
+	0x2c, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1f, 0x27,
+	0x39, 0x3d, 0x38, 0x32, 0x3c, 0x2e, 0x33, 0x34,
+	0x32, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x01,
+	0x00, 0x01, 0x03, 0x01, 0x22, 0x00, 0x02, 0x11,
+	0x01, 0x03, 0x11, 0x01, 0xff, 0xc4, 0x00, 0x14,
+	0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08,
+	0xff, 0xc4, 0x00, 0x14, 0x10, 0x01, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08,
+	0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0xd2, 0xcf,
+	0x20, 0xff, 0xd9,
 }
 
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {

@@ -16,6 +16,7 @@ service AdminSeriesService {
   rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
   rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
   rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
+  rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
 }
 
@@ -158,6 +159,33 @@ message CreateEpisodeRequest {
 
 message CreateEpisodeResponse {
   Episode episode = 1;
+}
+
+message EpisodeImageUpload {
+  string filename = 1;
+  string content_type = 2;
+  bytes data = 3;
+  int32 display_order = 4;
+}
+
+message EpisodeImage {
+  string id = 1;
+  string image_url = 2;
+  string content_type = 3;
+  int64 file_size_bytes = 4;
+  int32 display_order = 5;
+  int32 width = 6;
+  int32 height = 7;
+}
+
+message UploadEpisodeImagesRequest {
+  TenantContext tenant = 1;
+  string episode_public_id = 2;
+  repeated EpisodeImageUpload images = 3;
+}
+
+message UploadEpisodeImagesResponse {
+  repeated EpisodeImage images = 1;
 }
 
 message UpdateEpisodePublishScheduleRequest {

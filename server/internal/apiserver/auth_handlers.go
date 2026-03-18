@@ -105,7 +105,7 @@ func (s *apiServer) CreateSession(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	resp := &publirav1.CreateSessionResponse{
-		User: &publirav1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
+		User:    &publirav1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
 		Session: &publirav1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
 	}
 	response := connect.NewResponse(resp)

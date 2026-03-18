@@ -55,6 +55,70 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 	return i, err
 }
 
+const createEpisodeImage = `-- name: CreateEpisodeImage :one
+INSERT INTO episode_images (
+        id,
+        tenant_id,
+        episode_id,
+        storage_provider,
+        object_key,
+        image_url,
+        content_type,
+        file_size_bytes,
+    display_order,
+    width,
+    height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, tenant_id, episode_id, storage_provider, object_key, image_url, content_type, file_size_bytes, display_order, width, height, created_at
+`
+
+type CreateEpisodeImageParams struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ImageUrl        string    `json:"image_url"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	DisplayOrder    int32     `json:"display_order"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+}
+
+func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error) {
+	row := q.db.QueryRowContext(ctx, createEpisodeImage,
+		arg.ID,
+		arg.TenantID,
+		arg.EpisodeID,
+		arg.StorageProvider,
+		arg.ObjectKey,
+		arg.ImageUrl,
+		arg.ContentType,
+		arg.FileSizeBytes,
+		arg.DisplayOrder,
+		arg.Width,
+		arg.Height,
+	)
+	var i EpisodeImage
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EpisodeID,
+		&i.StorageProvider,
+		&i.ObjectKey,
+		&i.ImageUrl,
+		&i.ContentType,
+		&i.FileSizeBytes,
+		&i.DisplayOrder,
+		&i.Width,
+		&i.Height,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createSeriesBase = `-- name: CreateSeriesBase :one
 INSERT INTO series (
         id,
@@ -539,6 +603,50 @@ func (q *Queries) ListActiveSeries(ctx context.Context, tenantID uuid.UUID) ([]L
 			&i.Title,
 			&i.Synopsis,
 			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodeImagesByEpisodeID = `-- name: ListEpisodeImagesByEpisodeID :many
+SELECT id, tenant_id, episode_id, storage_provider, object_key, image_url, content_type, file_size_bytes, display_order, width, height, created_at
+FROM episode_images
+WHERE episode_id = $1
+ORDER BY display_order ASC,
+    created_at ASC
+`
+
+func (q *Queries) ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodeImagesByEpisodeID, episodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EpisodeImage
+	for rows.Next() {
+		var i EpisodeImage
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.EpisodeID,
+			&i.StorageProvider,
+			&i.ObjectKey,
+			&i.ImageUrl,
+			&i.ContentType,
+			&i.FileSizeBytes,
+			&i.DisplayOrder,
+			&i.Width,
+			&i.Height,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

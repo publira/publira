@@ -44,6 +44,18 @@ func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirav1.Ep
 	return episode
 }
 
+func toProtoEpisodeImage(row dbmodels.EpisodeImage) *publirav1.EpisodeImage {
+	return &publirav1.EpisodeImage{
+		Id:            row.ID.String(),
+		ImageUrl:      row.ImageUrl,
+		ContentType:   row.ContentType,
+		FileSizeBytes: row.FileSizeBytes,
+		DisplayOrder:  row.DisplayOrder,
+		Width:         row.Width,
+		Height:        row.Height,
+	}
+}
+
 func generatePublicID() string {
 	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
 	return strings.ToUpper(raw[:12])
