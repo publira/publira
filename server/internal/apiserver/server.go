@@ -6,10 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
-	"github.com/google/uuid"
 
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
@@ -19,7 +17,6 @@ import (
 
 type Querier interface {
 	dbmodels.Querier
-	LookupSessionByTokenHashForTenant(ctx context.Context, tenantID uuid.UUID, tokenHash string, now time.Time) (dbmodels.SessionLookupResult, error)
 }
 
 type apiServer struct {

@@ -30,7 +30,7 @@ type Querier interface {
 	// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 	ListActiveSeries(ctx context.Context, tenantID uuid.UUID) ([]ListActiveSeriesRow, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
-	ListPublishedEpisodesBySeries(ctx context.Context, seriesID uuid.UUID) ([]ListPublishedEpisodesBySeriesRow, error)
+	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error

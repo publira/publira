@@ -593,11 +593,18 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at
 FROM episodes e
+    JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON e.id = el.episode_id
-WHERE e.series_id = $1
+WHERE s.tenant_id = $1
+    AND e.series_id = $2
     AND el.status = 'published'
 ORDER BY e.order_index ASC
 `
+
+type ListPublishedEpisodesBySeriesParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
 
 type ListPublishedEpisodesBySeriesRow struct {
 	ID                 uuid.UUID     `json:"id"`
@@ -613,8 +620,8 @@ type ListPublishedEpisodesBySeriesRow struct {
 	PublishedAt        sql.NullTime  `json:"published_at"`
 }
 
-func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, seriesID uuid.UUID) ([]ListPublishedEpisodesBySeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedEpisodesBySeries, seriesID)
+func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedEpisodesBySeries, arg.TenantID, arg.SeriesID)
 	if err != nil {
 		return nil, err
 	}
