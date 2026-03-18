@@ -167,6 +167,10 @@ func (s *apiServer) CreateEpisode(
 	if err != nil {
 		return nil, err
 	}
+	scheduledAt, err = normalizeAndValidateScheduledAt(scheduledAt, time.Now())
+	if err != nil {
+		return nil, err
+	}
 	series, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.SeriesPublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -215,6 +219,10 @@ func (s *apiServer) UpdateEpisodePublishSchedule(
 		return nil, err
 	}
 	scheduledAt, err := parseScheduledAtOrZero(req.Msg.ScheduledAt)
+	if err != nil {
+		return nil, err
+	}
+	scheduledAt, err = normalizeAndValidateScheduledAt(scheduledAt, time.Now())
 	if err != nil {
 		return nil, err
 	}

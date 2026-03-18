@@ -60,3 +60,14 @@ func parseScheduledAtOrZero(value string) (sql.NullTime, error) {
 	}
 	return sql.NullTime{Time: t, Valid: true}, nil
 }
+
+func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (sql.NullTime, error) {
+	if !scheduledAt.Valid {
+		return scheduledAt, nil
+	}
+	normalized := scheduledAt.Time.UTC()
+	if !normalized.After(now.UTC()) {
+		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New("scheduled_at must be in the future"))
+	}
+	return sql.NullTime{Time: normalized, Valid: true}, nil
+}
