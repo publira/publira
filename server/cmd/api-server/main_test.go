@@ -29,6 +29,7 @@ const (
 	getSeriesByPublicIDForTenantQuery = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.is_published,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
 	updateSeriesBaseQuery = "-- name: UpdateSeriesBase :exec\nUPDATE series\nSET title = $2,\n    label_id = $3,\n    updated_at = NOW()\nWHERE id = $1\n"
 	getEpisodeByPublicIDForTenantQuery = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
+	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\nUPDATE episode_listings el\nSET status = CASE\n        WHEN $3 IS NULL THEN 'draft'\n        ELSE 'scheduled'\n    END,\n    scheduled_at = $3,\n    published_at = CASE\n        WHEN $3 IS NULL THEN NULL\n        ELSE el.published_at\n    END\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\nWHERE el.episode_id = e.id\n    AND s.tenant_id = $1\n    AND e.public_id = $2\n"
 )
 
 func TestAdminSeriesRequiresSession(t *testing.T) {
@@ -271,7 +272,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	seriesID := uuid.New()
 	episodeID := uuid.New()
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	scheduledAt := now.Add(2 * time.Hour).UTC().Truncate(time.Second)
+	scheduledAtJST := now.Add(2 * time.Hour).In(time.FixedZone("JST", 9*60*60)).Truncate(time.Second)
+	scheduledAtUTC := scheduledAtJST.UTC()
 	sessionToken := "session-token"
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -287,9 +289,9 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 			AddRow(episodeID, seriesID, "EP001", "Episode 1", int32(1), now))
 
 	mock.ExpectQuery("INSERT INTO episode_listings").
-		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAt, Valid: true}, sql.NullTime{}).
+		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
-			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAt, nil))
+			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil))
 
 	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publirav1.CreateEpisodeRequest{
@@ -299,7 +301,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		OrderIndex:         1,
 		Price:              100,
 		ReadingPeriodHours: 24,
-		ScheduledAt:        scheduledAt.Format(time.RFC3339),
+		ScheduledAt:        scheduledAtJST.Format(time.RFC3339),
 	})
 	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
 
@@ -313,8 +315,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	if resp.Msg.Episode.Status != "scheduled" {
 		t.Fatalf("episode status = %q, want scheduled", resp.Msg.Episode.Status)
 	}
-	if resp.Msg.Episode.ScheduledAt != scheduledAt.Format(time.RFC3339) {
-		t.Fatalf("episode scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, scheduledAt.Format(time.RFC3339))
+	if resp.Msg.Episode.ScheduledAt != scheduledAtUTC.Format(time.RFC3339) {
+		t.Fatalf("episode scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, scheduledAtUTC.Format(time.RFC3339))
 	}
 	assertExpectations(t, mock)
 }
@@ -344,6 +346,28 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 				Title:          "Episode",
 				OrderIndex:     1,
 				ScheduledAt:    "invalid-date",
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "past-scheduled-at",
+			request: &publirav1.CreateEpisodeRequest{
+				Tenant:         &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				SeriesPublicId: "SERIES001",
+				Title:          "Episode",
+				OrderIndex:     1,
+				ScheduledAt:    "2000-01-01T00:00:00Z",
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "boundary-scheduled-at-now",
+			request: &publirav1.CreateEpisodeRequest{
+				Tenant:         &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				SeriesPublicId: "SERIES001",
+				Title:          "Episode",
+				OrderIndex:     1,
+				ScheduledAt:    time.Now().UTC().Format(time.RFC3339),
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
@@ -387,6 +411,90 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 			_, err := client.CreateEpisode(context.Background(), req)
 			if connect.CodeOf(err) != tc.wantCode {
 				t.Fatalf("CreateEpisode code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
+	tests := []struct {
+		name      string
+		scheduled string
+		setup     func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
+		wantCode  connect.Code
+		wantSuccess bool
+	}{
+		{
+			name:      "invalid-format",
+			scheduled: "invalid-date",
+			wantCode:  connect.CodeInvalidArgument,
+		},
+		{
+			name:      "past",
+			scheduled: "2000-01-01T00:00:00Z",
+			wantCode:  connect.CodeInvalidArgument,
+		},
+		{
+			name:      "boundary-now",
+			scheduled: time.Now().UTC().Format(time.RFC3339),
+			wantCode:  connect.CodeInvalidArgument,
+		},
+		{
+			name:      "future-timezone",
+			scheduled: "2030-01-01T10:00:00+09:00",
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				scheduledAt, _ := time.Parse(time.RFC3339, "2030-01-01T10:00:00+09:00")
+				normalized := scheduledAt.UTC()
+				mock.ExpectExec(regexp.QuoteMeta(updateEpisodePublishScheduleByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "EPISODE001", sql.NullTime{Time: normalized, Valid: true}).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "EPISODE001").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+						AddRow(uuid.New(), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil))
+			},
+			wantSuccess: true,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAPIServer(t)
+
+			tenantID := uuid.New()
+			userID := uuid.New()
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			sessionToken := "session-token"
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			if tc.setup != nil {
+				tc.setup(mock, tenantID, now)
+			}
+
+			client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(&publirav1.UpdateEpisodePublishScheduleRequest{
+				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+				EpisodePublicId: "EPISODE001",
+				ScheduledAt:     tc.scheduled,
+			})
+			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+
+			resp, err := client.UpdateEpisodePublishSchedule(context.Background(), req)
+			if tc.wantSuccess {
+				if err != nil {
+					t.Fatalf("UpdateEpisodePublishSchedule: %v", err)
+				}
+				if resp.Msg.Episode == nil {
+					t.Fatalf("episode is nil")
+				}
+				if resp.Msg.Episode.ScheduledAt != "2030-01-01T01:00:00Z" {
+					t.Fatalf("scheduled_at = %q, want 2030-01-01T01:00:00Z", resp.Msg.Episode.ScheduledAt)
+				}
+			} else if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("UpdateEpisodePublishSchedule code = %v, want %v", connect.CodeOf(err), tc.wantCode)
 			}
 			assertExpectations(t, mock)
 		})
