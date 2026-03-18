@@ -43,10 +43,10 @@ func (s *apiServer) CreateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
-		SeriesID: base.ID,
+		ID: base.ID,
 		Synopsis: sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{},
-		IsPublished: sql.NullBool{Bool: req.Msg.IsPublished, Valid: true},
+		IsPublished: req.Msg.IsPublished,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -76,10 +76,10 @@ func (s *apiServer) UpdateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
-		SeriesID: current.ID,
+		ID: current.ID,
 		Synopsis: sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{},
-		IsPublished: sql.NullBool{Bool: req.Msg.IsPublished, Valid: true},
+		IsPublished: req.Msg.IsPublished,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

@@ -37,7 +37,7 @@ type Querier interface {
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
-	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
+	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (UpsertSeriesListingRow, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 }
 
