@@ -1,0 +1,1 @@
+DROP INDEX idx_sessions_tenant_token_hash;

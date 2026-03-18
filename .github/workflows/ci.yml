@@ -5,6 +5,8 @@ env:
   SQLC_VERSION: 1.30.0
   # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
   BUF_VERSION: 1.66.1
+  # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
+  MIGRATE_VERSION: 4.19.1
 
 on:
   pull_request:
@@ -16,6 +18,20 @@ jobs:
   build:
     name: Check and Build
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: publira
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d publira"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@v4
@@ -44,11 +60,31 @@ jobs:
           setup_only: true
           version: ${{ env.BUF_VERSION }}
 
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-${migrate_arch}.tar.gz" -o /tmp/migrate.tgz
+          tar -xzf /tmp/migrate.tgz -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f /tmp/migrate /tmp/migrate.tgz
+
       - name: Dependencies / Install
         run: make setup
 
-      - name: Generate / Code
-        run: make gen
+      - name: Validate / DB Migrations
+        run: |
+          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" up
+
+      - name: Validate / sqlc Generated Diff
+        run: |
+          sqlc generate
+          git diff --exit-code -- server/internal/db
 
       - name: Validate / Lint and Format
         run: pnpm check

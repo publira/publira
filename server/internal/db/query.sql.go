@@ -353,17 +353,21 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 	return i, err
 }
 
-const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
+const getSessionByTokenHashForTenant = `-- name: GetSessionByTokenHashForTenant :one
 SELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
 FROM sessions
-WHERE token_hash = $1
-    AND revoked_at IS NULL
-    AND expires_at > NOW()
+WHERE tenant_id = $1
+    AND token_hash = $2
 LIMIT 1
 `
 
-func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error) {
-	row := q.db.QueryRowContext(ctx, getSessionByTokenHash, tokenHash)
+type GetSessionByTokenHashForTenantParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	TokenHash string    `json:"token_hash"`
+}
+
+func (q *Queries) GetSessionByTokenHashForTenant(ctx context.Context, arg GetSessionByTokenHashForTenantParams) (Session, error) {
+	row := q.db.QueryRowContext(ctx, getSessionByTokenHashForTenant, arg.TenantID, arg.TokenHash)
 	var i Session
 	err := row.Scan(
 		&i.ID,
@@ -719,10 +723,16 @@ const revokeSession = `-- name: RevokeSession :exec
 UPDATE sessions
 SET revoked_at = NOW()
 WHERE id = $1
+    AND tenant_id = $2
 `
 
-func (q *Queries) RevokeSession(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, revokeSession, id)
+type RevokeSessionParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+func (q *Queries) RevokeSession(ctx context.Context, arg RevokeSessionParams) error {
+	_, err := q.db.ExecContext(ctx, revokeSession, arg.ID, arg.TenantID)
 	return err
 }
 

@@ -3,38 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
+import { CreateEpisodeRequest, CreateEpisodeResponse, CreateSeriesRequest, CreateSeriesResponse, CreateSessionRequest, CreateSessionResponse, DeleteSessionRequest, DeleteSessionResponse, GetEpisodeDetailRequest, GetEpisodeDetailResponse, GetMeRequest, GetMeResponse, GetSeriesDetailRequest, GetSeriesDetailResponse, GetSeriesRequest, GetSeriesResponse, GetTenantThemeRequest, GetTenantThemeResponse, ListPublishedSeriesRequest, ListPublishedSeriesResponse, ListSeriesRequest, ListSeriesResponse, UpdateEpisodePublishScheduleRequest, UpdateEpisodePublishScheduleResponse, UpdateSeriesRequest, UpdateSeriesResponse, UpsertTenantThemeRequest, UpsertTenantThemeResponse } from "./catalog_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
-
-import {
-  CreateEpisodeRequest,
-  CreateEpisodeResponse,
-  CreateSeriesRequest,
-  CreateSeriesResponse,
-  CreateSessionRequest,
-  CreateSessionResponse,
-  DeleteSessionRequest,
-  DeleteSessionResponse,
-  GetEpisodeDetailRequest,
-  GetEpisodeDetailResponse,
-  GetMeRequest,
-  GetMeResponse,
-  GetSeriesDetailRequest,
-  GetSeriesDetailResponse,
-  GetSeriesRequest,
-  GetSeriesResponse,
-  GetTenantThemeRequest,
-  GetTenantThemeResponse,
-  ListPublishedSeriesRequest,
-  ListPublishedSeriesResponse,
-  ListSeriesRequest,
-  ListSeriesResponse,
-  UpdateEpisodePublishScheduleRequest,
-  UpdateEpisodePublishScheduleResponse,
-  UpdateSeriesRequest,
-  UpdateSeriesResponse,
-  UpsertTenantThemeRequest,
-  UpsertTenantThemeResponse,
-} from "./catalog_pb.js";
 
 /**
  * @generated from service publira.v1.CatalogService
@@ -69,7 +39,7 @@ export const CatalogService = {
       O: GetEpisodeDetailResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
 
 /**
@@ -132,7 +102,7 @@ export const AdminSeriesService = {
       O: UpdateEpisodePublishScheduleResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
 
 /**
@@ -168,7 +138,7 @@ export const AuthService = {
       O: GetMeResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
 
 /**
@@ -195,5 +165,6 @@ export const TenantThemeService = {
       O: UpsertTenantThemeResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

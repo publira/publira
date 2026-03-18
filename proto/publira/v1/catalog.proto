@@ -182,13 +182,15 @@ message CreateSessionResponse {
 }
 
 message DeleteSessionRequest {
-  string session_id = 1;
+  TenantContext tenant = 1;
+  string session_id = 2;
 }
 
 message DeleteSessionResponse {}
 
 message GetMeRequest {
-  string session_id = 1;
+  TenantContext tenant = 1;
+  string session_id = 2;
 }
 
 message GetMeResponse {

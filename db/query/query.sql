@@ -36,17 +36,17 @@ INSERT INTO sessions (
     )
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
--- name: GetSessionByTokenHash :one
+-- name: GetSessionByTokenHashForTenant :one
 SELECT *
 FROM sessions
-WHERE token_hash = $1
-    AND revoked_at IS NULL
-    AND expires_at > NOW()
+WHERE tenant_id = $1
+    AND token_hash = $2
 LIMIT 1;
 -- name: RevokeSession :exec
 UPDATE sessions
 SET revoked_at = NOW()
-WHERE id = $1;
+WHERE id = $1
+    AND tenant_id = $2;
 -- name: GetUserByEmailForTenant :one
 SELECT *
 FROM users

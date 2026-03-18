@@ -1555,7 +1555,8 @@ func (x *CreateSessionResponse) GetSession() *Session {
 
 type DeleteSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1588,6 +1589,13 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
 	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *DeleteSessionRequest) GetTenant() *TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
 }
 
 func (x *DeleteSessionRequest) GetSessionId() string {
@@ -1635,7 +1643,8 @@ func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
 
 type GetMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1668,6 +1677,13 @@ func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
 func (*GetMeRequest) Descriptor() ([]byte, []int) {
 	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetMeRequest) GetTenant() *TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
 }
 
 func (x *GetMeRequest) GetSessionId() string {
@@ -2079,14 +2095,16 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\"l\n" +
 	"\x15CreateSessionResponse\x12$\n" +
 	"\x04user\x18\x01 \x01(\v2\x10.publira.v1.UserR\x04user\x12-\n" +
-	"\asession\x18\x02 \x01(\v2\x13.publira.v1.SessionR\asession\"5\n" +
-	"\x14DeleteSessionRequest\x12\x1d\n" +
+	"\asession\x18\x02 \x01(\v2\x13.publira.v1.SessionR\asession\"h\n" +
+	"\x14DeleteSessionRequest\x121\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\x17\n" +
-	"\x15DeleteSessionResponse\"-\n" +
-	"\fGetMeRequest\x12\x1d\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\"\x17\n" +
+	"\x15DeleteSessionResponse\"`\n" +
+	"\fGetMeRequest\x121\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"5\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\"5\n" +
 	"\rGetMeResponse\x12$\n" +
 	"\x04user\x18\x01 \x01(\v2\x10.publira.v1.UserR\x04user\"\x99\x01\n" +
 	"\vTenantTheme\x12#\n" +
@@ -2200,45 +2218,47 @@ var file_publira_v1_catalog_proto_depIdxs = []int32{
 	0,  // 22: publira.v1.CreateSessionRequest.tenant:type_name -> publira.v1.TenantContext
 	1,  // 23: publira.v1.CreateSessionResponse.user:type_name -> publira.v1.User
 	2,  // 24: publira.v1.CreateSessionResponse.session:type_name -> publira.v1.Session
-	1,  // 25: publira.v1.GetMeResponse.user:type_name -> publira.v1.User
-	0,  // 26: publira.v1.GetTenantThemeRequest.tenant:type_name -> publira.v1.TenantContext
-	31, // 27: publira.v1.GetTenantThemeResponse.theme:type_name -> publira.v1.TenantTheme
-	0,  // 28: publira.v1.UpsertTenantThemeRequest.tenant:type_name -> publira.v1.TenantContext
-	31, // 29: publira.v1.UpsertTenantThemeRequest.theme:type_name -> publira.v1.TenantTheme
-	31, // 30: publira.v1.UpsertTenantThemeResponse.theme:type_name -> publira.v1.TenantTheme
-	4,  // 31: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	3,  // 32: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	6,  // 33: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	13, // 34: publira.v1.AdminSeriesService.CreateSeries:input_type -> publira.v1.CreateSeriesRequest
-	15, // 35: publira.v1.AdminSeriesService.UpdateSeries:input_type -> publira.v1.UpdateSeriesRequest
-	17, // 36: publira.v1.AdminSeriesService.ListSeries:input_type -> publira.v1.ListSeriesRequest
-	19, // 37: publira.v1.AdminSeriesService.GetSeries:input_type -> publira.v1.GetSeriesRequest
-	21, // 38: publira.v1.AdminSeriesService.CreateEpisode:input_type -> publira.v1.CreateEpisodeRequest
-	23, // 39: publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.v1.UpdateEpisodePublishScheduleRequest
-	25, // 40: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
-	27, // 41: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
-	29, // 42: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	32, // 43: publira.v1.TenantThemeService.GetTenantTheme:input_type -> publira.v1.GetTenantThemeRequest
-	34, // 44: publira.v1.TenantThemeService.UpsertTenantTheme:input_type -> publira.v1.UpsertTenantThemeRequest
-	5,  // 45: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	8,  // 46: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	7,  // 47: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	14, // 48: publira.v1.AdminSeriesService.CreateSeries:output_type -> publira.v1.CreateSeriesResponse
-	16, // 49: publira.v1.AdminSeriesService.UpdateSeries:output_type -> publira.v1.UpdateSeriesResponse
-	18, // 50: publira.v1.AdminSeriesService.ListSeries:output_type -> publira.v1.ListSeriesResponse
-	20, // 51: publira.v1.AdminSeriesService.GetSeries:output_type -> publira.v1.GetSeriesResponse
-	22, // 52: publira.v1.AdminSeriesService.CreateEpisode:output_type -> publira.v1.CreateEpisodeResponse
-	24, // 53: publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.v1.UpdateEpisodePublishScheduleResponse
-	26, // 54: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
-	28, // 55: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
-	30, // 56: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	33, // 57: publira.v1.TenantThemeService.GetTenantTheme:output_type -> publira.v1.GetTenantThemeResponse
-	35, // 58: publira.v1.TenantThemeService.UpsertTenantTheme:output_type -> publira.v1.UpsertTenantThemeResponse
-	45, // [45:59] is the sub-list for method output_type
-	31, // [31:45] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	0,  // 25: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.v1.TenantContext
+	0,  // 26: publira.v1.GetMeRequest.tenant:type_name -> publira.v1.TenantContext
+	1,  // 27: publira.v1.GetMeResponse.user:type_name -> publira.v1.User
+	0,  // 28: publira.v1.GetTenantThemeRequest.tenant:type_name -> publira.v1.TenantContext
+	31, // 29: publira.v1.GetTenantThemeResponse.theme:type_name -> publira.v1.TenantTheme
+	0,  // 30: publira.v1.UpsertTenantThemeRequest.tenant:type_name -> publira.v1.TenantContext
+	31, // 31: publira.v1.UpsertTenantThemeRequest.theme:type_name -> publira.v1.TenantTheme
+	31, // 32: publira.v1.UpsertTenantThemeResponse.theme:type_name -> publira.v1.TenantTheme
+	4,  // 33: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	3,  // 34: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	6,  // 35: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	13, // 36: publira.v1.AdminSeriesService.CreateSeries:input_type -> publira.v1.CreateSeriesRequest
+	15, // 37: publira.v1.AdminSeriesService.UpdateSeries:input_type -> publira.v1.UpdateSeriesRequest
+	17, // 38: publira.v1.AdminSeriesService.ListSeries:input_type -> publira.v1.ListSeriesRequest
+	19, // 39: publira.v1.AdminSeriesService.GetSeries:input_type -> publira.v1.GetSeriesRequest
+	21, // 40: publira.v1.AdminSeriesService.CreateEpisode:input_type -> publira.v1.CreateEpisodeRequest
+	23, // 41: publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.v1.UpdateEpisodePublishScheduleRequest
+	25, // 42: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
+	27, // 43: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
+	29, // 44: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
+	32, // 45: publira.v1.TenantThemeService.GetTenantTheme:input_type -> publira.v1.GetTenantThemeRequest
+	34, // 46: publira.v1.TenantThemeService.UpsertTenantTheme:input_type -> publira.v1.UpsertTenantThemeRequest
+	5,  // 47: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	8,  // 48: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	7,  // 49: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	14, // 50: publira.v1.AdminSeriesService.CreateSeries:output_type -> publira.v1.CreateSeriesResponse
+	16, // 51: publira.v1.AdminSeriesService.UpdateSeries:output_type -> publira.v1.UpdateSeriesResponse
+	18, // 52: publira.v1.AdminSeriesService.ListSeries:output_type -> publira.v1.ListSeriesResponse
+	20, // 53: publira.v1.AdminSeriesService.GetSeries:output_type -> publira.v1.GetSeriesResponse
+	22, // 54: publira.v1.AdminSeriesService.CreateEpisode:output_type -> publira.v1.CreateEpisodeResponse
+	24, // 55: publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.v1.UpdateEpisodePublishScheduleResponse
+	26, // 56: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
+	28, // 57: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
+	30, // 58: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
+	33, // 59: publira.v1.TenantThemeService.GetTenantTheme:output_type -> publira.v1.GetTenantThemeResponse
+	35, // 60: publira.v1.TenantThemeService.UpsertTenantTheme:output_type -> publira.v1.UpsertTenantThemeResponse
+	47, // [47:61] is the sub-list for method output_type
+	33, // [33:47] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }

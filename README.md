@@ -24,7 +24,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 │       └── db/         # sqlc 自動生成コード (DB/Go)
 ├── mobile/             # [Flutter] モバイルアプリ (iOS/Android)
 ├── proto/              # Protocol Buffers スキーマ定義
-└── db/                 # PostgreSQL スキーマ/クエリ
+└── db/                 # PostgreSQL migration/クエリ
 ```
 
 ## 技術スタック
@@ -32,7 +32,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 - Frontend: Next.js (App Router), React, TypeScript, Tailwind CSS
 - Backend: Go 1.26, ConnectRPC (HTTP/2), sqlc
 - Mobile: Flutter
-- Database: PostgreSQL
+- Database: PostgreSQL, golang-migrate
 - Storage/Image: S3 互換ストレージ
 - Infrastructure: Dev Containers, Docker, Make
 
@@ -49,3 +49,5 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 ```bash
 make setup
 ```
+
+Dev Container では `migrate` CLI (golang-migrate) を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
