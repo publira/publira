@@ -151,6 +151,22 @@ func (s *apiServer) CreateEpisode(
 	if err != nil {
 		return nil, err
 	}
+	if strings.TrimSpace(req.Msg.Title) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
+	}
+	if req.Msg.OrderIndex <= 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("order_index must be greater than 0"))
+	}
+	if req.Msg.Price < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("price must be greater than or equal to 0"))
+	}
+	if req.Msg.ReadingPeriodHours < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
+	}
+	scheduledAt, err := parseScheduledAtOrZero(req.Msg.ScheduledAt)
+	if err != nil {
+		return nil, err
+	}
 	series, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.SeriesPublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -161,10 +177,6 @@ func (s *apiServer) CreateEpisode(
 	base, err := s.queries.CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: uuid.New(), SeriesID: series.ID, PublicID: generatePublicID(), Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	scheduledAt, err := parseScheduledAtOrZero(req.Msg.ScheduledAt)
-	if err != nil {
-		return nil, err
 	}
 	status := "draft"
 	if scheduledAt.Valid {
