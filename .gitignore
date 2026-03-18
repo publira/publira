@@ -14,10 +14,10 @@ next-env.d.ts
 *.tsbuildinfo
 
 # Go
-apps/api/api
-apps/api/api.exe
-apps/batch/batch
-apps/batch/batch.exe
+server/api-server
+server/api-server.exe
+server/publish-episodes
+server/publish-episodes.exe
 *.test
 *.prof
 
