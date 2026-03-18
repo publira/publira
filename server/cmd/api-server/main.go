@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"errors"
@@ -15,7 +14,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -23,6 +21,7 @@ import (
 
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
@@ -88,18 +87,6 @@ func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirav1.Ep
 func generatePublicID() string {
 	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
 	return strings.ToUpper(raw[:12])
-}
-
-func hashToken(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])
-}
-
-func verifyPassword(password, storedHash string) bool {
-	if bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) == nil {
-		return true
-	}
-	return storedHash == password
 }
 
 func parseScheduledAtOrZero(value string) (sql.NullTime, error) {
@@ -447,20 +434,25 @@ func (s *apiServer) CreateSession(
 ) (*connect.Response[publirav1.CreateSessionResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
+		auth.AuditEvent(req.Header(), "login", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: tenant.ID, Email: req.Msg.Email})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "invalid_credentials")
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 		}
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "user_lookup_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !verifyPassword(req.Msg.Password, user.PasswordHash) {
+	if !auth.VerifyPassword(req.Msg.Password, user.PasswordHash) {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	sessionToken := hex.EncodeToString(rawToken)
@@ -468,10 +460,11 @@ func (s *apiServer) CreateSession(
 		ID:        uuid.New(),
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
-		TokenHash: hashToken(sessionToken),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+		TokenHash: auth.HashToken(sessionToken),
+		ExpiresAt: time.Now().Add(auth.SessionTTL),
 	})
 	if err != nil {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	resp := &publirav1.CreateSessionResponse{
@@ -485,7 +478,10 @@ func (s *apiServer) CreateSession(
 			ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339),
 		},
 	}
-	return connect.NewResponse(resp), nil
+	response := connect.NewResponse(resp)
+	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
+	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "session_issued")
+	return response, nil
 }
 
 func (s *apiServer) DeleteSession(
@@ -494,23 +490,36 @@ func (s *apiServer) DeleteSession(
 ) (*connect.Response[publirav1.DeleteSessionResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
+		auth.AuditEvent(req.Header(), "logout", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	tokenHash := hashToken(req.Msg.SessionId)
+	sessionToken, ok := auth.SessionTokenFromRequest(req.Msg.SessionId, req.Header())
+	response := connect.NewResponse(&publirav1.DeleteSessionResponse{})
+	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
+	if !ok {
+		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "no_session_cookie")
+		return response, nil
+	}
+	tokenHash := auth.HashToken(sessionToken)
 	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, tokenHash, time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return connect.NewResponse(&publirav1.DeleteSessionResponse{}), nil
+			auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "session_not_found")
+			return response, nil
 		}
+		auth.AuditEvent(req.Header(), "logout", "failure", tenant.PublicID, "", "session_lookup_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if lookup.State == dbmodels.SessionStateRevoked {
-		return connect.NewResponse(&publirav1.DeleteSessionResponse{}), nil
+		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "already_revoked")
+		return response, nil
 	}
 	if err := s.queries.RevokeSession(ctx, dbmodels.RevokeSessionParams{ID: lookup.Session.ID, TenantID: tenant.ID}); err != nil {
+		auth.AuditEvent(req.Header(), "logout", "failure", tenant.PublicID, "", "session_revoke_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&publirav1.DeleteSessionResponse{}), nil
+	auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "session_revoked")
+	return response, nil
 }
 
 func (s *apiServer) GetMe(
@@ -521,7 +530,11 @@ func (s *apiServer) GetMe(
 	if err != nil {
 		return nil, err
 	}
-	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, hashToken(req.Msg.SessionId), time.Now())
+	sessionToken, ok := auth.SessionTokenFromRequest(req.Msg.SessionId, req.Header())
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
+	}
+	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, auth.HashToken(sessionToken), time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
