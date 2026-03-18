@@ -64,6 +64,9 @@ func (s *apiServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
+	if strings.TrimSpace(req.Msg.Title) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
+	}
 	current, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
