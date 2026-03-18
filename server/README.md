@@ -42,5 +42,5 @@ cd server && go build ./...
 ## 初期データメモ
 
 - AuthService を使うには、最低限 `tenants` と `users` のデータが必要です。
-- `users.password_hash` は当面、`bcrypt` ハッシュを推奨します (初期実装では平文一致フォールバックあり)。
+- `users.password_hash` は `bcrypt` ハッシュを利用してください。
 - API 起動確認は `GET /healthz` を利用してください。
