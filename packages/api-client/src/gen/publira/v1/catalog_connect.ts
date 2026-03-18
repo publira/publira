@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateEpisodeRequest, CreateEpisodeResponse, CreateSeriesRequest, CreateSeriesResponse, CreateSessionRequest, CreateSessionResponse, DeleteSessionRequest, DeleteSessionResponse, GetEpisodeDetailRequest, GetEpisodeDetailResponse, GetMeRequest, GetMeResponse, GetSeriesDetailRequest, GetSeriesDetailResponse, GetSeriesRequest, GetSeriesResponse, GetTenantThemeRequest, GetTenantThemeResponse, ListPublishedSeriesRequest, ListPublishedSeriesResponse, ListSeriesRequest, ListSeriesResponse, UpdateEpisodePublishScheduleRequest, UpdateEpisodePublishScheduleResponse, UpdateSeriesRequest, UpdateSeriesResponse, UpsertTenantThemeRequest, UpsertTenantThemeResponse } from "./catalog_pb.js";
+import { CreateEpisodeRequest, CreateEpisodeResponse, CreateSeriesRequest, CreateSeriesResponse, CreateSessionRequest, CreateSessionResponse, DeleteSessionRequest, DeleteSessionResponse, GetEpisodeDetailRequest, GetEpisodeDetailResponse, GetMeRequest, GetMeResponse, GetSeriesDetailRequest, GetSeriesDetailResponse, GetSeriesRequest, GetSeriesResponse, GetTenantThemeRequest, GetTenantThemeResponse, ListPublishedSeriesRequest, ListPublishedSeriesResponse, ListSeriesRequest, ListSeriesResponse, UpdateEpisodePublishScheduleRequest, UpdateEpisodePublishScheduleResponse, UpdateSeriesRequest, UpdateSeriesResponse, UploadEpisodeImagesRequest, UploadEpisodeImagesResponse, UpsertTenantThemeRequest, UpsertTenantThemeResponse } from "./catalog_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -91,6 +91,15 @@ export const AdminSeriesService = {
       name: "CreateEpisode",
       I: CreateEpisodeRequest,
       O: CreateEpisodeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc publira.v1.AdminSeriesService.UploadEpisodeImages
+     */
+    uploadEpisodeImages: {
+      name: "UploadEpisodeImages",
+      I: UploadEpisodeImagesRequest,
+      O: UploadEpisodeImagesResponse,
       kind: MethodKind.Unary,
     },
     /**

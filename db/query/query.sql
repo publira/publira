@@ -269,6 +269,28 @@ FROM episodes e
 WHERE s.tenant_id = $1
     AND e.public_id = $2
 LIMIT 1;
+-- name: CreateEpisodeImage :one
+INSERT INTO episode_images (
+        id,
+        tenant_id,
+        episode_id,
+        storage_provider,
+        object_key,
+        image_url,
+        content_type,
+        file_size_bytes,
+    display_order,
+    width,
+    height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING *;
+-- name: ListEpisodeImagesByEpisodeID :many
+SELECT *
+FROM episode_images
+WHERE episode_id = $1
+ORDER BY display_order ASC,
+    created_at ASC;
 -- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
