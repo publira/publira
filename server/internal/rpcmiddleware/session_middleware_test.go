@@ -22,6 +22,13 @@ func TestSessionContextFromContext_NotPresent(t *testing.T) {
 	}
 }
 
+func TestTenantContextFromContext_NotPresent(t *testing.T) {
+	_, ok := rpcmiddleware.TenantContextFromContext(context.Background())
+	if ok {
+		t.Error("expected ok=false for empty context")
+	}
+}
+
 // tenantRequest is a minimal Connect request message that satisfies tenantScopedRequest.
 type tenantRequest struct {
 	*emptypb.Empty
@@ -32,7 +39,7 @@ func (r *tenantRequest) GetTenant() *publirav1.TenantContext { return r.tenant }
 
 func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 	want := rpcmiddleware.SessionContext{
-		Tenant:  dbmodels.Tenant{PublicID: "tenant-1"},
+		Tenant:  dbmodels.Tenant{ID: uuid.New(), PublicID: "tenant-1"},
 		Session: dbmodels.Session{ID: uuid.New()},
 	}
 	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
@@ -55,6 +62,17 @@ func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 	}
 	if got.Session.ID != want.Session.ID {
 		t.Errorf("Session.ID = %v, want %v", got.Session.ID, want.Session.ID)
+	}
+
+	gotTenantCtx, ok := rpcmiddleware.TenantContextFromContext(ctx)
+	if !ok {
+		t.Fatal("TenantContext not found in context")
+	}
+	if gotTenantCtx.TenantID != want.Tenant.ID {
+		t.Errorf("TenantContext.TenantID = %v, want %v", gotTenantCtx.TenantID, want.Tenant.ID)
+	}
+	if gotTenantCtx.TenantPublicID != want.Tenant.PublicID {
+		t.Errorf("TenantContext.TenantPublicID = %q, want %q", gotTenantCtx.TenantPublicID, want.Tenant.PublicID)
 	}
 }
 
@@ -83,5 +101,41 @@ func TestBuildAdminSessionContext_NonTenantRequestReturnsInternal(t *testing.T) 
 	_, err := builder(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Errorf("error code = %v, want Internal", connect.CodeOf(err))
+	}
+}
+
+func TestBuildAdminSessionContext_MissingTenantContextReturnsInvalidArgument(t *testing.T) {
+	authenticateCalled := false
+	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+		authenticateCalled = true
+		return rpcmiddleware.SessionContext{}, nil
+	}
+
+	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: nil})
+	_, err := builder(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("error code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+	if authenticateCalled {
+		t.Error("authenticate should not be called when tenant context is missing")
+	}
+}
+
+func TestBuildAdminSessionContext_EmptyTenantPublicIDReturnsInvalidArgument(t *testing.T) {
+	authenticateCalled := false
+	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+		authenticateCalled = true
+		return rpcmiddleware.SessionContext{}, nil
+	}
+
+	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirav1.TenantContext{TenantPublicId: "  "}})
+	_, err := builder(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("error code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+	if authenticateCalled {
+		t.Error("authenticate should not be called when tenant_public_id is empty")
 	}
 }
