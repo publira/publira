@@ -62,13 +62,12 @@ WHERE id = $1;
 SELECT s.id,
     s.public_id,
     s.title,
-    sl.synopsis,
-    sl.published_at
+    s.synopsis,
+    s.published_at
 FROM series s
-    JOIN series_listings sl ON s.id = sl.series_id
 WHERE s.tenant_id = $1
-    AND sl.is_published = true
-ORDER BY sl.published_at DESC;
+    AND s.is_published = true
+ORDER BY s.published_at DESC;
 -- name: CreateEpisodeBase :one
 -- エピソードのBaseレコードを作成する
 INSERT INTO episodes (
@@ -132,8 +131,8 @@ SELECT s.id,
     s.public_id,
     s.title,
     l.name AS label_name,
-    sl.synopsis,
-    sl.is_published,
+    s.synopsis,
+    s.is_published,
     -- 複数のクリエイター情報をJSON配列として1カラムにまとめる
     COALESCE(
         json_agg(
@@ -180,16 +179,14 @@ SELECT s.id,
         '[]'
     )::jsonb AS episodes
 FROM series s
-    JOIN series_listings sl ON s.id = sl.series_id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.public_id = $1
     AND s.tenant_id = $2
-    AND sl.is_published = true
+    AND s.is_published = true
 GROUP BY s.id,
-    l.id,
-    sl.series_id;
+    l.id;
 -- name: GetTenantByPublicID :one
 SELECT *
 FROM tenants
@@ -207,51 +204,41 @@ INSERT INTO series (
         tenant_id,
         label_id,
         public_id,
-        title
+        title,
+        updated_at
     )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, NOW())
 RETURNING *;
 -- name: UpdateSeriesBase :exec
 UPDATE series
 SET title = $2,
-    label_id = $3
+    label_id = $3,
+    updated_at = NOW()
 WHERE id = $1;
 -- name: UpsertSeriesListing :one
-INSERT INTO series_listings (
-        series_id,
-        synopsis,
-        reading_period_hours,
-        is_published,
-        published_at
-    )
-VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        CASE
-            WHEN $4 THEN NOW()
-            ELSE NULL
-        END
-    ) ON CONFLICT (series_id) DO
-UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
-    is_published = EXCLUDED.is_published,
+UPDATE series
+SET synopsis = $2,
+    reading_period_hours = $3,
+    is_published = $4,
     published_at = CASE
-        WHEN EXCLUDED.is_published THEN COALESCE(series_listings.published_at, NOW())
+        WHEN $4 THEN COALESCE(series.published_at, NOW())
         ELSE NULL
-    END
-RETURNING *;
+    END,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id AS series_id,
+    synopsis,
+    reading_period_hours,
+    is_published,
+    published_at;
 -- name: ListSeriesByTenant :many
 SELECT s.id,
     s.public_id,
     s.title,
-    sl.synopsis,
-    sl.is_published,
-    sl.published_at
+    s.synopsis,
+    s.is_published,
+    s.published_at
 FROM series s
-    JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
 ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3;
@@ -259,11 +246,10 @@ LIMIT $2 OFFSET $3;
 SELECT s.id,
     s.public_id,
     s.title,
-    sl.synopsis,
-    sl.is_published,
-    sl.published_at
+    s.synopsis,
+    s.is_published,
+    s.published_at
 FROM series s
-    JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.public_id = $2
 LIMIT 1;

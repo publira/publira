@@ -61,10 +61,11 @@ INSERT INTO series (
         tenant_id,
         label_id,
         public_id,
-        title
+        title,
+        updated_at
     )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, label_id, public_id, title, created_at
+VALUES ($1, $2, $3, $4, $5, NOW())
+RETURNING id, tenant_id, label_id, public_id, title, created_at, synopsis, reading_period_hours, is_published, published_at, created_by, updated_by, updated_at
 `
 
 type CreateSeriesBaseParams struct {
@@ -91,6 +92,13 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		&i.PublicID,
 		&i.Title,
 		&i.CreatedAt,
+		&i.Synopsis,
+		&i.ReadingPeriodHours,
+		&i.IsPublished,
+		&i.PublishedAt,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -218,11 +226,10 @@ const getSeriesByPublicIDForTenant = `-- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
     s.title,
-    sl.synopsis,
-    sl.is_published,
-    sl.published_at
+    s.synopsis,
+    s.is_published,
+    s.published_at
 FROM series s
-    JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.public_id = $2
 LIMIT 1
@@ -238,7 +245,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 	PublicID    string         `json:"public_id"`
 	Title       string         `json:"title"`
 	Synopsis    sql.NullString `json:"synopsis"`
-	IsPublished sql.NullBool   `json:"is_published"`
+	IsPublished bool           `json:"is_published"`
 	PublishedAt sql.NullTime   `json:"published_at"`
 }
 
@@ -261,8 +268,8 @@ SELECT s.id,
     s.public_id,
     s.title,
     l.name AS label_name,
-    sl.synopsis,
-    sl.is_published,
+    s.synopsis,
+    s.is_published,
     -- 複数のクリエイター情報をJSON配列として1カラムにまとめる
     COALESCE(
         json_agg(
@@ -309,16 +316,14 @@ SELECT s.id,
         '[]'
     )::jsonb AS episodes
 FROM series s
-    JOIN series_listings sl ON s.id = sl.series_id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.public_id = $1
     AND s.tenant_id = $2
-    AND sl.is_published = true
+    AND s.is_published = true
 GROUP BY s.id,
-    l.id,
-    sl.series_id
+    l.id
 `
 
 type GetSeriesDetailParams struct {
@@ -332,7 +337,7 @@ type GetSeriesDetailRow struct {
 	Title       string          `json:"title"`
 	LabelName   sql.NullString  `json:"label_name"`
 	Synopsis    sql.NullString  `json:"synopsis"`
-	IsPublished sql.NullBool    `json:"is_published"`
+	IsPublished bool            `json:"is_published"`
 	Creators    json.RawMessage `json:"creators"`
 	Episodes    json.RawMessage `json:"episodes"`
 }
@@ -502,13 +507,12 @@ const listActiveSeries = `-- name: ListActiveSeries :many
 SELECT s.id,
     s.public_id,
     s.title,
-    sl.synopsis,
-    sl.published_at
+    s.synopsis,
+    s.published_at
 FROM series s
-    JOIN series_listings sl ON s.id = sl.series_id
 WHERE s.tenant_id = $1
-    AND sl.is_published = true
-ORDER BY sl.published_at DESC
+    AND s.is_published = true
+ORDER BY s.published_at DESC
 `
 
 type ListActiveSeriesRow struct {
@@ -659,11 +663,10 @@ const listSeriesByTenant = `-- name: ListSeriesByTenant :many
 SELECT s.id,
     s.public_id,
     s.title,
-    sl.synopsis,
-    sl.is_published,
-    sl.published_at
+    s.synopsis,
+    s.is_published,
+    s.published_at
 FROM series s
-    JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
 ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3
@@ -680,7 +683,7 @@ type ListSeriesByTenantRow struct {
 	PublicID    string         `json:"public_id"`
 	Title       string         `json:"title"`
 	Synopsis    sql.NullString `json:"synopsis"`
-	IsPublished sql.NullBool   `json:"is_published"`
+	IsPublished bool           `json:"is_published"`
 	PublishedAt sql.NullTime   `json:"published_at"`
 }
 
@@ -775,7 +778,8 @@ func (q *Queries) UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Co
 const updateSeriesBase = `-- name: UpdateSeriesBase :exec
 UPDATE series
 SET title = $2,
-    label_id = $3
+    label_id = $3,
+    updated_at = NOW()
 WHERE id = $1
 `
 
@@ -840,49 +844,46 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 }
 
 const upsertSeriesListing = `-- name: UpsertSeriesListing :one
-INSERT INTO series_listings (
-        series_id,
-        synopsis,
-        reading_period_hours,
-        is_published,
-        published_at
-    )
-VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        CASE
-            WHEN $4 THEN NOW()
-            ELSE NULL
-        END
-    ) ON CONFLICT (series_id) DO
-UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
-    is_published = EXCLUDED.is_published,
+UPDATE series
+SET synopsis = $2,
+    reading_period_hours = $3,
+    is_published = $4,
     published_at = CASE
-        WHEN EXCLUDED.is_published THEN COALESCE(series_listings.published_at, NOW())
+        WHEN $4 THEN COALESCE(series.published_at, NOW())
         ELSE NULL
-    END
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at
+    END,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id AS series_id,
+    synopsis,
+    reading_period_hours,
+    is_published,
+    published_at
 `
 
 type UpsertSeriesListingParams struct {
+	ID                 uuid.UUID      `json:"id"`
+	Synopsis           sql.NullString `json:"synopsis"`
+	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	IsPublished        bool           `json:"is_published"`
+}
+
+type UpsertSeriesListingRow struct {
 	SeriesID           uuid.UUID      `json:"series_id"`
 	Synopsis           sql.NullString `json:"synopsis"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
-	IsPublished        sql.NullBool   `json:"is_published"`
+	IsPublished        bool           `json:"is_published"`
+	PublishedAt        sql.NullTime   `json:"published_at"`
 }
 
-func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error) {
+func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (UpsertSeriesListingRow, error) {
 	row := q.db.QueryRowContext(ctx, upsertSeriesListing,
-		arg.SeriesID,
+		arg.ID,
 		arg.Synopsis,
 		arg.ReadingPeriodHours,
 		arg.IsPublished,
 	)
-	var i SeriesListing
+	var i UpsertSeriesListingRow
 	err := row.Scan(
 		&i.SeriesID,
 		&i.Synopsis,

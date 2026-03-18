@@ -56,12 +56,19 @@ type Purchase struct {
 }
 
 type Series struct {
-	ID        uuid.UUID     `json:"id"`
-	TenantID  uuid.UUID     `json:"tenant_id"`
-	LabelID   uuid.NullUUID `json:"label_id"`
-	PublicID  string        `json:"public_id"`
-	Title     string        `json:"title"`
-	CreatedAt time.Time     `json:"created_at"`
+	ID                 uuid.UUID      `json:"id"`
+	TenantID           uuid.UUID      `json:"tenant_id"`
+	LabelID            uuid.NullUUID  `json:"label_id"`
+	PublicID           string         `json:"public_id"`
+	Title              string         `json:"title"`
+	CreatedAt          time.Time      `json:"created_at"`
+	Synopsis           sql.NullString `json:"synopsis"`
+	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	IsPublished        bool           `json:"is_published"`
+	PublishedAt        sql.NullTime   `json:"published_at"`
+	CreatedBy          uuid.NullUUID  `json:"created_by"`
+	UpdatedBy          uuid.NullUUID  `json:"updated_by"`
+	UpdatedAt          time.Time      `json:"updated_at"`
 }
 
 type SeriesCreator struct {
