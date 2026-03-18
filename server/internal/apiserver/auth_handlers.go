@@ -15,6 +15,7 @@ import (
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 func (s *apiServer) authenticateSession(
@@ -22,26 +23,26 @@ func (s *apiServer) authenticateSession(
 	tenantCtx *publirav1.TenantContext,
 	explicitToken string,
 	headers http.Header,
-) (authContext, error) {
+) (rpcmiddleware.SessionContext, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
-		return authContext{}, err
+		return rpcmiddleware.SessionContext{}, err
 	}
 	sessionToken, ok := auth.SessionTokenFromRequest(explicitToken, headers)
 	if !ok {
-		return authContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
 	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, auth.HashToken(sessionToken), time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return authContext{}, invalidSessionError()
+			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
-		return authContext{}, connect.NewError(connect.CodeInternal, err)
+		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
 	}
 	if lookup.State != dbmodels.SessionStateActive {
-		return authContext{}, invalidSessionError()
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	return authContext{tenant: tenant, session: lookup.Session}, nil
+	return rpcmiddleware.SessionContext{Tenant: tenant, Session: lookup.Session}, nil
 }
 
 func (s *apiServer) currentUserFromSession(
@@ -54,30 +55,14 @@ func (s *apiServer) currentUserFromSession(
 	if err != nil {
 		return dbmodels.Tenant{}, dbmodels.User{}, err
 	}
-	user, err := s.queries.GetUserByID(ctx, authCtx.session.UserID)
+	user, err := s.queries.GetUserByID(ctx, authCtx.Session.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, dbmodels.User{}, invalidSessionError()
 		}
 		return dbmodels.Tenant{}, dbmodels.User{}, connect.NewError(connect.CodeInternal, err)
 	}
-	return authCtx.tenant, user, nil
-}
-
-func (s *apiServer) requireAdminSession() connect.Interceptor {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			tenantReq, ok := req.Any().(tenantRequest)
-			if !ok {
-				return nil, connect.NewError(connect.CodeInternal, errors.New("tenant context accessor is not implemented"))
-			}
-			authCtx, err := s.authenticateSession(ctx, tenantReq.GetTenant(), "", req.Header())
-			if err != nil {
-				return nil, err
-			}
-			return next(withAuthContext(ctx, authCtx), req)
-		}
-	})
+	return authCtx.Tenant, user, nil
 }
 
 func (s *apiServer) CreateSession(

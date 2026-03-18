@@ -14,14 +14,8 @@ import (
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
-
-type authContextKey struct{}
-
-type authContext struct {
-	tenant  dbmodels.Tenant
-	session dbmodels.Session
-}
 
 type Querier interface {
 	dbmodels.Querier
@@ -32,21 +26,8 @@ type apiServer struct {
 	queries Querier
 }
 
-type tenantRequest interface {
-	GetTenant() *publirav1.TenantContext
-}
-
 func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
-}
-
-func withAuthContext(ctx context.Context, authCtx authContext) context.Context {
-	return context.WithValue(ctx, authContextKey{}, authCtx)
-}
-
-func authContextFromContext(ctx context.Context) (authContext, bool) {
-	authCtx, ok := ctx.Value(authContextKey{}).(authContext)
-	return authCtx, ok
 }
 
 func tenantPublicIDFromContext(ctx *publirav1.TenantContext) (string, error) {
@@ -57,8 +38,8 @@ func tenantPublicIDFromContext(ctx *publirav1.TenantContext) (string, error) {
 }
 
 func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirav1.TenantContext) (dbmodels.Tenant, error) {
-	if authCtx, ok := authContextFromContext(ctx); ok {
-		return authCtx.tenant, nil
+	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+		return sessionCtx.Tenant, nil
 	}
 	tenantPublicID, err := tenantPublicIDFromContext(tenantCtx)
 	if err != nil {
@@ -87,7 +68,7 @@ func NewHandler(queries Querier) http.Handler {
 	})
 	path, handler := publirav1connect.NewCatalogServiceHandler(server)
 	mux.Handle(path, handler)
-	adminPath, adminHandler := publirav1connect.NewAdminSeriesServiceHandler(server, connect.WithInterceptors(server.requireAdminSession()))
+	adminPath, adminHandler := publirav1connect.NewAdminSeriesServiceHandler(server, connect.WithInterceptors(rpcmiddleware.NewUnaryContextBuilderInterceptor(rpcmiddleware.BuildAdminSessionContext(server.authenticateSession))))
 	mux.Handle(adminPath, adminHandler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server)
 	mux.Handle(authPath, authHandler)
