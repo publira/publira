@@ -23,13 +23,16 @@ server/
 
 ## 実装ルール
 
-1. スキーマ駆動開発: API/DB の変更は `proto/` または `db/schema/` を先に変更し、`make gen` を実行する
+1. スキーマ駆動開発: API/DB の変更は `proto/` または `db/migrations/` の golang-migrate 形式 (`.up.sql` / `.down.sql`) を先に変更し、`make gen` を実行する
 2. `cmd/` は薄く保ち、実装は `internal/` に寄せる
 3. バッチは常駐型にせず、1 回の処理で終了する
 
 ## 開発コマンド
 
 ```bash
+make db-init
+make db-status
+make db-new name=add_sessions_table
 make dev-api
 make run-batch-publish
 cd server && go mod tidy

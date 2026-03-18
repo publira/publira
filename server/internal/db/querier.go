@@ -20,7 +20,7 @@ type Querier interface {
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
-	GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error)
+	GetSessionByTokenHashForTenant(ctx context.Context, arg GetSessionByTokenHashForTenantParams) (Session, error)
 	// ホスト名からテナントを特定する (Interceptorで使用)
 	GetTenantByDomain(ctx context.Context, domain sql.NullString) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
@@ -33,7 +33,7 @@ type Querier interface {
 	ListPublishedEpisodesBySeries(ctx context.Context, seriesID uuid.UUID) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
-	RevokeSession(ctx context.Context, id uuid.UUID) error
+	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)

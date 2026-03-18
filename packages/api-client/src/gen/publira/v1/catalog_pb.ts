@@ -2,24 +2,15 @@
 // @generated from file publira/v1/catalog.proto (package publira.v1, syntax proto3)
 /* eslint-disable */
 
+import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
-import type {
-  GenFile,
-  GenMessage,
-  GenService,
-} from "@bufbuild/protobuf/codegenv2";
-import {
-  fileDesc,
-  messageDesc,
-  serviceDesc,
-} from "@bufbuild/protobuf/codegenv2";
 
 /**
  * Describes the file publira/v1/catalog.proto.
  */
-export const file_publira_v1_catalog: GenFile /*@__PURE__*/ = fileDesc(
-  "ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEiKQoNVGVuYW50Q29udGV4dBIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJIjUKBFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCSIxCgdTZXNzaW9uEhIKCnNlc3Npb25faWQYASABKAkSEgoKZXhwaXJlc19hdBgCIAEoCSJWChZHZXRTZXJpZXNEZXRhaWxSZXF1ZXN0EikKBnRlbmFudBgBIAEoCzIZLnB1YmxpcmEudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiZgoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJBChtMaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgAygLMhIucHVibGlyYS52MS5TZXJpZXMiVwoXR2V0RXBpc29kZURldGFpbFJlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJkChhHZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2USJAoHZXBpc29kZRgBIAEoCzITLnB1YmxpcmEudjEuRXBpc29kZRIiCgZzZXJpZXMYAiABKAsyEi5wdWJsaXJhLnYxLlNlcmllcyJkChdHZXRTZXJpZXNEZXRhaWxSZXNwb25zZRIiCgZzZXJpZXMYASABKAsyEi5wdWJsaXJhLnYxLlNlcmllcxIlCghlcGlzb2RlcxgCIAMoCzITLnB1YmxpcmEudjEuRXBpc29kZSIlCgdDcmVhdG9yEgwKBG5hbWUYASABKAkSDAoEcm9sZRgCIAEoCSIVCgVMYWJlbBIMCgRuYW1lGAEgASgJIoUBCgZTZXJpZXMSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhAKCHN5bm9wc2lzGAMgASgJEiAKBWxhYmVsGAQgASgLMhEucHVibGlyYS52MS5MYWJlbBIlCghjcmVhdG9ycxgFIAMoCzITLnB1YmxpcmEudjEuQ3JlYXRvciKpAQoHRXBpc29kZRIRCglwdWJsaWNfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSEwoLb3JkZXJfaW5kZXgYAyABKAUSDQoFcHJpY2UYBCABKAUSHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBSABKAUSDgoGc3RhdHVzGAYgASgJEhQKDHNjaGVkdWxlZF9hdBgHIAEoCRIUCgxwdWJsaXNoZWRfYXQYCCABKAkikAEKE0NyZWF0ZVNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBXRpdGxlGAIgASgJEhAKCHN5bm9wc2lzGAMgASgJEhcKD2xhYmVsX3B1YmxpY19pZBgEIAEoCRIUCgxpc19wdWJsaXNoZWQYBSABKAgiOgoUQ3JlYXRlU2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgASgLMhIucHVibGlyYS52MS5TZXJpZXMiigEKE1VwZGF0ZVNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIQCghzeW5vcHNpcxgEIAEoCRIUCgxpc19wdWJsaXNoZWQYBSABKAgiOgoUVXBkYXRlU2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgASgLMhIucHVibGlyYS52MS5TZXJpZXMiXQoRTGlzdFNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSI4ChJMaXN0U2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgAygLMhIucHVibGlyYS52MS5TZXJpZXMiUAoQR2V0U2VyaWVzUmVxdWVzdBIpCgZ0ZW5hbnQYASABKAsyGS5wdWJsaXJhLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIjcKEUdldFNlcmllc1Jlc3BvbnNlEiIKBnNlcmllcxgBIAEoCzISLnB1YmxpcmEudjEuU2VyaWVzIsIBChRDcmVhdGVFcGlzb2RlUmVxdWVzdBIpCgZ0ZW5hbnQYASABKAsyGS5wdWJsaXJhLnYxLlRlbmFudENvbnRleHQSGAoQc2VyaWVzX3B1YmxpY19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRITCgtvcmRlcl9pbmRleBgEIAEoBRINCgVwcmljZRgFIAEoBRIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBRIUCgxzY2hlZHVsZWRfYXQYByABKAkiPQoVQ3JlYXRlRXBpc29kZVJlc3BvbnNlEiQKB2VwaXNvZGUYASABKAsyEy5wdWJsaXJhLnYxLkVwaXNvZGUigQEKI1VwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGVSZXF1ZXN0EikKBnRlbmFudBgBIAEoCzIZLnB1YmxpcmEudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIUCgxzY2hlZHVsZWRfYXQYAyABKAkiTAokVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZVJlc3BvbnNlEiQKB2VwaXNvZGUYASABKAsyEy5wdWJsaXJhLnYxLkVwaXNvZGUiYgoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJIl0KFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIeCgR1c2VyGAEgASgLMhAucHVibGlyYS52MS5Vc2VyEiQKB3Nlc3Npb24YAiABKAsyEy5wdWJsaXJhLnYxLlNlc3Npb24iKgoURGVsZXRlU2Vzc2lvblJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCSIXChVEZWxldGVTZXNzaW9uUmVzcG9uc2UiIgoMR2V0TWVSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiLwoNR2V0TWVSZXNwb25zZRIeCgR1c2VyGAEgASgLMhAucHVibGlyYS52MS5Vc2VyImUKC1RlbmFudFRoZW1lEhUKDXByaW1hcnlfY29sb3IYASABKAkSFwoPc2Vjb25kYXJ5X2NvbG9yGAIgASgJEhQKDGFjY2VudF9jb2xvchgDIAEoCRIQCghsb2dvX3VybBgEIAEoCSJCChVHZXRUZW5hbnRUaGVtZVJlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0IkAKFkdldFRlbmFudFRoZW1lUmVzcG9uc2USJgoFdGhlbWUYASABKAsyFy5wdWJsaXJhLnYxLlRlbmFudFRoZW1lIm0KGFVwc2VydFRlbmFudFRoZW1lUmVxdWVzdBIpCgZ0ZW5hbnQYASABKAsyGS5wdWJsaXJhLnYxLlRlbmFudENvbnRleHQSJgoFdGhlbWUYAiABKAsyFy5wdWJsaXJhLnYxLlRlbmFudFRoZW1lIkMKGVVwc2VydFRlbmFudFRoZW1lUmVzcG9uc2USJgoFdGhlbWUYASABKAsyFy5wdWJsaXJhLnYxLlRlbmFudFRoZW1lMrkCCg5DYXRhbG9nU2VydmljZRJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiADK3BAoSQWRtaW5TZXJpZXNTZXJ2aWNlElMKDENyZWF0ZVNlcmllcxIfLnB1YmxpcmEudjEuQ3JlYXRlU2VyaWVzUmVxdWVzdBogLnB1YmxpcmEudjEuQ3JlYXRlU2VyaWVzUmVzcG9uc2UiABJTCgxVcGRhdGVTZXJpZXMSHy5wdWJsaXJhLnYxLlVwZGF0ZVNlcmllc1JlcXVlc3QaIC5wdWJsaXJhLnYxLlVwZGF0ZVNlcmllc1Jlc3BvbnNlIgASTQoKTGlzdFNlcmllcxIdLnB1YmxpcmEudjEuTGlzdFNlcmllc1JlcXVlc3QaHi5wdWJsaXJhLnYxLkxpc3RTZXJpZXNSZXNwb25zZSIAEkoKCUdldFNlcmllcxIcLnB1YmxpcmEudjEuR2V0U2VyaWVzUmVxdWVzdBodLnB1YmxpcmEudjEuR2V0U2VyaWVzUmVzcG9uc2UiABJWCg1DcmVhdGVFcGlzb2RlEiAucHVibGlyYS52MS5DcmVhdGVFcGlzb2RlUmVxdWVzdBohLnB1YmxpcmEudjEuQ3JlYXRlRXBpc29kZVJlc3BvbnNlIgASgwEKHFVwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGUSLy5wdWJsaXJhLnYxLlVwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGVSZXF1ZXN0GjAucHVibGlyYS52MS5VcGRhdGVFcGlzb2RlUHVibGlzaFNjaGVkdWxlUmVzcG9uc2UiADL9AQoLQXV0aFNlcnZpY2USVgoNQ3JlYXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuQ3JlYXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkNyZWF0ZVNlc3Npb25SZXNwb25zZSIAElYKDURlbGV0ZVNlc3Npb24SIC5wdWJsaXJhLnYxLkRlbGV0ZVNlc3Npb25SZXF1ZXN0GiEucHVibGlyYS52MS5EZWxldGVTZXNzaW9uUmVzcG9uc2UiABI+CgVHZXRNZRIYLnB1YmxpcmEudjEuR2V0TWVSZXF1ZXN0GhkucHVibGlyYS52MS5HZXRNZVJlc3BvbnNlIgAy0wEKElRlbmFudFRoZW1lU2VydmljZRJZCg5HZXRUZW5hbnRUaGVtZRIhLnB1YmxpcmEudjEuR2V0VGVuYW50VGhlbWVSZXF1ZXN0GiIucHVibGlyYS52MS5HZXRUZW5hbnRUaGVtZVJlc3BvbnNlIgASYgoRVXBzZXJ0VGVuYW50VGhlbWUSJC5wdWJsaXJhLnYxLlVwc2VydFRlbmFudFRoZW1lUmVxdWVzdBolLnB1YmxpcmEudjEuVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZSIAQjxaOmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw"
-);
+export const file_publira_v1_catalog: GenFile = /*@__PURE__*/
+  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEiKQoNVGVuYW50Q29udGV4dBIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJIjUKBFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCSIxCgdTZXNzaW9uEhIKCnNlc3Npb25faWQYASABKAkSEgoKZXhwaXJlc19hdBgCIAEoCSJWChZHZXRTZXJpZXNEZXRhaWxSZXF1ZXN0EikKBnRlbmFudBgBIAEoCzIZLnB1YmxpcmEudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiZgoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJBChtMaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgAygLMhIucHVibGlyYS52MS5TZXJpZXMiVwoXR2V0RXBpc29kZURldGFpbFJlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJkChhHZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2USJAoHZXBpc29kZRgBIAEoCzITLnB1YmxpcmEudjEuRXBpc29kZRIiCgZzZXJpZXMYAiABKAsyEi5wdWJsaXJhLnYxLlNlcmllcyJkChdHZXRTZXJpZXNEZXRhaWxSZXNwb25zZRIiCgZzZXJpZXMYASABKAsyEi5wdWJsaXJhLnYxLlNlcmllcxIlCghlcGlzb2RlcxgCIAMoCzITLnB1YmxpcmEudjEuRXBpc29kZSIlCgdDcmVhdG9yEgwKBG5hbWUYASABKAkSDAoEcm9sZRgCIAEoCSIVCgVMYWJlbBIMCgRuYW1lGAEgASgJIoUBCgZTZXJpZXMSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhAKCHN5bm9wc2lzGAMgASgJEiAKBWxhYmVsGAQgASgLMhEucHVibGlyYS52MS5MYWJlbBIlCghjcmVhdG9ycxgFIAMoCzITLnB1YmxpcmEudjEuQ3JlYXRvciKpAQoHRXBpc29kZRIRCglwdWJsaWNfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSEwoLb3JkZXJfaW5kZXgYAyABKAUSDQoFcHJpY2UYBCABKAUSHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBSABKAUSDgoGc3RhdHVzGAYgASgJEhQKDHNjaGVkdWxlZF9hdBgHIAEoCRIUCgxwdWJsaXNoZWRfYXQYCCABKAkikAEKE0NyZWF0ZVNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBXRpdGxlGAIgASgJEhAKCHN5bm9wc2lzGAMgASgJEhcKD2xhYmVsX3B1YmxpY19pZBgEIAEoCRIUCgxpc19wdWJsaXNoZWQYBSABKAgiOgoUQ3JlYXRlU2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgASgLMhIucHVibGlyYS52MS5TZXJpZXMiigEKE1VwZGF0ZVNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIQCghzeW5vcHNpcxgEIAEoCRIUCgxpc19wdWJsaXNoZWQYBSABKAgiOgoUVXBkYXRlU2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgASgLMhIucHVibGlyYS52MS5TZXJpZXMiXQoRTGlzdFNlcmllc1JlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSI4ChJMaXN0U2VyaWVzUmVzcG9uc2USIgoGc2VyaWVzGAEgAygLMhIucHVibGlyYS52MS5TZXJpZXMiUAoQR2V0U2VyaWVzUmVxdWVzdBIpCgZ0ZW5hbnQYASABKAsyGS5wdWJsaXJhLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIjcKEUdldFNlcmllc1Jlc3BvbnNlEiIKBnNlcmllcxgBIAEoCzISLnB1YmxpcmEudjEuU2VyaWVzIsIBChRDcmVhdGVFcGlzb2RlUmVxdWVzdBIpCgZ0ZW5hbnQYASABKAsyGS5wdWJsaXJhLnYxLlRlbmFudENvbnRleHQSGAoQc2VyaWVzX3B1YmxpY19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRITCgtvcmRlcl9pbmRleBgEIAEoBRINCgVwcmljZRgFIAEoBRIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBRIUCgxzY2hlZHVsZWRfYXQYByABKAkiPQoVQ3JlYXRlRXBpc29kZVJlc3BvbnNlEiQKB2VwaXNvZGUYASABKAsyEy5wdWJsaXJhLnYxLkVwaXNvZGUigQEKI1VwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGVSZXF1ZXN0EikKBnRlbmFudBgBIAEoCzIZLnB1YmxpcmEudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIUCgxzY2hlZHVsZWRfYXQYAyABKAkiTAokVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZVJlc3BvbnNlEiQKB2VwaXNvZGUYASABKAsyEy5wdWJsaXJhLnYxLkVwaXNvZGUiYgoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJIl0KFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIeCgR1c2VyGAEgASgLMhAucHVibGlyYS52MS5Vc2VyEiQKB3Nlc3Npb24YAiABKAsyEy5wdWJsaXJhLnYxLlNlc3Npb24iVQoURGVsZXRlU2Vzc2lvblJlcXVlc3QSKQoGdGVuYW50GAEgASgLMhkucHVibGlyYS52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiFwoVRGVsZXRlU2Vzc2lvblJlc3BvbnNlIk0KDEdldE1lUmVxdWVzdBIpCgZ0ZW5hbnQYASABKAsyGS5wdWJsaXJhLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSIvCg1HZXRNZVJlc3BvbnNlEh4KBHVzZXIYASABKAsyEC5wdWJsaXJhLnYxLlVzZXIiZQoLVGVuYW50VGhlbWUSFQoNcHJpbWFyeV9jb2xvchgBIAEoCRIXCg9zZWNvbmRhcnlfY29sb3IYAiABKAkSFAoMYWNjZW50X2NvbG9yGAMgASgJEhAKCGxvZ29fdXJsGAQgASgJIkIKFUdldFRlbmFudFRoZW1lUmVxdWVzdBIpCgZ0ZW5hbnQYASABKAsyGS5wdWJsaXJhLnYxLlRlbmFudENvbnRleHQiQAoWR2V0VGVuYW50VGhlbWVSZXNwb25zZRImCgV0aGVtZRgBIAEoCzIXLnB1YmxpcmEudjEuVGVuYW50VGhlbWUibQoYVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0EikKBnRlbmFudBgBIAEoCzIZLnB1YmxpcmEudjEuVGVuYW50Q29udGV4dBImCgV0aGVtZRgCIAEoCzIXLnB1YmxpcmEudjEuVGVuYW50VGhlbWUiQwoZVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZRImCgV0aGVtZRgBIAEoCzIXLnB1YmxpcmEudjEuVGVuYW50VGhlbWUyuQIKDkNhdGFsb2dTZXJ2aWNlEmgKE0xpc3RQdWJsaXNoZWRTZXJpZXMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRTZXJpZXNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2UiABJcCg9HZXRTZXJpZXNEZXRhaWwSIi5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlc3BvbnNlIgASXwoQR2V0RXBpc29kZURldGFpbBIjLnB1YmxpcmEudjEuR2V0RXBpc29kZURldGFpbFJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXNwb25zZSIAMrcEChJBZG1pblNlcmllc1NlcnZpY2USUwoMQ3JlYXRlU2VyaWVzEh8ucHVibGlyYS52MS5DcmVhdGVTZXJpZXNSZXF1ZXN0GiAucHVibGlyYS52MS5DcmVhdGVTZXJpZXNSZXNwb25zZSIAElMKDFVwZGF0ZVNlcmllcxIfLnB1YmxpcmEudjEuVXBkYXRlU2VyaWVzUmVxdWVzdBogLnB1YmxpcmEudjEuVXBkYXRlU2VyaWVzUmVzcG9uc2UiABJNCgpMaXN0U2VyaWVzEh0ucHVibGlyYS52MS5MaXN0U2VyaWVzUmVxdWVzdBoeLnB1YmxpcmEudjEuTGlzdFNlcmllc1Jlc3BvbnNlIgASSgoJR2V0U2VyaWVzEhwucHVibGlyYS52MS5HZXRTZXJpZXNSZXF1ZXN0Gh0ucHVibGlyYS52MS5HZXRTZXJpZXNSZXNwb25zZSIAElYKDUNyZWF0ZUVwaXNvZGUSIC5wdWJsaXJhLnYxLkNyZWF0ZUVwaXNvZGVSZXF1ZXN0GiEucHVibGlyYS52MS5DcmVhdGVFcGlzb2RlUmVzcG9uc2UiABKDAQocVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZRIvLnB1YmxpcmEudjEuVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZVJlcXVlc3QaMC5wdWJsaXJhLnYxLlVwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGVSZXNwb25zZSIAMv0BCgtBdXRoU2VydmljZRJWCg1DcmVhdGVTZXNzaW9uEiAucHVibGlyYS52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdBohLnB1YmxpcmEudjEuQ3JlYXRlU2Vzc2lvblJlc3BvbnNlIgASVgoNRGVsZXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuRGVsZXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkRlbGV0ZVNlc3Npb25SZXNwb25zZSIAEj4KBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLkdldE1lUmVzcG9uc2UiADLTAQoSVGVuYW50VGhlbWVTZXJ2aWNlElkKDkdldFRlbmFudFRoZW1lEiEucHVibGlyYS52MS5HZXRUZW5hbnRUaGVtZVJlcXVlc3QaIi5wdWJsaXJhLnYxLkdldFRlbmFudFRoZW1lUmVzcG9uc2UiABJiChFVcHNlcnRUZW5hbnRUaGVtZRIkLnB1YmxpcmEudjEuVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0GiUucHVibGlyYS52MS5VcHNlcnRUZW5hbnRUaGVtZVJlc3BvbnNlIgBCPFo6Z2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z");
 
 /**
  * @generated from message publira.v1.TenantContext
@@ -35,7 +26,7 @@ export type TenantContext = Message<"publira.v1.TenantContext"> & {
  * Describes the message publira.v1.TenantContext.
  * Use `create(TenantContextSchema)` to create a new message.
  */
-export const TenantContextSchema: GenMessage<TenantContext> /*@__PURE__*/ =
+export const TenantContextSchema: GenMessage<TenantContext> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 0);
 
 /**
@@ -62,10 +53,8 @@ export type User = Message<"publira.v1.User"> & {
  * Describes the message publira.v1.User.
  * Use `create(UserSchema)` to create a new message.
  */
-export const UserSchema: GenMessage<User> /*@__PURE__*/ = messageDesc(
-  file_publira_v1_catalog,
-  1
-);
+export const UserSchema: GenMessage<User> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 1);
 
 /**
  * @generated from message publira.v1.Session
@@ -86,147 +75,139 @@ export type Session = Message<"publira.v1.Session"> & {
  * Describes the message publira.v1.Session.
  * Use `create(SessionSchema)` to create a new message.
  */
-export const SessionSchema: GenMessage<Session> /*@__PURE__*/ = messageDesc(
-  file_publira_v1_catalog,
-  2
-);
+export const SessionSchema: GenMessage<Session> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 2);
 
 /**
  * @generated from message publira.v1.GetSeriesDetailRequest
  */
-export type GetSeriesDetailRequest =
-  Message<"publira.v1.GetSeriesDetailRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
+export type GetSeriesDetailRequest = Message<"publira.v1.GetSeriesDetailRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
 
-    /**
-     * @generated from field: string public_id = 2;
-     */
-    publicId: string;
-  };
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
 
 /**
  * Describes the message publira.v1.GetSeriesDetailRequest.
  * Use `create(GetSeriesDetailRequestSchema)` to create a new message.
  */
-export const GetSeriesDetailRequestSchema: GenMessage<GetSeriesDetailRequest> /*@__PURE__*/ =
+export const GetSeriesDetailRequestSchema: GenMessage<GetSeriesDetailRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 3);
 
 /**
  * @generated from message publira.v1.ListPublishedSeriesRequest
  */
-export type ListPublishedSeriesRequest =
-  Message<"publira.v1.ListPublishedSeriesRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
+export type ListPublishedSeriesRequest = Message<"publira.v1.ListPublishedSeriesRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
 
-    /**
-     * @generated from field: int32 limit = 2;
-     */
-    limit: number;
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
 
-    /**
-     * @generated from field: int32 offset = 3;
-     */
-    offset: number;
-  };
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset: number;
+};
 
 /**
  * Describes the message publira.v1.ListPublishedSeriesRequest.
  * Use `create(ListPublishedSeriesRequestSchema)` to create a new message.
  */
-export const ListPublishedSeriesRequestSchema: GenMessage<ListPublishedSeriesRequest> /*@__PURE__*/ =
+export const ListPublishedSeriesRequestSchema: GenMessage<ListPublishedSeriesRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 4);
 
 /**
  * @generated from message publira.v1.ListPublishedSeriesResponse
  */
-export type ListPublishedSeriesResponse =
-  Message<"publira.v1.ListPublishedSeriesResponse"> & {
-    /**
-     * @generated from field: repeated publira.v1.Series series = 1;
-     */
-    series: Series[];
-  };
+export type ListPublishedSeriesResponse = Message<"publira.v1.ListPublishedSeriesResponse"> & {
+  /**
+   * @generated from field: repeated publira.v1.Series series = 1;
+   */
+  series: Series[];
+};
 
 /**
  * Describes the message publira.v1.ListPublishedSeriesResponse.
  * Use `create(ListPublishedSeriesResponseSchema)` to create a new message.
  */
-export const ListPublishedSeriesResponseSchema: GenMessage<ListPublishedSeriesResponse> /*@__PURE__*/ =
+export const ListPublishedSeriesResponseSchema: GenMessage<ListPublishedSeriesResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 5);
 
 /**
  * @generated from message publira.v1.GetEpisodeDetailRequest
  */
-export type GetEpisodeDetailRequest =
-  Message<"publira.v1.GetEpisodeDetailRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
+export type GetEpisodeDetailRequest = Message<"publira.v1.GetEpisodeDetailRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
 
-    /**
-     * @generated from field: string public_id = 2;
-     */
-    publicId: string;
-  };
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
 
 /**
  * Describes the message publira.v1.GetEpisodeDetailRequest.
  * Use `create(GetEpisodeDetailRequestSchema)` to create a new message.
  */
-export const GetEpisodeDetailRequestSchema: GenMessage<GetEpisodeDetailRequest> /*@__PURE__*/ =
+export const GetEpisodeDetailRequestSchema: GenMessage<GetEpisodeDetailRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 6);
 
 /**
  * @generated from message publira.v1.GetEpisodeDetailResponse
  */
-export type GetEpisodeDetailResponse =
-  Message<"publira.v1.GetEpisodeDetailResponse"> & {
-    /**
-     * @generated from field: publira.v1.Episode episode = 1;
-     */
-    episode?: Episode;
+export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailResponse"> & {
+  /**
+   * @generated from field: publira.v1.Episode episode = 1;
+   */
+  episode?: Episode;
 
-    /**
-     * @generated from field: publira.v1.Series series = 2;
-     */
-    series?: Series;
-  };
+  /**
+   * @generated from field: publira.v1.Series series = 2;
+   */
+  series?: Series;
+};
 
 /**
  * Describes the message publira.v1.GetEpisodeDetailResponse.
  * Use `create(GetEpisodeDetailResponseSchema)` to create a new message.
  */
-export const GetEpisodeDetailResponseSchema: GenMessage<GetEpisodeDetailResponse> /*@__PURE__*/ =
+export const GetEpisodeDetailResponseSchema: GenMessage<GetEpisodeDetailResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 7);
 
 /**
  * @generated from message publira.v1.GetSeriesDetailResponse
  */
-export type GetSeriesDetailResponse =
-  Message<"publira.v1.GetSeriesDetailResponse"> & {
-    /**
-     * @generated from field: publira.v1.Series series = 1;
-     */
-    series?: Series;
+export type GetSeriesDetailResponse = Message<"publira.v1.GetSeriesDetailResponse"> & {
+  /**
+   * @generated from field: publira.v1.Series series = 1;
+   */
+  series?: Series;
 
-    /**
-     * @generated from field: repeated publira.v1.Episode episodes = 2;
-     */
-    episodes: Episode[];
-  };
+  /**
+   * @generated from field: repeated publira.v1.Episode episodes = 2;
+   */
+  episodes: Episode[];
+};
 
 /**
  * Describes the message publira.v1.GetSeriesDetailResponse.
  * Use `create(GetSeriesDetailResponseSchema)` to create a new message.
  */
-export const GetSeriesDetailResponseSchema: GenMessage<GetSeriesDetailResponse> /*@__PURE__*/ =
+export const GetSeriesDetailResponseSchema: GenMessage<GetSeriesDetailResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 8);
 
 /**
@@ -248,10 +229,8 @@ export type Creator = Message<"publira.v1.Creator"> & {
  * Describes the message publira.v1.Creator.
  * Use `create(CreatorSchema)` to create a new message.
  */
-export const CreatorSchema: GenMessage<Creator> /*@__PURE__*/ = messageDesc(
-  file_publira_v1_catalog,
-  9
-);
+export const CreatorSchema: GenMessage<Creator> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 9);
 
 /**
  * @generated from message publira.v1.Label
@@ -267,10 +246,8 @@ export type Label = Message<"publira.v1.Label"> & {
  * Describes the message publira.v1.Label.
  * Use `create(LabelSchema)` to create a new message.
  */
-export const LabelSchema: GenMessage<Label> /*@__PURE__*/ = messageDesc(
-  file_publira_v1_catalog,
-  10
-);
+export const LabelSchema: GenMessage<Label> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 10);
 
 /**
  * @generated from message publira.v1.Series
@@ -306,10 +283,8 @@ export type Series = Message<"publira.v1.Series"> & {
  * Describes the message publira.v1.Series.
  * Use `create(SeriesSchema)` to create a new message.
  */
-export const SeriesSchema: GenMessage<Series> /*@__PURE__*/ = messageDesc(
-  file_publira_v1_catalog,
-  11
-);
+export const SeriesSchema: GenMessage<Series> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 11);
 
 /**
  * @generated from message publira.v1.Episode
@@ -360,10 +335,8 @@ export type Episode = Message<"publira.v1.Episode"> & {
  * Describes the message publira.v1.Episode.
  * Use `create(EpisodeSchema)` to create a new message.
  */
-export const EpisodeSchema: GenMessage<Episode> /*@__PURE__*/ = messageDesc(
-  file_publira_v1_catalog,
-  12
-);
+export const EpisodeSchema: GenMessage<Episode> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 12);
 
 /**
  * @generated from message publira.v1.CreateSeriesRequest
@@ -399,25 +372,24 @@ export type CreateSeriesRequest = Message<"publira.v1.CreateSeriesRequest"> & {
  * Describes the message publira.v1.CreateSeriesRequest.
  * Use `create(CreateSeriesRequestSchema)` to create a new message.
  */
-export const CreateSeriesRequestSchema: GenMessage<CreateSeriesRequest> /*@__PURE__*/ =
+export const CreateSeriesRequestSchema: GenMessage<CreateSeriesRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 13);
 
 /**
  * @generated from message publira.v1.CreateSeriesResponse
  */
-export type CreateSeriesResponse =
-  Message<"publira.v1.CreateSeriesResponse"> & {
-    /**
-     * @generated from field: publira.v1.Series series = 1;
-     */
-    series?: Series;
-  };
+export type CreateSeriesResponse = Message<"publira.v1.CreateSeriesResponse"> & {
+  /**
+   * @generated from field: publira.v1.Series series = 1;
+   */
+  series?: Series;
+};
 
 /**
  * Describes the message publira.v1.CreateSeriesResponse.
  * Use `create(CreateSeriesResponseSchema)` to create a new message.
  */
-export const CreateSeriesResponseSchema: GenMessage<CreateSeriesResponse> /*@__PURE__*/ =
+export const CreateSeriesResponseSchema: GenMessage<CreateSeriesResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 14);
 
 /**
@@ -454,25 +426,24 @@ export type UpdateSeriesRequest = Message<"publira.v1.UpdateSeriesRequest"> & {
  * Describes the message publira.v1.UpdateSeriesRequest.
  * Use `create(UpdateSeriesRequestSchema)` to create a new message.
  */
-export const UpdateSeriesRequestSchema: GenMessage<UpdateSeriesRequest> /*@__PURE__*/ =
+export const UpdateSeriesRequestSchema: GenMessage<UpdateSeriesRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 15);
 
 /**
  * @generated from message publira.v1.UpdateSeriesResponse
  */
-export type UpdateSeriesResponse =
-  Message<"publira.v1.UpdateSeriesResponse"> & {
-    /**
-     * @generated from field: publira.v1.Series series = 1;
-     */
-    series?: Series;
-  };
+export type UpdateSeriesResponse = Message<"publira.v1.UpdateSeriesResponse"> & {
+  /**
+   * @generated from field: publira.v1.Series series = 1;
+   */
+  series?: Series;
+};
 
 /**
  * Describes the message publira.v1.UpdateSeriesResponse.
  * Use `create(UpdateSeriesResponseSchema)` to create a new message.
  */
-export const UpdateSeriesResponseSchema: GenMessage<UpdateSeriesResponse> /*@__PURE__*/ =
+export const UpdateSeriesResponseSchema: GenMessage<UpdateSeriesResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 16);
 
 /**
@@ -499,7 +470,7 @@ export type ListSeriesRequest = Message<"publira.v1.ListSeriesRequest"> & {
  * Describes the message publira.v1.ListSeriesRequest.
  * Use `create(ListSeriesRequestSchema)` to create a new message.
  */
-export const ListSeriesRequestSchema: GenMessage<ListSeriesRequest> /*@__PURE__*/ =
+export const ListSeriesRequestSchema: GenMessage<ListSeriesRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 17);
 
 /**
@@ -516,7 +487,7 @@ export type ListSeriesResponse = Message<"publira.v1.ListSeriesResponse"> & {
  * Describes the message publira.v1.ListSeriesResponse.
  * Use `create(ListSeriesResponseSchema)` to create a new message.
  */
-export const ListSeriesResponseSchema: GenMessage<ListSeriesResponse> /*@__PURE__*/ =
+export const ListSeriesResponseSchema: GenMessage<ListSeriesResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 18);
 
 /**
@@ -538,7 +509,7 @@ export type GetSeriesRequest = Message<"publira.v1.GetSeriesRequest"> & {
  * Describes the message publira.v1.GetSeriesRequest.
  * Use `create(GetSeriesRequestSchema)` to create a new message.
  */
-export const GetSeriesRequestSchema: GenMessage<GetSeriesRequest> /*@__PURE__*/ =
+export const GetSeriesRequestSchema: GenMessage<GetSeriesRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 19);
 
 /**
@@ -555,201 +526,199 @@ export type GetSeriesResponse = Message<"publira.v1.GetSeriesResponse"> & {
  * Describes the message publira.v1.GetSeriesResponse.
  * Use `create(GetSeriesResponseSchema)` to create a new message.
  */
-export const GetSeriesResponseSchema: GenMessage<GetSeriesResponse> /*@__PURE__*/ =
+export const GetSeriesResponseSchema: GenMessage<GetSeriesResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 20);
 
 /**
  * @generated from message publira.v1.CreateEpisodeRequest
  */
-export type CreateEpisodeRequest =
-  Message<"publira.v1.CreateEpisodeRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
+export type CreateEpisodeRequest = Message<"publira.v1.CreateEpisodeRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
 
-    /**
-     * @generated from field: string series_public_id = 2;
-     */
-    seriesPublicId: string;
+  /**
+   * @generated from field: string series_public_id = 2;
+   */
+  seriesPublicId: string;
 
-    /**
-     * @generated from field: string title = 3;
-     */
-    title: string;
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
 
-    /**
-     * @generated from field: int32 order_index = 4;
-     */
-    orderIndex: number;
+  /**
+   * @generated from field: int32 order_index = 4;
+   */
+  orderIndex: number;
 
-    /**
-     * @generated from field: int32 price = 5;
-     */
-    price: number;
+  /**
+   * @generated from field: int32 price = 5;
+   */
+  price: number;
 
-    /**
-     * @generated from field: int32 reading_period_hours = 6;
-     */
-    readingPeriodHours: number;
+  /**
+   * @generated from field: int32 reading_period_hours = 6;
+   */
+  readingPeriodHours: number;
 
-    /**
-     * @generated from field: string scheduled_at = 7;
-     */
-    scheduledAt: string;
-  };
+  /**
+   * @generated from field: string scheduled_at = 7;
+   */
+  scheduledAt: string;
+};
 
 /**
  * Describes the message publira.v1.CreateEpisodeRequest.
  * Use `create(CreateEpisodeRequestSchema)` to create a new message.
  */
-export const CreateEpisodeRequestSchema: GenMessage<CreateEpisodeRequest> /*@__PURE__*/ =
+export const CreateEpisodeRequestSchema: GenMessage<CreateEpisodeRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 21);
 
 /**
  * @generated from message publira.v1.CreateEpisodeResponse
  */
-export type CreateEpisodeResponse =
-  Message<"publira.v1.CreateEpisodeResponse"> & {
-    /**
-     * @generated from field: publira.v1.Episode episode = 1;
-     */
-    episode?: Episode;
-  };
+export type CreateEpisodeResponse = Message<"publira.v1.CreateEpisodeResponse"> & {
+  /**
+   * @generated from field: publira.v1.Episode episode = 1;
+   */
+  episode?: Episode;
+};
 
 /**
  * Describes the message publira.v1.CreateEpisodeResponse.
  * Use `create(CreateEpisodeResponseSchema)` to create a new message.
  */
-export const CreateEpisodeResponseSchema: GenMessage<CreateEpisodeResponse> /*@__PURE__*/ =
+export const CreateEpisodeResponseSchema: GenMessage<CreateEpisodeResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 22);
 
 /**
  * @generated from message publira.v1.UpdateEpisodePublishScheduleRequest
  */
-export type UpdateEpisodePublishScheduleRequest =
-  Message<"publira.v1.UpdateEpisodePublishScheduleRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
+export type UpdateEpisodePublishScheduleRequest = Message<"publira.v1.UpdateEpisodePublishScheduleRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
 
-    /**
-     * @generated from field: string episode_public_id = 2;
-     */
-    episodePublicId: string;
+  /**
+   * @generated from field: string episode_public_id = 2;
+   */
+  episodePublicId: string;
 
-    /**
-     * @generated from field: string scheduled_at = 3;
-     */
-    scheduledAt: string;
-  };
+  /**
+   * @generated from field: string scheduled_at = 3;
+   */
+  scheduledAt: string;
+};
 
 /**
  * Describes the message publira.v1.UpdateEpisodePublishScheduleRequest.
  * Use `create(UpdateEpisodePublishScheduleRequestSchema)` to create a new message.
  */
-export const UpdateEpisodePublishScheduleRequestSchema: GenMessage<UpdateEpisodePublishScheduleRequest> /*@__PURE__*/ =
+export const UpdateEpisodePublishScheduleRequestSchema: GenMessage<UpdateEpisodePublishScheduleRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 23);
 
 /**
  * @generated from message publira.v1.UpdateEpisodePublishScheduleResponse
  */
-export type UpdateEpisodePublishScheduleResponse =
-  Message<"publira.v1.UpdateEpisodePublishScheduleResponse"> & {
-    /**
-     * @generated from field: publira.v1.Episode episode = 1;
-     */
-    episode?: Episode;
-  };
+export type UpdateEpisodePublishScheduleResponse = Message<"publira.v1.UpdateEpisodePublishScheduleResponse"> & {
+  /**
+   * @generated from field: publira.v1.Episode episode = 1;
+   */
+  episode?: Episode;
+};
 
 /**
  * Describes the message publira.v1.UpdateEpisodePublishScheduleResponse.
  * Use `create(UpdateEpisodePublishScheduleResponseSchema)` to create a new message.
  */
-export const UpdateEpisodePublishScheduleResponseSchema: GenMessage<UpdateEpisodePublishScheduleResponse> /*@__PURE__*/ =
+export const UpdateEpisodePublishScheduleResponseSchema: GenMessage<UpdateEpisodePublishScheduleResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 24);
 
 /**
  * @generated from message publira.v1.CreateSessionRequest
  */
-export type CreateSessionRequest =
-  Message<"publira.v1.CreateSessionRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
+export type CreateSessionRequest = Message<"publira.v1.CreateSessionRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
 
-    /**
-     * @generated from field: string email = 2;
-     */
-    email: string;
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
 
-    /**
-     * @generated from field: string password = 3;
-     */
-    password: string;
-  };
+  /**
+   * @generated from field: string password = 3;
+   */
+  password: string;
+};
 
 /**
  * Describes the message publira.v1.CreateSessionRequest.
  * Use `create(CreateSessionRequestSchema)` to create a new message.
  */
-export const CreateSessionRequestSchema: GenMessage<CreateSessionRequest> /*@__PURE__*/ =
+export const CreateSessionRequestSchema: GenMessage<CreateSessionRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 25);
 
 /**
  * @generated from message publira.v1.CreateSessionResponse
  */
-export type CreateSessionResponse =
-  Message<"publira.v1.CreateSessionResponse"> & {
-    /**
-     * @generated from field: publira.v1.User user = 1;
-     */
-    user?: User;
+export type CreateSessionResponse = Message<"publira.v1.CreateSessionResponse"> & {
+  /**
+   * @generated from field: publira.v1.User user = 1;
+   */
+  user?: User;
 
-    /**
-     * @generated from field: publira.v1.Session session = 2;
-     */
-    session?: Session;
-  };
+  /**
+   * @generated from field: publira.v1.Session session = 2;
+   */
+  session?: Session;
+};
 
 /**
  * Describes the message publira.v1.CreateSessionResponse.
  * Use `create(CreateSessionResponseSchema)` to create a new message.
  */
-export const CreateSessionResponseSchema: GenMessage<CreateSessionResponse> /*@__PURE__*/ =
+export const CreateSessionResponseSchema: GenMessage<CreateSessionResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 26);
 
 /**
  * @generated from message publira.v1.DeleteSessionRequest
  */
-export type DeleteSessionRequest =
-  Message<"publira.v1.DeleteSessionRequest"> & {
-    /**
-     * @generated from field: string session_id = 1;
-     */
-    sessionId: string;
-  };
+export type DeleteSessionRequest = Message<"publira.v1.DeleteSessionRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string session_id = 2;
+   */
+  sessionId: string;
+};
 
 /**
  * Describes the message publira.v1.DeleteSessionRequest.
  * Use `create(DeleteSessionRequestSchema)` to create a new message.
  */
-export const DeleteSessionRequestSchema: GenMessage<DeleteSessionRequest> /*@__PURE__*/ =
+export const DeleteSessionRequestSchema: GenMessage<DeleteSessionRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 27);
 
 /**
  * @generated from message publira.v1.DeleteSessionResponse
  */
-export type DeleteSessionResponse =
-  Message<"publira.v1.DeleteSessionResponse"> & {};
+export type DeleteSessionResponse = Message<"publira.v1.DeleteSessionResponse"> & {
+};
 
 /**
  * Describes the message publira.v1.DeleteSessionResponse.
  * Use `create(DeleteSessionResponseSchema)` to create a new message.
  */
-export const DeleteSessionResponseSchema: GenMessage<DeleteSessionResponse> /*@__PURE__*/ =
+export const DeleteSessionResponseSchema: GenMessage<DeleteSessionResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 28);
 
 /**
@@ -757,7 +726,12 @@ export const DeleteSessionResponseSchema: GenMessage<DeleteSessionResponse> /*@_
  */
 export type GetMeRequest = Message<"publira.v1.GetMeRequest"> & {
   /**
-   * @generated from field: string session_id = 1;
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string session_id = 2;
    */
   sessionId: string;
 };
@@ -766,7 +740,7 @@ export type GetMeRequest = Message<"publira.v1.GetMeRequest"> & {
  * Describes the message publira.v1.GetMeRequest.
  * Use `create(GetMeRequestSchema)` to create a new message.
  */
-export const GetMeRequestSchema: GenMessage<GetMeRequest> /*@__PURE__*/ =
+export const GetMeRequestSchema: GenMessage<GetMeRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 29);
 
 /**
@@ -783,7 +757,7 @@ export type GetMeResponse = Message<"publira.v1.GetMeResponse"> & {
  * Describes the message publira.v1.GetMeResponse.
  * Use `create(GetMeResponseSchema)` to create a new message.
  */
-export const GetMeResponseSchema: GenMessage<GetMeResponse> /*@__PURE__*/ =
+export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 30);
 
 /**
@@ -815,84 +789,80 @@ export type TenantTheme = Message<"publira.v1.TenantTheme"> & {
  * Describes the message publira.v1.TenantTheme.
  * Use `create(TenantThemeSchema)` to create a new message.
  */
-export const TenantThemeSchema: GenMessage<TenantTheme> /*@__PURE__*/ =
+export const TenantThemeSchema: GenMessage<TenantTheme> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 31);
 
 /**
  * @generated from message publira.v1.GetTenantThemeRequest
  */
-export type GetTenantThemeRequest =
-  Message<"publira.v1.GetTenantThemeRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
-  };
+export type GetTenantThemeRequest = Message<"publira.v1.GetTenantThemeRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+};
 
 /**
  * Describes the message publira.v1.GetTenantThemeRequest.
  * Use `create(GetTenantThemeRequestSchema)` to create a new message.
  */
-export const GetTenantThemeRequestSchema: GenMessage<GetTenantThemeRequest> /*@__PURE__*/ =
+export const GetTenantThemeRequestSchema: GenMessage<GetTenantThemeRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 32);
 
 /**
  * @generated from message publira.v1.GetTenantThemeResponse
  */
-export type GetTenantThemeResponse =
-  Message<"publira.v1.GetTenantThemeResponse"> & {
-    /**
-     * @generated from field: publira.v1.TenantTheme theme = 1;
-     */
-    theme?: TenantTheme;
-  };
+export type GetTenantThemeResponse = Message<"publira.v1.GetTenantThemeResponse"> & {
+  /**
+   * @generated from field: publira.v1.TenantTheme theme = 1;
+   */
+  theme?: TenantTheme;
+};
 
 /**
  * Describes the message publira.v1.GetTenantThemeResponse.
  * Use `create(GetTenantThemeResponseSchema)` to create a new message.
  */
-export const GetTenantThemeResponseSchema: GenMessage<GetTenantThemeResponse> /*@__PURE__*/ =
+export const GetTenantThemeResponseSchema: GenMessage<GetTenantThemeResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 33);
 
 /**
  * @generated from message publira.v1.UpsertTenantThemeRequest
  */
-export type UpsertTenantThemeRequest =
-  Message<"publira.v1.UpsertTenantThemeRequest"> & {
-    /**
-     * @generated from field: publira.v1.TenantContext tenant = 1;
-     */
-    tenant?: TenantContext;
+export type UpsertTenantThemeRequest = Message<"publira.v1.UpsertTenantThemeRequest"> & {
+  /**
+   * @generated from field: publira.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
 
-    /**
-     * @generated from field: publira.v1.TenantTheme theme = 2;
-     */
-    theme?: TenantTheme;
-  };
+  /**
+   * @generated from field: publira.v1.TenantTheme theme = 2;
+   */
+  theme?: TenantTheme;
+};
 
 /**
  * Describes the message publira.v1.UpsertTenantThemeRequest.
  * Use `create(UpsertTenantThemeRequestSchema)` to create a new message.
  */
-export const UpsertTenantThemeRequestSchema: GenMessage<UpsertTenantThemeRequest> /*@__PURE__*/ =
+export const UpsertTenantThemeRequestSchema: GenMessage<UpsertTenantThemeRequest> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 34);
 
 /**
  * @generated from message publira.v1.UpsertTenantThemeResponse
  */
-export type UpsertTenantThemeResponse =
-  Message<"publira.v1.UpsertTenantThemeResponse"> & {
-    /**
-     * @generated from field: publira.v1.TenantTheme theme = 1;
-     */
-    theme?: TenantTheme;
-  };
+export type UpsertTenantThemeResponse = Message<"publira.v1.UpsertTenantThemeResponse"> & {
+  /**
+   * @generated from field: publira.v1.TenantTheme theme = 1;
+   */
+  theme?: TenantTheme;
+};
 
 /**
  * Describes the message publira.v1.UpsertTenantThemeResponse.
  * Use `create(UpsertTenantThemeResponseSchema)` to create a new message.
  */
-export const UpsertTenantThemeResponseSchema: GenMessage<UpsertTenantThemeResponse> /*@__PURE__*/ =
+export const UpsertTenantThemeResponseSchema: GenMessage<UpsertTenantThemeResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 35);
 
 /**
@@ -906,7 +876,7 @@ export const CatalogService: GenService<{
     methodKind: "unary";
     input: typeof ListPublishedSeriesRequestSchema;
     output: typeof ListPublishedSeriesResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.CatalogService.GetSeriesDetail
    */
@@ -914,7 +884,7 @@ export const CatalogService: GenService<{
     methodKind: "unary";
     input: typeof GetSeriesDetailRequestSchema;
     output: typeof GetSeriesDetailResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.CatalogService.GetEpisodeDetail
    */
@@ -922,8 +892,9 @@ export const CatalogService: GenService<{
     methodKind: "unary";
     input: typeof GetEpisodeDetailRequestSchema;
     output: typeof GetEpisodeDetailResponseSchema;
-  };
-}> /*@__PURE__*/ = serviceDesc(file_publira_v1_catalog, 0);
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_publira_v1_catalog, 0);
 
 /**
  * @generated from service publira.v1.AdminSeriesService
@@ -936,7 +907,7 @@ export const AdminSeriesService: GenService<{
     methodKind: "unary";
     input: typeof CreateSeriesRequestSchema;
     output: typeof CreateSeriesResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.AdminSeriesService.UpdateSeries
    */
@@ -944,7 +915,7 @@ export const AdminSeriesService: GenService<{
     methodKind: "unary";
     input: typeof UpdateSeriesRequestSchema;
     output: typeof UpdateSeriesResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.AdminSeriesService.ListSeries
    */
@@ -952,7 +923,7 @@ export const AdminSeriesService: GenService<{
     methodKind: "unary";
     input: typeof ListSeriesRequestSchema;
     output: typeof ListSeriesResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.AdminSeriesService.GetSeries
    */
@@ -960,7 +931,7 @@ export const AdminSeriesService: GenService<{
     methodKind: "unary";
     input: typeof GetSeriesRequestSchema;
     output: typeof GetSeriesResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.AdminSeriesService.CreateEpisode
    */
@@ -968,7 +939,7 @@ export const AdminSeriesService: GenService<{
     methodKind: "unary";
     input: typeof CreateEpisodeRequestSchema;
     output: typeof CreateEpisodeResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule
    */
@@ -976,8 +947,9 @@ export const AdminSeriesService: GenService<{
     methodKind: "unary";
     input: typeof UpdateEpisodePublishScheduleRequestSchema;
     output: typeof UpdateEpisodePublishScheduleResponseSchema;
-  };
-}> /*@__PURE__*/ = serviceDesc(file_publira_v1_catalog, 1);
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_publira_v1_catalog, 1);
 
 /**
  * @generated from service publira.v1.AuthService
@@ -990,7 +962,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof CreateSessionRequestSchema;
     output: typeof CreateSessionResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.AuthService.DeleteSession
    */
@@ -998,7 +970,7 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof DeleteSessionRequestSchema;
     output: typeof DeleteSessionResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.AuthService.GetMe
    */
@@ -1006,8 +978,9 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GetMeRequestSchema;
     output: typeof GetMeResponseSchema;
-  };
-}> /*@__PURE__*/ = serviceDesc(file_publira_v1_catalog, 2);
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_publira_v1_catalog, 2);
 
 /**
  * @generated from service publira.v1.TenantThemeService
@@ -1020,7 +993,7 @@ export const TenantThemeService: GenService<{
     methodKind: "unary";
     input: typeof GetTenantThemeRequestSchema;
     output: typeof GetTenantThemeResponseSchema;
-  };
+  },
   /**
    * @generated from rpc publira.v1.TenantThemeService.UpsertTenantTheme
    */
@@ -1028,5 +1001,7 @@ export const TenantThemeService: GenService<{
     methodKind: "unary";
     input: typeof UpsertTenantThemeRequestSchema;
     output: typeof UpsertTenantThemeResponseSchema;
-  };
-}> /*@__PURE__*/ = serviceDesc(file_publira_v1_catalog, 3);
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_publira_v1_catalog, 3);
+

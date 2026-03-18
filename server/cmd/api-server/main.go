@@ -492,15 +492,22 @@ func (s *apiServer) DeleteSession(
 	ctx context.Context,
 	req *connect.Request[publirav1.DeleteSessionRequest],
 ) (*connect.Response[publirav1.DeleteSessionResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
 	tokenHash := hashToken(req.Msg.SessionId)
-	session, err := s.queries.GetSessionByTokenHash(ctx, tokenHash)
+	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, tokenHash, time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publirav1.DeleteSessionResponse{}), nil
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queries.RevokeSession(ctx, session.ID); err != nil {
+	if lookup.State == dbmodels.SessionStateRevoked {
+		return connect.NewResponse(&publirav1.DeleteSessionResponse{}), nil
+	}
+	if err := s.queries.RevokeSession(ctx, dbmodels.RevokeSessionParams{ID: lookup.Session.ID, TenantID: tenant.ID}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&publirav1.DeleteSessionResponse{}), nil
@@ -510,14 +517,21 @@ func (s *apiServer) GetMe(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetMeRequest],
 ) (*connect.Response[publirav1.GetMeResponse], error) {
-	session, err := s.queries.GetSessionByTokenHash(ctx, hashToken(req.Msg.SessionId))
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	lookup, err := s.queries.LookupSessionByTokenHashForTenant(ctx, tenant.ID, hashToken(req.Msg.SessionId), time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	user, err := s.queries.GetUserByID(ctx, session.UserID)
+	if lookup.State != dbmodels.SessionStateActive {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
+	}
+	user, err := s.queries.GetUserByID(ctx, lookup.Session.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("user not found"))
