@@ -6,7 +6,10 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1.7.1": {
       "version": "24.14.0",
-      "pnpmVersion": "latest"
+      "pnpmVersion": "10.32.1"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1.1.0": {
+      "version": "2.88.1"
     }
   },
   "customizations": {
@@ -20,7 +23,6 @@
         "bufbuild.vscode-buf",
         "dart-code.flutter",
         "dart-code.dart-code",
-        "dbaeumer.vscode-eslint",
         "golang.go",
         "mtxr.sqltools",
         "mtxr.sqltools-driver-pg",
