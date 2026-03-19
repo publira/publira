@@ -1,14 +1,14 @@
-version: v1
+version: v2
 plugins:
-  - plugin: buf.build/protocolbuffers/go
+  - remote: buf.build/protocolbuffers/go
     out: server/gen
     opt: paths=source_relative
-  - plugin: buf.build/connectrpc/go
+  - remote: buf.build/connectrpc/go
     out: server/gen
     opt: paths=source_relative
-  - plugin: buf.build/bufbuild/es
+  - remote: buf.build/bufbuild/es
     out: packages/api-client/src/gen
     opt: target=ts
-  - plugin: buf.build/connectrpc/es
+  - remote: buf.build/connectrpc/es
     out: packages/api-client/src/gen
     opt: target=ts
