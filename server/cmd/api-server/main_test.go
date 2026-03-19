@@ -27,8 +27,8 @@ const (
 func TestCatalogRemainsPublic(t *testing.T) {
 	testServer, mock := newTestAPIServer(t)
 
-	tenantID := uuid.New()
-	seriesID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
@@ -63,7 +63,7 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			name:     "normal",
 			publicID: "EPISODE001",
 			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
-				AddRow(uuid.New(), "EPISODE001", "Episode Title", int32(1), int32(100), int32(24), "published", nil, time.Now()),
+				AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode Title", int32(1), int32(100), int32(24), "published", nil, time.Now()),
 		},
 		{
 			name:     "cross-tenant",
@@ -83,7 +83,7 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			testServer, mock := newTestAPIServer(t)
-			tenantID := uuid.New()
+			tenantID := uuid.Must(uuid.NewV7())
 			now := time.Now()
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)

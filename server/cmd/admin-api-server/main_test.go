@@ -104,7 +104,7 @@ func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID,
 	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHashForTenantQuery)).
 		WithArgs(tenantID, auth.HashToken(sessionToken)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(uuid.New(), tenantID, userID, auth.HashToken(sessionToken), now.Add(time.Hour), nil, now))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, auth.HashToken(sessionToken), now.Add(time.Hour), nil, now))
 }
 
 func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
@@ -117,7 +117,7 @@ func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 func TestAdminSeriesRequiresSession(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
@@ -137,9 +137,9 @@ func TestAdminSeriesRequiresSession(t *testing.T) {
 func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
-	userID := uuid.New()
-	seriesID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	sessionToken := "session-token"
 	expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -170,8 +170,8 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 func TestCreateSeriesRequiresTitle(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
-	userID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	sessionToken := "session-token"
 	expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -194,9 +194,9 @@ func TestCreateSeriesRequiresTitle(t *testing.T) {
 func TestCreateSeriesSuccess(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
-	userID := uuid.New()
-	seriesID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := "session-token"
 	expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -205,12 +205,12 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
-			AddRow(uuid.New(), tenantID, "LABEL001", "Weekly", now))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
 
 	mock.ExpectQuery("INSERT INTO series").
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(), "New Series").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "synopsis", "reading_period_hours", "is_published", "published_at", "created_by", "updated_by", "updated_at"}).
-			AddRow(seriesID, tenantID, uuid.New(), "SERIESNEW001", "New Series", now, nil, nil, false, nil, nil, nil, now))
+			AddRow(seriesID, tenantID, uuid.Must(uuid.NewV7()), "SERIESNEW001", "New Series", now, nil, nil, false, nil, nil, nil, now))
 
 	mock.ExpectQuery("UPDATE series").
 		WithArgs(seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, true).
@@ -243,8 +243,8 @@ func TestCreateSeriesSuccess(t *testing.T) {
 func TestUpdateSeriesRequiresTitle(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
-	userID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	sessionToken := "session-token"
 	expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -268,9 +268,9 @@ func TestUpdateSeriesRequiresTitle(t *testing.T) {
 func TestUpdateSeriesSuccess(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
-	userID := uuid.New()
-	seriesID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := "session-token"
 	expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -321,10 +321,10 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 func TestCreateEpisodeSuccess(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
-	userID := uuid.New()
-	seriesID := uuid.New()
-	episodeID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	scheduledAtJST := now.Add(2 * time.Hour).In(time.FixedZone("JST", 9*60*60)).Truncate(time.Second)
 	scheduledAtUTC := scheduledAtJST.UTC()
@@ -447,8 +447,8 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testServer, mock := newTestAdminServer(t)
 
-			tenantID := uuid.New()
-			userID := uuid.New()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			sessionToken := "session-token"
 
@@ -474,9 +474,9 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 func TestUploadEpisodeImagesSuccess(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
-	tenantID := uuid.New()
-	userID := uuid.New()
-	episodeID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := "session-token"
 
@@ -490,12 +490,12 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 	mock.ExpectQuery("INSERT INTO episode_images").
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/png", int64(67), int32(0), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-			AddRow(uuid.New(), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(0), int32(1), int32(1), now))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(0), int32(1), int32(1), now))
 
 	mock.ExpectQuery("INSERT INTO episode_images").
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", int64(163), int32(1), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-			AddRow(uuid.New(), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(1), int32(1), int32(1), now))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(1), int32(1), int32(1), now))
 
 	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publirav1.UploadEpisodeImagesRequest{
@@ -564,7 +564,7 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
 					WithArgs(tenantID, "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
-						AddRow(uuid.New(), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
@@ -575,8 +575,8 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testServer, mock := newTestAdminServer(t)
 
-			tenantID := uuid.New()
-			userID := uuid.New()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			sessionToken := "session-token"
 
@@ -634,7 +634,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
 					WithArgs(tenantID, "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
-						AddRow(uuid.New(), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil))
+						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil))
 			},
 			wantSuccess: true,
 		},
@@ -645,8 +645,8 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testServer, mock := newTestAdminServer(t)
 
-			tenantID := uuid.New()
-			userID := uuid.New()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			sessionToken := "session-token"
 
@@ -695,7 +695,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 			name:     "normal",
 			publicID: "SERIES001",
 			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
-				AddRow(uuid.New(), "SERIES001", "Series Title", "Synopsis", true, time.Now()),
+				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", "Synopsis", true, time.Now()),
 			wantSeriesID: "SERIES001",
 		},
 		{
@@ -717,8 +717,8 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testServer, mock := newTestAdminServer(t)
 
-			tenantID := uuid.New()
-			userID := uuid.New()
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
 			now := time.Now()
 			sessionToken := "session-token"
 

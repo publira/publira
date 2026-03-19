@@ -116,8 +116,12 @@ func (s *adminServer) CreateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
+	seriesID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	base, err := s.queries.CreateSeriesBase(ctx, dbmodels.CreateSeriesBaseParams{
-		ID: uuid.New(), TenantID: tenant.ID, LabelID: labelID, PublicID: generatePublicID(), Title: req.Msg.Title,
+		ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: generatePublicID(), Title: req.Msg.Title,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -258,7 +262,11 @@ func (s *adminServer) CreateEpisode(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	base, err := s.queries.CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: uuid.New(), SeriesID: series.ID, PublicID: generatePublicID(), Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
+	episodeID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	base, err := s.queries.CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: generatePublicID(), Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -340,8 +348,12 @@ func (s *adminServer) UploadEpisodeImages(
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
+		episodeImageID, err := uuid.NewV7()
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
 		created, err := s.queries.CreateEpisodeImage(ctx, dbmodels.CreateEpisodeImageParams{
-			ID:              uuid.New(),
+			ID:              episodeImageID,
 			TenantID:        tenant.ID,
 			EpisodeID:       episode.ID,
 			StorageProvider: uploaded.Provider,
