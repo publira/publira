@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package publira.types.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/types/v1;publirattypesv1";
+
+// Common data models shared across services
+
+message TenantContext {
+  string tenant_public_id = 1;
+}
+
+message User {
+  string public_id = 1;
+  string name = 2;
+  string role = 3;
+}
+
+message Session {
+  string session_id = 1;
+  string expires_at = 2;
+}
+
+message Creator {
+  string name = 1;
+  string role = 2;
+}
+
+message Label {
+  string name = 1;
+}
+
+message Series {
+  string public_id = 1;
+  string title = 2;
+  string synopsis = 3;
+  Label label = 4;
+  repeated Creator creators = 5;
+}
+
+message Episode {
+  string public_id = 1;
+  string title = 2;
+  int32 order_index = 3;
+  int32 price = 4;
+  int32 reading_period_hours = 5;
+  string status = 6;
+  string scheduled_at = 7;
+  string published_at = 8;
+}
+
+message EpisodeImage {
+  string id = 1;
+  string image_url = 2;
+  string content_type = 3;
+  int64 file_size_bytes = 4;
+  int32 display_order = 5;
+  int32 width = 6;
+  int32 height = 7;
+}
+
+message TenantTheme {
+  string primary_color = 1;
+  string secondary_color = 2;
+  string accent_color = 3;
+  string logo_url = 4;
+}

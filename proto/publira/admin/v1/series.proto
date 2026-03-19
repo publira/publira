@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message CreateSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string title = 2;
+  string synopsis = 3;
+  string label_public_id = 4;
+  bool is_published = 5;
+}
+
+message CreateSeriesResponse {
+  publira.types.v1.Series series = 1;
+}
+
+message UpdateSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  string title = 3;
+  string synopsis = 4;
+  bool is_published = 5;
+}
+
+message UpdateSeriesResponse {
+  publira.types.v1.Series series = 1;
+}
+
+message ListSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListSeriesResponse {
+  repeated publira.types.v1.Series series = 1;
+}
+
+message GetSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetSeriesResponse {
+  publira.types.v1.Series series = 1;
+}
+
+message CreateEpisodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+  string title = 3;
+  int32 order_index = 4;
+  int32 price = 5;
+  int32 reading_period_hours = 6;
+  string scheduled_at = 7;
+}
+
+message CreateEpisodeResponse {
+  publira.types.v1.Episode episode = 1;
+}
+
+message EpisodeImageUpload {
+  string filename = 1;
+  string content_type = 2;
+  bytes data = 3;
+  int32 display_order = 4;
+}
+
+message UploadEpisodeImagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  repeated EpisodeImageUpload images = 3;
+}
+
+message UploadEpisodeImagesResponse {
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
+message UpdateEpisodePublishScheduleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  string scheduled_at = 3;
+}
+
+message UpdateEpisodePublishScheduleResponse {
+  publira.types.v1.Episode episode = 1;
+}
+
+service AdminSeriesService {
+  rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
+  rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
+  rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
+  rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
+  rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
+  rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}
+  rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
+}

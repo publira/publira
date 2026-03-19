@@ -18,13 +18,14 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/storage"
 )
 
-func toProtoSeries(row dbmodels.GetSeriesByPublicIDForTenantRow) *publirav1.Series {
-	series := &publirav1.Series{
+func toProtoSeries(row dbmodels.GetSeriesByPublicIDForTenantRow) *publirattypesv1.Series {
+	series := &publirattypesv1.Series{
 		PublicId: row.PublicID,
 		Title:    row.Title,
 	}
@@ -34,8 +35,8 @@ func toProtoSeries(row dbmodels.GetSeriesByPublicIDForTenantRow) *publirav1.Seri
 	return series
 }
 
-func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirav1.Episode {
-	episode := &publirav1.Episode{
+func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
 		PublicId:   row.PublicID,
 		Title:      row.Title,
 		OrderIndex: row.OrderIndex,
@@ -54,8 +55,8 @@ func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirav1.Ep
 	return episode
 }
 
-func toProtoEpisodeImage(row dbmodels.EpisodeImage) *publirav1.EpisodeImage {
-	return &publirav1.EpisodeImage{
+func toProtoEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.EpisodeImage {
+	return &publirattypesv1.EpisodeImage{
 		Id:            row.ID.String(),
 		ImageUrl:      row.ImageUrl,
 		ContentType:   row.ContentType,
@@ -96,8 +97,8 @@ func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (s
 
 func (s *adminServer) CreateSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.CreateSeriesRequest],
-) (*connect.Response[publirav1.CreateSeriesResponse], error) {
+	req *connect.Request[publiraadminv1.CreateSeriesRequest],
+) (*connect.Response[publiraadminv1.CreateSeriesResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -135,15 +136,15 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&publirav1.CreateSeriesResponse{Series: &publirav1.Series{
+	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: &publirattypesv1.Series{
 		PublicId: base.PublicID, Title: base.Title, Synopsis: req.Msg.Synopsis,
 	}}), nil
 }
 
 func (s *adminServer) UpdateSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.UpdateSeriesRequest],
-) (*connect.Response[publirav1.UpdateSeriesResponse], error) {
+	req *connect.Request[publiraadminv1.UpdateSeriesRequest],
+) (*connect.Response[publiraadminv1.UpdateSeriesResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -175,13 +176,13 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&publirav1.UpdateSeriesResponse{Series: toProtoSeries(updated)}), nil
+	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: toProtoSeries(updated)}), nil
 }
 
 func (s *adminServer) ListSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListSeriesRequest],
-) (*connect.Response[publirav1.ListSeriesResponse], error) {
+	req *connect.Request[publiraadminv1.ListSeriesRequest],
+) (*connect.Response[publiraadminv1.ListSeriesResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -198,21 +199,21 @@ func (s *adminServer) ListSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	items := make([]*publirav1.Series, 0, len(rows))
+	items := make([]*publirattypesv1.Series, 0, len(rows))
 	for _, row := range rows {
-		item := &publirav1.Series{PublicId: row.PublicID, Title: row.Title}
+		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
 		if row.Synopsis.Valid {
 			item.Synopsis = row.Synopsis.String
 		}
 		items = append(items, item)
 	}
-	return connect.NewResponse(&publirav1.ListSeriesResponse{Series: items}), nil
+	return connect.NewResponse(&publiraadminv1.ListSeriesResponse{Series: items}), nil
 }
 
 func (s *adminServer) GetSeries(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetSeriesRequest],
-) (*connect.Response[publirav1.GetSeriesResponse], error) {
+	req *connect.Request[publiraadminv1.GetSeriesRequest],
+) (*connect.Response[publiraadminv1.GetSeriesResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -224,13 +225,13 @@ func (s *adminServer) GetSeries(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&publirav1.GetSeriesResponse{Series: toProtoSeries(row)}), nil
+	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{Series: toProtoSeries(row)}), nil
 }
 
 func (s *adminServer) CreateEpisode(
 	ctx context.Context,
-	req *connect.Request[publirav1.CreateEpisodeRequest],
-) (*connect.Response[publirav1.CreateEpisodeResponse], error) {
+	req *connect.Request[publiraadminv1.CreateEpisodeRequest],
+) (*connect.Response[publiraadminv1.CreateEpisodeResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -285,7 +286,7 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	episode := &publirav1.Episode{PublicId: base.PublicID, Title: base.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
+	episode := &publirattypesv1.Episode{PublicId: base.PublicID, Title: base.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
 	if listing.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = listing.ReadingPeriodHours.Int32
 	}
@@ -295,13 +296,13 @@ func (s *adminServer) CreateEpisode(
 	if listing.PublishedAt.Valid {
 		episode.PublishedAt = listing.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
-	return connect.NewResponse(&publirav1.CreateEpisodeResponse{Episode: episode}), nil
+	return connect.NewResponse(&publiraadminv1.CreateEpisodeResponse{Episode: episode}), nil
 }
 
 func (s *adminServer) UploadEpisodeImages(
 	ctx context.Context,
-	req *connect.Request[publirav1.UploadEpisodeImagesRequest],
-) (*connect.Response[publirav1.UploadEpisodeImagesResponse], error) {
+	req *connect.Request[publiraadminv1.UploadEpisodeImagesRequest],
+) (*connect.Response[publiraadminv1.UploadEpisodeImagesResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -316,7 +317,7 @@ func (s *adminServer) UploadEpisodeImages(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	items := make([]*publirav1.EpisodeImage, 0, len(req.Msg.Images))
+	items := make([]*publirattypesv1.EpisodeImage, 0, len(req.Msg.Images))
 	for index, imageUpload := range req.Msg.Images {
 		if len(imageUpload.Data) == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].data is required", index))
@@ -370,13 +371,13 @@ func (s *adminServer) UploadEpisodeImages(
 		}
 		items = append(items, toProtoEpisodeImage(created))
 	}
-	return connect.NewResponse(&publirav1.UploadEpisodeImagesResponse{Images: items}), nil
+	return connect.NewResponse(&publiraadminv1.UploadEpisodeImagesResponse{Images: items}), nil
 }
 
 func (s *adminServer) UpdateEpisodePublishSchedule(
 	ctx context.Context,
-	req *connect.Request[publirav1.UpdateEpisodePublishScheduleRequest],
-) (*connect.Response[publirav1.UpdateEpisodePublishScheduleResponse], error) {
+	req *connect.Request[publiraadminv1.UpdateEpisodePublishScheduleRequest],
+) (*connect.Response[publiraadminv1.UpdateEpisodePublishScheduleResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -400,5 +401,5 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&publirav1.UpdateEpisodePublishScheduleResponse{Episode: toProtoEpisode(ep)}), nil
+	return connect.NewResponse(&publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: toProtoEpisode(ep)}), nil
 }

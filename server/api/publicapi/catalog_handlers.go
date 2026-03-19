@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
@@ -23,9 +24,9 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	items := make([]*publirav1.Series, 0, len(rows))
+	items := make([]*publirattypesv1.Series, 0, len(rows))
 	for _, row := range rows {
-		item := &publirav1.Series{PublicId: row.PublicID, Title: row.Title}
+		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
 		if row.Synopsis.Valid {
 			item.Synopsis = row.Synopsis.String
 		}
@@ -50,14 +51,14 @@ func (s *apiServer) GetSeriesDetail(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	res := connect.NewResponse(&publirav1.GetSeriesDetailResponse{
-		Series:   &publirav1.Series{PublicId: row.PublicID, Title: row.Title},
-		Episodes: []*publirav1.Episode{},
+		Series:   &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title},
+		Episodes: []*publirattypesv1.Episode{},
 	})
 	if row.Synopsis.Valid {
 		res.Msg.Series.Synopsis = row.Synopsis.String
 	}
 	if row.LabelName.Valid {
-		res.Msg.Series.Label = &publirav1.Label{Name: row.LabelName.String}
+		res.Msg.Series.Label = &publirattypesv1.Label{Name: row.LabelName.String}
 	}
 	return res, nil
 }

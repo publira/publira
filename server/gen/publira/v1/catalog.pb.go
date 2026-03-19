@@ -7,6 +7,7 @@
 package publirav1
 
 import (
+	v1 "github.com/publira/publira/server/gen/publira/types/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -21,217 +22,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type TenantContext struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *TenantContext) Reset() {
-	*x = TenantContext{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TenantContext) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TenantContext) ProtoMessage() {}
-
-func (x *TenantContext) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TenantContext.ProtoReflect.Descriptor instead.
-func (*TenantContext) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *TenantContext) GetTenantPublicId() string {
-	if x != nil {
-		return x.TenantPublicId
-	}
-	return ""
-}
-
-type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *User) Reset() {
-	*x = User{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *User) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*User) ProtoMessage() {}
-
-func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use User.ProtoReflect.Descriptor instead.
-func (*User) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *User) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
-func (x *User) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *User) GetRole() string {
-	if x != nil {
-		return x.Role
-	}
-	return ""
-}
-
-type Session struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	ExpiresAt     string                 `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Session) Reset() {
-	*x = Session{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Session) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Session) ProtoMessage() {}
-
-func (x *Session) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Session.ProtoReflect.Descriptor instead.
-func (*Session) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *Session) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-func (x *Session) GetExpiresAt() string {
-	if x != nil {
-		return x.ExpiresAt
-	}
-	return ""
-}
-
-type GetSeriesDetailRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetSeriesDetailRequest) Reset() {
-	*x = GetSeriesDetailRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetSeriesDetailRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetSeriesDetailRequest) ProtoMessage() {}
-
-func (x *GetSeriesDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetSeriesDetailRequest.ProtoReflect.Descriptor instead.
-func (*GetSeriesDetailRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *GetSeriesDetailRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *GetSeriesDetailRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
 type ListPublishedSeriesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -240,7 +33,7 @@ type ListPublishedSeriesRequest struct {
 
 func (x *ListPublishedSeriesRequest) Reset() {
 	*x = ListPublishedSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[4]
+	mi := &file_publira_v1_catalog_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -252,7 +45,7 @@ func (x *ListPublishedSeriesRequest) String() string {
 func (*ListPublishedSeriesRequest) ProtoMessage() {}
 
 func (x *ListPublishedSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[4]
+	mi := &file_publira_v1_catalog_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -265,10 +58,10 @@ func (x *ListPublishedSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedSeriesRequest.ProtoReflect.Descriptor instead.
 func (*ListPublishedSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{4}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ListPublishedSeriesRequest) GetTenant() *TenantContext {
+func (x *ListPublishedSeriesRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
@@ -291,14 +84,14 @@ func (x *ListPublishedSeriesRequest) GetOffset() int32 {
 
 type ListPublishedSeriesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        []*Series              `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
+	Series        []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListPublishedSeriesResponse) Reset() {
 	*x = ListPublishedSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[5]
+	mi := &file_publira_v1_catalog_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -310,7 +103,7 @@ func (x *ListPublishedSeriesResponse) String() string {
 func (*ListPublishedSeriesResponse) ProtoMessage() {}
 
 func (x *ListPublishedSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[5]
+	mi := &file_publira_v1_catalog_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -323,19 +116,123 @@ func (x *ListPublishedSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedSeriesResponse.ProtoReflect.Descriptor instead.
 func (*ListPublishedSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{5}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ListPublishedSeriesResponse) GetSeries() []*Series {
+func (x *ListPublishedSeriesResponse) GetSeries() []*v1.Series {
 	if x != nil {
 		return x.Series
 	}
 	return nil
 }
 
+type GetSeriesDetailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSeriesDetailRequest) Reset() {
+	*x = GetSeriesDetailRequest{}
+	mi := &file_publira_v1_catalog_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSeriesDetailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSeriesDetailRequest) ProtoMessage() {}
+
+func (x *GetSeriesDetailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_catalog_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSeriesDetailRequest.ProtoReflect.Descriptor instead.
+func (*GetSeriesDetailRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetSeriesDetailRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetSeriesDetailRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+type GetSeriesDetailResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
+	Episodes      []*v1.Episode          `protobuf:"bytes,2,rep,name=episodes,proto3" json:"episodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSeriesDetailResponse) Reset() {
+	*x = GetSeriesDetailResponse{}
+	mi := &file_publira_v1_catalog_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSeriesDetailResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSeriesDetailResponse) ProtoMessage() {}
+
+func (x *GetSeriesDetailResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_catalog_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSeriesDetailResponse.ProtoReflect.Descriptor instead.
+func (*GetSeriesDetailResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetSeriesDetailResponse) GetSeries() *v1.Series {
+	if x != nil {
+		return x.Series
+	}
+	return nil
+}
+
+func (x *GetSeriesDetailResponse) GetEpisodes() []*v1.Episode {
+	if x != nil {
+		return x.Episodes
+	}
+	return nil
+}
+
 type GetEpisodeDetailRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -343,7 +240,7 @@ type GetEpisodeDetailRequest struct {
 
 func (x *GetEpisodeDetailRequest) Reset() {
 	*x = GetEpisodeDetailRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[6]
+	mi := &file_publira_v1_catalog_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -355,7 +252,7 @@ func (x *GetEpisodeDetailRequest) String() string {
 func (*GetEpisodeDetailRequest) ProtoMessage() {}
 
 func (x *GetEpisodeDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[6]
+	mi := &file_publira_v1_catalog_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -368,10 +265,10 @@ func (x *GetEpisodeDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEpisodeDetailRequest.ProtoReflect.Descriptor instead.
 func (*GetEpisodeDetailRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{6}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GetEpisodeDetailRequest) GetTenant() *TenantContext {
+func (x *GetEpisodeDetailRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
@@ -387,15 +284,15 @@ func (x *GetEpisodeDetailRequest) GetPublicId() string {
 
 type GetEpisodeDetailResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Episode       *Episode               `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
-	Series        *Series                `protobuf:"bytes,2,opt,name=series,proto3" json:"series,omitempty"`
+	Episode       *v1.Episode            `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
+	Series        *v1.Series             `protobuf:"bytes,2,opt,name=series,proto3" json:"series,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetEpisodeDetailResponse) Reset() {
 	*x = GetEpisodeDetailResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[7]
+	mi := &file_publira_v1_catalog_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -407,7 +304,7 @@ func (x *GetEpisodeDetailResponse) String() string {
 func (*GetEpisodeDetailResponse) ProtoMessage() {}
 
 func (x *GetEpisodeDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[7]
+	mi := &file_publira_v1_catalog_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -420,1835 +317,19 @@ func (x *GetEpisodeDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEpisodeDetailResponse.ProtoReflect.Descriptor instead.
 func (*GetEpisodeDetailResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{7}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GetEpisodeDetailResponse) GetEpisode() *Episode {
+func (x *GetEpisodeDetailResponse) GetEpisode() *v1.Episode {
 	if x != nil {
 		return x.Episode
 	}
 	return nil
 }
 
-func (x *GetEpisodeDetailResponse) GetSeries() *Series {
+func (x *GetEpisodeDetailResponse) GetSeries() *v1.Series {
 	if x != nil {
 		return x.Series
-	}
-	return nil
-}
-
-type GetSeriesDetailResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *Series                `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
-	Episodes      []*Episode             `protobuf:"bytes,2,rep,name=episodes,proto3" json:"episodes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetSeriesDetailResponse) Reset() {
-	*x = GetSeriesDetailResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetSeriesDetailResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetSeriesDetailResponse) ProtoMessage() {}
-
-func (x *GetSeriesDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetSeriesDetailResponse.ProtoReflect.Descriptor instead.
-func (*GetSeriesDetailResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *GetSeriesDetailResponse) GetSeries() *Series {
-	if x != nil {
-		return x.Series
-	}
-	return nil
-}
-
-func (x *GetSeriesDetailResponse) GetEpisodes() []*Episode {
-	if x != nil {
-		return x.Episodes
-	}
-	return nil
-}
-
-type Creator struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Role          string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Creator) Reset() {
-	*x = Creator{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Creator) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Creator) ProtoMessage() {}
-
-func (x *Creator) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Creator.ProtoReflect.Descriptor instead.
-func (*Creator) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *Creator) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Creator) GetRole() string {
-	if x != nil {
-		return x.Role
-	}
-	return ""
-}
-
-type Label struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Label) Reset() {
-	*x = Label{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Label) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Label) ProtoMessage() {}
-
-func (x *Label) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Label.ProtoReflect.Descriptor instead.
-func (*Label) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *Label) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-type Series struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis      string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	Label         *Label                 `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
-	Creators      []*Creator             `protobuf:"bytes,5,rep,name=creators,proto3" json:"creators,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Series) Reset() {
-	*x = Series{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Series) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Series) ProtoMessage() {}
-
-func (x *Series) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Series.ProtoReflect.Descriptor instead.
-func (*Series) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *Series) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
-func (x *Series) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *Series) GetSynopsis() string {
-	if x != nil {
-		return x.Synopsis
-	}
-	return ""
-}
-
-func (x *Series) GetLabel() *Label {
-	if x != nil {
-		return x.Label
-	}
-	return nil
-}
-
-func (x *Series) GetCreators() []*Creator {
-	if x != nil {
-		return x.Creators
-	}
-	return nil
-}
-
-type Episode struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Title              string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	OrderIndex         int32                  `protobuf:"varint,3,opt,name=order_index,json=orderIndex,proto3" json:"order_index,omitempty"`
-	Price              int32                  `protobuf:"varint,4,opt,name=price,proto3" json:"price,omitempty"`
-	ReadingPeriodHours int32                  `protobuf:"varint,5,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	Status             string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
-	ScheduledAt        string                 `protobuf:"bytes,7,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
-	PublishedAt        string                 `protobuf:"bytes,8,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *Episode) Reset() {
-	*x = Episode{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Episode) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Episode) ProtoMessage() {}
-
-func (x *Episode) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Episode.ProtoReflect.Descriptor instead.
-func (*Episode) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *Episode) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
-func (x *Episode) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *Episode) GetOrderIndex() int32 {
-	if x != nil {
-		return x.OrderIndex
-	}
-	return 0
-}
-
-func (x *Episode) GetPrice() int32 {
-	if x != nil {
-		return x.Price
-	}
-	return 0
-}
-
-func (x *Episode) GetReadingPeriodHours() int32 {
-	if x != nil {
-		return x.ReadingPeriodHours
-	}
-	return 0
-}
-
-func (x *Episode) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-func (x *Episode) GetScheduledAt() string {
-	if x != nil {
-		return x.ScheduledAt
-	}
-	return ""
-}
-
-func (x *Episode) GetPublishedAt() string {
-	if x != nil {
-		return x.PublishedAt
-	}
-	return ""
-}
-
-type CreateSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis      string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	LabelPublicId string                 `protobuf:"bytes,4,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
-	IsPublished   bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateSeriesRequest) Reset() {
-	*x = CreateSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateSeriesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateSeriesRequest) ProtoMessage() {}
-
-func (x *CreateSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateSeriesRequest.ProtoReflect.Descriptor instead.
-func (*CreateSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *CreateSeriesRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *CreateSeriesRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *CreateSeriesRequest) GetSynopsis() string {
-	if x != nil {
-		return x.Synopsis
-	}
-	return ""
-}
-
-func (x *CreateSeriesRequest) GetLabelPublicId() string {
-	if x != nil {
-		return x.LabelPublicId
-	}
-	return ""
-}
-
-func (x *CreateSeriesRequest) GetIsPublished() bool {
-	if x != nil {
-		return x.IsPublished
-	}
-	return false
-}
-
-type CreateSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *Series                `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateSeriesResponse) Reset() {
-	*x = CreateSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateSeriesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateSeriesResponse) ProtoMessage() {}
-
-func (x *CreateSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateSeriesResponse.ProtoReflect.Descriptor instead.
-func (*CreateSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *CreateSeriesResponse) GetSeries() *Series {
-	if x != nil {
-		return x.Series
-	}
-	return nil
-}
-
-type UpdateSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis      string                 `protobuf:"bytes,4,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	IsPublished   bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateSeriesRequest) Reset() {
-	*x = UpdateSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateSeriesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateSeriesRequest) ProtoMessage() {}
-
-func (x *UpdateSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateSeriesRequest.ProtoReflect.Descriptor instead.
-func (*UpdateSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *UpdateSeriesRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *UpdateSeriesRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
-func (x *UpdateSeriesRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *UpdateSeriesRequest) GetSynopsis() string {
-	if x != nil {
-		return x.Synopsis
-	}
-	return ""
-}
-
-func (x *UpdateSeriesRequest) GetIsPublished() bool {
-	if x != nil {
-		return x.IsPublished
-	}
-	return false
-}
-
-type UpdateSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *Series                `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateSeriesResponse) Reset() {
-	*x = UpdateSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateSeriesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateSeriesResponse) ProtoMessage() {}
-
-func (x *UpdateSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateSeriesResponse.ProtoReflect.Descriptor instead.
-func (*UpdateSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *UpdateSeriesResponse) GetSeries() *Series {
-	if x != nil {
-		return x.Series
-	}
-	return nil
-}
-
-type ListSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListSeriesRequest) Reset() {
-	*x = ListSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSeriesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSeriesRequest) ProtoMessage() {}
-
-func (x *ListSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSeriesRequest.ProtoReflect.Descriptor instead.
-func (*ListSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *ListSeriesRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *ListSeriesRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-func (x *ListSeriesRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
-type ListSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        []*Series              `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListSeriesResponse) Reset() {
-	*x = ListSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSeriesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSeriesResponse) ProtoMessage() {}
-
-func (x *ListSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSeriesResponse.ProtoReflect.Descriptor instead.
-func (*ListSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *ListSeriesResponse) GetSeries() []*Series {
-	if x != nil {
-		return x.Series
-	}
-	return nil
-}
-
-type GetSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetSeriesRequest) Reset() {
-	*x = GetSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[19]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetSeriesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetSeriesRequest) ProtoMessage() {}
-
-func (x *GetSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[19]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetSeriesRequest.ProtoReflect.Descriptor instead.
-func (*GetSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{19}
-}
-
-func (x *GetSeriesRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *GetSeriesRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
-type GetSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        *Series                `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetSeriesResponse) Reset() {
-	*x = GetSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[20]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetSeriesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetSeriesResponse) ProtoMessage() {}
-
-func (x *GetSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[20]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetSeriesResponse.ProtoReflect.Descriptor instead.
-func (*GetSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *GetSeriesResponse) GetSeries() *Series {
-	if x != nil {
-		return x.Series
-	}
-	return nil
-}
-
-type CreateEpisodeRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Tenant             *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SeriesPublicId     string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
-	Title              string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	OrderIndex         int32                  `protobuf:"varint,4,opt,name=order_index,json=orderIndex,proto3" json:"order_index,omitempty"`
-	Price              int32                  `protobuf:"varint,5,opt,name=price,proto3" json:"price,omitempty"`
-	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	ScheduledAt        string                 `protobuf:"bytes,7,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *CreateEpisodeRequest) Reset() {
-	*x = CreateEpisodeRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[21]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateEpisodeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateEpisodeRequest) ProtoMessage() {}
-
-func (x *CreateEpisodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[21]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateEpisodeRequest.ProtoReflect.Descriptor instead.
-func (*CreateEpisodeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{21}
-}
-
-func (x *CreateEpisodeRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *CreateEpisodeRequest) GetSeriesPublicId() string {
-	if x != nil {
-		return x.SeriesPublicId
-	}
-	return ""
-}
-
-func (x *CreateEpisodeRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *CreateEpisodeRequest) GetOrderIndex() int32 {
-	if x != nil {
-		return x.OrderIndex
-	}
-	return 0
-}
-
-func (x *CreateEpisodeRequest) GetPrice() int32 {
-	if x != nil {
-		return x.Price
-	}
-	return 0
-}
-
-func (x *CreateEpisodeRequest) GetReadingPeriodHours() int32 {
-	if x != nil {
-		return x.ReadingPeriodHours
-	}
-	return 0
-}
-
-func (x *CreateEpisodeRequest) GetScheduledAt() string {
-	if x != nil {
-		return x.ScheduledAt
-	}
-	return ""
-}
-
-type CreateEpisodeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Episode       *Episode               `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateEpisodeResponse) Reset() {
-	*x = CreateEpisodeResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[22]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateEpisodeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateEpisodeResponse) ProtoMessage() {}
-
-func (x *CreateEpisodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[22]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateEpisodeResponse.ProtoReflect.Descriptor instead.
-func (*CreateEpisodeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *CreateEpisodeResponse) GetEpisode() *Episode {
-	if x != nil {
-		return x.Episode
-	}
-	return nil
-}
-
-type EpisodeImageUpload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	Data          []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
-	DisplayOrder  int32                  `protobuf:"varint,4,opt,name=display_order,json=displayOrder,proto3" json:"display_order,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EpisodeImageUpload) Reset() {
-	*x = EpisodeImageUpload{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[23]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EpisodeImageUpload) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EpisodeImageUpload) ProtoMessage() {}
-
-func (x *EpisodeImageUpload) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[23]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EpisodeImageUpload.ProtoReflect.Descriptor instead.
-func (*EpisodeImageUpload) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{23}
-}
-
-func (x *EpisodeImageUpload) GetFilename() string {
-	if x != nil {
-		return x.Filename
-	}
-	return ""
-}
-
-func (x *EpisodeImageUpload) GetContentType() string {
-	if x != nil {
-		return x.ContentType
-	}
-	return ""
-}
-
-func (x *EpisodeImageUpload) GetData() []byte {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
-func (x *EpisodeImageUpload) GetDisplayOrder() int32 {
-	if x != nil {
-		return x.DisplayOrder
-	}
-	return 0
-}
-
-type EpisodeImage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ImageUrl      string                 `protobuf:"bytes,2,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
-	ContentType   string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	FileSizeBytes int64                  `protobuf:"varint,4,opt,name=file_size_bytes,json=fileSizeBytes,proto3" json:"file_size_bytes,omitempty"`
-	DisplayOrder  int32                  `protobuf:"varint,5,opt,name=display_order,json=displayOrder,proto3" json:"display_order,omitempty"`
-	Width         int32                  `protobuf:"varint,6,opt,name=width,proto3" json:"width,omitempty"`
-	Height        int32                  `protobuf:"varint,7,opt,name=height,proto3" json:"height,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EpisodeImage) Reset() {
-	*x = EpisodeImage{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[24]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EpisodeImage) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EpisodeImage) ProtoMessage() {}
-
-func (x *EpisodeImage) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[24]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EpisodeImage.ProtoReflect.Descriptor instead.
-func (*EpisodeImage) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *EpisodeImage) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *EpisodeImage) GetImageUrl() string {
-	if x != nil {
-		return x.ImageUrl
-	}
-	return ""
-}
-
-func (x *EpisodeImage) GetContentType() string {
-	if x != nil {
-		return x.ContentType
-	}
-	return ""
-}
-
-func (x *EpisodeImage) GetFileSizeBytes() int64 {
-	if x != nil {
-		return x.FileSizeBytes
-	}
-	return 0
-}
-
-func (x *EpisodeImage) GetDisplayOrder() int32 {
-	if x != nil {
-		return x.DisplayOrder
-	}
-	return 0
-}
-
-func (x *EpisodeImage) GetWidth() int32 {
-	if x != nil {
-		return x.Width
-	}
-	return 0
-}
-
-func (x *EpisodeImage) GetHeight() int32 {
-	if x != nil {
-		return x.Height
-	}
-	return 0
-}
-
-type UploadEpisodeImagesRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	Images          []*EpisodeImageUpload  `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *UploadEpisodeImagesRequest) Reset() {
-	*x = UploadEpisodeImagesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[25]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UploadEpisodeImagesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UploadEpisodeImagesRequest) ProtoMessage() {}
-
-func (x *UploadEpisodeImagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[25]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UploadEpisodeImagesRequest.ProtoReflect.Descriptor instead.
-func (*UploadEpisodeImagesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *UploadEpisodeImagesRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *UploadEpisodeImagesRequest) GetEpisodePublicId() string {
-	if x != nil {
-		return x.EpisodePublicId
-	}
-	return ""
-}
-
-func (x *UploadEpisodeImagesRequest) GetImages() []*EpisodeImageUpload {
-	if x != nil {
-		return x.Images
-	}
-	return nil
-}
-
-type UploadEpisodeImagesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Images        []*EpisodeImage        `protobuf:"bytes,1,rep,name=images,proto3" json:"images,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UploadEpisodeImagesResponse) Reset() {
-	*x = UploadEpisodeImagesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[26]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UploadEpisodeImagesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UploadEpisodeImagesResponse) ProtoMessage() {}
-
-func (x *UploadEpisodeImagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[26]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UploadEpisodeImagesResponse.ProtoReflect.Descriptor instead.
-func (*UploadEpisodeImagesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{26}
-}
-
-func (x *UploadEpisodeImagesResponse) GetImages() []*EpisodeImage {
-	if x != nil {
-		return x.Images
-	}
-	return nil
-}
-
-type UpdateEpisodePublishScheduleRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	ScheduledAt     string                 `protobuf:"bytes,3,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *UpdateEpisodePublishScheduleRequest) Reset() {
-	*x = UpdateEpisodePublishScheduleRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[27]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateEpisodePublishScheduleRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateEpisodePublishScheduleRequest) ProtoMessage() {}
-
-func (x *UpdateEpisodePublishScheduleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[27]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateEpisodePublishScheduleRequest.ProtoReflect.Descriptor instead.
-func (*UpdateEpisodePublishScheduleRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *UpdateEpisodePublishScheduleRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *UpdateEpisodePublishScheduleRequest) GetEpisodePublicId() string {
-	if x != nil {
-		return x.EpisodePublicId
-	}
-	return ""
-}
-
-func (x *UpdateEpisodePublishScheduleRequest) GetScheduledAt() string {
-	if x != nil {
-		return x.ScheduledAt
-	}
-	return ""
-}
-
-type UpdateEpisodePublishScheduleResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Episode       *Episode               `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateEpisodePublishScheduleResponse) Reset() {
-	*x = UpdateEpisodePublishScheduleResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[28]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateEpisodePublishScheduleResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateEpisodePublishScheduleResponse) ProtoMessage() {}
-
-func (x *UpdateEpisodePublishScheduleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[28]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateEpisodePublishScheduleResponse.ProtoReflect.Descriptor instead.
-func (*UpdateEpisodePublishScheduleResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *UpdateEpisodePublishScheduleResponse) GetEpisode() *Episode {
-	if x != nil {
-		return x.Episode
-	}
-	return nil
-}
-
-type CreateSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateSessionRequest) Reset() {
-	*x = CreateSessionRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[29]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateSessionRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateSessionRequest) ProtoMessage() {}
-
-func (x *CreateSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[29]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateSessionRequest.ProtoReflect.Descriptor instead.
-func (*CreateSessionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{29}
-}
-
-func (x *CreateSessionRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *CreateSessionRequest) GetEmail() string {
-	if x != nil {
-		return x.Email
-	}
-	return ""
-}
-
-func (x *CreateSessionRequest) GetPassword() string {
-	if x != nil {
-		return x.Password
-	}
-	return ""
-}
-
-type CreateSessionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	Session       *Session               `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateSessionResponse) Reset() {
-	*x = CreateSessionResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[30]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateSessionResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateSessionResponse) ProtoMessage() {}
-
-func (x *CreateSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[30]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateSessionResponse.ProtoReflect.Descriptor instead.
-func (*CreateSessionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{30}
-}
-
-func (x *CreateSessionResponse) GetUser() *User {
-	if x != nil {
-		return x.User
-	}
-	return nil
-}
-
-func (x *CreateSessionResponse) GetSession() *Session {
-	if x != nil {
-		return x.Session
-	}
-	return nil
-}
-
-type DeleteSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteSessionRequest) Reset() {
-	*x = DeleteSessionRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[31]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteSessionRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteSessionRequest) ProtoMessage() {}
-
-func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[31]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
-func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{31}
-}
-
-func (x *DeleteSessionRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *DeleteSessionRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-type DeleteSessionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteSessionResponse) Reset() {
-	*x = DeleteSessionResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[32]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteSessionResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteSessionResponse) ProtoMessage() {}
-
-func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[32]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteSessionResponse.ProtoReflect.Descriptor instead.
-func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{32}
-}
-
-type GetMeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetMeRequest) Reset() {
-	*x = GetMeRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[33]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetMeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetMeRequest) ProtoMessage() {}
-
-func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[33]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
-func (*GetMeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{33}
-}
-
-func (x *GetMeRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *GetMeRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-type GetMeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetMeResponse) Reset() {
-	*x = GetMeResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[34]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetMeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetMeResponse) ProtoMessage() {}
-
-func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[34]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetMeResponse.ProtoReflect.Descriptor instead.
-func (*GetMeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{34}
-}
-
-func (x *GetMeResponse) GetUser() *User {
-	if x != nil {
-		return x.User
-	}
-	return nil
-}
-
-type TenantTheme struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	PrimaryColor   string                 `protobuf:"bytes,1,opt,name=primary_color,json=primaryColor,proto3" json:"primary_color,omitempty"`
-	SecondaryColor string                 `protobuf:"bytes,2,opt,name=secondary_color,json=secondaryColor,proto3" json:"secondary_color,omitempty"`
-	AccentColor    string                 `protobuf:"bytes,3,opt,name=accent_color,json=accentColor,proto3" json:"accent_color,omitempty"`
-	LogoUrl        string                 `protobuf:"bytes,4,opt,name=logo_url,json=logoUrl,proto3" json:"logo_url,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *TenantTheme) Reset() {
-	*x = TenantTheme{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[35]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TenantTheme) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TenantTheme) ProtoMessage() {}
-
-func (x *TenantTheme) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[35]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TenantTheme.ProtoReflect.Descriptor instead.
-func (*TenantTheme) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{35}
-}
-
-func (x *TenantTheme) GetPrimaryColor() string {
-	if x != nil {
-		return x.PrimaryColor
-	}
-	return ""
-}
-
-func (x *TenantTheme) GetSecondaryColor() string {
-	if x != nil {
-		return x.SecondaryColor
-	}
-	return ""
-}
-
-func (x *TenantTheme) GetAccentColor() string {
-	if x != nil {
-		return x.AccentColor
-	}
-	return ""
-}
-
-func (x *TenantTheme) GetLogoUrl() string {
-	if x != nil {
-		return x.LogoUrl
-	}
-	return ""
-}
-
-type GetTenantThemeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetTenantThemeRequest) Reset() {
-	*x = GetTenantThemeRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[36]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetTenantThemeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetTenantThemeRequest) ProtoMessage() {}
-
-func (x *GetTenantThemeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[36]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetTenantThemeRequest.ProtoReflect.Descriptor instead.
-func (*GetTenantThemeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{36}
-}
-
-func (x *GetTenantThemeRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-type GetTenantThemeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Theme         *TenantTheme           `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetTenantThemeResponse) Reset() {
-	*x = GetTenantThemeResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[37]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetTenantThemeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetTenantThemeResponse) ProtoMessage() {}
-
-func (x *GetTenantThemeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[37]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetTenantThemeResponse.ProtoReflect.Descriptor instead.
-func (*GetTenantThemeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{37}
-}
-
-func (x *GetTenantThemeResponse) GetTheme() *TenantTheme {
-	if x != nil {
-		return x.Theme
-	}
-	return nil
-}
-
-type UpsertTenantThemeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *TenantContext         `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Theme         *TenantTheme           `protobuf:"bytes,2,opt,name=theme,proto3" json:"theme,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpsertTenantThemeRequest) Reset() {
-	*x = UpsertTenantThemeRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[38]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpsertTenantThemeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpsertTenantThemeRequest) ProtoMessage() {}
-
-func (x *UpsertTenantThemeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[38]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpsertTenantThemeRequest.ProtoReflect.Descriptor instead.
-func (*UpsertTenantThemeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{38}
-}
-
-func (x *UpsertTenantThemeRequest) GetTenant() *TenantContext {
-	if x != nil {
-		return x.Tenant
-	}
-	return nil
-}
-
-func (x *UpsertTenantThemeRequest) GetTheme() *TenantTheme {
-	if x != nil {
-		return x.Theme
-	}
-	return nil
-}
-
-type UpsertTenantThemeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Theme         *TenantTheme           `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpsertTenantThemeResponse) Reset() {
-	*x = UpsertTenantThemeResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[39]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpsertTenantThemeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpsertTenantThemeResponse) ProtoMessage() {}
-
-func (x *UpsertTenantThemeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[39]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpsertTenantThemeResponse.ProtoReflect.Descriptor instead.
-func (*UpsertTenantThemeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{39}
-}
-
-func (x *UpsertTenantThemeResponse) GetTheme() *TenantTheme {
-	if x != nil {
-		return x.Theme
 	}
 	return nil
 }
@@ -2258,172 +339,29 @@ var File_publira_v1_catalog_proto protoreflect.FileDescriptor
 const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"\x18publira/v1/catalog.proto\x12\n" +
-	"publira.v1\"9\n" +
-	"\rTenantContext\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\"K\n" +
-	"\x04User\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"G\n" +
-	"\aSession\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
-	"\n" +
-	"expires_at\x18\x02 \x01(\tR\texpiresAt\"h\n" +
-	"\x16GetSeriesDetailRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"}\n" +
-	"\x1aListPublishedSeriesRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"\x83\x01\n" +
+	"\x1aListPublishedSeriesRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"I\n" +
-	"\x1bListPublishedSeriesResponse\x12*\n" +
-	"\x06series\x18\x01 \x03(\v2\x12.publira.v1.SeriesR\x06series\"i\n" +
-	"\x17GetEpisodeDetailRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"u\n" +
-	"\x18GetEpisodeDetailResponse\x12-\n" +
-	"\aepisode\x18\x01 \x01(\v2\x13.publira.v1.EpisodeR\aepisode\x12*\n" +
-	"\x06series\x18\x02 \x01(\v2\x12.publira.v1.SeriesR\x06series\"v\n" +
-	"\x17GetSeriesDetailResponse\x12*\n" +
-	"\x06series\x18\x01 \x01(\v2\x12.publira.v1.SeriesR\x06series\x12/\n" +
-	"\bepisodes\x18\x02 \x03(\v2\x13.publira.v1.EpisodeR\bepisodes\"1\n" +
-	"\aCreator\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04role\x18\x02 \x01(\tR\x04role\"\x1b\n" +
-	"\x05Label\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\xb1\x01\n" +
-	"\x06Series\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
-	"\bsynopsis\x18\x03 \x01(\tR\bsynopsis\x12'\n" +
-	"\x05label\x18\x04 \x01(\v2\x11.publira.v1.LabelR\x05label\x12/\n" +
-	"\bcreators\x18\x05 \x03(\v2\x13.publira.v1.CreatorR\bcreators\"\x83\x02\n" +
-	"\aEpisode\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
-	"\vorder_index\x18\x03 \x01(\x05R\n" +
-	"orderIndex\x12\x14\n" +
-	"\x05price\x18\x04 \x01(\x05R\x05price\x120\n" +
-	"\x14reading_period_hours\x18\x05 \x01(\x05R\x12readingPeriodHours\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
-	"\fscheduled_at\x18\a \x01(\tR\vscheduledAt\x12!\n" +
-	"\fpublished_at\x18\b \x01(\tR\vpublishedAt\"\xc5\x01\n" +
-	"\x13CreateSeriesRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
-	"\bsynopsis\x18\x03 \x01(\tR\bsynopsis\x12&\n" +
-	"\x0flabel_public_id\x18\x04 \x01(\tR\rlabelPublicId\x12!\n" +
-	"\fis_published\x18\x05 \x01(\bR\visPublished\"B\n" +
-	"\x14CreateSeriesResponse\x12*\n" +
-	"\x06series\x18\x01 \x01(\v2\x12.publira.v1.SeriesR\x06series\"\xba\x01\n" +
-	"\x13UpdateSeriesRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1a\n" +
-	"\bsynopsis\x18\x04 \x01(\tR\bsynopsis\x12!\n" +
-	"\fis_published\x18\x05 \x01(\bR\visPublished\"B\n" +
-	"\x14UpdateSeriesResponse\x12*\n" +
-	"\x06series\x18\x01 \x01(\v2\x12.publira.v1.SeriesR\x06series\"t\n" +
-	"\x11ListSeriesRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"@\n" +
-	"\x12ListSeriesResponse\x12*\n" +
-	"\x06series\x18\x01 \x03(\v2\x12.publira.v1.SeriesR\x06series\"b\n" +
-	"\x10GetSeriesRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"?\n" +
-	"\x11GetSeriesResponse\x12*\n" +
-	"\x06series\x18\x01 \x01(\v2\x12.publira.v1.SeriesR\x06series\"\x95\x02\n" +
-	"\x14CreateEpisodeRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12(\n" +
-	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1f\n" +
-	"\vorder_index\x18\x04 \x01(\x05R\n" +
-	"orderIndex\x12\x14\n" +
-	"\x05price\x18\x05 \x01(\x05R\x05price\x120\n" +
-	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12!\n" +
-	"\fscheduled_at\x18\a \x01(\tR\vscheduledAt\"F\n" +
-	"\x15CreateEpisodeResponse\x12-\n" +
-	"\aepisode\x18\x01 \x01(\v2\x13.publira.v1.EpisodeR\aepisode\"\x8c\x01\n" +
-	"\x12EpisodeImageUpload\x12\x1a\n" +
-	"\bfilename\x18\x01 \x01(\tR\bfilename\x12!\n" +
-	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x12\n" +
-	"\x04data\x18\x03 \x01(\fR\x04data\x12#\n" +
-	"\rdisplay_order\x18\x04 \x01(\x05R\fdisplayOrder\"\xd9\x01\n" +
-	"\fEpisodeImage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +
-	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12&\n" +
-	"\x0ffile_size_bytes\x18\x04 \x01(\x03R\rfileSizeBytes\x12#\n" +
-	"\rdisplay_order\x18\x05 \x01(\x05R\fdisplayOrder\x12\x14\n" +
-	"\x05width\x18\x06 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\a \x01(\x05R\x06height\"\xb3\x01\n" +
-	"\x1aUploadEpisodeImagesRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x126\n" +
-	"\x06images\x18\x03 \x03(\v2\x1e.publira.v1.EpisodeImageUploadR\x06images\"O\n" +
-	"\x1bUploadEpisodeImagesResponse\x120\n" +
-	"\x06images\x18\x01 \x03(\v2\x18.publira.v1.EpisodeImageR\x06images\"\xa7\x01\n" +
-	"#UpdateEpisodePublishScheduleRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12*\n" +
-	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12!\n" +
-	"\fscheduled_at\x18\x03 \x01(\tR\vscheduledAt\"U\n" +
-	"$UpdateEpisodePublishScheduleResponse\x12-\n" +
-	"\aepisode\x18\x01 \x01(\v2\x13.publira.v1.EpisodeR\aepisode\"{\n" +
-	"\x14CreateSessionRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\"l\n" +
-	"\x15CreateSessionResponse\x12$\n" +
-	"\x04user\x18\x01 \x01(\v2\x10.publira.v1.UserR\x04user\x12-\n" +
-	"\asession\x18\x02 \x01(\v2\x13.publira.v1.SessionR\asession\"h\n" +
-	"\x14DeleteSessionRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\"\x17\n" +
-	"\x15DeleteSessionResponse\"`\n" +
-	"\fGetMeRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\"5\n" +
-	"\rGetMeResponse\x12$\n" +
-	"\x04user\x18\x01 \x01(\v2\x10.publira.v1.UserR\x04user\"\x99\x01\n" +
-	"\vTenantTheme\x12#\n" +
-	"\rprimary_color\x18\x01 \x01(\tR\fprimaryColor\x12'\n" +
-	"\x0fsecondary_color\x18\x02 \x01(\tR\x0esecondaryColor\x12!\n" +
-	"\faccent_color\x18\x03 \x01(\tR\vaccentColor\x12\x19\n" +
-	"\blogo_url\x18\x04 \x01(\tR\alogoUrl\"J\n" +
-	"\x15GetTenantThemeRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\"G\n" +
-	"\x16GetTenantThemeResponse\x12-\n" +
-	"\x05theme\x18\x01 \x01(\v2\x17.publira.v1.TenantThemeR\x05theme\"|\n" +
-	"\x18UpsertTenantThemeRequest\x121\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x19.publira.v1.TenantContextR\x06tenant\x12-\n" +
-	"\x05theme\x18\x02 \x01(\v2\x17.publira.v1.TenantThemeR\x05theme\"J\n" +
-	"\x19UpsertTenantThemeResponse\x12-\n" +
-	"\x05theme\x18\x01 \x01(\v2\x17.publira.v1.TenantThemeR\x05theme2\xb9\x02\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"O\n" +
+	"\x1bListPublishedSeriesResponse\x120\n" +
+	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\"n\n" +
+	"\x16GetSeriesDetailRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x82\x01\n" +
+	"\x17GetSeriesDetailResponse\x120\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x125\n" +
+	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"o\n" +
+	"\x17GetEpisodeDetailRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x81\x01\n" +
+	"\x18GetEpisodeDetailResponse\x123\n" +
+	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
+	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series2\xb9\x02\n" +
 	"\x0eCatalogService\x12h\n" +
 	"\x13ListPublishedSeries\x12&.publira.v1.ListPublishedSeriesRequest\x1a'.publira.v1.ListPublishedSeriesResponse\"\x00\x12\\\n" +
 	"\x0fGetSeriesDetail\x12\".publira.v1.GetSeriesDetailRequest\x1a#.publira.v1.GetSeriesDetailResponse\"\x00\x12_\n" +
-	"\x10GetEpisodeDetail\x12#.publira.v1.GetEpisodeDetailRequest\x1a$.publira.v1.GetEpisodeDetailResponse\"\x002\xa1\x05\n" +
-	"\x12AdminSeriesService\x12S\n" +
-	"\fCreateSeries\x12\x1f.publira.v1.CreateSeriesRequest\x1a .publira.v1.CreateSeriesResponse\"\x00\x12S\n" +
-	"\fUpdateSeries\x12\x1f.publira.v1.UpdateSeriesRequest\x1a .publira.v1.UpdateSeriesResponse\"\x00\x12M\n" +
-	"\n" +
-	"ListSeries\x12\x1d.publira.v1.ListSeriesRequest\x1a\x1e.publira.v1.ListSeriesResponse\"\x00\x12J\n" +
-	"\tGetSeries\x12\x1c.publira.v1.GetSeriesRequest\x1a\x1d.publira.v1.GetSeriesResponse\"\x00\x12V\n" +
-	"\rCreateEpisode\x12 .publira.v1.CreateEpisodeRequest\x1a!.publira.v1.CreateEpisodeResponse\"\x00\x12h\n" +
-	"\x13UploadEpisodeImages\x12&.publira.v1.UploadEpisodeImagesRequest\x1a'.publira.v1.UploadEpisodeImagesResponse\"\x00\x12\x83\x01\n" +
-	"\x1cUpdateEpisodePublishSchedule\x12/.publira.v1.UpdateEpisodePublishScheduleRequest\x1a0.publira.v1.UpdateEpisodePublishScheduleResponse\"\x002\xfd\x01\n" +
-	"\vAuthService\x12V\n" +
-	"\rCreateSession\x12 .publira.v1.CreateSessionRequest\x1a!.publira.v1.CreateSessionResponse\"\x00\x12V\n" +
-	"\rDeleteSession\x12 .publira.v1.DeleteSessionRequest\x1a!.publira.v1.DeleteSessionResponse\"\x00\x12>\n" +
-	"\x05GetMe\x12\x18.publira.v1.GetMeRequest\x1a\x19.publira.v1.GetMeResponse\"\x002\xd3\x01\n" +
-	"\x12TenantThemeService\x12Y\n" +
-	"\x0eGetTenantTheme\x12!.publira.v1.GetTenantThemeRequest\x1a\".publira.v1.GetTenantThemeResponse\"\x00\x12b\n" +
-	"\x11UpsertTenantTheme\x12$.publira.v1.UpsertTenantThemeRequest\x1a%.publira.v1.UpsertTenantThemeResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
+	"\x10GetEpisodeDetail\x12#.publira.v1.GetEpisodeDetailRequest\x1a$.publira.v1.GetEpisodeDetailResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_catalog_proto_rawDescOnce sync.Once
@@ -2437,121 +375,38 @@ func file_publira_v1_catalog_proto_rawDescGZIP() []byte {
 	return file_publira_v1_catalog_proto_rawDescData
 }
 
-var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_publira_v1_catalog_proto_goTypes = []any{
-	(*TenantContext)(nil),                        // 0: publira.v1.TenantContext
-	(*User)(nil),                                 // 1: publira.v1.User
-	(*Session)(nil),                              // 2: publira.v1.Session
-	(*GetSeriesDetailRequest)(nil),               // 3: publira.v1.GetSeriesDetailRequest
-	(*ListPublishedSeriesRequest)(nil),           // 4: publira.v1.ListPublishedSeriesRequest
-	(*ListPublishedSeriesResponse)(nil),          // 5: publira.v1.ListPublishedSeriesResponse
-	(*GetEpisodeDetailRequest)(nil),              // 6: publira.v1.GetEpisodeDetailRequest
-	(*GetEpisodeDetailResponse)(nil),             // 7: publira.v1.GetEpisodeDetailResponse
-	(*GetSeriesDetailResponse)(nil),              // 8: publira.v1.GetSeriesDetailResponse
-	(*Creator)(nil),                              // 9: publira.v1.Creator
-	(*Label)(nil),                                // 10: publira.v1.Label
-	(*Series)(nil),                               // 11: publira.v1.Series
-	(*Episode)(nil),                              // 12: publira.v1.Episode
-	(*CreateSeriesRequest)(nil),                  // 13: publira.v1.CreateSeriesRequest
-	(*CreateSeriesResponse)(nil),                 // 14: publira.v1.CreateSeriesResponse
-	(*UpdateSeriesRequest)(nil),                  // 15: publira.v1.UpdateSeriesRequest
-	(*UpdateSeriesResponse)(nil),                 // 16: publira.v1.UpdateSeriesResponse
-	(*ListSeriesRequest)(nil),                    // 17: publira.v1.ListSeriesRequest
-	(*ListSeriesResponse)(nil),                   // 18: publira.v1.ListSeriesResponse
-	(*GetSeriesRequest)(nil),                     // 19: publira.v1.GetSeriesRequest
-	(*GetSeriesResponse)(nil),                    // 20: publira.v1.GetSeriesResponse
-	(*CreateEpisodeRequest)(nil),                 // 21: publira.v1.CreateEpisodeRequest
-	(*CreateEpisodeResponse)(nil),                // 22: publira.v1.CreateEpisodeResponse
-	(*EpisodeImageUpload)(nil),                   // 23: publira.v1.EpisodeImageUpload
-	(*EpisodeImage)(nil),                         // 24: publira.v1.EpisodeImage
-	(*UploadEpisodeImagesRequest)(nil),           // 25: publira.v1.UploadEpisodeImagesRequest
-	(*UploadEpisodeImagesResponse)(nil),          // 26: publira.v1.UploadEpisodeImagesResponse
-	(*UpdateEpisodePublishScheduleRequest)(nil),  // 27: publira.v1.UpdateEpisodePublishScheduleRequest
-	(*UpdateEpisodePublishScheduleResponse)(nil), // 28: publira.v1.UpdateEpisodePublishScheduleResponse
-	(*CreateSessionRequest)(nil),                 // 29: publira.v1.CreateSessionRequest
-	(*CreateSessionResponse)(nil),                // 30: publira.v1.CreateSessionResponse
-	(*DeleteSessionRequest)(nil),                 // 31: publira.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),                // 32: publira.v1.DeleteSessionResponse
-	(*GetMeRequest)(nil),                         // 33: publira.v1.GetMeRequest
-	(*GetMeResponse)(nil),                        // 34: publira.v1.GetMeResponse
-	(*TenantTheme)(nil),                          // 35: publira.v1.TenantTheme
-	(*GetTenantThemeRequest)(nil),                // 36: publira.v1.GetTenantThemeRequest
-	(*GetTenantThemeResponse)(nil),               // 37: publira.v1.GetTenantThemeResponse
-	(*UpsertTenantThemeRequest)(nil),             // 38: publira.v1.UpsertTenantThemeRequest
-	(*UpsertTenantThemeResponse)(nil),            // 39: publira.v1.UpsertTenantThemeResponse
+	(*ListPublishedSeriesRequest)(nil),  // 0: publira.v1.ListPublishedSeriesRequest
+	(*ListPublishedSeriesResponse)(nil), // 1: publira.v1.ListPublishedSeriesResponse
+	(*GetSeriesDetailRequest)(nil),      // 2: publira.v1.GetSeriesDetailRequest
+	(*GetSeriesDetailResponse)(nil),     // 3: publira.v1.GetSeriesDetailResponse
+	(*GetEpisodeDetailRequest)(nil),     // 4: publira.v1.GetEpisodeDetailRequest
+	(*GetEpisodeDetailResponse)(nil),    // 5: publira.v1.GetEpisodeDetailResponse
+	(*v1.TenantContext)(nil),            // 6: publira.types.v1.TenantContext
+	(*v1.Series)(nil),                   // 7: publira.types.v1.Series
+	(*v1.Episode)(nil),                  // 8: publira.types.v1.Episode
 }
 var file_publira_v1_catalog_proto_depIdxs = []int32{
-	0,  // 0: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.v1.TenantContext
-	0,  // 1: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.v1.TenantContext
-	11, // 2: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.v1.Series
-	0,  // 3: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.v1.TenantContext
-	12, // 4: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.v1.Episode
-	11, // 5: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.v1.Series
-	11, // 6: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.v1.Series
-	12, // 7: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.v1.Episode
-	10, // 8: publira.v1.Series.label:type_name -> publira.v1.Label
-	9,  // 9: publira.v1.Series.creators:type_name -> publira.v1.Creator
-	0,  // 10: publira.v1.CreateSeriesRequest.tenant:type_name -> publira.v1.TenantContext
-	11, // 11: publira.v1.CreateSeriesResponse.series:type_name -> publira.v1.Series
-	0,  // 12: publira.v1.UpdateSeriesRequest.tenant:type_name -> publira.v1.TenantContext
-	11, // 13: publira.v1.UpdateSeriesResponse.series:type_name -> publira.v1.Series
-	0,  // 14: publira.v1.ListSeriesRequest.tenant:type_name -> publira.v1.TenantContext
-	11, // 15: publira.v1.ListSeriesResponse.series:type_name -> publira.v1.Series
-	0,  // 16: publira.v1.GetSeriesRequest.tenant:type_name -> publira.v1.TenantContext
-	11, // 17: publira.v1.GetSeriesResponse.series:type_name -> publira.v1.Series
-	0,  // 18: publira.v1.CreateEpisodeRequest.tenant:type_name -> publira.v1.TenantContext
-	12, // 19: publira.v1.CreateEpisodeResponse.episode:type_name -> publira.v1.Episode
-	0,  // 20: publira.v1.UploadEpisodeImagesRequest.tenant:type_name -> publira.v1.TenantContext
-	23, // 21: publira.v1.UploadEpisodeImagesRequest.images:type_name -> publira.v1.EpisodeImageUpload
-	24, // 22: publira.v1.UploadEpisodeImagesResponse.images:type_name -> publira.v1.EpisodeImage
-	0,  // 23: publira.v1.UpdateEpisodePublishScheduleRequest.tenant:type_name -> publira.v1.TenantContext
-	12, // 24: publira.v1.UpdateEpisodePublishScheduleResponse.episode:type_name -> publira.v1.Episode
-	0,  // 25: publira.v1.CreateSessionRequest.tenant:type_name -> publira.v1.TenantContext
-	1,  // 26: publira.v1.CreateSessionResponse.user:type_name -> publira.v1.User
-	2,  // 27: publira.v1.CreateSessionResponse.session:type_name -> publira.v1.Session
-	0,  // 28: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.v1.TenantContext
-	0,  // 29: publira.v1.GetMeRequest.tenant:type_name -> publira.v1.TenantContext
-	1,  // 30: publira.v1.GetMeResponse.user:type_name -> publira.v1.User
-	0,  // 31: publira.v1.GetTenantThemeRequest.tenant:type_name -> publira.v1.TenantContext
-	35, // 32: publira.v1.GetTenantThemeResponse.theme:type_name -> publira.v1.TenantTheme
-	0,  // 33: publira.v1.UpsertTenantThemeRequest.tenant:type_name -> publira.v1.TenantContext
-	35, // 34: publira.v1.UpsertTenantThemeRequest.theme:type_name -> publira.v1.TenantTheme
-	35, // 35: publira.v1.UpsertTenantThemeResponse.theme:type_name -> publira.v1.TenantTheme
-	4,  // 36: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	3,  // 37: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	6,  // 38: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	13, // 39: publira.v1.AdminSeriesService.CreateSeries:input_type -> publira.v1.CreateSeriesRequest
-	15, // 40: publira.v1.AdminSeriesService.UpdateSeries:input_type -> publira.v1.UpdateSeriesRequest
-	17, // 41: publira.v1.AdminSeriesService.ListSeries:input_type -> publira.v1.ListSeriesRequest
-	19, // 42: publira.v1.AdminSeriesService.GetSeries:input_type -> publira.v1.GetSeriesRequest
-	21, // 43: publira.v1.AdminSeriesService.CreateEpisode:input_type -> publira.v1.CreateEpisodeRequest
-	25, // 44: publira.v1.AdminSeriesService.UploadEpisodeImages:input_type -> publira.v1.UploadEpisodeImagesRequest
-	27, // 45: publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule:input_type -> publira.v1.UpdateEpisodePublishScheduleRequest
-	29, // 46: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
-	31, // 47: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
-	33, // 48: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	36, // 49: publira.v1.TenantThemeService.GetTenantTheme:input_type -> publira.v1.GetTenantThemeRequest
-	38, // 50: publira.v1.TenantThemeService.UpsertTenantTheme:input_type -> publira.v1.UpsertTenantThemeRequest
-	5,  // 51: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	8,  // 52: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	7,  // 53: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	14, // 54: publira.v1.AdminSeriesService.CreateSeries:output_type -> publira.v1.CreateSeriesResponse
-	16, // 55: publira.v1.AdminSeriesService.UpdateSeries:output_type -> publira.v1.UpdateSeriesResponse
-	18, // 56: publira.v1.AdminSeriesService.ListSeries:output_type -> publira.v1.ListSeriesResponse
-	20, // 57: publira.v1.AdminSeriesService.GetSeries:output_type -> publira.v1.GetSeriesResponse
-	22, // 58: publira.v1.AdminSeriesService.CreateEpisode:output_type -> publira.v1.CreateEpisodeResponse
-	26, // 59: publira.v1.AdminSeriesService.UploadEpisodeImages:output_type -> publira.v1.UploadEpisodeImagesResponse
-	28, // 60: publira.v1.AdminSeriesService.UpdateEpisodePublishSchedule:output_type -> publira.v1.UpdateEpisodePublishScheduleResponse
-	30, // 61: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
-	32, // 62: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
-	34, // 63: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	37, // 64: publira.v1.TenantThemeService.GetTenantTheme:output_type -> publira.v1.GetTenantThemeResponse
-	39, // 65: publira.v1.TenantThemeService.UpsertTenantTheme:output_type -> publira.v1.UpsertTenantThemeResponse
-	51, // [51:66] is the sub-list for method output_type
-	36, // [36:51] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	6,  // 0: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	7,  // 1: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	6,  // 2: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	7,  // 3: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
+	8,  // 4: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
+	6,  // 5: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8,  // 6: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
+	7,  // 7: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
+	0,  // 8: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	2,  // 9: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	4,  // 10: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	1,  // 11: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	3,  // 12: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	5,  // 13: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	11, // [11:14] is the sub-list for method output_type
+	8,  // [8:11] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }
@@ -2565,9 +420,9 @@ func file_publira_v1_catalog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_catalog_proto_rawDesc), len(file_publira_v1_catalog_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   40,
+			NumMessages:   6,
 			NumExtensions: 0,
-			NumServices:   4,
+			NumServices:   1,
 		},
 		GoTypes:           file_publira_v1_catalog_proto_goTypes,
 		DependencyIndexes: file_publira_v1_catalog_proto_depIdxs,

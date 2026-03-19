@@ -4,247 +4,40 @@ package publira.v1;
 
 option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1";
 
-service CatalogService {
-  rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
-  rpc GetSeriesDetail(GetSeriesDetailRequest) returns (GetSeriesDetailResponse) {}
-  rpc GetEpisodeDetail(GetEpisodeDetailRequest) returns (GetEpisodeDetailResponse) {}
-}
-
-service AdminSeriesService {
-  rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
-  rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
-  rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
-  rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
-  rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
-  rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}
-  rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
-}
-
-service AuthService {
-  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
-  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
-  rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
-}
-
-service TenantThemeService {
-  rpc GetTenantTheme(GetTenantThemeRequest) returns (GetTenantThemeResponse) {}
-  rpc UpsertTenantTheme(UpsertTenantThemeRequest) returns (UpsertTenantThemeResponse) {}
-}
-
-message TenantContext {
-  string tenant_public_id = 1;
-}
-
-message User {
-  string public_id = 1;
-  string name = 2;
-  string role = 3;
-}
-
-message Session {
-  string session_id = 1;
-  string expires_at = 2;
-}
-
-message GetSeriesDetailRequest {
-  TenantContext tenant = 1;
-  string public_id = 2;
-}
+import "publira/types/v1/types.proto";
 
 message ListPublishedSeriesRequest {
-  TenantContext tenant = 1;
+  publira.types.v1.TenantContext tenant = 1;
   int32 limit = 2;
   int32 offset = 3;
 }
 
 message ListPublishedSeriesResponse {
-  repeated Series series = 1;
+  repeated publira.types.v1.Series series = 1;
+}
+
+message GetSeriesDetailRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetSeriesDetailResponse {
+  publira.types.v1.Series series = 1;
+  repeated publira.types.v1.Episode episodes = 2;
 }
 
 message GetEpisodeDetailRequest {
-  TenantContext tenant = 1;
+  publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
 }
 
 message GetEpisodeDetailResponse {
-  Episode episode = 1;
-  Series series = 2;
+  publira.types.v1.Episode episode = 1;
+  publira.types.v1.Series series = 2;
 }
 
-message GetSeriesDetailResponse {
-  Series series = 1;
-  repeated Episode episodes = 2;
-}
-
-message Creator {
-  string name = 1;
-  string role = 2;
-}
-
-message Label {
-  string name = 1;
-}
-
-message Series {
-  string public_id = 1;
-  string title = 2;
-  string synopsis = 3;
-  Label label = 4;
-  repeated Creator creators = 5;
-}
-
-message Episode {
-  string public_id = 1;
-  string title = 2;
-  int32 order_index = 3;
-  int32 price = 4;
-  int32 reading_period_hours = 5;
-  string status = 6;
-  string scheduled_at = 7;
-  string published_at = 8;
-}
-
-message CreateSeriesRequest {
-  TenantContext tenant = 1;
-  string title = 2;
-  string synopsis = 3;
-  string label_public_id = 4;
-  bool is_published = 5;
-}
-
-message CreateSeriesResponse {
-  Series series = 1;
-}
-
-message UpdateSeriesRequest {
-  TenantContext tenant = 1;
-  string public_id = 2;
-  string title = 3;
-  string synopsis = 4;
-  bool is_published = 5;
-}
-
-message UpdateSeriesResponse {
-  Series series = 1;
-}
-
-message ListSeriesRequest {
-  TenantContext tenant = 1;
-  int32 limit = 2;
-  int32 offset = 3;
-}
-
-message ListSeriesResponse {
-  repeated Series series = 1;
-}
-
-message GetSeriesRequest {
-  TenantContext tenant = 1;
-  string public_id = 2;
-}
-
-message GetSeriesResponse {
-  Series series = 1;
-}
-
-message CreateEpisodeRequest {
-  TenantContext tenant = 1;
-  string series_public_id = 2;
-  string title = 3;
-  int32 order_index = 4;
-  int32 price = 5;
-  int32 reading_period_hours = 6;
-  string scheduled_at = 7;
-}
-
-message CreateEpisodeResponse {
-  Episode episode = 1;
-}
-
-message EpisodeImageUpload {
-  string filename = 1;
-  string content_type = 2;
-  bytes data = 3;
-  int32 display_order = 4;
-}
-
-message EpisodeImage {
-  string id = 1;
-  string image_url = 2;
-  string content_type = 3;
-  int64 file_size_bytes = 4;
-  int32 display_order = 5;
-  int32 width = 6;
-  int32 height = 7;
-}
-
-message UploadEpisodeImagesRequest {
-  TenantContext tenant = 1;
-  string episode_public_id = 2;
-  repeated EpisodeImageUpload images = 3;
-}
-
-message UploadEpisodeImagesResponse {
-  repeated EpisodeImage images = 1;
-}
-
-message UpdateEpisodePublishScheduleRequest {
-  TenantContext tenant = 1;
-  string episode_public_id = 2;
-  string scheduled_at = 3;
-}
-
-message UpdateEpisodePublishScheduleResponse {
-  Episode episode = 1;
-}
-
-message CreateSessionRequest {
-  TenantContext tenant = 1;
-  string email = 2;
-  string password = 3;
-}
-
-message CreateSessionResponse {
-  User user = 1;
-  Session session = 2;
-}
-
-message DeleteSessionRequest {
-  TenantContext tenant = 1;
-  string session_id = 2;
-}
-
-message DeleteSessionResponse {}
-
-message GetMeRequest {
-  TenantContext tenant = 1;
-  string session_id = 2;
-}
-
-message GetMeResponse {
-  User user = 1;
-}
-
-message TenantTheme {
-  string primary_color = 1;
-  string secondary_color = 2;
-  string accent_color = 3;
-  string logo_url = 4;
-}
-
-message GetTenantThemeRequest {
-  TenantContext tenant = 1;
-}
-
-message GetTenantThemeResponse {
-  TenantTheme theme = 1;
-}
-
-message UpsertTenantThemeRequest {
-  TenantContext tenant = 1;
-  TenantTheme theme = 2;
-}
-
-message UpsertTenantThemeResponse {
-  TenantTheme theme = 1;
+service CatalogService {
+  rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
+  rpc GetSeriesDetail(GetSeriesDetailRequest) returns (GetSeriesDetailResponse) {}
+  rpc GetEpisodeDetail(GetEpisodeDetailRequest) returns (GetEpisodeDetailResponse) {}
 }
