@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -32,22 +32,22 @@ func TestTenantContextFromContext_NotPresent(t *testing.T) {
 // tenantRequest is a minimal Connect request message that satisfies tenantScopedRequest.
 type tenantRequest struct {
 	*emptypb.Empty
-	tenant *publirav1.TenantContext
+	tenant *publirattypesv1.TenantContext
 }
 
-func (r *tenantRequest) GetTenant() *publirav1.TenantContext { return r.tenant }
+func (r *tenantRequest) GetTenant() *publirattypesv1.TenantContext { return r.tenant }
 
 func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 	want := rpcmiddleware.SessionContext{
 		Tenant:  dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
 		Session: dbmodels.Session{ID: uuid.Must(uuid.NewV7())},
 	}
-	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		return want, nil
 	}
 
 	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
-	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirav1.TenantContext{TenantPublicId: "tenant-1"}})
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantPublicId: "tenant-1"}})
 	ctx, err := builder(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -78,12 +78,12 @@ func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 
 func TestBuildAdminSessionContext_AuthErrorPropagated(t *testing.T) {
 	authErr := connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
-	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		return rpcmiddleware.SessionContext{}, authErr
 	}
 
 	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
-	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirav1.TenantContext{TenantPublicId: "tenant-1"}})
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantPublicId: "tenant-1"}})
 	_, err := builder(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Errorf("error code = %v, want Unauthenticated", connect.CodeOf(err))
@@ -91,7 +91,7 @@ func TestBuildAdminSessionContext_AuthErrorPropagated(t *testing.T) {
 }
 
 func TestBuildAdminSessionContext_NonTenantRequestReturnsInternal(t *testing.T) {
-	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		return rpcmiddleware.SessionContext{}, nil
 	}
 
@@ -106,7 +106,7 @@ func TestBuildAdminSessionContext_NonTenantRequestReturnsInternal(t *testing.T) 
 
 func TestBuildAdminSessionContext_MissingTenantContextReturnsInvalidArgument(t *testing.T) {
 	authenticateCalled := false
-	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		authenticateCalled = true
 		return rpcmiddleware.SessionContext{}, nil
 	}
@@ -124,13 +124,13 @@ func TestBuildAdminSessionContext_MissingTenantContextReturnsInvalidArgument(t *
 
 func TestBuildAdminSessionContext_EmptyTenantPublicIDReturnsInvalidArgument(t *testing.T) {
 	authenticateCalled := false
-	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		authenticateCalled = true
 		return rpcmiddleware.SessionContext{}, nil
 	}
 
 	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
-	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirav1.TenantContext{TenantPublicId: "  "}})
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantPublicId: "  "}})
 	_, err := builder(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("error code = %v, want InvalidArgument", connect.CodeOf(err))

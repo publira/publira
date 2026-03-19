@@ -12,8 +12,8 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 	ts := httptest.NewServer(NewHandler(nil, nil))
 	t.Cleanup(ts.Close)
 
-	assertRouteStatus(t, ts, "/publira.v1.AdminSeriesService/ListSeries", false)
-	assertRouteStatus(t, ts, "/publira.v1.AdminAuthService/GetMe", false)
+	assertRouteStatus(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", false)
+	assertRouteStatus(t, ts, "/publira.admin.v1.AdminAuthService/GetMe", false)
 	assertRouteStatus(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)
 	assertRouteStatus(t, ts, "/publira.v1.AuthService/GetMe", true)
 }
