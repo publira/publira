@@ -53,6 +53,9 @@ importers:
 
   apps/web-admin:
     dependencies:
+      '@publira/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       next:
         specifier: 'catalog:'
         version: 16.1.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -84,6 +87,9 @@ importers:
 
   apps/web-auth:
     dependencies:
+      '@publira/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       next:
         specifier: 'catalog:'
         version: 16.1.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -115,6 +121,9 @@ importers:
 
   apps/web-catalog:
     dependencies:
+      '@publira/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       next:
         specifier: 'catalog:'
         version: 16.1.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -146,6 +155,9 @@ importers:
 
   apps/web-member:
     dependencies:
+      '@publira/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       next:
         specifier: 'catalog:'
         version: 16.1.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -177,6 +189,9 @@ importers:
 
   apps/web-public:
     dependencies:
+      '@publira/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       next:
         specifier: 'catalog:'
         version: 16.1.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -206,7 +221,24 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
-  packages/api-client: {}
+  packages/api-client:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.11.0
+        version: 2.11.0
+      '@connectrpc/connect':
+        specifier: ^2.1.1
+        version: 2.1.1(@bufbuild/protobuf@2.11.0)
+      '@connectrpc/connect-web':
+        specifier: ^2.1.1
+        version: 2.1.1(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.1(@bufbuild/protobuf@2.11.0))
+    devDependencies:
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.4(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   packages/next-config:
     dependencies:
@@ -248,11 +280,25 @@ packages:
     resolution: {integrity: sha512-91gAaWRznDwSX4E2tZ1YjBuIfnQVOFDCQ2r0Toby0gu4XEbyF623kXLMA8d4ZbCu+fINcrudkmEcwSUHgDDkNw==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
+  '@bufbuild/protobuf@2.11.0':
+    resolution: {integrity: sha512-sBXGT13cpmPR5BMgHE6UEEfEaShh5Ror6rfN3yEK5si7QVrtZg8LEPQb0VVhiLRUslD2yLnXtnRzG035J/mZXQ==}
+
   '@clack/core@1.1.0':
     resolution: {integrity: sha512-SVcm4Dqm2ukn64/8Gub2wnlA5nS2iWJyCkdNHcvNHPIeBTGojpdJ+9cZKwLfmqy7irD4N5qLteSilJlE0WLAtA==}
 
   '@clack/prompts@1.1.0':
     resolution: {integrity: sha512-pkqbPGtohJAvm4Dphs2M8xE29ggupihHdy1x84HNojZuMtFsHiUlRvqD24tM2+XmI+61LlfNceM3Wr7U5QES5g==}
+
+  '@connectrpc/connect-web@2.1.1':
+    resolution: {integrity: sha512-J8317Q2MaFRCT1jzVR1o06bZhDIBmU0UAzWx6xOIXzOq8+k71/+k7MUF7AwcBUX+34WIvbm5syRgC5HXQA8fOg==}
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
+      '@connectrpc/connect': 2.1.1
+
+  '@connectrpc/connect@2.1.1':
+    resolution: {integrity: sha512-JzhkaTvM73m2K1URT6tv53k2RwngSmCXLZJgK580qNQOXRzZRR/BCMfZw3h+90JpnG6XksP5bYT+cz0rpUzUWQ==}
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
 
   '@emnapi/core@1.9.0':
     resolution: {integrity: sha512-0DQ98G9ZQZOxfUcQn1waV2yS8aWdZ6kJMbYCJB3oUBecjWYO1fqJ+a1DRfPF3O5JEkwqwP1A9QEN/9mYm2Yd0w==}
@@ -1245,6 +1291,8 @@ snapshots:
       '@babel/helper-string-parser': 8.0.0-rc.3
       '@babel/helper-validator-identifier': 8.0.0-rc.2
 
+  '@bufbuild/protobuf@2.11.0': {}
+
   '@clack/core@1.1.0':
     dependencies:
       sisteransi: 1.0.5
@@ -1253,6 +1301,15 @@ snapshots:
     dependencies:
       '@clack/core': 1.1.0
       sisteransi: 1.0.5
+
+  '@connectrpc/connect-web@2.1.1(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.1(@bufbuild/protobuf@2.11.0))':
+    dependencies:
+      '@bufbuild/protobuf': 2.11.0
+      '@connectrpc/connect': 2.1.1(@bufbuild/protobuf@2.11.0)
+
+  '@connectrpc/connect@2.1.1(@bufbuild/protobuf@2.11.0)':
+    dependencies:
+      '@bufbuild/protobuf': 2.11.0
 
   '@emnapi/core@1.9.0':
     dependencies:

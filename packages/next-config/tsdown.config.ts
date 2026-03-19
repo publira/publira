@@ -1,9 +1,7 @@
-import type { Config } from "tsdown";
+import { defineConfig } from "tsdown";
 
-const config: Config = {
+export default defineConfig({
   dts: true,
   entry: "src/index.ts",
   format: "esm",
-};
-
-export default config;
+});

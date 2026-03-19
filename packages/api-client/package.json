@@ -2,5 +2,70 @@
   "name": "@publira/api-client",
   "version": "0.1.0",
   "private": true,
-  "type": "module"
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./public": {
+      "types": "./dist/public/index.d.mts",
+      "default": "./dist/public/index.mjs"
+    },
+    "./public/client": {
+      "types": "./dist/public/client.d.mts",
+      "default": "./dist/public/client.mjs"
+    },
+    "./public/auth": {
+      "types": "./dist/public/auth.d.mts",
+      "default": "./dist/public/auth.mjs"
+    },
+    "./public/catalog": {
+      "types": "./dist/public/catalog.d.mts",
+      "default": "./dist/public/catalog.mjs"
+    },
+    "./public/types": {
+      "types": "./dist/public/types.d.mts",
+      "default": "./dist/public/types.mjs"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.mts",
+      "default": "./dist/admin/index.mjs"
+    },
+    "./admin/client": {
+      "types": "./dist/admin/client.d.mts",
+      "default": "./dist/admin/client.mjs"
+    },
+    "./admin/auth": {
+      "types": "./dist/admin/auth.d.mts",
+      "default": "./dist/admin/auth.mjs"
+    },
+    "./admin/series": {
+      "types": "./dist/admin/series.d.mts",
+      "default": "./dist/admin/series.mjs"
+    },
+    "./admin/theme": {
+      "types": "./dist/admin/theme.d.mts",
+      "default": "./dist/admin/theme.mjs"
+    },
+    "./admin/types": {
+      "types": "./dist/admin/types.d.mts",
+      "default": "./dist/admin/types.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.11.0",
+    "@connectrpc/connect": "^2.1.1",
+    "@connectrpc/connect-web": "^2.1.1"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  }
 }
