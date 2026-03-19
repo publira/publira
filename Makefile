@@ -9,7 +9,7 @@ setup:
 
 gen:
 	sqlc generate
-	buf generate proto
+	buf generate
 
 db-init:
 	$(MIGRATE) up
