@@ -7,7 +7,8 @@ Go バックエンドです。単一モジュール `github.com/publira/publira/
 ```text
 server/
 ├── cmd/
-│   ├── api-server/        # ConnectRPC API サーバー
+│   ├── api-server/        # 公開向け ConnectRPC API サーバー
+│   ├── admin-api-server/  # 管理向け ConnectRPC API サーバー
 │   └── publish-episodes/  # 単発バッチ処理
 ├── gen/                   # buf 自動生成コード (編集禁止)
 └── internal/
@@ -34,6 +35,7 @@ make db-init
 make db-status
 make db-new name=add_sessions_table
 make dev-api
+make dev-admin-api
 make run-batch-publish
 cd server && go mod tidy
 cd server && go build ./...
@@ -53,6 +55,19 @@ cd server && go build ./...
   - `S3_ENDPOINT` (任意, MinIO 等)
   - `S3_FORCE_PATH_STYLE` (任意, `true`/`false`)
   - `S3_PUBLIC_BASE_URL` (任意)
+
+## API サーバ分離
+
+- 公開 API サーバー: `server/cmd/api-server`
+  - 公開サービス: `CatalogService`, `AuthService`
+  - 既定ポート: `:8000`
+- 管理 API サーバー: `server/cmd/admin-api-server`
+  - 管理サービス: `AdminSeriesService`
+  - 既定ポート: `:8001` (`ADMIN_API_ADDR` で変更可能)
+
+これにより、公開系と管理系を別プロセス・別経路で運用できます。
+
+詳細な方針と移行手順は [server/docs/api-separation.md](server/docs/api-separation.md) を参照してください。
 
 ## 初期データメモ
 
