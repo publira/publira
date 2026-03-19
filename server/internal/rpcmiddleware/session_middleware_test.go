@@ -39,8 +39,8 @@ func (r *tenantRequest) GetTenant() *publirav1.TenantContext { return r.tenant }
 
 func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 	want := rpcmiddleware.SessionContext{
-		Tenant:  dbmodels.Tenant{ID: uuid.New(), PublicID: "tenant-1"},
-		Session: dbmodels.Session{ID: uuid.New()},
+		Tenant:  dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
+		Session: dbmodels.Session{ID: uuid.Must(uuid.NewV7())},
 	}
 	authenticate := func(_ context.Context, _ *publirav1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		return want, nil

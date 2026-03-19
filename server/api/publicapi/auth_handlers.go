@@ -93,8 +93,13 @@ func (s *apiServer) CreateSession(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	sessionToken := hex.EncodeToString(rawToken)
+	sessionID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "session_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
-		ID:        uuid.New(),
+		ID:        sessionID,
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		TokenHash: auth.HashToken(sessionToken),

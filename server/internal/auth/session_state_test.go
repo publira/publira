@@ -61,9 +61,9 @@ func TestLookupSessionByTokenHashForTenant(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 
 			queries := dbmodels.New(db)
-			tenantID := uuid.New()
-			sessionID := uuid.New()
-			userID := uuid.New()
+			tenantID := uuid.Must(uuid.NewV7())
+			sessionID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
 
 			rows := sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
 				AddRow(sessionID, tenantID, userID, "hashed-token", tc.expiresAt, nullTimeValue(tc.revokedAt), now)
@@ -96,7 +96,7 @@ func TestLookupSessionByTokenHashForTenant_NotFound(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	queries := dbmodels.New(db)
-	tenantID := uuid.New()
+	tenantID := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta("FROM sessions")).
 		WithArgs(tenantID, "missing-token").
