@@ -1,6 +1,23 @@
 version: "3.8"
 
 services:
+  traefik:
+    image: traefik:3.6.10@sha256:c549d482c55d7a797398562064f35428cc53e748d84d7190997930e7b31bcc32
+    restart: unless-stopped
+    ports:
+      - "3080:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+    depends_on:
+      - app
+
   app:
     build:
       context: .
@@ -10,6 +27,48 @@ services:
       - ../..:/workspaces:cached
     depends_on:
       - db
+    labels:
+      # web-public fallback (port 3000)
+      - "traefik.enable=true"
+      - "traefik.http.routers.web-public.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.web-public.entrypoints=web"
+      - "traefik.http.routers.web-public.priority=1"
+      - "traefik.http.routers.web-public.service=web-public"
+      - "traefik.http.services.web-public.loadbalancer.server.port=3000"
+
+      # web-catalog (port 3001)
+      - "traefik.http.routers.web-catalog.rule=PathPrefix(`/authors`) || PathPrefix(`/series`) || PathPrefix(`/web-catalog-assets`)"
+      - "traefik.http.routers.web-catalog.entrypoints=web"
+      - "traefik.http.routers.web-catalog.service=web-catalog"
+      - "traefik.http.services.web-catalog.loadbalancer.server.port=3001"
+
+      # web-member (port 3002)
+      - "traefik.http.routers.web-member.rule=Path(`/my`) || PathPrefix(`/notifications`) || PathPrefix(`/settings`) || PathPrefix(`/web-member-assets`)"
+      - "traefik.http.routers.web-member.entrypoints=web"
+      - "traefik.http.routers.web-member.service=web-member"
+      - "traefik.http.services.web-member.loadbalancer.server.port=3002"
+
+      # web-auth (port 3003)
+      - "traefik.http.routers.web-auth.rule=Path(`/login`) || Path(`/signup`) || Path(`/logout`) || PathPrefix(`/web-auth-assets`)"
+      - "traefik.http.routers.web-auth.entrypoints=web"
+      - "traefik.http.routers.web-auth.service=web-auth"
+      - "traefik.http.services.web-auth.loadbalancer.server.port=3003"
+
+      # web-admin on dedicated host: admin.*:3080
+      - "traefik.http.routers.web-admin.rule=HostRegexp(`admin.{domain:.+}`)"
+      - "traefik.http.routers.web-admin.entrypoints=web"
+      - "traefik.http.routers.web-admin.priority=10"
+      - "traefik.http.routers.web-admin.service=web-admin"
+      - "traefik.http.services.web-admin.loadbalancer.server.port=4000"
+
+      # api-server on /api -> app:8000 (strip /api before forwarding)
+      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.routers.api.priority=100"
+      - "traefik.http.routers.api.middlewares=api-strip"
+      - "traefik.http.routers.api.service=api"
+      - "traefik.http.middlewares.api-strip.stripprefix.prefixes=/api"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
 
   db:
     image: postgres:18.3-alpine3.23@sha256:4da1a4828be12604092fa55311276f08f9224a74a62dcb4708bd7439e2a03911

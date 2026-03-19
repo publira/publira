@@ -30,6 +30,9 @@
       ]
     }
   },
-  "forwardPorts": [3000, 4000, 5432, 8080],
+  "forwardPorts": [3080, 8080],
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
   "postCreateCommand": "make setup"
 }

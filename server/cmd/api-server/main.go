@@ -86,8 +86,8 @@ func main() {
 		os.Exit(1)
 	}
 	handler := apiserver.NewHandler(dbmodels.New(db), storageProvider)
-	logger.Info("starting api server", "addr", ":8080")
-	if err := http.ListenAndServe(":8080", h2c.NewHandler(handler, &http2.Server{})); err != nil {
+	logger.Info("starting api server", "addr", ":8000")
+	if err := http.ListenAndServe(":8000", h2c.NewHandler(handler, &http2.Server{})); err != nil {
 		logger.Error("server failed", "error", err)
 		os.Exit(1)
 	}
