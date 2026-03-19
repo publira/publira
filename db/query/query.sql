@@ -274,6 +274,28 @@ FROM episodes e
 WHERE s.tenant_id = $1
     AND e.public_id = $2
 LIMIT 1;
+-- name: GetPublishedEpisodeByPublicIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND e.public_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+LIMIT 1;
 -- name: CreateEpisodeImage :one
 INSERT INTO episode_images (
         id,
