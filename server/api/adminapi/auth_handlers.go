@@ -12,14 +12,15 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
 func (s *adminServer) currentUserFromSession(
 	ctx context.Context,
-	tenantCtx *publirav1.TenantContext,
+	tenantCtx *publirattypesv1.TenantContext,
 	explicitToken string,
 	headers http.Header,
 ) (dbmodels.Tenant, dbmodels.User, error) {
@@ -39,8 +40,8 @@ func (s *adminServer) currentUserFromSession(
 
 func (s *adminServer) CreateSession(
 	ctx context.Context,
-	req *connect.Request[publirav1.CreateSessionRequest],
-) (*connect.Response[publirav1.CreateSessionResponse], error) {
+	req *connect.Request[publiraadminv1.AdminAuthServiceCreateSessionRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceCreateSessionResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_login", "failure", "", "", "tenant_not_found")
@@ -81,9 +82,9 @@ func (s *adminServer) CreateSession(
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	resp := &publirav1.CreateSessionResponse{
-		User:    &publirav1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
-		Session: &publirav1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
+	resp := &publiraadminv1.AdminAuthServiceCreateSessionResponse{
+		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
+		Session: &publirattypesv1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
 	}
 	response := connect.NewResponse(resp)
 	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
@@ -93,15 +94,15 @@ func (s *adminServer) CreateSession(
 
 func (s *adminServer) DeleteSession(
 	ctx context.Context,
-	req *connect.Request[publirav1.DeleteSessionRequest],
-) (*connect.Response[publirav1.DeleteSessionResponse], error) {
+	req *connect.Request[publiraadminv1.AdminAuthServiceDeleteSessionRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceDeleteSessionResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_logout", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
 	sessionToken, ok := auth.SessionTokenFromRequest(req.Msg.SessionId, req.Header())
-	response := connect.NewResponse(&publirav1.DeleteSessionResponse{})
+	response := connect.NewResponse(&publiraadminv1.AdminAuthServiceDeleteSessionResponse{})
 	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
 	if !ok {
 		auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "no_session_cookie")
@@ -131,11 +132,11 @@ func (s *adminServer) DeleteSession(
 
 func (s *adminServer) GetMe(
 	ctx context.Context,
-	req *connect.Request[publirav1.GetMeRequest],
-) (*connect.Response[publirav1.GetMeResponse], error) {
+	req *connect.Request[publiraadminv1.AdminAuthServiceGetMeRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceGetMeResponse], error) {
 	_, user, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirav1.GetMeResponse{User: &publirav1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role}}), nil
+	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role}}), nil
 }

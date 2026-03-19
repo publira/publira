@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
@@ -32,13 +32,13 @@ type SessionContext struct {
 // SessionAuthenticator resolves a session from request metadata.
 type SessionAuthenticator func(
 	ctx context.Context,
-	tenantCtx *publirav1.TenantContext,
+	tenantCtx *publirattypesv1.TenantContext,
 	explicitToken string,
 	headers http.Header,
 ) (SessionContext, error)
 
 type tenantScopedRequest interface {
-	GetTenant() *publirav1.TenantContext
+	GetTenant() *publirattypesv1.TenantContext
 }
 
 func withSessionContext(ctx context.Context, sessionCtx SessionContext) context.Context {
@@ -61,7 +61,7 @@ func TenantContextFromContext(ctx context.Context) (TenantContext, bool) {
 	return tenantCtx, ok
 }
 
-func tenantPublicIDFromRequest(tenantCtx *publirav1.TenantContext) (string, error) {
+func tenantPublicIDFromRequest(tenantCtx *publirattypesv1.TenantContext) (string, error) {
 	if tenantCtx == nil {
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
 	}

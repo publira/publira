@@ -9,7 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/storage"
@@ -28,14 +28,14 @@ func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
 }
 
-func tenantPublicIDFromContext(ctx *publirav1.TenantContext) (string, error) {
+func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
 	if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
 	}
 	return ctx.TenantPublicId, nil
 }
 
-func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirav1.TenantContext) (dbmodels.Tenant, error) {
+func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
 	tenantPublicID, err := tenantPublicIDFromContext(tenantCtx)
 	if err != nil {
 		return dbmodels.Tenant{}, err

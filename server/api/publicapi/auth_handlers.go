@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
@@ -20,7 +21,7 @@ import (
 
 func (s *apiServer) authenticateSession(
 	ctx context.Context,
-	tenantCtx *publirav1.TenantContext,
+	tenantCtx *publirattypesv1.TenantContext,
 	explicitToken string,
 	headers http.Header,
 ) (rpcmiddleware.SessionContext, error) {
@@ -47,7 +48,7 @@ func (s *apiServer) authenticateSession(
 
 func (s *apiServer) currentUserFromSession(
 	ctx context.Context,
-	tenantCtx *publirav1.TenantContext,
+	tenantCtx *publirattypesv1.TenantContext,
 	explicitToken string,
 	headers http.Header,
 ) (dbmodels.Tenant, dbmodels.User, error) {
@@ -110,8 +111,8 @@ func (s *apiServer) CreateSession(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	resp := &publirav1.CreateSessionResponse{
-		User:    &publirav1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
-		Session: &publirav1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
+		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
+		Session: &publirattypesv1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
 	}
 	response := connect.NewResponse(resp)
 	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
@@ -165,5 +166,5 @@ func (s *apiServer) GetMe(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirav1.GetMeResponse{User: &publirav1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role}}), nil
+	return connect.NewResponse(&publirav1.GetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role}}), nil
 }

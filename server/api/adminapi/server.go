@@ -10,8 +10,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
-	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -32,14 +32,14 @@ func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
 }
 
-func tenantPublicIDFromContext(ctx *publirav1.TenantContext) (string, error) {
+func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
 	if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
 	}
 	return ctx.TenantPublicId, nil
 }
 
-func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publirav1.TenantContext) (dbmodels.Tenant, error) {
+func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		return sessionCtx.Tenant, nil
 	}
@@ -59,7 +59,7 @@ func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publirav1.
 
 func (s *adminServer) authenticateSession(
 	ctx context.Context,
-	tenantCtx *publirav1.TenantContext,
+	tenantCtx *publirattypesv1.TenantContext,
 	explicitToken string,
 	headers http.Header,
 ) (rpcmiddleware.SessionContext, error) {
@@ -97,7 +97,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler 
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	adminPath, adminHandler := publirav1connect.NewAdminSeriesServiceHandler(
+	adminPath, adminHandler := publiraadminv1connect.NewAdminSeriesServiceHandler(
 		server,
 		connect.WithInterceptors(
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
@@ -106,7 +106,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler 
 		),
 	)
 	mux.Handle(adminPath, adminHandler)
-	adminAuthPath, adminAuthHandler := publirav1connect.NewAdminAuthServiceHandler(server)
+	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
 	mux.Handle(adminAuthPath, adminAuthHandler)
 	return mux
 }

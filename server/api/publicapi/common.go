@@ -3,12 +3,12 @@ package publicapi
 import (
 	"time"
 
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
-func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirav1.Episode {
-	episode := &publirav1.Episode{
+func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
 		PublicId:   row.PublicID,
 		Title:      row.Title,
 		OrderIndex: row.OrderIndex,
