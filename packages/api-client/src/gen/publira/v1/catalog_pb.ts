@@ -125,6 +125,10 @@ export const GetEpisodeDetailRequestSchema: GenMessage<GetEpisodeDetailRequest> 
   messageDesc(file_publira_v1_catalog, 4);
 
 /**
+ * Episode metadata for public viewing.
+ * Response is intentionally metadata-only to keep payload size bounded.
+ * Episode body/content is excluded from API response and logging scope.
+ *
  * @generated from message publira.v1.GetEpisodeDetailResponse
  */
 export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailResponse"> & {
@@ -167,6 +171,10 @@ export const CatalogService: GenService<{
     output: typeof GetSeriesDetailResponseSchema;
   },
   /**
+   * Returns only currently published episodes in the requested tenant.
+   * Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
+   * to prevent content existence leakage.
+   *
    * @generated from rpc publira.v1.CatalogService.GetEpisodeDetail
    */
   getEpisodeDetail: {

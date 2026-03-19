@@ -286,6 +286,64 @@ func (q *Queries) GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelB
 	return i, err
 }
 
+const getPublishedEpisodeByPublicIDForTenant = `-- name: GetPublishedEpisodeByPublicIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND e.public_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+LIMIT 1
+`
+
+type GetPublishedEpisodeByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+type GetPublishedEpisodeByPublicIDForTenantRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Title              string        `json:"title"`
+	OrderIndex         int32         `json:"order_index"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Status             string        `json:"status"`
+	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+}
+
+func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedEpisodeByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var i GetPublishedEpisodeByPublicIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.OrderIndex,
+		&i.Price,
+		&i.ReadingPeriodHours,
+		&i.Status,
+		&i.ScheduledAt,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
 const getSeriesByPublicIDForTenant = `-- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,

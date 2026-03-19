@@ -137,12 +137,12 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	row, err := s.queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&publirav1.GetEpisodeDetailResponse{Episode: toProtoEpisode(row)}), nil
+	return connect.NewResponse(&publirav1.GetEpisodeDetailResponse{Episode: toProtoPublishedEpisode(row)}), nil
 }

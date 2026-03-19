@@ -31,6 +31,9 @@ message GetEpisodeDetailRequest {
   string public_id = 2;
 }
 
+// Episode metadata for public viewing.
+// Response is intentionally metadata-only to keep payload size bounded.
+// Episode body/content is excluded from API response and logging scope.
 message GetEpisodeDetailResponse {
   publira.types.v1.Episode episode = 1;
   publira.types.v1.Series series = 2;
@@ -39,5 +42,8 @@ message GetEpisodeDetailResponse {
 service CatalogService {
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
   rpc GetSeriesDetail(GetSeriesDetailRequest) returns (GetSeriesDetailResponse) {}
+  // Returns only currently published episodes in the requested tenant.
+  // Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
+  // to prevent content existence leakage.
   rpc GetEpisodeDetail(GetEpisodeDetailRequest) returns (GetEpisodeDetailResponse) {}
 }
