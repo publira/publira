@@ -14,8 +14,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/adminapi"
-	publirav1 "github.com/publira/publira/server/gen/publira/v1"
-	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/storage"
@@ -121,9 +122,9 @@ func TestAdminSeriesRequiresSession(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	_, err := client.ListSeries(context.Background(), connect.NewRequest(&publirav1.ListSeriesRequest{
-		Tenant: &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListSeries(context.Background(), connect.NewRequest(&publiraadminv1.ListSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListSeries error code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
@@ -149,9 +150,9 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
 			AddRow(seriesID, "SERIES001", "Series Title", "Synopsis", true, now))
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publirav1.ListSeriesRequest{
-		Tenant: &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 	})
 	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
 	resp, err := client.ListSeries(context.Background(), req)
@@ -177,9 +178,9 @@ func TestCreateSeriesRequiresTitle(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publirav1.CreateSeriesRequest{
-		Tenant: &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		Title:  "   ",
 	})
 	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
@@ -217,9 +218,9 @@ func TestCreateSeriesSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at"}).
 			AddRow(seriesID, "Synopsis", nil, true, now))
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publirav1.CreateSeriesRequest{
-		Tenant:        &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant:        &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		Title:         "New Series",
 		Synopsis:      "Synopsis",
 		LabelPublicId: "LABEL001",
@@ -250,9 +251,9 @@ func TestUpdateSeriesRequiresTitle(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publirav1.UpdateSeriesRequest{
-		Tenant:   &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		PublicId: "SERIES001",
 		Title:    "\t",
 	})
@@ -295,9 +296,9 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
 			AddRow(seriesID, "SERIES001", "After", "New synopsis", true, now))
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publirav1.UpdateSeriesRequest{
-		Tenant:      &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		PublicId:    "SERIES001",
 		Title:       "After",
 		Synopsis:    "New synopsis",
@@ -347,9 +348,9 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil))
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publirav1.CreateEpisodeRequest{
-		Tenant:             &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
+		Tenant:             &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		SeriesPublicId:     "SERIES001",
 		Title:              "Episode 1",
 		OrderIndex:         1,
@@ -378,14 +379,14 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 	tests := []struct {
 		name     string
-		request  *publirav1.CreateEpisodeRequest
+		request  *publiraadminv1.CreateEpisodeRequest
 		setup    func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
 		wantCode connect.Code
 	}{
 		{
 			name: "invalid-title",
-			request: &publirav1.CreateEpisodeRequest{
-				Tenant:         &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				SeriesPublicId: "SERIES001",
 				Title:          "  ",
 				OrderIndex:     1,
@@ -394,8 +395,8 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		},
 		{
 			name: "invalid-scheduled-at",
-			request: &publirav1.CreateEpisodeRequest{
-				Tenant:         &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				SeriesPublicId: "SERIES001",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -405,8 +406,8 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		},
 		{
 			name: "past-scheduled-at",
-			request: &publirav1.CreateEpisodeRequest{
-				Tenant:         &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				SeriesPublicId: "SERIES001",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -416,8 +417,8 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		},
 		{
 			name: "boundary-scheduled-at-now",
-			request: &publirav1.CreateEpisodeRequest{
-				Tenant:         &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				SeriesPublicId: "SERIES001",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -427,8 +428,8 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		},
 		{
 			name: "series-cross-tenant-or-not-found",
-			request: &publirav1.CreateEpisodeRequest{
-				Tenant:         &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				SeriesPublicId: "SERIES_OTHER_TENANT",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -458,7 +459,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 			req := connect.NewRequest(tc.request)
 			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
 
@@ -497,11 +498,11 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(1), int32(1), int32(1), now))
 
-	client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publirav1.UploadEpisodeImagesRequest{
-		Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		EpisodePublicId: "EPISODE001",
-		Images: []*publirav1.EpisodeImageUpload{
+		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
 			{Filename: "002.jpg", ContentType: "image/jpeg", Data: oneByOneJPEG, DisplayOrder: 1},
 		},
@@ -527,24 +528,24 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 	tests := []struct {
 		name     string
-		request  *publirav1.UploadEpisodeImagesRequest
+		request  *publiraadminv1.UploadEpisodeImagesRequest
 		setup    func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
 		wantCode connect.Code
 	}{
 		{
 			name: "images-required",
-			request: &publirav1.UploadEpisodeImagesRequest{
-				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.UploadEpisodeImagesRequest{
+				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				EpisodePublicId: "EPISODE001",
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},
 		{
 			name: "episode-not-found",
-			request: &publirav1.UploadEpisodeImagesRequest{
-				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.UploadEpisodeImagesRequest{
+				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				EpisodePublicId: "EPISODE_NOT_FOUND",
-				Images:          []*publirav1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: 0}},
+				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: 0}},
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
@@ -555,10 +556,10 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 		},
 		{
 			name: "invalid-content-type",
-			request: &publirav1.UploadEpisodeImagesRequest{
-				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			request: &publiraadminv1.UploadEpisodeImagesRequest{
+				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				EpisodePublicId: "EPISODE001",
-				Images:          []*publirav1.EpisodeImageUpload{{Filename: "bad.txt", ContentType: "text/plain", Data: oneByOnePNG, DisplayOrder: 0}},
+				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "bad.txt", ContentType: "text/plain", Data: oneByOnePNG, DisplayOrder: 0}},
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
@@ -586,7 +587,7 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 			req := connect.NewRequest(tc.request)
 			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
 
@@ -656,9 +657,9 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 				tc.setup(mock, tenantID, now)
 			}
 
-			client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(&publirav1.UpdateEpisodePublishScheduleRequest{
-				Tenant:          &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(&publiraadminv1.UpdateEpisodePublishScheduleRequest{
+				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				EpisodePublicId: "EPISODE001",
 				ScheduledAt:     tc.scheduled,
 			})
@@ -728,9 +729,9 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 
-			client := publirav1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-			req := connect.NewRequest(&publirav1.GetSeriesRequest{
-				Tenant:   &publirav1.TenantContext{TenantPublicId: "TENANT"},
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+				Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				PublicId: tc.publicID,
 			})
 			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))

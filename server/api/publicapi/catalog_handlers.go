@@ -20,7 +20,15 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.queries.ListActiveSeries(ctx, tenant.ID)
+	limit := req.Msg.Limit
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	offset := req.Msg.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	rows, err := s.queries.ListActiveSeries(ctx, dbmodels.ListActiveSeriesParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

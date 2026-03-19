@@ -576,8 +576,17 @@ SELECT s.id,
 FROM series s
 WHERE s.tenant_id = $1
     AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
 ORDER BY s.published_at DESC
+LIMIT $2 OFFSET $3
 `
+
+type ListActiveSeriesParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
 
 type ListActiveSeriesRow struct {
 	ID          uuid.UUID      `json:"id"`
@@ -588,8 +597,8 @@ type ListActiveSeriesRow struct {
 }
 
 // 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
-func (q *Queries) ListActiveSeries(ctx context.Context, tenantID uuid.UUID) ([]ListActiveSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeries, tenantID)
+func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveSeries, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
