@@ -136,6 +136,7 @@ SELECT s.id,
     l.name AS label_name,
     s.synopsis,
     s.is_published,
+    s.published_at,
     -- 複数のクリエイター情報をJSON配列として1カラムにまとめる
     COALESCE(
         json_agg(
@@ -178,6 +179,8 @@ SELECT s.id,
                 JOIN episode_listings el ON el.episode_id = e.id
             WHERE e.series_id = s.id
                 AND el.status = 'published'
+                AND el.published_at IS NOT NULL
+                AND el.published_at <= NOW()
         ),
         '[]'
     )::jsonb AS episodes
@@ -187,7 +190,6 @@ FROM series s
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.public_id = $1
     AND s.tenant_id = $2
-    AND s.is_published = true
 GROUP BY s.id,
     l.id;
 -- name: GetTenantByPublicID :one
