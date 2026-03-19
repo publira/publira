@@ -1,4 +1,4 @@
-package apiserver
+package publicapi
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	dbmodels "github.com/publira/publira/server/internal/db"
-	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -37,9 +36,6 @@ func tenantPublicIDFromContext(ctx *publirav1.TenantContext) (string, error) {
 }
 
 func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirav1.TenantContext) (dbmodels.Tenant, error) {
-	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		return sessionCtx.Tenant, nil
-	}
 	tenantPublicID, err := tenantPublicIDFromContext(tenantCtx)
 	if err != nil {
 		return dbmodels.Tenant{}, err
@@ -54,9 +50,17 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirav1.Te
 	return tenant, nil
 }
 
+// NewHandler は公開 API 専用の HTTP ハンドラを返します。
+// CatalogService と AuthService のみ公開し、管理 API (AdminSeriesService) は含みません。
 func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler {
 	server := &apiServer{queries: queries, storage: storageProvider}
 	mux := http.NewServeMux()
+	registerHealthz(mux)
+	registerPublicRoutes(mux, server)
+	return mux
+}
+
+func registerHealthz(mux *http.ServeMux) {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -65,11 +69,11 @@ func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler 
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+}
+
+func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	path, handler := publirav1connect.NewCatalogServiceHandler(server)
 	mux.Handle(path, handler)
-	adminPath, adminHandler := publirav1connect.NewAdminSeriesServiceHandler(server, connect.WithInterceptors(rpcmiddleware.NewUnaryContextBuilderInterceptor(rpcmiddleware.BuildAdminSessionContext(server.authenticateSession))))
-	mux.Handle(adminPath, adminHandler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server)
 	mux.Handle(authPath, authHandler)
-	return mux
 }

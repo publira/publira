@@ -8,12 +8,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"github.com/publira/publira/server/api/publicapi"
+	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/storage"
@@ -21,8 +22,13 @@ import (
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
 )
 
+const (
+	defaultAdminServerURL = ":8001"
+)
+
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	cfg, err := config.New()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
@@ -39,9 +45,15 @@ func main() {
 		logger.Error("failed to initialize storage provider", "error", err)
 		os.Exit(1)
 	}
-	handler := publicapi.NewHandler(dbmodels.New(db), storageProvider)
-	logger.Info("starting public api server", "addr", ":8000")
-	if err := http.ListenAndServe(":8000", h2c.NewHandler(handler, &http2.Server{})); err != nil {
+
+	addr := strings.TrimSpace(os.Getenv("ADMIN_API_ADDR"))
+	if addr == "" {
+		addr = defaultAdminServerURL
+	}
+
+	handler := adminapi.NewHandler(dbmodels.New(db), storageProvider)
+	logger.Info("starting admin api server", "addr", addr)
+	if err := http.ListenAndServe(addr, h2c.NewHandler(handler, &http2.Server{})); err != nil {
 		logger.Error("server failed", "error", err)
 		os.Exit(1)
 	}
