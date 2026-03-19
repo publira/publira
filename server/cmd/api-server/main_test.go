@@ -23,6 +23,7 @@ import (
 const (
 	getTenantByPublicIDQuery           = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
 	listActiveSeriesQuery              = "-- name: ListActiveSeries :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.is_published = true\n    AND s.published_at IS NOT NULL\n    AND s.published_at <= NOW()\nORDER BY s.published_at DESC\nLIMIT $2 OFFSET $3\n"
+	getSeriesDetailQuery               = "-- name: GetSeriesDetail :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    l.name AS label_name,\n    s.synopsis,\n    s.is_published,\n    s.published_at,\n    -- 複数のクリエイター情報をJSON配列として1カラムにまとめる\n    COALESCE(\n        json_agg(\n            json_build_object(\n                'name',\n                c.name,\n                'role',\n                sc.role\n            )\n            ORDER BY sc.display_order ASC\n        ) FILTER (\n            WHERE c.id IS NOT NULL\n        ),\n        '[]'\n    )::jsonb AS creators,\n    COALESCE(\n        (\n            SELECT json_agg(\n                    json_build_object(\n                        'public_id',\n                        e.public_id,\n                        'title',\n                        e.title,\n                        'order_index',\n                        e.order_index,\n                        'price',\n                        el.price,\n                        'reading_period_hours',\n                        el.reading_period_hours,\n                        'status',\n                        el.status,\n                        'scheduled_at',\n                        el.scheduled_at,\n                        'published_at',\n                        el.published_at\n                    )\n                    ORDER BY e.order_index ASC\n                )\n            FROM episodes e\n                JOIN episode_listings el ON el.episode_id = e.id\n            WHERE e.series_id = s.id\n                AND el.status = 'published'\n                AND el.published_at IS NOT NULL\n                AND el.published_at <= NOW()\n        ),\n        '[]'\n    )::jsonb AS episodes\nFROM series s\n    LEFT JOIN labels l ON s.label_id = l.id\n    LEFT JOIN series_creators sc ON s.id = sc.series_id\n    LEFT JOIN creators c ON sc.creator_id = c.id\nWHERE s.public_id = $1\n    AND s.tenant_id = $2\nGROUP BY s.id,\n    l.id\n"
 	getEpisodeByPublicIDForTenantQuery = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
 )
 
@@ -152,6 +153,103 @@ func TestListActiveSeriesQueryHasPublicationGuards(t *testing.T) {
 			t.Fatalf("listActiveSeriesQuery does not contain %q", snippet)
 		}
 	}
+}
+
+func TestCatalogGetSeriesDetailContract(t *testing.T) {
+	testServer, mock := newTestAPIServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
+		WithArgs("SERIESPUB", tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_name", "synopsis", "is_published", "published_at", "creators", "episodes"}).
+			AddRow(
+				seriesID,
+				"SERIESPUB",
+				"Public Series",
+				"Weekly Jump",
+				"Public Synopsis",
+				true,
+				now,
+				[]byte(`[{"name":"Author A","role":"writer"}]`),
+				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z"}]`),
+			))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		PublicId: "SERIESPUB",
+	}))
+	if err != nil {
+		t.Fatalf("GetSeriesDetail: %v", err)
+	}
+
+	if resp.Msg.Series == nil {
+		t.Fatalf("series is nil")
+	}
+	if resp.Msg.Series.PublicId != "SERIESPUB" {
+		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Msg.Series.PublicId)
+	}
+	if resp.Msg.Series.Label == nil || resp.Msg.Series.Label.Name != "Weekly Jump" {
+		t.Fatalf("series label = %+v, want Weekly Jump", resp.Msg.Series.Label)
+	}
+	if len(resp.Msg.Series.Creators) != 1 || resp.Msg.Series.Creators[0].Name != "Author A" {
+		t.Fatalf("series creators = %+v, want one creator Author A", resp.Msg.Series.Creators)
+	}
+	if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].PublicId != "EP001" {
+		t.Fatalf("episodes = %+v, want one published episode EP001", resp.Msg.Episodes)
+	}
+
+	assertExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailReturnsPermissionDeniedForUnpublishedSeries(t *testing.T) {
+	testServer, mock := newTestAPIServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
+		WithArgs("SERIES_DRAFT", tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_name", "synopsis", "is_published", "published_at", "creators", "episodes"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_DRAFT", "Draft Series", nil, nil, false, nil, []byte(`[]`), []byte(`[]`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		PublicId: "SERIES_DRAFT",
+	}))
+
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodePermissionDenied)
+	}
+
+	assertExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailReturnsNotFoundForMissingSeries(t *testing.T) {
+	testServer, mock := newTestAPIServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
+		WithArgs("SERIES_MISSING", tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_name", "synopsis", "is_published", "published_at", "creators", "episodes"}))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		PublicId: "SERIES_MISSING",
+	}))
+
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
+	}
+
+	assertExpectations(t, mock)
 }
 
 func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {

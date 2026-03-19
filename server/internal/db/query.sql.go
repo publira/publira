@@ -334,6 +334,7 @@ SELECT s.id,
     l.name AS label_name,
     s.synopsis,
     s.is_published,
+    s.published_at,
     -- 複数のクリエイター情報をJSON配列として1カラムにまとめる
     COALESCE(
         json_agg(
@@ -376,6 +377,8 @@ SELECT s.id,
                 JOIN episode_listings el ON el.episode_id = e.id
             WHERE e.series_id = s.id
                 AND el.status = 'published'
+                AND el.published_at IS NOT NULL
+                AND el.published_at <= NOW()
         ),
         '[]'
     )::jsonb AS episodes
@@ -385,7 +388,6 @@ FROM series s
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.public_id = $1
     AND s.tenant_id = $2
-    AND s.is_published = true
 GROUP BY s.id,
     l.id
 `
@@ -402,6 +404,7 @@ type GetSeriesDetailRow struct {
 	LabelName   sql.NullString  `json:"label_name"`
 	Synopsis    sql.NullString  `json:"synopsis"`
 	IsPublished bool            `json:"is_published"`
+	PublishedAt sql.NullTime    `json:"published_at"`
 	Creators    json.RawMessage `json:"creators"`
 	Episodes    json.RawMessage `json:"episodes"`
 }
@@ -416,6 +419,7 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.LabelName,
 		&i.Synopsis,
 		&i.IsPublished,
+		&i.PublishedAt,
 		&i.Creators,
 		&i.Episodes,
 	)
