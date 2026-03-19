@@ -33,6 +33,7 @@ dev-api:
 
 dev-web:
 	pnpm turbo run dev
+	# web-public(3000) web-catalog(3001) web-member(3002) web-auth(3003) web-admin(4000)
 
 run-batch-publish:
 	APP_ENV=local go run ./server/cmd/publish-episodes

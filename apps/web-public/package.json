@@ -1,17 +1,17 @@
 {
-  "name": "@publira/web-admin",
+  "name": "@publira/web-public",
   "version": "0.1.0",
   "private": true,
   "description": "",
   "repository": {
     "type": "git",
     "url": "https://github.com/publira/publira.git",
-    "directory": "apps/web-admin"
+    "directory": "apps/web-public"
   },
   "type": "module",
   "scripts": {
     "build": "next build",
-    "dev": "next dev --port 4000",
+    "dev": "next dev --port 3000",
     "start": "next start",
     "test": "vitest --run",
     "typegen": "next typegen"
