@@ -29,7 +29,7 @@ type Querier interface {
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
-	ListActiveSeries(ctx context.Context, tenantID uuid.UUID) ([]ListActiveSeriesRow, error)
+	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)

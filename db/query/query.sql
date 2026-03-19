@@ -67,7 +67,10 @@ SELECT s.id,
 FROM series s
 WHERE s.tenant_id = $1
     AND s.is_published = true
-ORDER BY s.published_at DESC;
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+ORDER BY s.published_at DESC
+LIMIT $2 OFFSET $3;
 -- name: CreateEpisodeBase :one
 -- エピソードのBaseレコードを作成する
 INSERT INTO episodes (
