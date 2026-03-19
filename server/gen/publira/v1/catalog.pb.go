@@ -282,6 +282,9 @@ func (x *GetEpisodeDetailRequest) GetPublicId() string {
 	return ""
 }
 
+// Episode metadata for public viewing.
+// Response is intentionally metadata-only to keep payload size bounded.
+// Episode body/content is excluded from API response and logging scope.
 type GetEpisodeDetailResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Episode       *v1.Episode            `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`

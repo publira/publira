@@ -48,6 +48,9 @@ const (
 type CatalogServiceClient interface {
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
+	// Returns only currently published episodes in the requested tenant.
+	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
+	// to prevent content existence leakage.
 	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
 }
 
@@ -109,6 +112,9 @@ func (c *catalogServiceClient) GetEpisodeDetail(ctx context.Context, req *connec
 type CatalogServiceHandler interface {
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
+	// Returns only currently published episodes in the requested tenant.
+	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
+	// to prevent content existence leakage.
 	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
 }
 
