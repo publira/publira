@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message GetTenantThemeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantThemeResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
+message UpsertTenantThemeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  publira.types.v1.TenantTheme theme = 2;
+}
+
+message UpsertTenantThemeResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
+service TenantThemeService {
+  rpc GetTenantTheme(GetTenantThemeRequest) returns (GetTenantThemeResponse) {}
+  rpc UpsertTenantTheme(UpsertTenantThemeRequest) returns (UpsertTenantThemeResponse) {}
+}

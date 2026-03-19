@@ -62,7 +62,7 @@ cd server && go build ./...
   - 公開サービス: `CatalogService`, `AuthService`
   - 既定ポート: `:8000`
 - 管理 API サーバー: `server/cmd/admin-api-server`
-  - 管理サービス: `AdminSeriesService`
+  - 管理サービス: `AdminSeriesService`, `AdminAuthService`
   - 既定ポート: `:8001` (`ADMIN_API_ADDR` で変更可能)
 
 これにより、公開系と管理系を別プロセス・別経路で運用できます。

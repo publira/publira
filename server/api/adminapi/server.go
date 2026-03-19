@@ -85,7 +85,7 @@ func (s *adminServer) authenticateSession(
 }
 
 // NewHandler は管理 API 専用の HTTP ハンドラを返します。
-// AdminSeriesService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
+// AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
 func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler {
 	server := &adminServer{queries: queries, storage: storageProvider}
 	mux := http.NewServeMux()
@@ -106,5 +106,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler 
 		),
 	)
 	mux.Handle(adminPath, adminHandler)
+	adminAuthPath, adminAuthHandler := publirav1connect.NewAdminAuthServiceHandler(server)
+	mux.Handle(adminAuthPath, adminAuthHandler)
 	return mux
 }

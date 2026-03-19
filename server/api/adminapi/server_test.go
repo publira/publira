@@ -1,4 +1,4 @@
-package publicapi
+package adminapi
 
 import (
 	"net/http"
@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-// TestPublicHandlerExposesOnlyPublicRoutes は、NewHandler が公開 API (CatalogService, AuthService) だけ
-// 公開し、管理 API (AdminSeriesService, AdminAuthService) は登録しないことを検証する。
-func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
+// TestAdminHandlerExposesOnlyAdminRoutes は、NewHandler が管理 API (AdminSeriesService, AdminAuthService) だけ
+// 公開し、公開 API (CatalogService, AuthService) は登録しないことを検証する。
+func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 	ts := httptest.NewServer(NewHandler(nil, nil))
 	t.Cleanup(ts.Close)
 
-	assertRouteStatus(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", false)
-	assertRouteStatus(t, ts, "/publira.v1.AuthService/GetMe", false)
-	assertRouteStatus(t, ts, "/publira.v1.AdminSeriesService/ListSeries", true)
-	assertRouteStatus(t, ts, "/publira.v1.AdminAuthService/GetMe", true)
+	assertRouteStatus(t, ts, "/publira.v1.AdminSeriesService/ListSeries", false)
+	assertRouteStatus(t, ts, "/publira.v1.AdminAuthService/GetMe", false)
+	assertRouteStatus(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)
+	assertRouteStatus(t, ts, "/publira.v1.AuthService/GetMe", true)
 }
 
 func assertRouteStatus(t *testing.T, ts *httptest.Server, path string, wantNotFound bool) {

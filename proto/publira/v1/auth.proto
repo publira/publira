@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+message CreateSessionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message CreateSessionResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.Session session = 2;
+}
+
+message DeleteSessionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+}
+
+message DeleteSessionResponse {}
+
+message GetMeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+}
+
+message GetMeResponse {
+  publira.types.v1.User user = 1;
+}
+
+service AuthService {
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
+}
