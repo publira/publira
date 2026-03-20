@@ -1,4 +1,6 @@
 @theme {
+  --font-serif: var(--publira-font-serif, "Noto Serif JP", serif);
+
   --color-background: var(--publira-color-background, #f6f2e9);
   --color-foreground: var(--publira-color-foreground, #1e2b38);
 

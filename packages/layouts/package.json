@@ -20,14 +20,20 @@
   "scripts": {
     "build": "rm -rf dist && tsdown"
   },
+  "dependencies": {
+    "@publira/ui-components": "workspace:*",
+    "@publira/utils": "workspace:*"
+  },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "next": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {
+    "next": "^16.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }
