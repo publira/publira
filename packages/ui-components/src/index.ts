@@ -17,6 +17,20 @@ export {
 } from "./card";
 export { Checkbox } from "./checkbox";
 export type { CheckboxProps } from "./checkbox";
+export {
+  ConfirmDialog,
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./dialog";
+export type { ConfirmDialogProps } from "./dialog";
 export { EmptyState } from "./empty-state";
 export type { EmptyStateProps } from "./empty-state";
 export {

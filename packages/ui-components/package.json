@@ -27,6 +27,10 @@
       "types": "./dist/checkbox/index.d.mts",
       "default": "./dist/checkbox/index.mjs"
     },
+    "./dialog": {
+      "types": "./dist/dialog/index.d.mts",
+      "default": "./dist/dialog/index.mjs"
+    },
     "./empty-state": {
       "types": "./dist/empty-state/index.d.mts",
       "default": "./dist/empty-state/index.mjs"

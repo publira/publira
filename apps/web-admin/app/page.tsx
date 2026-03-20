@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Checkbox } from "@publira/ui-components/checkbox";
+import { ConfirmDialog } from "@publira/ui-components/dialog";
 import { EmptyState } from "@publira/ui-components/empty-state";
 import {
   Field,
@@ -144,7 +145,13 @@ export default function Page() {
             <Button type="button" variant="outline">
               下書き保存
             </Button>
-            <Button type="submit">公開する</Button>
+            <ConfirmDialog
+              actionText="公開する"
+              actionVariant="default"
+              description="公開後はすべての訪問者に表示されます。公開範囲と概要の内容を確認してください。"
+              title="この内容で公開しますか？"
+              trigger={<Button type="button">公開する</Button>}
+            />
           </FormActions>
         </CardFooter>
       </Card>
