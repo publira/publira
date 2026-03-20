@@ -30,6 +30,7 @@ web-admin / web-public などで共有利用する UI コンポーネント群�
 - [Switch](./src/switch) - スイッチ（トグル）
 - [FormMessage](./src/form-message) - フォームメッセージ
 - [FormActions](./src/form-actions) - フォームアクション領域
+- [Skeleton / SkeletonText / SkeletonCard](./src/skeleton) - ローディング表示コンポーネント
 
 ### その他
 
