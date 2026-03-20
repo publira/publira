@@ -1,26 +1,28 @@
+import { Button } from "@publira/ui-components/button";
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-  Checkbox,
-  EmptyState,
+} from "@publira/ui-components/card";
+import { Checkbox } from "@publira/ui-components/checkbox";
+import { EmptyState } from "@publira/ui-components/empty-state";
+import {
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FormMessage,
-  FormActions,
-  Input,
-  RadioGroup,
-  Select,
-  Switch,
-  Textarea,
-} from "@publira/ui-components";
+} from "@publira/ui-components/field";
+import { FormActions } from "@publira/ui-components/form-actions";
+import { FormMessage } from "@publira/ui-components/form-message";
+import { Input } from "@publira/ui-components/input";
+import { RadioGroup } from "@publira/ui-components/radio-group";
+import { Select } from "@publira/ui-components/select";
+import { Switch } from "@publira/ui-components/switch";
+import { Textarea } from "@publira/ui-components/textarea";
 
 const genreOptions = [
   { label: "ファンタジー", value: "fantasy" },
