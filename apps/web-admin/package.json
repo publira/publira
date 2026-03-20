@@ -19,7 +19,9 @@
   "dependencies": {
     "@publira/api-client": "workspace:*",
     "@publira/brand": "workspace:*",
+    "@publira/icons": "workspace:*",
     "@publira/ui-components": "workspace:*",
+    "@publira/utils": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

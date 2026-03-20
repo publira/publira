@@ -1,234 +1,235 @@
-import { Badge } from "@publira/ui-components/badge";
+import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { Checkbox } from "@publira/ui-components/checkbox";
-import { ConfirmDialog } from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@publira/ui-components/field";
-import { FormActions } from "@publira/ui-components/form-actions";
-import { FormMessage } from "@publira/ui-components/form-message";
-import { Input } from "@publira/ui-components/input";
-import { RadioGroup } from "@publira/ui-components/radio-group";
-import { Select } from "@publira/ui-components/select";
-import { Switch } from "@publira/ui-components/switch";
+import { EmptyState } from "@publira/ui-components/empty-state";
 import {
   Table,
   TableBody,
   TableCell,
-  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { Textarea } from "@publira/ui-components/textarea";
 
-const episodes: {
-  id: number;
-  publishedAt: string | null;
-  status: string;
+import { AdminPage } from "../components/admin-page";
+
+const stats = [
+  {
+    detail: "今週は 2 件を更新",
+    label: "公開中シリーズ",
+    value: "12",
+  },
+  {
+    detail: "校正待ちは 7 件",
+    label: "下書きエピソード",
+    value: "28",
+  },
+  {
+    detail: "48 時間以内に 3 件",
+    label: "予約公開",
+    value: "9",
+  },
+  {
+    detail: "画像差し替え依頼あり",
+    label: "要確認素材",
+    value: "4",
+  },
+] as const;
+
+const publishingQueue: {
+  assignee: string;
+  schedule: string;
+  series: string;
+  status: "draft" | "review" | "scheduled";
   title: string;
 }[] = [
   {
-    id: 1,
-    publishedAt: "2026-01-15",
-    status: "published",
-    title: "第1話 始まりの朝",
+    assignee: "佐伯",
+    schedule: "本日 19:00",
+    series: "海風と活版印刷",
+    status: "review",
+    title: "第14話 港で待つ手紙",
   },
   {
-    id: 2,
-    publishedAt: "2026-01-22",
-    status: "published",
-    title: "第2話 旅立ちの前夜",
+    assignee: "小野",
+    schedule: "明日 08:30",
+    series: "月暦工房日誌",
+    status: "scheduled",
+    title: "第3話 硝子温室の朝",
   },
   {
-    id: 3,
-    publishedAt: null,
+    assignee: "高村",
+    schedule: "未設定",
+    series: "紙魚堂奇譚",
     status: "draft",
-    title: "第3話 約束の場所",
-  },
-];
-
-const genreOptions = [
-  { label: "ファンタジー", value: "fantasy" },
-  { label: "ミステリー", value: "mystery" },
-  { label: "エッセイ", value: "essay" },
-] as const;
-
-const accessOptions = [
-  {
-    description: "すべての訪問者が閲覧できます。",
-    label: "全体公開",
-    value: "public",
-  },
-  {
-    description: "会員登録した読者のみ閲覧できます。",
-    label: "会員限定",
-    value: "members",
-  },
-  {
-    description: "購入者だけが閲覧できます。",
-    label: "有料公開",
-    value: "paid",
+    title: "第8話 目録の空白",
   },
 ] as const;
+
+const handoffItems = [
+  {
+    description:
+      "シリーズ編集画面はヘッダー右側のアクション領域を使う前提に揃えます。",
+    label: "ページタイトルと主要アクションの配置を固定化",
+  },
+  {
+    description:
+      "小さい画面ではサイドバーがドロワーへ切り替わり、同じナビゲーション項目を再利用します。",
+    label: "モバイル導線を共通化",
+  },
+  {
+    description:
+      "web-admin/components 配下に閉じたため、公開サイト向け package を汚さずに拡張できます。",
+    label: "Admin 専用レイアウトをアプリ内に隔離",
+  },
+] as const;
+
+const getPublishingQueueTone = (
+  status: (typeof publishingQueue)[number]["status"]
+) => {
+  if (status === "scheduled") {
+    return "info" as const;
+  }
+
+  if (status === "review") {
+    return "warning" as const;
+  }
+
+  return "muted" as const;
+};
+
+const getPublishingQueueStatusLabel = (
+  status: (typeof publishingQueue)[number]["status"]
+) => {
+  if (status === "scheduled") {
+    return "予約済み";
+  }
+
+  if (status === "review") {
+    return "レビュー中";
+  }
+
+  return "下書き";
+};
 
 export default function Page() {
   return (
-    <main className="mx-auto grid w-full max-w-5xl gap-6 px-6 py-10">
-      <Card>
-        <CardHeader>
-          <CardTitle>シリーズ設定</CardTitle>
-          <CardDescription>
-            共有コンポーネントを使った管理画面フォームのサンプルです。
-          </CardDescription>
-        </CardHeader>
+    <AdminPage
+      actions={
+        <>
+          <Button type="button" variant="outline">
+            公開キューを見る
+          </Button>
+          <Button type="button">シリーズを作成</Button>
+        </>
+      }
+      description="認証後の共通レイアウト、サイドバー、ヘッダー、ページコンテナ、モバイル切り替えをまとめた基礎画面です。ここを起点に各管理画面を同じシェルで実装できます。"
+      eyebrow="Admin Dashboard"
+      title="編集運用のベースライン"
+    >
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((item) => (
+          <Card key={item.label}>
+            <CardHeader className="gap-3">
+              <CardDescription>{item.label}</CardDescription>
+              <CardTitle className="text-3xl">{item.value}</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 text-sm text-muted-foreground">
+              {item.detail}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        <CardContent className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="series-title" required>
-              タイトル
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                id="series-title"
-                name="title"
-                placeholder="作品タイトル"
-              />
-              <FieldDescription>
-                公開ページで表示される作品名です。
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,1fr)]">
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid gap-1">
+              <CardTitle>公開キュー</CardTitle>
+              <CardDescription>
+                直近で確認が必要なエピソードと公開予定です。
+              </CardDescription>
+            </div>
+            <StatusChip status="warning">2 件がレビュー待ち</StatusChip>
+          </CardHeader>
 
-          <Field>
-            <FieldLabel htmlFor="genre">ジャンル</FieldLabel>
-            <Select
-              defaultValue="fantasy"
-              id="genre"
-              items={genreOptions}
-              name="genre"
-            />
-          </Field>
-
-          <Field invalid>
-            <FieldLabel htmlFor="summary" required>
-              概要
-            </FieldLabel>
-            <FieldContent>
-              <Textarea
-                id="summary"
-                name="summary"
-                placeholder="作品の紹介文を入力"
-              />
-              <FieldError>概要は 10 文字以上で入力してください。</FieldError>
-            </FieldContent>
-          </Field>
-
-          <Field className="flex-row items-center gap-2">
-            <Checkbox defaultChecked id="published" name="published" />
-            <FieldLabel htmlFor="published">即時公開する</FieldLabel>
-          </Field>
-
-          <Field>
-            <FieldLabel required>公開範囲</FieldLabel>
-            <FieldContent>
-              <RadioGroup
-                defaultValue="public"
-                items={accessOptions}
-                name="visibility"
-                required
-              />
-              <FieldDescription>
-                公開範囲によって読者の閲覧条件が切り替わります。
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field className="flex-row items-center justify-between gap-3 rounded-md border border-input bg-background px-3 py-2">
-            <FieldContent className="gap-1">
-              <FieldLabel htmlFor="notify-followers">更新通知を送る</FieldLabel>
-              <FieldDescription>
-                新規エピソード公開時にフォロワーへ通知します。
-              </FieldDescription>
-            </FieldContent>
-            <Switch
-              defaultChecked
-              id="notify-followers"
-              name="notifyFollowers"
-            />
-          </Field>
-
-          <FormMessage variant="success">
-            下書き保存時にカバー画像の最適化とリンク切れチェックを実行します。
-          </FormMessage>
-        </CardContent>
-
-        <CardFooter>
-          <FormActions className="w-full border-t-0 pt-0">
-            <Button type="button" variant="outline">
-              下書き保存
-            </Button>
-            <ConfirmDialog
-              actionText="公開する"
-              actionVariant="default"
-              description="公開後はすべての訪問者に表示されます。公開範囲と概要の内容を確認してください。"
-              title="この内容で公開しますか？"
-              trigger={<Button type="button">公開する</Button>}
-            />
-          </FormActions>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>エピソード一覧</CardTitle>
-        </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>タイトル</TableHead>
-              <TableHead>公開状態</TableHead>
-              <TableHead>公開日時</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {episodes.length === 0 ? (
-              <TableEmptyRow colSpan={3}>
-                まだエピソードがありません
-              </TableEmptyRow>
-            ) : (
-              episodes.map((ep) => (
-                <TableRow key={ep.id}>
-                  <TableCell>{ep.title}</TableCell>
-                  <TableCell>
-                    <Badge
-                      tone={ep.status === "published" ? "success" : "muted"}
-                      variant="soft"
-                    >
-                      {ep.status === "published" ? "公開中" : "下書き"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {ep.publishedAt ?? "—"}
-                  </TableCell>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>シリーズ</TableHead>
+                  <TableHead>エピソード</TableHead>
+                  <TableHead className="w-36">担当</TableHead>
+                  <TableHead className="w-36">状態</TableHead>
+                  <TableHead className="w-36">予定</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
-    </main>
+              </TableHeader>
+              <TableBody>
+                {publishingQueue.map((item) => (
+                  <TableRow key={`${item.series}-${item.title}`}>
+                    <TableCell className="font-medium">{item.series}</TableCell>
+                    <TableCell>{item.title}</TableCell>
+                    <TableCell>{item.assignee}</TableCell>
+                    <TableCell>
+                      <Badge tone={getPublishingQueueTone(item.status)}>
+                        {getPublishingQueueStatusLabel(item.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{item.schedule}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>レイアウト引き継ぎ事項</CardTitle>
+              <CardDescription>
+                主要画面 Issue
+                がこのシェルを前提に着手できるよう、固定しておきたい基礎要素です。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              {handoffItems.map((item) => (
+                <div
+                  className="rounded-2xl border border-border/70 bg-muted/35 p-4"
+                  key={item.label}
+                >
+                  <p className="text-sm font-medium text-foreground">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-5">
+              <EmptyState
+                actions={
+                  <Button type="button" variant="outline">
+                    設計メモを確認
+                  </Button>
+                }
+                description="個別画面の本実装は次段階ですが、ページヘッダーとコンテンツコンテナはすでに共通化されています。"
+                title="次の画面はこの枠組みを複製して着手できます。"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </AdminPage>
   );
 }
