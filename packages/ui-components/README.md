@@ -35,6 +35,7 @@ web-admin / web-public などで共有利用する UI コンポーネント群�
 ### その他
 
 - [Badge / StatusChip](./src/badge) - 状態表示と補助ラベルのコンポーネント
+- [Dialog / ConfirmDialog](./src/dialog) - 確認操作に使うダイアログコンポーネント
 - [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - カードコンポーネント
 - [EmptyState](./src/empty-state) - 空の状態を表示するコンポーネント
 
