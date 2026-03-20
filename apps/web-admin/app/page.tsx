@@ -1,3 +1,4 @@
+import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -9,7 +10,6 @@ import {
 } from "@publira/ui-components/card";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import { ConfirmDialog } from "@publira/ui-components/dialog";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import {
   Field,
   FieldContent,
@@ -23,7 +23,42 @@ import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { Select } from "@publira/ui-components/select";
 import { Switch } from "@publira/ui-components/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@publira/ui-components/table";
 import { Textarea } from "@publira/ui-components/textarea";
+
+const episodes: {
+  id: number;
+  publishedAt: string | null;
+  status: string;
+  title: string;
+}[] = [
+  {
+    id: 1,
+    publishedAt: "2026-01-15",
+    status: "published",
+    title: "第1話 始まりの朝",
+  },
+  {
+    id: 2,
+    publishedAt: "2026-01-22",
+    status: "published",
+    title: "第2話 旅立ちの前夜",
+  },
+  {
+    id: 3,
+    publishedAt: null,
+    status: "draft",
+    title: "第3話 約束の場所",
+  },
+];
 
 const genreOptions = [
   { label: "ファンタジー", value: "fantasy" },
@@ -156,11 +191,44 @@ export default function Page() {
         </CardFooter>
       </Card>
 
-      <EmptyState
-        title="まだエピソードがありません"
-        description="エピソードを作成すると、ここに一覧が表示されます。"
-        actions={<Button variant="secondary">最初のエピソードを作る</Button>}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>エピソード一覧</CardTitle>
+        </CardHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>タイトル</TableHead>
+              <TableHead>公開状態</TableHead>
+              <TableHead>公開日時</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {episodes.length === 0 ? (
+              <TableEmptyRow colSpan={3}>
+                まだエピソードがありません
+              </TableEmptyRow>
+            ) : (
+              episodes.map((ep) => (
+                <TableRow key={ep.id}>
+                  <TableCell>{ep.title}</TableCell>
+                  <TableCell>
+                    <Badge
+                      tone={ep.status === "published" ? "success" : "muted"}
+                      variant="soft"
+                    >
+                      {ep.status === "published" ? "公開中" : "下書き"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {ep.publishedAt ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Card>
     </main>
   );
 }

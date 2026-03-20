@@ -18,6 +18,7 @@ export default defineConfig({
     "src/select/index.ts",
     "src/skeleton/index.ts",
     "src/switch/index.ts",
+    "src/table/index.ts",
     "src/textarea/index.ts",
   ],
   format: "esm",

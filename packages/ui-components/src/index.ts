@@ -63,5 +63,16 @@ export { Skeleton, SkeletonCard, SkeletonText } from "./skeleton";
 export type { SkeletonCardProps, SkeletonTextProps } from "./skeleton";
 export { Switch } from "./switch";
 export type { SwitchProps } from "./switch";
+export {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeader,
+  TableLoadingRow,
+  TableRow,
+} from "./table";
+export type { TableEmptyRowProps, TableLoadingRowProps } from "./table";
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
