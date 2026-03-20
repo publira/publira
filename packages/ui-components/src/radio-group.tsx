@@ -1,6 +1,9 @@
 "use client";
 
-import { Radio as BaseRadio, RadioGroup as BaseRadioGroup } from "@base-ui/react";
+import {
+  Radio as BaseRadio,
+  RadioGroup as BaseRadioGroup,
+} from "@base-ui/react";
 import { cn } from "@publira/utils";
 import * as React from "react";
 
@@ -23,10 +26,7 @@ export const RadioGroup = ({
   items,
   ...props
 }: RadioGroupProps) => (
-  <BaseRadioGroup
-    {...props}
-    className={cn("grid gap-2", className)}
-  >
+  <BaseRadioGroup {...props} className={cn("grid gap-2", className)}>
     {items.map((item) => (
       <label
         key={item.value}
@@ -48,7 +48,9 @@ export const RadioGroup = ({
         <span className="grid gap-0.5">
           <span className="font-medium text-foreground">{item.label}</span>
           {item.description ? (
-            <span className="text-xs text-muted-foreground">{item.description}</span>
+            <span className="text-xs text-muted-foreground">
+              {item.description}
+            </span>
           ) : null}
         </span>
       </label>

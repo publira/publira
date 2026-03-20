@@ -125,7 +125,11 @@ export default function Page() {
                 新規エピソード公開時にフォロワーへ通知します。
               </FieldDescription>
             </FieldContent>
-            <Switch defaultChecked id="notify-followers" name="notifyFollowers" />
+            <Switch
+              defaultChecked
+              id="notify-followers"
+              name="notifyFollowers"
+            />
           </Field>
 
           <FormMessage variant="success">

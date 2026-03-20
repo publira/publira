@@ -7,7 +7,11 @@ export type SwitchProps = BaseSwitch.Root.Props & {
   thumbClassName?: string;
 };
 
-export const Switch = ({ className, thumbClassName, ...props }: SwitchProps) => (
+export const Switch = ({
+  className,
+  thumbClassName,
+  ...props
+}: SwitchProps) => (
   <BaseSwitch.Root
     {...props}
     className={cn(
