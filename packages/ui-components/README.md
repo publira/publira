@@ -24,6 +24,9 @@ web-admin / web-public などで共有利用する UI コンポーネント群�
 - Textarea
 - Select
 - Checkbox
+- RadioGroup
+- Switch
+- FormMessage
 - Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter
 - EmptyState
 - FormActions
@@ -101,6 +104,45 @@ const items = [
 ] as const;
 
 <Select name="status" defaultValue="draft" items={items} />;
+```
+
+## RadioGroup / Switch / FormMessage の API
+
+```tsx
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FormMessage,
+  RadioGroup,
+  Switch,
+} from "@publira/ui-components";
+
+const visibilityItems = [
+  { label: "全体公開", value: "public" },
+  { label: "会員限定", value: "members" },
+] as const;
+
+<Field>
+  <FieldLabel required>公開範囲</FieldLabel>
+  <FieldContent>
+    <RadioGroup
+      name="visibility"
+      defaultValue="public"
+      items={visibilityItems}
+      required
+    />
+    <FieldDescription>読者の閲覧条件を選択します。</FieldDescription>
+  </FieldContent>
+</Field>;
+
+<Field className="flex-row items-center justify-between gap-3">
+  <FieldLabel htmlFor="notify-followers">更新通知を送る</FieldLabel>
+  <Switch id="notify-followers" name="notifyFollowers" defaultChecked />
+</Field>;
+
+<FormMessage variant="success">保存に成功しました。</FormMessage>;
 ```
 
 ## 開発
