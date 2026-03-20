@@ -1,3 +1,4 @@
+import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
   Card,
@@ -18,9 +19,13 @@ export default function Page() {
 
       <section className="mx-auto grid min-h-[72vh] w-full max-w-6xl gap-12 px-6 pb-16 pt-20 md:grid-cols-[1.2fr_0.8fr] md:items-center">
         <div className="space-y-7">
-          <p className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs tracking-[0.12em] text-muted-foreground uppercase">
+          <Badge
+            className="tracking-[0.12em] uppercase"
+            tone="muted"
+            variant="outline"
+          >
             Publira Preview
-          </p>
+          </Badge>
 
           <div className="space-y-4">
             <h1 className="font-['Noto_Serif_JP',serif] text-4xl leading-tight font-semibold md:text-6xl">
@@ -79,15 +84,15 @@ export default function Page() {
             <CardContent className="grid gap-2 text-sm">
               <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
                 <span>第1話</span>
-                <span className="text-muted-foreground">公開中</span>
+                <StatusChip status="success">公開中</StatusChip>
               </div>
               <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
                 <span>第2話</span>
-                <span className="text-muted-foreground">公開中</span>
+                <StatusChip status="success">公開中</StatusChip>
               </div>
               <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
                 <span>第3話</span>
-                <span className="text-muted-foreground">準備中</span>
+                <StatusChip status="warning">準備中</StatusChip>
               </div>
 
               <Field className="pt-1">

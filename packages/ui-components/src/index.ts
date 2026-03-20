@@ -1,5 +1,12 @@
 export { Button, buttonVariants } from "./button";
 export type { ButtonProps } from "./button";
+export { Badge, badgeVariants, StatusChip } from "./badge";
+export type {
+  BadgeProps,
+  BadgeTone,
+  BadgeVariant,
+  StatusChipProps,
+} from "./badge";
 export {
   Card,
   CardContent,
