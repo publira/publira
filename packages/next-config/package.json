@@ -20,6 +20,6 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "next": "^16.0.0"
+    "next": "^16.2.0"
   }
 }

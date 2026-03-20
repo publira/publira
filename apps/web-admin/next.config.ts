@@ -1,4 +1,3 @@
-import { withMicrofrontends } from "@publira/next-config";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -10,4 +9,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withMicrofrontends(nextConfig, { appName: "web-admin" });
+export default nextConfig;

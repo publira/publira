@@ -23,7 +23,6 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@publira/next-config": "workspace:*",
     "@publira/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
