@@ -65,9 +65,15 @@ importers:
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@publira/icons':
+        specifier: workspace:*
+        version: link:../../packages/icons
       '@publira/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components
+      '@publira/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       next:
         specifier: 'catalog:'
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -304,6 +310,28 @@ importers:
         version: 5.9.3
 
   packages/brand: {}
+
+  packages/icons:
+    dependencies:
+      lucide-react:
+        specifier: 0.577.0
+        version: 0.577.0(react@19.2.4)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+    devDependencies:
+      '@publira/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.14
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.4(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   packages/layouts:
     dependencies:
@@ -1391,6 +1419,11 @@ packages:
     resolution: {integrity: sha512-aY/R+aEsRelme17KGQa/1ZSIpLpNYYrhcrepKTZgE+W3WM16YMCaPwOHLHsmopZHELU0Ojin1lPVxKR0MihncA==}
     engines: {node: 20 || >=22}
 
+  lucide-react@0.577.0:
+    resolution: {integrity: sha512-4LjoFv2eEPwYDPg/CUdBJQSDfPyzXCRrVW1X7jrx/trgxnxkHFjnVZINbzvzxjN70dxychOfg+FTYwBiS3pQ5A==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -2324,6 +2357,10 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.32.0
 
   lru-cache@11.2.7: {}
+
+  lucide-react@0.577.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   magic-string@0.30.21:
     dependencies:
