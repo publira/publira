@@ -1,13 +1,15 @@
-import type { ReactNode } from "react";
+import "./globals.css";
+import { SiteLayout } from "@publira/layouts";
+import Link from "next/link";
 
-interface Props {
-  children: ReactNode;
-}
-
-export default function RootLayout({ children }: Props) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>
+        <SiteLayout appLabel="Publira Member" linkComponent={Link}>
+          {children}
+        </SiteLayout>
+      </body>
     </html>
   );
 }
