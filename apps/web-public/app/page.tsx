@@ -1,4 +1,16 @@
-import { Button } from "@publira/ui-components";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldLabel,
+  FormActions,
+  Input,
+} from "@publira/ui-components";
 
 export default function Page() {
   return (
@@ -29,18 +41,24 @@ export default function Page() {
           </div>
 
           <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
-            <div className="rounded-lg border border-border bg-card px-4 py-3">
-              <p className="font-medium text-foreground">読みやすさ重視</p>
-              <p>可読性の高い行間と配色</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card px-4 py-3">
-              <p className="font-medium text-foreground">更新に強い</p>
-              <p>運用フローに馴染む構造</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card px-4 py-3">
-              <p className="font-medium text-foreground">拡張しやすい</p>
-              <p>ブランドトークンで統一</p>
-            </div>
+            <Card>
+              <CardContent className="space-y-1 p-4">
+                <p className="font-medium text-foreground">読みやすさ重視</p>
+                <p>可読性の高い行間と配色</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="space-y-1 p-4">
+                <p className="font-medium text-foreground">更新に強い</p>
+                <p>運用フローに馴染む構造</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="space-y-1 p-4">
+                <p className="font-medium text-foreground">拡張しやすい</p>
+                <p>ブランドトークンで統一</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
@@ -48,18 +66,18 @@ export default function Page() {
           <div className="absolute -left-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl" />
           <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-secondary/20 blur-2xl" />
 
-          <div className="relative space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <p className="text-xs tracking-[0.08em] text-muted-foreground uppercase">
-              Now Reading
-            </p>
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold">Shangri-la Library</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                光と静けさをテーマにした短編集。落ち着いた余白とともに、ゆっくり読める体験を提供します。
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <p className="text-xs tracking-[0.08em] text-muted-foreground uppercase">
+                Now Reading
               </p>
-            </div>
+              <CardTitle>Shangri-la Library</CardTitle>
+              <CardDescription>
+                光と静けさをテーマにした短編集。落ち着いた余白とともに、ゆっくり読める体験を提供します。
+              </CardDescription>
+            </CardHeader>
 
-            <div className="grid gap-2 text-sm">
+            <CardContent className="grid gap-2 text-sm">
               <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
                 <span>第1話</span>
                 <span className="text-muted-foreground">公開中</span>
@@ -72,12 +90,28 @@ export default function Page() {
                 <span>第3話</span>
                 <span className="text-muted-foreground">準備中</span>
               </div>
-            </div>
 
-            <Button className="w-full" variant="secondary">
-              続きを読む
-            </Button>
-          </div>
+              <Field className="pt-1">
+                <FieldLabel htmlFor="email-newsletter">
+                  更新通知を受け取る
+                </FieldLabel>
+                <Input
+                  id="email-newsletter"
+                  name="email"
+                  type="email"
+                  placeholder="mail@example.com"
+                />
+              </Field>
+            </CardContent>
+
+            <CardFooter className="flex-col items-stretch">
+              <FormActions className="w-full border-t-0 pt-0">
+                <Button className="w-full" variant="secondary">
+                  続きを読む
+                </Button>
+              </FormActions>
+            </CardFooter>
+          </Card>
         </div>
       </section>
     </main>

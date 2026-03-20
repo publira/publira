@@ -65,6 +65,9 @@ importers:
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@publira/ui-components':
+        specifier: workspace:*
+        version: link:../../packages/ui-components
       next:
         specifier: 'catalog:'
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
