@@ -18,12 +18,17 @@
   },
   "dependencies": {
     "@publira/api-client": "workspace:*",
+    "@publira/brand": "workspace:*",
+    "@publira/layouts": "workspace:*",
+    "@publira/ui-components": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

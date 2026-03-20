@@ -1,5 +1,5 @@
 {
-  "name": "@publira/ui-components",
+  "name": "@publira/layouts",
   "version": "0.1.0",
   "private": true,
   "files": [
@@ -11,9 +11,9 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
-    "./button": {
-      "types": "./dist/button.d.mts",
-      "default": "./dist/button.mjs"
+    "./site-layout": {
+      "types": "./dist/site-layout.d.mts",
+      "default": "./dist/site-layout.mjs"
     },
     "./styles.css": "./styles.css"
   },
@@ -21,18 +21,19 @@
     "build": "rm -rf dist && tsdown"
   },
   "dependencies": {
-    "@base-ui/react": "1.3.0",
-    "@publira/utils": "workspace:*",
-    "class-variance-authority": "0.7.1"
+    "@publira/ui-components": "workspace:*",
+    "@publira/utils": "workspace:*"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "next": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {
+    "next": "^16.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }
