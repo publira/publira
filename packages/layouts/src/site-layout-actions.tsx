@@ -1,6 +1,6 @@
 "use client";
 
-import { LinkButton } from "@publira/ui-components";
+import { LinkButton } from "@publira/ui-components/button";
 
 import type { LayoutActionItem } from "./site-layout";
 

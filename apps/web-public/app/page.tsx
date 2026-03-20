@@ -1,16 +1,15 @@
+import { Button } from "@publira/ui-components/button";
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-  Field,
-  FieldLabel,
-  FormActions,
-  Input,
-} from "@publira/ui-components";
+} from "@publira/ui-components/card";
+import { Field, FieldLabel } from "@publira/ui-components/field";
+import { FormActions } from "@publira/ui-components/form-actions";
+import { Input } from "@publira/ui-components/input";
 
 export default function Page() {
   return (

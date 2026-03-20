@@ -12,8 +12,56 @@
       "default": "./dist/index.mjs"
     },
     "./button": {
-      "types": "./dist/button.d.mts",
-      "default": "./dist/button.mjs"
+      "types": "./dist/button/index.d.mts",
+      "default": "./dist/button/index.mjs"
+    },
+    "./card": {
+      "types": "./dist/card/index.d.mts",
+      "default": "./dist/card/index.mjs"
+    },
+    "./checkbox": {
+      "types": "./dist/checkbox/index.d.mts",
+      "default": "./dist/checkbox/index.mjs"
+    },
+    "./empty-state": {
+      "types": "./dist/empty-state/index.d.mts",
+      "default": "./dist/empty-state/index.mjs"
+    },
+    "./field": {
+      "types": "./dist/field/index.d.mts",
+      "default": "./dist/field/index.mjs"
+    },
+    "./form-actions": {
+      "types": "./dist/form-actions/index.d.mts",
+      "default": "./dist/form-actions/index.mjs"
+    },
+    "./form-message": {
+      "types": "./dist/form-message/index.d.mts",
+      "default": "./dist/form-message/index.mjs"
+    },
+    "./input": {
+      "types": "./dist/input/index.d.mts",
+      "default": "./dist/input/index.mjs"
+    },
+    "./link-button": {
+      "types": "./dist/link-button/index.d.mts",
+      "default": "./dist/link-button/index.mjs"
+    },
+    "./radio-group": {
+      "types": "./dist/radio-group/index.d.mts",
+      "default": "./dist/radio-group/index.mjs"
+    },
+    "./select": {
+      "types": "./dist/select/index.d.mts",
+      "default": "./dist/select/index.mjs"
+    },
+    "./switch": {
+      "types": "./dist/switch/index.d.mts",
+      "default": "./dist/switch/index.mjs"
+    },
+    "./textarea": {
+      "types": "./dist/textarea/index.d.mts",
+      "default": "./dist/textarea/index.mjs"
     },
     "./styles.css": "./styles.css"
   },

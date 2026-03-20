@@ -18,131 +18,36 @@ web-admin / web-public などで共有利用する UI コンポーネント群�
 
 ## 主要コンポーネント
 
-- Button / LinkButton
-- Field / FieldLabel / FieldDescription / FieldError / FieldContent
-- Input
-- Textarea
-- Select
-- Checkbox
-- RadioGroup
-- Switch
-- FormMessage
-- Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter
-- EmptyState
-- FormActions
+### フォーム関連
 
-## 基本例
+- [Button / LinkButton](./src/button) - ボタンコンポーネント
+- [Field / FieldLabel / FieldDescription / FieldError / FieldContent](./src/field) - フォームフィールド群
+- [Input](./src/input) - テキスト入力フィールド
+- [Textarea](./src/textarea) - 複数行テキスト入力フィールド
+- [Select](./src/select) - セレクトボックス
+- [Checkbox](./src/checkbox) - チェックボックス
+- [RadioGroup](./src/radio-group) - ラジオボタングループ
+- [Switch](./src/switch) - スイッチ（トグル）
+- [FormMessage](./src/form-message) - フォームメッセージ
+- [FormActions](./src/form-actions) - フォームアクション領域
 
-```tsx
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  Input,
-  Select,
-} from "@publira/ui-components";
+### その他
 
-const genreOptions = [
-  { label: "ファンタジー", value: "fantasy" },
-  { label: "ミステリー", value: "mystery" },
-  { label: "エッセイ", value: "essay" },
-] as const;
+- [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - カードコンポーネント
+- [EmptyState](./src/empty-state) - 空の状態を表示するコンポーネント
 
-export function SampleForm() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>シリーズ設定</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <Field>
-          <FieldLabel htmlFor="title" required>
-            タイトル
-          </FieldLabel>
-          <Input id="title" name="title" placeholder="作品タイトル" />
-          <FieldDescription>
-            公開ページで表示される作品名です。
-          </FieldDescription>
-        </Field>
+## 使用方法
 
-        <Field>
-          <FieldLabel htmlFor="genre">ジャンル</FieldLabel>
-          <Select
-            id="genre"
-            name="genre"
-            defaultValue="fantasy"
-            items={genreOptions}
-          />
-        </Field>
+各コンポーネントの詳細な使用方法と例については、上記の主要コンポーネントリストから各コンポーネントのドキュメントを参照してください。
 
-        <Field invalid>
-          <FieldLabel htmlFor="summary">概要</FieldLabel>
-          <FieldError>概要は 10 文字以上で入力してください。</FieldError>
-        </Field>
+### Subpath import
 
-        <Button type="submit">保存</Button>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-## Select の API
-
-Select は Base UI Select のラッパーです。ネイティブの `<option>` 子要素ではなく、`items` で選択肢を渡します。
+各コンポーネントは以下のように直接インポートできます：
 
 ```tsx
-const items = [
-  { label: "公開", value: "published" },
-  { label: "下書き", value: "draft" },
-] as const;
-
-<Select name="status" defaultValue="draft" items={items} />;
-```
-
-## RadioGroup / Switch / FormMessage の API
-
-```tsx
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-  FormMessage,
-  RadioGroup,
-  Switch,
-} from "@publira/ui-components";
-
-const visibilityItems = [
-  { label: "全体公開", value: "public" },
-  { label: "会員限定", value: "members" },
-] as const;
-
-<Field>
-  <FieldLabel required>公開範囲</FieldLabel>
-  <FieldContent>
-    <RadioGroup
-      name="visibility"
-      defaultValue="public"
-      items={visibilityItems}
-      required
-    />
-    <FieldDescription>読者の閲覧条件を選択します。</FieldDescription>
-  </FieldContent>
-</Field>;
-
-<Field className="flex-row items-center justify-between gap-3">
-  <FieldLabel htmlFor="notify-followers">更新通知を送る</FieldLabel>
-  <Switch id="notify-followers" name="notifyFollowers" defaultChecked />
-</Field>;
-
-<FormMessage variant="success">保存に成功しました。</FormMessage>;
+import { Button } from "@publira/ui-components/button";
+import { Input } from "@publira/ui-components/input";
+import { Card } from "@publira/ui-components/card";
 ```
 
 ## 開発
