@@ -7,6 +7,7 @@
 package publirasplatformv1
 
 import (
+	_ "github.com/publira/publira/server/gen/publira/types/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -550,7 +551,7 @@ var File_publira_platform_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"p\n" +
+	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"p\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +

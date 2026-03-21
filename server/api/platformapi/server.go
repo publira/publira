@@ -1,7 +1,10 @@
 package platformapi
 
 import (
+	"context"
 	"net/http"
+
+	"connectrpc.com/connect"
 
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
 	dbmodels "github.com/publira/publira/server/internal/db"
@@ -29,7 +32,19 @@ func NewHandler(queries Querier) http.Handler {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	tenantPath, tenantHandler := publirasplatformv1connect.NewPlatformTenantServiceHandler(server)
+	tenantPath, tenantHandler := publirasplatformv1connect.NewPlatformTenantServiceHandler(
+		server,
+		connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				if _, _, err := server.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+					return nil, err
+				}
+				return next(ctx, req)
+			}
+		})),
+	)
 	mux.Handle(tenantPath, tenantHandler)
+	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server)
+	mux.Handle(authPath, authHandler)
 	return mux
 }

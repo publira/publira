@@ -513,6 +513,28 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 	return i, err
 }
 
+const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
+SELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
+FROM sessions
+WHERE token_hash = $1
+LIMIT 1
+`
+
+func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error) {
+	row := q.db.QueryRowContext(ctx, getSessionByTokenHash, tokenHash)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getSessionByTokenHashForTenant = `-- name: GetSessionByTokenHashForTenant :one
 SELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
 FROM sessions
@@ -605,6 +627,29 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UU
 		&i.AccentColor,
 		&i.LogoUrl,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, tenant_id, public_id, email, password_hash, role, name, created_at
+FROM users
+WHERE email = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Name,
+		&i.CreatedAt,
 	)
 	return i, err
 }

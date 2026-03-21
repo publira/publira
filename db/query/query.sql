@@ -59,6 +59,12 @@ FROM sessions
 WHERE tenant_id = $1
     AND token_hash = $2
 LIMIT 1;
+
+-- name: GetSessionByTokenHash :one
+SELECT *
+FROM sessions
+WHERE token_hash = $1
+LIMIT 1;
 -- name: RevokeSession :exec
 UPDATE sessions
 SET revoked_at = NOW()
@@ -69,6 +75,12 @@ SELECT *
 FROM users
 WHERE tenant_id = $1
     AND email = $2
+LIMIT 1;
+
+-- name: GetUserByEmail :one
+SELECT *
+FROM users
+WHERE email = $1
 LIMIT 1;
 -- name: GetUserByID :one
 SELECT *
