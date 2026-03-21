@@ -13,10 +13,12 @@ import (
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/publira/publira/server/api/platformapi"
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
@@ -25,6 +27,11 @@ const (
 	listTenantsQuery         = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nORDER BY created_at DESC\nLIMIT $1 OFFSET $2\n"
 	createTenantQuery        = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, name, status)\nVALUES ($1, $2, $3, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
 	updateTenantStatusQuery  = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	getSessionByTokenHash    = "-- name: GetSessionByTokenHash :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
+	getUserByIDQuery         = "-- name: GetUserByID :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE id = $1\n"
+	getUserByEmailQuery      = "-- name: GetUserByEmail :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
+	testSessionToken         = "platform-session-token"
+	testPlatformRole         = "platform_operator"
 )
 
 func tenantColumns() []string {
@@ -47,6 +54,24 @@ func newRequest[T any](msg T) *connect.Request[T] {
 	return connect.NewRequest(&msg)
 }
 
+func newAuthedRequest[T any](msg T) *connect.Request[T] {
+	req := connect.NewRequest(&msg)
+	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, testSessionToken))
+	return req
+}
+
+func expectPlatformGuard(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHash)).
+		WithArgs(auth.HashToken(testSessionToken)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, auth.HashToken(testSessionToken), now.Add(time.Hour), nil, now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "email", "password_hash", "role", "name", "created_at"}).
+			AddRow(userID, tenantID, "PLATUSER001", "platform@example.com", "hashed", role, "Platform User", now))
+}
+
 func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 	t.Helper()
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -62,6 +87,7 @@ func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
 
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformTenantService/ListTenants", false)
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformTenantService/CreateTenant", false)
+	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformAuthService/GetMe", false)
 	assertRouteStatus(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", true)
 	assertRouteStatus(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)
 }
@@ -82,13 +108,17 @@ func assertRouteStatus(t *testing.T, ts *httptest.Server, path string, wantNotFo
 // TestListTenantsReturnsEmptyList はテナントが存在しない場合に空リストを返すことを検証する。
 func TestListTenantsReturnsEmptyList(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
 		WithArgs(int32(20), int32(0)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.ListTenants(context.Background(), newRequest(publirasplatformv1.ListTenantsRequest{}))
+	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{}))
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
@@ -102,6 +132,9 @@ func TestListTenantsReturnsEmptyList(t *testing.T) {
 func TestListTenantsReturnsTenants(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 	id1 := uuid.Must(uuid.NewV7())
 	id2 := uuid.Must(uuid.NewV7())
 
@@ -112,7 +145,7 @@ func TestListTenantsReturnsTenants(t *testing.T) {
 			AddRow(id2, "TENANT002", nil, nil, "Tenant Two", nil, now, "suspended"))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.ListTenants(context.Background(), newRequest(publirasplatformv1.ListTenantsRequest{}))
+	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{}))
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
@@ -131,13 +164,17 @@ func TestListTenantsReturnsTenants(t *testing.T) {
 // TestListTenantsAppliesDefaultLimit はデフォルトの limit が 20 であることを検証する。
 func TestListTenantsAppliesDefaultLimit(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
 		WithArgs(int32(20), int32(0)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.ListTenants(context.Background(), newRequest(publirasplatformv1.ListTenantsRequest{Limit: 0}))
+	_, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{Limit: 0}))
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
@@ -147,13 +184,17 @@ func TestListTenantsAppliesDefaultLimit(t *testing.T) {
 // TestListTenantsClampMaxLimit は limit が 100 以上の場合 100 に丸められることを検証する。
 func TestListTenantsClampMaxLimit(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
 		WithArgs(int32(100), int32(0)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.ListTenants(context.Background(), newRequest(publirasplatformv1.ListTenantsRequest{Limit: 200}))
+	_, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{Limit: 200}))
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
 	}
@@ -164,6 +205,9 @@ func TestListTenantsClampMaxLimit(t *testing.T) {
 func TestGetTenantSuccess(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 	id := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
@@ -172,7 +216,7 @@ func TestGetTenantSuccess(t *testing.T) {
 			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.GetTenant(context.Background(), newRequest(publirasplatformv1.GetTenantRequest{PublicId: "TENANT001"}))
+	resp, err := client.GetTenant(context.Background(), newAuthedRequest(publirasplatformv1.GetTenantRequest{PublicId: "TENANT001"}))
 	if err != nil {
 		t.Fatalf("GetTenant: %v", err)
 	}
@@ -188,13 +232,17 @@ func TestGetTenantSuccess(t *testing.T) {
 // TestGetTenantNotFound は存在しないテナントの場合 NotFound を返すことを検証する。
 func TestGetTenantNotFound(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("NOTFOUND").
 		WillReturnError(sql.ErrNoRows)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.GetTenant(context.Background(), newRequest(publirasplatformv1.GetTenantRequest{PublicId: "NOTFOUND"}))
+	_, err := client.GetTenant(context.Background(), newAuthedRequest(publirasplatformv1.GetTenantRequest{PublicId: "NOTFOUND"}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetTenant code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -203,19 +251,27 @@ func TestGetTenantNotFound(t *testing.T) {
 
 // TestGetTenantRequiresPublicID は public_id が空の場合 InvalidArgument を返すことを検証する。
 func TestGetTenantRequiresPublicID(t *testing.T) {
-	ts, _ := newTestPlatformServer(t)
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.GetTenant(context.Background(), newRequest(publirasplatformv1.GetTenantRequest{PublicId: "   "}))
+	_, err := client.GetTenant(context.Background(), newAuthedRequest(publirasplatformv1.GetTenantRequest{PublicId: "   "}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("GetTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
+	assertExpectations(t, mock)
 }
 
 // TestCreateTenantSuccess はテナント作成の正常系を検証する。
 func TestCreateTenantSuccess(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 	id := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
@@ -224,7 +280,7 @@ func TestCreateTenantSuccess(t *testing.T) {
 			AddRow(id, "NEW001", nil, nil, "New Tenant", nil, now, "active"))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.CreateTenant(context.Background(), newRequest(publirasplatformv1.CreateTenantRequest{
+	resp, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
 		PublicId: "NEW001",
 		Name:     "New Tenant",
 	}))
@@ -242,42 +298,56 @@ func TestCreateTenantSuccess(t *testing.T) {
 
 // TestCreateTenantRequiresPublicID は public_id が空の場合 InvalidArgument を返すことを検証する。
 func TestCreateTenantRequiresPublicID(t *testing.T) {
-	ts, _ := newTestPlatformServer(t)
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newRequest(publirasplatformv1.CreateTenantRequest{
+	_, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
 		PublicId: "",
 		Name:     "Valid Name",
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
+	assertExpectations(t, mock)
 }
 
 // TestCreateTenantRequiresName は name が空の場合 InvalidArgument を返すことを検証する。
 func TestCreateTenantRequiresName(t *testing.T) {
-	ts, _ := newTestPlatformServer(t)
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newRequest(publirasplatformv1.CreateTenantRequest{
+	_, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
 		PublicId: "VALID01",
 		Name:     "   ",
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
+	assertExpectations(t, mock)
 }
 
 // TestCreateTenantDuplicateReturnsAlreadyExists は public_id が重複する場合 AlreadyExists を返すことを検証する。
 func TestCreateTenantDuplicateReturnsAlreadyExists(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
 		WithArgs(sqlmock.AnyArg(), "DUP001", "Duplicate Tenant").
 		WillReturnError(fmt.Errorf("pq: duplicate key value violates unique constraint %q (SQLSTATE 23505)", "tenants_public_id_key"))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newRequest(publirasplatformv1.CreateTenantRequest{
+	_, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
 		PublicId: "DUP001",
 		Name:     "Duplicate Tenant",
 	}))
@@ -291,6 +361,9 @@ func TestCreateTenantDuplicateReturnsAlreadyExists(t *testing.T) {
 func TestSuspendTenantSuccess(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 	id := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(updateTenantStatusQuery)).
@@ -299,7 +372,7 @@ func TestSuspendTenantSuccess(t *testing.T) {
 			AddRow(id, "ACTIVE01", nil, nil, "Active Tenant", nil, now, "suspended"))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.SuspendTenant(context.Background(), newRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "ACTIVE01"}))
+	resp, err := client.SuspendTenant(context.Background(), newAuthedRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "ACTIVE01"}))
 	if err != nil {
 		t.Fatalf("SuspendTenant: %v", err)
 	}
@@ -312,13 +385,17 @@ func TestSuspendTenantSuccess(t *testing.T) {
 // TestSuspendTenantNotFound は存在しないテナントの場合 NotFound を返すことを検証する。
 func TestSuspendTenantNotFound(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(updateTenantStatusQuery)).
 		WithArgs("NOTFOUND", "suspended").
 		WillReturnError(sql.ErrNoRows)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.SuspendTenant(context.Background(), newRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "NOTFOUND"}))
+	_, err := client.SuspendTenant(context.Background(), newAuthedRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "NOTFOUND"}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SuspendTenant code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -329,6 +406,9 @@ func TestSuspendTenantNotFound(t *testing.T) {
 func TestResumeTenantSuccess(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 	id := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(updateTenantStatusQuery)).
@@ -337,12 +417,127 @@ func TestResumeTenantSuccess(t *testing.T) {
 			AddRow(id, "SUSP001", nil, nil, "Suspended Tenant", nil, now, "active"))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.ResumeTenant(context.Background(), newRequest(publirasplatformv1.ResumeTenantRequest{PublicId: "SUSP001"}))
+	resp, err := client.ResumeTenant(context.Background(), newAuthedRequest(publirasplatformv1.ResumeTenantRequest{PublicId: "SUSP001"}))
 	if err != nil {
 		t.Fatalf("ResumeTenant: %v", err)
 	}
 	if resp.Msg.Tenant.Status != "active" {
 		t.Fatalf("tenant.status = %q, want active", resp.Msg.Tenant.Status)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestPlatformTenantRequiresSession(t *testing.T) {
+	ts, _ := newTestPlatformServer(t)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListTenants(context.Background(), newRequest(publirasplatformv1.ListTenantsRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ListTenants code = %v, want unauthenticated", connect.CodeOf(err))
+	}
+}
+
+func TestPlatformTenantRejectsNonPlatformRole(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, "tenant_admin", now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("ListTenants code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestPlatformAuthCreateSessionSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	password := "secret-password"
+	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword: %v", err)
+	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
+		WithArgs("platform@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "email", "password_hash", "role", "name", "created_at"}).
+			AddRow(userID, tenantID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), testPlatformRole, "Platform User", now))
+
+	mock.ExpectQuery("INSERT INTO sessions").
+		WithArgs(sqlmock.AnyArg(), tenantID, userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, "token-hash", now.Add(time.Hour), nil, now))
+
+	client := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	resp, err := client.CreateSession(context.Background(), newRequest(publirasplatformv1.PlatformAuthServiceCreateSessionRequest{
+		Email:    "platform@example.com",
+		Password: password,
+	}))
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if resp.Msg.User == nil || resp.Msg.User.Role != testPlatformRole {
+		t.Fatalf("user.role = %v, want %s", resp.Msg.User, testPlatformRole)
+	}
+	if resp.Msg.Session == nil || resp.Msg.Session.SessionId == "" {
+		t.Fatalf("session is missing token")
+	}
+	if got := resp.Header().Get("Set-Cookie"); got == "" {
+		t.Fatalf("Set-Cookie is empty")
+	}
+	assertExpectations(t, mock)
+}
+
+func TestPlatformAuthGetMeSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	req := newRequest(publirasplatformv1.PlatformAuthServiceGetMeRequest{})
+	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, testSessionToken))
+	resp, err := client.GetMe(context.Background(), req)
+	if err != nil {
+		t.Fatalf("GetMe: %v", err)
+	}
+	if resp.Msg.User == nil || resp.Msg.User.Role != testPlatformRole {
+		t.Fatalf("user.role = %v, want %s", resp.Msg.User, testPlatformRole)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestPlatformAuthDeleteSessionRevokes(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHash)).
+		WithArgs(auth.HashToken(testSessionToken)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+			AddRow(sessionID, tenantID, userID, auth.HashToken(testSessionToken), now.Add(time.Hour), nil, now))
+
+	mock.ExpectExec("UPDATE sessions").
+		WithArgs(sessionID, tenantID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	client := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
+	req := newRequest(publirasplatformv1.PlatformAuthServiceDeleteSessionRequest{})
+	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, testSessionToken))
+	resp, err := client.DeleteSession(context.Background(), req)
+	if err != nil {
+		t.Fatalf("DeleteSession: %v", err)
+	}
+	if got := resp.Header().Get("Set-Cookie"); got == "" {
+		t.Fatalf("Set-Cookie is empty")
 	}
 	assertExpectations(t, mock)
 }
