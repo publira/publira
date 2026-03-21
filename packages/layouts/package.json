@@ -15,12 +15,22 @@
       "types": "./dist/site-layout.d.mts",
       "default": "./dist/site-layout.mjs"
     },
+    "./admin": {
+      "types": "./dist/admin/index.d.mts",
+      "default": "./dist/admin/index.mjs"
+    },
+    "./navigation": {
+      "types": "./dist/navigation.d.mts",
+      "default": "./dist/navigation.mjs"
+    },
     "./styles.css": "./styles.css"
   },
   "scripts": {
     "build": "rm -rf dist && tsdown"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@publira/icons": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*"
   },

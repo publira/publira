@@ -1,23 +1,22 @@
 {
-  "name": "@publira/web-admin",
+  "name": "@publira/web-platform",
   "version": "0.1.0",
   "private": true,
   "description": "",
   "repository": {
     "type": "git",
     "url": "https://github.com/publira/publira.git",
-    "directory": "apps/web-admin"
+    "directory": "apps/web-platform"
   },
   "type": "module",
   "scripts": {
     "build": "next build",
-    "dev": "next dev --port 4000",
+    "dev": "next dev --port 4100",
     "start": "next start",
     "test": "vitest --run",
     "typegen": "next typegen"
   },
   "dependencies": {
-    "@publira/api-client": "workspace:*",
     "@publira/brand": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",

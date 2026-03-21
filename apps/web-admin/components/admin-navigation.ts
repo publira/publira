@@ -1,29 +1,7 @@
 import { CollectionIcon, DashboardIcon, SettingsIcon } from "@publira/icons";
-import type { ComponentType, SVGProps } from "react";
+import type { NavSection } from "@publira/layouts/navigation";
 
-type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
-
-export interface AdminNavItem {
-  href: string;
-  label: string;
-  description: string;
-  icon: IconComponent;
-}
-
-export interface AdminNavSection {
-  title: string;
-  items: AdminNavItem[];
-}
-
-export const isCurrentPath = (pathname: string, href: string) => {
-  if (href === "/") {
-    return pathname === href;
-  }
-
-  return pathname === href || pathname.startsWith(`${href}/`);
-};
-
-export const navigation: AdminNavSection[] = [
+export const navigation: NavSection[] = [
   {
     items: [
       {
