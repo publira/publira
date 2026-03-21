@@ -32,8 +32,10 @@ message GetTenantResponse {
 }
 
 message CreateTenantRequest {
-  string public_id = 1;
-  string name = 2;
+  string name = 1;
+  string subdomain = 2;
+  string domain = 3;
+  repeated string initial_admin_emails = 4;
 }
 
 message CreateTenantResponse {

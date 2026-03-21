@@ -276,11 +276,13 @@ func (x *GetTenantResponse) GetTenant() *Tenant {
 }
 
 type CreateTenantRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Name               string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Subdomain          string                 `protobuf:"bytes,2,opt,name=subdomain,proto3" json:"subdomain,omitempty"`
+	Domain             string                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
+	InitialAdminEmails []string               `protobuf:"bytes,4,rep,name=initial_admin_emails,json=initialAdminEmails,proto3" json:"initial_admin_emails,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *CreateTenantRequest) Reset() {
@@ -313,18 +315,32 @@ func (*CreateTenantRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *CreateTenantRequest) GetPublicId() string {
-	if x != nil {
-		return x.PublicId
-	}
-	return ""
-}
-
 func (x *CreateTenantRequest) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *CreateTenantRequest) GetSubdomain() string {
+	if x != nil {
+		return x.Subdomain
+	}
+	return ""
+}
+
+func (x *CreateTenantRequest) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *CreateTenantRequest) GetInitialAdminEmails() []string {
+	if x != nil {
+		return x.InitialAdminEmails
+	}
+	return nil
 }
 
 type CreateTenantResponse struct {
@@ -566,10 +582,12 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"H\n" +
 	"\x11GetTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"F\n" +
-	"\x13CreateTenantRequest\x12\x1b\n" +
-	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"K\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\x91\x01\n" +
+	"\x13CreateTenantRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
+	"\tsubdomain\x18\x02 \x01(\tR\tsubdomain\x12\x16\n" +
+	"\x06domain\x18\x03 \x01(\tR\x06domain\x120\n" +
+	"\x14initial_admin_emails\x18\x04 \x03(\tR\x12initialAdminEmails\"K\n" +
 	"\x14CreateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"3\n" +
 	"\x14SuspendTenantRequest\x12\x1b\n" +

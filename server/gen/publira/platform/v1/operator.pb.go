@@ -105,27 +105,26 @@ func (x *PlatformOperator) GetCreatedAt() string {
 	return ""
 }
 
-type ListPlatformOperatorsRequest struct {
+type ListOperatorsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ListPlatformOperatorsRequest) Reset() {
-	*x = ListPlatformOperatorsRequest{}
+func (x *ListOperatorsRequest) Reset() {
+	*x = ListOperatorsRequest{}
 	mi := &file_publira_platform_v1_operator_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ListPlatformOperatorsRequest) String() string {
+func (x *ListOperatorsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListPlatformOperatorsRequest) ProtoMessage() {}
+func (*ListOperatorsRequest) ProtoMessage() {}
 
-func (x *ListPlatformOperatorsRequest) ProtoReflect() protoreflect.Message {
+func (x *ListOperatorsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_platform_v1_operator_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -137,39 +136,32 @@ func (x *ListPlatformOperatorsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListPlatformOperatorsRequest.ProtoReflect.Descriptor instead.
-func (*ListPlatformOperatorsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListOperatorsRequest.ProtoReflect.Descriptor instead.
+func (*ListOperatorsRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ListPlatformOperatorsRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-type ListPlatformOperatorsResponse struct {
+type ListOperatorsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Operators     []*PlatformOperator    `protobuf:"bytes,1,rep,name=operators,proto3" json:"operators,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ListPlatformOperatorsResponse) Reset() {
-	*x = ListPlatformOperatorsResponse{}
+func (x *ListOperatorsResponse) Reset() {
+	*x = ListOperatorsResponse{}
 	mi := &file_publira_platform_v1_operator_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ListPlatformOperatorsResponse) String() string {
+func (x *ListOperatorsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListPlatformOperatorsResponse) ProtoMessage() {}
+func (*ListOperatorsResponse) ProtoMessage() {}
 
-func (x *ListPlatformOperatorsResponse) ProtoReflect() protoreflect.Message {
+func (x *ListOperatorsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_platform_v1_operator_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -181,12 +173,12 @@ func (x *ListPlatformOperatorsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListPlatformOperatorsResponse.ProtoReflect.Descriptor instead.
-func (*ListPlatformOperatorsResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListOperatorsResponse.ProtoReflect.Descriptor instead.
+func (*ListOperatorsResponse) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ListPlatformOperatorsResponse) GetOperators() []*PlatformOperator {
+func (x *ListOperatorsResponse) GetOperators() []*PlatformOperator {
 	if x != nil {
 		return x.Operators
 	}
@@ -205,14 +197,12 @@ const file_publira_platform_v1_operator_proto_rawDesc = "" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"=\n" +
-	"\x1cListPlatformOperatorsRequest\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"d\n" +
-	"\x1dListPlatformOperatorsResponse\x12C\n" +
-	"\toperators\x18\x01 \x03(\v2%.publira.platform.v1.PlatformOperatorR\toperators2\x93\x01\n" +
-	"\x17PlatformOperatorService\x12x\n" +
-	"\rListOperators\x121.publira.platform.v1.ListPlatformOperatorsRequest\x1a2.publira.platform.v1.ListPlatformOperatorsResponse\"\x00BNZLgithub.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\x16\n" +
+	"\x14ListOperatorsRequest\"\\\n" +
+	"\x15ListOperatorsResponse\x12C\n" +
+	"\toperators\x18\x01 \x03(\v2%.publira.platform.v1.PlatformOperatorR\toperators2\x83\x01\n" +
+	"\x17PlatformOperatorService\x12h\n" +
+	"\rListOperators\x12).publira.platform.v1.ListOperatorsRequest\x1a*.publira.platform.v1.ListOperatorsResponse\"\x00BNZLgithub.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
 
 var (
 	file_publira_platform_v1_operator_proto_rawDescOnce sync.Once
@@ -228,14 +218,14 @@ func file_publira_platform_v1_operator_proto_rawDescGZIP() []byte {
 
 var file_publira_platform_v1_operator_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_publira_platform_v1_operator_proto_goTypes = []any{
-	(*PlatformOperator)(nil),              // 0: publira.platform.v1.PlatformOperator
-	(*ListPlatformOperatorsRequest)(nil),  // 1: publira.platform.v1.ListPlatformOperatorsRequest
-	(*ListPlatformOperatorsResponse)(nil), // 2: publira.platform.v1.ListPlatformOperatorsResponse
+	(*PlatformOperator)(nil),      // 0: publira.platform.v1.PlatformOperator
+	(*ListOperatorsRequest)(nil),  // 1: publira.platform.v1.ListOperatorsRequest
+	(*ListOperatorsResponse)(nil), // 2: publira.platform.v1.ListOperatorsResponse
 }
 var file_publira_platform_v1_operator_proto_depIdxs = []int32{
-	0, // 0: publira.platform.v1.ListPlatformOperatorsResponse.operators:type_name -> publira.platform.v1.PlatformOperator
-	1, // 1: publira.platform.v1.PlatformOperatorService.ListOperators:input_type -> publira.platform.v1.ListPlatformOperatorsRequest
-	2, // 2: publira.platform.v1.PlatformOperatorService.ListOperators:output_type -> publira.platform.v1.ListPlatformOperatorsResponse
+	0, // 0: publira.platform.v1.ListOperatorsResponse.operators:type_name -> publira.platform.v1.PlatformOperator
+	1, // 1: publira.platform.v1.PlatformOperatorService.ListOperators:input_type -> publira.platform.v1.ListOperatorsRequest
+	2, // 2: publira.platform.v1.PlatformOperatorService.ListOperators:output_type -> publira.platform.v1.ListOperatorsResponse
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

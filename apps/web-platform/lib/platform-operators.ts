@@ -1,11 +1,4 @@
-import { createPlatformApiClient } from "@publira/api-client/platform/client";
-
-const platformApiBaseUrl =
-  process.env.PUBLIRA_PLATFORM_API_BASE_URL ?? "http://localhost:8002";
-
-const platformApiClient = createPlatformApiClient({
-  baseUrl: platformApiBaseUrl,
-});
+import { platformApiClient } from "./platform-api-client";
 
 export interface PlatformOperatorSummary {
   createdAt: string;
@@ -24,8 +17,8 @@ export const listPlatformOperators = async (
   }
 
   try {
-    const response = await platformApiClient.operators.listOperators({
-      sessionId,
+    const response = await platformApiClient.operators.listOperators({}, {
+      headers: { "X-Publira-Session-Id": sessionId },
     } as never);
     return (response.operators ?? []).map((operator) => ({
       createdAt: operator.createdAt,

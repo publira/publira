@@ -73,7 +73,10 @@ describe("logoutPlatform", () => {
     mockDeleteSession.mockResolvedValueOnce({});
 
     await logoutPlatform("tok_abc");
-    expect(mockDeleteSession).toHaveBeenCalledWith({ sessionId: "tok_abc" });
+    expect(mockDeleteSession).toHaveBeenCalledWith(
+      {},
+      { headers: { "X-Publira-Session-Id": "tok_abc" } }
+    );
   });
 
   it("API エラー時も例外を投げない", async () => {
@@ -95,7 +98,10 @@ describe("getPlatformCurrentOperator", () => {
       publicId: "usr_1",
       role: "platform_super_admin",
     });
-    expect(mockGetMe).toHaveBeenCalledWith({ sessionId: "tok_abc" });
+    expect(mockGetMe).toHaveBeenCalledWith(
+      {},
+      { headers: { "X-Publira-Session-Id": "tok_abc" } }
+    );
   });
 
   it("sessionId が空文字の場合は null を返す (API を呼ばない)", async () => {

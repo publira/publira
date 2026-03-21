@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/mail"
 	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
@@ -19,7 +22,26 @@ const (
 
 	defaultListLimit = 20
 	maxListLimit     = 100
+	tenantAdminRole  = auth.RoleTenantAdmin
 )
+
+func tenantUniqueViolationField(err error) string {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+		return ""
+	}
+
+	switch pgErr.ConstraintName {
+	case "tenants_public_id_key":
+		return "public_id"
+	case "tenants_domain_key":
+		return "domain"
+	case "tenants_subdomain_key":
+		return "subdomain"
+	default:
+		return ""
+	}
+}
 
 func tenantToProto(t dbmodels.Tenant) *publirasplatformv1.Tenant {
 	return &publirasplatformv1.Tenant{
@@ -89,25 +111,105 @@ func (s *platformServer) CreateTenant(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CreateTenantRequest],
 ) (*connect.Response[publirasplatformv1.CreateTenantResponse], error) {
-	publicID := strings.TrimSpace(req.Msg.PublicId)
-	if publicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
-	}
 	name := strings.TrimSpace(req.Msg.Name)
 	if name == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
+	domain := strings.TrimSpace(req.Msg.Domain)
+	subdomain := strings.TrimSpace(req.Msg.Subdomain)
+	if subdomain == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("subdomain is required"))
+	}
+	adminEmails := make([]string, 0, len(req.Msg.InitialAdminEmails))
+	seenEmails := make(map[string]struct{}, len(req.Msg.InitialAdminEmails))
+	for _, rawEmail := range req.Msg.InitialAdminEmails {
+		email := strings.TrimSpace(strings.ToLower(rawEmail))
+		if email == "" {
+			continue
+		}
+		if _, err := mail.ParseAddress(email); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid initial_admin_emails"))
+		}
+		if _, exists := seenEmails[email]; exists {
+			continue
+		}
+		seenEmails[email] = struct{}{}
+		adminEmails = append(adminEmails, email)
+	}
 
-	tenant, err := s.queries.CreateTenant(ctx, dbmodels.CreateTenantParams{
-		ID:       uuid.New(),
-		PublicID: publicID,
-		Name:     name,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txq := dbmodels.New(tx)
+
+	tenantID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	tenant, err := txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
+		ID:       tenantID,
+		PublicID: generatePublicID(),
+		Domain: sql.NullString{
+			String: domain,
+			Valid:  domain != "",
+		},
+		Subdomain: sql.NullString{
+			String: subdomain,
+			Valid:  true,
+		},
+		Name: name,
 	})
 	if err != nil {
-		// public_id の重複チェック (PostgreSQL unique violation: code 23505)
-		if strings.Contains(err.Error(), "23505") || strings.Contains(err.Error(), "unique") {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("tenant with this public_id already exists"))
+		if field := tenantUniqueViolationField(err); field != "" {
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New(field+" already exists"))
 		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	for _, adminEmail := range adminEmails {
+		user, err := txq.GetUserByEmail(ctx, adminEmail)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				continue
+			}
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+
+		membershipID, err := uuid.NewV7()
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		membership, err := txq.CreateTenantMembership(ctx, dbmodels.CreateTenantMembershipParams{
+			ID:       membershipID,
+			UserID:   user.ID,
+			TenantID: tenant.ID,
+			Status:   defaultMembershipStatus,
+		})
+		if err != nil {
+			if isUniqueViolation(err) {
+				continue
+			}
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+
+		_, err = txq.CreateTenantMemberRole(ctx, dbmodels.CreateTenantMemberRoleParams{
+			ID:           uuid.Must(uuid.NewV7()),
+			MembershipID: membership.ID,
+			Role:         tenantAdminRole,
+		})
+		if err != nil {
+			if isUniqueViolation(err) {
+				continue
+			}
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

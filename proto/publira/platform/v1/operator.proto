@@ -13,9 +13,7 @@ message PlatformOperator {
   string created_at = 6;
 }
 
-message ListOperatorsRequest {
-  string session_id = 1;
-}
+message ListOperatorsRequest {}
 
 message ListOperatorsResponse {
   repeated PlatformOperator operators = 1;

@@ -249,20 +249,28 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 }
 
 const createTenant = `-- name: CreateTenant :one
-INSERT INTO tenants (id, public_id, name, status)
-VALUES ($1, $2, $3, 'active')
+INSERT INTO tenants (id, public_id, domain, subdomain, name, status)
+VALUES ($1, $2, $3, $4, $5, 'active')
 RETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
 `
 
 type CreateTenantParams struct {
-	ID       uuid.UUID `json:"id"`
-	PublicID string    `json:"public_id"`
-	Name     string    `json:"name"`
+	ID        uuid.UUID      `json:"id"`
+	PublicID  string         `json:"public_id"`
+	Domain    sql.NullString `json:"domain"`
+	Subdomain sql.NullString `json:"subdomain"`
+	Name      string         `json:"name"`
 }
 
 // プラットフォーム管理者向けテナント作成
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, createTenant, arg.ID, arg.PublicID, arg.Name)
+	row := q.db.QueryRowContext(ctx, createTenant,
+		arg.ID,
+		arg.PublicID,
+		arg.Domain,
+		arg.Subdomain,
+		arg.Name,
+	)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,

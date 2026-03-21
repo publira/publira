@@ -16,15 +16,11 @@ message PlatformAuthServiceCreateSessionResponse {
   publira.types.v1.Session session = 2;
 }
 
-message PlatformAuthServiceDeleteSessionRequest {
-  string session_id = 1;
-}
+message PlatformAuthServiceDeleteSessionRequest {}
 
 message PlatformAuthServiceDeleteSessionResponse {}
 
-message PlatformAuthServiceGetMeRequest {
-  string session_id = 1;
-}
+message PlatformAuthServiceGetMeRequest {}
 
 message PlatformAuthServiceGetMeResponse {
   publira.types.v1.User user = 1;

@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/publira/publira/server/api/platformapi"
@@ -23,23 +24,33 @@ import (
 )
 
 const (
-	getTenantByPublicIDQuery  = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
-	listTenantsQuery          = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nORDER BY created_at DESC\nLIMIT $1 OFFSET $2\n"
-	createTenantQuery         = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, name, status)\nVALUES ($1, $2, $3, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
-	updateTenantStatusQuery   = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
-	getSessionByTokenHash     = "-- name: GetSessionByTokenHash :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
-	getUserByIDQuery          = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE id = $1\n"
-	getUserByEmailQuery       = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
-	countPlatformUsersQuery   = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM (\n        SELECT DISTINCT user_id\n        FROM platform_user_roles\n    ) platform_users\n"
-	createUserQuery           = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at\n"
+	getTenantByPublicIDQuery    = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
+	listTenantsQuery            = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nORDER BY created_at DESC\nLIMIT $1 OFFSET $2\n"
+	createTenantQuery           = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, domain, subdomain, name, status)\nVALUES ($1, $2, $3, $4, $5, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	createTenantMembershipQuery = "-- name: CreateTenantMembership :one\nINSERT INTO tenant_memberships (id, user_id, tenant_id, status)\nVALUES ($1, $2, $3, $4)\nRETURNING id, user_id, tenant_id, status, created_at\n"
+	createTenantMemberRoleQuery = "-- name: CreateTenantMemberRole :one\nINSERT INTO tenant_member_roles (id, membership_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, membership_id, role, created_at\n"
+	updateTenantStatusQuery     = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	getSessionByTokenHash       = "-- name: GetSessionByTokenHash :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
+	getUserByIDQuery            = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE id = $1\n"
+	getUserByEmailQuery         = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
+	countPlatformUsersQuery     = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM (\n        SELECT DISTINCT user_id\n        FROM platform_user_roles\n    ) platform_users\n"
+	createUserQuery             = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at\n"
 	createPlatformUserRoleQuery = "-- name: CreatePlatformUserRole :one\nINSERT INTO platform_user_roles (id, user_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, user_id, role, created_at\n"
-	listPlatformUserRolesQuery = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
-	testSessionToken          = "platform-session-token"
-	testPlatformRole          = "platform_operator"
+	listPlatformUserRolesQuery  = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
+	testSessionToken            = "platform-session-token"
+	testPlatformRole            = "platform_operator"
 )
 
 func tenantColumns() []string {
 	return []string{"id", "public_id", "domain", "subdomain", "name", "default_reading_period_hours", "created_at", "status"}
+}
+
+func tenantMembershipColumns() []string {
+	return []string{"id", "user_id", "tenant_id", "status", "created_at"}
+}
+
+func tenantMemberRoleColumns() []string {
+	return []string{"id", "membership_id", "role", "created_at"}
 }
 
 func newTestPlatformServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
@@ -60,8 +71,23 @@ func newRequest[T any](msg T) *connect.Request[T] {
 
 func newAuthedRequest[T any](msg T) *connect.Request[T] {
 	req := connect.NewRequest(&msg)
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, testSessionToken))
+	req.Header().Set("X-Publira-Session-Id", testSessionToken)
 	return req
+}
+
+func newAuthedCreateTenantRequest(msg *publirasplatformv1.CreateTenantRequest) *connect.Request[publirasplatformv1.CreateTenantRequest] {
+	req := connect.NewRequest(msg)
+	req.Header().Set("X-Publira-Session-Id", testSessionToken)
+	return req
+}
+
+func validCreateTenantRequest() *publirasplatformv1.CreateTenantRequest {
+	return &publirasplatformv1.CreateTenantRequest{
+		Name:               "New Tenant",
+		Domain:             "new.example.com",
+		Subdomain:          "new",
+		InitialAdminEmails: []string{"owner@example.com"},
+	}
 }
 
 func expectPlatformGuard(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
@@ -280,45 +306,56 @@ func TestCreateTenantSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
-	id := uuid.Must(uuid.NewV7())
+	createdTenantID := uuid.Must(uuid.NewV7())
+	createdUserID := uuid.Must(uuid.NewV7())
+	createdMembershipID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectBegin()
 
 	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), "NEW001", "New Tenant").
+		WithArgs(
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sql.NullString{String: "new.example.com", Valid: true},
+			sql.NullString{String: "new", Valid: true},
+			"New Tenant",
+		).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id, "NEW001", nil, nil, "New Tenant", nil, now, "active"))
+			AddRow(createdTenantID, "TNNEW000001", "new.example.com", "new", "New Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
+		WithArgs("owner@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
+			AddRow(createdUserID, "USRNEW000001", "owner@example.com", "hashed-password", "Owner User", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantMembershipQuery)).
+		WithArgs(sqlmock.AnyArg(), createdUserID, createdTenantID, "active").
+		WillReturnRows(sqlmock.NewRows(tenantMembershipColumns()).
+			AddRow(createdMembershipID, createdUserID, createdTenantID, "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantMemberRoleQuery)).
+		WithArgs(sqlmock.AnyArg(), createdMembershipID, "tenant_admin").
+		WillReturnRows(sqlmock.NewRows(tenantMemberRoleColumns()).
+			AddRow(uuid.Must(uuid.NewV7()), createdMembershipID, "tenant_admin", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
+		WithArgs("missing@example.com").
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	resp, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
-		PublicId: "NEW001",
-		Name:     "New Tenant",
-	}))
+	req := validCreateTenantRequest()
+	req.InitialAdminEmails = []string{"owner@example.com", "missing@example.com"}
+	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
 	if err != nil {
 		t.Fatalf("CreateTenant: %v", err)
 	}
-	if resp.Msg.Tenant.PublicId != "NEW001" {
-		t.Fatalf("tenant.public_id = %q, want NEW001", resp.Msg.Tenant.PublicId)
+	if resp.Msg.Tenant.PublicId != "TNNEW000001" {
+		t.Fatalf("tenant.public_id = %q, want TNNEW000001", resp.Msg.Tenant.PublicId)
 	}
 	if resp.Msg.Tenant.Status != "active" {
 		t.Fatalf("tenant.status = %q, want active", resp.Msg.Tenant.Status)
-	}
-	assertExpectations(t, mock)
-}
-
-// TestCreateTenantRequiresPublicID は public_id が空の場合 InvalidArgument を返すことを検証する。
-func TestCreateTenantRequiresPublicID(t *testing.T) {
-	ts, mock := newTestPlatformServer(t)
-	now := time.Now()
-	tenantID := uuid.Must(uuid.NewV7())
-	userID := uuid.Must(uuid.NewV7())
-	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
-
-	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
-		PublicId: "",
-		Name:     "Valid Name",
-	}))
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
 }
@@ -332,10 +369,78 @@ func TestCreateTenantRequiresName(t *testing.T) {
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
-		PublicId: "VALID01",
-		Name:     "   ",
-	}))
+	req := validCreateTenantRequest()
+	req.Name = ""
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateTenantRequiresSubdomain(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	req := validCreateTenantRequest()
+	req.Subdomain = "   "
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateTenantAllowsEmptyDomain(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+	createdTenantID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
+		WithArgs(
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sql.NullString{String: "", Valid: false},
+			sql.NullString{String: "new", Valid: true},
+			"New Tenant",
+		).
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(createdTenantID, "TNNEW000002", nil, "new", "New Tenant", nil, now, "active"))
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	req := validCreateTenantRequest()
+	req.Domain = ""
+	req.InitialAdminEmails = nil
+	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
+	if err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	if resp.Msg.Tenant.PublicId != "TNNEW000002" {
+		t.Fatalf("tenant.public_id = %q, want TNNEW000002", resp.Msg.Tenant.PublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateTenantRejectsInvalidInitialAdminEmails(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	req := validCreateTenantRequest()
+	req.InitialAdminEmails = []string{"invalid-email"}
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
@@ -349,18 +454,98 @@ func TestCreateTenantDuplicateReturnsAlreadyExists(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+	mock.ExpectBegin()
 
 	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), "DUP001", "Duplicate Tenant").
-		WillReturnError(fmt.Errorf("pq: duplicate key value violates unique constraint %q (SQLSTATE 23505)", "tenants_public_id_key"))
+		WithArgs(
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sql.NullString{String: "dup.example.com", Valid: true},
+			sql.NullString{String: "dup", Valid: true},
+			"Duplicate Tenant",
+		).
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "tenants_public_id_key"})
+	mock.ExpectRollback()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
-	_, err := client.CreateTenant(context.Background(), newAuthedRequest(publirasplatformv1.CreateTenantRequest{
-		PublicId: "DUP001",
-		Name:     "Duplicate Tenant",
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(&publirasplatformv1.CreateTenantRequest{
+		Name:      "Duplicate Tenant",
+		Domain:    "dup.example.com",
+		Subdomain: "dup",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "public_id") {
+		t.Fatalf("CreateTenant error = %v, want public_id duplicate message", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+	mock.ExpectBegin()
+
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
+		WithArgs(
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sql.NullString{String: "existing.example.com", Valid: true},
+			sql.NullString{String: "dom001", Valid: true},
+			"Domain Duplicate Tenant",
+		).
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "tenants_domain_key"})
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(&publirasplatformv1.CreateTenantRequest{
+		Name:      "Domain Duplicate Tenant",
+		Domain:    "existing.example.com",
+		Subdomain: "dom001",
+	}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "domain") {
+		t.Fatalf("CreateTenant error = %v, want domain duplicate message", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateTenantDuplicateSubdomainReturnsAlreadyExists(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+	mock.ExpectBegin()
+
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
+		WithArgs(
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sql.NullString{String: "sub001.example.com", Valid: true},
+			sql.NullString{String: "existing-sub", Valid: true},
+			"Subdomain Duplicate Tenant",
+		).
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "tenants_subdomain_key"})
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(&publirasplatformv1.CreateTenantRequest{
+		Name:      "Subdomain Duplicate Tenant",
+		Domain:    "sub001.example.com",
+		Subdomain: "existing-sub",
+	}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "subdomain") {
+		t.Fatalf("CreateTenant error = %v, want subdomain duplicate message", err)
 	}
 	assertExpectations(t, mock)
 }
@@ -513,7 +698,7 @@ func TestPlatformAuthGetMeSuccess(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 	req := newRequest(publirasplatformv1.PlatformAuthServiceGetMeRequest{})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, testSessionToken))
+	req.Header().Set("X-Publira-Session-Id", testSessionToken)
 	resp, err := client.GetMe(context.Background(), req)
 	if err != nil {
 		t.Fatalf("GetMe: %v", err)
@@ -542,7 +727,7 @@ func TestPlatformAuthDeleteSessionRevokes(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 	req := newRequest(publirasplatformv1.PlatformAuthServiceDeleteSessionRequest{})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, testSessionToken))
+	req.Header().Set("X-Publira-Session-Id", testSessionToken)
 	resp, err := client.DeleteSession(context.Background(), req)
 	if err != nil {
 		t.Fatalf("DeleteSession: %v", err)
@@ -656,10 +841,18 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 		name string
 		req  func() publirasplatformv1.CreateInitialUserRequest
 	}{
-		{"empty_name", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "", Email: "a@b.com", Password: "pass"} }},
-		{"empty_email", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "", Password: "pass"} }},
-		{"empty_password", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: ""} }},
-		{"invalid_email", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "not-an-email", Password: "pass"} }},
+		{"empty_name", func() publirasplatformv1.CreateInitialUserRequest {
+			return publirasplatformv1.CreateInitialUserRequest{Name: "", Email: "a@b.com", Password: "pass"}
+		}},
+		{"empty_email", func() publirasplatformv1.CreateInitialUserRequest {
+			return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "", Password: "pass"}
+		}},
+		{"empty_password", func() publirasplatformv1.CreateInitialUserRequest {
+			return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: ""}
+		}},
+		{"invalid_email", func() publirasplatformv1.CreateInitialUserRequest {
+			return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "not-an-email", Password: "pass"}
+		}},
 	}
 
 	for _, tc := range cases {
@@ -671,4 +864,3 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 		})
 	}
 }
-

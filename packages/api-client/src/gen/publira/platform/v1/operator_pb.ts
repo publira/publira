@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/operator.proto.
  */
 export const file_publira_platform_v1_operator: GenFile = /*@__PURE__*/
-  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL29wZXJhdG9yLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxInQKEFBsYXRmb3JtT3BlcmF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEcm9sZRgEIAEoCRIOCgZzdGF0dXMYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCSIyChxMaXN0UGxhdGZvcm1PcGVyYXRvcnNSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiWQodTGlzdFBsYXRmb3JtT3BlcmF0b3JzUmVzcG9uc2USOAoJb3BlcmF0b3JzGAEgAygLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybU9wZXJhdG9yMpMBChdQbGF0Zm9ybU9wZXJhdG9yU2VydmljZRJ4Cg1MaXN0T3BlcmF0b3JzEjEucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0UGxhdGZvcm1PcGVyYXRvcnNSZXF1ZXN0GjIucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0UGxhdGZvcm1PcGVyYXRvcnNSZXNwb25zZSIAQk5aTGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
+  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL29wZXJhdG9yLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxInQKEFBsYXRmb3JtT3BlcmF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEcm9sZRgEIAEoCRIOCgZzdGF0dXMYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCSIWChRMaXN0T3BlcmF0b3JzUmVxdWVzdCJRChVMaXN0T3BlcmF0b3JzUmVzcG9uc2USOAoJb3BlcmF0b3JzGAEgAygLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybU9wZXJhdG9yMoMBChdQbGF0Zm9ybU9wZXJhdG9yU2VydmljZRJoCg1MaXN0T3BlcmF0b3JzEikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0T3BlcmF0b3JzUmVxdWVzdBoqLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdE9wZXJhdG9yc1Jlc3BvbnNlIgBCTlpMZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3BsYXRmb3JtL3YxO3B1YmxpcmFzcGxhdGZvcm12MWIGcHJvdG8z");
 
 /**
  * @generated from message publira.platform.v1.PlatformOperator
@@ -55,26 +55,22 @@ export const PlatformOperatorSchema: GenMessage<PlatformOperator> = /*@__PURE__*
   messageDesc(file_publira_platform_v1_operator, 0);
 
 /**
- * @generated from message publira.platform.v1.ListPlatformOperatorsRequest
+ * @generated from message publira.platform.v1.ListOperatorsRequest
  */
-export type ListPlatformOperatorsRequest = Message<"publira.platform.v1.ListPlatformOperatorsRequest"> & {
-  /**
-   * @generated from field: string session_id = 1;
-   */
-  sessionId: string;
+export type ListOperatorsRequest = Message<"publira.platform.v1.ListOperatorsRequest"> & {
 };
 
 /**
- * Describes the message publira.platform.v1.ListPlatformOperatorsRequest.
- * Use `create(ListPlatformOperatorsRequestSchema)` to create a new message.
+ * Describes the message publira.platform.v1.ListOperatorsRequest.
+ * Use `create(ListOperatorsRequestSchema)` to create a new message.
  */
-export const ListPlatformOperatorsRequestSchema: GenMessage<ListPlatformOperatorsRequest> = /*@__PURE__*/
+export const ListOperatorsRequestSchema: GenMessage<ListOperatorsRequest> = /*@__PURE__*/
   messageDesc(file_publira_platform_v1_operator, 1);
 
 /**
- * @generated from message publira.platform.v1.ListPlatformOperatorsResponse
+ * @generated from message publira.platform.v1.ListOperatorsResponse
  */
-export type ListPlatformOperatorsResponse = Message<"publira.platform.v1.ListPlatformOperatorsResponse"> & {
+export type ListOperatorsResponse = Message<"publira.platform.v1.ListOperatorsResponse"> & {
   /**
    * @generated from field: repeated publira.platform.v1.PlatformOperator operators = 1;
    */
@@ -82,10 +78,10 @@ export type ListPlatformOperatorsResponse = Message<"publira.platform.v1.ListPla
 };
 
 /**
- * Describes the message publira.platform.v1.ListPlatformOperatorsResponse.
- * Use `create(ListPlatformOperatorsResponseSchema)` to create a new message.
+ * Describes the message publira.platform.v1.ListOperatorsResponse.
+ * Use `create(ListOperatorsResponseSchema)` to create a new message.
  */
-export const ListPlatformOperatorsResponseSchema: GenMessage<ListPlatformOperatorsResponse> = /*@__PURE__*/
+export const ListOperatorsResponseSchema: GenMessage<ListOperatorsResponse> = /*@__PURE__*/
   messageDesc(file_publira_platform_v1_operator, 2);
 
 /**
@@ -97,8 +93,8 @@ export const PlatformOperatorService: GenService<{
    */
   listOperators: {
     methodKind: "unary";
-    input: typeof ListPlatformOperatorsRequestSchema;
-    output: typeof ListPlatformOperatorsResponseSchema;
+    input: typeof ListOperatorsRequestSchema;
+    output: typeof ListOperatorsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_platform_v1_operator, 0);
