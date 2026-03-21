@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 
-import { AdminPage } from "../components/admin-page";
+import { AdminPage } from "../../components/admin-page";
 
 const stats = [
   {

@@ -3,11 +3,17 @@ import { StatusChip } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 
 export interface AdminHeaderProps {
+  currentUser: {
+    name: string;
+    publicId: string;
+    role: string;
+  };
   mobileNavOpen: boolean;
   onOpenMobileNav: () => void;
 }
 
 export const AdminHeader = ({
+  currentUser,
   mobileNavOpen,
   onOpenMobileNav,
 }: AdminHeaderProps) => (
@@ -36,15 +42,25 @@ export const AdminHeader = ({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden min-w-0 text-right sm:block">
+          <p className="truncate text-sm font-medium text-foreground">
+            {currentUser.name || "ログイン中のユーザー"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {currentUser.publicId}
+          </p>
+        </div>
         <StatusChip className="hidden sm:inline-flex" status="info">
-          Authenticated Layout
+          {currentUser.role || "admin"}
         </StatusChip>
         <Button size="sm" type="button" variant="outline">
           プレビュー
         </Button>
-        <Button size="sm" type="button">
-          新規シリーズ
-        </Button>
+        <form action="/logout" method="post">
+          <Button size="sm" type="submit" variant="outline">
+            ログアウト
+          </Button>
+        </form>
       </div>
     </div>
   </header>

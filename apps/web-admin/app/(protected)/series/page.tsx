@@ -8,7 +8,7 @@ import {
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
 
-import { AdminPage } from "../../components/admin-page";
+import { AdminPage } from "../../../components/admin-page";
 
 export default function SeriesPage() {
   return (
