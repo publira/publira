@@ -1,3 +1,20 @@
+-- name: ListTenants :many
+-- プラットフォーム管理者向けテナント一覧取得
+SELECT *
+FROM tenants
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+-- name: CreateTenant :one
+-- プラットフォーム管理者向けテナント作成
+INSERT INTO tenants (id, public_id, name, status)
+VALUES ($1, $2, $3, 'active')
+RETURNING *;
+-- name: UpdateTenantStatus :one
+-- テナントの状態 (active / suspended) を更新する
+UPDATE tenants
+SET status = $2
+WHERE public_id = $1
+RETURNING *;
 -- name: GetTenantByDomain :one
 -- ホスト名からテナントを特定する (Interceptorで使用)
 SELECT *

@@ -17,6 +17,8 @@ type Querier interface {
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
+	// プラットフォーム管理者向けテナント作成
+	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
@@ -35,10 +37,14 @@ type Querier interface {
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
+	// プラットフォーム管理者向けテナント一覧取得
+	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
+	// テナントの状態 (active / suspended) を更新する
+	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (UpsertSeriesListingRow, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
