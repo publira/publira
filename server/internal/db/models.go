@@ -119,6 +119,7 @@ type Tenant struct {
 	Name                      string         `json:"name"`
 	DefaultReadingPeriodHours sql.NullInt32  `json:"default_reading_period_hours"`
 	CreatedAt                 time.Time      `json:"created_at"`
+	Status                    string         `json:"status"`
 }
 
 type TenantTheme struct {

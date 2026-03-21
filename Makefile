@@ -1,7 +1,7 @@
 DB_URL := "postgres://postgres:password@db:5432/publira?sslmode=disable"
 MIGRATE := migrate -path db/migrations -database $(DB_URL)
 
-.PHONY: setup gen db-init db-reset db-status db-rollback db-new dev-api dev-admin-api dev-web run-batch-publish
+.PHONY: setup gen db-init db-reset db-status db-rollback db-new dev-api dev-admin-api dev-platform-api dev-web run-batch-publish
 
 setup:
 	pnpm install
@@ -29,14 +29,17 @@ db-new:
 	migrate create -ext sql -dir db/migrations -tz UTC $(name)
 
 dev-api:
-	APP_ENV=local go run ./server/cmd/api-server
+	cd server && go run ./cmd/api-server
 
 dev-admin-api:
-	APP_ENV=local go run ./server/cmd/admin-api-server
+	cd server && go run ./cmd/admin-api-server
+
+dev-platform-api:
+	cd server && go run ./cmd/platform-api-server
 
 dev-web:
 	pnpm turbo run dev
 	# web-public(3000) web-catalog(3001) web-member(3002) web-auth(3003) web-admin(4000)
 
 run-batch-publish:
-	APP_ENV=local go run ./server/cmd/publish-episodes
+	cd server && go run ./cmd/publish-episodes

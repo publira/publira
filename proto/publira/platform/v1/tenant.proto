@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
+
+// プラットフォーム管理者向けテナント情報
+message Tenant {
+  string public_id = 1;
+  string name = 2;
+  string status = 3;
+  string created_at = 4;
+}
+
+message ListTenantsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+}
+
+message GetTenantRequest {
+  string public_id = 1;
+}
+
+message GetTenantResponse {
+  Tenant tenant = 1;
+}
+
+message CreateTenantRequest {
+  string public_id = 1;
+  string name = 2;
+}
+
+message CreateTenantResponse {
+  Tenant tenant = 1;
+}
+
+message SuspendTenantRequest {
+  string public_id = 1;
+}
+
+message SuspendTenantResponse {
+  Tenant tenant = 1;
+}
+
+message ResumeTenantRequest {
+  string public_id = 1;
+}
+
+message ResumeTenantResponse {
+  Tenant tenant = 1;
+}
+
+// プラットフォーム運営者向けテナント管理サービス
+service PlatformTenantService {
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse) {}
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
+  rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse) {}
+  rpc SuspendTenant(SuspendTenantRequest) returns (SuspendTenantResponse) {}
+  rpc ResumeTenant(ResumeTenantRequest) returns (ResumeTenantResponse) {}
+}

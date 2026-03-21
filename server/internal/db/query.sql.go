@@ -208,6 +208,35 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	return i, err
 }
 
+const createTenant = `-- name: CreateTenant :one
+INSERT INTO tenants (id, public_id, name, status)
+VALUES ($1, $2, $3, 'active')
+RETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
+`
+
+type CreateTenantParams struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+	Name     string    `json:"name"`
+}
+
+// プラットフォーム管理者向けテナント作成
+func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, createTenant, arg.ID, arg.PublicID, arg.Name)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Subdomain,
+		&i.Name,
+		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
 const getEpisodeByPublicIDForTenant = `-- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
@@ -513,7 +542,7 @@ func (q *Queries) GetSessionByTokenHashForTenant(ctx context.Context, arg GetSes
 }
 
 const getTenantByDomain = `-- name: GetTenantByDomain :one
-SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at
+SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
 FROM tenants
 WHERE domain = $1
     OR subdomain = $1
@@ -532,12 +561,13 @@ func (q *Queries) GetTenantByDomain(ctx context.Context, domain sql.NullString) 
 		&i.Name,
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
+		&i.Status,
 	)
 	return i, err
 }
 
 const getTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at
+SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -554,6 +584,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.Name,
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
+		&i.Status,
 	)
 	return i, err
 }
@@ -896,6 +927,51 @@ func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenant
 	return items, nil
 }
 
+const listTenants = `-- name: ListTenants :many
+SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
+FROM tenants
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListTenantsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+// プラットフォーム管理者向けテナント一覧取得
+func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error) {
+	rows, err := q.db.QueryContext(ctx, listTenants, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tenant
+	for rows.Next() {
+		var i Tenant
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Domain,
+			&i.Subdomain,
+			&i.Name,
+			&i.DefaultReadingPeriodHours,
+			&i.CreatedAt,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markEpisodePublished = `-- name: MarkEpisodePublished :exec
 UPDATE episode_listings
 SET status = 'published',
@@ -971,6 +1047,35 @@ type UpdateSeriesBaseParams struct {
 func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error {
 	_, err := q.db.ExecContext(ctx, updateSeriesBase, arg.ID, arg.Title, arg.LabelID)
 	return err
+}
+
+const updateTenantStatus = `-- name: UpdateTenantStatus :one
+UPDATE tenants
+SET status = $2
+WHERE public_id = $1
+RETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
+`
+
+type UpdateTenantStatusParams struct {
+	PublicID string `json:"public_id"`
+	Status   string `json:"status"`
+}
+
+// テナントの状態 (active / suspended) を更新する
+func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, updateTenantStatus, arg.PublicID, arg.Status)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Subdomain,
+		&i.Name,
+		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
 }
 
 const upsertEpisodeListing = `-- name: UpsertEpisodeListing :one
