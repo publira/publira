@@ -4,3 +4,6 @@ export type {
   LayoutLinkItem,
   SiteLayoutProps,
 } from "./site-layout";
+
+export { isCurrentPath } from "./navigation";
+export type { NavItem, NavSection } from "./navigation";
