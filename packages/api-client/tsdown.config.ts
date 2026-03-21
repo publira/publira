@@ -15,6 +15,7 @@ export default defineConfig({
     "src/admin/series.ts",
     "src/admin/theme.ts",
     "src/admin/types.ts",
+    "src/platform/client.ts",
   ],
   format: "esm",
 });

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
+
+// セットアップ状態確認リクエスト
+message CheckSetupStatusRequest {}
+
+// セットアップ状態確認レスポンス
+message CheckSetupStatusResponse {
+  // true の場合: 既にセットアップ済み (ユーザーが存在する)
+  bool setup_completed = 1;
+}
+
+// 初期管理ユーザー作成リクエスト
+message CreateInitialUserRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+// 初期管理ユーザー作成レスポンス
+message CreateInitialUserResponse {}
+
+// プラットフォーム初期セットアップサービス (認証不要)
+service PlatformSetupService {
+  // セットアップ完了済みかどうかを確認する
+  rpc CheckSetupStatus(CheckSetupStatusRequest) returns (CheckSetupStatusResponse) {}
+  // 最初の管理ユーザーを作成する (ユーザー数が0の場合のみ許可)
+  rpc CreateInitialUser(CreateInitialUserRequest) returns (CreateInitialUserResponse) {}
+}

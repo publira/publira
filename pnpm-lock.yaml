@@ -258,6 +258,9 @@ importers:
 
   apps/web-platform:
     dependencies:
+      '@publira/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand

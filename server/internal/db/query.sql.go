@@ -14,6 +14,20 @@ import (
 	"github.com/google/uuid"
 )
 
+const countPlatformUsers = `-- name: CountPlatformUsers :one
+SELECT COUNT(*)::int
+FROM users
+WHERE role IN ('platform_operator', 'platform_super_admin')
+`
+
+// プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
+func (q *Queries) CountPlatformUsers(ctx context.Context) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countPlatformUsers)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createEpisodeBase = `-- name: CreateEpisodeBase :one
 INSERT INTO episodes (
         id,
@@ -114,6 +128,47 @@ func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImage
 		&i.DisplayOrder,
 		&i.Width,
 		&i.Height,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createPlatformUser = `-- name: CreatePlatformUser :one
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, role, name)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, tenant_id, public_id, email, password_hash, role, name, created_at
+`
+
+type CreatePlatformUserParams struct {
+	ID           uuid.UUID `json:"id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	PublicID     string    `json:"public_id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"password_hash"`
+	Role         string    `json:"role"`
+	Name         string    `json:"name"`
+}
+
+// プラットフォーム初期管理ユーザーを作成する
+func (q *Queries) CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, createPlatformUser,
+		arg.ID,
+		arg.TenantID,
+		arg.PublicID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Role,
+		arg.Name,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Name,
 		&i.CreatedAt,
 	)
 	return i, err

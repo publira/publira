@@ -8,3 +8,8 @@ export {
   type AdminApiClient,
   type AdminApiClientOptions,
 } from "./admin/client.js";
+export {
+  createPlatformApiClient,
+  type PlatformApiClient,
+  type PlatformApiClientOptions,
+} from "./platform/client.js";

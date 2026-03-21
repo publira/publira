@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -17,12 +18,13 @@ type Querier interface {
 
 type platformServer struct {
 	queries Querier
+	db      *sql.DB
 }
 
 // NewHandler はプラットフォーム API 専用の HTTP ハンドラを返します。
 // PlatformTenantService のみ公開します。
-func NewHandler(queries Querier) http.Handler {
-	server := &platformServer{queries: queries}
+func NewHandler(db *sql.DB, queries Querier) http.Handler {
+	server := &platformServer{queries: queries, db: db}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -46,5 +48,9 @@ func NewHandler(queries Querier) http.Handler {
 	mux.Handle(tenantPath, tenantHandler)
 	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server)
 	mux.Handle(authPath, authHandler)
+	// セットアップサービスは認証不要で公開する
+	setupPath, setupHandler := publirasplatformv1connect.NewPlatformSetupServiceHandler(server)
+	mux.Handle(setupPath, setupHandler)
 	return mux
 }
+
