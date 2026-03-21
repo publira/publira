@@ -19,6 +19,17 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
+func (s *apiServer) tenantRole(ctx context.Context, userID, tenantID uuid.UUID) (string, error) {
+	roles, err := s.queries.ListTenantRolesByUserAndTenant(ctx, dbmodels.ListTenantRolesByUserAndTenantParams{
+		UserID:   userID,
+		TenantID: tenantID,
+	})
+	if err != nil {
+		return "", connect.NewError(connect.CodeInternal, err)
+	}
+	return auth.ResolveTenantRole(roles), nil
+}
+
 func (s *apiServer) authenticateSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
@@ -51,19 +62,23 @@ func (s *apiServer) currentUserFromSession(
 	tenantCtx *publirattypesv1.TenantContext,
 	explicitToken string,
 	headers http.Header,
-) (dbmodels.Tenant, dbmodels.User, error) {
+) (dbmodels.Tenant, dbmodels.User, string, error) {
 	authCtx, err := s.authenticateSession(ctx, tenantCtx, explicitToken, headers)
 	if err != nil {
-		return dbmodels.Tenant{}, dbmodels.User{}, err
+		return dbmodels.Tenant{}, dbmodels.User{}, "", err
 	}
 	user, err := s.queries.GetUserByID(ctx, authCtx.Session.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, dbmodels.User{}, invalidSessionError()
+			return dbmodels.Tenant{}, dbmodels.User{}, "", invalidSessionError()
 		}
-		return dbmodels.Tenant{}, dbmodels.User{}, connect.NewError(connect.CodeInternal, err)
+		return dbmodels.Tenant{}, dbmodels.User{}, "", connect.NewError(connect.CodeInternal, err)
 	}
-	return authCtx.Tenant, user, nil
+	role, err := s.tenantRole(ctx, user.ID, authCtx.Tenant.ID)
+	if err != nil {
+		return dbmodels.Tenant{}, dbmodels.User{}, "", err
+	}
+	return authCtx.Tenant, user, role, nil
 }
 
 func (s *apiServer) CreateSession(
@@ -88,6 +103,10 @@ func (s *apiServer) CreateSession(
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
+	role, err := s.tenantRole(ctx, user.ID, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
 	rawToken := make([]byte, 32)
 	if _, err := rand.Read(rawToken); err != nil {
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
@@ -100,18 +119,18 @@ func (s *apiServer) CreateSession(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
-		ID:        sessionID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(sessionToken),
-		ExpiresAt: time.Now().Add(auth.SessionTTL),
+		ID:              sessionID,
+		CurrentTenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		UserID:          user.ID,
+		TokenHash:       auth.HashToken(sessionToken),
+		ExpiresAt:       time.Now().Add(auth.SessionTTL),
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	resp := &publirav1.CreateSessionResponse{
-		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
+		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role},
 		Session: &publirattypesv1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
 	}
 	response := connect.NewResponse(resp)
@@ -150,7 +169,7 @@ func (s *apiServer) DeleteSession(
 		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "already_revoked")
 		return response, nil
 	}
-	if err := s.queries.RevokeSession(ctx, dbmodels.RevokeSessionParams{ID: lookup.Session.ID, TenantID: tenant.ID}); err != nil {
+	if err := s.queries.RevokeSession(ctx, lookup.Session.ID); err != nil {
 		auth.AuditEvent(req.Header(), "logout", "failure", tenant.PublicID, "", "session_revoke_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -162,9 +181,9 @@ func (s *apiServer) GetMe(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetMeRequest],
 ) (*connect.Response[publirav1.GetMeResponse], error) {
-	_, user, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&publirav1.GetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role}}), nil
+	return connect.NewResponse(&publirav1.GetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role}}), nil
 }

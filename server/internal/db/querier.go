@@ -17,12 +17,14 @@ type Querier interface {
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
-	// プラットフォーム初期管理ユーザーを作成する
-	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (User, error)
+	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// プラットフォーム管理者向けテナント作成
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
+	CreateTenantMemberRole(ctx context.Context, arg CreateTenantMemberRoleParams) (TenantMemberRole, error)
+	CreateTenantMembership(ctx context.Context, arg CreateTenantMembershipParams) (TenantMembership, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
@@ -41,12 +43,15 @@ type Querier interface {
 	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
+	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
+	ListPlatformUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
+	ListTenantRolesByUserAndTenant(ctx context.Context, arg ListTenantRolesByUserAndTenantParams) ([]string, error)
 	// プラットフォーム管理者向けテナント一覧取得
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
-	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
+	RevokeSession(ctx context.Context, id uuid.UUID) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	// テナントの状態 (active / suspended) を更新する

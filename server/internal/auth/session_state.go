@@ -38,8 +38,8 @@ func ClassifySession(session dbmodels.Session, now time.Time) SessionState {
 
 func LookupSessionByTokenHashForTenant(ctx context.Context, queries SessionLookupQuerier, tenantID uuid.UUID, tokenHash string, now time.Time) (SessionLookupResult, error) {
 	session, err := queries.GetSessionByTokenHashForTenant(ctx, dbmodels.GetSessionByTokenHashForTenantParams{
-		TenantID:  tenantID,
-		TokenHash: tokenHash,
+		CurrentTenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+		TokenHash:       tokenHash,
 	})
 	if err != nil {
 		return SessionLookupResult{}, err

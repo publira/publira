@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	platformTenantPublicID = "platform"
-	platformTenantName     = "Platform"
+	defaultMembershipStatus = "active"
 )
 
 func generatePublicID() string {
@@ -84,35 +83,15 @@ func (s *platformServer) CreateInitialUser(
 
 	txq := dbmodels.New(tx)
 
-	tenantID, err := uuid.NewV7()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	_, err = txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
-		ID:       tenantID,
-		PublicID: platformTenantPublicID,
-		Name:     platformTenantName,
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
-		}
-		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "tenant_creation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
 	userID, err := uuid.NewV7()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	user, err := txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
+	user, err := txq.CreateUser(ctx, dbmodels.CreateUserParams{
 		ID:           userID,
-		TenantID:     tenantID,
 		PublicID:     generatePublicID(),
 		Email:        email,
 		PasswordHash: passwordHash,
-		Role:         rolePlatformSuperAdmin,
 		Name:         name,
 	})
 	if err != nil {
@@ -123,12 +102,25 @@ func (s *platformServer) CreateInitialUser(
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "user_creation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
+		ID:     uuid.Must(uuid.NewV7()),
+		UserID: userID,
+		Role:   rolePlatformSuperAdmin,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
+		}
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "platform_role_creation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 
 	if err := tx.Commit(); err != nil {
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "transaction_commit_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	auth.AuditEvent(req.Header(), "platform_initial_setup", "success", platformTenantPublicID, user.PublicID, "")
+	auth.AuditEvent(req.Header(), "platform_initial_setup", "success", "", user.PublicID, "")
 	return connect.NewResponse(&publirasplatformv1.CreateInitialUserResponse{}), nil
 }

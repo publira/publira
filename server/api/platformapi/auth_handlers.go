@@ -20,10 +20,8 @@ import (
 )
 
 const (
-	rolePlatformOperator   = "platform_operator"
-	rolePlatformSuperAdmin = "platform_super_admin"
-	roleLegacyPlatformOps  = "platform-operator"
-	roleLegacySuperAdmin   = "super-admin"
+	rolePlatformOperator   = auth.RolePlatformOperator
+	rolePlatformSuperAdmin = auth.RolePlatformSuperAdmin
 )
 
 func invalidSessionError() error {
@@ -34,45 +32,49 @@ func platformRoleRequiredError() error {
 	return connect.NewError(connect.CodePermissionDenied, errors.New("platform operator role required"))
 }
 
-func isPlatformRole(role string) bool {
-	switch strings.TrimSpace(role) {
-	case rolePlatformOperator, rolePlatformSuperAdmin, roleLegacyPlatformOps, roleLegacySuperAdmin:
-		return true
-	default:
-		return false
+func (s *platformServer) platformRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	roles, err := s.queries.ListPlatformUserRoles(ctx, userID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	return roles, nil
 }
 
 func (s *platformServer) authenticatePlatformSession(
 	ctx context.Context,
 	explicitToken string,
 	headers http.Header,
-) (dbmodels.Session, dbmodels.User, error) {
+) (dbmodels.Session, dbmodels.User, string, error) {
 	sessionToken, ok := auth.SessionTokenFromRequest(explicitToken, headers)
 	if !ok {
-		return dbmodels.Session{}, dbmodels.User{}, invalidSessionError()
+		return dbmodels.Session{}, dbmodels.User{}, "", invalidSessionError()
 	}
 	lookup, err := s.queries.GetSessionByTokenHash(ctx, auth.HashToken(sessionToken))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Session{}, dbmodels.User{}, invalidSessionError()
+			return dbmodels.Session{}, dbmodels.User{}, "", invalidSessionError()
 		}
-		return dbmodels.Session{}, dbmodels.User{}, connect.NewError(connect.CodeInternal, err)
+		return dbmodels.Session{}, dbmodels.User{}, "", connect.NewError(connect.CodeInternal, err)
 	}
 	if auth.ClassifySession(lookup, time.Now()) != auth.SessionStateActive {
-		return dbmodels.Session{}, dbmodels.User{}, invalidSessionError()
+		return dbmodels.Session{}, dbmodels.User{}, "", invalidSessionError()
 	}
 	user, err := s.queries.GetUserByID(ctx, lookup.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Session{}, dbmodels.User{}, invalidSessionError()
+			return dbmodels.Session{}, dbmodels.User{}, "", invalidSessionError()
 		}
-		return dbmodels.Session{}, dbmodels.User{}, connect.NewError(connect.CodeInternal, err)
+		return dbmodels.Session{}, dbmodels.User{}, "", connect.NewError(connect.CodeInternal, err)
 	}
-	if !isPlatformRole(user.Role) {
-		return dbmodels.Session{}, dbmodels.User{}, platformRoleRequiredError()
+	roles, err := s.platformRoles(ctx, user.ID)
+	if err != nil {
+		return dbmodels.Session{}, dbmodels.User{}, "", err
 	}
-	return lookup, user, nil
+	resolvedRole := auth.ResolvePlatformRole(roles)
+	if !auth.IsPlatformRole(resolvedRole) {
+		return dbmodels.Session{}, dbmodels.User{}, "", platformRoleRequiredError()
+	}
+	return lookup, user, resolvedRole, nil
 }
 
 func (s *platformServer) CreateSession(
@@ -94,7 +96,12 @@ func (s *platformServer) CreateSession(
 		auth.AuditEvent(req.Header(), "platform_login", "failure", "", "", "user_lookup_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !isPlatformRole(user.Role) || !auth.VerifyPassword(password, user.PasswordHash) {
+	roles, err := s.platformRoles(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	resolvedRole := auth.ResolvePlatformRole(roles)
+	if !auth.IsPlatformRole(resolvedRole) || !auth.VerifyPassword(password, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "platform_login", "failure", "", user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
@@ -111,11 +118,11 @@ func (s *platformServer) CreateSession(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
-		ID:        sessionID,
-		TenantID:  user.TenantID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(sessionToken),
-		ExpiresAt: time.Now().Add(auth.SessionTTL),
+		ID:              sessionID,
+		CurrentTenantID: uuid.NullUUID{},
+		UserID:          user.ID,
+		TokenHash:       auth.HashToken(sessionToken),
+		ExpiresAt:       time.Now().Add(auth.SessionTTL),
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "platform_login", "failure", "", user.PublicID, "session_create_failed")
@@ -123,7 +130,7 @@ func (s *platformServer) CreateSession(
 	}
 
 	resp := &publirasplatformv1.PlatformAuthServiceCreateSessionResponse{
-		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
+		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: resolvedRole},
 		Session: &publirattypesv1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
 	}
 	response := connect.NewResponse(resp)
@@ -157,7 +164,7 @@ func (s *platformServer) DeleteSession(
 		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "already_revoked")
 		return response, nil
 	}
-	if err := s.queries.RevokeSession(ctx, dbmodels.RevokeSessionParams{ID: lookup.ID, TenantID: lookup.TenantID}); err != nil {
+	if err := s.queries.RevokeSession(ctx, lookup.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_logout", "failure", "", "", "session_revoke_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -169,11 +176,11 @@ func (s *platformServer) GetMe(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.PlatformAuthServiceGetMeRequest],
 ) (*connect.Response[publirasplatformv1.PlatformAuthServiceGetMeResponse], error) {
-	_, user, err := s.authenticatePlatformSession(ctx, req.Msg.SessionId, req.Header())
+	_, user, role, err := s.authenticatePlatformSession(ctx, req.Msg.SessionId, req.Header())
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceGetMeResponse{
-		User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: user.Role},
+		User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role},
 	}), nil
 }

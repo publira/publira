@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
+
+message PlatformOperator {
+  string public_id = 1;
+  string name = 2;
+  string email = 3;
+  string role = 4;
+  string status = 5;
+  string created_at = 6;
+}
+
+message ListOperatorsRequest {
+  string session_id = 1;
+}
+
+message ListOperatorsResponse {
+  repeated PlatformOperator operators = 1;
+}
+
+service PlatformOperatorService {
+  rpc ListOperators(ListOperatorsRequest) returns (ListOperatorsResponse) {}
+}
