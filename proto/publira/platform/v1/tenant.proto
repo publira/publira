@@ -12,11 +12,17 @@ message Tenant {
   string name = 2;
   string status = 3;
   string created_at = 4;
+  string domain = 5;
+  string subdomain = 6;
 }
 
 message ListTenantsRequest {
   int32 limit = 1;
   int32 offset = 2;
+  // フィルタ条件
+  string name = 3;
+  string public_id = 4;
+  string status = 5;
 }
 
 message ListTenantsResponse {

@@ -48,7 +48,7 @@ type Querier interface {
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
 	ListTenantRolesByUserAndTenant(ctx context.Context, arg ListTenantRolesByUserAndTenantParams) ([]string, error)
-	// プラットフォーム管理者向けテナント一覧取得
+	// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	RevokeSession(ctx context.Context, id uuid.UUID) error

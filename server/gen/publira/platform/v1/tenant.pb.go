@@ -29,6 +29,8 @@ type Tenant struct {
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Domain        string                 `protobuf:"bytes,5,opt,name=domain,proto3" json:"domain,omitempty"`
+	Subdomain     string                 `protobuf:"bytes,6,opt,name=subdomain,proto3" json:"subdomain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -91,10 +93,28 @@ func (x *Tenant) GetCreatedAt() string {
 	return ""
 }
 
+func (x *Tenant) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *Tenant) GetSubdomain() string {
+	if x != nil {
+		return x.Subdomain
+	}
+	return ""
+}
+
 type ListTenantsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Limit  int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	// フィルタ条件
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	PublicId      string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Status        string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -141,6 +161,27 @@ func (x *ListTenantsRequest) GetOffset() int32 {
 		return x.Offset
 	}
 	return 0
+}
+
+func (x *ListTenantsRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ListTenantsRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *ListTenantsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
 }
 
 type ListTenantsResponse struct {
@@ -567,16 +608,21 @@ var File_publira_platform_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"p\n" +
+	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"\xa6\x01\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x04 \x01(\tR\tcreatedAt\"B\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x16\n" +
+	"\x06domain\x18\x05 \x01(\tR\x06domain\x12\x1c\n" +
+	"\tsubdomain\x18\x06 \x01(\tR\tsubdomain\"\x8b\x01\n" +
 	"\x12ListTenantsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\"L\n" +
+	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
+	"\tpublic_id\x18\x04 \x01(\tR\bpublicId\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\"L\n" +
 	"\x13ListTenantsResponse\x125\n" +
 	"\atenants\x18\x01 \x03(\v2\x1b.publira.platform.v1.TenantR\atenants\"/\n" +
 	"\x10GetTenantRequest\x12\x1b\n" +
