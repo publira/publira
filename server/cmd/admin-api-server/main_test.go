@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http/httptest"
 	"regexp"
 	"testing"
@@ -154,7 +153,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 	})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
 	resp, err := client.ListSeries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
@@ -183,7 +182,7 @@ func TestCreateSeriesRequiresTitle(t *testing.T) {
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		Title:  "   ",
 	})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 	_, err := client.CreateSeries(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -226,7 +225,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 		LabelPublicId: "LABEL001",
 		IsPublished:   true,
 	})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 	resp, err := client.CreateSeries(context.Background(), req)
 	if err != nil {
@@ -257,7 +256,7 @@ func TestUpdateSeriesRequiresTitle(t *testing.T) {
 		PublicId: "SERIES001",
 		Title:    "\t",
 	})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 	_, err := client.UpdateSeries(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -304,7 +303,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 		Synopsis:    "New synopsis",
 		IsPublished: true,
 	})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 	resp, err := client.UpdateSeries(context.Background(), req)
 	if err != nil {
@@ -358,7 +357,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		ReadingPeriodHours: 24,
 		ScheduledAt:        scheduledAtJST.Format(time.RFC3339),
 	})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 	resp, err := client.CreateEpisode(context.Background(), req)
 	if err != nil {
@@ -461,7 +460,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 
 			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 			req := connect.NewRequest(tc.request)
-			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+			req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 			_, err := client.CreateEpisode(context.Background(), req)
 			if connect.CodeOf(err) != tc.wantCode {
@@ -507,7 +506,7 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 			{Filename: "002.jpg", ContentType: "image/jpeg", Data: oneByOneJPEG, DisplayOrder: 1},
 		},
 	})
-	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 	resp, err := client.UploadEpisodeImages(context.Background(), req)
 	if err != nil {
@@ -589,7 +588,7 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 
 			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 			req := connect.NewRequest(tc.request)
-			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+			req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 			_, err := client.UploadEpisodeImages(context.Background(), req)
 			if connect.CodeOf(err) != tc.wantCode {
@@ -663,7 +662,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 				EpisodePublicId: "EPISODE001",
 				ScheduledAt:     tc.scheduled,
 			})
-			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+			req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 			resp, err := client.UpdateEpisodePublishSchedule(context.Background(), req)
 			if tc.wantSuccess {
@@ -734,7 +733,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 				Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				PublicId: tc.publicID,
 			})
-			req.Header().Set("Cookie", fmt.Sprintf("%s=%s", auth.SessionCookieName, sessionToken))
+			req.Header().Set("X-Publira-Session-Id", sessionToken)
 
 			resp, err := client.GetSeries(context.Background(), req)
 			if tc.wantCode == 0 {
