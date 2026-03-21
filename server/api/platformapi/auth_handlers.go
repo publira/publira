@@ -143,7 +143,7 @@ func (s *platformServer) DeleteSession(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.PlatformAuthServiceDeleteSessionRequest],
 ) (*connect.Response[publirasplatformv1.PlatformAuthServiceDeleteSessionResponse], error) {
-	sessionToken, ok := auth.SessionTokenFromRequest(req.Msg.SessionId, req.Header())
+	sessionToken, ok := auth.SessionTokenFromRequest("", req.Header())
 	response := connect.NewResponse(&publirasplatformv1.PlatformAuthServiceDeleteSessionResponse{})
 	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
 	if !ok {
@@ -176,7 +176,7 @@ func (s *platformServer) GetMe(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.PlatformAuthServiceGetMeRequest],
 ) (*connect.Response[publirasplatformv1.PlatformAuthServiceGetMeResponse], error) {
-	_, user, role, err := s.authenticatePlatformSession(ctx, req.Msg.SessionId, req.Header())
+	_, user, role, err := s.authenticatePlatformSession(ctx, "", req.Header())
 	if err != nil {
 		return nil, err
 	}

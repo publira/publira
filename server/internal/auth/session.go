@@ -65,15 +65,11 @@ func SessionTokenFromRequest(explicitToken string, headers http.Header) (string,
 	if token != "" {
 		return token, true
 	}
-	request := &http.Request{Header: headers}
-	cookie, err := request.Cookie(SessionCookieName)
-	if err != nil {
-		return "", false
+	token = strings.TrimSpace(headers.Get("X-Publira-Session-Id"))
+	if token != "" {
+		return token, true
 	}
-	if strings.TrimSpace(cookie.Value) == "" {
-		return "", false
-	}
-	return cookie.Value, true
+	return "", false
 }
 
 func firstForwardedIP(headerValue string) string {

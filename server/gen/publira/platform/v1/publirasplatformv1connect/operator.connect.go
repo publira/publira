@@ -41,7 +41,7 @@ const (
 // PlatformOperatorServiceClient is a client for the publira.platform.v1.PlatformOperatorService
 // service.
 type PlatformOperatorServiceClient interface {
-	ListOperators(context.Context, *connect.Request[v1.ListPlatformOperatorsRequest]) (*connect.Response[v1.ListPlatformOperatorsResponse], error)
+	ListOperators(context.Context, *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error)
 }
 
 // NewPlatformOperatorServiceClient constructs a client for the
@@ -56,7 +56,7 @@ func NewPlatformOperatorServiceClient(httpClient connect.HTTPClient, baseURL str
 	baseURL = strings.TrimRight(baseURL, "/")
 	platformOperatorServiceMethods := v1.File_publira_platform_v1_operator_proto.Services().ByName("PlatformOperatorService").Methods()
 	return &platformOperatorServiceClient{
-		listOperators: connect.NewClient[v1.ListPlatformOperatorsRequest, v1.ListPlatformOperatorsResponse](
+		listOperators: connect.NewClient[v1.ListOperatorsRequest, v1.ListOperatorsResponse](
 			httpClient,
 			baseURL+PlatformOperatorServiceListOperatorsProcedure,
 			connect.WithSchema(platformOperatorServiceMethods.ByName("ListOperators")),
@@ -67,18 +67,18 @@ func NewPlatformOperatorServiceClient(httpClient connect.HTTPClient, baseURL str
 
 // platformOperatorServiceClient implements PlatformOperatorServiceClient.
 type platformOperatorServiceClient struct {
-	listOperators *connect.Client[v1.ListPlatformOperatorsRequest, v1.ListPlatformOperatorsResponse]
+	listOperators *connect.Client[v1.ListOperatorsRequest, v1.ListOperatorsResponse]
 }
 
 // ListOperators calls publira.platform.v1.PlatformOperatorService.ListOperators.
-func (c *platformOperatorServiceClient) ListOperators(ctx context.Context, req *connect.Request[v1.ListPlatformOperatorsRequest]) (*connect.Response[v1.ListPlatformOperatorsResponse], error) {
+func (c *platformOperatorServiceClient) ListOperators(ctx context.Context, req *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error) {
 	return c.listOperators.CallUnary(ctx, req)
 }
 
 // PlatformOperatorServiceHandler is an implementation of the
 // publira.platform.v1.PlatformOperatorService service.
 type PlatformOperatorServiceHandler interface {
-	ListOperators(context.Context, *connect.Request[v1.ListPlatformOperatorsRequest]) (*connect.Response[v1.ListPlatformOperatorsResponse], error)
+	ListOperators(context.Context, *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error)
 }
 
 // NewPlatformOperatorServiceHandler builds an HTTP handler from the service implementation. It
@@ -107,6 +107,6 @@ func NewPlatformOperatorServiceHandler(svc PlatformOperatorServiceHandler, opts 
 // UnimplementedPlatformOperatorServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPlatformOperatorServiceHandler struct{}
 
-func (UnimplementedPlatformOperatorServiceHandler) ListOperators(context.Context, *connect.Request[v1.ListPlatformOperatorsRequest]) (*connect.Response[v1.ListPlatformOperatorsResponse], error) {
+func (UnimplementedPlatformOperatorServiceHandler) ListOperators(context.Context, *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformOperatorService.ListOperators is not implemented"))
 }

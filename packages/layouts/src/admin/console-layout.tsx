@@ -233,7 +233,10 @@ export const ConsoleSidebar = ({
               </p>
               <div className="grid gap-1.5">
                 {section.items.map((item) => {
-                  const active = isCurrentPath(pathname, item.href);
+                  const allHrefs = navigation.flatMap((s) =>
+                    s.items.map((i) => i.href)
+                  );
+                  const active = isCurrentPath(pathname, item.href, allHrefs);
                   const Icon = item.icon;
 
                   return (

@@ -10,16 +10,16 @@ import (
 
 func (s *platformServer) ListOperators(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.ListPlatformOperatorsRequest],
-) (*connect.Response[publirasplatformv1.ListPlatformOperatorsResponse], error) {
-	if _, _, _, err := s.authenticatePlatformSession(ctx, req.Msg.SessionId, req.Header()); err != nil {
+	req *connect.Request[publirasplatformv1.ListOperatorsRequest],
+) (*connect.Response[publirasplatformv1.ListOperatorsResponse], error) {
+	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
 		return nil, err
 	}
 	rows, err := s.queries.ListPlatformOperators(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	resp := &publirasplatformv1.ListPlatformOperatorsResponse{
+	resp := &publirasplatformv1.ListOperatorsResponse{
 		Operators: make([]*publirasplatformv1.PlatformOperator, len(rows)),
 	}
 	for index, row := range rows {

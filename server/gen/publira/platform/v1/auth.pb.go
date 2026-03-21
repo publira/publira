@@ -128,7 +128,6 @@ func (x *PlatformAuthServiceCreateSessionResponse) GetSession() *v1.Session {
 
 type PlatformAuthServiceDeleteSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -161,13 +160,6 @@ func (x *PlatformAuthServiceDeleteSessionRequest) ProtoReflect() protoreflect.Me
 // Deprecated: Use PlatformAuthServiceDeleteSessionRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceDeleteSessionRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *PlatformAuthServiceDeleteSessionRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 type PlatformAuthServiceDeleteSessionResponse struct {
@@ -208,7 +200,6 @@ func (*PlatformAuthServiceDeleteSessionResponse) Descriptor() ([]byte, []int) {
 
 type PlatformAuthServiceGetMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -241,13 +232,6 @@ func (x *PlatformAuthServiceGetMeRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use PlatformAuthServiceGetMeRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceGetMeRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *PlatformAuthServiceGetMeRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 type PlatformAuthServiceGetMeResponse struct {
@@ -304,14 +288,10 @@ const file_publira_platform_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x8b\x01\n" +
 	"(PlatformAuthServiceCreateSessionResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x123\n" +
-	"\asession\x18\x02 \x01(\v2\x19.publira.types.v1.SessionR\asession\"H\n" +
-	"'PlatformAuthServiceDeleteSessionRequest\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"*\n" +
-	"(PlatformAuthServiceDeleteSessionResponse\"@\n" +
-	"\x1fPlatformAuthServiceGetMeRequest\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"N\n" +
+	"\asession\x18\x02 \x01(\v2\x19.publira.types.v1.SessionR\asession\")\n" +
+	"'PlatformAuthServiceDeleteSessionRequest\"*\n" +
+	"(PlatformAuthServiceDeleteSessionResponse\"!\n" +
+	"\x1fPlatformAuthServiceGetMeRequest\"N\n" +
 	" PlatformAuthServiceGetMeResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user2\xaf\x03\n" +
 	"\x13PlatformAuthService\x12\x8e\x01\n" +

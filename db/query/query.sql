@@ -6,8 +6,8 @@ ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 -- name: CreateTenant :one
 -- プラットフォーム管理者向けテナント作成
-INSERT INTO tenants (id, public_id, name, status)
-VALUES ($1, $2, $3, 'active')
+INSERT INTO tenants (id, public_id, domain, subdomain, name, status)
+VALUES ($1, $2, $3, $4, $5, 'active')
 RETURNING *;
 -- name: UpdateTenantStatus :one
 -- テナントの状態 (active / suspended) を更新する

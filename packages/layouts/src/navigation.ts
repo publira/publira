@@ -14,10 +14,28 @@ export interface NavSection {
   items: NavItem[];
 }
 
-export const isCurrentPath = (pathname: string, href: string): boolean => {
+export const isCurrentPath = (
+  pathname: string,
+  href: string,
+  allHrefs?: string[]
+): boolean => {
   if (href === "/") {
     return pathname === href;
   }
-
-  return pathname === href || pathname.startsWith(`${href}/`);
+  if (pathname === href) {
+    return true;
+  }
+  if (!pathname.startsWith(`${href}/`)) {
+    return false;
+  }
+  // プレフィックスで一致しているが、より具体的な別のナビアイテムも一致する場合は非アクティブにする
+  if (allHrefs) {
+    return !allHrefs.some(
+      (other) =>
+        other !== href &&
+        other.startsWith(`${href}/`) &&
+        (pathname === other || pathname.startsWith(`${other}/`))
+    );
+  }
+  return true;
 };

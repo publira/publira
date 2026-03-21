@@ -1,16 +1,8 @@
-import { createPlatformApiClient } from "@publira/api-client/platform/client";
-
+import { platformApiClient } from "./platform-api-client";
 import {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./platform-auth-shared";
-
-const platformApiBaseUrl =
-  process.env.PUBLIRA_PLATFORM_API_BASE_URL ?? "http://localhost:8002";
-
-const platformApiClient = createPlatformApiClient({
-  baseUrl: platformApiBaseUrl,
-});
 
 export interface PlatformCurrentOperator {
   name: string;
@@ -42,7 +34,9 @@ export const logoutPlatform = async (sessionId: string): Promise<void> => {
     return;
   }
   try {
-    await platformApiClient.auth.deleteSession({ sessionId });
+    await platformApiClient.auth.deleteSession({}, {
+      headers: { "X-Publira-Session-Id": sessionId },
+    } as never);
   } catch {
     // セッション失効・ネットワークエラー時もクッキーはクリアする
   }
@@ -55,7 +49,9 @@ export const getPlatformCurrentOperator = async (
     return null;
   }
   try {
-    const response = await platformApiClient.auth.getMe({ sessionId });
+    const response = await platformApiClient.auth.getMe({}, {
+      headers: { "X-Publira-Session-Id": sessionId },
+    } as never);
     const { user } = response;
     if (!user) {
       return null;
