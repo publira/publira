@@ -343,7 +343,7 @@ func (q *Queries) CreateTenantMembership(ctx context.Context, arg CreateTenantMe
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, public_id, email, password_hash, name, created_at
+RETURNING id, public_id, email, password_hash, name, created_at, status
 `
 
 type CreateUserParams struct {
@@ -370,8 +370,20 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Status,
 	)
 	return i, err
+}
+
+const deleteUserByID = `-- name: DeleteUserByID :exec
+DELETE FROM users
+WHERE id = $1
+`
+
+// ユーザーを物理削除（外部キー制約により関連データも削除）
+func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteUserByID, id)
+	return err
 }
 
 const getEpisodeByPublicIDForTenant = `-- name: GetEpisodeByPublicIDForTenant :one
@@ -768,8 +780,47 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UU
 	return i, err
 }
 
+const getTenantsByEndUser = `-- name: GetTenantsByEndUser :many
+SELECT DISTINCT t.id,
+    t.public_id
+FROM tenants t
+    JOIN tenant_memberships tm ON tm.tenant_id = t.id
+WHERE tm.user_id = $1
+    AND tm.status = 'active'
+ORDER BY t.created_at DESC
+`
+
+type GetTenantsByEndUserRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+// エンドユーザーが所属するテナント一覧を取得
+func (q *Queries) GetTenantsByEndUser(ctx context.Context, userID uuid.UUID) ([]GetTenantsByEndUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTenantsByEndUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTenantsByEndUserRow
+	for rows.Next() {
+		var i GetTenantsByEndUserRow
+		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, public_id, email, password_hash, name, created_at
+SELECT id, public_id, email, password_hash, name, created_at, status
 FROM users
 WHERE email = $1
 LIMIT 1
@@ -785,12 +836,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.PasswordHash,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Status,
 	)
 	return i, err
 }
 
 const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
-SELECT u.id, u.public_id, u.email, u.password_hash, u.name, u.created_at
+SELECT u.id, u.public_id, u.email, u.password_hash, u.name, u.created_at, u.status
 FROM users u
     JOIN tenant_memberships tm ON tm.user_id = u.id
     AND tm.tenant_id = $1
@@ -814,12 +866,13 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 		&i.PasswordHash,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Status,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, name, created_at
+SELECT id, public_id, email, password_hash, name, created_at, status
 FROM users
 WHERE id = $1
 `
@@ -833,6 +886,43 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.Email,
 		&i.PasswordHash,
 		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
+const getUserByPublicID = `-- name: GetUserByPublicID :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.public_id = $1
+LIMIT 1
+`
+
+type GetUserByPublicIDRow struct {
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// public_idでユーザーを取得
+func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserByPublicID, publicID)
+	var i GetUserByPublicIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.Email,
+		&i.Status,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -883,6 +973,77 @@ func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesPara
 			&i.Title,
 			&i.Synopsis,
 			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEndUsers = `-- name: ListEndUsers :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at
+FROM users u
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM platform_user_roles pur
+        WHERE pur.user_id = u.id
+    )
+    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)
+    AND ($2::text = '' OR u.status = $2::text)
+ORDER BY u.created_at DESC
+LIMIT $4 OFFSET $3
+`
+
+type ListEndUsersParams struct {
+	CreatedAfter sql.NullTime   `json:"created_after"`
+	Status       sql.NullString `json:"status"`
+	Offset       int32          `json:"offset"`
+	Limit        int32          `json:"limit"`
+}
+
+type ListEndUsersRow struct {
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// エンドユーザー（platform_user_roles未保持）の一覧取得
+func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEndUsers,
+		arg.CreatedAfter,
+		arg.Status,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEndUsersRow
+	for rows.Next() {
+		var i ListEndUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Email,
+			&i.Status,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1325,6 +1486,19 @@ func (q *Queries) RevokeSession(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const terminateUserSessions = `-- name: TerminateUserSessions :exec
+UPDATE sessions
+SET revoked_at = NOW()
+WHERE user_id = $1
+    AND revoked_at IS NULL
+`
+
+// ユーザーの全セッションを失効させる
+func (q *Queries) TerminateUserSessions(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, terminateUserSessions, userID)
+	return err
+}
+
 const updateEpisodePublishScheduleByPublicIDForTenant = `-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
@@ -1396,6 +1570,34 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.Subdomain,
 		&i.Name,
 		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
+const updateUserStatus = `-- name: UpdateUserStatus :one
+UPDATE users
+SET status = $2
+WHERE public_id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status
+`
+
+type UpdateUserStatusParams struct {
+	PublicID string `json:"public_id"`
+	Status   string `json:"status"`
+}
+
+// ユーザーのステータスを更新
+func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserStatus, arg.PublicID, arg.Status)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
 		&i.CreatedAt,
 		&i.Status,
 	)

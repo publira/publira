@@ -31,12 +31,18 @@ const (
 	createTenantMemberRoleQuery = "-- name: CreateTenantMemberRole :one\nINSERT INTO tenant_member_roles (id, membership_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, membership_id, role, created_at\n"
 	updateTenantStatusQuery     = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
 	getSessionByTokenHash       = "-- name: GetSessionByTokenHash :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
-	getUserByIDQuery            = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE id = $1\n"
-	getUserByEmailQuery         = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
+	getUserByIDQuery            = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE id = $1\n"
+	getUserByEmailQuery         = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE email = $1\nLIMIT 1\n"
 	countPlatformUsersQuery     = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM (\n        SELECT DISTINCT user_id\n        FROM platform_user_roles\n    ) platform_users\n"
-	createUserQuery             = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at\n"
+	createUserQuery             = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
 	createPlatformUserRoleQuery = "-- name: CreatePlatformUserRole :one\nINSERT INTO platform_user_roles (id, user_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, user_id, role, created_at\n"
 	listPlatformUserRolesQuery  = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
+	listEndUsersQuery           = "-- name: ListEndUsers :many\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)\n    AND ($2::text = '' OR u.status = $2::text)\nORDER BY u.created_at DESC\nLIMIT $4 OFFSET $3\n"
+	getUserByPublicIDQuery      = "-- name: GetUserByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\nLIMIT 1\n"
+	getTenantsByEndUserQuery    = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
+	updateUserStatusQuery       = "-- name: UpdateUserStatus :one\nUPDATE users\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
+	terminateUserSessionsQuery  = "-- name: TerminateUserSessions :exec\nUPDATE sessions\nSET revoked_at = NOW()\nWHERE user_id = $1\n    AND revoked_at IS NULL\n"
+	deleteUserByIDQuery         = "-- name: DeleteUserByID :exec\nDELETE FROM users\nWHERE id = $1\n"
 	testSessionToken            = "platform-session-token"
 	testPlatformRole            = "platform_operator"
 )
@@ -98,8 +104,8 @@ func expectPlatformGuard(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role 
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", now, "active"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
 		WithArgs(userID).
@@ -403,8 +409,8 @@ func TestCreateTenantSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
 		WithArgs("owner@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
-			AddRow(createdUserID, "USRNEW000001", "owner@example.com", "hashed-password", "Owner User", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(createdUserID, "USRNEW000001", "owner@example.com", "hashed-password", "Owner User", now, "active"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(createTenantMembershipQuery)).
 		WithArgs(sqlmock.AnyArg(), createdUserID, createdTenantID, "active").
@@ -735,8 +741,8 @@ func TestPlatformAuthCreateSessionSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
 		WithArgs("platform@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
-			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", now, "active"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
 		WithArgs(userID).
@@ -868,8 +874,8 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 	// ユーザー作成
 	mock.ExpectQuery(regexp.QuoteMeta(createUserQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "admin@example.com", sqlmock.AnyArg(), "Admin User").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
-			AddRow(userID, "ADMINUSER01", "admin@example.com", "hash", "Admin User", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(userID, "ADMINUSER01", "admin@example.com", "hash", "Admin User", now, "active"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(createPlatformUserRoleQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "platform_super_admin").
@@ -941,4 +947,274 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 			}
 		})
 	}
+}
+
+func endUserColumns() []string {
+	return []string{"id", "public_id", "name", "email", "status", "created_at"}
+}
+
+// TestListEndUsers はエンドユーザー一覧が取得できることを検証する。
+func TestListEndUsers(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listEndUsersQuery)).
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListEndUsers(context.Background(), newAuthedRequest(publirasplatformv1.ListEndUsersRequest{}))
+	if err != nil {
+		t.Fatalf("ListEndUsers: %v", err)
+	}
+	if len(resp.Msg.Users) != 1 {
+		t.Fatalf("len(users) = %d, want 1", len(resp.Msg.Users))
+	}
+	if resp.Msg.Users[0].PublicId != "EUSER00001" {
+		t.Fatalf("public_id = %v, want EUSER00001", resp.Msg.Users[0].PublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestListEndUsersUnauthenticated は未認証の場合 Unauthenticated を返すことを検証する。
+func TestListEndUsersUnauthenticated(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHash)).
+		WithArgs(auth.HashToken(testSessionToken)).
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListEndUsers(context.Background(), newAuthedRequest(publirasplatformv1.ListEndUsersRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ListEndUsers code = %v, want unauthenticated", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestGetEndUser はエンドユーザー詳細が取得できることを検証する。
+func TestGetEndUser(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("EUSER00001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	resp, err := client.GetEndUser(context.Background(), newAuthedRequest(publirasplatformv1.GetEndUserRequest{PublicId: "EUSER00001"}))
+	if err != nil {
+		t.Fatalf("GetEndUser: %v", err)
+	}
+	if resp.Msg.User.PublicId != "EUSER00001" {
+		t.Fatalf("public_id = %v, want EUSER00001", resp.Msg.User.PublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestGetEndUserNotFound は存在しないユーザーの場合 NotFound を返すことを検証する。
+func TestGetEndUserNotFound(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("NOTEXIST01").
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetEndUser(context.Background(), newAuthedRequest(publirasplatformv1.GetEndUserRequest{PublicId: "NOTEXIST01"}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetEndUser code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestSuspendEndUser はエンドユーザーを停止しセッションが失効することを検証する。
+func TestSuspendEndUser(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	// 対象ユーザーを取得
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("EUSER00001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now))
+
+	// ロール確認（エンドユーザーはロールなし）
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}))
+
+	// ステータスを suspended に更新
+	mock.ExpectQuery(regexp.QuoteMeta(updateUserStatusQuery)).
+		WithArgs("EUSER00001", "suspended").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended"))
+
+	// セッション失効
+	mock.ExpectExec(regexp.QuoteMeta(terminateUserSessionsQuery)).
+		WithArgs(endUserID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	resp, err := client.SuspendEndUser(context.Background(), newAuthedRequest(publirasplatformv1.SuspendEndUserRequest{PublicId: "EUSER00001"}))
+	if err != nil {
+		t.Fatalf("SuspendEndUser: %v", err)
+	}
+	if resp.Msg.User.Status != "suspended" {
+		t.Fatalf("status = %v, want suspended", resp.Msg.User.Status)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestSuspendEndUserWithPlatformRole はプラットフォームロール保持ユーザーの停止が拒否されることを検証する。
+func TestSuspendEndUserWithPlatformRole(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("PLATUSER002").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "PLATUSER002", "Platform User 2", "platform2@example.com", "active", now))
+
+	// ロール確認（このユーザーはplatformロールを持っている）
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("platform_operator"))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	_, err := client.SuspendEndUser(context.Background(), newAuthedRequest(publirasplatformv1.SuspendEndUserRequest{PublicId: "PLATUSER002"}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("SuspendEndUser code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestUnsuspendEndUser は停止解除が正常に動作することを検証する。
+func TestUnsuspendEndUser(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(updateUserStatusQuery)).
+		WithArgs("EUSER00001", "active").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	resp, err := client.UnsuspendEndUser(context.Background(), newAuthedRequest(publirasplatformv1.UnsuspendEndUserRequest{PublicId: "EUSER00001"}))
+	if err != nil {
+		t.Fatalf("UnsuspendEndUser: %v", err)
+	}
+	if resp.Msg.User.Status != "active" {
+		t.Fatalf("status = %v, want active", resp.Msg.User.Status)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestDeleteEndUser はエンドユーザーの物理削除が正常に動作することを検証する。
+func TestDeleteEndUser(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("EUSER00001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now))
+
+	// ロール確認（エンドユーザーはロールなし）
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}))
+
+	mock.ExpectExec(regexp.QuoteMeta(deleteUserByIDQuery)).
+		WithArgs(endUserID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	resp, err := client.DeleteEndUser(context.Background(), newAuthedRequest(publirasplatformv1.DeleteEndUserRequest{PublicId: "EUSER00001"}))
+	if err != nil {
+		t.Fatalf("DeleteEndUser: %v", err)
+	}
+	if resp.Msg.PublicId != "EUSER00001" {
+		t.Fatalf("public_id = %v, want EUSER00001", resp.Msg.PublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestDeleteEndUserWithPlatformRole はプラットフォームロール保持ユーザーの削除が拒否されることを検証する。
+func TestDeleteEndUserWithPlatformRole(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("PLATUSER002").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "PLATUSER002", "Platform User 2", "platform2@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("platform_operator"))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	_, err := client.DeleteEndUser(context.Background(), newAuthedRequest(publirasplatformv1.DeleteEndUserRequest{PublicId: "PLATUSER002"}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("DeleteEndUser code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
 }

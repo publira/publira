@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
+
+// エンドユーザー情報（プラットフォーム運営者視点）
+message EndUser {
+  string public_id = 1;
+  string name = 2;
+  string email = 3;
+  string status = 4;
+  string created_at = 5;
+  repeated string tenant_ids = 6;
+}
+
+message ListEndUsersRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  // フィルタ条件
+  string created_after = 3;  // RFC3339形式
+  string status = 4;         // active, suspended, inactive
+}
+
+message ListEndUsersResponse {
+  repeated EndUser users = 1;
+}
+
+message GetEndUserRequest {
+  string public_id = 1;
+}
+
+message GetEndUserResponse {
+  EndUser user = 1;
+}
+
+message SuspendEndUserRequest {
+  string public_id = 1;
+}
+
+message SuspendEndUserResponse {
+  EndUser user = 1;
+}
+
+message UnsuspendEndUserRequest {
+  string public_id = 1;
+}
+
+message UnsuspendEndUserResponse {
+  EndUser user = 1;
+}
+
+message DeleteEndUserRequest {
+  string public_id = 1;
+}
+
+message DeleteEndUserResponse {
+  string public_id = 1;
+}
+
+// プラットフォーム運営者向けエンドユーザー管理サービス
+service PlatformUserService {
+  rpc ListEndUsers(ListEndUsersRequest) returns (ListEndUsersResponse) {}
+  rpc GetEndUser(GetEndUserRequest) returns (GetEndUserResponse) {}
+  rpc SuspendEndUser(SuspendEndUserRequest) returns (SuspendEndUserResponse) {}
+  rpc UnsuspendEndUser(UnsuspendEndUserRequest) returns (UnsuspendEndUserResponse) {}
+  rpc DeleteEndUser(DeleteEndUserRequest) returns (DeleteEndUserResponse) {}
+}
