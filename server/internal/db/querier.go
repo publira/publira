@@ -12,9 +12,13 @@ import (
 )
 
 type Querier interface {
+	// プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
+	CountPlatformUsers(ctx context.Context) (int32, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
+	// プラットフォーム初期管理ユーザーを作成する
+	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (User, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// プラットフォーム管理者向けテナント作成

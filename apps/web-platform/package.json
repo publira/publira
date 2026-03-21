@@ -17,6 +17,7 @@
     "typegen": "next typegen"
   },
   "dependencies": {
+    "@publira/api-client": "workspace:*",
     "@publira/brand": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",

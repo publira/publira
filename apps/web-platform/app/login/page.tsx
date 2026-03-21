@@ -38,7 +38,7 @@ const loginAction = async (formData: FormData): Promise<void> => {
   if (!result) {
     redirect(
       buildLoginErrorPath(
-        "メールアドレスとパスワードを入力してください。",
+        "メールアドレスまたはパスワードが正しくありません。",
         nextPath
       )
     );

@@ -23,15 +23,17 @@ import (
 )
 
 const (
-	getTenantByPublicIDQuery = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
-	listTenantsQuery         = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nORDER BY created_at DESC\nLIMIT $1 OFFSET $2\n"
-	createTenantQuery        = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, name, status)\nVALUES ($1, $2, $3, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
-	updateTenantStatusQuery  = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
-	getSessionByTokenHash    = "-- name: GetSessionByTokenHash :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
-	getUserByIDQuery         = "-- name: GetUserByID :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE id = $1\n"
-	getUserByEmailQuery      = "-- name: GetUserByEmail :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
-	testSessionToken         = "platform-session-token"
-	testPlatformRole         = "platform_operator"
+	getTenantByPublicIDQuery  = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
+	listTenantsQuery          = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nORDER BY created_at DESC\nLIMIT $1 OFFSET $2\n"
+	createTenantQuery         = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, name, status)\nVALUES ($1, $2, $3, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	updateTenantStatusQuery   = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	getSessionByTokenHash     = "-- name: GetSessionByTokenHash :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
+	getUserByIDQuery          = "-- name: GetUserByID :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE id = $1\n"
+	getUserByEmailQuery       = "-- name: GetUserByEmail :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
+	countPlatformUsersQuery   = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM users\nWHERE role IN ('platform_operator', 'platform_super_admin')\n"
+	createPlatformUserQuery   = "-- name: CreatePlatformUser :one\nINSERT INTO users (id, tenant_id, public_id, email, password_hash, role, name)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nRETURNING id, tenant_id, public_id, email, password_hash, role, name, created_at\n"
+	testSessionToken          = "platform-session-token"
+	testPlatformRole          = "platform_operator"
 )
 
 func tenantColumns() []string {
@@ -45,7 +47,7 @@ func newTestPlatformServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	server := httptest.NewServer(platformapi.NewHandler(dbmodels.New(db)))
+	server := httptest.NewServer(platformapi.NewHandler(db, dbmodels.New(db)))
 	t.Cleanup(server.Close)
 	return server, mock
 }
@@ -82,7 +84,7 @@ func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 // TestPlatformHandlerExposesOnlyPlatformRoutes は、NewHandler が PlatformTenantService のみ
 // 公開し、admin / public API のルートを登録しないことを検証する。
 func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
-	ts := httptest.NewServer(platformapi.NewHandler(nil))
+	ts := httptest.NewServer(platformapi.NewHandler(nil, nil))
 	t.Cleanup(ts.Close)
 
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformTenantService/ListTenants", false)
@@ -541,3 +543,125 @@ func TestPlatformAuthDeleteSessionRevokes(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+// TestCheckSetupStatusNotCompleted はユーザーが存在しない場合 setup_completed = false を返すことを検証する。
+func TestCheckSetupStatusNotCompleted(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+
+	mock.ExpectQuery(regexp.QuoteMeta(countPlatformUsersQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+
+	client := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	resp, err := client.CheckSetupStatus(context.Background(), newRequest(publirasplatformv1.CheckSetupStatusRequest{}))
+	if err != nil {
+		t.Fatalf("CheckSetupStatus: %v", err)
+	}
+	if resp.Msg.SetupCompleted {
+		t.Fatalf("setup_completed = true, want false")
+	}
+	assertExpectations(t, mock)
+}
+
+// TestCheckSetupStatusCompleted はユーザーが存在する場合 setup_completed = true を返すことを検証する。
+func TestCheckSetupStatusCompleted(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+
+	mock.ExpectQuery(regexp.QuoteMeta(countPlatformUsersQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+
+	client := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	resp, err := client.CheckSetupStatus(context.Background(), newRequest(publirasplatformv1.CheckSetupStatusRequest{}))
+	if err != nil {
+		t.Fatalf("CheckSetupStatus: %v", err)
+	}
+	if !resp.Msg.SetupCompleted {
+		t.Fatalf("setup_completed = false, want true")
+	}
+	assertExpectations(t, mock)
+}
+
+// TestCreateInitialUserSuccess は初期ユーザー作成の正常系を検証する。
+func TestCreateInitialUserSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+
+	// Fast-path: ユーザーは存在しない
+	mock.ExpectQuery(regexp.QuoteMeta(countPlatformUsersQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+
+	// トランザクション開始
+	mock.ExpectBegin()
+
+	// テナント作成
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
+		WithArgs(sqlmock.AnyArg(), "platform", "Platform").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "platform", nil, nil, "Platform", nil, now, "active"))
+
+	// ユーザー作成
+	mock.ExpectQuery(regexp.QuoteMeta(createPlatformUserQuery)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), "admin@example.com", sqlmock.AnyArg(), "platform_super_admin", "Admin User").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "email", "password_hash", "role", "name", "created_at"}).
+			AddRow(userID, tenantID, "ADMINUSER01", "admin@example.com", "hash", "platform_super_admin", "Admin User", now))
+
+	// トランザクションコミット
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateInitialUser(context.Background(), newRequest(publirasplatformv1.CreateInitialUserRequest{
+		Name:     "Admin User",
+		Email:    "admin@example.com",
+		Password: "secure-password-123",
+	}))
+	if err != nil {
+		t.Fatalf("CreateInitialUser: %v", err)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestCreateInitialUserAlreadySetup はユーザーが既に存在する場合 AlreadyExists を返すことを検証する。
+func TestCreateInitialUserAlreadySetup(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+
+	mock.ExpectQuery(regexp.QuoteMeta(countPlatformUsersQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+
+	client := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateInitialUser(context.Background(), newRequest(publirasplatformv1.CreateInitialUserRequest{
+		Name:     "Admin User",
+		Email:    "admin@example.com",
+		Password: "secure-password-123",
+	}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("CreateInitialUser code = %v, want already_exists", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestCreateInitialUserInvalidInput は必須フィールドが空の場合 InvalidArgument を返すことを検証する。
+func TestCreateInitialUserInvalidInput(t *testing.T) {
+	ts, _ := newTestPlatformServer(t)
+	client := publirasplatformv1connect.NewPlatformSetupServiceClient(ts.Client(), ts.URL)
+
+	cases := []struct {
+		name string
+		req  publirasplatformv1.CreateInitialUserRequest
+	}{
+		{"empty_name", publirasplatformv1.CreateInitialUserRequest{Name: "", Email: "a@b.com", Password: "pass"}},
+		{"empty_email", publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "", Password: "pass"}},
+		{"empty_password", publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: ""}},
+		{"invalid_email", publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "not-an-email", Password: "pass"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := client.CreateInitialUser(context.Background(), newRequest(tc.req))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("CreateInitialUser code = %v, want invalid_argument", connect.CodeOf(err))
+			}
+		})
+	}
+}
+

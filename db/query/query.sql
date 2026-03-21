@@ -86,6 +86,16 @@ LIMIT 1;
 SELECT *
 FROM users
 WHERE id = $1;
+-- name: CountPlatformUsers :one
+-- プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
+SELECT COUNT(*)::int
+FROM users
+WHERE role IN ('platform_operator', 'platform_super_admin');
+-- name: CreatePlatformUser :one
+-- プラットフォーム初期管理ユーザーを作成する
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, role, name)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
 -- name: ListActiveSeries :many
 -- 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 SELECT s.id,

@@ -1,0 +1,134 @@
+package platformapi
+
+import (
+	"context"
+	"errors"
+	"net/mail"
+	"strings"
+
+	"connectrpc.com/connect"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+
+	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db"
+)
+
+const (
+	platformTenantPublicID = "platform"
+	platformTenantName     = "Platform"
+)
+
+func generatePublicID() string {
+	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
+	return strings.ToUpper(raw[:12])
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+func (s *platformServer) CheckSetupStatus(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.CheckSetupStatusRequest],
+) (*connect.Response[publirasplatformv1.CheckSetupStatusResponse], error) {
+	count, err := s.queries.CountPlatformUsers(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publirasplatformv1.CheckSetupStatusResponse{
+		SetupCompleted: count > 0,
+	}), nil
+}
+
+func (s *platformServer) CreateInitialUser(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.CreateInitialUserRequest],
+) (*connect.Response[publirasplatformv1.CreateInitialUserResponse], error) {
+	name := strings.TrimSpace(req.Msg.Name)
+	email := strings.TrimSpace(req.Msg.Email)
+	password := req.Msg.Password
+
+	if name == "" || email == "" || strings.TrimSpace(password) == "" {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name, email, and password are required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+
+	// Fast-path: セットアップ済み確認
+	count, err := s.queries.CountPlatformUsers(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if count > 0 {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
+	}
+
+	passwordHash, err := auth.HashPassword(password)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txq := dbmodels.New(tx)
+
+	tenantID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	_, err = txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
+		ID:       tenantID,
+		PublicID: platformTenantPublicID,
+		Name:     platformTenantName,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
+		}
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "tenant_creation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	userID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	user, err := txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
+		ID:           userID,
+		TenantID:     tenantID,
+		PublicID:     generatePublicID(),
+		Email:        email,
+		PasswordHash: passwordHash,
+		Role:         rolePlatformSuperAdmin,
+		Name:         name,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
+		}
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "user_creation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "transaction_commit_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	auth.AuditEvent(req.Header(), "platform_initial_setup", "success", platformTenantPublicID, user.PublicID, "")
+	return connect.NewResponse(&publirasplatformv1.CreateInitialUserResponse{}), nil
+}

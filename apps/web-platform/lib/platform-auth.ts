@@ -1,7 +1,16 @@
+import { createPlatformApiClient } from "@publira/api-client/platform/client";
+
 import {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./platform-auth-shared";
+
+const platformApiBaseUrl =
+  process.env.PUBLIRA_PLATFORM_API_BASE_URL ?? "http://localhost:8002";
+
+const platformApiClient = createPlatformApiClient({
+  baseUrl: platformApiBaseUrl,
+});
 
 export interface PlatformCurrentOperator {
   name: string;
@@ -9,36 +18,52 @@ export interface PlatformCurrentOperator {
   role: string;
 }
 
-const defaultOperator: PlatformCurrentOperator = {
-  name: process.env.PUBLIRA_PLATFORM_OPERATOR_NAME ?? "Platform Operator",
-  publicId: process.env.PUBLIRA_PLATFORM_OPERATOR_PUBLIC_ID ?? "operator_demo",
-  role: process.env.PUBLIRA_PLATFORM_OPERATOR_ROLE ?? "platform_operator",
-};
-
-export const loginPlatform = (
+export const loginPlatform = async (
   email: string,
   password: string
-): { expiresAt: Date; sessionId: string } | null => {
-  if (!email.trim() || !password) {
+): Promise<{ expiresAt: Date; sessionId: string } | null> => {
+  try {
+    const response = await platformApiClient.auth.createSession({
+      email,
+      password,
+    });
+    const { sessionId, expiresAt } = response.session ?? {};
+    if (!sessionId || !expiresAt) {
+      return null;
+    }
+    return { expiresAt: new Date(expiresAt), sessionId };
+  } catch {
     return null;
   }
-
-  return {
-    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 12),
-    sessionId: `platform-${crypto.randomUUID()}`,
-  };
 };
 
-export const logoutPlatform = (sessionId: string): string => sessionId.trim();
+export const logoutPlatform = async (sessionId: string): Promise<void> => {
+  if (!sessionId.trim()) {
+    return;
+  }
+  try {
+    await platformApiClient.auth.deleteSession({ sessionId });
+  } catch {
+    // セッション失効・ネットワークエラー時もクッキーはクリアする
+  }
+};
 
-export const getPlatformCurrentOperator = (
+export const getPlatformCurrentOperator = async (
   sessionId: string
-): PlatformCurrentOperator | null => {
+): Promise<PlatformCurrentOperator | null> => {
   if (!sessionId.trim()) {
     return null;
   }
-
-  return defaultOperator;
+  try {
+    const response = await platformApiClient.auth.getMe({ sessionId });
+    const { user } = response;
+    if (!user) {
+      return null;
+    }
+    return { name: user.name, publicId: user.publicId, role: user.role };
+  } catch {
+    return null;
+  }
 };
 
 export const sessionCookieOptions = {

@@ -5,11 +5,22 @@ import {
   PLATFORM_SESSION_COOKIE_NAME,
   buildLoginUrl,
 } from "./lib/platform-auth-shared";
+import { isSetupCompleted } from "./lib/platform-setup";
 
-const PUBLIC_PATHS = new Set(["/login", "/logout", "/healthz"]);
+const PUBLIC_PATHS = new Set(["/login", "/logout", "/healthz", "/setup"]);
 
-export const proxy = (request: NextRequest) => {
+export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
+
+  if (pathname === "/setup") {
+    return NextResponse.next();
+  }
+
+  const setupCompleted = await isSetupCompleted();
+
+  if (!setupCompleted && pathname === "/login") {
+    return NextResponse.redirect(new URL("/setup", request.url));
+  }
 
   if (PUBLIC_PATHS.has(pathname)) {
     return NextResponse.next();
@@ -20,6 +31,10 @@ export const proxy = (request: NextRequest) => {
     ?.value?.trim();
   if (sessionId) {
     return NextResponse.next();
+  }
+
+  if (!setupCompleted) {
+    return NextResponse.redirect(new URL("/setup", request.url));
   }
 
   return NextResponse.redirect(buildLoginUrl(request.nextUrl));

@@ -54,6 +54,10 @@
     "./admin/types": {
       "types": "./dist/admin/types.d.mts",
       "default": "./dist/admin/types.mjs"
+    },
+    "./platform/client": {
+      "types": "./dist/platform/client.d.mts",
+      "default": "./dist/platform/client.mjs"
     }
   },
   "scripts": {
