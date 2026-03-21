@@ -25,7 +25,7 @@ import (
 
 const (
 	getTenantByPublicIDQuery    = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
-	listTenantsQuery            = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nORDER BY created_at DESC\nLIMIT $1 OFFSET $2\n"
+	listTenantsQuery            = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')\n  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')\n  AND ($3::text = '' OR status = $3::text)\nORDER BY created_at DESC\nLIMIT $5 OFFSET $4\n"
 	createTenantQuery           = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, domain, subdomain, name, status)\nVALUES ($1, $2, $3, $4, $5, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
 	createTenantMembershipQuery = "-- name: CreateTenantMembership :one\nINSERT INTO tenant_memberships (id, user_id, tenant_id, status)\nVALUES ($1, $2, $3, $4)\nRETURNING id, user_id, tenant_id, status, created_at\n"
 	createTenantMemberRoleQuery = "-- name: CreateTenantMemberRole :one\nINSERT INTO tenant_member_roles (id, membership_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, membership_id, role, created_at\n"
@@ -148,7 +148,7 @@ func TestListTenantsReturnsEmptyList(t *testing.T) {
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(int32(20), int32(0)).
+		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
@@ -173,7 +173,7 @@ func TestListTenantsReturnsTenants(t *testing.T) {
 	id2 := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(int32(20), int32(0)).
+		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(id1, "TENANT001", nil, nil, "Tenant One", nil, now, "active").
 			AddRow(id2, "TENANT002", nil, nil, "Tenant Two", nil, now, "suspended"))
@@ -204,7 +204,7 @@ func TestListTenantsAppliesDefaultLimit(t *testing.T) {
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(int32(20), int32(0)).
+		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
@@ -224,13 +224,91 @@ func TestListTenantsClampMaxLimit(t *testing.T) {
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(int32(100), int32(0)).
+		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(100)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	_, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{Limit: 200}))
 	if err != nil {
 		t.Fatalf("ListTenants: %v", err)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestListTenantsFilterByName はテナント一覧を名前でフィルタできることを検証する。
+func TestListTenantsFilterByName(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+	id := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
+		WithArgs(sql.NullString{String: "Test", Valid: true}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{Name: "Test"}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	if len(resp.Msg.Tenants) != 1 {
+		t.Fatalf("tenant count = %d, want 1", len(resp.Msg.Tenants))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestListTenantsFilterByPublicID はテナント一覧を公開IDでフィルタできることを検証する。
+func TestListTenantsFilterByPublicID(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+	id := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
+		WithArgs(sql.NullString{Valid: false}, sql.NullString{String: "TENANT001", Valid: true}, sql.NullString{Valid: false}, int32(0), int32(20)).
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{PublicId: "TENANT001"}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	if len(resp.Msg.Tenants) != 1 {
+		t.Fatalf("tenant count = %d, want 1", len(resp.Msg.Tenants))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestListTenantsFilterByStatus はテナント一覧をステータスでフィルタできることを検証する。
+func TestListTenantsFilterByStatus(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+	id := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
+		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{String: "suspended", Valid: true}, int32(0), int32(20)).
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "suspended"))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{Status: "suspended"}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	if len(resp.Msg.Tenants) != 1 {
+		t.Fatalf("tenant count = %d, want 1", len(resp.Msg.Tenants))
+	}
+	if resp.Msg.Tenants[0].Status != "suspended" {
+		t.Fatalf("tenants[0].status = %q, want suspended", resp.Msg.Tenants[0].Status)
 	}
 	assertExpectations(t, mock)
 }

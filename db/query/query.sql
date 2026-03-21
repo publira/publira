@@ -1,9 +1,12 @@
 -- name: ListTenants :many
--- プラットフォーム管理者向けテナント一覧取得
-SELECT *
+-- プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
+SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
 FROM tenants
+WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
+  AND (sqlc.narg('filter_public_id')::text = '' OR public_id ILIKE '%' || sqlc.narg('filter_public_id')::text || '%')
+  AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
 ORDER BY created_at DESC
-LIMIT $1 OFFSET $2;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: CreateTenant :one
 -- プラットフォーム管理者向けテナント作成
 INSERT INTO tenants (id, public_id, domain, subdomain, name, status)

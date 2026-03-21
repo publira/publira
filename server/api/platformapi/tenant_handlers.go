@@ -44,11 +44,21 @@ func tenantUniqueViolationField(err error) string {
 }
 
 func tenantToProto(t dbmodels.Tenant) *publirasplatformv1.Tenant {
+	domain := ""
+	if t.Domain.Valid {
+		domain = t.Domain.String
+	}
+	subdomain := ""
+	if t.Subdomain.Valid {
+		subdomain = t.Subdomain.String
+	}
 	return &publirasplatformv1.Tenant{
 		PublicId:  t.PublicID,
 		Name:      t.Name,
 		Status:    t.Status,
 		CreatedAt: t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		Domain:    domain,
+		Subdomain: subdomain,
 	}
 }
 
@@ -68,9 +78,17 @@ func (s *platformServer) ListTenants(
 		offset = 0
 	}
 
+	// フィルタパラメータを処理
+	filterName := strings.TrimSpace(req.Msg.Name)
+	filterPublicID := strings.TrimSpace(req.Msg.PublicId)
+	filterStatus := strings.TrimSpace(req.Msg.Status)
+
 	tenants, err := s.queries.ListTenants(ctx, dbmodels.ListTenantsParams{
-		Limit:  limit,
-		Offset: offset,
+		Limit:          limit,
+		Offset:         offset,
+		FilterName:     sql.NullString{String: filterName, Valid: filterName != ""},
+		FilterPublicID: sql.NullString{String: filterPublicID, Valid: filterPublicID != ""},
+		FilterStatus:   sql.NullString{String: filterStatus, Valid: filterStatus != ""},
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

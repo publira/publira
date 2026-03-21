@@ -1248,18 +1248,30 @@ func (q *Queries) ListTenantRolesByUserAndTenant(ctx context.Context, arg ListTe
 const listTenants = `-- name: ListTenants :many
 SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
 FROM tenants
+WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
+  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
+  AND ($3::text = '' OR status = $3::text)
 ORDER BY created_at DESC
-LIMIT $1 OFFSET $2
+LIMIT $5 OFFSET $4
 `
 
 type ListTenantsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	FilterName     sql.NullString `json:"filter_name"`
+	FilterPublicID sql.NullString `json:"filter_public_id"`
+	FilterStatus   sql.NullString `json:"filter_status"`
+	Offset         int32          `json:"offset"`
+	Limit          int32          `json:"limit"`
 }
 
-// プラットフォーム管理者向けテナント一覧取得
+// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
 func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error) {
-	rows, err := q.db.QueryContext(ctx, listTenants, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listTenants,
+		arg.FilterName,
+		arg.FilterPublicID,
+		arg.FilterStatus,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
