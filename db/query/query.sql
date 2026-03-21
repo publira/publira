@@ -440,3 +440,63 @@ FROM episodes e
 WHERE el.episode_id = e.id
     AND s.tenant_id = $1
     AND e.public_id = $2;
+
+-- name: ListEndUsers :many
+-- エンドユーザー（platform_user_roles未保持）の一覧取得
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at
+FROM users u
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM platform_user_roles pur
+        WHERE pur.user_id = u.id
+    )
+    AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
+    AND (sqlc.narg('status')::text = '' OR u.status = sqlc.narg('status')::text)
+ORDER BY u.created_at DESC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: GetUserByPublicID :one
+-- public_idでユーザーを取得
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.public_id = $1
+LIMIT 1;
+
+-- name: GetTenantsByEndUser :many
+-- エンドユーザーが所属するテナント一覧を取得
+SELECT DISTINCT t.id,
+    t.public_id
+FROM tenants t
+    JOIN tenant_memberships tm ON tm.tenant_id = t.id
+WHERE tm.user_id = $1
+    AND tm.status = 'active'
+ORDER BY t.created_at DESC;
+
+-- name: UpdateUserStatus :one
+-- ユーザーのステータスを更新
+UPDATE users
+SET status = $2
+WHERE public_id = $1
+RETURNING *;
+
+-- name: TerminateUserSessions :exec
+-- ユーザーの全セッションを失効させる
+UPDATE sessions
+SET revoked_at = NOW()
+WHERE user_id = $1
+    AND revoked_at IS NULL;
+
+-- name: DeleteUserByID :exec
+-- ユーザーを物理削除（外部キー制約により関連データも削除）
+DELETE FROM users
+WHERE id = $1;

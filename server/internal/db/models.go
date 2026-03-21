@@ -160,4 +160,5 @@ type User struct {
 	PasswordHash string    `json:"password_hash"`
 	Name         string    `json:"name"`
 	CreatedAt    time.Time `json:"created_at"`
+	Status       string    `json:"status"`
 }

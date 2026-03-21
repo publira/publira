@@ -53,6 +53,9 @@ func NewHandler(db *sql.DB, queries Querier) http.Handler {
 	// セットアップサービスは認証不要で公開する
 	setupPath, setupHandler := publirasplatformv1connect.NewPlatformSetupServiceHandler(server)
 	mux.Handle(setupPath, setupHandler)
+	// エンドユーザー管理サービス
+	userPath, userHandler := publirasplatformv1connect.NewPlatformUserServiceHandler(server)
+	mux.Handle(userPath, userHandler)
 	return mux
 }
 

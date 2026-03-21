@@ -25,6 +25,8 @@ type Querier interface {
 	CreateTenantMemberRole(ctx context.Context, arg CreateTenantMemberRoleParams) (TenantMemberRole, error)
 	CreateTenantMembership(ctx context.Context, arg CreateTenantMembershipParams) (TenantMembership, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// ユーザーを物理削除（外部キー制約により関連データも削除）
+	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
@@ -36,11 +38,17 @@ type Querier interface {
 	GetTenantByDomain(ctx context.Context, domain sql.NullString) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantTheme, error)
+	// エンドユーザーが所属するテナント一覧を取得
+	GetTenantsByEndUser(ctx context.Context, userID uuid.UUID) ([]GetTenantsByEndUserRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// public_idでユーザーを取得
+	GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error)
 	// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
+	// エンドユーザー（platform_user_roles未保持）の一覧取得
+	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
@@ -52,10 +60,14 @@ type Querier interface {
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
 	RevokeSession(ctx context.Context, id uuid.UUID) error
+	// ユーザーの全セッションを失効させる
+	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	// テナントの状態 (active / suspended) を更新する
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
+	// ユーザーのステータスを更新
+	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (UpsertSeriesListingRow, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
