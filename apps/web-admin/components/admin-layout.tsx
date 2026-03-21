@@ -7,11 +7,18 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { AdminHeader } from "./admin-header";
 import { AdminSidebar } from "./admin-sidebar";
 
-export interface AdminLayoutProps {
-  children: ReactNode;
+interface AdminLayoutCurrentUser {
+  name: string;
+  publicId: string;
+  role: string;
 }
 
-export const AdminLayout = ({ children }: AdminLayoutProps) => {
+export interface AdminLayoutProps {
+  children: ReactNode;
+  currentUser: AdminLayoutCurrentUser;
+}
+
+export const AdminLayout = ({ children, currentUser }: AdminLayoutProps) => {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const closeMobileNav = useEffectEvent(() => {
@@ -41,6 +48,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
         <div className="flex min-w-0 flex-1 flex-col lg:pl-0">
           <AdminHeader
+            currentUser={currentUser}
             mobileNavOpen={mobileNavOpen}
             onOpenMobileNav={openMobileNav}
           />
