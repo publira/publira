@@ -46,7 +46,7 @@ RETURNING *;
 -- name: CreateSession :one
 INSERT INTO sessions (
         id,
-        tenant_id,
+    current_tenant_id,
         user_id,
         token_hash,
         expires_at
@@ -56,7 +56,7 @@ RETURNING *;
 -- name: GetSessionByTokenHashForTenant :one
 SELECT *
 FROM sessions
-WHERE tenant_id = $1
+WHERE current_tenant_id = $1
     AND token_hash = $2
 LIMIT 1;
 
@@ -68,13 +68,14 @@ LIMIT 1;
 -- name: RevokeSession :exec
 UPDATE sessions
 SET revoked_at = NOW()
-WHERE id = $1
-    AND tenant_id = $2;
+WHERE id = $1;
 -- name: GetUserByEmailForTenant :one
-SELECT *
-FROM users
-WHERE tenant_id = $1
-    AND email = $2
+SELECT u.*
+FROM users u
+    JOIN tenant_memberships tm ON tm.user_id = u.id
+    AND tm.tenant_id = $1
+    AND tm.status = 'active'
+WHERE u.email = $2
 LIMIT 1;
 
 -- name: GetUserByEmail :one
@@ -89,13 +90,76 @@ WHERE id = $1;
 -- name: CountPlatformUsers :one
 -- プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
 SELECT COUNT(*)::int
-FROM users
-WHERE role IN ('platform_operator', 'platform_super_admin');
--- name: CreatePlatformUser :one
--- プラットフォーム初期管理ユーザーを作成する
-INSERT INTO users (id, tenant_id, public_id, email, password_hash, role, name)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+FROM (
+        SELECT DISTINCT user_id
+        FROM platform_user_roles
+    ) platform_users;
+-- name: CreateUser :one
+INSERT INTO users (id, public_id, email, password_hash, name)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
+
+-- name: CreateTenantMembership :one
+INSERT INTO tenant_memberships (id, user_id, tenant_id, status)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: CreateTenantMemberRole :one
+INSERT INTO tenant_member_roles (id, membership_id, role)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: CreatePlatformUserRole :one
+INSERT INTO platform_user_roles (id, user_id, role)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: ListTenantRolesByUserAndTenant :many
+SELECT tmr.role
+FROM tenant_memberships tm
+    JOIN tenant_member_roles tmr ON tmr.membership_id = tm.id
+WHERE tm.user_id = $1
+    AND tm.tenant_id = $2
+    AND tm.status = 'active'
+ORDER BY tmr.role;
+
+-- name: ListPlatformUserRoles :many
+SELECT role
+FROM platform_user_roles
+WHERE user_id = $1
+ORDER BY role;
+
+-- name: ListPlatformOperators :many
+SELECT u.public_id,
+    u.email,
+    u.name,
+    COALESCE(
+        (
+            SELECT pur.role
+            FROM platform_user_roles pur
+            WHERE pur.user_id = u.id
+            ORDER BY CASE
+                    WHEN pur.role = 'platform_super_admin' THEN 3
+                    WHEN pur.role = 'super-admin' THEN 3
+                    WHEN pur.role = 'platform_operator' THEN 2
+                    WHEN pur.role = 'platform-operator' THEN 2
+                    WHEN pur.role = 'platform_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                pur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    'active'::text AS status,
+    u.created_at
+FROM users u
+WHERE EXISTS (
+        SELECT 1
+        FROM platform_user_roles pur
+        WHERE pur.user_id = u.id
+    )
+ORDER BY u.created_at DESC;
 -- name: ListActiveSeries :many
 -- 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 SELECT s.id,

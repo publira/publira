@@ -27,11 +27,13 @@ const (
 	listTenantsQuery          = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nORDER BY created_at DESC\nLIMIT $1 OFFSET $2\n"
 	createTenantQuery         = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, name, status)\nVALUES ($1, $2, $3, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
 	updateTenantStatusQuery   = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
-	getSessionByTokenHash     = "-- name: GetSessionByTokenHash :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
-	getUserByIDQuery          = "-- name: GetUserByID :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE id = $1\n"
-	getUserByEmailQuery       = "-- name: GetUserByEmail :one\nSELECT id, tenant_id, public_id, email, password_hash, role, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
-	countPlatformUsersQuery   = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM users\nWHERE role IN ('platform_operator', 'platform_super_admin')\n"
-	createPlatformUserQuery   = "-- name: CreatePlatformUser :one\nINSERT INTO users (id, tenant_id, public_id, email, password_hash, role, name)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nRETURNING id, tenant_id, public_id, email, password_hash, role, name, created_at\n"
+	getSessionByTokenHash     = "-- name: GetSessionByTokenHash :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
+	getUserByIDQuery          = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE id = $1\n"
+	getUserByEmailQuery       = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at\nFROM users\nWHERE email = $1\nLIMIT 1\n"
+	countPlatformUsersQuery   = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM (\n        SELECT DISTINCT user_id\n        FROM platform_user_roles\n    ) platform_users\n"
+	createUserQuery           = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at\n"
+	createPlatformUserRoleQuery = "-- name: CreatePlatformUserRole :one\nINSERT INTO platform_user_roles (id, user_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, user_id, role, created_at\n"
+	listPlatformUserRolesQuery = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
 	testSessionToken          = "platform-session-token"
 	testPlatformRole          = "platform_operator"
 )
@@ -65,13 +67,17 @@ func newAuthedRequest[T any](msg T) *connect.Request[T] {
 func expectPlatformGuard(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHash)).
 		WithArgs(auth.HashToken(testSessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "current_tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, auth.HashToken(testSessionToken), now.Add(time.Hour), nil, now))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "email", "password_hash", "role", "name", "created_at"}).
-			AddRow(userID, tenantID, "PLATUSER001", "platform@example.com", "hashed", role, "Platform User", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
 }
 
 func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
@@ -457,7 +463,6 @@ func TestPlatformTenantRejectsNonPlatformRole(t *testing.T) {
 func TestPlatformAuthCreateSessionSuccess(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
-	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	password := "secret-password"
 	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -467,13 +472,17 @@ func TestPlatformAuthCreateSessionSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
 		WithArgs("platform@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "email", "password_hash", "role", "name", "created_at"}).
-			AddRow(userID, tenantID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), testPlatformRole, "Platform User", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
+			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(testPlatformRole))
 
 	mock.ExpectQuery("INSERT INTO sessions").
-		WithArgs(sqlmock.AnyArg(), tenantID, userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, "token-hash", now.Add(time.Hour), nil, now))
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "current_tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), nil, userID, "token-hash", now.Add(time.Hour), nil, now))
 
 	client := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
 	resp, err := client.CreateSession(context.Background(), newRequest(publirasplatformv1.PlatformAuthServiceCreateSessionRequest{
@@ -524,11 +533,11 @@ func TestPlatformAuthDeleteSessionRevokes(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHash)).
 		WithArgs(auth.HashToken(testSessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "current_tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
 			AddRow(sessionID, tenantID, userID, auth.HashToken(testSessionToken), now.Add(time.Hour), nil, now))
 
 	mock.ExpectExec("UPDATE sessions").
-		WithArgs(sessionID, tenantID).
+		WithArgs(sessionID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publirasplatformv1connect.NewPlatformAuthServiceClient(ts.Client(), ts.URL)
@@ -584,7 +593,6 @@ func TestCheckSetupStatusCompleted(t *testing.T) {
 func TestCreateInitialUserSuccess(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
-	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 
 	// Fast-path: ユーザーは存在しない
@@ -594,17 +602,16 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 	// トランザクション開始
 	mock.ExpectBegin()
 
-	// テナント作成
-	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), "platform", "Platform").
-		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "platform", nil, nil, "Platform", nil, now, "active"))
-
 	// ユーザー作成
-	mock.ExpectQuery(regexp.QuoteMeta(createPlatformUserQuery)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), "admin@example.com", sqlmock.AnyArg(), "platform_super_admin", "Admin User").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "email", "password_hash", "role", "name", "created_at"}).
-			AddRow(userID, tenantID, "ADMINUSER01", "admin@example.com", "hash", "platform_super_admin", "Admin User", now))
+	mock.ExpectQuery(regexp.QuoteMeta(createUserQuery)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "admin@example.com", sqlmock.AnyArg(), "Admin User").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at"}).
+			AddRow(userID, "ADMINUSER01", "admin@example.com", "hash", "Admin User", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(createPlatformUserRoleQuery)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "platform_super_admin").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), userID, "platform_super_admin", now))
 
 	// トランザクションコミット
 	mock.ExpectCommit()
@@ -647,17 +654,17 @@ func TestCreateInitialUserInvalidInput(t *testing.T) {
 
 	cases := []struct {
 		name string
-		req  publirasplatformv1.CreateInitialUserRequest
+		req  func() publirasplatformv1.CreateInitialUserRequest
 	}{
-		{"empty_name", publirasplatformv1.CreateInitialUserRequest{Name: "", Email: "a@b.com", Password: "pass"}},
-		{"empty_email", publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "", Password: "pass"}},
-		{"empty_password", publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: ""}},
-		{"invalid_email", publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "not-an-email", Password: "pass"}},
+		{"empty_name", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "", Email: "a@b.com", Password: "pass"} }},
+		{"empty_email", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "", Password: "pass"} }},
+		{"empty_password", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "a@b.com", Password: ""} }},
+		{"invalid_email", func() publirasplatformv1.CreateInitialUserRequest { return publirasplatformv1.CreateInitialUserRequest{Name: "Name", Email: "not-an-email", Password: "pass"} }},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := client.CreateInitialUser(context.Background(), newRequest(tc.req))
+			_, err := client.CreateInitialUser(context.Background(), newRequest(tc.req()))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("CreateInitialUser code = %v, want invalid_argument", connect.CodeOf(err))
 			}

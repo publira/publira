@@ -14,34 +14,20 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { cookies } from "next/headers";
 
 import { PlatformPage } from "../../../components/platform-page";
+import { PLATFORM_SESSION_COOKIE_NAME } from "../../../lib/platform-auth";
+import { listPlatformOperators } from "../../../lib/platform-operators";
 
-const operators = [
-  {
-    email: "owner@publira.example",
-    name: "中野",
-    role: "platform_owner",
-    status: "active",
-  },
-  {
-    email: "ops@publira.example",
-    name: "山田",
-    role: "platform_operator",
-    status: "active",
-  },
-  {
-    email: "audit@publira.example",
-    name: "木村",
-    role: "platform_auditor",
-    status: "limited",
-  },
-] as const;
+export default async function OperatorsPage() {
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value ?? "";
+  const operators = await listPlatformOperators(sessionId);
 
-export default function OperatorsPage() {
   return (
     <PlatformPage
-      description="認証後にアクセスできるオペレーター管理画面です。ロール設計の前提を固定し、後続で API と接続します。"
+      description="認証後にアクセスできるオペレーター管理画面です。platform_user_roles ベースの一覧を表示します。"
       eyebrow="Platform Governance"
       title="オペレーター管理"
     >
@@ -49,8 +35,8 @@ export default function OperatorsPage() {
         <CardHeader>
           <CardTitle>ロール前提</CardTitle>
           <CardDescription>
-            platform_owner / platform_operator / platform_auditor の 3
-            ロールを初期定義とします。
+            platform_super_admin / platform_operator / platform_auditor
+            を優先順付きで扱います。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -64,8 +50,15 @@ export default function OperatorsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {operators.length === 0 ? (
+                <TableRow>
+                  <TableCell className="text-muted-foreground" colSpan={4}>
+                    オペレーターはまだ登録されていません。
+                  </TableCell>
+                </TableRow>
+              ) : null}
               {operators.map((operator) => (
-                <TableRow key={operator.email}>
+                <TableRow key={operator.publicId || operator.email}>
                   <TableCell className="font-medium">{operator.name}</TableCell>
                   <TableCell>{operator.email}</TableCell>
                   <TableCell>{operator.role}</TableCell>

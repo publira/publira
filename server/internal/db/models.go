@@ -61,6 +61,13 @@ type Label struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type PlatformUserRole struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Purchase struct {
 	ID              uuid.UUID    `json:"id"`
 	UserID          uuid.UUID    `json:"user_id"`
@@ -102,13 +109,13 @@ type SeriesListing struct {
 }
 
 type Session struct {
-	ID        uuid.UUID    `json:"id"`
-	TenantID  uuid.UUID    `json:"tenant_id"`
-	UserID    uuid.UUID    `json:"user_id"`
-	TokenHash string       `json:"token_hash"`
-	ExpiresAt time.Time    `json:"expires_at"`
-	RevokedAt sql.NullTime `json:"revoked_at"`
-	CreatedAt time.Time    `json:"created_at"`
+	ID              uuid.UUID     `json:"id"`
+	CurrentTenantID uuid.NullUUID `json:"current_tenant_id"`
+	UserID          uuid.UUID     `json:"user_id"`
+	TokenHash       string        `json:"token_hash"`
+	ExpiresAt       time.Time     `json:"expires_at"`
+	RevokedAt       sql.NullTime  `json:"revoked_at"`
+	CreatedAt       time.Time     `json:"created_at"`
 }
 
 type Tenant struct {
@@ -122,6 +129,21 @@ type Tenant struct {
 	Status                    string         `json:"status"`
 }
 
+type TenantMemberRole struct {
+	ID           uuid.UUID `json:"id"`
+	MembershipID uuid.UUID `json:"membership_id"`
+	Role         string    `json:"role"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type TenantMembership struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type TenantTheme struct {
 	TenantID       uuid.UUID      `json:"tenant_id"`
 	PrimaryColor   string         `json:"primary_color"`
@@ -133,11 +155,9 @@ type TenantTheme struct {
 
 type User struct {
 	ID           uuid.UUID `json:"id"`
-	TenantID     uuid.UUID `json:"tenant_id"`
 	PublicID     string    `json:"public_id"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
-	Role         string    `json:"role"`
 	Name         string    `json:"name"`
 	CreatedAt    time.Time `json:"created_at"`
 }

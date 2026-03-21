@@ -38,7 +38,7 @@ func NewHandler(db *sql.DB, queries Querier) http.Handler {
 		server,
 		connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				if _, _, err := server.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+				if _, _, _, err := server.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
 					return nil, err
 				}
 				return next(ctx, req)
@@ -46,6 +46,8 @@ func NewHandler(db *sql.DB, queries Querier) http.Handler {
 		})),
 	)
 	mux.Handle(tenantPath, tenantHandler)
+	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(server)
+	mux.Handle(operatorPath, operatorHandler)
 	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server)
 	mux.Handle(authPath, authHandler)
 	// セットアップサービスは認証不要で公開する
