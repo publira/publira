@@ -4,8 +4,6 @@ package publira.platform.v1;
 
 option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
 
-import "publira/types/v1/types.proto";
-
 // プラットフォーム管理者向けテナント情報
 message Tenant {
   string public_id = 1;
@@ -13,7 +11,7 @@ message Tenant {
   string status = 3;
   string created_at = 4;
   string domain = 5;
-  string subdomain = 6;
+  reserved 6;
 }
 
 message ListTenantsRequest {
@@ -39,9 +37,9 @@ message GetTenantResponse {
 
 message CreateTenantRequest {
   string name = 1;
-  string subdomain = 2;
   string domain = 3;
   repeated string initial_admin_emails = 4;
+  reserved 2;
 }
 
 message CreateTenantResponse {
@@ -116,8 +114,8 @@ message RemoveTenantMemberResponse {
 message UpdateTenantRequest {
   string public_id = 1;
   string name = 2;
-  string subdomain = 3;
   string domain = 4;
+  reserved 3;
 }
 
 message UpdateTenantResponse {

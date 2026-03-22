@@ -51,7 +51,6 @@ export default async function TenantDetailPage({
 
   const tenantStatusLabel = getTenantStatusLabel(tenant.status);
   const tenantStatusTone = getTenantStatusTone(tenant.status);
-  const hasDomain = tenant.domain.trim().length > 0;
 
   return (
     <PlatformPage
@@ -116,11 +115,6 @@ export default async function TenantDetailPage({
                   value={tenant.publicId}
                 />
                 <input
-                  name="tenant_current_subdomain"
-                  type="hidden"
-                  value={tenant.subdomain}
-                />
-                <input
                   name="tenant_current_domain"
                   type="hidden"
                   value={tenant.domain}
@@ -155,7 +149,7 @@ export default async function TenantDetailPage({
             <CardHeader>
               <CardTitle>ドメイン設定</CardTitle>
               <CardDescription>
-                サブドメインとカスタムドメインの設定値を確認します。
+                テナントのドメイン設定を確認します。
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
@@ -172,23 +166,13 @@ export default async function TenantDetailPage({
                 />
                 <div className="grid gap-4">
                   <Field>
-                    <FieldLabel required>サブドメイン</FieldLabel>
-                    <Input
-                      key={tenant.subdomain}
-                      defaultValue={tenant.subdomain}
-                      name="tenant_subdomain"
-                      placeholder="mycompany"
-                      required
-                      type="text"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel>カスタムドメイン</FieldLabel>
+                    <FieldLabel required>ドメイン</FieldLabel>
                     <Input
                       key={tenant.domain}
-                      defaultValue={hasDomain ? tenant.domain : ""}
+                      defaultValue={tenant.domain}
                       name="tenant_domain"
-                      placeholder="example.com"
+                      placeholder="tenant-example.example.com"
+                      required
                       type="text"
                     />
                   </Field>

@@ -44,9 +44,6 @@ export const updateTenantNameAction = async (
 ): Promise<TenantUpdateFormState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const name = String(formData.get("tenant_name") ?? "").trim();
-  const currentSubdomain = String(
-    formData.get("tenant_current_subdomain") ?? ""
-  ).trim();
   const currentDomain = String(
     formData.get("tenant_current_domain") ?? ""
   ).trim();
@@ -57,7 +54,6 @@ export const updateTenantNameAction = async (
   const result = await updatePlatformTenant(
     tenantPublicId,
     name,
-    currentSubdomain,
     currentDomain
   );
   revalidatePath(`/tenants/${tenantPublicId}`);
@@ -73,19 +69,17 @@ export const updateTenantDomainAction = async (
 ): Promise<TenantUpdateFormState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const currentName = String(formData.get("tenant_current_name") ?? "").trim();
-  const subdomain = String(formData.get("tenant_subdomain") ?? "").trim();
   const domain = String(formData.get("tenant_domain") ?? "").trim();
   if (!tenantPublicId || !currentName) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
-  if (!subdomain) {
-    return { message: "サブドメインは必須です。", ok: false };
+  if (!domain) {
+    return { message: "ドメインは必須です。", ok: false };
   }
 
   const result = await updatePlatformTenant(
     tenantPublicId,
     currentName,
-    subdomain,
     domain
   );
   revalidatePath(`/tenants/${tenantPublicId}`);

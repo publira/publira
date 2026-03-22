@@ -36,29 +36,18 @@ func tenantUniqueViolationField(err error) string {
 		return "public_id"
 	case "tenants_domain_key":
 		return "domain"
-	case "tenants_subdomain_key":
-		return "subdomain"
 	default:
 		return ""
 	}
 }
 
 func tenantToProto(t dbmodels.Tenant) *publirasplatformv1.Tenant {
-	domain := ""
-	if t.Domain.Valid {
-		domain = t.Domain.String
-	}
-	subdomain := ""
-	if t.Subdomain.Valid {
-		subdomain = t.Subdomain.String
-	}
 	return &publirasplatformv1.Tenant{
 		PublicId:  t.PublicID,
 		Name:      t.Name,
 		Status:    t.Status,
 		CreatedAt: t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		Domain:    domain,
-		Subdomain: subdomain,
+		Domain:    t.Domain,
 	}
 }
 
@@ -134,9 +123,8 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 	domain := strings.TrimSpace(req.Msg.Domain)
-	subdomain := strings.TrimSpace(req.Msg.Subdomain)
-	if subdomain == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("subdomain is required"))
+	if domain == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
 	}
 	adminEmails := make([]string, 0, len(req.Msg.InitialAdminEmails))
 	seenEmails := make(map[string]struct{}, len(req.Msg.InitialAdminEmails))
@@ -171,15 +159,8 @@ func (s *platformServer) CreateTenant(
 	tenant, err := txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
 		ID:       tenantID,
 		PublicID: generatePublicID(),
-		Domain: sql.NullString{
-			String: domain,
-			Valid:  domain != "",
-		},
-		Subdomain: sql.NullString{
-			String: subdomain,
-			Valid:  true,
-		},
-		Name: name,
+		Domain:   domain,
+		Name:     name,
 	})
 	if err != nil {
 		if field := tenantUniqueViolationField(err); field != "" {
@@ -273,14 +254,15 @@ func (s *platformServer) UpdateTenant(
 	if name == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
-	subdomain := strings.TrimSpace(req.Msg.Subdomain)
 	domain := strings.TrimSpace(req.Msg.Domain)
+	if domain == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
+	}
 
 	tenant, err := s.queries.UpdateTenantInfo(ctx, dbmodels.UpdateTenantInfoParams{
-		PublicID:  publicID,
-		Name:      name,
-		Subdomain: sql.NullString{String: subdomain, Valid: subdomain != ""},
-		Domain:    sql.NullString{String: domain, Valid: domain != ""},
+		PublicID: publicID,
+		Name:     name,
+		Domain:   domain,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

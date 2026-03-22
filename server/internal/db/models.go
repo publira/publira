@@ -119,14 +119,13 @@ type Session struct {
 }
 
 type Tenant struct {
-	ID                        uuid.UUID      `json:"id"`
-	PublicID                  string         `json:"public_id"`
-	Domain                    sql.NullString `json:"domain"`
-	Subdomain                 sql.NullString `json:"subdomain"`
-	Name                      string         `json:"name"`
-	DefaultReadingPeriodHours sql.NullInt32  `json:"default_reading_period_hours"`
-	CreatedAt                 time.Time      `json:"created_at"`
-	Status                    string         `json:"status"`
+	ID                        uuid.UUID     `json:"id"`
+	PublicID                  string        `json:"public_id"`
+	Domain                    string        `json:"domain"`
+	Name                      string        `json:"name"`
+	DefaultReadingPeriodHours sql.NullInt32 `json:"default_reading_period_hours"`
+	CreatedAt                 time.Time     `json:"created_at"`
+	Status                    string        `json:"status"`
 }
 
 type TenantMemberRole struct {

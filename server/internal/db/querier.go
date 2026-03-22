@@ -6,7 +6,6 @@ package dbmodels
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -45,7 +44,7 @@ type Querier interface {
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error)
 	GetSessionByTokenHashForTenant(ctx context.Context, arg GetSessionByTokenHashForTenantParams) (Session, error)
 	// ホスト名からテナントを特定する (Interceptorで使用)
-	GetTenantByDomain(ctx context.Context, domain sql.NullString) (Tenant, error)
+	GetTenantByDomain(ctx context.Context, domain string) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	// ユーザーとテナントIDでメンバーシップを取得する
 	GetTenantMembershipByUserAndTenant(ctx context.Context, arg GetTenantMembershipByUserAndTenantParams) (TenantMembership, error)
@@ -79,7 +78,7 @@ type Querier interface {
 	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
-	// テナントの名前・サブドメイン・ドメインを更新する
+	// テナントの名前・ドメインを更新する
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	// テナントの状態 (active / suspended) を更新する
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)

@@ -6,7 +6,6 @@ export interface PlatformTenantSummary {
   name: string;
   publicId: string;
   status: string;
-  subdomain: string;
 }
 
 export interface ListPlatformTenantsInput {
@@ -20,7 +19,6 @@ export interface PlatformTenantDetail {
   name: string;
   publicId: string;
   status: string;
-  subdomain: string;
 }
 
 export interface PlatformTenantMemberSummary {
@@ -33,10 +31,9 @@ export interface PlatformTenantMemberSummary {
 }
 
 export interface CreatePlatformTenantInput {
-  domain?: string;
+  domain: string;
   initialAdminEmails?: string[];
   name: string;
-  subdomain: string;
 }
 
 export type CreatePlatformTenantResult =
@@ -77,7 +74,6 @@ export const listPlatformTenants = async (
         name: tenant.name,
         publicId: tenant.publicId,
         status: tenant.status,
-        subdomain: tenant.subdomain,
       })),
     };
   } catch (error) {
@@ -94,7 +90,6 @@ const mapTenant = (tenant?: {
   name: string;
   publicId: string;
   status: string;
-  subdomain: string;
 }): PlatformTenantDetail | null => {
   if (!tenant) {
     return null;
@@ -106,7 +101,6 @@ const mapTenant = (tenant?: {
     name: tenant.name,
     publicId: tenant.publicId,
     status: tenant.status,
-    subdomain: tenant.subdomain,
   };
 };
 
@@ -209,8 +203,7 @@ export const createPlatformTenant = async (
   }
 
   const name = input.name.trim();
-  const subdomain = input.subdomain.trim();
-  const domain = (input.domain ?? "").trim();
+  const domain = input.domain.trim();
   const initialAdminEmails = (input.initialAdminEmails ?? [])
     .map((email) => email.trim())
     .filter((email) => email.length > 0);
@@ -221,7 +214,6 @@ export const createPlatformTenant = async (
         domain,
         initialAdminEmails,
         name,
-        subdomain,
       } as never,
       buildSessionHeaders(sid)
     );
@@ -240,12 +232,6 @@ export const createPlatformTenant = async (
       message.includes("already_exists") ||
       message.includes("already exists")
     ) {
-      if (message.includes("subdomain")) {
-        return {
-          message: "サブドメインが既に使用されています。",
-          ok: false,
-        };
-      }
       if (message.includes("domain")) {
         return {
           message: "ドメインが既に使用されています。",
@@ -305,7 +291,6 @@ export type RemovePlatformTenantMemberResult =
 export const updatePlatformTenant = async (
   publicId: string,
   name: string,
-  subdomain: string,
   domain: string
 ): Promise<UpdatePlatformTenantResult> => {
   const sid = await resolveSessionId();
@@ -316,17 +301,20 @@ export const updatePlatformTenant = async (
     };
   }
   const trimmedName = name.trim();
+  const trimmedDomain = domain.trim();
   if (!trimmedName) {
     return { message: "テナント名は必須です。", ok: false };
+  }
+  if (!trimmedDomain) {
+    return { message: "ドメインは必須です。", ok: false };
   }
 
   try {
     await apiClient.tenants.updateTenant(
       {
-        domain: domain.trim(),
+        domain: trimmedDomain,
         name: trimmedName,
         publicId,
-        subdomain: subdomain.trim(),
       } as never,
       buildSessionHeaders(sid)
     );

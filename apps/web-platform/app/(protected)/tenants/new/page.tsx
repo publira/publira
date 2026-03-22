@@ -23,7 +23,6 @@ const createTenantAction = async (formData: FormData): Promise<void> => {
   "use server";
 
   const name = String(formData.get("tenant_name") ?? "").trim();
-  const subdomain = String(formData.get("tenant_subdomain") ?? "").trim();
   const domain = String(formData.get("tenant_domain") ?? "").trim();
   const initialAdminEmailsRaw = String(
     formData.get("initial_admin_emails") ?? ""
@@ -33,10 +32,10 @@ const createTenantAction = async (formData: FormData): Promise<void> => {
     .map((email) => email.trim())
     .filter((email) => email.length > 0);
 
-  if (!name || !subdomain) {
+  if (!name || !domain) {
     redirect(
       `/tenants/new?error=${encodeURIComponent(
-        "テナント名とサブドメインは必須です。"
+        "テナント名とドメインは必須です。"
       )}`
     );
   }
@@ -45,7 +44,6 @@ const createTenantAction = async (formData: FormData): Promise<void> => {
     domain,
     initialAdminEmails,
     name,
-    subdomain,
   });
 
   if (!result.ok) {
@@ -70,7 +68,7 @@ export default async function TenantNewPage({
 
   return (
     <PlatformPage
-      description="テナント名とサブドメインを必須に、必要なら既存ユーザーを初期管理者として紐づけて作成します。"
+      description="テナント名とドメインを必須に、必要なら既存ユーザーを初期管理者として紐づけて作成します。"
       eyebrow="Platform Tenants"
       title="テナント作成"
     >
@@ -78,8 +76,8 @@ export default async function TenantNewPage({
         <CardHeader>
           <CardTitle>新規テナント情報</CardTitle>
           <CardDescription>
-            public_id はサーバー側で自動採番されます。domain
-            と初期管理者メールは任意です。
+            public_id
+            はサーバー側で自動採番されます。初期管理者メールは任意です。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -99,27 +97,15 @@ export default async function TenantNewPage({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="tenant_subdomain" required>
-                サブドメイン
+              <FieldLabel htmlFor="tenant_domain" required>
+                ドメイン
               </FieldLabel>
-              <FieldContent>
-                <Input
-                  id="tenant_subdomain"
-                  name="tenant_subdomain"
-                  placeholder="tenant-example"
-                  required
-                  type="text"
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="tenant_domain">ドメイン（任意）</FieldLabel>
               <FieldContent>
                 <Input
                   id="tenant_domain"
                   name="tenant_domain"
-                  placeholder="example.com"
+                  placeholder="tenant-example.example.com"
+                  required
                   type="text"
                 />
               </FieldContent>
