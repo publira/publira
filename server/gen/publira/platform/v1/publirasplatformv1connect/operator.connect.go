@@ -48,6 +48,9 @@ const (
 	// PlatformOperatorServiceUnsuspendOperatorProcedure is the fully-qualified name of the
 	// PlatformOperatorService's UnsuspendOperator RPC.
 	PlatformOperatorServiceUnsuspendOperatorProcedure = "/publira.platform.v1.PlatformOperatorService/UnsuspendOperator"
+	// PlatformOperatorServiceDeactivateOperatorProcedure is the fully-qualified name of the
+	// PlatformOperatorService's DeactivateOperator RPC.
+	PlatformOperatorServiceDeactivateOperatorProcedure = "/publira.platform.v1.PlatformOperatorService/DeactivateOperator"
 )
 
 // PlatformOperatorServiceClient is a client for the publira.platform.v1.PlatformOperatorService
@@ -58,6 +61,7 @@ type PlatformOperatorServiceClient interface {
 	UpdateOperatorRole(context.Context, *connect.Request[v1.UpdateOperatorRoleRequest]) (*connect.Response[v1.UpdateOperatorRoleResponse], error)
 	SuspendOperator(context.Context, *connect.Request[v1.SuspendOperatorRequest]) (*connect.Response[v1.SuspendOperatorResponse], error)
 	UnsuspendOperator(context.Context, *connect.Request[v1.UnsuspendOperatorRequest]) (*connect.Response[v1.UnsuspendOperatorResponse], error)
+	DeactivateOperator(context.Context, *connect.Request[v1.DeactivateOperatorRequest]) (*connect.Response[v1.DeactivateOperatorResponse], error)
 }
 
 // NewPlatformOperatorServiceClient constructs a client for the
@@ -102,6 +106,12 @@ func NewPlatformOperatorServiceClient(httpClient connect.HTTPClient, baseURL str
 			connect.WithSchema(platformOperatorServiceMethods.ByName("UnsuspendOperator")),
 			connect.WithClientOptions(opts...),
 		),
+		deactivateOperator: connect.NewClient[v1.DeactivateOperatorRequest, v1.DeactivateOperatorResponse](
+			httpClient,
+			baseURL+PlatformOperatorServiceDeactivateOperatorProcedure,
+			connect.WithSchema(platformOperatorServiceMethods.ByName("DeactivateOperator")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -112,6 +122,7 @@ type platformOperatorServiceClient struct {
 	updateOperatorRole *connect.Client[v1.UpdateOperatorRoleRequest, v1.UpdateOperatorRoleResponse]
 	suspendOperator    *connect.Client[v1.SuspendOperatorRequest, v1.SuspendOperatorResponse]
 	unsuspendOperator  *connect.Client[v1.UnsuspendOperatorRequest, v1.UnsuspendOperatorResponse]
+	deactivateOperator *connect.Client[v1.DeactivateOperatorRequest, v1.DeactivateOperatorResponse]
 }
 
 // ListOperators calls publira.platform.v1.PlatformOperatorService.ListOperators.
@@ -139,6 +150,11 @@ func (c *platformOperatorServiceClient) UnsuspendOperator(ctx context.Context, r
 	return c.unsuspendOperator.CallUnary(ctx, req)
 }
 
+// DeactivateOperator calls publira.platform.v1.PlatformOperatorService.DeactivateOperator.
+func (c *platformOperatorServiceClient) DeactivateOperator(ctx context.Context, req *connect.Request[v1.DeactivateOperatorRequest]) (*connect.Response[v1.DeactivateOperatorResponse], error) {
+	return c.deactivateOperator.CallUnary(ctx, req)
+}
+
 // PlatformOperatorServiceHandler is an implementation of the
 // publira.platform.v1.PlatformOperatorService service.
 type PlatformOperatorServiceHandler interface {
@@ -147,6 +163,7 @@ type PlatformOperatorServiceHandler interface {
 	UpdateOperatorRole(context.Context, *connect.Request[v1.UpdateOperatorRoleRequest]) (*connect.Response[v1.UpdateOperatorRoleResponse], error)
 	SuspendOperator(context.Context, *connect.Request[v1.SuspendOperatorRequest]) (*connect.Response[v1.SuspendOperatorResponse], error)
 	UnsuspendOperator(context.Context, *connect.Request[v1.UnsuspendOperatorRequest]) (*connect.Response[v1.UnsuspendOperatorResponse], error)
+	DeactivateOperator(context.Context, *connect.Request[v1.DeactivateOperatorRequest]) (*connect.Response[v1.DeactivateOperatorResponse], error)
 }
 
 // NewPlatformOperatorServiceHandler builds an HTTP handler from the service implementation. It
@@ -186,6 +203,12 @@ func NewPlatformOperatorServiceHandler(svc PlatformOperatorServiceHandler, opts 
 		connect.WithSchema(platformOperatorServiceMethods.ByName("UnsuspendOperator")),
 		connect.WithHandlerOptions(opts...),
 	)
+	platformOperatorServiceDeactivateOperatorHandler := connect.NewUnaryHandler(
+		PlatformOperatorServiceDeactivateOperatorProcedure,
+		svc.DeactivateOperator,
+		connect.WithSchema(platformOperatorServiceMethods.ByName("DeactivateOperator")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.platform.v1.PlatformOperatorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlatformOperatorServiceListOperatorsProcedure:
@@ -198,6 +221,8 @@ func NewPlatformOperatorServiceHandler(svc PlatformOperatorServiceHandler, opts 
 			platformOperatorServiceSuspendOperatorHandler.ServeHTTP(w, r)
 		case PlatformOperatorServiceUnsuspendOperatorProcedure:
 			platformOperatorServiceUnsuspendOperatorHandler.ServeHTTP(w, r)
+		case PlatformOperatorServiceDeactivateOperatorProcedure:
+			platformOperatorServiceDeactivateOperatorHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -225,4 +250,8 @@ func (UnimplementedPlatformOperatorServiceHandler) SuspendOperator(context.Conte
 
 func (UnimplementedPlatformOperatorServiceHandler) UnsuspendOperator(context.Context, *connect.Request[v1.UnsuspendOperatorRequest]) (*connect.Response[v1.UnsuspendOperatorResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformOperatorService.UnsuspendOperator is not implemented"))
+}
+
+func (UnimplementedPlatformOperatorServiceHandler) DeactivateOperator(context.Context, *connect.Request[v1.DeactivateOperatorRequest]) (*connect.Response[v1.DeactivateOperatorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformOperatorService.DeactivateOperator is not implemented"))
 }

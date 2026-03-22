@@ -389,3 +389,67 @@ func (s *platformServer) UnsuspendOperator(
 		Operator: getOperatorRowToProto(updated),
 	}), nil
 }
+
+func (s *platformServer) DeactivateOperator(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.DeactivateOperatorRequest],
+) (*connect.Response[publirasplatformv1.DeactivateOperatorResponse], error) {
+	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	if err != nil {
+		return nil, err
+	}
+	if err := ensurePlatformSuperAdmin(currentRole); err != nil {
+		return nil, err
+	}
+
+	publicID := strings.TrimSpace(req.Msg.PublicId)
+	if publicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txq := dbmodels.New(tx)
+
+	operator, err := txq.GetPlatformOperatorByPublicID(ctx, publicID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if operator.ID == currentUser.ID {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot deactivate yourself"))
+	}
+	if operator.Status == userStatusInactive {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is already inactive"))
+	}
+
+	updatedUser, err := txq.UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
+		PublicID: publicID,
+		Status:   userStatusInactive,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := txq.TerminateUserSessions(ctx, updatedUser.ID); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	updated, err := txq.GetPlatformOperatorByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publirasplatformv1.DeactivateOperatorResponse{
+		Operator: getOperatorRowToProto(updated),
+	}), nil
+}
