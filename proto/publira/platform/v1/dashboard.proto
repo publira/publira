@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
+
+message GetDashboardSummaryRequest {
+  // recent_events の最大取得件数。0 以下はデフォルト件数になる。
+  int32 recent_events_limit = 1;
+}
+
+message DashboardRecentEvent {
+  string event_type = 1;
+  string action = 2;
+  string target = 3;
+  string actor = 4;
+  string at = 5;
+}
+
+message GetDashboardSummaryResponse {
+  int32 total_tenants = 1;
+  int32 active_tenants = 2;
+  int32 suspended_tenants = 3;
+  // inactive 状態のエンドユーザー数を pending として扱う。
+  int32 pending_end_users = 4;
+  repeated DashboardRecentEvent recent_events = 5;
+}
+
+service PlatformDashboardService {
+  rpc GetDashboardSummary(GetDashboardSummaryRequest) returns (GetDashboardSummaryResponse) {}
+}

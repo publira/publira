@@ -14,6 +14,49 @@ import (
 	"github.com/google/uuid"
 )
 
+const countActiveTenants = `-- name: CountActiveTenants :one
+SELECT COUNT(*)::int
+FROM tenants
+WHERE status = 'active'
+`
+
+func (q *Queries) CountActiveTenants(ctx context.Context) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countActiveTenants)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countAllTenants = `-- name: CountAllTenants :one
+SELECT COUNT(*)::int
+FROM tenants
+`
+
+func (q *Queries) CountAllTenants(ctx context.Context) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countAllTenants)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countPendingEndUsers = `-- name: CountPendingEndUsers :one
+SELECT COUNT(*)::int
+FROM users u
+WHERE u.status = 'inactive'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM platform_user_roles pur
+        WHERE pur.user_id = u.id
+    )
+`
+
+func (q *Queries) CountPendingEndUsers(ctx context.Context) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countPendingEndUsers)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countPlatformUsers = `-- name: CountPlatformUsers :one
 SELECT COUNT(*)::int
 FROM (
@@ -25,6 +68,19 @@ FROM (
 // プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
 func (q *Queries) CountPlatformUsers(ctx context.Context) (int32, error) {
 	row := q.db.QueryRowContext(ctx, countPlatformUsers)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countSuspendedTenants = `-- name: CountSuspendedTenants :one
+SELECT COUNT(*)::int
+FROM tenants
+WHERE status = 'suspended'
+`
+
+func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countSuspendedTenants)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -1413,6 +1469,81 @@ func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, arg ListPub
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentPlatformEvents = `-- name: ListRecentPlatformEvents :many
+SELECT event_type,
+    action,
+    target,
+    actor,
+    occurred_at
+FROM (
+        SELECT 'tenant_created'::text AS event_type,
+            'Tenant Created'::text AS action,
+            t.public_id::text AS target,
+            ''::text AS actor,
+            t.created_at AS occurred_at
+        FROM tenants t
+        UNION ALL
+        SELECT 'operator_role_granted'::text AS event_type,
+            'Operator Role Granted'::text AS action,
+            u.public_id::text AS target,
+            ''::text AS actor,
+            pur.created_at AS occurred_at
+        FROM platform_user_roles pur
+            JOIN users u ON u.id = pur.user_id
+        UNION ALL
+        SELECT 'end_user_created'::text AS event_type,
+            'End User Created'::text AS action,
+            u.public_id::text AS target,
+            ''::text AS actor,
+            u.created_at AS occurred_at
+        FROM users u
+        WHERE NOT EXISTS (
+                SELECT 1
+                FROM platform_user_roles pur
+                WHERE pur.user_id = u.id
+            )
+    ) events
+ORDER BY occurred_at DESC
+LIMIT $1
+`
+
+type ListRecentPlatformEventsRow struct {
+	EventType  string    `json:"event_type"`
+	Action     string    `json:"action"`
+	Target     string    `json:"target"`
+	Actor      string    `json:"actor"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+func (q *Queries) ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRecentPlatformEvents, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecentPlatformEventsRow
+	for rows.Next() {
+		var i ListRecentPlatformEventsRow
+		if err := rows.Scan(
+			&i.EventType,
+			&i.Action,
+			&i.Target,
+			&i.Actor,
+			&i.OccurredAt,
 		); err != nil {
 			return nil, err
 		}

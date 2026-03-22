@@ -56,6 +56,8 @@ func NewHandler(db *sql.DB, queries Querier) http.Handler {
 	// エンドユーザー管理サービス
 	userPath, userHandler := publirasplatformv1connect.NewPlatformUserServiceHandler(server)
 	mux.Handle(userPath, userHandler)
+	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(server)
+	mux.Handle(dashboardPath, dashboardHandler)
 	return mux
 }
 

@@ -201,6 +201,67 @@ LIMIT 1;
 -- name: DeletePlatformUserRolesByUserID :exec
 DELETE FROM platform_user_roles
 WHERE user_id = $1;
+
+-- name: CountAllTenants :one
+SELECT COUNT(*)::int
+FROM tenants;
+
+-- name: CountActiveTenants :one
+SELECT COUNT(*)::int
+FROM tenants
+WHERE status = 'active';
+
+-- name: CountSuspendedTenants :one
+SELECT COUNT(*)::int
+FROM tenants
+WHERE status = 'suspended';
+
+-- name: CountPendingEndUsers :one
+SELECT COUNT(*)::int
+FROM users u
+WHERE u.status = 'inactive'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM platform_user_roles pur
+        WHERE pur.user_id = u.id
+    );
+
+-- name: ListRecentPlatformEvents :many
+SELECT event_type,
+    action,
+    target,
+    actor,
+    occurred_at
+FROM (
+        SELECT 'tenant_created'::text AS event_type,
+            'Tenant Created'::text AS action,
+            t.public_id::text AS target,
+            ''::text AS actor,
+            t.created_at AS occurred_at
+        FROM tenants t
+        UNION ALL
+        SELECT 'operator_role_granted'::text AS event_type,
+            'Operator Role Granted'::text AS action,
+            u.public_id::text AS target,
+            ''::text AS actor,
+            pur.created_at AS occurred_at
+        FROM platform_user_roles pur
+            JOIN users u ON u.id = pur.user_id
+        UNION ALL
+        SELECT 'end_user_created'::text AS event_type,
+            'End User Created'::text AS action,
+            u.public_id::text AS target,
+            ''::text AS actor,
+            u.created_at AS occurred_at
+        FROM users u
+        WHERE NOT EXISTS (
+                SELECT 1
+                FROM platform_user_roles pur
+                WHERE pur.user_id = u.id
+            )
+    ) events
+ORDER BY occurred_at DESC
+LIMIT $1;
 -- name: ListActiveSeries :many
 -- 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 SELECT s.id,
