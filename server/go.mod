@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
+	github.com/lib/pq v1.12.0
 	golang.org/x/crypto v0.49.0
 	golang.org/x/net v0.52.0
 	google.golang.org/protobuf v1.36.11

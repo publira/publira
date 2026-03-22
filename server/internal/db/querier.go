@@ -43,8 +43,8 @@ type Querier interface {
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error)
 	GetSessionByTokenHashForTenant(ctx context.Context, arg GetSessionByTokenHashForTenantParams) (Session, error)
-	// ホスト名からテナントを特定する (Interceptorで使用)
-	GetTenantByDomain(ctx context.Context, domain string) (Tenant, error)
+	// 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
+	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	// ユーザーとテナントIDでメンバーシップを取得する
 	GetTenantMembershipByUserAndTenant(ctx context.Context, arg GetTenantMembershipByUserAndTenantParams) (TenantMembership, error)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const countActiveTenants = `-- name: CountActiveTenants :one
@@ -869,16 +870,17 @@ func (q *Queries) GetSessionByTokenHashForTenant(ctx context.Context, arg GetSes
 	return i, err
 }
 
-const getTenantByDomain = `-- name: GetTenantByDomain :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status
-FROM tenants
-WHERE domain = $1
+const getTenantByDomains = `-- name: GetTenantByDomains :one
+SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status
+FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t ON t.domain = candidate.domain
+ORDER BY candidate.ord
 LIMIT 1
 `
 
-// ホスト名からテナントを特定する (Interceptorで使用)
-func (q *Queries) GetTenantByDomain(ctx context.Context, domain string) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, getTenantByDomain, domain)
+// 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
+func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, getTenantByDomains, pq.Array(domains))
 	var i Tenant
 	err := row.Scan(
 		&i.ID,

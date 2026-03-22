@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PlatformPage } from "../../../../components/platform-page";
+import { TenantDomainCautions } from "../../../../components/tenant-domain-cautions";
 import { createPlatformTenant } from "../../../../lib/tenants";
 
 export const metadata: Metadata = {
@@ -109,6 +110,7 @@ export default async function TenantNewPage({
                   type="text"
                 />
               </FieldContent>
+              <TenantDomainCautions mode="create" />
             </Field>
 
             <Field>

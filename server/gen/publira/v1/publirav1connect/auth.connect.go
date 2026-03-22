@@ -41,6 +41,9 @@ const (
 	AuthServiceDeleteSessionProcedure = "/publira.v1.AuthService/DeleteSession"
 	// AuthServiceGetMeProcedure is the fully-qualified name of the AuthService's GetMe RPC.
 	AuthServiceGetMeProcedure = "/publira.v1.AuthService/GetMe"
+	// AuthServiceGetTenantByDomainProcedure is the fully-qualified name of the AuthService's
+	// GetTenantByDomain RPC.
+	AuthServiceGetTenantByDomainProcedure = "/publira.v1.AuthService/GetTenantByDomain"
 )
 
 // AuthServiceClient is a client for the publira.v1.AuthService service.
@@ -48,6 +51,7 @@ type AuthServiceClient interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	GetTenantByDomain(context.Context, *connect.Request[v1.GetTenantByDomainRequest]) (*connect.Response[v1.GetTenantByDomainResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the publira.v1.AuthService service. By default, it
@@ -79,14 +83,21 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("GetMe")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantByDomain: connect.NewClient[v1.GetTenantByDomainRequest, v1.GetTenantByDomainResponse](
+			httpClient,
+			baseURL+AuthServiceGetTenantByDomainProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetTenantByDomain")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	createSession *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	deleteSession *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	getMe         *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	createSession     *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	deleteSession     *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	getMe             *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	getTenantByDomain *connect.Client[v1.GetTenantByDomainRequest, v1.GetTenantByDomainResponse]
 }
 
 // CreateSession calls publira.v1.AuthService.CreateSession.
@@ -104,11 +115,17 @@ func (c *authServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.G
 	return c.getMe.CallUnary(ctx, req)
 }
 
+// GetTenantByDomain calls publira.v1.AuthService.GetTenantByDomain.
+func (c *authServiceClient) GetTenantByDomain(ctx context.Context, req *connect.Request[v1.GetTenantByDomainRequest]) (*connect.Response[v1.GetTenantByDomainResponse], error) {
+	return c.getTenantByDomain.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
 type AuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	GetTenantByDomain(context.Context, *connect.Request[v1.GetTenantByDomainRequest]) (*connect.Response[v1.GetTenantByDomainResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -136,6 +153,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("GetMe")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceGetTenantByDomainHandler := connect.NewUnaryHandler(
+		AuthServiceGetTenantByDomainProcedure,
+		svc.GetTenantByDomain,
+		connect.WithSchema(authServiceMethods.ByName("GetTenantByDomain")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceCreateSessionProcedure:
@@ -144,6 +167,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
 			authServiceGetMeHandler.ServeHTTP(w, r)
+		case AuthServiceGetTenantByDomainProcedure:
+			authServiceGetTenantByDomainHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -163,4 +188,8 @@ func (UnimplementedAuthServiceHandler) DeleteSession(context.Context, *connect.R
 
 func (UnimplementedAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetMe is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetTenantByDomain(context.Context, *connect.Request[v1.GetTenantByDomainRequest]) (*connect.Response[v1.GetTenantByDomainResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetTenantByDomain is not implemented"))
 }

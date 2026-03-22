@@ -24,11 +24,12 @@ UPDATE tenants
 SET name = $2, domain = $3
 WHERE public_id = $1
 RETURNING *;
--- name: GetTenantByDomain :one
--- ホスト名からテナントを特定する (Interceptorで使用)
-SELECT *
-FROM tenants
-WHERE domain = $1
+-- name: GetTenantByDomains :one
+-- 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
+SELECT t.*
+FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t ON t.domain = candidate.domain
+ORDER BY candidate.ord
 LIMIT 1;
 -- name: GetTenantThemeByTenantID :one
 SELECT *

@@ -7,15 +7,22 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
+import {
+  createPlaceholderStaticParams,
+  guardPlaceholder,
+} from "@publira/utils/next-static-params";
 
 import { AdminPage } from "../../../../../components/admin-page";
 
-export const generateStaticParams = () => Promise.resolve([{ series_id: "1" }]);
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("series_id");
 
 export default async function SeriesEpisodesPage({
   params,
 }: PageProps<"/series/[series_id]/episodes">) {
   const { series_id } = await params;
+
+  guardPlaceholder(series_id);
 
   return (
     <AdminPage

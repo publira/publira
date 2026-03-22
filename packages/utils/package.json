@@ -11,6 +11,10 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./next-static-params": {
+      "types": "./dist/next-static-params.d.mts",
+      "default": "./dist/next-static-params.mjs"
+    },
     "./cn": {
       "types": "./dist/cn.d.mts",
       "default": "./dist/cn.mjs"
@@ -25,7 +29,11 @@
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
+    "next": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "^16.2.0"
   }
 }

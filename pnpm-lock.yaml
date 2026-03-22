@@ -129,6 +129,12 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      lru-cache:
+        specifier: ^11.2.7
+        version: 11.2.7
       next:
         specifier: 'catalog:'
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -175,6 +181,12 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      lru-cache:
+        specifier: ^11.2.7
+        version: 11.2.7
       next:
         specifier: 'catalog:'
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -221,6 +233,12 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      lru-cache:
+        specifier: ^11.2.7
+        version: 11.2.7
       next:
         specifier: 'catalog:'
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -325,6 +343,12 @@ importers:
       '@publira/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components
+      '@publira/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      lru-cache:
+        specifier: ^11.2.7
+        version: 11.2.7
       next:
         specifier: 'catalog:'
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -501,6 +525,9 @@ importers:
       '@publira/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      next:
+        specifier: 'catalog:'
+        version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       tsdown:
         specifier: 'catalog:'
         version: 0.21.4(typescript@5.9.3)
