@@ -2,6 +2,7 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -11,6 +12,10 @@ import {
   sanitizeRedirectPath,
   sessionCookieOptions,
 } from "../../lib/platform-auth";
+
+export const metadata: Metadata = {
+  title: "ログイン",
+};
 
 interface LoginPageProps {
   searchParams: Promise<{

@@ -9,11 +9,16 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { PlatformPage } from "../../../../components/platform-page";
 import { createPlatformTenant } from "../../../../lib/platform-tenants";
+
+export const metadata: Metadata = {
+  title: "テナント作成",
+};
 
 const createTenantAction = async (formData: FormData): Promise<void> => {
   "use server";
