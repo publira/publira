@@ -1,11 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import {
-  PLATFORM_SESSION_COOKIE_NAME,
-  buildLoginUrl,
-} from "./lib/platform-auth-shared";
-import { isSetupCompleted } from "./lib/platform-setup";
+import { PLATFORM_SESSION_COOKIE_NAME, buildLoginUrl } from "./lib/auth-shared";
+import { isSetupCompleted } from "./lib/setup";
 
 const PUBLIC_PATHS = new Set(["/login", "/logout", "/healthz", "/setup"]);
 

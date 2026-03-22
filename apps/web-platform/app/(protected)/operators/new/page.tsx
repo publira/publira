@@ -11,12 +11,10 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { PlatformPage } from "../../../../components/platform-page";
-import { PLATFORM_SESSION_COOKIE_NAME } from "../../../../lib/platform-auth";
-import { createPlatformOperator } from "../../../../lib/platform-operators";
+import { createPlatformOperator } from "../../../../lib/operators";
 
 export const metadata: Metadata = {
   title: "オペレーターを追加",
@@ -41,10 +39,7 @@ const createOperatorAction = async (formData: FormData): Promise<void> => {
     );
   }
 
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value ?? "";
-
-  const result = await createPlatformOperator({ email, name, role, sessionId });
+  const result = await createPlatformOperator({ email, name, role });
 
   if (!result.ok) {
     redirect(`/operators/new?error=${encodeURIComponent(result.message)}`);

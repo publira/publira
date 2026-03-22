@@ -1,7 +1,7 @@
 import { createPlatformApiClient } from "@publira/api-client/platform/client";
 import { cookies } from "next/headers";
 
-import { PLATFORM_SESSION_COOKIE_NAME } from "./platform-auth-shared";
+import { PLATFORM_SESSION_COOKIE_NAME } from "./auth-shared";
 
 const apiBaseUrl =
   process.env.PUBLIRA_PLATFORM_API_BASE_URL ?? "http://localhost:8002";

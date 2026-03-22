@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
-import { createInitialUser, isSetupCompleted } from "../../lib/platform-setup";
+import { createInitialUser, isSetupCompleted } from "../../lib/setup";
 
 export const metadata: Metadata = {
   title: "初期セットアップ",

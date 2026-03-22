@@ -11,7 +11,7 @@ import {
   loginPlatform,
   sanitizeRedirectPath,
   sessionCookieOptions,
-} from "../../lib/platform-auth";
+} from "../../lib/auth";
 
 export const metadata: Metadata = {
   title: "ログイン",

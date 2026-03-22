@@ -1,8 +1,8 @@
-import { apiClient, buildSessionHeaders } from "./api-client";
+import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
 import {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
-} from "./platform-auth-shared";
+} from "./auth-shared";
 
 export interface PlatformCurrentOperator {
   name: string;
@@ -40,26 +40,23 @@ export const logoutPlatform = async (sessionId: string): Promise<void> => {
   }
 };
 
-export const getPlatformCurrentOperator = async (
-  sessionId: string
-): Promise<PlatformCurrentOperator | null> => {
-  if (!sessionId.trim()) {
-    return null;
-  }
-  try {
-    const response = await apiClient.auth.getMe(
-      {},
-      buildSessionHeaders(sessionId)
-    );
-    const { user } = response;
-    if (!user) {
+export const getPlatformCurrentOperator =
+  async (): Promise<PlatformCurrentOperator | null> => {
+    const sid = await resolveSessionId();
+    if (!sid) {
       return null;
     }
-    return { name: user.name, publicId: user.publicId, role: user.role };
-  } catch {
-    return null;
-  }
-};
+    try {
+      const response = await apiClient.auth.getMe({}, buildSessionHeaders(sid));
+      const { user } = response;
+      if (!user) {
+        return null;
+      }
+      return { name: user.name, publicId: user.publicId, role: user.role };
+    } catch {
+      return null;
+    }
+  };
 
 export const sessionCookieOptions = {
   httpOnly: true,
