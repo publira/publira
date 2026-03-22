@@ -1,4 +1,4 @@
-import { platformApiClient } from "./platform-api-client";
+import { apiClient, buildSessionHeaders } from "./api-client";
 
 export interface PlatformOperatorSummary {
   createdAt: string;
@@ -23,9 +23,6 @@ export type CreatePlatformOperatorResult =
 const genericErrorMessage =
   "処理に失敗しました。時間をおいて再試行してください。";
 
-const buildHeaders = (sessionId: string) =>
-  ({ headers: { "X-Publira-Session-Id": sessionId } }) as never;
-
 export const listPlatformOperators = async (
   sessionId: string
 ): Promise<PlatformOperatorSummary[]> => {
@@ -34,9 +31,9 @@ export const listPlatformOperators = async (
   }
 
   try {
-    const response = await platformApiClient.operators.listOperators(
+    const response = await apiClient.operators.listOperators(
       {},
-      buildHeaders(sessionId)
+      buildSessionHeaders(sessionId)
     );
     return (response.operators ?? []).map((operator) => ({
       createdAt: operator.createdAt,
@@ -63,9 +60,9 @@ export const createPlatformOperator = async (
   }
 
   try {
-    const response = await platformApiClient.operators.createOperator(
+    const response = await apiClient.operators.createOperator(
       { email: input.email, name: input.name, role: input.role } as never,
-      buildHeaders(sessionId)
+      buildSessionHeaders(sessionId)
     );
     return { ok: true, publicId: response.operator?.publicId };
   } catch (error) {
@@ -90,9 +87,9 @@ export const suspendPlatformOperator = async (
     return false;
   }
   try {
-    await platformApiClient.operators.suspendOperator(
+    await apiClient.operators.suspendOperator(
       { publicId } as never,
-      buildHeaders(sessionId)
+      buildSessionHeaders(sessionId)
     );
     return true;
   } catch {
@@ -108,9 +105,9 @@ export const unsuspendPlatformOperator = async (
     return false;
   }
   try {
-    await platformApiClient.operators.unsuspendOperator(
+    await apiClient.operators.unsuspendOperator(
       { publicId } as never,
-      buildHeaders(sessionId)
+      buildSessionHeaders(sessionId)
     );
     return true;
   } catch {

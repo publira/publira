@@ -1,23 +1,50 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createPlatformTenant, listPlatformTenants } from "./platform-tenants";
+import {
+  createPlatformTenant,
+  getPlatformTenant,
+  listPlatformTenantMembers,
+  listPlatformTenants,
+  resumePlatformTenant,
+  suspendPlatformTenant,
+} from "./tenants";
 
-const { mockCreateTenant, mockListTenants } = vi.hoisted(() => ({
+const {
+  mockCreateTenant,
+  mockGetTenant,
+  mockListTenantMembers,
+  mockListTenants,
+  mockResolveSessionId,
+  mockResumeTenant,
+  mockSuspendTenant,
+} = vi.hoisted(() => ({
   mockCreateTenant: vi.fn(),
+  mockGetTenant: vi.fn(),
+  mockListTenantMembers: vi.fn(),
   mockListTenants: vi.fn(),
+  mockResolveSessionId: vi.fn(),
+  mockResumeTenant: vi.fn(),
+  mockSuspendTenant: vi.fn(),
 }));
 
-vi.mock("@publira/api-client/platform/client", () => ({
-  createPlatformApiClient: () => ({
-    auth: {},
-    operators: {},
-    setup: {},
+vi.mock("./api-client", () => ({
+  apiClient: {
     tenants: {
       createTenant: mockCreateTenant,
+      getTenant: mockGetTenant,
+      listTenantMembers: mockListTenantMembers,
       listTenants: mockListTenants,
+      resumeTenant: mockResumeTenant,
+      suspendTenant: mockSuspendTenant,
     },
-  }),
+  },
+  resolveSessionId: mockResolveSessionId,
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockResolveSessionId.mockResolvedValue("sess_abc");
+});
 
 describe("listPlatformTenants", () => {
   it("正常系: テナント一覧を返す", async () => {
@@ -34,9 +61,7 @@ describe("listPlatformTenants", () => {
       ],
     });
 
-    await expect(
-      listPlatformTenants({ sessionId: "sess_abc" })
-    ).resolves.toEqual({
+    await expect(listPlatformTenants({})).resolves.toEqual({
       ok: true,
       tenants: [
         {
@@ -62,7 +87,6 @@ describe("listPlatformTenants", () => {
     await expect(
       listPlatformTenants({
         name: "テスト",
-        sessionId: "sess_abc",
         status: "active",
       })
     ).resolves.toEqual({ ok: true, tenants: [] });
@@ -73,8 +97,10 @@ describe("listPlatformTenants", () => {
     );
   });
 
-  it("sessionId が空の場合は API を呼ばずエラーを返す", async () => {
-    await expect(listPlatformTenants({ sessionId: "  " })).resolves.toEqual({
+  it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(listPlatformTenants({})).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
     });
@@ -85,9 +111,10 @@ describe("listPlatformTenants", () => {
   it("API がエラーを返した場合はエラーメッセージを返す", async () => {
     mockListTenants.mockRejectedValueOnce(new Error("network error"));
 
-    await expect(
-      listPlatformTenants({ sessionId: "sess_abc" })
-    ).resolves.toEqual({ message: "network error", ok: false });
+    await expect(listPlatformTenants({})).resolves.toEqual({
+      message: "network error",
+      ok: false,
+    });
   });
 });
 
@@ -102,7 +129,6 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         initialAdminEmails: ["owner@example.com", ""],
         name: "新規テナント",
-        sessionId: "sess_abc",
         subdomain: "tenant-1",
       })
     ).resolves.toEqual({ ok: true, publicId: "TENANT000001" });
@@ -122,11 +148,12 @@ describe("createPlatformTenant", () => {
     );
   });
 
-  it("sessionId が空の場合は API を呼ばず失敗を返す", async () => {
+  it("sessionId を解決できない場合は API を呼ばず失敗を返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
     await expect(
       createPlatformTenant({
         name: "n",
-        sessionId: "  ",
         subdomain: "s",
       })
     ).resolves.toEqual({
@@ -145,7 +172,6 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         name: "n",
-        sessionId: "sess",
         subdomain: "s",
       })
     ).resolves.toEqual({
@@ -162,12 +188,81 @@ describe("createPlatformTenant", () => {
     await expect(
       createPlatformTenant({
         name: "n",
-        sessionId: "sess",
         subdomain: "s",
       })
     ).resolves.toEqual({
       message: "入力内容に誤りがあります。",
       ok: false,
     });
+  });
+
+  it("テナント詳細を取得して整形する", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      tenant: {
+        createdAt: "2026-03-01T10:00:00Z",
+        domain: "example.com",
+        name: "青楓出版",
+        publicId: "tenant_seifuu",
+        status: "active",
+        subdomain: "seifuu",
+      },
+    });
+
+    await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
+      createdAt: "2026-03-01T10:00:00Z",
+      domain: "example.com",
+      name: "青楓出版",
+      publicId: "tenant_seifuu",
+      status: "active",
+      subdomain: "seifuu",
+    });
+
+    expect(mockGetTenant).toHaveBeenCalledWith(
+      { publicId: "tenant_seifuu" },
+      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+    );
+  });
+
+  it("テナントメンバー一覧を取得する", async () => {
+    mockListTenantMembers.mockResolvedValueOnce({
+      members: [
+        {
+          createdAt: "2026-03-02T00:00:00Z",
+          email: "owner@example.com",
+          name: "Owner",
+          role: "tenant_owner",
+          status: "active",
+          userPublicId: "user_001",
+        },
+      ],
+    });
+
+    await expect(listPlatformTenantMembers("tenant_seifuu")).resolves.toEqual([
+      {
+        createdAt: "2026-03-02T00:00:00Z",
+        email: "owner@example.com",
+        name: "Owner",
+        role: "tenant_owner",
+        status: "active",
+        userPublicId: "user_001",
+      },
+    ]);
+  });
+
+  it("停止/再開 API を呼び分ける", async () => {
+    mockSuspendTenant.mockResolvedValueOnce({});
+    mockResumeTenant.mockResolvedValueOnce({});
+
+    await expect(suspendPlatformTenant("tenant_seifuu")).resolves.toBe(true);
+    await expect(resumePlatformTenant("tenant_seifuu")).resolves.toBe(true);
+
+    expect(mockSuspendTenant).toHaveBeenCalledWith(
+      { publicId: "tenant_seifuu" },
+      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+    );
+    expect(mockResumeTenant).toHaveBeenCalledWith(
+      { publicId: "tenant_seifuu" },
+      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+    );
   });
 });

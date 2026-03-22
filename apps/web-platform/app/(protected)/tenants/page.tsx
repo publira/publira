@@ -19,27 +19,17 @@ import {
 } from "@publira/ui-components/table";
 import type { Metadata } from "next";
 import Form from "next/form";
-import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { PlatformPage } from "../../../components/platform-page";
-import { PLATFORM_SESSION_COOKIE_NAME } from "../../../lib/platform-auth";
-import { listPlatformTenants } from "../../../lib/platform-tenants";
+import {
+  getTenantStatusLabel,
+  getTenantStatusTone,
+} from "../../../lib/tenant-labels";
+import { listPlatformTenants } from "../../../lib/tenants";
 
 export const metadata: Metadata = {
   title: "テナント一覧",
-};
-
-const statusLabelMap: Record<string, string> = {
-  active: "稼働中",
-  suspended: "停止中",
-  trial: "トライアル",
-};
-
-const statusToneMap: Record<string, "success" | "destructive" | "info"> = {
-  active: "success",
-  suspended: "destructive",
-  trial: "info",
 };
 
 const statusSelectItems = [
@@ -57,12 +47,8 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
   const nameFilter = params.name?.trim() ?? "";
   const statusFilter = params.status?.trim() ?? "";
 
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value ?? "";
-
   const result = await listPlatformTenants({
     name: nameFilter || undefined,
-    sessionId,
     status: statusFilter || undefined,
   });
 
@@ -152,8 +138,8 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge tone={statusToneMap[tenant.status] ?? "info"}>
-                        {statusLabelMap[tenant.status] ?? tenant.status}
+                      <Badge tone={getTenantStatusTone(tenant.status)}>
+                        {getTenantStatusLabel(tenant.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>{tenant.createdAt}</TableCell>

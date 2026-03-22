@@ -1,8 +1,8 @@
-import { platformApiClient } from "./platform-api-client";
+import { apiClient } from "./api-client";
 
 export const isSetupCompleted = async (): Promise<boolean> => {
   try {
-    const response = await platformApiClient.setup.checkSetupStatus({});
+    const response = await apiClient.setup.checkSetupStatus({});
     return response.setupCompleted;
   } catch {
     return false;
@@ -20,7 +20,7 @@ export const createInitialUser = async (
   password: string
 ): Promise<SetupResult> => {
   try {
-    await platformApiClient.setup.createInitialUser({ email, name, password });
+    await apiClient.setup.createInitialUser({ email, name, password });
     return { ok: true };
   } catch (error) {
     if (!(error instanceof Error)) {
