@@ -1,5 +1,5 @@
 import { Badge } from "@publira/ui-components/badge";
-import { LinkButton } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { Input } from "@publira/ui-components/input";
+import { Select } from "@publira/ui-components/select";
 import {
   Table,
   TableBody,
@@ -16,62 +18,54 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import type { Metadata } from "next";
+import Form from "next/form";
+import { cookies } from "next/headers";
+import Link from "next/link";
 
 import { PlatformPage } from "../../../components/platform-page";
+import { PLATFORM_SESSION_COOKIE_NAME } from "../../../lib/platform-auth";
+import { listPlatformTenants } from "../../../lib/platform-tenants";
 
 export const metadata: Metadata = {
   title: "テナント一覧",
 };
 
-const tenants: {
-  publicId: string;
-  name: string;
-  plan: "enterprise" | "growth" | "starter";
-  status: "active" | "suspended" | "trial";
-  updatedAt: string;
-}[] = [
-  {
-    name: "青楓出版",
-    plan: "enterprise",
-    publicId: "tenant_seifuu",
-    status: "active",
-    updatedAt: "2026-03-21 08:40",
-  },
-  {
-    name: "空詩舎",
-    plan: "growth",
-    publicId: "tenant_kuushisha",
-    status: "trial",
-    updatedAt: "2026-03-20 17:16",
-  },
-  {
-    name: "星川書苑",
-    plan: "starter",
-    publicId: "tenant_hoshikawa",
-    status: "suspended",
-    updatedAt: "2026-03-18 11:03",
-  },
-];
-
-const statusLabelMap = {
+const statusLabelMap: Record<string, string> = {
   active: "稼働中",
   suspended: "停止中",
   trial: "トライアル",
-} as const;
+};
 
-const statusToneMap = {
+const statusToneMap: Record<string, "success" | "destructive" | "info"> = {
   active: "success",
   suspended: "destructive",
   trial: "info",
-} as const;
+};
 
-const planLabelMap = {
-  enterprise: "Enterprise",
-  growth: "Growth",
-  starter: "Starter",
-} as const;
+const statusSelectItems = [
+  { label: "稼働中", value: "active" },
+  { label: "トライアル", value: "trial" },
+  { label: "停止中", value: "suspended" },
+] as const;
 
-export default function TenantsPage() {
+interface TenantsPageProps {
+  searchParams: Promise<{ name?: string; status?: string }>;
+}
+
+export default async function TenantsPage({ searchParams }: TenantsPageProps) {
+  const params = await searchParams;
+  const nameFilter = params.name?.trim() ?? "";
+  const statusFilter = params.status?.trim() ?? "";
+
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value ?? "";
+
+  const result = await listPlatformTenants({
+    name: nameFilter || undefined,
+    sessionId,
+    status: statusFilter || undefined,
+  });
+
   return (
     <PlatformPage
       actions={<LinkButton href="/tenants/new">新規テナント作成</LinkButton>}
@@ -88,48 +82,92 @@ export default function TenantsPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="grid gap-4">
+          <Form
+            action="/tenants"
+            className="flex flex-wrap gap-3"
+            key={`${nameFilter}::${statusFilter}`}
+          >
+            <Input
+              className="w-64"
+              defaultValue={nameFilter}
+              name="name"
+              placeholder="テナント名・IDで検索"
+              type="search"
+            />
+            <Select
+              className="w-44"
+              defaultValue={statusFilter || undefined}
+              items={statusSelectItems}
+              name="status"
+              placeholder="すべての状態"
+            />
+            <Button type="submit">絞り込む</Button>
+            {(nameFilter || statusFilter) && (
+              <Link
+                className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+                href="/tenants"
+              >
+                クリア
+              </Link>
+            )}
+          </Form>
+
+          {!result.ok && (
+            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              テナント一覧の取得に失敗しました: {result.message}
+            </p>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>テナント</TableHead>
-                <TableHead className="w-44">プラン</TableHead>
                 <TableHead className="w-40">状態</TableHead>
-                <TableHead className="w-52">更新日時</TableHead>
+                <TableHead className="w-52">作成日時</TableHead>
                 <TableHead className="w-40" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tenants.map((tenant) => (
-                <TableRow key={tenant.publicId}>
-                  <TableCell>
-                    <div className="grid gap-1">
-                      <p className="font-medium text-foreground">
-                        {tenant.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {tenant.publicId}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{planLabelMap[tenant.plan]}</TableCell>
-                  <TableCell>
-                    <Badge tone={statusToneMap[tenant.status]}>
-                      {statusLabelMap[tenant.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{tenant.updatedAt}</TableCell>
-                  <TableCell>
-                    <LinkButton
-                      href={`/tenants/${tenant.publicId}`}
-                      size="sm"
-                      variant="outline"
-                    >
-                      詳細
-                    </LinkButton>
+              {result.ok && result.tenants.length === 0 ? (
+                <TableRow>
+                  <TableCell className="text-muted-foreground" colSpan={4}>
+                    {nameFilter || statusFilter
+                      ? "条件に一致するテナントが見つかりませんでした。"
+                      : "テナントはまだ登録されていません。"}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : null}
+              {result.ok &&
+                result.tenants.map((tenant) => (
+                  <TableRow key={tenant.publicId}>
+                    <TableCell>
+                      <div className="grid gap-1">
+                        <p className="font-medium text-foreground">
+                          {tenant.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {tenant.publicId}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone={statusToneMap[tenant.status] ?? "info"}>
+                        {statusLabelMap[tenant.status] ?? tenant.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{tenant.createdAt}</TableCell>
+                    <TableCell>
+                      <LinkButton
+                        href={`/tenants/${tenant.publicId}`}
+                        size="sm"
+                        variant="outline"
+                      >
+                        詳細
+                      </LinkButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </CardContent>

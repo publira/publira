@@ -86,9 +86,9 @@ func (s *platformServer) ListTenants(
 	tenants, err := s.queries.ListTenants(ctx, dbmodels.ListTenantsParams{
 		Limit:          limit,
 		Offset:         offset,
-		FilterName:     sql.NullString{String: filterName, Valid: filterName != ""},
-		FilterPublicID: sql.NullString{String: filterPublicID, Valid: filterPublicID != ""},
-		FilterStatus:   sql.NullString{String: filterStatus, Valid: filterStatus != ""},
+		FilterName:     sql.NullString{String: filterName, Valid: true},
+		FilterPublicID: sql.NullString{String: filterPublicID, Valid: true},
+		FilterStatus:   sql.NullString{String: filterStatus, Valid: true},
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

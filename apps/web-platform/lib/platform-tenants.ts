@@ -1,5 +1,20 @@
 import { platformApiClient } from "./platform-api-client";
 
+export interface PlatformTenantSummary {
+  createdAt: string;
+  domain: string;
+  name: string;
+  publicId: string;
+  status: string;
+  subdomain: string;
+}
+
+export interface ListPlatformTenantsInput {
+  name?: string;
+  sessionId: string;
+  status?: string;
+}
+
 export interface CreatePlatformTenantInput {
   domain?: string;
   initialAdminEmails?: string[];
@@ -14,6 +29,50 @@ export type CreatePlatformTenantResult =
 
 const genericErrorMessage =
   "テナント作成に失敗しました。時間をおいて再試行してください。";
+
+const buildHeaders = (sessionId: string) =>
+  ({ headers: { "X-Publira-Session-Id": sessionId } }) as never;
+
+export type ListPlatformTenantsResult =
+  | { ok: true; tenants: PlatformTenantSummary[] }
+  | { ok: false; message: string };
+
+export const listPlatformTenants = async (
+  input: ListPlatformTenantsInput
+): Promise<ListPlatformTenantsResult> => {
+  if (!input.sessionId.trim()) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await platformApiClient.tenants.listTenants(
+      {
+        name: input.name ?? "",
+        status: input.status ?? "",
+      } as never,
+      buildHeaders(input.sessionId)
+    );
+    return {
+      ok: true,
+      tenants: (response.tenants ?? []).map((tenant) => ({
+        createdAt: tenant.createdAt,
+        domain: tenant.domain,
+        name: tenant.name,
+        publicId: tenant.publicId,
+        status: tenant.status,
+        subdomain: tenant.subdomain,
+      })),
+    };
+  } catch (error) {
+    console.error("[listPlatformTenants] API error:", error);
+    const message =
+      error instanceof Error ? error.message : "不明なエラーが発生しました。";
+    return { message, ok: false };
+  }
+};
 
 export const createPlatformTenant = async (
   input: CreatePlatformTenantInput
@@ -41,7 +100,7 @@ export const createPlatformTenant = async (
         name,
         subdomain,
       } as never,
-      { headers: { "X-Publira-Session-Id": sessionId } } as never
+      buildHeaders(sessionId)
     );
 
     return {
