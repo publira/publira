@@ -5,7 +5,7 @@ MIGRATE := migrate -path db/migrations -database $(DB_URL)
 
 setup:
 	pnpm install
-	cd server && go mod tidy
+	$(MAKE) -C server tidy
 
 gen:
 	sqlc generate
@@ -29,17 +29,16 @@ db-new:
 	migrate create -ext sql -dir db/migrations -tz UTC $(name)
 
 dev-api:
-	cd server && go run ./cmd/api-server
+	$(MAKE) -C server dev-api
 
 dev-admin-api:
-	cd server && go run ./cmd/admin-api-server
+	$(MAKE) -C server dev-admin-api
 
 dev-platform-api:
-	cd server && go run ./cmd/platform-api-server
+	$(MAKE) -C server dev-platform-api
 
 dev-web:
-	pnpm turbo run dev
-	# web-public(3000) web-catalog(3001) web-member(3002) web-auth(3003) web-admin(4000)
+	pnpm dev
 
 run-batch-publish:
-	cd server && go run ./cmd/publish-episodes
+	$(MAKE) -C server run-batch-publish
