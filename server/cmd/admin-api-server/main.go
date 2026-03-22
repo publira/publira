@@ -51,7 +51,7 @@ func main() {
 		addr = defaultAdminServerURL
 	}
 
-	handler := adminapi.NewHandler(dbmodels.New(db), storageProvider)
+	handler := adminapi.NewHandler(dbmodels.New(db), storageProvider, logger)
 	logger.Info("starting admin api server", "addr", addr)
 	if err := http.ListenAndServe(addr, h2c.NewHandler(handler, &http2.Server{})); err != nil {
 		logger.Error("server failed", "error", err)

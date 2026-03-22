@@ -39,18 +39,7 @@ func (s *adminServer) currentUserFromSession(
 	if err != nil {
 		return dbmodels.Tenant{}, dbmodels.User{}, "", err
 	}
-	user, err := s.queries.GetUserByID(ctx, authCtx.Session.UserID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, dbmodels.User{}, "", invalidSessionError()
-		}
-		return dbmodels.Tenant{}, dbmodels.User{}, "", connect.NewError(connect.CodeInternal, err)
-	}
-	role, err := s.tenantRole(ctx, user.ID, authCtx.Tenant.ID)
-	if err != nil {
-		return dbmodels.Tenant{}, dbmodels.User{}, "", err
-	}
-	return authCtx.Tenant, user, role, nil
+	return authCtx.Tenant, authCtx.User, authCtx.Role, nil
 }
 
 func (s *adminServer) CreateSession(

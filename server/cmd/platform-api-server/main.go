@@ -42,7 +42,7 @@ func main() {
 		addr = defaultPlatformServerURL
 	}
 
-	handler := platformapi.NewHandler(db, dbmodels.New(db))
+	handler := platformapi.NewHandler(db, dbmodels.New(db), logger)
 	logger.Info("starting platform api server", "addr", addr)
 	if err := http.ListenAndServe(addr, h2c.NewHandler(handler, &http2.Server{})); err != nil {
 		if !errors.Is(err, http.ErrServerClosed) {
