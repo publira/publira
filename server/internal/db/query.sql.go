@@ -385,6 +385,26 @@ func (q *Queries) DeletePlatformUserRolesByUserID(ctx context.Context, userID uu
 	return err
 }
 
+const deleteTenantMemberRolesByMembershipID = `-- name: DeleteTenantMemberRolesByMembershipID :exec
+DELETE FROM tenant_member_roles
+WHERE membership_id = $1
+`
+
+func (q *Queries) DeleteTenantMemberRolesByMembershipID(ctx context.Context, membershipID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteTenantMemberRolesByMembershipID, membershipID)
+	return err
+}
+
+const deleteTenantMembership = `-- name: DeleteTenantMembership :exec
+DELETE FROM tenant_memberships
+WHERE id = $1
+`
+
+func (q *Queries) DeleteTenantMembership(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteTenantMembership, id)
+	return err
+}
+
 const deleteUserByID = `-- name: DeleteUserByID :exec
 DELETE FROM users
 WHERE id = $1
@@ -826,6 +846,33 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
+	)
+	return i, err
+}
+
+const getTenantMembershipByUserAndTenant = `-- name: GetTenantMembershipByUserAndTenant :one
+SELECT tm.id, tm.user_id, tm.tenant_id, tm.status, tm.created_at
+FROM tenant_memberships tm
+WHERE tm.user_id = $1
+    AND tm.tenant_id = $2
+LIMIT 1
+`
+
+type GetTenantMembershipByUserAndTenantParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+// ユーザーとテナントIDでメンバーシップを取得する
+func (q *Queries) GetTenantMembershipByUserAndTenant(ctx context.Context, arg GetTenantMembershipByUserAndTenantParams) (TenantMembership, error) {
+	row := q.db.QueryRowContext(ctx, getTenantMembershipByUserAndTenant, arg.UserID, arg.TenantID)
+	var i TenantMembership
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TenantID,
+		&i.Status,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -1424,6 +1471,87 @@ func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenant
 			&i.Synopsis,
 			&i.IsPublished,
 			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantMemberships = `-- name: ListTenantMemberships :many
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    u.email,
+    COALESCE(
+        (
+            SELECT tmr.role
+            FROM tenant_member_roles tmr
+            WHERE tmr.membership_id = tm.id
+            ORDER BY CASE
+                    WHEN tmr.role = 'tenant_admin' THEN 3
+                    WHEN tmr.role = 'admin' THEN 3
+                    WHEN tmr.role = 'tenant_editor' THEN 2
+                    WHEN tmr.role = 'editor' THEN 2
+                    WHEN tmr.role = 'tenant_auditor' THEN 1
+                    WHEN tmr.role = 'auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tmr.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    tm.status,
+    tm.created_at
+FROM tenant_memberships tm
+    JOIN users u ON u.id = tm.user_id
+WHERE tm.tenant_id = $1
+ORDER BY tm.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListTenantMembershipsParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Offset   int32     `json:"offset"`
+	Limit    int32     `json:"limit"`
+}
+
+type ListTenantMembershipsRow struct {
+	UserID    uuid.UUID `json:"user_id"`
+	PublicID  string    `json:"public_id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// テナントに所属するメンバー一覧を取得する
+func (q *Queries) ListTenantMemberships(ctx context.Context, arg ListTenantMembershipsParams) ([]ListTenantMembershipsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantMemberships, arg.TenantID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantMembershipsRow
+	for rows.Next() {
+		var i ListTenantMembershipsRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.PublicID,
+			&i.Name,
+			&i.Email,
+			&i.Role,
+			&i.Status,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

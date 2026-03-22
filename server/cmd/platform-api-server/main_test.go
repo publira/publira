@@ -46,6 +46,10 @@ const (
 	updateUserStatusQuery       = "-- name: UpdateUserStatus :one\nUPDATE users\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
 	terminateUserSessionsQuery  = "-- name: TerminateUserSessions :exec\nUPDATE sessions\nSET revoked_at = NOW()\nWHERE user_id = $1\n    AND revoked_at IS NULL\n"
 	deleteUserByIDQuery         = "-- name: DeleteUserByID :exec\nDELETE FROM users\nWHERE id = $1\n"
+	listTenantMembershipsQuery  = "-- name: ListTenantMemberships :many\nSELECT u.id AS user_id,\n    u.public_id,\n    u.name,\n    u.email,\n    COALESCE(\n        (\n            SELECT tmr.role\n            FROM tenant_member_roles tmr\n            WHERE tmr.membership_id = tm.id\n            ORDER BY CASE\n                    WHEN tmr.role = 'tenant_admin' THEN 3\n                    WHEN tmr.role = 'admin' THEN 3\n                    WHEN tmr.role = 'tenant_editor' THEN 2\n                    WHEN tmr.role = 'editor' THEN 2\n                    WHEN tmr.role = 'tenant_auditor' THEN 1\n                    WHEN tmr.role = 'auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                tmr.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    tm.status,\n    tm.created_at\nFROM tenant_memberships tm\n    JOIN users u ON u.id = tm.user_id\nWHERE tm.tenant_id = $1\nORDER BY tm.created_at DESC\nLIMIT $3 OFFSET $2\n"
+	getTenantMembershipByUserAndTenantQuery = "-- name: GetTenantMembershipByUserAndTenant :one\nSELECT tm.id, tm.user_id, tm.tenant_id, tm.status, tm.created_at\nFROM tenant_memberships tm\nWHERE tm.user_id = $1\n    AND tm.tenant_id = $2\nLIMIT 1\n"
+	deleteTenantMembershipQuery = "-- name: DeleteTenantMembership :exec\nDELETE FROM tenant_memberships\nWHERE id = $1\n"
+	deleteTenantMemberRolesByMembershipIDQuery = "-- name: DeleteTenantMemberRolesByMembershipID :exec\nDELETE FROM tenant_member_roles\nWHERE membership_id = $1\n"
 	testSessionToken            = "platform-session-token"
 	testPlatformRole            = "platform_operator"
 )
@@ -1512,6 +1516,425 @@ func TestDeleteEndUserWithPlatformRole(t *testing.T) {
 	_, err := client.DeleteEndUser(context.Background(), newAuthedRequest(publirasplatformv1.DeleteEndUserRequest{PublicId: "PLATUSER002"}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteEndUser code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func tenantMemberColumns() []string {
+	return []string{"user_id", "public_id", "name", "email", "role", "status", "created_at"}
+}
+
+// TestListTenantMembersSuccess はテナントメンバー一覧の正常系を検証する。
+func TestListTenantMembersSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	member1ID := uuid.Must(uuid.NewV7())
+	member2ID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantMembershipsQuery)).
+		WithArgs(tenantID, int32(0), int32(20)).
+		WillReturnRows(sqlmock.NewRows(tenantMemberColumns()).
+			AddRow(member1ID, "USER000001", "Alice", "alice@example.com", "tenant_admin", "active", now).
+			AddRow(member2ID, "USER000002", "Bob", "bob@example.com", "tenant_editor", "active", now))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListTenantMembers(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantMembersRequest{TenantPublicId: "TENANT001"}))
+	if err != nil {
+		t.Fatalf("ListTenantMembers: %v", err)
+	}
+	if len(resp.Msg.Members) != 2 {
+		t.Fatalf("member count = %d, want 2", len(resp.Msg.Members))
+	}
+	if resp.Msg.Members[0].UserPublicId != "USER000001" {
+		t.Fatalf("members[0].user_public_id = %q, want USER000001", resp.Msg.Members[0].UserPublicId)
+	}
+	if resp.Msg.Members[0].Role != "tenant_admin" {
+		t.Fatalf("members[0].role = %q, want tenant_admin", resp.Msg.Members[0].Role)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestListTenantMembersEmptyList はメンバーが存在しない場合に空リストを返すことを検証する。
+func TestListTenantMembersEmptyList(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantMembershipsQuery)).
+		WithArgs(tenantID, int32(0), int32(20)).
+		WillReturnRows(sqlmock.NewRows(tenantMemberColumns()))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListTenantMembers(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantMembersRequest{TenantPublicId: "TENANT001"}))
+	if err != nil {
+		t.Fatalf("ListTenantMembers: %v", err)
+	}
+	if len(resp.Msg.Members) != 0 {
+		t.Fatalf("member count = %d, want 0", len(resp.Msg.Members))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestListTenantMembersTenantNotFound は存在しないテナントの場合 NotFound を返すことを検証する。
+func TestListTenantMembersTenantNotFound(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("NOTFOUND").
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListTenantMembers(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantMembersRequest{TenantPublicId: "NOTFOUND"}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("ListTenantMembers code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestAddTenantMemberSuccess はテナントメンバー追加の正常系を検証する。
+func TestAddTenantMemberSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+	membershipID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("USER000001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantMembershipByUserAndTenantQuery)).
+		WithArgs(targetUserID, tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectBegin()
+
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantMembershipQuery)).
+		WithArgs(sqlmock.AnyArg(), targetUserID, tenantID, "active").
+		WillReturnRows(sqlmock.NewRows(tenantMembershipColumns()).
+			AddRow(membershipID, targetUserID, tenantID, "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantMemberRoleQuery)).
+		WithArgs(sqlmock.AnyArg(), membershipID, "tenant_admin").
+		WillReturnRows(sqlmock.NewRows(tenantMemberRoleColumns()).
+			AddRow(uuid.Must(uuid.NewV7()), membershipID, "tenant_admin", now))
+
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.AddTenantMember(context.Background(), newAuthedRequest(publirasplatformv1.AddTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "USER000001",
+		Role:           "tenant_admin",
+	}))
+	if err != nil {
+		t.Fatalf("AddTenantMember: %v", err)
+	}
+	if resp.Msg.Member.UserPublicId != "USER000001" {
+		t.Fatalf("member.user_public_id = %q, want USER000001", resp.Msg.Member.UserPublicId)
+	}
+	if resp.Msg.Member.Role != "tenant_admin" {
+		t.Fatalf("member.role = %q, want tenant_admin", resp.Msg.Member.Role)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestAddTenantMemberTenantNotFound は存在しないテナントの場合 NotFound を返すことを検証する。
+func TestAddTenantMemberTenantNotFound(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("NOTFOUND").
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.AddTenantMember(context.Background(), newAuthedRequest(publirasplatformv1.AddTenantMemberRequest{
+		TenantPublicId: "NOTFOUND",
+		UserPublicId:   "USER000001",
+		Role:           "tenant_admin",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("AddTenantMember code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestAddTenantMemberUserNotFound は存在しないユーザーの場合 NotFound を返すことを検証する。
+func TestAddTenantMemberUserNotFound(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("NOTFOUND").
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.AddTenantMember(context.Background(), newAuthedRequest(publirasplatformv1.AddTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "NOTFOUND",
+		Role:           "tenant_admin",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("AddTenantMember code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestAddTenantMemberAlreadyExists は既にメンバーのユーザーを追加した場合 AlreadyExists を返すことを検証する。
+func TestAddTenantMemberAlreadyExists(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+	existingMembershipID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("USER000001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantMembershipByUserAndTenantQuery)).
+		WithArgs(targetUserID, tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantMembershipColumns()).
+			AddRow(existingMembershipID, targetUserID, tenantID, "active", now))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.AddTenantMember(context.Background(), newAuthedRequest(publirasplatformv1.AddTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "USER000001",
+		Role:           "tenant_admin",
+	}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("AddTenantMember code = %v, want already_exists", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestUpdateTenantMemberRoleSuccess はロール変更の正常系を検証する。
+func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+	membershipID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("USER000001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantMembershipByUserAndTenantQuery)).
+		WithArgs(targetUserID, tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantMembershipColumns()).
+			AddRow(membershipID, targetUserID, tenantID, "active", now))
+
+	mock.ExpectBegin()
+
+	mock.ExpectExec(regexp.QuoteMeta(deleteTenantMemberRolesByMembershipIDQuery)).
+		WithArgs(membershipID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantMemberRoleQuery)).
+		WithArgs(sqlmock.AnyArg(), membershipID, "tenant_editor").
+		WillReturnRows(sqlmock.NewRows(tenantMemberRoleColumns()).
+			AddRow(uuid.Must(uuid.NewV7()), membershipID, "tenant_editor", now))
+
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.UpdateTenantMemberRole(context.Background(), newAuthedRequest(publirasplatformv1.UpdateTenantMemberRoleRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "USER000001",
+		Role:           "tenant_editor",
+	}))
+	if err != nil {
+		t.Fatalf("UpdateTenantMemberRole: %v", err)
+	}
+	if resp.Msg.Member.Role != "tenant_editor" {
+		t.Fatalf("member.role = %q, want tenant_editor", resp.Msg.Member.Role)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestUpdateTenantMemberRoleMemberNotFound は存在しないメンバーの場合 NotFound を返すことを検証する。
+func TestUpdateTenantMemberRoleMemberNotFound(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("USER000001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantMembershipByUserAndTenantQuery)).
+		WithArgs(targetUserID, tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.UpdateTenantMemberRole(context.Background(), newAuthedRequest(publirasplatformv1.UpdateTenantMemberRoleRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "USER000001",
+		Role:           "tenant_editor",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("UpdateTenantMemberRole code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestRemoveTenantMemberSuccess はテナントメンバー削除の正常系を検証する。
+func TestRemoveTenantMemberSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+	membershipID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("USER000001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantMembershipByUserAndTenantQuery)).
+		WithArgs(targetUserID, tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantMembershipColumns()).
+			AddRow(membershipID, targetUserID, tenantID, "active", now))
+
+	mock.ExpectExec(regexp.QuoteMeta(deleteTenantMembershipQuery)).
+		WithArgs(membershipID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	resp, err := client.RemoveTenantMember(context.Background(), newAuthedRequest(publirasplatformv1.RemoveTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "USER000001",
+	}))
+	if err != nil {
+		t.Fatalf("RemoveTenantMember: %v", err)
+	}
+	if resp.Msg.UserPublicId != "USER000001" {
+		t.Fatalf("user_public_id = %q, want USER000001", resp.Msg.UserPublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+// TestRemoveTenantMemberNotFound は存在しないメンバーの場合 NotFound を返すことを検証する。
+func TestRemoveTenantMemberNotFound(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	sessionTenantID := uuid.Must(uuid.NewV7())
+	sessionUserID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, sessionTenantID, sessionUserID, testPlatformRole, now)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("USER000001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(targetUserID, "USER000001", "Alice", "alice@example.com", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantMembershipByUserAndTenantQuery)).
+		WithArgs(targetUserID, tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.RemoveTenantMember(context.Background(), newAuthedRequest(publirasplatformv1.RemoveTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		UserPublicId:   "USER000001",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("RemoveTenantMember code = %v, want not_found", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
 }

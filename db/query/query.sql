@@ -498,6 +498,55 @@ WHERE NOT EXISTS (
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
+-- name: ListTenantMemberships :many
+-- テナントに所属するメンバー一覧を取得する
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    u.email,
+    COALESCE(
+        (
+            SELECT tmr.role
+            FROM tenant_member_roles tmr
+            WHERE tmr.membership_id = tm.id
+            ORDER BY CASE
+                    WHEN tmr.role = 'tenant_admin' THEN 3
+                    WHEN tmr.role = 'admin' THEN 3
+                    WHEN tmr.role = 'tenant_editor' THEN 2
+                    WHEN tmr.role = 'editor' THEN 2
+                    WHEN tmr.role = 'tenant_auditor' THEN 1
+                    WHEN tmr.role = 'auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tmr.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    tm.status,
+    tm.created_at
+FROM tenant_memberships tm
+    JOIN users u ON u.id = tm.user_id
+WHERE tm.tenant_id = $1
+ORDER BY tm.created_at DESC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: GetTenantMembershipByUserAndTenant :one
+-- ユーザーとテナントIDでメンバーシップを取得する
+SELECT tm.id, tm.user_id, tm.tenant_id, tm.status, tm.created_at
+FROM tenant_memberships tm
+WHERE tm.user_id = $1
+    AND tm.tenant_id = $2
+LIMIT 1;
+
+-- name: DeleteTenantMembership :exec
+DELETE FROM tenant_memberships
+WHERE id = $1;
+
+-- name: DeleteTenantMemberRolesByMembershipID :exec
+DELETE FROM tenant_member_roles
+WHERE membership_id = $1;
+
 -- name: GetUserByPublicID :one
 -- public_idでユーザーを取得
 SELECT u.id,

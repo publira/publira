@@ -26,6 +26,8 @@ type Querier interface {
 	CreateTenantMembership(ctx context.Context, arg CreateTenantMembershipParams) (TenantMembership, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeletePlatformUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteTenantMemberRolesByMembershipID(ctx context.Context, membershipID uuid.UUID) error
+	DeleteTenantMembership(ctx context.Context, id uuid.UUID) error
 	// ユーザーを物理削除（外部キー制約により関連データも削除）
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
@@ -39,6 +41,8 @@ type Querier interface {
 	// ホスト名からテナントを特定する (Interceptorで使用)
 	GetTenantByDomain(ctx context.Context, domain sql.NullString) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
+	// ユーザーとテナントIDでメンバーシップを取得する
+	GetTenantMembershipByUserAndTenant(ctx context.Context, arg GetTenantMembershipByUserAndTenantParams) (TenantMembership, error)
 	GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantTheme, error)
 	// エンドユーザーが所属するテナント一覧を取得
 	GetTenantsByEndUser(ctx context.Context, userID uuid.UUID) ([]GetTenantsByEndUserRow, error)
@@ -57,6 +61,8 @@ type Querier interface {
 	ListPlatformUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
+	// テナントに所属するメンバー一覧を取得する
+	ListTenantMemberships(ctx context.Context, arg ListTenantMembershipsParams) ([]ListTenantMembershipsRow, error)
 	ListTenantRolesByUserAndTenant(ctx context.Context, arg ListTenantRolesByUserAndTenantParams) ([]string, error)
 	// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
