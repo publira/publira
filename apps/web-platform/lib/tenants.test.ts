@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  addPlatformTenantMember,
   createPlatformTenant,
   getPlatformTenant,
   listPlatformTenantMembers,
@@ -10,40 +11,65 @@ import {
 } from "./tenants";
 
 const {
+  mockAddTenantMember,
+  mockBuildSessionHeaders,
   mockCreateTenant,
   mockGetTenant,
   mockListTenantMembers,
   mockListTenants,
+  mockListOperators,
+  mockListUsers,
+  mockRemoveTenantMember,
   mockResolveSessionId,
   mockResumeTenant,
   mockSuspendTenant,
+  mockUpdateTenantMemberRole,
 } = vi.hoisted(() => ({
+  mockAddTenantMember: vi.fn(),
+  mockBuildSessionHeaders: vi.fn(),
   mockCreateTenant: vi.fn(),
   mockGetTenant: vi.fn(),
+  mockListOperators: vi.fn(),
   mockListTenantMembers: vi.fn(),
   mockListTenants: vi.fn(),
+  mockListUsers: vi.fn(),
+  mockRemoveTenantMember: vi.fn(),
   mockResolveSessionId: vi.fn(),
   mockResumeTenant: vi.fn(),
   mockSuspendTenant: vi.fn(),
+  mockUpdateTenantMemberRole: vi.fn(),
 }));
 
 vi.mock("./api-client", () => ({
   apiClient: {
+    operators: {
+      listOperators: mockListOperators,
+    },
     tenants: {
+      addTenantMember: mockAddTenantMember,
       createTenant: mockCreateTenant,
       getTenant: mockGetTenant,
       listTenantMembers: mockListTenantMembers,
       listTenants: mockListTenants,
+      removeTenantMember: mockRemoveTenantMember,
       resumeTenant: mockResumeTenant,
       suspendTenant: mockSuspendTenant,
+      updateTenantMemberRole: mockUpdateTenantMemberRole,
+    },
+    users: {
+      listEndUsers: mockListUsers,
     },
   },
+  buildSessionHeaders: mockBuildSessionHeaders,
   resolveSessionId: mockResolveSessionId,
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
+  mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
+    headers: { "X-Publira-Session-Id": sessionId },
+  }));
 });
 
 describe("listPlatformTenants", () => {
@@ -264,5 +290,73 @@ describe("createPlatformTenant", () => {
       { publicId: "tenant_seifuu" },
       { headers: { "X-Publira-Session-Id": "sess_abc" } }
     );
+  });
+
+  it("メンバー追加時はエンドユーザーをメール検索して userPublicId に解決する", async () => {
+    mockListOperators.mockResolvedValueOnce({ operators: [] });
+    mockListUsers.mockResolvedValueOnce({
+      users: [
+        {
+          createdAt: "2026-03-01T00:00:00Z",
+          email: "member@example.com",
+          name: "Member",
+          publicId: "user_member_001",
+          status: "active",
+          tenantIds: [],
+        },
+      ],
+    });
+    mockAddTenantMember.mockResolvedValueOnce({});
+
+    await expect(
+      addPlatformTenantMember({
+        email: "member@example.com",
+        role: "tenant_admin",
+        tenantPublicId: "tenant_seifuu",
+      })
+    ).resolves.toEqual({ ok: true });
+
+    expect(mockAddTenantMember).toHaveBeenCalledWith(
+      {
+        role: "tenant_admin",
+        tenantPublicId: "tenant_seifuu",
+        userPublicId: "user_member_001",
+      },
+      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+    );
+  });
+
+  it("メンバー追加時はオペレーターもメール検索対象に含める", async () => {
+    mockListOperators.mockResolvedValueOnce({
+      operators: [
+        {
+          createdAt: "2026-03-01T00:00:00Z",
+          email: "op@example.com",
+          name: "Operator",
+          publicId: "user_operator_001",
+          role: "platform_operator",
+          status: "active",
+        },
+      ],
+    });
+    mockAddTenantMember.mockResolvedValueOnce({});
+
+    await expect(
+      addPlatformTenantMember({
+        email: "op@example.com",
+        role: "tenant_admin",
+        tenantPublicId: "tenant_seifuu",
+      })
+    ).resolves.toEqual({ ok: true });
+
+    expect(mockAddTenantMember).toHaveBeenCalledWith(
+      {
+        role: "tenant_admin",
+        tenantPublicId: "tenant_seifuu",
+        userPublicId: "user_operator_001",
+      },
+      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+    );
+    expect(mockListUsers).not.toHaveBeenCalled();
   });
 });

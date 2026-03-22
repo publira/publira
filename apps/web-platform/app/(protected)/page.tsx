@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { PlatformPage } from "../../components/platform-page";
 
@@ -72,10 +73,12 @@ export default function Page() {
     <PlatformPage
       actions={
         <>
-          <LinkButton href="/audit-logs" variant="outline">
+          <LinkButton render={<Link href="/audit-logs" />} variant="outline">
             監査ログを見る
           </LinkButton>
-          <LinkButton href="/tenants/new">テナントを作成</LinkButton>
+          <LinkButton render={<Link href="/tenants/new" />}>
+            テナントを作成
+          </LinkButton>
         </>
       }
       description="web-platform 初期リリース向けに、共通レイアウトと導線を固定したダッシュボードです。各画面 Issue はこのシェルを前提に実装できます。"

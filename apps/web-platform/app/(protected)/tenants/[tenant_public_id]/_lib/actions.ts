@@ -3,11 +3,16 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  addPlatformTenantMember,
+  removePlatformTenantMember,
   resumePlatformTenant,
   suspendPlatformTenant,
   updatePlatformTenant,
+  updatePlatformTenantMemberRole,
 } from "../../../../../lib/tenants";
 import type { TenantUpdateFormState } from "../_components/tenant-update-form";
+
+export type TenantMemberFormState = { ok: boolean; message: string } | null;
 
 export const suspendTenantAction = async (
   formData: FormData
@@ -88,4 +93,75 @@ export const updateTenantDomainAction = async (
     return { message: result.message, ok: false };
   }
   return { message: "保存しました。", ok: true };
+};
+
+export const addTenantMemberAction = async (
+  _prevState: TenantMemberFormState,
+  formData: FormData
+): Promise<TenantMemberFormState> => {
+  const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
+  const email = String(formData.get("member_email") ?? "").trim();
+  const role = String(formData.get("member_role") ?? "").trim();
+
+  const result = await addPlatformTenantMember({
+    email,
+    role,
+    tenantPublicId,
+  });
+
+  revalidatePath(`/tenants/${tenantPublicId}`);
+  revalidatePath(`/tenants/${tenantPublicId}/members`);
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  return { message: "メンバーを追加しました。", ok: true };
+};
+
+export const updateTenantMemberRoleAction = async (
+  _prevState: TenantMemberFormState,
+  formData: FormData
+): Promise<TenantMemberFormState> => {
+  const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
+  const userPublicId = String(
+    formData.get("member_user_public_id") ?? ""
+  ).trim();
+  const role = String(formData.get("member_role") ?? "").trim();
+
+  const result = await updatePlatformTenantMemberRole(
+    tenantPublicId,
+    userPublicId,
+    role
+  );
+
+  revalidatePath(`/tenants/${tenantPublicId}`);
+  revalidatePath(`/tenants/${tenantPublicId}/members`);
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  return { message: "ロールを更新しました。", ok: true };
+};
+
+export const removeTenantMemberAction = async (
+  _prevState: TenantMemberFormState,
+  formData: FormData
+): Promise<TenantMemberFormState> => {
+  const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
+  const userPublicId = String(
+    formData.get("member_user_public_id") ?? ""
+  ).trim();
+
+  const result = await removePlatformTenantMember(tenantPublicId, userPublicId);
+
+  revalidatePath(`/tenants/${tenantPublicId}`);
+  revalidatePath(`/tenants/${tenantPublicId}/members`);
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  return { message: "メンバーを削除しました。", ok: true };
 };

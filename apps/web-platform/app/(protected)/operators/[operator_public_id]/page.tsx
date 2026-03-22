@@ -9,6 +9,7 @@ import {
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PlatformPage } from "../../../../components/platform-page";
@@ -64,7 +65,7 @@ export default async function OperatorDetailPage({
     <PlatformPage
       actions={
         <>
-          <LinkButton href="/operators" variant="outline">
+          <LinkButton render={<Link href="/operators" />} variant="outline">
             一覧へ戻る
           </LinkButton>
           {canUnsuspend ? (

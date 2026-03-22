@@ -11,6 +11,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PlatformPage } from "../../../../components/platform-page";
@@ -61,7 +62,7 @@ export default async function OperatorNewPage({
   return (
     <PlatformPage
       actions={
-        <LinkButton href="/operators" variant="outline">
+        <LinkButton render={<Link href="/operators" />} variant="outline">
           一覧へ戻る
         </LinkButton>
       }
@@ -131,7 +132,7 @@ export default async function OperatorNewPage({
 
             <div className="mt-2 flex gap-3">
               <Button type="submit">追加</Button>
-              <LinkButton href="/operators" variant="outline">
+              <LinkButton render={<Link href="/operators" />} variant="outline">
                 キャンセル
               </LinkButton>
             </div>

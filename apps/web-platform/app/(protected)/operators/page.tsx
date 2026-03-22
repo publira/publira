@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { PlatformPage } from "../../../components/platform-page";
 import {
@@ -34,7 +35,9 @@ export default async function OperatorsPage() {
   return (
     <PlatformPage
       actions={
-        <LinkButton href="/operators/new">オペレーターを追加</LinkButton>
+        <LinkButton render={<Link href="/operators/new" />}>
+          オペレーターを追加
+        </LinkButton>
       }
       description="プラットフォームオペレーターの一覧・ロール確認・有効化／停止を行います。"
       eyebrow="Platform Governance"
@@ -96,7 +99,7 @@ export default async function OperatorsPage() {
                   </TableCell>
                   <TableCell>
                     <LinkButton
-                      href={`/operators/${operator.publicId}`}
+                      render={<Link href={`/operators/${operator.publicId}`} />}
                       size="sm"
                       variant="outline"
                     >
