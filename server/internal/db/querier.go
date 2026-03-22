@@ -12,8 +12,12 @@ import (
 )
 
 type Querier interface {
+	CountActiveTenants(ctx context.Context) (int32, error)
+	CountAllTenants(ctx context.Context) (int32, error)
+	CountPendingEndUsers(ctx context.Context) (int32, error)
 	// プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
 	CountPlatformUsers(ctx context.Context) (int32, error)
+	CountSuspendedTenants(ctx context.Context) (int32, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
@@ -60,6 +64,7 @@ type Querier interface {
 	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
 	ListPlatformUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
+	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
 	// テナントに所属するメンバー一覧を取得する
 	ListTenantMemberships(ctx context.Context, arg ListTenantMembershipsParams) ([]ListTenantMembershipsRow, error)

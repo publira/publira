@@ -41,6 +41,11 @@ const (
 	listPlatformOperatorsQuery  = "-- name: ListPlatformOperators :many\nSELECT u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nORDER BY u.created_at DESC\n"
 	getPlatformOperatorByPublicIDQuery = "-- name: GetPlatformOperatorByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\n    AND EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nLIMIT 1\n"
 	listEndUsersQuery           = "-- name: ListEndUsers :many\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)\n    AND ($2::text = '' OR u.status = $2::text)\nORDER BY u.created_at DESC\nLIMIT $4 OFFSET $3\n"
+	countAllTenantsQuery        = "-- name: CountAllTenants :one\nSELECT COUNT(*)::int\nFROM tenants\n"
+	countActiveTenantsQuery     = "-- name: CountActiveTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'active'\n"
+	countSuspendedTenantsQuery  = "-- name: CountSuspendedTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'suspended'\n"
+	countPendingEndUsersQuery   = "-- name: CountPendingEndUsers :one\nSELECT COUNT(*)::int\nFROM users u\nWHERE u.status = 'inactive'\n    AND NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n"
+	listRecentPlatformEventsQuery = "-- name: ListRecentPlatformEvents :many\nSELECT event_type,\n    action,\n    target,\n    actor,\n    occurred_at\nFROM (\n        SELECT 'tenant_created'::text AS event_type,\n            'Tenant Created'::text AS action,\n            t.public_id::text AS target,\n            ''::text AS actor,\n            t.created_at AS occurred_at\n        FROM tenants t\n        UNION ALL\n        SELECT 'operator_role_granted'::text AS event_type,\n            'Operator Role Granted'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            pur.created_at AS occurred_at\n        FROM platform_user_roles pur\n            JOIN users u ON u.id = pur.user_id\n        UNION ALL\n        SELECT 'end_user_created'::text AS event_type,\n            'End User Created'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            u.created_at AS occurred_at\n        FROM users u\n        WHERE NOT EXISTS (\n                SELECT 1\n                FROM platform_user_roles pur\n                WHERE pur.user_id = u.id\n            )\n    ) events\nORDER BY occurred_at DESC\nLIMIT $1\n"
 	getUserByPublicIDQuery      = "-- name: GetUserByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\nLIMIT 1\n"
 	getTenantsByEndUserQuery    = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
 	updateUserStatusQuery       = "-- name: UpdateUserStatus :one\nUPDATE users\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
@@ -143,6 +148,7 @@ func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformTenantService/ListTenants", false)
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformTenantService/CreateTenant", false)
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformAuthService/GetMe", false)
+	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformDashboardService/GetDashboardSummary", false)
 	assertRouteStatus(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", true)
 	assertRouteStatus(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)
 }
@@ -768,6 +774,87 @@ func TestListOperators(t *testing.T) {
 		t.Fatalf("status = %q, want suspended", resp.Msg.Operators[1].Status)
 	}
 	assertExpectations(t, mock)
+}
+
+func TestGetDashboardSummary(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(countAllTenantsQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(50)))
+	mock.ExpectQuery(regexp.QuoteMeta(countActiveTenantsQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(42)))
+	mock.ExpectQuery(regexp.QuoteMeta(countSuspendedTenantsQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(8)))
+	mock.ExpectQuery(regexp.QuoteMeta(countPendingEndUsersQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(3)))
+	mock.ExpectQuery(regexp.QuoteMeta(listRecentPlatformEventsQuery)).
+		WithArgs(int32(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"event_type", "action", "target", "actor", "occurred_at"}).
+			AddRow("tenant_created", "Tenant Created", "TENANT001", "", now).
+			AddRow("operator_role_granted", "Operator Role Granted", "PLATUSER001", "operator.yamada", now.Add(-time.Minute)))
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	resp, err := client.GetDashboardSummary(context.Background(), newAuthedRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if err != nil {
+		t.Fatalf("GetDashboardSummary: %v", err)
+	}
+	if resp.Msg.TotalTenants != 50 {
+		t.Fatalf("total_tenants = %d, want 50", resp.Msg.TotalTenants)
+	}
+	if resp.Msg.ActiveTenants != 42 {
+		t.Fatalf("active_tenants = %d, want 42", resp.Msg.ActiveTenants)
+	}
+	if resp.Msg.PendingEndUsers != 3 {
+		t.Fatalf("pending_end_users = %d, want 3", resp.Msg.PendingEndUsers)
+	}
+	if len(resp.Msg.RecentEvents) != 2 {
+		t.Fatalf("recent_events count = %d, want 2", len(resp.Msg.RecentEvents))
+	}
+	if resp.Msg.RecentEvents[0].Actor != "system" {
+		t.Fatalf("recent_events[0].actor = %q, want system", resp.Msg.RecentEvents[0].Actor)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryClampLimit(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(countAllTenantsQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(countActiveTenantsQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(countSuspendedTenantsQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(countPendingEndUsersQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(listRecentPlatformEventsQuery)).
+		WithArgs(int32(50)).
+		WillReturnRows(sqlmock.NewRows([]string{"event_type", "action", "target", "actor", "occurred_at"}))
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newAuthedRequest(publirasplatformv1.GetDashboardSummaryRequest{RecentEventsLimit: 999}))
+	if err != nil {
+		t.Fatalf("GetDashboardSummary: %v", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryUnauthenticated(t *testing.T) {
+	ts, _ := newTestPlatformServer(t)
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("GetDashboardSummary code = %v, want unauthenticated", connect.CodeOf(err))
+	}
 }
 
 func TestCreateOperatorSuccess(t *testing.T) {
