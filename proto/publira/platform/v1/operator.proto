@@ -19,6 +19,45 @@ message ListOperatorsResponse {
   repeated PlatformOperator operators = 1;
 }
 
+message CreateOperatorRequest {
+  string name = 1;
+  string email = 2;
+  string role = 3;
+}
+
+message CreateOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
+message UpdateOperatorRoleRequest {
+  string public_id = 1;
+  string role = 2;
+}
+
+message UpdateOperatorRoleResponse {
+  PlatformOperator operator = 1;
+}
+
+message SuspendOperatorRequest {
+  string public_id = 1;
+}
+
+message SuspendOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
+message UnsuspendOperatorRequest {
+  string public_id = 1;
+}
+
+message UnsuspendOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
 service PlatformOperatorService {
   rpc ListOperators(ListOperatorsRequest) returns (ListOperatorsResponse) {}
+  rpc CreateOperator(CreateOperatorRequest) returns (CreateOperatorResponse) {}
+  rpc UpdateOperatorRole(UpdateOperatorRoleRequest) returns (UpdateOperatorRoleResponse) {}
+  rpc SuspendOperator(SuspendOperatorRequest) returns (SuspendOperatorResponse) {}
+  rpc UnsuspendOperator(UnsuspendOperatorRequest) returns (UnsuspendOperatorResponse) {}
 }
