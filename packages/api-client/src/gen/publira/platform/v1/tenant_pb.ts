@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/tenant.proto.
  */
 export const file_publira_platform_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("CiBwdWJsaXJhL3BsYXRmb3JtL3YxL3RlbmFudC5wcm90bxITcHVibGlyYS5wbGF0Zm9ybS52MSJwCgZUZW5hbnQSEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGc3RhdHVzGAMgASgJEhIKCmNyZWF0ZWRfYXQYBCABKAkSDgoGZG9tYWluGAUgASgJEhEKCXN1YmRvbWFpbhgGIAEoCSJkChJMaXN0VGVuYW50c1JlcXVlc3QSDQoFbGltaXQYASABKAUSDgoGb2Zmc2V0GAIgASgFEgwKBG5hbWUYAyABKAkSEQoJcHVibGljX2lkGAQgASgJEg4KBnN0YXR1cxgFIAEoCSJDChNMaXN0VGVuYW50c1Jlc3BvbnNlEiwKB3RlbmFudHMYASADKAsyGy5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlbmFudCIlChBHZXRUZW5hbnRSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCSJAChFHZXRUZW5hbnRSZXNwb25zZRIrCgZ0ZW5hbnQYASABKAsyGy5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlbmFudCJkChNDcmVhdGVUZW5hbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSEQoJc3ViZG9tYWluGAIgASgJEg4KBmRvbWFpbhgDIAEoCRIcChRpbml0aWFsX2FkbWluX2VtYWlscxgEIAMoCSJDChRDcmVhdGVUZW5hbnRSZXNwb25zZRIrCgZ0ZW5hbnQYASABKAsyGy5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlbmFudCIpChRTdXNwZW5kVGVuYW50UmVxdWVzdBIRCglwdWJsaWNfaWQYASABKAkiRAoVU3VzcGVuZFRlbmFudFJlc3BvbnNlEisKBnRlbmFudBgBIAEoCzIbLnB1YmxpcmEucGxhdGZvcm0udjEuVGVuYW50IigKE1Jlc3VtZVRlbmFudFJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIkMKFFJlc3VtZVRlbmFudFJlc3BvbnNlEisKBnRlbmFudBgBIAEoCzIbLnB1YmxpcmEucGxhdGZvcm0udjEuVGVuYW50MpEEChVQbGF0Zm9ybVRlbmFudFNlcnZpY2USYgoLTGlzdFRlbmFudHMSJy5wdWJsaXJhLnBsYXRmb3JtLnYxLkxpc3RUZW5hbnRzUmVxdWVzdBooLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdFRlbmFudHNSZXNwb25zZSIAElwKCUdldFRlbmFudBIlLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0VGVuYW50UmVxdWVzdBomLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0VGVuYW50UmVzcG9uc2UiABJlCgxDcmVhdGVUZW5hbnQSKC5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZVRlbmFudFJlcXVlc3QaKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZVRlbmFudFJlc3BvbnNlIgASaAoNU3VzcGVuZFRlbmFudBIpLnB1YmxpcmEucGxhdGZvcm0udjEuU3VzcGVuZFRlbmFudFJlcXVlc3QaKi5wdWJsaXJhLnBsYXRmb3JtLnYxLlN1c3BlbmRUZW5hbnRSZXNwb25zZSIAEmUKDFJlc3VtZVRlbmFudBIoLnB1YmxpcmEucGxhdGZvcm0udjEuUmVzdW1lVGVuYW50UmVxdWVzdBopLnB1YmxpcmEucGxhdGZvcm0udjEuUmVzdW1lVGVuYW50UmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("CiBwdWJsaXJhL3BsYXRmb3JtL3YxL3RlbmFudC5wcm90bxITcHVibGlyYS5wbGF0Zm9ybS52MSJwCgZUZW5hbnQSEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGc3RhdHVzGAMgASgJEhIKCmNyZWF0ZWRfYXQYBCABKAkSDgoGZG9tYWluGAUgASgJEhEKCXN1YmRvbWFpbhgGIAEoCSJkChJMaXN0VGVuYW50c1JlcXVlc3QSDQoFbGltaXQYASABKAUSDgoGb2Zmc2V0GAIgASgFEgwKBG5hbWUYAyABKAkSEQoJcHVibGljX2lkGAQgASgJEg4KBnN0YXR1cxgFIAEoCSJDChNMaXN0VGVuYW50c1Jlc3BvbnNlEiwKB3RlbmFudHMYASADKAsyGy5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlbmFudCIlChBHZXRUZW5hbnRSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCSJAChFHZXRUZW5hbnRSZXNwb25zZRIrCgZ0ZW5hbnQYASABKAsyGy5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlbmFudCJkChNDcmVhdGVUZW5hbnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSEQoJc3ViZG9tYWluGAIgASgJEg4KBmRvbWFpbhgDIAEoCRIcChRpbml0aWFsX2FkbWluX2VtYWlscxgEIAMoCSJDChRDcmVhdGVUZW5hbnRSZXNwb25zZRIrCgZ0ZW5hbnQYASABKAsyGy5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlbmFudCIpChRTdXNwZW5kVGVuYW50UmVxdWVzdBIRCglwdWJsaWNfaWQYASABKAkiRAoVU3VzcGVuZFRlbmFudFJlc3BvbnNlEisKBnRlbmFudBgBIAEoCzIbLnB1YmxpcmEucGxhdGZvcm0udjEuVGVuYW50IigKE1Jlc3VtZVRlbmFudFJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIkMKFFJlc3VtZVRlbmFudFJlc3BvbnNlEisKBnRlbmFudBgBIAEoCzIbLnB1YmxpcmEucGxhdGZvcm0udjEuVGVuYW50InUKDFRlbmFudE1lbWJlchIWCg51c2VyX3B1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWVtYWlsGAMgASgJEgwKBHJvbGUYBCABKAkSDgoGc3RhdHVzGAUgASgJEhIKCmNyZWF0ZWRfYXQYBiABKAkiUwoYTGlzdFRlbmFudE1lbWJlcnNSZXF1ZXN0EhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAkSDQoFbGltaXQYAiABKAUSDgoGb2Zmc2V0GAMgASgFIk8KGUxpc3RUZW5hbnRNZW1iZXJzUmVzcG9uc2USMgoHbWVtYmVycxgBIAMoCzIhLnB1YmxpcmEucGxhdGZvcm0udjEuVGVuYW50TWVtYmVyIlgKFkFkZFRlbmFudE1lbWJlclJlcXVlc3QSGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRIWCg51c2VyX3B1YmxpY19pZBgCIAEoCRIMCgRyb2xlGAMgASgJIkwKF0FkZFRlbmFudE1lbWJlclJlc3BvbnNlEjEKBm1lbWJlchgBIAEoCzIhLnB1YmxpcmEucGxhdGZvcm0udjEuVGVuYW50TWVtYmVyIl8KHVVwZGF0ZVRlbmFudE1lbWJlclJvbGVSZXF1ZXN0EhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAkSFgoOdXNlcl9wdWJsaWNfaWQYAiABKAkSDAoEcm9sZRgDIAEoCSJTCh5VcGRhdGVUZW5hbnRNZW1iZXJSb2xlUmVzcG9uc2USMQoGbWVtYmVyGAEgASgLMiEucHVibGlyYS5wbGF0Zm9ybS52MS5UZW5hbnRNZW1iZXIiTQoZUmVtb3ZlVGVuYW50TWVtYmVyUmVxdWVzdBIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJEhYKDnVzZXJfcHVibGljX2lkGAIgASgJIjQKGlJlbW92ZVRlbmFudE1lbWJlclJlc3BvbnNlEhYKDnVzZXJfcHVibGljX2lkGAEgASgJMvYHChVQbGF0Zm9ybVRlbmFudFNlcnZpY2USYgoLTGlzdFRlbmFudHMSJy5wdWJsaXJhLnBsYXRmb3JtLnYxLkxpc3RUZW5hbnRzUmVxdWVzdBooLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdFRlbmFudHNSZXNwb25zZSIAElwKCUdldFRlbmFudBIlLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0VGVuYW50UmVxdWVzdBomLnB1YmxpcmEucGxhdGZvcm0udjEuR2V0VGVuYW50UmVzcG9uc2UiABJlCgxDcmVhdGVUZW5hbnQSKC5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZVRlbmFudFJlcXVlc3QaKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZVRlbmFudFJlc3BvbnNlIgASaAoNU3VzcGVuZFRlbmFudBIpLnB1YmxpcmEucGxhdGZvcm0udjEuU3VzcGVuZFRlbmFudFJlcXVlc3QaKi5wdWJsaXJhLnBsYXRmb3JtLnYxLlN1c3BlbmRUZW5hbnRSZXNwb25zZSIAEmUKDFJlc3VtZVRlbmFudBIoLnB1YmxpcmEucGxhdGZvcm0udjEuUmVzdW1lVGVuYW50UmVxdWVzdBopLnB1YmxpcmEucGxhdGZvcm0udjEuUmVzdW1lVGVuYW50UmVzcG9uc2UiABJ0ChFMaXN0VGVuYW50TWVtYmVycxItLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdFRlbmFudE1lbWJlcnNSZXF1ZXN0Gi4ucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0VGVuYW50TWVtYmVyc1Jlc3BvbnNlIgASbgoPQWRkVGVuYW50TWVtYmVyEisucHVibGlyYS5wbGF0Zm9ybS52MS5BZGRUZW5hbnRNZW1iZXJSZXF1ZXN0GiwucHVibGlyYS5wbGF0Zm9ybS52MS5BZGRUZW5hbnRNZW1iZXJSZXNwb25zZSIAEoMBChZVcGRhdGVUZW5hbnRNZW1iZXJSb2xlEjIucHVibGlyYS5wbGF0Zm9ybS52MS5VcGRhdGVUZW5hbnRNZW1iZXJSb2xlUmVxdWVzdBozLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlVGVuYW50TWVtYmVyUm9sZVJlc3BvbnNlIgASdwoSUmVtb3ZlVGVuYW50TWVtYmVyEi4ucHVibGlyYS5wbGF0Zm9ybS52MS5SZW1vdmVUZW5hbnRNZW1iZXJSZXF1ZXN0Gi8ucHVibGlyYS5wbGF0Zm9ybS52MS5SZW1vdmVUZW5hbnRNZW1iZXJSZXNwb25zZSIAQk5aTGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * プラットフォーム管理者向けテナント情報
@@ -265,6 +265,221 @@ export const ResumeTenantResponseSchema: GenMessage<ResumeTenantResponse> = /*@_
   messageDesc(file_publira_platform_v1_tenant, 10);
 
 /**
+ * テナントメンバー情報
+ *
+ * @generated from message publira.platform.v1.TenantMember
+ */
+export type TenantMember = Message<"publira.platform.v1.TenantMember"> & {
+  /**
+   * @generated from field: string user_public_id = 1;
+   */
+  userPublicId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string email = 3;
+   */
+  email: string;
+
+  /**
+   * @generated from field: string role = 4;
+   */
+  role: string;
+
+  /**
+   * @generated from field: string status = 5;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string created_at = 6;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.TenantMember.
+ * Use `create(TenantMemberSchema)` to create a new message.
+ */
+export const TenantMemberSchema: GenMessage<TenantMember> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 11);
+
+/**
+ * @generated from message publira.platform.v1.ListTenantMembersRequest
+ */
+export type ListTenantMembersRequest = Message<"publira.platform.v1.ListTenantMembersRequest"> & {
+  /**
+   * @generated from field: string tenant_public_id = 1;
+   */
+  tenantPublicId: string;
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
+
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset: number;
+};
+
+/**
+ * Describes the message publira.platform.v1.ListTenantMembersRequest.
+ * Use `create(ListTenantMembersRequestSchema)` to create a new message.
+ */
+export const ListTenantMembersRequestSchema: GenMessage<ListTenantMembersRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 12);
+
+/**
+ * @generated from message publira.platform.v1.ListTenantMembersResponse
+ */
+export type ListTenantMembersResponse = Message<"publira.platform.v1.ListTenantMembersResponse"> & {
+  /**
+   * @generated from field: repeated publira.platform.v1.TenantMember members = 1;
+   */
+  members: TenantMember[];
+};
+
+/**
+ * Describes the message publira.platform.v1.ListTenantMembersResponse.
+ * Use `create(ListTenantMembersResponseSchema)` to create a new message.
+ */
+export const ListTenantMembersResponseSchema: GenMessage<ListTenantMembersResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 13);
+
+/**
+ * @generated from message publira.platform.v1.AddTenantMemberRequest
+ */
+export type AddTenantMemberRequest = Message<"publira.platform.v1.AddTenantMemberRequest"> & {
+  /**
+   * @generated from field: string tenant_public_id = 1;
+   */
+  tenantPublicId: string;
+
+  /**
+   * @generated from field: string user_public_id = 2;
+   */
+  userPublicId: string;
+
+  /**
+   * @generated from field: string role = 3;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.AddTenantMemberRequest.
+ * Use `create(AddTenantMemberRequestSchema)` to create a new message.
+ */
+export const AddTenantMemberRequestSchema: GenMessage<AddTenantMemberRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 14);
+
+/**
+ * @generated from message publira.platform.v1.AddTenantMemberResponse
+ */
+export type AddTenantMemberResponse = Message<"publira.platform.v1.AddTenantMemberResponse"> & {
+  /**
+   * @generated from field: publira.platform.v1.TenantMember member = 1;
+   */
+  member?: TenantMember;
+};
+
+/**
+ * Describes the message publira.platform.v1.AddTenantMemberResponse.
+ * Use `create(AddTenantMemberResponseSchema)` to create a new message.
+ */
+export const AddTenantMemberResponseSchema: GenMessage<AddTenantMemberResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 15);
+
+/**
+ * @generated from message publira.platform.v1.UpdateTenantMemberRoleRequest
+ */
+export type UpdateTenantMemberRoleRequest = Message<"publira.platform.v1.UpdateTenantMemberRoleRequest"> & {
+  /**
+   * @generated from field: string tenant_public_id = 1;
+   */
+  tenantPublicId: string;
+
+  /**
+   * @generated from field: string user_public_id = 2;
+   */
+  userPublicId: string;
+
+  /**
+   * @generated from field: string role = 3;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.UpdateTenantMemberRoleRequest.
+ * Use `create(UpdateTenantMemberRoleRequestSchema)` to create a new message.
+ */
+export const UpdateTenantMemberRoleRequestSchema: GenMessage<UpdateTenantMemberRoleRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 16);
+
+/**
+ * @generated from message publira.platform.v1.UpdateTenantMemberRoleResponse
+ */
+export type UpdateTenantMemberRoleResponse = Message<"publira.platform.v1.UpdateTenantMemberRoleResponse"> & {
+  /**
+   * @generated from field: publira.platform.v1.TenantMember member = 1;
+   */
+  member?: TenantMember;
+};
+
+/**
+ * Describes the message publira.platform.v1.UpdateTenantMemberRoleResponse.
+ * Use `create(UpdateTenantMemberRoleResponseSchema)` to create a new message.
+ */
+export const UpdateTenantMemberRoleResponseSchema: GenMessage<UpdateTenantMemberRoleResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 17);
+
+/**
+ * @generated from message publira.platform.v1.RemoveTenantMemberRequest
+ */
+export type RemoveTenantMemberRequest = Message<"publira.platform.v1.RemoveTenantMemberRequest"> & {
+  /**
+   * @generated from field: string tenant_public_id = 1;
+   */
+  tenantPublicId: string;
+
+  /**
+   * @generated from field: string user_public_id = 2;
+   */
+  userPublicId: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.RemoveTenantMemberRequest.
+ * Use `create(RemoveTenantMemberRequestSchema)` to create a new message.
+ */
+export const RemoveTenantMemberRequestSchema: GenMessage<RemoveTenantMemberRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 18);
+
+/**
+ * @generated from message publira.platform.v1.RemoveTenantMemberResponse
+ */
+export type RemoveTenantMemberResponse = Message<"publira.platform.v1.RemoveTenantMemberResponse"> & {
+  /**
+   * @generated from field: string user_public_id = 1;
+   */
+  userPublicId: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.RemoveTenantMemberResponse.
+ * Use `create(RemoveTenantMemberResponseSchema)` to create a new message.
+ */
+export const RemoveTenantMemberResponseSchema: GenMessage<RemoveTenantMemberResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_tenant, 19);
+
+/**
  * プラットフォーム運営者向けテナント管理サービス
  *
  * @generated from service publira.platform.v1.PlatformTenantService
@@ -309,6 +524,38 @@ export const PlatformTenantService: GenService<{
     methodKind: "unary";
     input: typeof ResumeTenantRequestSchema;
     output: typeof ResumeTenantResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformTenantService.ListTenantMembers
+   */
+  listTenantMembers: {
+    methodKind: "unary";
+    input: typeof ListTenantMembersRequestSchema;
+    output: typeof ListTenantMembersResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformTenantService.AddTenantMember
+   */
+  addTenantMember: {
+    methodKind: "unary";
+    input: typeof AddTenantMemberRequestSchema;
+    output: typeof AddTenantMemberResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole
+   */
+  updateTenantMemberRole: {
+    methodKind: "unary";
+    input: typeof UpdateTenantMemberRoleRequestSchema;
+    output: typeof UpdateTenantMemberRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformTenantService.RemoveTenantMember
+   */
+  removeTenantMember: {
+    methodKind: "unary";
+    input: typeof RemoveTenantMemberRequestSchema;
+    output: typeof RemoveTenantMemberResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_platform_v1_tenant, 0);

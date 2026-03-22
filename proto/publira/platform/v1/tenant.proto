@@ -64,6 +64,55 @@ message ResumeTenantResponse {
   Tenant tenant = 1;
 }
 
+// テナントメンバー情報
+message TenantMember {
+  string user_public_id = 1;
+  string name = 2;
+  string email = 3;
+  string role = 4;
+  string status = 5;
+  string created_at = 6;
+}
+
+message ListTenantMembersRequest {
+  string tenant_public_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListTenantMembersResponse {
+  repeated TenantMember members = 1;
+}
+
+message AddTenantMemberRequest {
+  string tenant_public_id = 1;
+  string user_public_id = 2;
+  string role = 3;
+}
+
+message AddTenantMemberResponse {
+  TenantMember member = 1;
+}
+
+message UpdateTenantMemberRoleRequest {
+  string tenant_public_id = 1;
+  string user_public_id = 2;
+  string role = 3;
+}
+
+message UpdateTenantMemberRoleResponse {
+  TenantMember member = 1;
+}
+
+message RemoveTenantMemberRequest {
+  string tenant_public_id = 1;
+  string user_public_id = 2;
+}
+
+message RemoveTenantMemberResponse {
+  string user_public_id = 1;
+}
+
 // プラットフォーム運営者向けテナント管理サービス
 service PlatformTenantService {
   rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse) {}
@@ -71,4 +120,8 @@ service PlatformTenantService {
   rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse) {}
   rpc SuspendTenant(SuspendTenantRequest) returns (SuspendTenantResponse) {}
   rpc ResumeTenant(ResumeTenantRequest) returns (ResumeTenantResponse) {}
+  rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse) {}
+  rpc AddTenantMember(AddTenantMemberRequest) returns (AddTenantMemberResponse) {}
+  rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}
+  rpc RemoveTenantMember(RemoveTenantMemberRequest) returns (RemoveTenantMemberResponse) {}
 }
