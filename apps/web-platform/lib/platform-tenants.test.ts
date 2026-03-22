@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createPlatformTenant } from "./platform-tenants";
+import { createPlatformTenant, listPlatformTenants } from "./platform-tenants";
 
-const { mockCreateTenant } = vi.hoisted(() => ({
+const { mockCreateTenant, mockListTenants } = vi.hoisted(() => ({
   mockCreateTenant: vi.fn(),
+  mockListTenants: vi.fn(),
 }));
 
 vi.mock("@publira/api-client/platform/client", () => ({
@@ -13,9 +14,82 @@ vi.mock("@publira/api-client/platform/client", () => ({
     setup: {},
     tenants: {
       createTenant: mockCreateTenant,
+      listTenants: mockListTenants,
     },
   }),
 }));
+
+describe("listPlatformTenants", () => {
+  it("正常系: テナント一覧を返す", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      tenants: [
+        {
+          createdAt: "2026-03-01 10:00",
+          domain: "example.com",
+          name: "テスト出版",
+          publicId: "tenant_test",
+          status: "active",
+          subdomain: "test-pub",
+        },
+      ],
+    });
+
+    await expect(
+      listPlatformTenants({ sessionId: "sess_abc" })
+    ).resolves.toEqual({
+      ok: true,
+      tenants: [
+        {
+          createdAt: "2026-03-01 10:00",
+          domain: "example.com",
+          name: "テスト出版",
+          publicId: "tenant_test",
+          status: "active",
+          subdomain: "test-pub",
+        },
+      ],
+    });
+
+    expect(mockListTenants).toHaveBeenCalledWith(
+      { name: "", status: "" },
+      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+    );
+  });
+
+  it("name / status フィルターを API に渡す", async () => {
+    mockListTenants.mockResolvedValueOnce({ tenants: [] });
+
+    await expect(
+      listPlatformTenants({
+        name: "テスト",
+        sessionId: "sess_abc",
+        status: "active",
+      })
+    ).resolves.toEqual({ ok: true, tenants: [] });
+
+    expect(mockListTenants).toHaveBeenCalledWith(
+      { name: "テスト", status: "active" },
+      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+    );
+  });
+
+  it("sessionId が空の場合は API を呼ばずエラーを返す", async () => {
+    await expect(listPlatformTenants({ sessionId: "  " })).resolves.toEqual({
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    });
+
+    expect(mockListTenants).not.toHaveBeenCalled();
+  });
+
+  it("API がエラーを返した場合はエラーメッセージを返す", async () => {
+    mockListTenants.mockRejectedValueOnce(new Error("network error"));
+
+    await expect(
+      listPlatformTenants({ sessionId: "sess_abc" })
+    ).resolves.toEqual({ message: "network error", ok: false });
+  });
+});
 
 describe("createPlatformTenant", () => {
   it("正常系: payload と X-Publira-Session-Id ヘッダーを付与して API を呼ぶ", async () => {
