@@ -54,10 +54,19 @@ message UnsuspendOperatorResponse {
   PlatformOperator operator = 1;
 }
 
+message DeactivateOperatorRequest {
+  string public_id = 1;
+}
+
+message DeactivateOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
 service PlatformOperatorService {
   rpc ListOperators(ListOperatorsRequest) returns (ListOperatorsResponse) {}
   rpc CreateOperator(CreateOperatorRequest) returns (CreateOperatorResponse) {}
   rpc UpdateOperatorRole(UpdateOperatorRoleRequest) returns (UpdateOperatorRoleResponse) {}
   rpc SuspendOperator(SuspendOperatorRequest) returns (SuspendOperatorResponse) {}
   rpc UnsuspendOperator(UnsuspendOperatorRequest) returns (UnsuspendOperatorResponse) {}
+  rpc DeactivateOperator(DeactivateOperatorRequest) returns (DeactivateOperatorResponse) {}
 }

@@ -929,6 +929,103 @@ func TestUnsuspendOperatorRejectsInvalidState(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestDeactivateOperatorSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	adminID := uuid.Must(uuid.NewV7())
+	targetID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, adminID, "platform_super_admin", now)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER005").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER005", "operator5@example.com", "Operator Five", "platform_operator", "active", now))
+	mock.ExpectQuery(regexp.QuoteMeta(updateUserStatusQuery)).
+		WithArgs("PLATUSER005", "inactive").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(targetID, "PLATUSER005", "operator5@example.com", "hash", "Operator Five", now, "inactive"))
+	mock.ExpectExec(regexp.QuoteMeta(terminateUserSessionsQuery)).
+		WithArgs(targetID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER005").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER005", "operator5@example.com", "Operator Five", "platform_operator", "inactive", now))
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	resp, err := client.DeactivateOperator(context.Background(), newAuthedRequest(publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER005"}))
+	if err != nil {
+		t.Fatalf("DeactivateOperator: %v", err)
+	}
+	if resp.Msg.Operator == nil || resp.Msg.Operator.Status != "inactive" {
+		t.Fatalf("operator.status = %v, want inactive", resp.Msg.Operator)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestDeactivateOperatorRequiresSuperAdmin(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	operatorID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, operatorID, "platform_operator", now)
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	_, err := client.DeactivateOperator(context.Background(), newAuthedRequest(publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER005"}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("DeactivateOperator code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestDeactivateOperatorSelfDeactivationForbidden(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	adminID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, adminID, "platform_super_admin", now)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER001").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(adminID, "PLATUSER001", "platform@example.com", "Platform User", "platform_super_admin", "active", now))
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	_, err := client.DeactivateOperator(context.Background(), newAuthedRequest(publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER001"}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("DeactivateOperator code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestDeactivateOperatorAlreadyInactiveRejected(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	adminID := uuid.Must(uuid.NewV7())
+	targetID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, adminID, "platform_super_admin", now)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER006").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER006", "operator6@example.com", "Operator Six", "platform_operator", "inactive", now))
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	_, err := client.DeactivateOperator(context.Background(), newAuthedRequest(publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER006"}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("DeactivateOperator code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
 func TestPlatformAuthCreateSessionSuccess(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
