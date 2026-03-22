@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -20,93 +22,117 @@ import (
 
 // Querier は adminapi が必要とする DB 操作インターフェースです。
 type Querier interface {
-	dbmodels.Querier
+dbmodels.Querier
 }
 
 type adminServer struct {
-	queries Querier
-	storage storage.Provider
+queries  Querier
+storage  storage.Provider
+recorder *auditlog.Recorder
 }
 
 func invalidSessionError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
+return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
 }
 
 func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
-	if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
-	}
-	return ctx.TenantPublicId, nil
+if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
+return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
+}
+return ctx.TenantPublicId, nil
 }
 
 func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
-	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		return sessionCtx.Tenant, nil
-	}
-	tenantPublicID, err := tenantPublicIDFromContext(tenantCtx)
-	if err != nil {
-		return dbmodels.Tenant{}, err
-	}
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
-		}
-		return dbmodels.Tenant{}, connect.NewError(connect.CodeInternal, err)
-	}
-	return tenant, nil
+if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+return sessionCtx.Tenant, nil
+}
+tenantPublicID, err := tenantPublicIDFromContext(tenantCtx)
+if err != nil {
+return dbmodels.Tenant{}, err
+}
+tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+if err != nil {
+if errors.Is(err, sql.ErrNoRows) {
+return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+}
+return dbmodels.Tenant{}, connect.NewError(connect.CodeInternal, err)
+}
+return tenant, nil
 }
 
 func (s *adminServer) authenticateSession(
-	ctx context.Context,
-	tenantCtx *publirattypesv1.TenantContext,
-	explicitToken string,
-	headers http.Header,
+ctx context.Context,
+tenantCtx *publirattypesv1.TenantContext,
+explicitToken string,
+headers http.Header,
 ) (rpcmiddleware.SessionContext, error) {
-	tenant, err := s.tenantByContext(ctx, tenantCtx)
-	if err != nil {
-		return rpcmiddleware.SessionContext{}, err
-	}
-	sessionToken, ok := auth.SessionTokenFromRequest(explicitToken, headers)
-	if !ok {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
-	}
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, auth.HashToken(sessionToken), time.Now())
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return rpcmiddleware.SessionContext{}, invalidSessionError()
-		}
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
-	}
-	if lookup.State != auth.SessionStateActive {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
-	}
-	return rpcmiddleware.SessionContext{Tenant: tenant, Session: lookup.Session}, nil
+tenant, err := s.tenantByContext(ctx, tenantCtx)
+if err != nil {
+return rpcmiddleware.SessionContext{}, err
+}
+sessionToken, ok := auth.SessionTokenFromRequest(explicitToken, headers)
+if !ok {
+return rpcmiddleware.SessionContext{}, invalidSessionError()
+}
+lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, auth.HashToken(sessionToken), time.Now())
+if err != nil {
+if errors.Is(err, sql.ErrNoRows) {
+return rpcmiddleware.SessionContext{}, invalidSessionError()
+}
+return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+}
+if lookup.State != auth.SessionStateActive {
+return rpcmiddleware.SessionContext{}, invalidSessionError()
+}
+user, err := s.queries.GetUserByID(ctx, lookup.Session.UserID)
+if err != nil {
+if errors.Is(err, sql.ErrNoRows) {
+return rpcmiddleware.SessionContext{}, invalidSessionError()
+}
+return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+}
+roles, err := s.queries.ListTenantRolesByUserAndTenant(ctx, dbmodels.ListTenantRolesByUserAndTenantParams{
+UserID:   user.ID,
+TenantID: tenant.ID,
+})
+if err != nil {
+return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+}
+return rpcmiddleware.SessionContext{
+Tenant:  tenant,
+Session: lookup.Session,
+User:    user,
+Role:    auth.ResolveTenantRole(roles),
+}, nil
 }
 
 // NewHandler は管理 API 専用の HTTP ハンドラを返します。
 // AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
-func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler {
-	server := &adminServer{queries: queries, storage: storageProvider}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
-	adminPath, adminHandler := publiraadminv1connect.NewAdminSeriesServiceHandler(
-		server,
-		connect.WithInterceptors(
-			rpcmiddleware.NewUnaryContextBuilderInterceptor(
-				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
-			),
-		),
-	)
-	mux.Handle(adminPath, adminHandler)
-	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
-	mux.Handle(adminAuthPath, adminAuthHandler)
-	return mux
+func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.Logger) http.Handler {
+server := &adminServer{
+queries:  queries,
+storage:  storageProvider,
+recorder: auditlog.New(queries, logger),
+}
+mux := http.NewServeMux()
+mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+if r.Method != http.MethodGet {
+w.WriteHeader(http.StatusMethodNotAllowed)
+return
+}
+w.WriteHeader(http.StatusOK)
+_, _ = w.Write([]byte("ok"))
+})
+adminPath, adminHandler := publiraadminv1connect.NewAdminSeriesServiceHandler(
+server,
+connect.WithInterceptors(
+rpcmiddleware.NewUnaryContextBuilderInterceptor(
+rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+),
+),
+)
+mux.Handle(adminPath, adminHandler)
+adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
+mux.Handle(adminAuthPath, adminAuthHandler)
+return mux
 }

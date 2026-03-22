@@ -11,6 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type AdminAuditLog struct {
+	ID                uuid.UUID      `json:"id"`
+	ActorUserPublicID string         `json:"actor_user_public_id"`
+	ActorRole         string         `json:"actor_role"`
+	TenantPublicID    sql.NullString `json:"tenant_public_id"`
+	Action            string         `json:"action"`
+	TargetType        sql.NullString `json:"target_type"`
+	TargetID          sql.NullString `json:"target_id"`
+	Outcome           string         `json:"outcome"`
+	Reason            sql.NullString `json:"reason"`
+	ClientIp          sql.NullString `json:"client_ip"`
+	CreatedAt         time.Time      `json:"created_at"`
+}
+
 type Creator struct {
 	ID          uuid.UUID      `json:"id"`
 	TenantID    uuid.UUID      `json:"tenant_id"`

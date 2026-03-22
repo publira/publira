@@ -3,11 +3,13 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
 
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
@@ -17,14 +19,15 @@ type Querier interface {
 }
 
 type platformServer struct {
-	queries Querier
-	db      *sql.DB
+	queries  Querier
+	db       *sql.DB
+	recorder *auditlog.Recorder
 }
 
 // NewHandler はプラットフォーム API 専用の HTTP ハンドラを返します。
 // PlatformTenantService のみ公開します。
-func NewHandler(db *sql.DB, queries Querier) http.Handler {
-	server := &platformServer{queries: queries, db: db}
+func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger) http.Handler {
+	server := &platformServer{queries: queries, db: db, recorder: auditlog.New(queries, logger)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

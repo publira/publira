@@ -20,7 +20,9 @@ import (
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -136,6 +138,18 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+		s.recorder.Record(ctx, auditlog.Entry{
+			ActorUserPublicID: sessionCtx.User.PublicID,
+			ActorRole:         sessionCtx.Role,
+			TenantPublicID:    tenant.PublicID,
+			Action:            "series_created",
+			TargetType:        "series",
+			TargetID:          base.PublicID,
+			Outcome:           auditlog.OutcomeSuccess,
+			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		})
+	}
 	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: &publirattypesv1.Series{
 		PublicId: base.PublicID, Title: base.Title, Synopsis: req.Msg.Synopsis,
 	}}), nil
@@ -175,6 +189,18 @@ func (s *adminServer) UpdateSeries(
 	updated, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
+		s.recorder.Record(ctx, auditlog.Entry{
+			ActorUserPublicID: sessionCtx.User.PublicID,
+			ActorRole:         sessionCtx.Role,
+			TenantPublicID:    tenant.PublicID,
+			Action:            "series_updated",
+			TargetType:        "series",
+			TargetID:          current.PublicID,
+			Outcome:           auditlog.OutcomeSuccess,
+			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		})
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: toProtoSeries(updated)}), nil
 }

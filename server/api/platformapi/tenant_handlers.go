@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
@@ -210,6 +211,21 @@ func (s *platformServer) CreateTenant(
 
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// Record audit log
+	if session, user, role, err := s.authenticatePlatformSession(ctx, "", req.Header()); err == nil {
+		_ = session // silence unused var
+		s.recorder.Record(ctx, auditlog.Entry{
+			ActorUserPublicID: user.PublicID,
+			ActorRole:         role,
+			TenantPublicID:    tenant.PublicID,
+			Action:            "tenant_created",
+			TargetType:        "tenant",
+			TargetID:          tenant.PublicID,
+			Outcome:           auditlog.OutcomeSuccess,
+			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		})
 	}
 
 	return connect.NewResponse(&publirasplatformv1.CreateTenantResponse{
