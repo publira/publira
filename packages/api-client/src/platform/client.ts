@@ -7,6 +7,7 @@ import { PlatformAuthService } from "../gen/publira/platform/v1/auth_pb.js";
 import { PlatformOperatorService } from "../gen/publira/platform/v1/operator_pb.js";
 import { PlatformSetupService } from "../gen/publira/platform/v1/setup_pb.js";
 import { PlatformTenantService } from "../gen/publira/platform/v1/tenant_pb.js";
+import { PlatformUserService } from "../gen/publira/platform/v1/user_pb.js";
 
 export type PlatformApiClientOptions = {
   baseUrl: string;
@@ -17,6 +18,7 @@ export interface PlatformApiClient {
   operators: Client<typeof PlatformOperatorService>;
   setup: Client<typeof PlatformSetupService>;
   tenants: Client<typeof PlatformTenantService>;
+  users: Client<typeof PlatformUserService>;
 }
 
 export const createPlatformApiClient = (
@@ -33,5 +35,6 @@ export const createPlatformApiClient = (
     operators: createClient(PlatformOperatorService, transport),
     setup: createClient(PlatformSetupService, transport),
     tenants: createClient(PlatformTenantService, transport),
+    users: createClient(PlatformUserService, transport),
   };
 };

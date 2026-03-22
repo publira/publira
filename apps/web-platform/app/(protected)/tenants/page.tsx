@@ -54,7 +54,11 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
 
   return (
     <PlatformPage
-      actions={<LinkButton href="/tenants/new">新規テナント作成</LinkButton>}
+      actions={
+        <LinkButton render={<Link href="/tenants/new" />}>
+          新規テナント作成
+        </LinkButton>
+      }
       description="プラットフォーム運営者が横断でテナントの状態を確認し、詳細画面へ遷移するための起点です。"
       eyebrow="Platform Tenants"
       title="テナント一覧"
@@ -145,7 +149,7 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
                     <TableCell>{tenant.createdAt}</TableCell>
                     <TableCell>
                       <LinkButton
-                        href={`/tenants/${tenant.publicId}`}
+                        render={<Link href={`/tenants/${tenant.publicId}`} />}
                         size="sm"
                         variant="outline"
                       >

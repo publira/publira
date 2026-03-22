@@ -284,6 +284,24 @@ export type UpdatePlatformTenantResult =
   | { ok: true }
   | { ok: false; message: string };
 
+export type UpdatePlatformTenantMemberRoleResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export interface AddPlatformTenantMemberInput {
+  email: string;
+  role: string;
+  tenantPublicId: string;
+}
+
+export type AddPlatformTenantMemberResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export type RemovePlatformTenantMemberResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
 export const updatePlatformTenant = async (
   publicId: string,
   name: string,
@@ -331,6 +349,256 @@ export const updatePlatformTenant = async (
     }
     return {
       message: "更新に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};
+
+const resolvePlatformUserPublicIdByEmail = async (
+  email: string,
+  sid: string
+): Promise<
+  { ok: true; userPublicId: string } | { ok: false; message: string }
+> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return {
+      message: "メールアドレスは必須です。",
+      ok: false,
+    };
+  }
+
+  try {
+    const operatorsResponse = await apiClient.operators.listOperators(
+      {} as never,
+      buildSessionHeaders(sid)
+    );
+    const matchedOperator = (operatorsResponse.operators ?? []).find(
+      (operator) => operator.email.trim().toLowerCase() === normalizedEmail
+    );
+
+    if (matchedOperator?.publicId) {
+      return {
+        ok: true,
+        userPublicId: matchedOperator.publicId,
+      };
+    }
+  } catch {
+    // fallback to end-user search
+  }
+
+  const limit = 200;
+  const maxPages = 10;
+
+  try {
+    for (let page = 0; page < maxPages; page += 1) {
+      const offset = page * limit;
+      const response = await apiClient.users.listEndUsers(
+        {
+          createdAfter: "",
+          limit,
+          offset,
+          status: "",
+        } as never,
+        buildSessionHeaders(sid)
+      );
+
+      const users = response.users ?? [];
+      const matchedUser = users.find(
+        (user) => user.email.trim().toLowerCase() === normalizedEmail
+      );
+
+      if (matchedUser?.publicId) {
+        return {
+          ok: true,
+          userPublicId: matchedUser.publicId,
+        };
+      }
+
+      if (users.length < limit) {
+        break;
+      }
+    }
+
+    return {
+      message: "指定したメールアドレスのユーザーが見つかりません。",
+      ok: false,
+    };
+  } catch {
+    return {
+      message: "ユーザー検索に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};
+
+export const addPlatformTenantMember = async (
+  input: AddPlatformTenantMemberInput
+): Promise<AddPlatformTenantMemberResult> => {
+  const tenantPublicId = input.tenantPublicId.trim();
+  const role = input.role.trim();
+  const email = input.email.trim();
+
+  if (!tenantPublicId || !email || !role) {
+    return { message: "必須項目が入力されていません。", ok: false };
+  }
+
+  const sid = await resolveSessionId();
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  const resolvedUser = await resolvePlatformUserPublicIdByEmail(email, sid);
+  if (!resolvedUser.ok) {
+    return resolvedUser;
+  }
+
+  try {
+    await apiClient.tenants.addTenantMember(
+      {
+        role,
+        tenantPublicId,
+        userPublicId: resolvedUser.userPublicId,
+      } as never,
+      buildSessionHeaders(sid)
+    );
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("already_exists") ||
+        message.includes("already exists")
+      ) {
+        return {
+          message: "このユーザーは既にメンバーとして追加されています。",
+          ok: false,
+        };
+      }
+      if (
+        message.includes("unauthenticated") ||
+        message.includes("permission_denied")
+      ) {
+        return {
+          message: "この操作を行う権限がありません。",
+          ok: false,
+        };
+      }
+    }
+
+    return {
+      message: "メンバー追加に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};
+
+export const updatePlatformTenantMemberRole = async (
+  tenantPublicId: string,
+  userPublicId: string,
+  role: string
+): Promise<UpdatePlatformTenantMemberRoleResult> => {
+  const sid = await resolveSessionId();
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  if (!tenantPublicId.trim() || !userPublicId.trim() || !role.trim()) {
+    return { message: "必須項目が入力されていません。", ok: false };
+  }
+
+  try {
+    await apiClient.tenants.updateTenantMemberRole(
+      {
+        role: role.trim(),
+        tenantPublicId: tenantPublicId.trim(),
+        userPublicId: userPublicId.trim(),
+      } as never,
+      buildSessionHeaders(sid)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("not_found")) {
+        return {
+          message: "対象のメンバーが見つかりません。",
+          ok: false,
+        };
+      }
+      if (
+        message.includes("unauthenticated") ||
+        message.includes("permission_denied")
+      ) {
+        return {
+          message: "この操作を行う権限がありません。",
+          ok: false,
+        };
+      }
+    }
+
+    return {
+      message: "ロール変更に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};
+
+export const removePlatformTenantMember = async (
+  tenantPublicId: string,
+  userPublicId: string
+): Promise<RemovePlatformTenantMemberResult> => {
+  const sid = await resolveSessionId();
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  if (!tenantPublicId.trim() || !userPublicId.trim()) {
+    return { message: "必須項目が入力されていません。", ok: false };
+  }
+
+  try {
+    await apiClient.tenants.removeTenantMember(
+      {
+        tenantPublicId: tenantPublicId.trim(),
+        userPublicId: userPublicId.trim(),
+      } as never,
+      buildSessionHeaders(sid)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("not_found")) {
+        return {
+          message: "対象のメンバーが見つかりません。",
+          ok: false,
+        };
+      }
+      if (
+        message.includes("unauthenticated") ||
+        message.includes("permission_denied")
+      ) {
+        return {
+          message: "この操作を行う権限がありません。",
+          ok: false,
+        };
+      }
+    }
+
+    return {
+      message: "メンバー削除に失敗しました。時間をおいて再試行してください。",
       ok: false,
     };
   }

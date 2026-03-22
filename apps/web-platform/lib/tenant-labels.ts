@@ -39,6 +39,9 @@ export const getTenantRoleLabel = (role: string): string => {
     case "tenant_admin": {
       return "テナント管理者";
     }
+    case "tenant_auditor": {
+      return "監査担当";
+    }
     case "tenant_editor": {
       return "編集担当";
     }
