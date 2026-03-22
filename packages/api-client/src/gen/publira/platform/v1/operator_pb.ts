@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/operator.proto.
  */
 export const file_publira_platform_v1_operator: GenFile = /*@__PURE__*/
-  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL29wZXJhdG9yLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxInQKEFBsYXRmb3JtT3BlcmF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEcm9sZRgEIAEoCRIOCgZzdGF0dXMYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCSIWChRMaXN0T3BlcmF0b3JzUmVxdWVzdCJRChVMaXN0T3BlcmF0b3JzUmVzcG9uc2USOAoJb3BlcmF0b3JzGAEgAygLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybU9wZXJhdG9yMoMBChdQbGF0Zm9ybU9wZXJhdG9yU2VydmljZRJoCg1MaXN0T3BlcmF0b3JzEikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0T3BlcmF0b3JzUmVxdWVzdBoqLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdE9wZXJhdG9yc1Jlc3BvbnNlIgBCTlpMZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3BsYXRmb3JtL3YxO3B1YmxpcmFzcGxhdGZvcm12MWIGcHJvdG8z");
+  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL29wZXJhdG9yLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxInQKEFBsYXRmb3JtT3BlcmF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEcm9sZRgEIAEoCRIOCgZzdGF0dXMYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCSIWChRMaXN0T3BlcmF0b3JzUmVxdWVzdCJRChVMaXN0T3BlcmF0b3JzUmVzcG9uc2USOAoJb3BlcmF0b3JzGAEgAygLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybU9wZXJhdG9yIkIKFUNyZWF0ZU9wZXJhdG9yUmVxdWVzdBIMCgRuYW1lGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBHJvbGUYAyABKAkiUQoWQ3JlYXRlT3BlcmF0b3JSZXNwb25zZRI3CghvcGVyYXRvchgBIAEoCzIlLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1PcGVyYXRvciI8ChlVcGRhdGVPcGVyYXRvclJvbGVSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCRIMCgRyb2xlGAIgASgJIlUKGlVwZGF0ZU9wZXJhdG9yUm9sZVJlc3BvbnNlEjcKCG9wZXJhdG9yGAEgASgLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybU9wZXJhdG9yIisKFlN1c3BlbmRPcGVyYXRvclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIlIKF1N1c3BlbmRPcGVyYXRvclJlc3BvbnNlEjcKCG9wZXJhdG9yGAEgASgLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybU9wZXJhdG9yIi0KGFVuc3VzcGVuZE9wZXJhdG9yUmVxdWVzdBIRCglwdWJsaWNfaWQYASABKAkiVAoZVW5zdXNwZW5kT3BlcmF0b3JSZXNwb25zZRI3CghvcGVyYXRvchgBIAEoCzIlLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1PcGVyYXRvcjLPBAoXUGxhdGZvcm1PcGVyYXRvclNlcnZpY2USaAoNTGlzdE9wZXJhdG9ycxIpLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdE9wZXJhdG9yc1JlcXVlc3QaKi5wdWJsaXJhLnBsYXRmb3JtLnYxLkxpc3RPcGVyYXRvcnNSZXNwb25zZSIAEmsKDkNyZWF0ZU9wZXJhdG9yEioucHVibGlyYS5wbGF0Zm9ybS52MS5DcmVhdGVPcGVyYXRvclJlcXVlc3QaKy5wdWJsaXJhLnBsYXRmb3JtLnYxLkNyZWF0ZU9wZXJhdG9yUmVzcG9uc2UiABJ3ChJVcGRhdGVPcGVyYXRvclJvbGUSLi5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZU9wZXJhdG9yUm9sZVJlcXVlc3QaLy5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZU9wZXJhdG9yUm9sZVJlc3BvbnNlIgASbgoPU3VzcGVuZE9wZXJhdG9yEisucHVibGlyYS5wbGF0Zm9ybS52MS5TdXNwZW5kT3BlcmF0b3JSZXF1ZXN0GiwucHVibGlyYS5wbGF0Zm9ybS52MS5TdXNwZW5kT3BlcmF0b3JSZXNwb25zZSIAEnQKEVVuc3VzcGVuZE9wZXJhdG9yEi0ucHVibGlyYS5wbGF0Zm9ybS52MS5VbnN1c3BlbmRPcGVyYXRvclJlcXVlc3QaLi5wdWJsaXJhLnBsYXRmb3JtLnYxLlVuc3VzcGVuZE9wZXJhdG9yUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
 
 /**
  * @generated from message publira.platform.v1.PlatformOperator
@@ -85,6 +85,157 @@ export const ListOperatorsResponseSchema: GenMessage<ListOperatorsResponse> = /*
   messageDesc(file_publira_platform_v1_operator, 2);
 
 /**
+ * @generated from message publira.platform.v1.CreateOperatorRequest
+ */
+export type CreateOperatorRequest = Message<"publira.platform.v1.CreateOperatorRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * @generated from field: string role = 3;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.CreateOperatorRequest.
+ * Use `create(CreateOperatorRequestSchema)` to create a new message.
+ */
+export const CreateOperatorRequestSchema: GenMessage<CreateOperatorRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 3);
+
+/**
+ * @generated from message publira.platform.v1.CreateOperatorResponse
+ */
+export type CreateOperatorResponse = Message<"publira.platform.v1.CreateOperatorResponse"> & {
+  /**
+   * @generated from field: publira.platform.v1.PlatformOperator operator = 1;
+   */
+  operator?: PlatformOperator;
+};
+
+/**
+ * Describes the message publira.platform.v1.CreateOperatorResponse.
+ * Use `create(CreateOperatorResponseSchema)` to create a new message.
+ */
+export const CreateOperatorResponseSchema: GenMessage<CreateOperatorResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 4);
+
+/**
+ * @generated from message publira.platform.v1.UpdateOperatorRoleRequest
+ */
+export type UpdateOperatorRoleRequest = Message<"publira.platform.v1.UpdateOperatorRoleRequest"> & {
+  /**
+   * @generated from field: string public_id = 1;
+   */
+  publicId: string;
+
+  /**
+   * @generated from field: string role = 2;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.UpdateOperatorRoleRequest.
+ * Use `create(UpdateOperatorRoleRequestSchema)` to create a new message.
+ */
+export const UpdateOperatorRoleRequestSchema: GenMessage<UpdateOperatorRoleRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 5);
+
+/**
+ * @generated from message publira.platform.v1.UpdateOperatorRoleResponse
+ */
+export type UpdateOperatorRoleResponse = Message<"publira.platform.v1.UpdateOperatorRoleResponse"> & {
+  /**
+   * @generated from field: publira.platform.v1.PlatformOperator operator = 1;
+   */
+  operator?: PlatformOperator;
+};
+
+/**
+ * Describes the message publira.platform.v1.UpdateOperatorRoleResponse.
+ * Use `create(UpdateOperatorRoleResponseSchema)` to create a new message.
+ */
+export const UpdateOperatorRoleResponseSchema: GenMessage<UpdateOperatorRoleResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 6);
+
+/**
+ * @generated from message publira.platform.v1.SuspendOperatorRequest
+ */
+export type SuspendOperatorRequest = Message<"publira.platform.v1.SuspendOperatorRequest"> & {
+  /**
+   * @generated from field: string public_id = 1;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.SuspendOperatorRequest.
+ * Use `create(SuspendOperatorRequestSchema)` to create a new message.
+ */
+export const SuspendOperatorRequestSchema: GenMessage<SuspendOperatorRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 7);
+
+/**
+ * @generated from message publira.platform.v1.SuspendOperatorResponse
+ */
+export type SuspendOperatorResponse = Message<"publira.platform.v1.SuspendOperatorResponse"> & {
+  /**
+   * @generated from field: publira.platform.v1.PlatformOperator operator = 1;
+   */
+  operator?: PlatformOperator;
+};
+
+/**
+ * Describes the message publira.platform.v1.SuspendOperatorResponse.
+ * Use `create(SuspendOperatorResponseSchema)` to create a new message.
+ */
+export const SuspendOperatorResponseSchema: GenMessage<SuspendOperatorResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 8);
+
+/**
+ * @generated from message publira.platform.v1.UnsuspendOperatorRequest
+ */
+export type UnsuspendOperatorRequest = Message<"publira.platform.v1.UnsuspendOperatorRequest"> & {
+  /**
+   * @generated from field: string public_id = 1;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.UnsuspendOperatorRequest.
+ * Use `create(UnsuspendOperatorRequestSchema)` to create a new message.
+ */
+export const UnsuspendOperatorRequestSchema: GenMessage<UnsuspendOperatorRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 9);
+
+/**
+ * @generated from message publira.platform.v1.UnsuspendOperatorResponse
+ */
+export type UnsuspendOperatorResponse = Message<"publira.platform.v1.UnsuspendOperatorResponse"> & {
+  /**
+   * @generated from field: publira.platform.v1.PlatformOperator operator = 1;
+   */
+  operator?: PlatformOperator;
+};
+
+/**
+ * Describes the message publira.platform.v1.UnsuspendOperatorResponse.
+ * Use `create(UnsuspendOperatorResponseSchema)` to create a new message.
+ */
+export const UnsuspendOperatorResponseSchema: GenMessage<UnsuspendOperatorResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_operator, 10);
+
+/**
  * @generated from service publira.platform.v1.PlatformOperatorService
  */
 export const PlatformOperatorService: GenService<{
@@ -95,6 +246,38 @@ export const PlatformOperatorService: GenService<{
     methodKind: "unary";
     input: typeof ListOperatorsRequestSchema;
     output: typeof ListOperatorsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformOperatorService.CreateOperator
+   */
+  createOperator: {
+    methodKind: "unary";
+    input: typeof CreateOperatorRequestSchema;
+    output: typeof CreateOperatorResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformOperatorService.UpdateOperatorRole
+   */
+  updateOperatorRole: {
+    methodKind: "unary";
+    input: typeof UpdateOperatorRoleRequestSchema;
+    output: typeof UpdateOperatorRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformOperatorService.SuspendOperator
+   */
+  suspendOperator: {
+    methodKind: "unary";
+    input: typeof SuspendOperatorRequestSchema;
+    output: typeof SuspendOperatorResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.platform.v1.PlatformOperatorService.UnsuspendOperator
+   */
+  unsuspendOperator: {
+    methodKind: "unary";
+    input: typeof UnsuspendOperatorRequestSchema;
+    output: typeof UnsuspendOperatorResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_platform_v1_operator, 0);

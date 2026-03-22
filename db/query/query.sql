@@ -154,7 +154,7 @@ SELECT u.public_id,
         ),
         ''::text
     )::text AS role,
-    'active'::text AS status,
+    u.status,
     u.created_at
 FROM users u
 WHERE EXISTS (
@@ -163,6 +163,44 @@ WHERE EXISTS (
         WHERE pur.user_id = u.id
     )
 ORDER BY u.created_at DESC;
+
+-- name: GetPlatformOperatorByPublicID :one
+SELECT u.id,
+    u.public_id,
+    u.email,
+    u.name,
+    COALESCE(
+        (
+            SELECT pur.role
+            FROM platform_user_roles pur
+            WHERE pur.user_id = u.id
+            ORDER BY CASE
+                    WHEN pur.role = 'platform_super_admin' THEN 3
+                    WHEN pur.role = 'super-admin' THEN 3
+                    WHEN pur.role = 'platform_operator' THEN 2
+                    WHEN pur.role = 'platform-operator' THEN 2
+                    WHEN pur.role = 'platform_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                pur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.public_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM platform_user_roles pur
+        WHERE pur.user_id = u.id
+    )
+LIMIT 1;
+
+-- name: DeletePlatformUserRolesByUserID :exec
+DELETE FROM platform_user_roles
+WHERE user_id = $1;
 -- name: ListActiveSeries :many
 -- 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 SELECT s.id,

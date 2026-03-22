@@ -36,7 +36,10 @@ const (
 	countPlatformUsersQuery     = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM (\n        SELECT DISTINCT user_id\n        FROM platform_user_roles\n    ) platform_users\n"
 	createUserQuery             = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
 	createPlatformUserRoleQuery = "-- name: CreatePlatformUserRole :one\nINSERT INTO platform_user_roles (id, user_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, user_id, role, created_at\n"
+	deletePlatformUserRolesByUserIDQuery = "-- name: DeletePlatformUserRolesByUserID :exec\nDELETE FROM platform_user_roles\nWHERE user_id = $1\n"
 	listPlatformUserRolesQuery  = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
+	listPlatformOperatorsQuery  = "-- name: ListPlatformOperators :many\nSELECT u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nORDER BY u.created_at DESC\n"
+	getPlatformOperatorByPublicIDQuery = "-- name: GetPlatformOperatorByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\n    AND EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nLIMIT 1\n"
 	listEndUsersQuery           = "-- name: ListEndUsers :many\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)\n    AND ($2::text = '' OR u.status = $2::text)\nORDER BY u.created_at DESC\nLIMIT $4 OFFSET $3\n"
 	getUserByPublicIDQuery      = "-- name: GetUserByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\nLIMIT 1\n"
 	getTenantsByEndUserQuery    = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
@@ -57,6 +60,14 @@ func tenantMembershipColumns() []string {
 
 func tenantMemberRoleColumns() []string {
 	return []string{"id", "membership_id", "role", "created_at"}
+}
+
+func listOperatorColumns() []string {
+	return []string{"public_id", "email", "name", "role", "status", "created_at"}
+}
+
+func operatorColumns() []string {
+	return []string{"id", "public_id", "email", "name", "role", "status", "created_at"}
 }
 
 func newTestPlatformServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
@@ -725,6 +736,195 @@ func TestPlatformTenantRejectsNonPlatformRole(t *testing.T) {
 	_, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("ListTenants code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListOperators(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsQuery)).
+		WillReturnRows(sqlmock.NewRows(listOperatorColumns()).
+			AddRow("PLATUSER001", "operator1@example.com", "Operator One", "platform_operator", "active", now).
+			AddRow("PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "suspended", now))
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListOperators(context.Background(), newAuthedRequest(publirasplatformv1.ListOperatorsRequest{}))
+	if err != nil {
+		t.Fatalf("ListOperators: %v", err)
+	}
+	if len(resp.Msg.Operators) != 2 {
+		t.Fatalf("len(operators) = %d, want 2", len(resp.Msg.Operators))
+	}
+	if resp.Msg.Operators[1].Status != "suspended" {
+		t.Fatalf("status = %q, want suspended", resp.Msg.Operators[1].Status)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateOperatorSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	adminID := uuid.Must(uuid.NewV7())
+	newOperatorID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, adminID, "platform_super_admin", now)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
+		WithArgs("new-operator@example.com").
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(createUserQuery)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "new-operator@example.com", sqlmock.AnyArg(), "New Operator").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "hash", "New Operator", now, "active"))
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(newOperatorID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}))
+	mock.ExpectQuery(regexp.QuoteMeta(createPlatformUserRoleQuery)).
+		WithArgs(sqlmock.AnyArg(), newOperatorID, "platform_operator").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), newOperatorID, "platform_operator", now))
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATNEW001").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "New Operator", "platform_operator", "active", now))
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	resp, err := client.CreateOperator(context.Background(), newAuthedRequest(publirasplatformv1.CreateOperatorRequest{
+		Name:  "New Operator",
+		Email: "new-operator@example.com",
+		Role:  "platform_operator",
+	}))
+	if err != nil {
+		t.Fatalf("CreateOperator: %v", err)
+	}
+	if resp.Msg.Operator == nil || resp.Msg.Operator.PublicId != "PLATNEW001" {
+		t.Fatalf("operator = %v, want public_id=PLATNEW001", resp.Msg.Operator)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateOperatorRequiresSuperAdmin(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	operatorID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, operatorID, "platform_operator", now)
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateOperator(context.Background(), newAuthedRequest(publirasplatformv1.CreateOperatorRequest{
+		Name:  "New Operator",
+		Email: "new-operator@example.com",
+		Role:  "platform_operator",
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("CreateOperator code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateOperatorRoleSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	adminID := uuid.Must(uuid.NewV7())
+	targetID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, adminID, "platform_super_admin", now)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER002").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", "platform_operator", "active", now))
+	mock.ExpectExec(regexp.QuoteMeta(deletePlatformUserRolesByUserIDQuery)).
+		WithArgs(targetID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(createPlatformUserRoleQuery)).
+		WithArgs(sqlmock.AnyArg(), targetID, "platform_auditor").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), targetID, "platform_auditor", now))
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER002").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "active", now))
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	resp, err := client.UpdateOperatorRole(context.Background(), newAuthedRequest(publirasplatformv1.UpdateOperatorRoleRequest{
+		PublicId: "PLATUSER002",
+		Role:     "platform_auditor",
+	}))
+	if err != nil {
+		t.Fatalf("UpdateOperatorRole: %v", err)
+	}
+	if resp.Msg.Operator == nil || resp.Msg.Operator.Role != "platform_auditor" {
+		t.Fatalf("operator.role = %v, want platform_auditor", resp.Msg.Operator)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestSuspendOperatorSuccess(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	adminID := uuid.Must(uuid.NewV7())
+	targetID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, adminID, "platform_super_admin", now)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER003").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER003", "operator3@example.com", "Operator Three", "platform_operator", "active", now))
+	mock.ExpectQuery(regexp.QuoteMeta(updateUserStatusQuery)).
+		WithArgs("PLATUSER003", "suspended").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(targetID, "PLATUSER003", "operator3@example.com", "hash", "Operator Three", now, "suspended"))
+	mock.ExpectExec(regexp.QuoteMeta(terminateUserSessionsQuery)).
+		WithArgs(targetID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER003").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER003", "operator3@example.com", "Operator Three", "platform_operator", "suspended", now))
+	mock.ExpectCommit()
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	resp, err := client.SuspendOperator(context.Background(), newAuthedRequest(publirasplatformv1.SuspendOperatorRequest{PublicId: "PLATUSER003"}))
+	if err != nil {
+		t.Fatalf("SuspendOperator: %v", err)
+	}
+	if resp.Msg.Operator == nil || resp.Msg.Operator.Status != "suspended" {
+		t.Fatalf("operator.status = %v, want suspended", resp.Msg.Operator)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUnsuspendOperatorRejectsInvalidState(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	adminID := uuid.Must(uuid.NewV7())
+	targetID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, adminID, "platform_super_admin", now)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER004").
+		WillReturnRows(sqlmock.NewRows(operatorColumns()).
+			AddRow(targetID, "PLATUSER004", "operator4@example.com", "Operator Four", "platform_operator", "active", now))
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
+	_, err := client.UnsuspendOperator(context.Background(), newAuthedRequest(publirasplatformv1.UnsuspendOperatorRequest{PublicId: "PLATUSER004"}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UnsuspendOperator code = %v, want failed_precondition", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
 }

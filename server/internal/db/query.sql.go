@@ -375,6 +375,16 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deletePlatformUserRolesByUserID = `-- name: DeletePlatformUserRolesByUserID :exec
+DELETE FROM platform_user_roles
+WHERE user_id = $1
+`
+
+func (q *Queries) DeletePlatformUserRolesByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deletePlatformUserRolesByUserID, userID)
+	return err
+}
+
 const deleteUserByID = `-- name: DeleteUserByID :exec
 DELETE FROM users
 WHERE id = $1
@@ -459,6 +469,66 @@ func (q *Queries) GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelB
 		&i.TenantID,
 		&i.PublicID,
 		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPlatformOperatorByPublicID = `-- name: GetPlatformOperatorByPublicID :one
+SELECT u.id,
+    u.public_id,
+    u.email,
+    u.name,
+    COALESCE(
+        (
+            SELECT pur.role
+            FROM platform_user_roles pur
+            WHERE pur.user_id = u.id
+            ORDER BY CASE
+                    WHEN pur.role = 'platform_super_admin' THEN 3
+                    WHEN pur.role = 'super-admin' THEN 3
+                    WHEN pur.role = 'platform_operator' THEN 2
+                    WHEN pur.role = 'platform-operator' THEN 2
+                    WHEN pur.role = 'platform_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                pur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.public_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM platform_user_roles pur
+        WHERE pur.user_id = u.id
+    )
+LIMIT 1
+`
+
+type GetPlatformOperatorByPublicIDRow struct {
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (q *Queries) GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformOperatorByPublicID, publicID)
+	var i GetPlatformOperatorByPublicIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.Name,
+		&i.Role,
+		&i.Status,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -1155,7 +1225,7 @@ SELECT u.public_id,
         ),
         ''::text
     )::text AS role,
-    'active'::text AS status,
+    u.status,
     u.created_at
 FROM users u
 WHERE EXISTS (
