@@ -30,6 +30,34 @@ func endUserToProto(u dbmodels.ListEndUsersRow, tenantIDs []string) *publiraspla
 	}
 }
 
+func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID string) (dbmodels.GetUserByPublicIDRow, error) {
+	user, err := s.queries.GetUserByPublicID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
+	}
+
+	roles, err := s.platformRoles(ctx, user.ID)
+	if err != nil {
+		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
+	}
+	if len(roles) > 0 {
+		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate platform role users"))
+	}
+
+	tenantMembershipCount, err := s.queries.CountTenantMembershipsByUserID(ctx, user.ID)
+	if err != nil {
+		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
+	}
+	if tenantMembershipCount > 0 {
+		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
+	}
+
+	return user, nil
+}
+
 func (s *platformServer) ListEndUsers(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListEndUsersRequest],
@@ -60,14 +88,23 @@ func (s *platformServer) ListEndUsers(
 		}
 		createdAfterFilter = sql.NullTime{Time: t, Valid: true}
 	}
+	var createdBeforeFilter sql.NullTime
+	if req.Msg.CreatedBefore != "" {
+		t, err := time.Parse(time.RFC3339, req.Msg.CreatedBefore)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid created_before format"))
+		}
+		createdBeforeFilter = sql.NullTime{Time: t, Valid: true}
+	}
 
 	filterStatus := strings.TrimSpace(req.Msg.Status)
 
 	users, err := s.queries.ListEndUsers(ctx, dbmodels.ListEndUsersParams{
-		Limit:        limit,
-		Offset:       offset,
-		CreatedAfter: createdAfterFilter,
-		Status:       sql.NullString{String: filterStatus, Valid: filterStatus != ""},
+		Limit:         limit,
+		Offset:        offset,
+		CreatedAfter:  createdAfterFilter,
+		CreatedBefore: createdBeforeFilter,
+		Status:        sql.NullString{String: filterStatus, Valid: filterStatus != ""},
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -154,22 +191,8 @@ func (s *platformServer) SuspendEndUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
 	}
 
-	// ユーザーを取得して権限チェック（ロール保持ユーザーは操作不可）
-	user, err := s.queries.GetUserByPublicID(ctx, publicID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// ロール保持ユーザーは操作不可
-	roles, err := s.platformRoles(ctx, user.ID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if len(roles) > 0 {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("cannot suspend platform role users"))
+	if _, err := s.ensureManageableEndUser(ctx, publicID); err != nil {
+		return nil, err
 	}
 
 	// ステータスを更新
@@ -224,6 +247,10 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
 	}
 
+	if _, err := s.ensureManageableEndUser(ctx, publicID); err != nil {
+		return nil, err
+	}
+
 	// ステータスを更新
 	updated, err := s.queries.UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
 		PublicID: publicID,
@@ -274,22 +301,9 @@ func (s *platformServer) DeleteEndUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
 	}
 
-	// ユーザーを取得して権限チェック（ロール保持ユーザーは操作不可）
-	user, err := s.queries.GetUserByPublicID(ctx, publicID)
+	user, err := s.ensureManageableEndUser(ctx, publicID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// ロール保持ユーザーは操作不可
-	roles, err := s.platformRoles(ctx, user.ID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if len(roles) > 0 {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("cannot delete platform role users"))
+		return nil, err
 	}
 
 	// ユーザーを物理削除

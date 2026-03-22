@@ -24,39 +24,40 @@ import (
 )
 
 const (
-	getTenantByPublicIDQuery    = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
-	listTenantsQuery            = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')\n  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')\n  AND ($3::text = '' OR status = $3::text)\nORDER BY created_at DESC\nLIMIT $5 OFFSET $4\n"
-	createTenantQuery           = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, domain, subdomain, name, status)\nVALUES ($1, $2, $3, $4, $5, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
-	createTenantMembershipQuery = "-- name: CreateTenantMembership :one\nINSERT INTO tenant_memberships (id, user_id, tenant_id, status)\nVALUES ($1, $2, $3, $4)\nRETURNING id, user_id, tenant_id, status, created_at\n"
-	createTenantMemberRoleQuery = "-- name: CreateTenantMemberRole :one\nINSERT INTO tenant_member_roles (id, membership_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, membership_id, role, created_at\n"
-	updateTenantStatusQuery     = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
-	getSessionByTokenHash       = "-- name: GetSessionByTokenHash :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
-	getUserByIDQuery            = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE id = $1\n"
-	getUserByEmailQuery         = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE email = $1\nLIMIT 1\n"
-	countPlatformUsersQuery     = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM (\n        SELECT DISTINCT user_id\n        FROM platform_user_roles\n    ) platform_users\n"
-	createUserQuery             = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
-	createPlatformUserRoleQuery = "-- name: CreatePlatformUserRole :one\nINSERT INTO platform_user_roles (id, user_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, user_id, role, created_at\n"
-	deletePlatformUserRolesByUserIDQuery = "-- name: DeletePlatformUserRolesByUserID :exec\nDELETE FROM platform_user_roles\nWHERE user_id = $1\n"
-	listPlatformUserRolesQuery  = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
-	listPlatformOperatorsQuery  = "-- name: ListPlatformOperators :many\nSELECT u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nORDER BY u.created_at DESC\n"
-	getPlatformOperatorByPublicIDQuery = "-- name: GetPlatformOperatorByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\n    AND EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nLIMIT 1\n"
-	listEndUsersQuery           = "-- name: ListEndUsers :many\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)\n    AND ($2::text = '' OR u.status = $2::text)\nORDER BY u.created_at DESC\nLIMIT $4 OFFSET $3\n"
-	countAllTenantsQuery        = "-- name: CountAllTenants :one\nSELECT COUNT(*)::int\nFROM tenants\n"
-	countActiveTenantsQuery     = "-- name: CountActiveTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'active'\n"
-	countSuspendedTenantsQuery  = "-- name: CountSuspendedTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'suspended'\n"
-	countPendingEndUsersQuery   = "-- name: CountPendingEndUsers :one\nSELECT COUNT(*)::int\nFROM users u\nWHERE u.status = 'inactive'\n    AND NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n"
-	listRecentPlatformEventsQuery = "-- name: ListRecentPlatformEvents :many\nSELECT event_type,\n    action,\n    target,\n    actor,\n    occurred_at\nFROM (\n        SELECT 'tenant_created'::text AS event_type,\n            'Tenant Created'::text AS action,\n            t.public_id::text AS target,\n            ''::text AS actor,\n            t.created_at AS occurred_at\n        FROM tenants t\n        UNION ALL\n        SELECT 'operator_role_granted'::text AS event_type,\n            'Operator Role Granted'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            pur.created_at AS occurred_at\n        FROM platform_user_roles pur\n            JOIN users u ON u.id = pur.user_id\n        UNION ALL\n        SELECT 'end_user_created'::text AS event_type,\n            'End User Created'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            u.created_at AS occurred_at\n        FROM users u\n        WHERE NOT EXISTS (\n                SELECT 1\n                FROM platform_user_roles pur\n                WHERE pur.user_id = u.id\n            )\n    ) events\nORDER BY occurred_at DESC\nLIMIT $1\n"
-	getUserByPublicIDQuery      = "-- name: GetUserByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\nLIMIT 1\n"
-	getTenantsByEndUserQuery    = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
-	updateUserStatusQuery       = "-- name: UpdateUserStatus :one\nUPDATE users\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
-	terminateUserSessionsQuery  = "-- name: TerminateUserSessions :exec\nUPDATE sessions\nSET revoked_at = NOW()\nWHERE user_id = $1\n    AND revoked_at IS NULL\n"
-	deleteUserByIDQuery         = "-- name: DeleteUserByID :exec\nDELETE FROM users\nWHERE id = $1\n"
-	listTenantMembershipsQuery  = "-- name: ListTenantMemberships :many\nSELECT u.id AS user_id,\n    u.public_id,\n    u.name,\n    u.email,\n    COALESCE(\n        (\n            SELECT tmr.role\n            FROM tenant_member_roles tmr\n            WHERE tmr.membership_id = tm.id\n            ORDER BY CASE\n                    WHEN tmr.role = 'tenant_admin' THEN 3\n                    WHEN tmr.role = 'admin' THEN 3\n                    WHEN tmr.role = 'tenant_editor' THEN 2\n                    WHEN tmr.role = 'editor' THEN 2\n                    WHEN tmr.role = 'tenant_auditor' THEN 1\n                    WHEN tmr.role = 'auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                tmr.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    tm.status,\n    tm.created_at\nFROM tenant_memberships tm\n    JOIN users u ON u.id = tm.user_id\nWHERE tm.tenant_id = $1\nORDER BY tm.created_at DESC\nLIMIT $3 OFFSET $2\n"
-	getTenantMembershipByUserAndTenantQuery = "-- name: GetTenantMembershipByUserAndTenant :one\nSELECT tm.id, tm.user_id, tm.tenant_id, tm.status, tm.created_at\nFROM tenant_memberships tm\nWHERE tm.user_id = $1\n    AND tm.tenant_id = $2\nLIMIT 1\n"
-	deleteTenantMembershipQuery = "-- name: DeleteTenantMembership :exec\nDELETE FROM tenant_memberships\nWHERE id = $1\n"
+	getTenantByPublicIDQuery                   = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
+	listTenantsQuery                           = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')\n  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')\n  AND ($3::text = '' OR status = $3::text)\nORDER BY created_at DESC\nLIMIT $5 OFFSET $4\n"
+	createTenantQuery                          = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, domain, subdomain, name, status)\nVALUES ($1, $2, $3, $4, $5, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	createTenantMembershipQuery                = "-- name: CreateTenantMembership :one\nINSERT INTO tenant_memberships (id, user_id, tenant_id, status)\nVALUES ($1, $2, $3, $4)\nRETURNING id, user_id, tenant_id, status, created_at\n"
+	createTenantMemberRoleQuery                = "-- name: CreateTenantMemberRole :one\nINSERT INTO tenant_member_roles (id, membership_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, membership_id, role, created_at\n"
+	updateTenantStatusQuery                    = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	getSessionByTokenHash                      = "-- name: GetSessionByTokenHash :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
+	getUserByIDQuery                           = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE id = $1\n"
+	getUserByEmailQuery                        = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE email = $1\nLIMIT 1\n"
+	countPlatformUsersQuery                    = "-- name: CountPlatformUsers :one\nSELECT COUNT(*)::int\nFROM (\n        SELECT DISTINCT user_id\n        FROM platform_user_roles\n    ) platform_users\n"
+	createUserQuery                            = "-- name: CreateUser :one\nINSERT INTO users (id, public_id, email, password_hash, name)\nVALUES ($1, $2, $3, $4, $5)\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
+	createPlatformUserRoleQuery                = "-- name: CreatePlatformUserRole :one\nINSERT INTO platform_user_roles (id, user_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, user_id, role, created_at\n"
+	deletePlatformUserRolesByUserIDQuery       = "-- name: DeletePlatformUserRolesByUserID :exec\nDELETE FROM platform_user_roles\nWHERE user_id = $1\n"
+	listPlatformUserRolesQuery                 = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
+	listPlatformOperatorsQuery                 = "-- name: ListPlatformOperators :many\nSELECT u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nORDER BY u.created_at DESC\n"
+	getPlatformOperatorByPublicIDQuery         = "-- name: GetPlatformOperatorByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\n    AND EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nLIMIT 1\n"
+	listEndUsersQuery                          = "-- name: ListEndUsers :many\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n    AND NOT EXISTS (\n        SELECT 1\n        FROM tenant_memberships tm\n        WHERE tm.user_id = u.id\n    )\n    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)\n    AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)\n    AND ($3::text = '' OR u.status = $3::text)\nORDER BY u.created_at DESC\nLIMIT $5 OFFSET $4\n"
+	countAllTenantsQuery                       = "-- name: CountAllTenants :one\nSELECT COUNT(*)::int\nFROM tenants\n"
+	countActiveTenantsQuery                    = "-- name: CountActiveTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'active'\n"
+	countSuspendedTenantsQuery                 = "-- name: CountSuspendedTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'suspended'\n"
+	countPendingEndUsersQuery                  = "-- name: CountPendingEndUsers :one\nSELECT COUNT(*)::int\nFROM users u\nWHERE u.status = 'inactive'\n    AND NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n"
+	listRecentPlatformEventsQuery              = "-- name: ListRecentPlatformEvents :many\nSELECT event_type,\n    action,\n    target,\n    actor,\n    occurred_at\nFROM (\n        SELECT 'tenant_created'::text AS event_type,\n            'Tenant Created'::text AS action,\n            t.public_id::text AS target,\n            ''::text AS actor,\n            t.created_at AS occurred_at\n        FROM tenants t\n        UNION ALL\n        SELECT 'operator_role_granted'::text AS event_type,\n            'Operator Role Granted'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            pur.created_at AS occurred_at\n        FROM platform_user_roles pur\n            JOIN users u ON u.id = pur.user_id\n        UNION ALL\n        SELECT 'end_user_created'::text AS event_type,\n            'End User Created'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            u.created_at AS occurred_at\n        FROM users u\n        WHERE NOT EXISTS (\n                SELECT 1\n                FROM platform_user_roles pur\n                WHERE pur.user_id = u.id\n            )\n    ) events\nORDER BY occurred_at DESC\nLIMIT $1\n"
+	getUserByPublicIDQuery                     = "-- name: GetUserByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\nLIMIT 1\n"
+	getTenantsByEndUserQuery                   = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
+	countTenantMembershipsByUserIDQuery        = "-- name: CountTenantMembershipsByUserID :one\nSELECT COUNT(*)::int\nFROM tenant_memberships\nWHERE user_id = $1\n"
+	updateUserStatusQuery                      = "-- name: UpdateUserStatus :one\nUPDATE users\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
+	terminateUserSessionsQuery                 = "-- name: TerminateUserSessions :exec\nUPDATE sessions\nSET revoked_at = NOW()\nWHERE user_id = $1\n    AND revoked_at IS NULL\n"
+	deleteUserByIDQuery                        = "-- name: DeleteUserByID :exec\nDELETE FROM users\nWHERE id = $1\n"
+	listTenantMembershipsQuery                 = "-- name: ListTenantMemberships :many\nSELECT u.id AS user_id,\n    u.public_id,\n    u.name,\n    u.email,\n    COALESCE(\n        (\n            SELECT tmr.role\n            FROM tenant_member_roles tmr\n            WHERE tmr.membership_id = tm.id\n            ORDER BY CASE\n                    WHEN tmr.role = 'tenant_admin' THEN 3\n                    WHEN tmr.role = 'admin' THEN 3\n                    WHEN tmr.role = 'tenant_editor' THEN 2\n                    WHEN tmr.role = 'editor' THEN 2\n                    WHEN tmr.role = 'tenant_auditor' THEN 1\n                    WHEN tmr.role = 'auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                tmr.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    tm.status,\n    tm.created_at\nFROM tenant_memberships tm\n    JOIN users u ON u.id = tm.user_id\nWHERE tm.tenant_id = $1\nORDER BY tm.created_at DESC\nLIMIT $3 OFFSET $2\n"
+	getTenantMembershipByUserAndTenantQuery    = "-- name: GetTenantMembershipByUserAndTenant :one\nSELECT tm.id, tm.user_id, tm.tenant_id, tm.status, tm.created_at\nFROM tenant_memberships tm\nWHERE tm.user_id = $1\n    AND tm.tenant_id = $2\nLIMIT 1\n"
+	deleteTenantMembershipQuery                = "-- name: DeleteTenantMembership :exec\nDELETE FROM tenant_memberships\nWHERE id = $1\n"
 	deleteTenantMemberRolesByMembershipIDQuery = "-- name: DeleteTenantMemberRolesByMembershipID :exec\nDELETE FROM tenant_member_roles\nWHERE membership_id = $1\n"
-	testSessionToken            = "platform-session-token"
-	testPlatformRole            = "platform_operator"
+	testSessionToken                           = "platform-session-token"
+	testPlatformRole                           = "platform_operator"
 )
 
 func tenantColumns() []string {
@@ -1461,6 +1462,11 @@ func TestSuspendEndUser(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
+	// テナントメンバーシップ確認（件数0）
+	mock.ExpectQuery(regexp.QuoteMeta(countTenantMembershipsByUserIDQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
 	// ステータスを suspended に更新
 	mock.ExpectQuery(regexp.QuoteMeta(updateUserStatusQuery)).
 		WithArgs("EUSER00001", "suspended").
@@ -1525,6 +1531,21 @@ func TestUnsuspendEndUser(t *testing.T) {
 
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("EUSER00001").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "suspended", now))
+
+	// ロール確認（エンドユーザーはロールなし）
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}))
+
+	// テナントメンバーシップ確認（件数0）
+	mock.ExpectQuery(regexp.QuoteMeta(countTenantMembershipsByUserIDQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
 	mock.ExpectQuery(regexp.QuoteMeta(updateUserStatusQuery)).
 		WithArgs("EUSER00001", "active").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
@@ -1565,6 +1586,11 @@ func TestDeleteEndUser(t *testing.T) {
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
 
+	// テナントメンバーシップ確認（件数0）
+	mock.ExpectQuery(regexp.QuoteMeta(countTenantMembershipsByUserIDQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
 	mock.ExpectExec(regexp.QuoteMeta(deleteUserByIDQuery)).
 		WithArgs(endUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
@@ -1603,6 +1629,37 @@ func TestDeleteEndUserWithPlatformRole(t *testing.T) {
 	_, err := client.DeleteEndUser(context.Background(), newAuthedRequest(publirasplatformv1.DeleteEndUserRequest{PublicId: "PLATUSER002"}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("DeleteEndUser code = %v, want permission_denied", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// TestUnsuspendEndUserWithTenantMembership はテナントメンバー保持ユーザーの停止解除が拒否されることを検証する。
+func TestUnsuspendEndUserWithTenantMembership(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	endUserID := uuid.Must(uuid.NewV7())
+
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
+		WithArgs("TENANTUSER01").
+		WillReturnRows(sqlmock.NewRows(endUserColumns()).
+			AddRow(endUserID, "TENANTUSER01", "Tenant User", "tenantuser@example.com", "suspended", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformUserRolesQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}))
+
+	mock.ExpectQuery(regexp.QuoteMeta(countTenantMembershipsByUserIDQuery)).
+		WithArgs(endUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	_, err := client.UnsuspendEndUser(context.Background(), newAuthedRequest(publirasplatformv1.UnsuspendEndUserRequest{PublicId: "TENANTUSER01"}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("UnsuspendEndUser code = %v, want permission_denied", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
 }

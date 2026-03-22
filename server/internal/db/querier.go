@@ -18,6 +18,8 @@ type Querier interface {
 	// プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
 	CountPlatformUsers(ctx context.Context) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
+	// ユーザーに紐づくテナントメンバーシップ件数を取得
+	CountTenantMembershipsByUserID(ctx context.Context, userID uuid.UUID) (int32, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)

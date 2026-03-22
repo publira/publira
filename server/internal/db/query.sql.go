@@ -86,6 +86,20 @@ func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
 	return column_1, err
 }
 
+const countTenantMembershipsByUserID = `-- name: CountTenantMembershipsByUserID :one
+SELECT COUNT(*)::int
+FROM tenant_memberships
+WHERE user_id = $1
+`
+
+// ユーザーに紐づくテナントメンバーシップ件数を取得
+func (q *Queries) CountTenantMembershipsByUserID(ctx context.Context, userID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countTenantMembershipsByUserID, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createEpisodeBase = `-- name: CreateEpisodeBase :one
 INSERT INTO episodes (
         id,
@@ -1173,17 +1187,24 @@ WHERE NOT EXISTS (
         FROM platform_user_roles pur
         WHERE pur.user_id = u.id
     )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_memberships tm
+        WHERE tm.user_id = u.id
+    )
     AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)
-    AND ($2::text = '' OR u.status = $2::text)
+    AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)
+    AND ($3::text = '' OR u.status = $3::text)
 ORDER BY u.created_at DESC
-LIMIT $4 OFFSET $3
+LIMIT $5 OFFSET $4
 `
 
 type ListEndUsersParams struct {
-	CreatedAfter sql.NullTime   `json:"created_after"`
-	Status       sql.NullString `json:"status"`
-	Offset       int32          `json:"offset"`
-	Limit        int32          `json:"limit"`
+	CreatedAfter  sql.NullTime   `json:"created_after"`
+	CreatedBefore sql.NullTime   `json:"created_before"`
+	Status        sql.NullString `json:"status"`
+	Offset        int32          `json:"offset"`
+	Limit         int32          `json:"limit"`
 }
 
 type ListEndUsersRow struct {
@@ -1199,6 +1220,7 @@ type ListEndUsersRow struct {
 func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEndUsers,
 		arg.CreatedAfter,
+		arg.CreatedBefore,
 		arg.Status,
 		arg.Offset,
 		arg.Limit,
