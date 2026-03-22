@@ -1,27 +1,41 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getPlatformCurrentOperator,
   loginPlatform,
   logoutPlatform,
-} from "./platform-auth";
+} from "./auth";
 
-const { mockCreateSession, mockDeleteSession, mockGetMe } = vi.hoisted(() => ({
+const {
+  mockCreateSession,
+  mockDeleteSession,
+  mockGetMe,
+  mockResolveSessionId,
+} = vi.hoisted(() => ({
   mockCreateSession: vi.fn(),
   mockDeleteSession: vi.fn(),
   mockGetMe: vi.fn(),
+  mockResolveSessionId: vi.fn(),
 }));
 
-vi.mock("@publira/api-client/platform/client", () => ({
-  createPlatformApiClient: () => ({
+vi.mock("./api-client", () => ({
+  apiClient: {
     auth: {
       createSession: mockCreateSession,
       deleteSession: mockDeleteSession,
       getMe: mockGetMe,
     },
-    setup: {},
+  },
+  buildSessionHeaders: (sessionId: string) => ({
+    headers: { "X-Publira-Session-Id": sessionId },
   }),
+  resolveSessionId: mockResolveSessionId,
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockResolveSessionId.mockResolvedValue("tok_abc");
+});
 
 describe("loginPlatform", () => {
   it("API 成功時は sessionId と expiresAt を返す", async () => {
@@ -92,7 +106,7 @@ describe("getPlatformCurrentOperator", () => {
       user: { name: "Admin", publicId: "usr_1", role: "platform_super_admin" },
     });
 
-    const result = await getPlatformCurrentOperator("tok_abc");
+    const result = await getPlatformCurrentOperator();
     expect(result).toEqual({
       name: "Admin",
       publicId: "usr_1",
@@ -104,8 +118,10 @@ describe("getPlatformCurrentOperator", () => {
     );
   });
 
-  it("sessionId が空文字の場合は null を返す (API を呼ばない)", async () => {
-    const result = await getPlatformCurrentOperator("  ");
+  it("セッションが解決できない場合は null を返す (API を呼ばない)", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    const result = await getPlatformCurrentOperator();
     expect(result).toBeNull();
     expect(mockGetMe).not.toHaveBeenCalled();
   });
@@ -113,7 +129,7 @@ describe("getPlatformCurrentOperator", () => {
   it("API がユーザーを返さない場合は null を返す", async () => {
     mockGetMe.mockResolvedValueOnce({});
 
-    await expect(getPlatformCurrentOperator("tok_abc")).resolves.toBeNull();
+    await expect(getPlatformCurrentOperator()).resolves.toBeNull();
   });
 
   it("セッション無効 (Unauthenticated エラー) は null を返す", async () => {
@@ -121,6 +137,6 @@ describe("getPlatformCurrentOperator", () => {
       new Error("unauthenticated: invalid session")
     );
 
-    await expect(getPlatformCurrentOperator("tok_expired")).resolves.toBeNull();
+    await expect(getPlatformCurrentOperator()).resolves.toBeNull();
   });
 });

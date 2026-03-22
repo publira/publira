@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createInitialUser, isSetupCompleted } from "./platform-setup";
+import { createInitialUser, isSetupCompleted } from "./setup";
 
 const { mockCheckSetupStatus, mockCreateInitialUser } = vi.hoisted(() => ({
   mockCheckSetupStatus: vi.fn(),
