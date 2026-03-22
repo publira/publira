@@ -1,5 +1,5 @@
 import { Badge } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -7,9 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import Link from "next/link";
+import type { Metadata } from "next";
 
 import { PlatformPage } from "../../../../components/platform-page";
+
+export const metadata: Metadata = {
+  title: "テナント詳細",
+};
 
 interface TenantDetailPageProps {
   params: Promise<{
@@ -26,11 +30,9 @@ export default async function TenantDetailPage({
     <PlatformPage
       actions={
         <>
-          <Link href="/tenants">
-            <Button type="button" variant="outline">
-              一覧へ戻る
-            </Button>
-          </Link>
+          <LinkButton href="/tenants" variant="outline">
+            一覧へ戻る
+          </LinkButton>
           <Button type="button">状態を更新</Button>
         </>
       }

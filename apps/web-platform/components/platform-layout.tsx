@@ -6,8 +6,7 @@ import {
   ConsoleSidebar,
 } from "@publira/layouts/admin";
 import { StatusChip } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
-import Link from "next/link";
+import { LinkButton } from "@publira/ui-components/button";
 import type { ReactNode } from "react";
 
 import { navigation } from "./platform-navigation";
@@ -35,11 +34,9 @@ export const PlatformLayout = ({
     header={
       <ConsoleHeader
         actions={
-          <Link href="/tenants/new">
-            <Button size="sm" type="button">
-              テナント作成
-            </Button>
-          </Link>
+          <LinkButton href="/tenants/new" size="sm">
+            テナント作成
+          </LinkButton>
         }
         contextLabel="テナント横断オペレーション"
         currentUser={currentOperator}

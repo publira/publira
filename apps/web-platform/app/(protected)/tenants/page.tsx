@@ -1,5 +1,5 @@
 import { Badge } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
+import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -15,9 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import Link from "next/link";
+import type { Metadata } from "next";
 
 import { PlatformPage } from "../../../components/platform-page";
+
+export const metadata: Metadata = {
+  title: "テナント一覧",
+};
 
 const tenants: {
   publicId: string;
@@ -70,11 +74,7 @@ const planLabelMap = {
 export default function TenantsPage() {
   return (
     <PlatformPage
-      actions={
-        <Link href="/tenants/new">
-          <Button type="button">新規テナント作成</Button>
-        </Link>
-      }
+      actions={<LinkButton href="/tenants/new">新規テナント作成</LinkButton>}
       description="プラットフォーム運営者が横断でテナントの状態を確認し、詳細画面へ遷移するための起点です。"
       eyebrow="Platform Tenants"
       title="テナント一覧"
@@ -120,11 +120,13 @@ export default function TenantsPage() {
                   </TableCell>
                   <TableCell>{tenant.updatedAt}</TableCell>
                   <TableCell>
-                    <Link href={`/tenants/${tenant.publicId}`}>
-                      <Button size="sm" type="button" variant="outline">
-                        詳細
-                      </Button>
-                    </Link>
+                    <LinkButton
+                      href={`/tenants/${tenant.publicId}`}
+                      size="sm"
+                      variant="outline"
+                    >
+                      詳細
+                    </LinkButton>
                   </TableCell>
                 </TableRow>
               ))}

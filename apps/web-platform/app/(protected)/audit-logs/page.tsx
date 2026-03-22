@@ -13,8 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import type { Metadata } from "next";
 
 import { PlatformPage } from "../../../components/platform-page";
+
+export const metadata: Metadata = {
+  title: "監査ログ",
+};
 
 const auditLogs = [
   {

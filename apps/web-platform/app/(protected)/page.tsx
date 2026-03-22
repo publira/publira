@@ -1,5 +1,5 @@
 import { StatusChip } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
+import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -15,9 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import Link from "next/link";
+import type { Metadata } from "next";
 
 import { PlatformPage } from "../../components/platform-page";
+
+export const metadata: Metadata = {
+  title: "ダッシュボード",
+};
 
 const stats = [
   {
@@ -68,14 +72,10 @@ export default function Page() {
     <PlatformPage
       actions={
         <>
-          <Link href="/audit-logs">
-            <Button type="button" variant="outline">
-              監査ログを見る
-            </Button>
-          </Link>
-          <Link href="/tenants/new">
-            <Button type="button">テナントを作成</Button>
-          </Link>
+          <LinkButton href="/audit-logs" variant="outline">
+            監査ログを見る
+          </LinkButton>
+          <LinkButton href="/tenants/new">テナントを作成</LinkButton>
         </>
       }
       description="web-platform 初期リリース向けに、共通レイアウトと導線を固定したダッシュボードです。各画面 Issue はこのシェルを前提に実装できます。"

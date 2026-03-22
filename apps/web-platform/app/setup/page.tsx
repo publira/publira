@@ -2,10 +2,15 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { createInitialUser, isSetupCompleted } from "../../lib/platform-setup";
+
+export const metadata: Metadata = {
+  title: "初期セットアップ",
+};
 
 const setupAction = async (formData: FormData): Promise<void> => {
   "use server";
