@@ -560,7 +560,13 @@ WHERE NOT EXISTS (
         FROM platform_user_roles pur
         WHERE pur.user_id = u.id
     )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_memberships tm
+        WHERE tm.user_id = u.id
+    )
     AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
+    AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
     AND (sqlc.narg('status')::text = '' OR u.status = sqlc.narg('status')::text)
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
@@ -635,6 +641,12 @@ FROM tenants t
 WHERE tm.user_id = $1
     AND tm.status = 'active'
 ORDER BY t.created_at DESC;
+
+-- name: CountTenantMembershipsByUserID :one
+-- ユーザーに紐づくテナントメンバーシップ件数を取得
+SELECT COUNT(*)::int
+FROM tenant_memberships
+WHERE user_id = $1;
 
 -- name: UpdateUserStatus :one
 -- ユーザーのステータスを更新

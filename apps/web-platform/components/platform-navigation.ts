@@ -39,6 +39,12 @@ export const navigation: NavSection[] = [
         label: "オペレーター管理",
       },
       {
+        description: "ユーザーの状態確認とアカウント管理",
+        href: "/users",
+        icon: SettingsIcon,
+        label: "ユーザー管理",
+      },
+      {
         description: "横断監査ログを検索して変更履歴を追跡",
         href: "/audit-logs",
         icon: SettingsIcon,
