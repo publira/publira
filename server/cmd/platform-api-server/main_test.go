@@ -112,7 +112,6 @@ func validCreateTenantRequest() *publirasplatformv1.CreateTenantRequest {
 	return &publirasplatformv1.CreateTenantRequest{
 		Name:               "New Tenant",
 		Domain:             "new.example.com",
-		Subdomain:          "new",
 		InitialAdminEmails: []string{"owner@example.com"},
 	}
 }
@@ -484,7 +483,7 @@ func TestCreateTenantRequiresName(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestCreateTenantRequiresSubdomain(t *testing.T) {
+func TestCreateTenantRequiresDomain(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -493,7 +492,7 @@ func TestCreateTenantRequiresSubdomain(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	req := validCreateTenantRequest()
-	req.Subdomain = "   "
+	req.Domain = "   "
 	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
@@ -501,37 +500,19 @@ func TestCreateTenantRequiresSubdomain(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestCreateTenantAllowsEmptyDomain(t *testing.T) {
+func TestCreateTenantRejectsEmptyDomain(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
-	createdTenantID := uuid.Must(uuid.NewV7())
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(createTenantQuery)).
-		WithArgs(
-			sqlmock.AnyArg(),
-			sqlmock.AnyArg(),
-			sql.NullString{String: "", Valid: false},
-			sql.NullString{String: "new", Valid: true},
-			"New Tenant",
-		).
-		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(createdTenantID, "TNNEW000002", nil, "new", "New Tenant", nil, now, "active"))
-	mock.ExpectCommit()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	req := validCreateTenantRequest()
 	req.Domain = ""
-	req.InitialAdminEmails = nil
-	resp, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
-	if err != nil {
-		t.Fatalf("CreateTenant: %v", err)
-	}
-	if resp.Msg.Tenant.PublicId != "TNNEW000002" {
-		t.Fatalf("tenant.public_id = %q, want TNNEW000002", resp.Msg.Tenant.PublicId)
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(req))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateTenant code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 	assertExpectations(t, mock)
 }
@@ -575,9 +556,8 @@ func TestCreateTenantDuplicateReturnsAlreadyExists(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(&publirasplatformv1.CreateTenantRequest{
-		Name:      "Duplicate Tenant",
-		Domain:    "dup.example.com",
-		Subdomain: "dup",
+		Name:   "Duplicate Tenant",
+		Domain: "dup.example.com",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
@@ -609,9 +589,8 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(&publirasplatformv1.CreateTenantRequest{
-		Name:      "Domain Duplicate Tenant",
-		Domain:    "existing.example.com",
-		Subdomain: "dom001",
+		Name:   "Domain Duplicate Tenant",
+		Domain: "existing.example.com",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
@@ -643,9 +622,8 @@ func TestCreateTenantDuplicateSubdomainReturnsAlreadyExists(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(&publirasplatformv1.CreateTenantRequest{
-		Name:      "Subdomain Duplicate Tenant",
-		Domain:    "sub001.example.com",
-		Subdomain: "existing-sub",
+		Name:   "Subdomain Duplicate Tenant",
+		Domain: "sub001.example.com",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))

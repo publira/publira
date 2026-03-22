@@ -1,6 +1,6 @@
 -- name: ListTenants :many
 -- プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
-SELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status
 FROM tenants
 WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
   AND (sqlc.narg('filter_public_id')::text = '' OR public_id ILIKE '%' || sqlc.narg('filter_public_id')::text || '%')
@@ -9,8 +9,8 @@ ORDER BY created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: CreateTenant :one
 -- プラットフォーム管理者向けテナント作成
-INSERT INTO tenants (id, public_id, domain, subdomain, name, status)
-VALUES ($1, $2, $3, $4, $5, 'active')
+INSERT INTO tenants (id, public_id, domain, name, status)
+VALUES ($1, $2, $3, $4, 'active')
 RETURNING *;
 -- name: UpdateTenantStatus :one
 -- テナントの状態 (active / suspended) を更新する
@@ -19,9 +19,9 @@ SET status = $2
 WHERE public_id = $1
 RETURNING *;
 -- name: UpdateTenantInfo :one
--- テナントの名前・サブドメイン・ドメインを更新する
+-- テナントの名前・ドメインを更新する
 UPDATE tenants
-SET name = $2, subdomain = $3, domain = $4
+SET name = $2, domain = $3
 WHERE public_id = $1
 RETURNING *;
 -- name: GetTenantByDomain :one
@@ -29,7 +29,6 @@ RETURNING *;
 SELECT *
 FROM tenants
 WHERE domain = $1
-    OR subdomain = $1
 LIMIT 1;
 -- name: GetTenantThemeByTenantID :one
 SELECT *

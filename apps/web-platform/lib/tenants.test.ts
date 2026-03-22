@@ -82,7 +82,6 @@ describe("listPlatformTenants", () => {
           name: "テスト出版",
           publicId: "tenant_test",
           status: "active",
-          subdomain: "test-pub",
         },
       ],
     });
@@ -96,7 +95,6 @@ describe("listPlatformTenants", () => {
           name: "テスト出版",
           publicId: "tenant_test",
           status: "active",
-          subdomain: "test-pub",
         },
       ],
     });
@@ -155,7 +153,6 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         initialAdminEmails: ["owner@example.com", ""],
         name: "新規テナント",
-        subdomain: "tenant-1",
       })
     ).resolves.toEqual({ ok: true, publicId: "TENANT000001" });
 
@@ -164,7 +161,6 @@ describe("createPlatformTenant", () => {
         domain: "example.com",
         initialAdminEmails: ["owner@example.com"],
         name: "新規テナント",
-        subdomain: "tenant-1",
       },
       {
         headers: {
@@ -179,8 +175,8 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        domain: "example.com",
         name: "n",
-        subdomain: "s",
       })
     ).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
@@ -190,18 +186,18 @@ describe("createPlatformTenant", () => {
     expect(mockCreateTenant).not.toHaveBeenCalled();
   });
 
-  it("サブドメイン重複エラーを専用メッセージに変換する", async () => {
+  it("ドメイン重複エラーを専用メッセージに変換する", async () => {
     mockCreateTenant.mockRejectedValueOnce(
-      new Error("already_exists: subdomain already exists")
+      new Error("already_exists: domain already exists")
     );
 
     await expect(
       createPlatformTenant({
+        domain: "example.com",
         name: "n",
-        subdomain: "s",
       })
     ).resolves.toEqual({
-      message: "サブドメインが既に使用されています。",
+      message: "ドメインが既に使用されています。",
       ok: false,
     });
   });
@@ -213,8 +209,8 @@ describe("createPlatformTenant", () => {
 
     await expect(
       createPlatformTenant({
+        domain: "example.com",
         name: "n",
-        subdomain: "s",
       })
     ).resolves.toEqual({
       message: "入力内容に誤りがあります。",
@@ -230,7 +226,6 @@ describe("createPlatformTenant", () => {
         name: "青楓出版",
         publicId: "tenant_seifuu",
         status: "active",
-        subdomain: "seifuu",
       },
     });
 
@@ -240,7 +235,6 @@ describe("createPlatformTenant", () => {
       name: "青楓出版",
       publicId: "tenant_seifuu",
       status: "active",
-      subdomain: "seifuu",
     });
 
     expect(mockGetTenant).toHaveBeenCalledWith(
