@@ -18,6 +18,12 @@ UPDATE tenants
 SET status = $2
 WHERE public_id = $1
 RETURNING *;
+-- name: UpdateTenantInfo :one
+-- テナントの名前・サブドメイン・ドメインを更新する
+UPDATE tenants
+SET name = $2, subdomain = $3, domain = $4
+WHERE public_id = $1
+RETURNING *;
 -- name: GetTenantByDomain :one
 -- ホスト名からテナントを特定する (Interceptorで使用)
 SELECT *

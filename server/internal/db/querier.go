@@ -77,6 +77,8 @@ type Querier interface {
 	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
+	// テナントの名前・サブドメイン・ドメインを更新する
+	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	// テナントの状態 (active / suspended) を更新する
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
 	// ユーザーのステータスを更新

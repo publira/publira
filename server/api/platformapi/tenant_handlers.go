@@ -261,6 +261,39 @@ func (s *platformServer) SuspendTenant(
 	}), nil
 }
 
+func (s *platformServer) UpdateTenant(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.UpdateTenantRequest],
+) (*connect.Response[publirasplatformv1.UpdateTenantResponse], error) {
+	publicID := strings.TrimSpace(req.Msg.PublicId)
+	if publicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+	}
+	name := strings.TrimSpace(req.Msg.Name)
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	subdomain := strings.TrimSpace(req.Msg.Subdomain)
+	domain := strings.TrimSpace(req.Msg.Domain)
+
+	tenant, err := s.queries.UpdateTenantInfo(ctx, dbmodels.UpdateTenantInfoParams{
+		PublicID:  publicID,
+		Name:      name,
+		Subdomain: sql.NullString{String: subdomain, Valid: subdomain != ""},
+		Domain:    sql.NullString{String: domain, Valid: domain != ""},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publirasplatformv1.UpdateTenantResponse{
+		Tenant: tenantToProto(tenant),
+	}), nil
+}
+
 func (s *platformServer) ResumeTenant(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ResumeTenantRequest],

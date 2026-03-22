@@ -1097,6 +1097,118 @@ func (x *RemoveTenantMemberResponse) GetUserPublicId() string {
 	return ""
 }
 
+type UpdateTenantRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Subdomain     string                 `protobuf:"bytes,3,opt,name=subdomain,proto3" json:"subdomain,omitempty"`
+	Domain        string                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTenantRequest) Reset() {
+	*x = UpdateTenantRequest{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantRequest) ProtoMessage() {}
+
+func (x *UpdateTenantRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTenantRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *UpdateTenantRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *UpdateTenantRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateTenantRequest) GetSubdomain() string {
+	if x != nil {
+		return x.Subdomain
+	}
+	return ""
+}
+
+func (x *UpdateTenantRequest) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+type UpdateTenantResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *Tenant                `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTenantResponse) Reset() {
+	*x = UpdateTenantResponse{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantResponse) ProtoMessage() {}
+
+func (x *UpdateTenantResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTenantResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *UpdateTenantResponse) GetTenant() *Tenant {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
 var File_publira_platform_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_tenant_proto_rawDesc = "" +
@@ -1167,11 +1279,19 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\"B\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
-	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId2\xf6\a\n" +
+	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\"|\n" +
+	"\x13UpdateTenantRequest\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
+	"\tsubdomain\x18\x03 \x01(\tR\tsubdomain\x12\x16\n" +
+	"\x06domain\x18\x04 \x01(\tR\x06domain\"K\n" +
+	"\x14UpdateTenantResponse\x123\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xdd\b\n" +
 	"\x15PlatformTenantService\x12b\n" +
 	"\vListTenants\x12'.publira.platform.v1.ListTenantsRequest\x1a(.publira.platform.v1.ListTenantsResponse\"\x00\x12\\\n" +
 	"\tGetTenant\x12%.publira.platform.v1.GetTenantRequest\x1a&.publira.platform.v1.GetTenantResponse\"\x00\x12e\n" +
-	"\fCreateTenant\x12(.publira.platform.v1.CreateTenantRequest\x1a).publira.platform.v1.CreateTenantResponse\"\x00\x12h\n" +
+	"\fCreateTenant\x12(.publira.platform.v1.CreateTenantRequest\x1a).publira.platform.v1.CreateTenantResponse\"\x00\x12e\n" +
+	"\fUpdateTenant\x12(.publira.platform.v1.UpdateTenantRequest\x1a).publira.platform.v1.UpdateTenantResponse\"\x00\x12h\n" +
 	"\rSuspendTenant\x12).publira.platform.v1.SuspendTenantRequest\x1a*.publira.platform.v1.SuspendTenantResponse\"\x00\x12e\n" +
 	"\fResumeTenant\x12(.publira.platform.v1.ResumeTenantRequest\x1a).publira.platform.v1.ResumeTenantResponse\"\x00\x12t\n" +
 	"\x11ListTenantMembers\x12-.publira.platform.v1.ListTenantMembersRequest\x1a..publira.platform.v1.ListTenantMembersResponse\"\x00\x12n\n" +
@@ -1191,7 +1311,7 @@ func file_publira_platform_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_tenant_proto_rawDescData
 }
 
-var file_publira_platform_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_publira_platform_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_publira_platform_v1_tenant_proto_goTypes = []any{
 	(*Tenant)(nil),                         // 0: publira.platform.v1.Tenant
 	(*ListTenantsRequest)(nil),             // 1: publira.platform.v1.ListTenantsRequest
@@ -1213,6 +1333,8 @@ var file_publira_platform_v1_tenant_proto_goTypes = []any{
 	(*UpdateTenantMemberRoleResponse)(nil), // 17: publira.platform.v1.UpdateTenantMemberRoleResponse
 	(*RemoveTenantMemberRequest)(nil),      // 18: publira.platform.v1.RemoveTenantMemberRequest
 	(*RemoveTenantMemberResponse)(nil),     // 19: publira.platform.v1.RemoveTenantMemberResponse
+	(*UpdateTenantRequest)(nil),            // 20: publira.platform.v1.UpdateTenantRequest
+	(*UpdateTenantResponse)(nil),           // 21: publira.platform.v1.UpdateTenantResponse
 }
 var file_publira_platform_v1_tenant_proto_depIdxs = []int32{
 	0,  // 0: publira.platform.v1.ListTenantsResponse.tenants:type_name -> publira.platform.v1.Tenant
@@ -1223,29 +1345,32 @@ var file_publira_platform_v1_tenant_proto_depIdxs = []int32{
 	11, // 5: publira.platform.v1.ListTenantMembersResponse.members:type_name -> publira.platform.v1.TenantMember
 	11, // 6: publira.platform.v1.AddTenantMemberResponse.member:type_name -> publira.platform.v1.TenantMember
 	11, // 7: publira.platform.v1.UpdateTenantMemberRoleResponse.member:type_name -> publira.platform.v1.TenantMember
-	1,  // 8: publira.platform.v1.PlatformTenantService.ListTenants:input_type -> publira.platform.v1.ListTenantsRequest
-	3,  // 9: publira.platform.v1.PlatformTenantService.GetTenant:input_type -> publira.platform.v1.GetTenantRequest
-	5,  // 10: publira.platform.v1.PlatformTenantService.CreateTenant:input_type -> publira.platform.v1.CreateTenantRequest
-	7,  // 11: publira.platform.v1.PlatformTenantService.SuspendTenant:input_type -> publira.platform.v1.SuspendTenantRequest
-	9,  // 12: publira.platform.v1.PlatformTenantService.ResumeTenant:input_type -> publira.platform.v1.ResumeTenantRequest
-	12, // 13: publira.platform.v1.PlatformTenantService.ListTenantMembers:input_type -> publira.platform.v1.ListTenantMembersRequest
-	14, // 14: publira.platform.v1.PlatformTenantService.AddTenantMember:input_type -> publira.platform.v1.AddTenantMemberRequest
-	16, // 15: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:input_type -> publira.platform.v1.UpdateTenantMemberRoleRequest
-	18, // 16: publira.platform.v1.PlatformTenantService.RemoveTenantMember:input_type -> publira.platform.v1.RemoveTenantMemberRequest
-	2,  // 17: publira.platform.v1.PlatformTenantService.ListTenants:output_type -> publira.platform.v1.ListTenantsResponse
-	4,  // 18: publira.platform.v1.PlatformTenantService.GetTenant:output_type -> publira.platform.v1.GetTenantResponse
-	6,  // 19: publira.platform.v1.PlatformTenantService.CreateTenant:output_type -> publira.platform.v1.CreateTenantResponse
-	8,  // 20: publira.platform.v1.PlatformTenantService.SuspendTenant:output_type -> publira.platform.v1.SuspendTenantResponse
-	10, // 21: publira.platform.v1.PlatformTenantService.ResumeTenant:output_type -> publira.platform.v1.ResumeTenantResponse
-	13, // 22: publira.platform.v1.PlatformTenantService.ListTenantMembers:output_type -> publira.platform.v1.ListTenantMembersResponse
-	15, // 23: publira.platform.v1.PlatformTenantService.AddTenantMember:output_type -> publira.platform.v1.AddTenantMemberResponse
-	17, // 24: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:output_type -> publira.platform.v1.UpdateTenantMemberRoleResponse
-	19, // 25: publira.platform.v1.PlatformTenantService.RemoveTenantMember:output_type -> publira.platform.v1.RemoveTenantMemberResponse
-	17, // [17:26] is the sub-list for method output_type
-	8,  // [8:17] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	0,  // 8: publira.platform.v1.UpdateTenantResponse.tenant:type_name -> publira.platform.v1.Tenant
+	1,  // 9: publira.platform.v1.PlatformTenantService.ListTenants:input_type -> publira.platform.v1.ListTenantsRequest
+	3,  // 10: publira.platform.v1.PlatformTenantService.GetTenant:input_type -> publira.platform.v1.GetTenantRequest
+	5,  // 11: publira.platform.v1.PlatformTenantService.CreateTenant:input_type -> publira.platform.v1.CreateTenantRequest
+	20, // 12: publira.platform.v1.PlatformTenantService.UpdateTenant:input_type -> publira.platform.v1.UpdateTenantRequest
+	7,  // 13: publira.platform.v1.PlatformTenantService.SuspendTenant:input_type -> publira.platform.v1.SuspendTenantRequest
+	9,  // 14: publira.platform.v1.PlatformTenantService.ResumeTenant:input_type -> publira.platform.v1.ResumeTenantRequest
+	12, // 15: publira.platform.v1.PlatformTenantService.ListTenantMembers:input_type -> publira.platform.v1.ListTenantMembersRequest
+	14, // 16: publira.platform.v1.PlatformTenantService.AddTenantMember:input_type -> publira.platform.v1.AddTenantMemberRequest
+	16, // 17: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:input_type -> publira.platform.v1.UpdateTenantMemberRoleRequest
+	18, // 18: publira.platform.v1.PlatformTenantService.RemoveTenantMember:input_type -> publira.platform.v1.RemoveTenantMemberRequest
+	2,  // 19: publira.platform.v1.PlatformTenantService.ListTenants:output_type -> publira.platform.v1.ListTenantsResponse
+	4,  // 20: publira.platform.v1.PlatformTenantService.GetTenant:output_type -> publira.platform.v1.GetTenantResponse
+	6,  // 21: publira.platform.v1.PlatformTenantService.CreateTenant:output_type -> publira.platform.v1.CreateTenantResponse
+	21, // 22: publira.platform.v1.PlatformTenantService.UpdateTenant:output_type -> publira.platform.v1.UpdateTenantResponse
+	8,  // 23: publira.platform.v1.PlatformTenantService.SuspendTenant:output_type -> publira.platform.v1.SuspendTenantResponse
+	10, // 24: publira.platform.v1.PlatformTenantService.ResumeTenant:output_type -> publira.platform.v1.ResumeTenantResponse
+	13, // 25: publira.platform.v1.PlatformTenantService.ListTenantMembers:output_type -> publira.platform.v1.ListTenantMembersResponse
+	15, // 26: publira.platform.v1.PlatformTenantService.AddTenantMember:output_type -> publira.platform.v1.AddTenantMemberResponse
+	17, // 27: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:output_type -> publira.platform.v1.UpdateTenantMemberRoleResponse
+	19, // 28: publira.platform.v1.PlatformTenantService.RemoveTenantMember:output_type -> publira.platform.v1.RemoveTenantMemberResponse
+	19, // [19:29] is the sub-list for method output_type
+	9,  // [9:19] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_tenant_proto_init() }
@@ -1259,7 +1384,7 @@ func file_publira_platform_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_tenant_proto_rawDesc), len(file_publira_platform_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

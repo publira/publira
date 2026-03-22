@@ -1876,6 +1876,42 @@ func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBasePara
 	return err
 }
 
+const updateTenantInfo = `-- name: UpdateTenantInfo :one
+UPDATE tenants
+SET name = $2, subdomain = $3, domain = $4
+WHERE public_id = $1
+RETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status
+`
+
+type UpdateTenantInfoParams struct {
+	PublicID  string         `json:"public_id"`
+	Name      string         `json:"name"`
+	Subdomain sql.NullString `json:"subdomain"`
+	Domain    sql.NullString `json:"domain"`
+}
+
+// テナントの名前・サブドメイン・ドメインを更新する
+func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, updateTenantInfo,
+		arg.PublicID,
+		arg.Name,
+		arg.Subdomain,
+		arg.Domain,
+	)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Subdomain,
+		&i.Name,
+		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
 const updateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2

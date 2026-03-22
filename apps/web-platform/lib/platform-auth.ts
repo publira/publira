@@ -1,4 +1,4 @@
-import { platformApiClient } from "./platform-api-client";
+import { apiClient, buildSessionHeaders } from "./api-client";
 import {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
@@ -15,7 +15,7 @@ export const loginPlatform = async (
   password: string
 ): Promise<{ expiresAt: Date; sessionId: string } | null> => {
   try {
-    const response = await platformApiClient.auth.createSession({
+    const response = await apiClient.auth.createSession({
       email,
       password,
     });
@@ -34,9 +34,7 @@ export const logoutPlatform = async (sessionId: string): Promise<void> => {
     return;
   }
   try {
-    await platformApiClient.auth.deleteSession({}, {
-      headers: { "X-Publira-Session-Id": sessionId },
-    } as never);
+    await apiClient.auth.deleteSession({}, buildSessionHeaders(sessionId));
   } catch {
     // セッション失効・ネットワークエラー時もクッキーはクリアする
   }
@@ -49,9 +47,10 @@ export const getPlatformCurrentOperator = async (
     return null;
   }
   try {
-    const response = await platformApiClient.auth.getMe({}, {
-      headers: { "X-Publira-Session-Id": sessionId },
-    } as never);
+    const response = await apiClient.auth.getMe(
+      {},
+      buildSessionHeaders(sessionId)
+    );
     const { user } = response;
     if (!user) {
       return null;
