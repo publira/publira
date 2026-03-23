@@ -5,11 +5,9 @@ import {
   sanitizeRedirectPath,
 } from "./admin-auth-shared";
 
-const adminApiBaseUrl =
-  process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8001";
-
 const adminApiClient = createAdminApiClient({
-  baseUrl: adminApiBaseUrl,
+  baseUrl: process.env.PUBLIRA_ADMIN_GRPC_URL ?? "http://localhost:8101",
+  transport: "grpc",
 });
 
 export type AdminLoginResult =

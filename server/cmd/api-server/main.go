@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/net/http2"
@@ -19,6 +21,11 @@ import (
 	"github.com/publira/publira/server/internal/storage"
 	localstorage "github.com/publira/publira/server/internal/storage/local"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
+)
+
+const (
+	defaultPublicServerURL     = ":8000"
+	defaultPublicGrpcServerURL = ":8100"
 )
 
 func main() {
@@ -39,10 +46,59 @@ func main() {
 		logger.Error("failed to initialize storage provider", "error", err)
 		os.Exit(1)
 	}
+	addr := strings.TrimSpace(os.Getenv("PUBLIC_API_ADDR"))
+	if addr == "" {
+		addr = defaultPublicServerURL
+	}
+
+	grpcAddr := strings.TrimSpace(os.Getenv("PUBLIC_API_GRPC_ADDR"))
+	if grpcAddr == "" {
+		grpcAddr = defaultPublicGrpcServerURL
+	}
+
 	handler := publicapi.NewHandler(dbmodels.New(db), storageProvider)
-	logger.Info("starting public api server", "addr", ":8000")
-	if err := http.ListenAndServe(":8000", h2c.NewHandler(handler, &http2.Server{})); err != nil {
-		logger.Error("server failed", "error", err)
+
+	// Start Connect server on public port
+	logger.Info("starting public api server (Connect)", "addr", addr)
+	connectServer := &http.Server{
+		Addr:    addr,
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+
+	// Start gRPC server on internal port
+	logger.Info("starting public api server (gRPC)", "addr", grpcAddr)
+	grpcServer := &http.Server{
+		Addr:    grpcAddr,
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+
+	// Run servers concurrently
+	var wg sync.WaitGroup
+	var connectErr, grpcErr error
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if err := connectServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			connectErr = err
+			logger.Error("connect server failed", "error", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := grpcServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			grpcErr = err
+			logger.Error("grpc server failed", "error", err)
+		}
+	}()
+
+	wg.Wait()
+
+	if connectErr != nil {
+		os.Exit(1)
+	}
+	if grpcErr != nil {
 		os.Exit(1)
 	}
 }

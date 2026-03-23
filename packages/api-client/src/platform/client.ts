@@ -1,5 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import type { Client } from "@connectrpc/connect";
+import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
@@ -9,8 +10,11 @@ import { PlatformSetupService } from "../gen/publira/platform/v1/setup_pb.js";
 import { PlatformTenantService } from "../gen/publira/platform/v1/tenant_pb.js";
 import { PlatformUserService } from "../gen/publira/platform/v1/user_pb.js";
 
+export type TransportType = "connect" | "grpc";
+
 export type PlatformApiClientOptions = {
   baseUrl: string;
+  transport?: TransportType;
 } & Omit<ConnectTransportOptions, "baseUrl">;
 
 export interface PlatformApiClient {
@@ -24,17 +28,24 @@ export interface PlatformApiClient {
 export const createPlatformApiClient = (
   options: PlatformApiClientOptions
 ): PlatformApiClient => {
-  const { baseUrl, ...transportOptions } = options;
-  const transport = createConnectTransport({
-    baseUrl,
-    ...transportOptions,
-  });
+  const { baseUrl, transport = "connect", ...transportOptions } = options;
+
+  const transportInstance =
+    transport === "grpc"
+      ? createGrpcTransport({
+          baseUrl,
+          ...transportOptions,
+        })
+      : createConnectTransport({
+          baseUrl,
+          ...transportOptions,
+        });
 
   return {
-    auth: createClient(PlatformAuthService, transport),
-    operators: createClient(PlatformOperatorService, transport),
-    setup: createClient(PlatformSetupService, transport),
-    tenants: createClient(PlatformTenantService, transport),
-    users: createClient(PlatformUserService, transport),
+    auth: createClient(PlatformAuthService, transportInstance),
+    operators: createClient(PlatformOperatorService, transportInstance),
+    setup: createClient(PlatformSetupService, transportInstance),
+    tenants: createClient(PlatformTenantService, transportInstance),
+    users: createClient(PlatformUserService, transportInstance),
   };
 };
