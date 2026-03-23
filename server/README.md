@@ -44,6 +44,13 @@ cd server && go mod tidy
 cd server && make build
 ```
 
+## エントリポイント詳細
+
+- 公開 API サーバー: [cmd/api-server/README.md](cmd/api-server/README.md)
+- 管理 API サーバー: [cmd/admin-api-server/README.md](cmd/admin-api-server/README.md)
+- プラットフォーム API サーバー: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
+- 予約公開バッチ: [cmd/publish-episodes/README.md](cmd/publish-episodes/README.md)
+
 ## 画像ストレージ設定
 
 `UploadEpisodeImages` は `STORAGE_BACKEND` で保存先を切り替えます。
