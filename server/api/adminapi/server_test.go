@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,7 +10,7 @@ import (
 // TestAdminHandlerExposesOnlyAdminRoutes は、NewHandler が管理 API (AdminSeriesService, AdminAuthService) だけ
 // 公開し、公開 API (CatalogService, AuthService) は登録しないことを検証する。
 func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
-	ts := httptest.NewServer(NewHandler(nil, nil))
+	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default()))
 	t.Cleanup(ts.Close)
 
 	assertRouteStatus(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", false)

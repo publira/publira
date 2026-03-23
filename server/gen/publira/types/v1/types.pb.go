@@ -274,14 +274,15 @@ func (x *Label) GetName() string {
 }
 
 type Series struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis      string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	Label         *Label                 `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
-	Creators      []*Creator             `protobuf:"bytes,5,rep,name=creators,proto3" json:"creators,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Title              string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Synopsis           string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
+	Label              *Label                 `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
+	Creators           []*Creator             `protobuf:"bytes,5,rep,name=creators,proto3" json:"creators,omitempty"`
+	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
@@ -347,6 +348,13 @@ func (x *Series) GetCreators() []*Creator {
 		return x.Creators
 	}
 	return nil
+}
+
+func (x *Series) GetReadingPeriodHours() int32 {
+	if x != nil {
+		return x.ReadingPeriodHours
+	}
+	return 0
 }
 
 type Episode struct {
@@ -629,13 +637,14 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04role\x18\x02 \x01(\tR\x04role\"\x1b\n" +
 	"\x05Label\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\xbd\x01\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"\xef\x01\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
 	"\bsynopsis\x18\x03 \x01(\tR\bsynopsis\x12-\n" +
 	"\x05label\x18\x04 \x01(\v2\x17.publira.types.v1.LabelR\x05label\x125\n" +
-	"\bcreators\x18\x05 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\"\x83\x02\n" +
+	"\bcreators\x18\x05 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x120\n" +
+	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\"\x83\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +

@@ -34,6 +34,9 @@ func toProtoSeries(row dbmodels.GetSeriesByPublicIDForTenantRow) *publirattypesv
 	if row.Synopsis.Valid {
 		series.Synopsis = row.Synopsis.String
 	}
+	if row.ReadingPeriodHours.Valid {
+		series.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
 	return series
 }
 
@@ -108,6 +111,9 @@ func (s *adminServer) CreateSeries(
 	if strings.TrimSpace(req.Msg.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
 	}
+	if req.Msg.ReadingPeriodHours < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
+	}
 	labelID := uuid.NullUUID{}
 	if strings.TrimSpace(req.Msg.LabelPublicId) != "" {
 		label, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.LabelPublicId})
@@ -130,10 +136,16 @@ func (s *adminServer) CreateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
-		ID:                 base.ID,
+		SeriesID:           base.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
-		ReadingPeriodHours: sql.NullInt32{},
-		IsPublished:        req.Msg.IsPublished,
+		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	err = s.queries.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+		ID:          base.ID,
+		IsPublished: req.Msg.IsPublished,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -151,7 +163,7 @@ func (s *adminServer) CreateSeries(
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: &publirattypesv1.Series{
-		PublicId: base.PublicID, Title: base.Title, Synopsis: req.Msg.Synopsis,
+		PublicId: base.PublicID, Title: base.Title, Synopsis: req.Msg.Synopsis, ReadingPeriodHours: req.Msg.ReadingPeriodHours,
 	}}), nil
 }
 
@@ -166,6 +178,9 @@ func (s *adminServer) UpdateSeries(
 	if strings.TrimSpace(req.Msg.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
 	}
+	if req.Msg.ReadingPeriodHours < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
+	}
 	current, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -178,10 +193,16 @@ func (s *adminServer) UpdateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
-		ID:                 current.ID,
+		SeriesID:           current.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
-		ReadingPeriodHours: sql.NullInt32{},
-		IsPublished:        req.Msg.IsPublished,
+		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	err = s.queries.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+		ID:          current.ID,
+		IsPublished: req.Msg.IsPublished,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -231,9 +252,19 @@ func (s *adminServer) ListSeries(
 		if row.Synopsis.Valid {
 			item.Synopsis = row.Synopsis.String
 		}
+		if row.ReadingPeriodHours.Valid {
+			item.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+		}
 		items = append(items, item)
 	}
-	return connect.NewResponse(&publiraadminv1.ListSeriesResponse{Series: items}), nil
+	defaultReadingPeriodHours := int32(0)
+	if tenant.DefaultReadingPeriodHours.Valid {
+		defaultReadingPeriodHours = tenant.DefaultReadingPeriodHours.Int32
+	}
+	return connect.NewResponse(&publiraadminv1.ListSeriesResponse{
+		Series:                    items,
+		DefaultReadingPeriodHours: defaultReadingPeriodHours,
+	}), nil
 }
 
 func (s *adminServer) GetSeries(

@@ -36,6 +36,7 @@ message Series {
   string synopsis = 3;
   Label label = 4;
   repeated Creator creators = 5;
+  int32 reading_period_hours = 6;
 }
 
 message Episode {

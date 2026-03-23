@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http/httptest"
 	"regexp"
 	"testing"
@@ -22,12 +23,15 @@ import (
 )
 
 const (
-	getTenantByPublicIDQuery                             = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
+	getTenantByPublicIDQuery                             = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
 	getSessionByTokenHashForTenantQuery                  = "-- name: GetSessionByTokenHashForTenant :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE current_tenant_id = $1\n    AND token_hash = $2\nLIMIT 1\n"
 	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\nSELECT id, tenant_id, public_id, name, created_at\nFROM labels\nWHERE tenant_id = $1\n    AND public_id = $2\nLIMIT 1\n"
-	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.is_published,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\nORDER BY s.created_at DESC\nLIMIT $2 OFFSET $3\n"
-	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    s.synopsis,\n    s.is_published,\n    s.published_at\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
+	getUserByIDQuery                                     = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE id = $1\n"
+	listTenantRolesByUserAndTenantQuery                 = "-- name: ListTenantRolesByUserAndTenant :many\nSELECT tmr.role\nFROM tenant_memberships tm\n    JOIN tenant_member_roles tmr ON tmr.membership_id = tm.id\nWHERE tm.user_id = $1\n    AND tm.tenant_id = $2\n    AND tm.status = 'active'\nORDER BY tmr.role\n"
+	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    sl.synopsis,\n    sl.reading_period_hours,\n    s.is_published,\n    s.published_at\nFROM series s\n    LEFT JOIN series_listings sl ON sl.series_id = s.id\nWHERE s.tenant_id = $1\nORDER BY s.created_at DESC\nLIMIT $2 OFFSET $3\n"
+	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    sl.synopsis,\n    sl.reading_period_hours,\n    s.is_published,\n    s.published_at\nFROM series s\n    LEFT JOIN series_listings sl ON sl.series_id = s.id\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
 	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\nUPDATE series\nSET title = $2,\n    label_id = $3,\n    updated_at = NOW()\nWHERE id = $1\n"
+	updateSeriesPublicationQuery                         = "-- name: UpdateSeriesPublication :exec\nUPDATE series\nSET is_published = $2,\n    published_at = CASE\n        WHEN $2 THEN COALESCE(published_at, NOW())\n        ELSE NULL\n    END,\n    updated_at = NOW()\nWHERE id = $1\n"
 	getEpisodeByPublicIDForTenantQuery                   = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
 	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\nUPDATE episode_listings el\nSET status = CASE\n        WHEN $3 IS NULL THEN 'draft'\n        ELSE 'scheduled'\n    END,\n    scheduled_at = $3,\n    published_at = CASE\n        WHEN $3 IS NULL THEN NULL\n        ELSE el.published_at\n    END\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\nWHERE el.episode_id = e.id\n    AND s.tenant_id = $1\n    AND e.public_id = $2\n"
 )
@@ -41,7 +45,7 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(adminapi.NewHandler(dbmodels.New(db), &testStorageProvider{}))
+	server := httptest.NewServer(adminapi.NewHandler(dbmodels.New(db), &testStorageProvider{}, slog.Default()))
 	t.Cleanup(server.Close)
 	return server, mock
 }
@@ -96,8 +100,8 @@ var oneByOneJPEG = []byte{
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs(publicID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "subdomain", "name", "default_reading_period_hours", "created_at", "status"}).
-			AddRow(tenantID, publicID, nil, nil, "Tenant", nil, now, "active"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain"}).
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil))
 }
 
 func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, sessionToken string, now time.Time) {
@@ -105,6 +109,15 @@ func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID,
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, auth.HashToken(sessionToken)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "current_tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, auth.HashToken(sessionToken), now.Add(time.Hour), nil, now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
+			AddRow(userID, "USER001", "user@example.com", "hashed", "User", now, "active"))
+
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantRolesByUserAndTenantQuery)).
+		WithArgs(userID, tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("editor"))
 }
 
 func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
@@ -146,8 +159,8 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantQuery)).
 		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "Series Title", "Synopsis", true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "Series Title", "Synopsis", nil, true, now))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
@@ -209,13 +222,17 @@ func TestCreateSeriesSuccess(t *testing.T) {
 
 	mock.ExpectQuery("INSERT INTO series").
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(), "New Series").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "synopsis", "reading_period_hours", "is_published", "published_at", "created_by", "updated_by", "updated_at"}).
-			AddRow(seriesID, tenantID, uuid.Must(uuid.NewV7()), "SERIESNEW001", "New Series", now, nil, nil, false, nil, nil, nil, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at"}).
+			AddRow(seriesID, tenantID, uuid.Must(uuid.NewV7()), "SERIESNEW001", "New Series", now, false, nil, now))
 
-	mock.ExpectQuery("UPDATE series").
-		WithArgs(seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}, true).
+	mock.ExpectQuery("INSERT INTO series_listings").
+		WithArgs(seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "Synopsis", nil, true, now))
+			AddRow(seriesID, "Synopsis", nil, nil, nil))
+
+	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+		WithArgs(seriesID, true).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
@@ -278,22 +295,26 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "Before", "Old synopsis", true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "Before", "Old synopsis", nil, true, now))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
 		WithArgs(seriesID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	mock.ExpectQuery("UPDATE series").
-		WithArgs(seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}, true).
+	mock.ExpectQuery("INSERT INTO series_listings").
+		WithArgs(seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "New synopsis", nil, true, now))
+			AddRow(seriesID, "New synopsis", nil, nil, nil))
+
+	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+		WithArgs(seriesID, true).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "After", "New synopsis", true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "After", "New synopsis", nil, true, now))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
@@ -334,8 +355,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "Series Title", "Synopsis", true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "Series Title", "Synopsis", nil, true, now))
 
 	mock.ExpectQuery("INSERT INTO episodes").
 		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 1", int32(1)).
@@ -436,7 +457,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 					WithArgs(tenantID, "SERIES_OTHER_TENANT").
-					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}))
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}))
 			},
 			wantCode: connect.CodeNotFound,
 		},
@@ -694,20 +715,20 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 		{
 			name:     "normal",
 			publicID: "SERIES001",
-			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}).
-				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", "Synopsis", true, time.Now()),
+			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", "Synopsis", nil, true, time.Now()),
 			wantSeriesID: "SERIES001",
 		},
 		{
 			name:     "cross-tenant",
 			publicID: "SERIES_OTHER_TENANT",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "not-found",
 			publicID: "SERIES_MISSING",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "is_published", "published_at"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}),
 			wantCode: connect.CodeNotFound,
 		},
 	}
