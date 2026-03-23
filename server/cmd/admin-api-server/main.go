@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/net/http2"
@@ -23,7 +24,8 @@ import (
 )
 
 const (
-	defaultAdminServerURL = ":8001"
+	defaultAdminServerURL     = ":8001"
+	defaultAdminGrpcServerURL = ":8101"
 )
 
 func main() {
@@ -51,10 +53,54 @@ func main() {
 		addr = defaultAdminServerURL
 	}
 
+	grpcAddr := strings.TrimSpace(os.Getenv("ADMIN_API_GRPC_ADDR"))
+	if grpcAddr == "" {
+		grpcAddr = defaultAdminGrpcServerURL
+	}
+
 	handler := adminapi.NewHandler(dbmodels.New(db), storageProvider, logger)
-	logger.Info("starting admin api server", "addr", addr)
-	if err := http.ListenAndServe(addr, h2c.NewHandler(handler, &http2.Server{})); err != nil {
-		logger.Error("server failed", "error", err)
+
+	// Start Connect server on public port
+	logger.Info("starting admin api server (Connect)", "addr", addr)
+	connectServer := &http.Server{
+		Addr:    addr,
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+
+	// Start gRPC server on internal port
+	logger.Info("starting admin api server (gRPC)", "addr", grpcAddr)
+	grpcServer := &http.Server{
+		Addr:    grpcAddr,
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+
+	// Run servers concurrently
+	var wg sync.WaitGroup
+	var connectErr, grpcErr error
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if err := connectServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			connectErr = err
+			logger.Error("connect server failed", "error", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := grpcServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			grpcErr = err
+			logger.Error("grpc server failed", "error", err)
+		}
+	}()
+
+	wg.Wait()
+
+	if connectErr != nil {
+		os.Exit(1)
+	}
+	if grpcErr != nil {
 		os.Exit(1)
 	}
 }

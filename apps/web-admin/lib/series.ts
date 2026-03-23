@@ -3,11 +3,13 @@ import { cookies } from "next/headers";
 
 import { ADMIN_SESSION_COOKIE_NAME } from "./admin-auth-shared";
 
-const adminApiBaseUrl =
-  process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8001";
+// gRPC transport is used for internal Next.js → Go API communication
+const grpcBaseUrl =
+  process.env.PUBLIRA_ADMIN_GRPC_URL ?? "http://localhost:8101";
 
 const adminApiClient = createAdminApiClient({
-  baseUrl: adminApiBaseUrl,
+  baseUrl: grpcBaseUrl,
+  transport: "grpc",
 });
 
 const buildSessionHeaders = (sessionId: string) =>

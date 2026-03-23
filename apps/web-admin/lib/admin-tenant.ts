@@ -2,7 +2,8 @@ import { createAdminApiClient } from "@publira/api-client/admin/client";
 import { LRUCache } from "lru-cache";
 
 const adminApiClient = createAdminApiClient({
-  baseUrl: process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8001",
+  baseUrl: process.env.PUBLIRA_ADMIN_GRPC_URL ?? "http://localhost:8101",
+  transport: "grpc",
 });
 
 const tenantCache = new LRUCache<string, { tenantPublicId: string | null }>({

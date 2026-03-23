@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/net/http2"
@@ -18,7 +19,8 @@ import (
 )
 
 const (
-	defaultPlatformServerURL = ":8002"
+	defaultPlatformServerURL     = ":8002"
+	defaultPlatformGrpcServerURL = ":8102"
 )
 
 func main() {
@@ -42,13 +44,55 @@ func main() {
 		addr = defaultPlatformServerURL
 	}
 
+	grpcAddr := strings.TrimSpace(os.Getenv("PLATFORM_API_GRPC_ADDR"))
+	if grpcAddr == "" {
+		grpcAddr = defaultPlatformGrpcServerURL
+	}
+
 	handler := platformapi.NewHandler(db, dbmodels.New(db), logger)
-	logger.Info("starting platform api server", "addr", addr)
-	if err := http.ListenAndServe(addr, h2c.NewHandler(handler, &http2.Server{})); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("server failed", "error", err)
-			os.Exit(1)
+
+	// Start Connect server on public port
+	logger.Info("starting platform api server (Connect)", "addr", addr)
+	connectServer := &http.Server{
+		Addr:    addr,
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+
+	// Start gRPC server on internal port
+	logger.Info("starting platform api server (gRPC)", "addr", grpcAddr)
+	grpcServer := &http.Server{
+		Addr:    grpcAddr,
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+
+	// Run servers concurrently
+	var wg sync.WaitGroup
+	var connectErr, grpcErr error
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if err := connectServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			connectErr = err
+			logger.Error("connect server failed", "error", err)
 		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := grpcServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			grpcErr = err
+			logger.Error("grpc server failed", "error", err)
+		}
+	}()
+
+	wg.Wait()
+
+	if connectErr != nil {
+		os.Exit(1)
+	}
+	if grpcErr != nil {
+		os.Exit(1)
 	}
 }
 

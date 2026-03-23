@@ -4,8 +4,10 @@ import { LRUCache } from "lru-cache";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+// gRPC transport is used for internal Next.js → Go API communication
 const publicApiClient = createPublicApiClient({
-  baseUrl: process.env.PUBLIRA_API_BASE_URL ?? "http://localhost:8000",
+  baseUrl: process.env.PUBLIRA_PUBLIC_GRPC_URL ?? "http://localhost:8100",
+  transport: "grpc",
 });
 
 const tenantCache = new LRUCache<string, { tenantPublicId: string | null }>({

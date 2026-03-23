@@ -3,11 +3,13 @@ import { cookies } from "next/headers";
 
 import { PLATFORM_SESSION_COOKIE_NAME } from "./auth-shared";
 
-const apiBaseUrl =
-  process.env.PUBLIRA_PLATFORM_API_BASE_URL ?? "http://localhost:8002";
+// gRPC transport is used for internal Next.js → Go API communication
+const grpcBaseUrl =
+  process.env.PUBLIRA_PLATFORM_GRPC_URL ?? "http://localhost:8102";
 
 export const apiClient = createPlatformApiClient({
-  baseUrl: apiBaseUrl,
+  baseUrl: grpcBaseUrl,
+  transport: "grpc",
 });
 
 export const buildSessionHeaders = (sessionId: string) =>
