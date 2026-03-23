@@ -14,6 +14,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PlatformPage } from "../../../../components/platform-page";
+import { TenantDomainCautions } from "../../../../components/tenant-domain-cautions";
 import {
   getTenantStatusLabel,
   getTenantStatusTone,
@@ -153,6 +154,7 @@ export default async function TenantDetailPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
+              <TenantDomainCautions mode="update" />
               <TenantUpdateForm action={updateTenantDomainAction}>
                 <input
                   name="tenant_public_id"

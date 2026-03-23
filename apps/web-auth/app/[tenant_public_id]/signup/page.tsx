@@ -1,6 +1,19 @@
+import {
+  createPlaceholderStaticParams,
+  guardPlaceholder,
+} from "@publira/utils/next-static-params";
 import Link from "next/link";
 
-export default function SignupPage() {
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_public_id");
+
+export default async function SignupPage({
+  params,
+}: PageProps<"/[tenant_public_id]/signup">) {
+  const { tenant_public_id } = await params;
+
+  guardPlaceholder(tenant_public_id);
+
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">

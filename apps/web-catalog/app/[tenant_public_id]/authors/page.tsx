@@ -19,7 +19,7 @@ export default function AuthorsPage() {
         {authors.map((author) => (
           <a
             key={author.id}
-            href={`/authors/${author.id}`}
+            href={`${author.id}`}
             className="group overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm transition hover:shadow-md"
           >
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-primary">

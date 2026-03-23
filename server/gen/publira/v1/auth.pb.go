@@ -318,6 +318,94 @@ func (x *GetMeResponse) GetUser() *v1.User {
 	return nil
 }
 
+type GetTenantByDomainRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Domains       []string               `protobuf:"bytes,1,rep,name=domains,proto3" json:"domains,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantByDomainRequest) Reset() {
+	*x = GetTenantByDomainRequest{}
+	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantByDomainRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantByDomainRequest) ProtoMessage() {}
+
+func (x *GetTenantByDomainRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantByDomainRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantByDomainRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetTenantByDomainRequest) GetDomains() []string {
+	if x != nil {
+		return x.Domains
+	}
+	return nil
+}
+
+type GetTenantByDomainResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetTenantByDomainResponse) Reset() {
+	*x = GetTenantByDomainResponse{}
+	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantByDomainResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantByDomainResponse) ProtoMessage() {}
+
+func (x *GetTenantByDomainResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantByDomainResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantByDomainResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetTenantByDomainResponse) GetTenantPublicId() string {
+	if x != nil {
+		return x.TenantPublicId
+	}
+	return ""
+}
+
 var File_publira_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_v1_auth_proto_rawDesc = "" +
@@ -341,11 +429,16 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\";\n" +
 	"\rGetMeResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user2\xfd\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"4\n" +
+	"\x18GetTenantByDomainRequest\x12\x18\n" +
+	"\adomains\x18\x01 \x03(\tR\adomains\"E\n" +
+	"\x19GetTenantByDomainResponse\x12(\n" +
+	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId2\xe1\x02\n" +
 	"\vAuthService\x12V\n" +
 	"\rCreateSession\x12 .publira.v1.CreateSessionRequest\x1a!.publira.v1.CreateSessionResponse\"\x00\x12V\n" +
 	"\rDeleteSession\x12 .publira.v1.DeleteSessionRequest\x1a!.publira.v1.DeleteSessionResponse\"\x00\x12>\n" +
-	"\x05GetMe\x12\x18.publira.v1.GetMeRequest\x1a\x19.publira.v1.GetMeResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
+	"\x05GetMe\x12\x18.publira.v1.GetMeRequest\x1a\x19.publira.v1.GetMeResponse\"\x00\x12b\n" +
+	"\x11GetTenantByDomain\x12$.publira.v1.GetTenantByDomainRequest\x1a%.publira.v1.GetTenantByDomainResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_auth_proto_rawDescOnce sync.Once
@@ -359,36 +452,40 @@ func file_publira_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_v1_auth_proto_rawDescData
 }
 
-var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_v1_auth_proto_goTypes = []any{
-	(*CreateSessionRequest)(nil),  // 0: publira.v1.CreateSessionRequest
-	(*CreateSessionResponse)(nil), // 1: publira.v1.CreateSessionResponse
-	(*DeleteSessionRequest)(nil),  // 2: publira.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil), // 3: publira.v1.DeleteSessionResponse
-	(*GetMeRequest)(nil),          // 4: publira.v1.GetMeRequest
-	(*GetMeResponse)(nil),         // 5: publira.v1.GetMeResponse
-	(*v1.TenantContext)(nil),      // 6: publira.types.v1.TenantContext
-	(*v1.User)(nil),               // 7: publira.types.v1.User
-	(*v1.Session)(nil),            // 8: publira.types.v1.Session
+	(*CreateSessionRequest)(nil),      // 0: publira.v1.CreateSessionRequest
+	(*CreateSessionResponse)(nil),     // 1: publira.v1.CreateSessionResponse
+	(*DeleteSessionRequest)(nil),      // 2: publira.v1.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),     // 3: publira.v1.DeleteSessionResponse
+	(*GetMeRequest)(nil),              // 4: publira.v1.GetMeRequest
+	(*GetMeResponse)(nil),             // 5: publira.v1.GetMeResponse
+	(*GetTenantByDomainRequest)(nil),  // 6: publira.v1.GetTenantByDomainRequest
+	(*GetTenantByDomainResponse)(nil), // 7: publira.v1.GetTenantByDomainResponse
+	(*v1.TenantContext)(nil),          // 8: publira.types.v1.TenantContext
+	(*v1.User)(nil),                   // 9: publira.types.v1.User
+	(*v1.Session)(nil),                // 10: publira.types.v1.Session
 }
 var file_publira_v1_auth_proto_depIdxs = []int32{
-	6, // 0: publira.v1.CreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	7, // 1: publira.v1.CreateSessionResponse.user:type_name -> publira.types.v1.User
-	8, // 2: publira.v1.CreateSessionResponse.session:type_name -> publira.types.v1.Session
-	6, // 3: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	6, // 4: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	7, // 5: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
-	0, // 6: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
-	2, // 7: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
-	4, // 8: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	1, // 9: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
-	3, // 10: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
-	5, // 11: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	9, // [9:12] is the sub-list for method output_type
-	6, // [6:9] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	8,  // 0: publira.v1.CreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 1: publira.v1.CreateSessionResponse.user:type_name -> publira.types.v1.User
+	10, // 2: publira.v1.CreateSessionResponse.session:type_name -> publira.types.v1.Session
+	8,  // 3: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8,  // 4: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 5: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
+	0,  // 6: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
+	2,  // 7: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
+	4,  // 8: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
+	6,  // 9: publira.v1.AuthService.GetTenantByDomain:input_type -> publira.v1.GetTenantByDomainRequest
+	1,  // 10: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
+	3,  // 11: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
+	5,  // 12: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
+	7,  // 13: publira.v1.AuthService.GetTenantByDomain:output_type -> publira.v1.GetTenantByDomainResponse
+	10, // [10:14] is the sub-list for method output_type
+	6,  // [6:10] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_auth_proto_init() }
@@ -402,7 +499,7 @@ func file_publira_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_auth_proto_rawDesc), len(file_publira_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -20,7 +20,7 @@ export default function SeriesPage() {
         {series.map((item) => (
           <a
             key={item.id}
-            href={`/series/${item.id}`}
+            href={`${item.id}`}
             className="group overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm transition hover:shadow-md"
           >
             <div className="mb-4 flex h-32 items-center justify-center rounded bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
