@@ -47,6 +47,7 @@ const (
 	countSuspendedTenantsQuery                 = "-- name: CountSuspendedTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'suspended'\n"
 	countPendingEndUsersQuery                  = "-- name: CountPendingEndUsers :one\nSELECT COUNT(*)::int\nFROM users u\nWHERE u.status = 'inactive'\n    AND NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n"
 	listRecentPlatformEventsQuery              = "-- name: ListRecentPlatformEvents :many\nSELECT event_type,\n    action,\n    target,\n    actor,\n    occurred_at\nFROM (\n        SELECT 'tenant_created'::text AS event_type,\n            'Tenant Created'::text AS action,\n            t.public_id::text AS target,\n            ''::text AS actor,\n            t.created_at AS occurred_at\n        FROM tenants t\n        UNION ALL\n        SELECT 'operator_role_granted'::text AS event_type,\n            'Operator Role Granted'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            pur.created_at AS occurred_at\n        FROM platform_user_roles pur\n            JOIN users u ON u.id = pur.user_id\n        UNION ALL\n        SELECT 'end_user_created'::text AS event_type,\n            'End User Created'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            u.created_at AS occurred_at\n        FROM users u\n        WHERE NOT EXISTS (\n                SELECT 1\n                FROM platform_user_roles pur\n                WHERE pur.user_id = u.id\n            )\n    ) events\nORDER BY occurred_at DESC\nLIMIT $1\n"
+	listAdminAuditLogsQuery                    = "-- name: ListAdminAuditLogs :many\nSELECT id, actor_user_public_id, actor_role, tenant_public_id, action, target_type, target_id, outcome, reason, client_ip, created_at\nFROM admin_audit_logs\nWHERE ($1::text IS NULL OR actor_user_public_id = $1::text)\n  AND ($2::text IS NULL OR tenant_public_id = $2::text)\n  AND ($3::text IS NULL OR action = $3::text)\nORDER BY created_at DESC\nLIMIT $5 OFFSET $4\n"
 	getUserByPublicIDQuery                     = "-- name: GetUserByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\nLIMIT 1\n"
 	getTenantsByEndUserQuery                   = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
 	countTenantMembershipsByUserIDQuery        = "-- name: CountTenantMembershipsByUserID :one\nSELECT COUNT(*)::int\nFROM tenant_memberships\nWHERE user_id = $1\n"
@@ -155,6 +156,7 @@ func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformTenantService/CreateTenant", false)
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformAuthService/GetMe", false)
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformDashboardService/GetDashboardSummary", false)
+	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformAuditLogService/ListAuditLogs", false)
 	assertRouteStatus(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", true)
 	assertRouteStatus(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)
 }
@@ -763,6 +765,103 @@ func TestListOperators(t *testing.T) {
 		t.Fatalf("status = %q, want suspended", resp.Msg.Operators[1].Status)
 	}
 	assertExpectations(t, mock)
+}
+
+func TestListAuditLogs(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAdminAuditLogsQuery)).
+		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, int32(0), int32(20)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "platform_operator", "TENANT001", "tenant_created", "tenant", "TENANT001", "success", nil, "203.0.113.10", now).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER002", "platform_super_admin", nil, "operator_updated", "operator", "PLATUSER003", "success", nil, nil, now.Add(-time.Minute)))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListAuditLogs(context.Background(), newAuthedRequest(publirasplatformv1.ListAuditLogsRequest{}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	if len(resp.Msg.AuditLogs) != 2 {
+		t.Fatalf("len(audit_logs) = %d, want 2", len(resp.Msg.AuditLogs))
+	}
+	if resp.Msg.AuditLogs[0].TenantPublicId != "TENANT001" {
+		t.Fatalf("audit_logs[0].tenant_public_id = %q, want TENANT001", resp.Msg.AuditLogs[0].TenantPublicId)
+	}
+	if resp.Msg.AuditLogs[1].TargetId != "PLATUSER003" {
+		t.Fatalf("audit_logs[1].target_id = %q, want PLATUSER003", resp.Msg.AuditLogs[1].TargetId)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListAuditLogsWithFilters(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAdminAuditLogsQuery)).
+		WithArgs(
+			sql.NullString{String: "PLATUSER001", Valid: true},
+			sql.NullString{String: "TENANT001", Valid: true},
+			sql.NullString{String: "tenant_created", Valid: true},
+			int32(5),
+			int32(10),
+		).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "platform_operator", "TENANT001", "tenant_created", "tenant", "TENANT001", "success", nil, nil, now))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	resp, err := client.ListAuditLogs(context.Background(), newAuthedRequest(publirasplatformv1.ListAuditLogsRequest{
+		Limit:             10,
+		Offset:            5,
+		TenantPublicId:    "TENANT001",
+		ActorUserPublicId: "PLATUSER001",
+		Action:            "tenant_created",
+	}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	if len(resp.Msg.AuditLogs) != 1 {
+		t.Fatalf("len(audit_logs) = %d, want 1", len(resp.Msg.AuditLogs))
+	}
+	if resp.Msg.AuditLogs[0].Action != "tenant_created" {
+		t.Fatalf("audit_logs[0].action = %q, want tenant_created", resp.Msg.AuditLogs[0].Action)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListAuditLogsClampLimit(t *testing.T) {
+	ts, mock := newTestPlatformServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAdminAuditLogsQuery)).
+		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, int32(0), int32(100)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at"}))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListAuditLogs(context.Background(), newAuthedRequest(publirasplatformv1.ListAuditLogsRequest{Limit: 999}))
+	if err != nil {
+		t.Fatalf("ListAuditLogs: %v", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListAuditLogsUnauthenticated(t *testing.T) {
+	ts, _ := newTestPlatformServer(t)
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListAuditLogs(context.Background(), newRequest(publirasplatformv1.ListAuditLogsRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("ListAuditLogs code = %v, want unauthenticated", connect.CodeOf(err))
+	}
 }
 
 func TestGetDashboardSummary(t *testing.T) {
