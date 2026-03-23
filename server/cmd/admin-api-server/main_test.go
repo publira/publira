@@ -925,3 +925,150 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+func TestListLabelsSuccess(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := "session-token"
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery("FROM labels").
+		WithArgs(tenantID, int32(20), int32(0)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.ListLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+	})
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
+
+	resp, err := client.ListLabels(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListLabels: %v", err)
+	}
+	if len(resp.Msg.Labels) != 1 {
+		t.Fatalf("labels count = %d, want 1", len(resp.Msg.Labels))
+	}
+	if resp.Msg.Labels[0].PublicId != "LABEL001" {
+		t.Fatalf("label public_id = %q, want LABEL001", resp.Msg.Labels[0].PublicId)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateLabelValidationAndSuccess(t *testing.T) {
+	tests := []struct {
+		name     string
+		request  *publiraadminv1.CreateLabelRequest
+		setup    func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
+		wantCode connect.Code
+	}{
+		{
+			name: "invalid-name",
+			request: &publiraadminv1.CreateLabelRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Name:   "   ",
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "success",
+			request: &publiraadminv1.CreateLabelRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Name:   "Weekly",
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+				mock.ExpectQuery("INSERT INTO labels").
+					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
+						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAdminServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			sessionToken := "session-token"
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			if tc.setup != nil {
+				tc.setup(mock, tenantID, now)
+			}
+
+			client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(tc.request)
+			req.Header().Set("X-Publira-Session-Id", sessionToken)
+
+			resp, err := client.CreateLabel(context.Background(), req)
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("CreateLabel: %v", err)
+				}
+				if resp.Msg.Label == nil {
+					t.Fatalf("label is nil")
+				}
+				if resp.Msg.Label.PublicId != "LABEL001" {
+					t.Fatalf("label public_id = %q, want LABEL001", resp.Msg.Label.PublicId)
+				}
+			} else if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("CreateLabel code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestUpdateLabelSuccess(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := "session-token"
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "Before", now))
+	mock.ExpectExec("UPDATE labels").
+		WithArgs(labelID, "After").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "After", now))
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		PublicId: "LABEL001",
+		Name:     "After",
+	})
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
+
+	resp, err := client.UpdateLabel(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UpdateLabel: %v", err)
+	}
+	if resp.Msg.Label == nil {
+		t.Fatalf("label is nil")
+	}
+	if resp.Msg.Label.Name != "After" {
+		t.Fatalf("label name = %q, want After", resp.Msg.Label.Name)
+	}
+	assertExpectations(t, mock)
+}

@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message ListLabelsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListLabelsResponse {
+  repeated publira.types.v1.Label labels = 1;
+}
+
+message CreateLabelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string name = 2;
+}
+
+message CreateLabelResponse {
+  publira.types.v1.Label label = 1;
+}
+
+message UpdateLabelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  string name = 3;
+}
+
+message UpdateLabelResponse {
+  publira.types.v1.Label label = 1;
+}
+
+service AdminLabelService {
+  rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse) {}
+  rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse) {}
+  rpc UpdateLabel(UpdateLabelRequest) returns (UpdateLabelResponse) {}
+}

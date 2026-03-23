@@ -239,7 +239,8 @@ func (x *Creator) GetRole() string {
 
 type Label struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -272,6 +273,13 @@ func (x *Label) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Label.ProtoReflect.Descriptor instead.
 func (*Label) Descriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Label) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
 }
 
 func (x *Label) GetName() string {
@@ -644,9 +652,10 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\aCreator\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"\x1b\n" +
-	"\x05Label\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\xef\x01\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\"8\n" +
+	"\x05Label\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xef\x01\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +

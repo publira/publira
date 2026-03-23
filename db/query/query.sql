@@ -669,6 +669,29 @@ UPDATE creators
 SET name = $2,
     profile_text = $3
 WHERE id = $1;
+-- name: ListLabelsByTenant :many
+SELECT id,
+    tenant_id,
+    public_id,
+    name,
+    created_at
+FROM labels
+WHERE tenant_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+-- name: CreateLabel :one
+INSERT INTO labels (
+        id,
+        tenant_id,
+        public_id,
+        name
+    )
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+-- name: UpdateLabel :exec
+UPDATE labels
+SET name = $2
+WHERE id = $1;
 
 -- name: GetTenantMembershipByUserAndTenant :one
 -- ユーザーとテナントIDでメンバーシップを取得する

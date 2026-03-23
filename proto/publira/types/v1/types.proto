@@ -28,7 +28,8 @@ message Creator {
 }
 
 message Label {
-  string name = 1;
+  string public_id = 1;
+  string name = 2;
 }
 
 message Series {
