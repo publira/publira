@@ -101,6 +101,46 @@ func (q *Queries) CountTenantMembershipsByUserID(ctx context.Context, userID uui
 	return column_1, err
 }
 
+const createCreator = `-- name: CreateCreator :one
+INSERT INTO creators (
+        id,
+        tenant_id,
+        public_id,
+        name,
+        profile_text
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, public_id, name, profile_text, created_at
+`
+
+type CreateCreatorParams struct {
+	ID          uuid.UUID      `json:"id"`
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	PublicID    string         `json:"public_id"`
+	Name        string         `json:"name"`
+	ProfileText sql.NullString `json:"profile_text"`
+}
+
+func (q *Queries) CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error) {
+	row := q.db.QueryRowContext(ctx, createCreator,
+		arg.ID,
+		arg.TenantID,
+		arg.PublicID,
+		arg.Name,
+		arg.ProfileText,
+	)
+	var i Creator
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.Name,
+		&i.ProfileText,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createEpisodeBase = `-- name: CreateEpisodeBase :one
 INSERT INTO episodes (
         id,
@@ -508,6 +548,38 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+	)
+	return i, err
+}
+
+const getCreatorByPublicIDForTenant = `-- name: GetCreatorByPublicIDForTenant :one
+SELECT id,
+    tenant_id,
+    public_id,
+    name,
+    profile_text,
+    created_at
+FROM creators
+WHERE tenant_id = $1
+    AND public_id = $2
+LIMIT 1
+`
+
+type GetCreatorByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (Creator, error) {
+	row := q.db.QueryRowContext(ctx, getCreatorByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var i Creator
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.Name,
+		&i.ProfileText,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -1208,6 +1280,55 @@ func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesPara
 	return items, nil
 }
 
+const listCreatorsByTenant = `-- name: ListCreatorsByTenant :many
+SELECT id,
+    tenant_id,
+    public_id,
+    name,
+    profile_text,
+    created_at
+FROM creators
+WHERE tenant_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListCreatorsByTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+func (q *Queries) ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]Creator, error) {
+	rows, err := q.db.QueryContext(ctx, listCreatorsByTenant, arg.TenantID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Creator
+	for rows.Next() {
+		var i Creator
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Name,
+			&i.ProfileText,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEndUsers = `-- name: ListEndUsers :many
 SELECT u.id,
     u.public_id,
@@ -1885,6 +2006,24 @@ WHERE user_id = $1
 // ユーザーの全セッションを失効させる
 func (q *Queries) TerminateUserSessions(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, terminateUserSessions, userID)
+	return err
+}
+
+const updateCreator = `-- name: UpdateCreator :exec
+UPDATE creators
+SET name = $2,
+    profile_text = $3
+WHERE id = $1
+`
+
+type UpdateCreatorParams struct {
+	ID          uuid.UUID      `json:"id"`
+	Name        string         `json:"name"`
+	ProfileText sql.NullString `json:"profile_text"`
+}
+
+func (q *Queries) UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error {
+	_, err := q.db.ExecContext(ctx, updateCreator, arg.ID, arg.Name, arg.ProfileText)
 	return err
 }
 

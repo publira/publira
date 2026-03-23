@@ -72,6 +72,13 @@ func toProtoEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.EpisodeImag
 	}
 }
 
+func toProtoCreator(publicID, name string) *publirattypesv1.Creator {
+	return &publirattypesv1.Creator{
+		PublicId: publicID,
+		Name:     name,
+	}
+}
+
 func generatePublicID() string {
 	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
 	return strings.ToUpper(raw[:12])
@@ -265,6 +272,97 @@ func (s *adminServer) ListSeries(
 		Series:                    items,
 		DefaultReadingPeriodHours: defaultReadingPeriodHours,
 	}), nil
+}
+
+func (s *adminServer) ListCreators(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListCreatorsRequest],
+) (*connect.Response[publiraadminv1.ListCreatorsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	limit := req.Msg.Limit
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	offset := req.Msg.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	rows, err := s.queries.ListCreatorsByTenant(ctx, dbmodels.ListCreatorsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	items := make([]*publirattypesv1.Creator, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toProtoCreator(row.PublicID, row.Name))
+	}
+	return connect.NewResponse(&publiraadminv1.ListCreatorsResponse{Creators: items}), nil
+}
+
+func (s *adminServer) CreateCreator(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.CreateCreatorRequest],
+) (*connect.Response[publiraadminv1.CreateCreatorResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Msg.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	creatorID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	created, err := s.queries.CreateCreator(ctx, dbmodels.CreateCreatorParams{
+		ID:          creatorID,
+		TenantID:    tenant.ID,
+		PublicID:    generatePublicID(),
+		Name:        req.Msg.Name,
+		ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: toProtoCreator(created.PublicID, created.Name)}), nil
+}
+
+func (s *adminServer) UpdateCreator(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateCreatorRequest],
+) (*connect.Response[publiraadminv1.UpdateCreatorResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Msg.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	current, err := s.queries.GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	err = s.queries.UpdateCreator(ctx, dbmodels.UpdateCreatorParams{
+		ID:          current.ID,
+		Name:        req.Msg.Name,
+		ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	updated, err := s.queries.GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: toProtoCreator(updated.PublicID, updated.Name)}), nil
 }
 
 func (s *adminServer) GetSeries(

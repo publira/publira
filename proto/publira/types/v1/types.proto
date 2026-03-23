@@ -22,8 +22,9 @@ message Session {
 }
 
 message Creator {
-  string name = 1;
-  string role = 2;
+  string public_id = 1;
+  string name = 2;
+  string role = 3;
 }
 
 message Label {
