@@ -246,6 +246,42 @@ func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImage
 	return i, err
 }
 
+const createLabel = `-- name: CreateLabel :one
+INSERT INTO labels (
+        id,
+        tenant_id,
+        public_id,
+        name
+    )
+VALUES ($1, $2, $3, $4)
+RETURNING id, tenant_id, public_id, name, created_at
+`
+
+type CreateLabelParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+	Name     string    `json:"name"`
+}
+
+func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error) {
+	row := q.db.QueryRowContext(ctx, createLabel,
+		arg.ID,
+		arg.TenantID,
+		arg.PublicID,
+		arg.Name,
+	)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPlatformUserRole = `-- name: CreatePlatformUserRole :one
 INSERT INTO platform_user_roles (id, user_id, role)
 VALUES ($1, $2, $3)
@@ -1483,6 +1519,53 @@ func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, 
 	return items, nil
 }
 
+const listLabelsByTenant = `-- name: ListLabelsByTenant :many
+SELECT id,
+    tenant_id,
+    public_id,
+    name,
+    created_at
+FROM labels
+WHERE tenant_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListLabelsByTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]Label, error) {
+	rows, err := q.db.QueryContext(ctx, listLabelsByTenant, arg.TenantID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Label
+	for rows.Next() {
+		var i Label
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Name,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlatformOperators = `-- name: ListPlatformOperators :many
 SELECT u.public_id,
     u.email,
@@ -2053,6 +2136,22 @@ type UpdateEpisodePublishScheduleByPublicIDForTenantParams struct {
 
 func (q *Queries) UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error {
 	_, err := q.db.ExecContext(ctx, updateEpisodePublishScheduleByPublicIDForTenant, arg.TenantID, arg.PublicID, arg.ScheduledAt)
+	return err
+}
+
+const updateLabel = `-- name: UpdateLabel :exec
+UPDATE labels
+SET name = $2
+WHERE id = $1
+`
+
+type UpdateLabelParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
+	_, err := q.db.ExecContext(ctx, updateLabel, arg.ID, arg.Name)
 	return err
 }
 

@@ -141,6 +141,15 @@ mux.Handle(adminPath, adminHandler)
 		),
 	)
 	mux.Handle(creatorPath, creatorHandler)
+	labelPath, labelHandler := publiraadminv1connect.NewAdminLabelServiceHandler(
+		server,
+		connect.WithInterceptors(
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(labelPath, labelHandler)
 adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
 mux.Handle(adminAuthPath, adminAuthHandler)
 return mux

@@ -23,6 +23,7 @@ type Querier interface {
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
+	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
@@ -71,6 +72,7 @@ type Querier interface {
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
+	ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]Label, error)
 	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
 	ListPlatformUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
@@ -87,6 +89,7 @@ type Querier interface {
 	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
+	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
 	// テナントの名前・ドメインを更新する

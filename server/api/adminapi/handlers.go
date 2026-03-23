@@ -79,6 +79,13 @@ func toProtoCreator(publicID, name string) *publirattypesv1.Creator {
 	}
 }
 
+func toProtoLabel(publicID, name string) *publirattypesv1.Label {
+	return &publirattypesv1.Label{
+		PublicId: publicID,
+		Name:     name,
+	}
+}
+
 func generatePublicID() string {
 	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
 	return strings.ToUpper(raw[:12])
@@ -301,6 +308,33 @@ func (s *adminServer) ListCreators(
 	return connect.NewResponse(&publiraadminv1.ListCreatorsResponse{Creators: items}), nil
 }
 
+func (s *adminServer) ListLabels(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListLabelsRequest],
+) (*connect.Response[publiraadminv1.ListLabelsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	limit := req.Msg.Limit
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	offset := req.Msg.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	rows, err := s.queries.ListLabelsByTenant(ctx, dbmodels.ListLabelsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	items := make([]*publirattypesv1.Label, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toProtoLabel(row.PublicID, row.Name))
+	}
+	return connect.NewResponse(&publiraadminv1.ListLabelsResponse{Labels: items}), nil
+}
+
 func (s *adminServer) CreateCreator(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateCreatorRequest],
@@ -363,6 +397,65 @@ func (s *adminServer) UpdateCreator(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: toProtoCreator(updated.PublicID, updated.Name)}), nil
+}
+
+func (s *adminServer) CreateLabel(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.CreateLabelRequest],
+) (*connect.Response[publiraadminv1.CreateLabelResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Msg.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	labelID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	created, err := s.queries.CreateLabel(ctx, dbmodels.CreateLabelParams{
+		ID:       labelID,
+		TenantID: tenant.ID,
+		PublicID: generatePublicID(),
+		Name:     req.Msg.Name,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: toProtoLabel(created.PublicID, created.Name)}), nil
+}
+
+func (s *adminServer) UpdateLabel(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateLabelRequest],
+) (*connect.Response[publiraadminv1.UpdateLabelResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Msg.Name) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	current, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	err = s.queries.UpdateLabel(ctx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	updated, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: toProtoLabel(updated.PublicID, updated.Name)}), nil
 }
 
 func (s *adminServer) GetSeries(
