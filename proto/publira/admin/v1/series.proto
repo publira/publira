@@ -12,6 +12,7 @@ message CreateSeriesRequest {
   string synopsis = 3;
   string label_public_id = 4;
   bool is_published = 5;
+  int32 reading_period_hours = 6;
 }
 
 message CreateSeriesResponse {
@@ -24,6 +25,7 @@ message UpdateSeriesRequest {
   string title = 3;
   string synopsis = 4;
   bool is_published = 5;
+  int32 reading_period_hours = 6;
 }
 
 message UpdateSeriesResponse {
@@ -38,6 +40,7 @@ message ListSeriesRequest {
 
 message ListSeriesResponse {
   repeated publira.types.v1.Series series = 1;
+  int32 default_reading_period_hours = 2;
 }
 
 message GetSeriesRequest {

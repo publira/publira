@@ -23,14 +23,15 @@ const (
 )
 
 type CreateSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis      string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	LabelPublicId string                 `protobuf:"bytes,4,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
-	IsPublished   bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Title              string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Synopsis           string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
+	LabelPublicId      string                 `protobuf:"bytes,4,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
+	IsPublished        bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
+	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *CreateSeriesRequest) Reset() {
@@ -98,6 +99,13 @@ func (x *CreateSeriesRequest) GetIsPublished() bool {
 	return false
 }
 
+func (x *CreateSeriesRequest) GetReadingPeriodHours() int32 {
+	if x != nil {
+		return x.ReadingPeriodHours
+	}
+	return 0
+}
+
 type CreateSeriesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
@@ -143,14 +151,15 @@ func (x *CreateSeriesResponse) GetSeries() *v1.Series {
 }
 
 type UpdateSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis      string                 `protobuf:"bytes,4,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	IsPublished   bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId           string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Title              string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Synopsis           string                 `protobuf:"bytes,4,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
+	IsPublished        bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
+	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *UpdateSeriesRequest) Reset() {
@@ -216,6 +225,13 @@ func (x *UpdateSeriesRequest) GetIsPublished() bool {
 		return x.IsPublished
 	}
 	return false
+}
+
+func (x *UpdateSeriesRequest) GetReadingPeriodHours() int32 {
+	if x != nil {
+		return x.ReadingPeriodHours
+	}
+	return 0
 }
 
 type UpdateSeriesResponse struct {
@@ -323,10 +339,11 @@ func (x *ListSeriesRequest) GetOffset() int32 {
 }
 
 type ListSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	Series                    []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
+	DefaultReadingPeriodHours int32                  `protobuf:"varint,2,opt,name=default_reading_period_hours,json=defaultReadingPeriodHours,proto3" json:"default_reading_period_hours,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *ListSeriesResponse) Reset() {
@@ -364,6 +381,13 @@ func (x *ListSeriesResponse) GetSeries() []*v1.Series {
 		return x.Series
 	}
 	return nil
+}
+
+func (x *ListSeriesResponse) GetDefaultReadingPeriodHours() int32 {
+	if x != nil {
+		return x.DefaultReadingPeriodHours
+	}
+	return 0
 }
 
 type GetSeriesRequest struct {
@@ -878,29 +902,32 @@ var File_publira_admin_v1_series_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
-	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xcb\x01\n" +
+	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xfd\x01\n" +
 	"\x13CreateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
 	"\bsynopsis\x18\x03 \x01(\tR\bsynopsis\x12&\n" +
 	"\x0flabel_public_id\x18\x04 \x01(\tR\rlabelPublicId\x12!\n" +
-	"\fis_published\x18\x05 \x01(\bR\visPublished\"H\n" +
+	"\fis_published\x18\x05 \x01(\bR\visPublished\x120\n" +
+	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\"H\n" +
 	"\x14CreateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xc0\x01\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xf2\x01\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1a\n" +
 	"\bsynopsis\x18\x04 \x01(\tR\bsynopsis\x12!\n" +
-	"\fis_published\x18\x05 \x01(\bR\visPublished\"H\n" +
+	"\fis_published\x18\x05 \x01(\bR\visPublished\x120\n" +
+	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\"H\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"z\n" +
 	"\x11ListSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"F\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"\x87\x01\n" +
 	"\x12ListSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\"h\n" +
+	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12?\n" +
+	"\x1cdefault_reading_period_hours\x18\x02 \x01(\x05R\x19defaultReadingPeriodHours\"h\n" +
 	"\x10GetSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"E\n" +

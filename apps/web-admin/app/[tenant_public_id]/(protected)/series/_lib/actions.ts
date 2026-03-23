@@ -1,0 +1,150 @@
+"use server";
+
+import { createSeries, updateSeries } from "../../../../../lib/series";
+import type { SeriesActionState } from "../series-types";
+
+const parseCommonFields = (formData: FormData) => {
+  const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const synopsis = String(formData.get("synopsis") ?? "").trim();
+  const readingPeriodHoursRaw = String(
+    formData.get("reading_period_hours") ?? ""
+  ).trim();
+  const isPublished = String(formData.get("is_published") ?? "") === "on";
+  const readingPeriodHours = Number.parseInt(readingPeriodHoursRaw, 10);
+
+  return {
+    isPublished,
+    readingPeriodHours,
+    synopsis,
+    tenantPublicId,
+    title,
+  };
+};
+
+const validateCommonFields = (
+  input: ReturnType<typeof parseCommonFields>,
+  mode: "create" | "update"
+): SeriesActionState | null => {
+  if (!input.tenantPublicId) {
+    return {
+      message: "テナント ID が見つかりません。",
+      mode,
+      ok: false,
+    };
+  }
+
+  if (!input.title) {
+    return {
+      message: "タイトルは必須です。",
+      mode,
+      ok: false,
+    };
+  }
+
+  if (!input.synopsis) {
+    return {
+      message: "概要は必須です。",
+      mode,
+      ok: false,
+    };
+  }
+
+  if (Number.isNaN(input.readingPeriodHours) || input.readingPeriodHours < 0) {
+    return {
+      message: "閲覧可能期間は 0 以上の整数で入力してください。",
+      mode,
+      ok: false,
+    };
+  }
+
+  return null;
+};
+
+export const createSeriesAction = async (
+  _prevState: SeriesActionState,
+  formData: FormData
+): Promise<SeriesActionState> => {
+  const input = parseCommonFields(formData);
+  const commonValidation = validateCommonFields(input, "create");
+  if (commonValidation) {
+    return commonValidation;
+  }
+
+  const labelPublicId = String(formData.get("label_public_id") ?? "").trim();
+  if (!labelPublicId) {
+    return {
+      message: "レーベル公開 ID は必須です。",
+      mode: "create",
+      ok: false,
+    };
+  }
+
+  const result = await createSeries({
+    isPublished: input.isPublished,
+    labelPublicId,
+    readingPeriodHours: input.readingPeriodHours,
+    synopsis: input.synopsis,
+    tenantPublicId: input.tenantPublicId,
+    title: input.title,
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      mode: "create",
+      ok: false,
+    };
+  }
+
+  return {
+    message: "シリーズを作成しました。",
+    mode: "create",
+    ok: true,
+    series: result.series,
+  };
+};
+
+export const updateSeriesAction = async (
+  _prevState: SeriesActionState,
+  formData: FormData
+): Promise<SeriesActionState> => {
+  const input = parseCommonFields(formData);
+  const commonValidation = validateCommonFields(input, "update");
+  if (commonValidation) {
+    return commonValidation;
+  }
+
+  const publicId = String(formData.get("public_id") ?? "").trim();
+  if (!publicId) {
+    return {
+      message: "更新対象のシリーズ ID が見つかりません。",
+      mode: "update",
+      ok: false,
+    };
+  }
+
+  const result = await updateSeries({
+    isPublished: input.isPublished,
+    publicId,
+    readingPeriodHours: input.readingPeriodHours,
+    synopsis: input.synopsis,
+    tenantPublicId: input.tenantPublicId,
+    title: input.title,
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      mode: "update",
+      ok: false,
+    };
+  }
+
+  return {
+    message: "シリーズを更新しました。",
+    mode: "update",
+    ok: true,
+    series: result.series,
+  };
+};

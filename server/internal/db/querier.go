@@ -84,6 +84,7 @@ type Querier interface {
 	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
+	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
 	// テナントの名前・ドメインを更新する
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	// テナントの状態 (active / suspended) を更新する
@@ -91,7 +92,7 @@ type Querier interface {
 	// ユーザーのステータスを更新
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
-	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (UpsertSeriesListingRow, error)
+	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 }
 
