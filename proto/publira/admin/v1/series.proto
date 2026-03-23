@@ -13,6 +13,7 @@ message CreateSeriesRequest {
   string label_public_id = 4;
   bool is_published = 5;
   int32 reading_period_hours = 6;
+  repeated string creator_public_ids = 7;
 }
 
 message CreateSeriesResponse {
@@ -26,6 +27,7 @@ message UpdateSeriesRequest {
   string synopsis = 4;
   bool is_published = 5;
   int32 reading_period_hours = 6;
+  repeated string creator_public_ids = 7;
 }
 
 message UpdateSeriesResponse {

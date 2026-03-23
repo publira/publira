@@ -349,6 +349,33 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 	return i, err
 }
 
+const createSeriesCreator = `-- name: CreateSeriesCreator :exec
+INSERT INTO series_creators (
+        series_id,
+        creator_id,
+        role,
+        display_order
+    )
+VALUES ($1, $2, $3, $4)
+`
+
+type CreateSeriesCreatorParams struct {
+	SeriesID     uuid.UUID `json:"series_id"`
+	CreatorID    uuid.UUID `json:"creator_id"`
+	Role         string    `json:"role"`
+	DisplayOrder int32     `json:"display_order"`
+}
+
+func (q *Queries) CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error {
+	_, err := q.db.ExecContext(ctx, createSeriesCreator,
+		arg.SeriesID,
+		arg.CreatorID,
+		arg.Role,
+		arg.DisplayOrder,
+	)
+	return err
+}
+
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
         id,
@@ -524,6 +551,16 @@ WHERE user_id = $1
 
 func (q *Queries) DeletePlatformUserRolesByUserID(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deletePlatformUserRolesByUserID, userID)
+	return err
+}
+
+const deleteSeriesCreatorsBySeriesID = `-- name: DeleteSeriesCreatorsBySeriesID :exec
+DELETE FROM series_creators
+WHERE series_id = $1
+`
+
+func (q *Queries) DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteSeriesCreatorsBySeriesID, seriesID)
 	return err
 }
 
@@ -1316,6 +1353,53 @@ func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesPara
 	return items, nil
 }
 
+const listCreatorsByPublicIDsForTenant = `-- name: ListCreatorsByPublicIDsForTenant :many
+SELECT id,
+    tenant_id,
+    public_id,
+    name,
+    profile_text,
+    created_at
+FROM creators
+WHERE tenant_id = $1
+    AND public_id = ANY($2::varchar[])
+`
+
+type ListCreatorsByPublicIDsForTenantParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	PublicIds []string  `json:"public_ids"`
+}
+
+func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]Creator, error) {
+	rows, err := q.db.QueryContext(ctx, listCreatorsByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Creator
+	for rows.Next() {
+		var i Creator
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Name,
+			&i.ProfileText,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCreatorsByTenant = `-- name: ListCreatorsByTenant :many
 SELECT id,
     tenant_id,
@@ -1866,6 +1950,57 @@ func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenant
 			&i.ReadingPeriodHours,
 			&i.IsPublished,
 			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSeriesCreatorsBySeriesIDs = `-- name: ListSeriesCreatorsBySeriesIDs :many
+SELECT sc.series_id,
+    c.public_id,
+    c.name,
+    sc.role,
+    sc.display_order
+FROM series_creators sc
+    JOIN creators c ON c.id = sc.creator_id
+WHERE sc.series_id = ANY($1::uuid[])
+ORDER BY sc.series_id ASC,
+    sc.display_order ASC,
+    c.created_at ASC
+`
+
+type ListSeriesCreatorsBySeriesIDsRow struct {
+	SeriesID     uuid.UUID `json:"series_id"`
+	PublicID     string    `json:"public_id"`
+	Name         string    `json:"name"`
+	Role         string    `json:"role"`
+	DisplayOrder int32     `json:"display_order"`
+}
+
+func (q *Queries) ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSeriesCreatorsBySeriesIDs, pq.Array(seriesIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSeriesCreatorsBySeriesIDsRow
+	for rows.Next() {
+		var i ListSeriesCreatorsBySeriesIDsRow
+		if err := rows.Scan(
+			&i.SeriesID,
+			&i.PublicID,
+			&i.Name,
+			&i.Role,
+			&i.DisplayOrder,
 		); err != nil {
 			return nil, err
 		}

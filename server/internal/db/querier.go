@@ -26,6 +26,7 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
+	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// プラットフォーム管理者向けテナント作成
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
@@ -33,6 +34,7 @@ type Querier interface {
 	CreateTenantMembership(ctx context.Context, arg CreateTenantMembershipParams) (TenantMembership, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeletePlatformUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteTenantMemberRolesByMembershipID(ctx context.Context, membershipID uuid.UUID) error
 	DeleteTenantMembership(ctx context.Context, id uuid.UUID) error
 	// ユーザーを物理削除（外部キー制約により関連データも削除）
@@ -67,6 +69,7 @@ type Querier interface {
 	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
 	// 管理操作監査ログ一覧取得（フィルタ対応）
 	ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogsParams) ([]AdminAuditLog, error)
+	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]Creator, error)
 	ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]Creator, error)
 	// エンドユーザー（platform_user_roles未保持）の一覧取得
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
@@ -78,6 +81,7 @@ type Querier interface {
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
+	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
 	// テナントに所属するメンバー一覧を取得する
 	ListTenantMemberships(ctx context.Context, arg ListTenantMembershipsParams) ([]ListTenantMembershipsRow, error)
 	ListTenantRolesByUserAndTenant(ctx context.Context, arg ListTenantRolesByUserAndTenantParams) ([]string, error)
