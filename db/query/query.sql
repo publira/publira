@@ -31,6 +31,20 @@ FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, or
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
 LIMIT 1;
+
+-- name: GetAdminTenantByDomains :one
+-- 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
+SELECT t.*
+FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t
+    ON t.admin_domain = candidate.domain
+    OR (
+        t.admin_domain IS NULL
+        AND candidate.domain = CONCAT('admin.', t.domain)
+    )
+ORDER BY candidate.ord
+LIMIT 1;
+
 -- name: GetTenantThemeByTenantID :one
 SELECT *
 FROM tenant_themes

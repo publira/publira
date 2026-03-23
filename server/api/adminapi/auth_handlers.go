@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -147,4 +148,33 @@ func (s *adminServer) GetMe(
 		return nil, err
 	}
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role}}), nil
+}
+
+func (s *adminServer) GetTenantByDomain(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantByDomainRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantByDomainResponse], error) {
+	domains := make([]string, 0, len(req.Msg.Domains))
+	for _, candidate := range req.Msg.Domains {
+		trimmed := strings.TrimSpace(candidate)
+		if trimmed == "" {
+			continue
+		}
+		domains = append(domains, strings.ToLower(trimmed))
+	}
+	if len(domains) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domains are required"))
+	}
+
+	tenant, err := s.queries.GetAdminTenantByDomains(ctx, domains)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantByDomainResponse{
+		TenantPublicId: tenant.PublicID,
+	}), nil
 }

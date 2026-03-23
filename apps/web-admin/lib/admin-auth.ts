@@ -7,15 +7,10 @@ import {
 
 const adminApiBaseUrl =
   process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8001";
-const tenantPublicId = process.env.PUBLIRA_TENANT_PUBLIC_ID ?? "demo";
 
 const adminApiClient = createAdminApiClient({
   baseUrl: adminApiBaseUrl,
 });
-
-const tenant = {
-  tenantPublicId,
-};
 
 export type AdminLoginResult =
   | {
@@ -56,13 +51,14 @@ const toErrorMessage = (error: unknown): string => {
 
 export const loginAdmin = async (
   email: string,
-  password: string
+  password: string,
+  tenantPublicId: string
 ): Promise<AdminLoginResult> => {
   try {
     const response = await adminApiClient.auth.createSession({
       email,
       password,
-      tenant,
+      tenant: { tenantPublicId },
     });
 
     const sessionId = response.session?.sessionId?.trim() ?? "";
@@ -89,19 +85,23 @@ export const loginAdmin = async (
   }
 };
 
-export const logoutAdmin = async (sessionId: string): Promise<void> => {
+export const logoutAdmin = async (
+  sessionId: string,
+  tenantPublicId: string
+): Promise<void> => {
   if (!sessionId) {
     return;
   }
 
   await adminApiClient.auth.deleteSession({
     sessionId,
-    tenant,
+    tenant: { tenantPublicId },
   });
 };
 
 export const getAdminCurrentUser = async (
-  sessionId: string
+  sessionId: string,
+  tenantPublicId: string
 ): Promise<AdminCurrentUser | null> => {
   const token = sessionId.trim();
   if (!token) {
@@ -111,7 +111,7 @@ export const getAdminCurrentUser = async (
   try {
     const response = await adminApiClient.auth.getMe({
       sessionId: token,
-      tenant,
+      tenant: { tenantPublicId },
     });
 
     const publicId = response.user?.publicId?.trim() ?? "";
@@ -130,9 +130,10 @@ export const getAdminCurrentUser = async (
 };
 
 export const isAdminSessionValid = async (
-  sessionId: string
+  sessionId: string,
+  tenantPublicId: string
 ): Promise<boolean> => {
-  const user = await getAdminCurrentUser(sessionId);
+  const user = await getAdminCurrentUser(sessionId, tenantPublicId);
   return user !== null;
 };
 

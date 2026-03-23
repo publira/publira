@@ -33,8 +33,17 @@ message AdminAuthServiceGetMeResponse {
   publira.types.v1.User user = 1;
 }
 
+message AdminAuthServiceGetTenantByDomainRequest {
+  repeated string domains = 1;
+}
+
+message AdminAuthServiceGetTenantByDomainResponse {
+  string tenant_public_id = 1;
+}
+
 service AdminAuthService {
   rpc CreateSession(AdminAuthServiceCreateSessionRequest) returns (AdminAuthServiceCreateSessionResponse) {}
   rpc DeleteSession(AdminAuthServiceDeleteSessionRequest) returns (AdminAuthServiceDeleteSessionResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
+  rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
 }

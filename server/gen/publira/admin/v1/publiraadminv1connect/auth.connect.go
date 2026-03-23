@@ -41,6 +41,9 @@ const (
 	AdminAuthServiceDeleteSessionProcedure = "/publira.admin.v1.AdminAuthService/DeleteSession"
 	// AdminAuthServiceGetMeProcedure is the fully-qualified name of the AdminAuthService's GetMe RPC.
 	AdminAuthServiceGetMeProcedure = "/publira.admin.v1.AdminAuthService/GetMe"
+	// AdminAuthServiceGetTenantByDomainProcedure is the fully-qualified name of the AdminAuthService's
+	// GetTenantByDomain RPC.
+	AdminAuthServiceGetTenantByDomainProcedure = "/publira.admin.v1.AdminAuthService/GetTenantByDomain"
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
@@ -48,6 +51,7 @@ type AdminAuthServiceClient interface {
 	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
+	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -79,14 +83,21 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminAuthServiceMethods.ByName("GetMe")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantByDomain: connect.NewClient[v1.AdminAuthServiceGetTenantByDomainRequest, v1.AdminAuthServiceGetTenantByDomainResponse](
+			httpClient,
+			baseURL+AdminAuthServiceGetTenantByDomainProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("GetTenantByDomain")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // adminAuthServiceClient implements AdminAuthServiceClient.
 type adminAuthServiceClient struct {
-	createSession *connect.Client[v1.AdminAuthServiceCreateSessionRequest, v1.AdminAuthServiceCreateSessionResponse]
-	deleteSession *connect.Client[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse]
-	getMe         *connect.Client[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse]
+	createSession     *connect.Client[v1.AdminAuthServiceCreateSessionRequest, v1.AdminAuthServiceCreateSessionResponse]
+	deleteSession     *connect.Client[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse]
+	getMe             *connect.Client[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse]
+	getTenantByDomain *connect.Client[v1.AdminAuthServiceGetTenantByDomainRequest, v1.AdminAuthServiceGetTenantByDomainResponse]
 }
 
 // CreateSession calls publira.admin.v1.AdminAuthService.CreateSession.
@@ -104,11 +115,17 @@ func (c *adminAuthServiceClient) GetMe(ctx context.Context, req *connect.Request
 	return c.getMe.CallUnary(ctx, req)
 }
 
+// GetTenantByDomain calls publira.admin.v1.AdminAuthService.GetTenantByDomain.
+func (c *adminAuthServiceClient) GetTenantByDomain(ctx context.Context, req *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error) {
+	return c.getTenantByDomain.CallUnary(ctx, req)
+}
+
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
+	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
 }
 
 // NewAdminAuthServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -136,6 +153,12 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminAuthServiceMethods.ByName("GetMe")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminAuthServiceGetTenantByDomainHandler := connect.NewUnaryHandler(
+		AdminAuthServiceGetTenantByDomainProcedure,
+		svc.GetTenantByDomain,
+		connect.WithSchema(adminAuthServiceMethods.ByName("GetTenantByDomain")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminAuthServiceCreateSessionProcedure:
@@ -144,6 +167,8 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 			adminAuthServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case AdminAuthServiceGetMeProcedure:
 			adminAuthServiceGetMeHandler.ServeHTTP(w, r)
+		case AdminAuthServiceGetTenantByDomainProcedure:
+			adminAuthServiceGetTenantByDomainHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -163,4 +188,8 @@ func (UnimplementedAdminAuthServiceHandler) DeleteSession(context.Context, *conn
 
 func (UnimplementedAdminAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.GetMe is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.GetTenantByDomain is not implemented"))
 }

@@ -83,6 +83,9 @@ importers:
       '@publira/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      lru-cache:
+        specifier: ^11.2.7
+        version: 11.2.7
       next:
         specifier: 'catalog:'
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

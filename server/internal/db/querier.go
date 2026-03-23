@@ -35,6 +35,8 @@ type Querier interface {
 	DeleteTenantMembership(ctx context.Context, id uuid.UUID) error
 	// ユーザーを物理削除（外部キー制約により関連データも削除）
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
+	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
+	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)

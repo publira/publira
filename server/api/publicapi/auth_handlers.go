@@ -217,3 +217,32 @@ func (s *apiServer) GetTenantByDomain(
 		TenantPublicId: tenant.PublicID,
 	}), nil
 }
+
+func (s *apiServer) GetAdminTenantByDomain(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetAdminTenantByDomainRequest],
+) (*connect.Response[publirav1.GetAdminTenantByDomainResponse], error) {
+	domains := make([]string, 0, len(req.Msg.Domains))
+	for _, candidate := range req.Msg.Domains {
+		domain := strings.TrimSpace(candidate)
+		if domain == "" {
+			continue
+		}
+		domains = append(domains, domain)
+	}
+	if len(domains) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domains are required"))
+	}
+
+	tenant, err := s.queries.GetAdminTenantByDomains(ctx, domains)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publirav1.GetAdminTenantByDomainResponse{
+		TenantPublicId: tenant.PublicID,
+	}), nil
+}
