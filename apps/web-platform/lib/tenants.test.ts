@@ -77,6 +77,7 @@ describe("listPlatformTenants", () => {
     mockListTenants.mockResolvedValueOnce({
       tenants: [
         {
+          adminDomain: "admin.example.com",
           createdAt: "2026-03-01 10:00",
           domain: "example.com",
           name: "テスト出版",
@@ -90,6 +91,7 @@ describe("listPlatformTenants", () => {
       ok: true,
       tenants: [
         {
+          adminDomain: "admin.example.com",
           createdAt: "2026-03-01 10:00",
           domain: "example.com",
           name: "テスト出版",
@@ -158,6 +160,7 @@ describe("createPlatformTenant", () => {
 
     expect(mockCreateTenant).toHaveBeenCalledWith(
       {
+        adminDomain: "",
         domain: "example.com",
         initialAdminEmails: ["owner@example.com"],
         name: "新規テナント",
@@ -221,6 +224,7 @@ describe("createPlatformTenant", () => {
   it("テナント詳細を取得して整形する", async () => {
     mockGetTenant.mockResolvedValueOnce({
       tenant: {
+        adminDomain: "admin.example.com",
         createdAt: "2026-03-01T10:00:00Z",
         domain: "example.com",
         name: "青楓出版",
@@ -230,6 +234,7 @@ describe("createPlatformTenant", () => {
     });
 
     await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
+      adminDomain: "admin.example.com",
       createdAt: "2026-03-01T10:00:00Z",
       domain: "example.com",
       name: "青楓出版",

@@ -70,6 +70,7 @@ export const updateTenantDomainAction = async (
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const currentName = String(formData.get("tenant_current_name") ?? "").trim();
   const domain = String(formData.get("tenant_domain") ?? "").trim();
+  const adminDomain = String(formData.get("tenant_admin_domain") ?? "").trim();
   if (!tenantPublicId || !currentName) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
@@ -80,7 +81,8 @@ export const updateTenantDomainAction = async (
   const result = await updatePlatformTenant(
     tenantPublicId,
     currentName,
-    domain
+    domain,
+    adminDomain
   );
   revalidatePath(`/tenants/${tenantPublicId}`);
   if (!result.ok) {

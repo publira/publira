@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminDomainPreview } from "../../../../components/admin-domain-preview";
 import { PlatformPage } from "../../../../components/platform-page";
 import { TenantDomainCautions } from "../../../../components/tenant-domain-cautions";
 import {
@@ -172,10 +173,27 @@ export default async function TenantDetailPage({
                     <Input
                       key={tenant.domain}
                       defaultValue={tenant.domain}
+                      id="tenant_domain"
                       name="tenant_domain"
                       placeholder="tenant-example.example.com"
                       required
                       type="text"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>管理画面ドメイン</FieldLabel>
+                    <Input
+                      key={tenant.adminDomain}
+                      defaultValue={tenant.adminDomain}
+                      id="tenant_admin_domain"
+                      name="tenant_admin_domain"
+                      placeholder={`admin.${tenant.domain}`}
+                      type="text"
+                    />
+                    <AdminDomainPreview
+                      adminDomain={tenant.adminDomain}
+                      domain={tenant.domain}
+                      showCurrentDomain
                     />
                   </Field>
                 </div>

@@ -37,18 +37,35 @@ func tenantUniqueViolationField(err error) string {
 		return "public_id"
 	case "tenants_domain_key":
 		return "domain"
+	case "tenants_admin_domain_key":
+		return "admin_domain"
 	default:
 		return ""
 	}
 }
 
+func nullableTrimmedString(v string) sql.NullString {
+	trimmed := strings.TrimSpace(v)
+	if trimmed == "" {
+		return sql.NullString{}
+	}
+
+	return sql.NullString{String: trimmed, Valid: true}
+}
+
 func tenantToProto(t dbmodels.Tenant) *publirasplatformv1.Tenant {
+	adminDomain := ""
+	if t.AdminDomain.Valid {
+		adminDomain = strings.TrimSpace(t.AdminDomain.String)
+	}
+
 	return &publirasplatformv1.Tenant{
-		PublicId:  t.PublicID,
-		Name:      t.Name,
-		Status:    t.Status,
-		CreatedAt: t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		Domain:    t.Domain,
+		PublicId:    t.PublicID,
+		Name:        t.Name,
+		Status:      t.Status,
+		CreatedAt:   t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		Domain:      t.Domain,
+		AdminDomain: adminDomain,
 	}
 }
 
@@ -127,6 +144,7 @@ func (s *platformServer) CreateTenant(
 	if domain == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
 	}
+	adminDomain := nullableTrimmedString(req.Msg.AdminDomain)
 	adminEmails := make([]string, 0, len(req.Msg.InitialAdminEmails))
 	seenEmails := make(map[string]struct{}, len(req.Msg.InitialAdminEmails))
 	for _, rawEmail := range req.Msg.InitialAdminEmails {
@@ -158,10 +176,11 @@ func (s *platformServer) CreateTenant(
 	}
 
 	tenant, err := txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
-		ID:       tenantID,
-		PublicID: generatePublicID(),
-		Domain:   domain,
-		Name:     name,
+		ID:          tenantID,
+		PublicID:    generatePublicID(),
+		Domain:      domain,
+		AdminDomain: adminDomain,
+		Name:        name,
 	})
 	if err != nil {
 		if field := tenantUniqueViolationField(err); field != "" {
@@ -274,11 +293,13 @@ func (s *platformServer) UpdateTenant(
 	if domain == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
 	}
+	adminDomain := nullableTrimmedString(req.Msg.AdminDomain)
 
 	tenant, err := s.queries.UpdateTenantInfo(ctx, dbmodels.UpdateTenantInfoParams{
-		PublicID: publicID,
-		Name:     name,
-		Domain:   domain,
+		PublicID:    publicID,
+		Name:        name,
+		Domain:      domain,
+		AdminDomain: adminDomain,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
