@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
@@ -182,7 +183,8 @@ func (s *platformServer) SuspendEndUser(
 	req *connect.Request[publirasplatformv1.SuspendEndUserRequest],
 ) (*connect.Response[publirasplatformv1.SuspendEndUserResponse], error) {
 	// Platform管理権限チェック
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	_, actorUser, actorRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	if err != nil {
 		return nil, err
 	}
 
@@ -228,6 +230,16 @@ func (s *platformServer) SuspendEndUser(
 		TenantIds: tenantIDs,
 	}
 
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: actorUser.PublicID,
+		ActorRole:         actorRole,
+		Action:            "user_suspended",
+		TargetType:        "user",
+		TargetID:          updated.PublicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
+
 	return connect.NewResponse(&publirasplatformv1.SuspendEndUserResponse{
 		User: endUser,
 	}), nil
@@ -238,7 +250,8 @@ func (s *platformServer) UnsuspendEndUser(
 	req *connect.Request[publirasplatformv1.UnsuspendEndUserRequest],
 ) (*connect.Response[publirasplatformv1.UnsuspendEndUserResponse], error) {
 	// Platform管理権限チェック
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	_, actorUser, actorRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	if err != nil {
 		return nil, err
 	}
 
@@ -282,6 +295,16 @@ func (s *platformServer) UnsuspendEndUser(
 		TenantIds: tenantIDs,
 	}
 
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: actorUser.PublicID,
+		ActorRole:         actorRole,
+		Action:            "user_activated",
+		TargetType:        "user",
+		TargetID:          updated.PublicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
+
 	return connect.NewResponse(&publirasplatformv1.UnsuspendEndUserResponse{
 		User: endUser,
 	}), nil
@@ -292,7 +315,8 @@ func (s *platformServer) DeleteEndUser(
 	req *connect.Request[publirasplatformv1.DeleteEndUserRequest],
 ) (*connect.Response[publirasplatformv1.DeleteEndUserResponse], error) {
 	// Platform管理権限チェック
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	_, actorUser, actorRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	if err != nil {
 		return nil, err
 	}
 
@@ -310,6 +334,16 @@ func (s *platformServer) DeleteEndUser(
 	if err := s.queries.DeleteUserByID(ctx, user.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: actorUser.PublicID,
+		ActorRole:         actorRole,
+		Action:            "user_deleted",
+		TargetType:        "user",
+		TargetID:          publicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
 
 	return connect.NewResponse(&publirasplatformv1.DeleteEndUserResponse{
 		PublicId: publicID,

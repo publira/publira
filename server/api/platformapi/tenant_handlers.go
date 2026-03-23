@@ -233,11 +233,10 @@ func (s *platformServer) CreateTenant(
 	}
 
 	// Record audit log
-	if session, user, role, err := s.authenticatePlatformSession(ctx, "", req.Header()); err == nil {
-		_ = session // silence unused var
+	if actor, ok := platformActorFromContext(ctx); ok {
 		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: user.PublicID,
-			ActorRole:         role,
+			ActorUserPublicID: actor.UserPublicID,
+			ActorRole:         actor.Role,
 			TenantPublicID:    tenant.PublicID,
 			Action:            "tenant_created",
 			TargetType:        "tenant",
@@ -270,6 +269,18 @@ func (s *platformServer) SuspendTenant(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if actor, ok := platformActorFromContext(ctx); ok {
+		s.recorder.Record(ctx, auditlog.Entry{
+			ActorUserPublicID: actor.UserPublicID,
+			ActorRole:         actor.Role,
+			TenantPublicID:    tenant.PublicID,
+			Action:            "tenant_suspended",
+			TargetType:        "tenant",
+			TargetID:          tenant.PublicID,
+			Outcome:           auditlog.OutcomeSuccess,
+			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		})
 	}
 
 	return connect.NewResponse(&publirasplatformv1.SuspendTenantResponse{
@@ -307,6 +318,18 @@ func (s *platformServer) UpdateTenant(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	if actor, ok := platformActorFromContext(ctx); ok {
+		s.recorder.Record(ctx, auditlog.Entry{
+			ActorUserPublicID: actor.UserPublicID,
+			ActorRole:         actor.Role,
+			TenantPublicID:    tenant.PublicID,
+			Action:            "tenant_info_updated",
+			TargetType:        "tenant",
+			TargetID:          tenant.PublicID,
+			Outcome:           auditlog.OutcomeSuccess,
+			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		})
+	}
 
 	return connect.NewResponse(&publirasplatformv1.UpdateTenantResponse{
 		Tenant: tenantToProto(tenant),
@@ -331,6 +354,18 @@ func (s *platformServer) ResumeTenant(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if actor, ok := platformActorFromContext(ctx); ok {
+		s.recorder.Record(ctx, auditlog.Entry{
+			ActorUserPublicID: actor.UserPublicID,
+			ActorRole:         actor.Role,
+			TenantPublicID:    tenant.PublicID,
+			Action:            "tenant_resumed",
+			TargetType:        "tenant",
+			TargetID:          tenant.PublicID,
+			Outcome:           auditlog.OutcomeSuccess,
+			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		})
 	}
 
 	return connect.NewResponse(&publirasplatformv1.ResumeTenantResponse{

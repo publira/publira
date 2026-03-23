@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -24,12 +25,12 @@ import (
 )
 
 const (
-	getTenantByPublicIDQuery                   = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
-	listTenantsQuery                           = "-- name: ListTenants :many\nSELECT id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\nFROM tenants\nWHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')\n  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')\n  AND ($3::text = '' OR status = $3::text)\nORDER BY created_at DESC\nLIMIT $5 OFFSET $4\n"
-	createTenantQuery                          = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, domain, subdomain, name, status)\nVALUES ($1, $2, $3, $4, $5, 'active')\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	getTenantByPublicIDQuery                   = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
+	listTenantsQuery                           = "-- name: ListTenants :many\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\nFROM tenants\nWHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')\n  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')\n  AND ($3::text = '' OR status = $3::text)\nORDER BY created_at DESC\nLIMIT $5 OFFSET $4\n"
+	createTenantQuery                          = "-- name: CreateTenant :one\nINSERT INTO tenants (id, public_id, domain, admin_domain, name, status)\nVALUES ($1, $2, $3, $4, $5, 'active')\nRETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\n"
 	createTenantMembershipQuery                = "-- name: CreateTenantMembership :one\nINSERT INTO tenant_memberships (id, user_id, tenant_id, status)\nVALUES ($1, $2, $3, $4)\nRETURNING id, user_id, tenant_id, status, created_at\n"
 	createTenantMemberRoleQuery                = "-- name: CreateTenantMemberRole :one\nINSERT INTO tenant_member_roles (id, membership_id, role)\nVALUES ($1, $2, $3)\nRETURNING id, membership_id, role, created_at\n"
-	updateTenantStatusQuery                    = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, subdomain, name, default_reading_period_hours, created_at, status\n"
+	updateTenantStatusQuery                    = "-- name: UpdateTenantStatus :one\nUPDATE tenants\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\n"
 	getSessionByTokenHash                      = "-- name: GetSessionByTokenHash :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE token_hash = $1\nLIMIT 1\n"
 	getUserByIDQuery                           = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE id = $1\n"
 	getUserByEmailQuery                        = "-- name: GetUserByEmail :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE email = $1\nLIMIT 1\n"
@@ -61,7 +62,7 @@ const (
 )
 
 func tenantColumns() []string {
-	return []string{"id", "public_id", "domain", "subdomain", "name", "default_reading_period_hours", "created_at", "status"}
+	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain"}
 }
 
 func tenantMembershipColumns() []string {
@@ -87,7 +88,7 @@ func newTestPlatformServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	server := httptest.NewServer(platformapi.NewHandler(db, dbmodels.New(db)))
+	server := httptest.NewServer(platformapi.NewHandler(db, dbmodels.New(db), slog.Default()))
 	t.Cleanup(server.Close)
 	return server, mock
 }
@@ -139,10 +140,15 @@ func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 	}
 }
 
+func expectAdminAuditLogInsert(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("INSERT INTO admin_audit_logs").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
 // TestPlatformHandlerExposesOnlyPlatformRoutes は、NewHandler が PlatformTenantService のみ
 // 公開し、admin / public API のルートを登録しないことを検証する。
 func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
-	ts := httptest.NewServer(platformapi.NewHandler(nil, nil))
+	ts := httptest.NewServer(platformapi.NewHandler(nil, nil, slog.Default()))
 	t.Cleanup(ts.Close)
 
 	assertRouteStatus(t, ts, "/publira.platform.v1.PlatformTenantService/ListTenants", false)
@@ -175,7 +181,7 @@ func TestListTenantsReturnsEmptyList(t *testing.T) {
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
+		WithArgs("", "", "", int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
@@ -200,10 +206,10 @@ func TestListTenantsReturnsTenants(t *testing.T) {
 	id2 := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
+		WithArgs("", "", "", int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id1, "TENANT001", nil, nil, "Tenant One", nil, now, "active").
-			AddRow(id2, "TENANT002", nil, nil, "Tenant Two", nil, now, "suspended"))
+			AddRow(id1, "TENANT001", "tenant-one.example.com", "Tenant One", nil, now, "active", nil).
+			AddRow(id2, "TENANT002", "tenant-two.example.com", "Tenant Two", nil, now, "suspended", nil))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{}))
@@ -231,7 +237,7 @@ func TestListTenantsAppliesDefaultLimit(t *testing.T) {
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
+		WithArgs("", "", "", int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
@@ -251,7 +257,7 @@ func TestListTenantsClampMaxLimit(t *testing.T) {
 	expectPlatformGuard(mock, tenantID, userID, testPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(100)).
+		WithArgs("", "", "", int32(0), int32(100)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
@@ -272,9 +278,9 @@ func TestListTenantsFilterByName(t *testing.T) {
 	id := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(sql.NullString{String: "Test", Valid: true}, sql.NullString{Valid: false}, sql.NullString{Valid: false}, int32(0), int32(20)).
+		WithArgs("Test", "", "", int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(id, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{Name: "Test"}))
@@ -297,9 +303,9 @@ func TestListTenantsFilterByPublicID(t *testing.T) {
 	id := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(sql.NullString{Valid: false}, sql.NullString{String: "TENANT001", Valid: true}, sql.NullString{Valid: false}, int32(0), int32(20)).
+		WithArgs("", "TENANT001", "", int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(id, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{PublicId: "TENANT001"}))
@@ -322,9 +328,9 @@ func TestListTenantsFilterByStatus(t *testing.T) {
 	id := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantsQuery)).
-		WithArgs(sql.NullString{Valid: false}, sql.NullString{Valid: false}, sql.NullString{String: "suspended", Valid: true}, int32(0), int32(20)).
+		WithArgs("", "", "suspended", int32(0), int32(20)).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "suspended"))
+			AddRow(id, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "suspended", nil))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListTenants(context.Background(), newAuthedRequest(publirasplatformv1.ListTenantsRequest{Status: "suspended"}))
@@ -352,7 +358,7 @@ func TestGetTenantSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(id, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetTenant(context.Background(), newAuthedRequest(publirasplatformv1.GetTenantRequest{PublicId: "TENANT001"}))
@@ -422,11 +428,11 @@ func TestCreateTenantSuccess(t *testing.T) {
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			sql.NullString{String: "new.example.com", Valid: true},
-			sql.NullString{String: "new", Valid: true},
+			sql.NullString{},
 			"New Tenant",
 		).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(createdTenantID, "TNNEW000001", "new.example.com", "new", "New Tenant", nil, now, "active"))
+			AddRow(createdTenantID, "TNNEW000001", "new.example.com", "New Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByEmailQuery)).
 		WithArgs("owner@example.com").
@@ -448,6 +454,7 @@ func TestCreateTenantSuccess(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 
 	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	req := validCreateTenantRequest()
@@ -548,7 +555,7 @@ func TestCreateTenantDuplicateReturnsAlreadyExists(t *testing.T) {
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			sql.NullString{String: "dup.example.com", Valid: true},
-			sql.NullString{String: "dup", Valid: true},
+			sql.NullString{},
 			"Duplicate Tenant",
 		).
 		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "tenants_public_id_key"})
@@ -581,7 +588,7 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			sql.NullString{String: "existing.example.com", Valid: true},
-			sql.NullString{String: "dom001", Valid: true},
+			sql.NullString{},
 			"Domain Duplicate Tenant",
 		).
 		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "tenants_domain_key"})
@@ -601,7 +608,7 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestCreateTenantDuplicateSubdomainReturnsAlreadyExists(t *testing.T) {
+func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	ts, mock := newTestPlatformServer(t)
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
@@ -614,22 +621,23 @@ func TestCreateTenantDuplicateSubdomainReturnsAlreadyExists(t *testing.T) {
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			sql.NullString{String: "sub001.example.com", Valid: true},
-			sql.NullString{String: "existing-sub", Valid: true},
+			sql.NullString{String: "admin.sub001.example.com", Valid: true},
 			"Subdomain Duplicate Tenant",
 		).
-		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "tenants_subdomain_key"})
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "tenants_admin_domain_key"})
 	mock.ExpectRollback()
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantRequest(&publirasplatformv1.CreateTenantRequest{
-		Name:   "Subdomain Duplicate Tenant",
-		Domain: "sub001.example.com",
+		Name:        "Subdomain Duplicate Tenant",
+		Domain:      "sub001.example.com",
+		AdminDomain: "admin.sub001.example.com",
 	}))
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("CreateTenant code = %v, want already_exists", connect.CodeOf(err))
 	}
-	if !strings.Contains(strings.ToLower(err.Error()), "subdomain") {
-		t.Fatalf("CreateTenant error = %v, want subdomain duplicate message", err)
+	if !strings.Contains(strings.ToLower(err.Error()), "admin_domain") {
+		t.Fatalf("CreateTenant error = %v, want admin_domain duplicate message", err)
 	}
 	assertExpectations(t, mock)
 }
@@ -646,7 +654,8 @@ func TestSuspendTenantSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(updateTenantStatusQuery)).
 		WithArgs("ACTIVE01", "suspended").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id, "ACTIVE01", nil, nil, "Active Tenant", nil, now, "suspended"))
+			AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil))
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.SuspendTenant(context.Background(), newAuthedRequest(publirasplatformv1.SuspendTenantRequest{PublicId: "ACTIVE01"}))
@@ -691,7 +700,8 @@ func TestResumeTenantSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(updateTenantStatusQuery)).
 		WithArgs("SUSP001", "active").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(id, "SUSP001", nil, nil, "Suspended Tenant", nil, now, "active"))
+			AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil))
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ResumeTenant(context.Background(), newAuthedRequest(publirasplatformv1.ResumeTenantRequest{PublicId: "SUSP001"}))
@@ -864,6 +874,7 @@ func TestCreateOperatorSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(operatorColumns()).
 			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "New Operator", "platform_operator", "active", now))
 	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 	resp, err := client.CreateOperator(context.Background(), newAuthedRequest(publirasplatformv1.CreateOperatorRequest{
@@ -924,6 +935,7 @@ func TestUpdateOperatorRoleSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(operatorColumns()).
 			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "active", now))
 	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 	resp, err := client.UpdateOperatorRole(context.Background(), newAuthedRequest(publirasplatformv1.UpdateOperatorRoleRequest{
@@ -964,6 +976,7 @@ func TestSuspendOperatorSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(operatorColumns()).
 			AddRow(targetID, "PLATUSER003", "operator3@example.com", "Operator Three", "platform_operator", "suspended", now))
 	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 	resp, err := client.SuspendOperator(context.Background(), newAuthedRequest(publirasplatformv1.SuspendOperatorRequest{PublicId: "PLATUSER003"}))
@@ -1024,6 +1037,7 @@ func TestDeactivateOperatorSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(operatorColumns()).
 			AddRow(targetID, "PLATUSER005", "operator5@example.com", "Operator Five", "platform_operator", "inactive", now))
 	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 	resp, err := client.DeactivateOperator(context.Background(), newAuthedRequest(publirasplatformv1.DeactivateOperatorRequest{PublicId: "PLATUSER005"}))
@@ -1459,6 +1473,7 @@ func TestSuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	resp, err := client.SuspendEndUser(context.Background(), newAuthedRequest(publirasplatformv1.SuspendEndUserRequest{PublicId: "EUSER00001"}))
@@ -1532,6 +1547,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	resp, err := client.UnsuspendEndUser(context.Background(), newAuthedRequest(publirasplatformv1.UnsuspendEndUserRequest{PublicId: "EUSER00001"}))
@@ -1572,6 +1588,7 @@ func TestDeleteEndUser(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(deleteUserByIDQuery)).
 		WithArgs(endUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	resp, err := client.DeleteEndUser(context.Background(), newAuthedRequest(publirasplatformv1.DeleteEndUserRequest{PublicId: "EUSER00001"}))
@@ -1661,7 +1678,7 @@ func TestListTenantMembersSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantMembershipsQuery)).
 		WithArgs(tenantID, int32(0), int32(20)).
@@ -1699,7 +1716,7 @@ func TestListTenantMembersEmptyList(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantMembershipsQuery)).
 		WithArgs(tenantID, int32(0), int32(20)).
@@ -1751,7 +1768,7 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
 		WithArgs("USER000001").
@@ -1831,7 +1848,7 @@ func TestAddTenantMemberUserNotFound(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
 		WithArgs("NOTFOUND").
@@ -1864,7 +1881,7 @@ func TestAddTenantMemberAlreadyExists(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
 		WithArgs("USER000001").
@@ -1903,7 +1920,7 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
 		WithArgs("USER000001").
@@ -1957,7 +1974,7 @@ func TestUpdateTenantMemberRoleMemberNotFound(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
 		WithArgs("USER000001").
@@ -1995,7 +2012,7 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
 		WithArgs("USER000001").
@@ -2039,7 +2056,7 @@ func TestRemoveTenantMemberNotFound(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", nil, nil, "Test Tenant", nil, now, "active"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDQuery)).
 		WithArgs("USER000001").

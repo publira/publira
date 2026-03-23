@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
@@ -103,7 +104,7 @@ func (s *platformServer) CreateOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CreateOperatorRequest],
 ) (*connect.Response[publirasplatformv1.CreateOperatorResponse], error) {
-	_, _, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -196,6 +197,15 @@ func (s *platformServer) CreateOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: currentUser.PublicID,
+		ActorRole:         currentRole,
+		Action:            "operator_created",
+		TargetType:        "operator",
+		TargetID:          operator.PublicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
 
 	return connect.NewResponse(&publirasplatformv1.CreateOperatorResponse{
 		Operator: getOperatorRowToProto(operator),
@@ -262,6 +272,15 @@ func (s *platformServer) UpdateOperatorRole(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: currentUser.PublicID,
+		ActorRole:         currentRole,
+		Action:            "operator_updated",
+		TargetType:        "operator",
+		TargetID:          updated.PublicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
 
 	return connect.NewResponse(&publirasplatformv1.UpdateOperatorRoleResponse{
 		Operator: getOperatorRowToProto(updated),
@@ -326,6 +345,15 @@ func (s *platformServer) SuspendOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: currentUser.PublicID,
+		ActorRole:         currentRole,
+		Action:            "operator_suspended",
+		TargetType:        "operator",
+		TargetID:          updated.PublicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
 
 	return connect.NewResponse(&publirasplatformv1.SuspendOperatorResponse{
 		Operator: getOperatorRowToProto(updated),
@@ -336,7 +364,7 @@ func (s *platformServer) UnsuspendOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UnsuspendOperatorRequest],
 ) (*connect.Response[publirasplatformv1.UnsuspendOperatorResponse], error) {
-	_, _, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -384,6 +412,15 @@ func (s *platformServer) UnsuspendOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: currentUser.PublicID,
+		ActorRole:         currentRole,
+		Action:            "operator_resumed",
+		TargetType:        "operator",
+		TargetID:          updated.PublicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
 
 	return connect.NewResponse(&publirasplatformv1.UnsuspendOperatorResponse{
 		Operator: getOperatorRowToProto(updated),
@@ -448,6 +485,15 @@ func (s *platformServer) DeactivateOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	s.recorder.Record(ctx, auditlog.Entry{
+		ActorUserPublicID: currentUser.PublicID,
+		ActorRole:         currentRole,
+		Action:            "operator_deleted",
+		TargetType:        "operator",
+		TargetID:          updated.PublicID,
+		Outcome:           auditlog.OutcomeSuccess,
+		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	})
 
 	return connect.NewResponse(&publirasplatformv1.DeactivateOperatorResponse{
 		Operator: getOperatorRowToProto(updated),
