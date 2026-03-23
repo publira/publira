@@ -127,6 +127,11 @@ func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 	}
 }
 
+func expectAdminAuditLogInsert(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("INSERT INTO admin_audit_logs").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
 func TestAdminSeriesRequiresSession(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
@@ -236,6 +241,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
 		WithArgs(seriesID, true).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
@@ -321,6 +327,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
 			AddRow(seriesID, "SERIES001", "After", "New synopsis", nil, true, now))
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
@@ -385,6 +392,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	mock.ExpectExec("INSERT INTO series_creators").
 		WithArgs(seriesID, creatorID2, "creator", int32(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
@@ -462,6 +470,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
 			AddRow(seriesID, "SERIES001", "After", "New synopsis", nil, true, now))
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
@@ -515,6 +524,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil))
+	mock.ExpectExec("INSERT INTO admin_audit_logs").
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
@@ -660,11 +671,13 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/png", int64(67), int32(0), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(0), int32(1), int32(1), now))
+	expectAdminAuditLogInsert(mock)
 
 	mock.ExpectQuery("INSERT INTO episode_images").
 		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", int64(163), int32(1), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(1), int32(1), int32(1), now))
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
@@ -804,6 +817,8 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 					WithArgs(tenantID, "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
 						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil))
+				mock.ExpectExec("INSERT INTO admin_audit_logs").
+					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			wantSuccess: true,
 		},
@@ -991,6 +1006,7 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{String: "profile", Valid: true}).
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now))
+				expectAdminAuditLogInsert(mock)
 			},
 		},
 	}
@@ -1056,6 +1072,7 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 		WithArgs(tenantID, "CREATOR001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
 			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now))
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
@@ -1139,6 +1156,7 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
 						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
+				expectAdminAuditLogInsert(mock)
 			},
 		},
 	}
@@ -1204,6 +1222,7 @@ func TestUpdateLabelSuccess(t *testing.T) {
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
 			AddRow(labelID, tenantID, "LABEL001", "After", now))
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{

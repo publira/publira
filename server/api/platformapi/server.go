@@ -24,6 +24,18 @@ type platformServer struct {
 	recorder *auditlog.Recorder
 }
 
+type platformActor struct {
+	UserPublicID string
+	Role         string
+}
+
+type platformActorContextKey struct{}
+
+func platformActorFromContext(ctx context.Context) (platformActor, bool) {
+	actor, ok := ctx.Value(platformActorContextKey{}).(platformActor)
+	return actor, ok
+}
+
 // NewHandler はプラットフォーム API 専用の HTTP ハンドラを返します。
 // PlatformTenantService のみ公開します。
 func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger) http.Handler {
@@ -41,9 +53,11 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger) http.Handler {
 		server,
 		connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				if _, _, _, err := server.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+				_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())
+				if err != nil {
 					return nil, err
 				}
+				ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserPublicID: user.PublicID, Role: role})
 				return next(ctx, req)
 			}
 		})),
