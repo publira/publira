@@ -36,8 +36,7 @@ func platformActorFromContext(ctx context.Context) (platformActor, bool) {
 	return actor, ok
 }
 
-// NewHandler はプラットフォーム API 専用の HTTP ハンドラを返します。
-// PlatformTenantService のみ公開します。
+// NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
 func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger) http.Handler {
 	server := &platformServer{queries: queries, db: db, recorder: auditlog.New(queries, logger)}
 	mux := http.NewServeMux()
@@ -75,6 +74,7 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger) http.Handler {
 	mux.Handle(userPath, userHandler)
 	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(server)
 	mux.Handle(dashboardPath, dashboardHandler)
+	auditPath, auditHandler := publirasplatformv1connect.NewPlatformAuditLogServiceHandler(server)
+	mux.Handle(auditPath, auditHandler)
 	return mux
 }
-

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
+
+message PlatformAuditLog {
+  string actor_user_public_id = 1;
+  string actor_role = 2;
+  string tenant_public_id = 3;
+  string action = 4;
+  string target_type = 5;
+  string target_id = 6;
+  string outcome = 7;
+  string reason = 8;
+  string client_ip = 9;
+  string created_at = 10;
+}
+
+message ListAuditLogsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  string tenant_public_id = 3;
+  string actor_user_public_id = 4;
+  string action = 5;
+}
+
+message ListAuditLogsResponse {
+  repeated PlatformAuditLog audit_logs = 1;
+}
+
+service PlatformAuditLogService {
+  rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse) {}
+}
