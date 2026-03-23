@@ -1,7 +1,7 @@
 DB_URL := "postgres://postgres:password@db:5432/publira?sslmode=disable"
 MIGRATE := migrate -path db/migrations -database $(DB_URL)
 
-.PHONY: setup gen db-init db-reset db-status db-rollback db-new dev-api dev-admin-api dev-platform-api dev-web run-batch-publish
+.PHONY: setup gen build-server db-init db-reset db-status db-rollback db-new dev-api dev-admin-api dev-platform-api dev-web run-batch-publish
 
 setup:
 	pnpm install
@@ -10,6 +10,9 @@ setup:
 gen:
 	sqlc generate
 	buf generate
+
+build-server:
+	$(MAKE) -C server build
 
 db-init:
 	$(MIGRATE) up

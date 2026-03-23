@@ -14,10 +14,7 @@ next-env.d.ts
 *.tsbuildinfo
 
 # Go
-server/api-server
-server/api-server.exe
-server/publish-episodes
-server/publish-episodes.exe
+server/bin/
 *.test
 *.prof
 

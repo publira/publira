@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 env:
   # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
@@ -15,8 +15,8 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    name: Check and Build
+  check:
+    name: Check
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -45,6 +45,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.26.1
+          cache-dependency-path: server/go.sum
 
       - name: Setup / pnpm
         uses: pnpm/action-setup@v4
@@ -87,8 +88,50 @@ jobs:
       - name: Validate / Lint and Format
         run: pnpm check
 
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup / Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.1
+          cache-dependency-path: server/go.sum
+
+      - name: Validate / Go Tests
+        working-directory: server
+        run: go test ./...
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+
+      - name: Setup / Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.1
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Dependencies / Install
+        run: make setup
+
       - name: Build / Web
         run: pnpm build
 
       - name: Build / Server
-        run: cd server && go build ./...
+        working-directory: server
+        run: make build

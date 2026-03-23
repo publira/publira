@@ -9,7 +9,9 @@ server/
 ├── cmd/
 │   ├── api-server/        # 公開向け ConnectRPC API サーバー
 │   ├── admin-api-server/  # 管理向け ConnectRPC API サーバー
+│   ├── platform-api-server/ # プラットフォーム管理向け ConnectRPC API サーバー
 │   └── publish-episodes/  # 単発バッチ処理
+├── bin/                   # make build で生成されるバイナリ
 ├── gen/                   # buf 自動生成コード (編集禁止)
 └── internal/
     └── db/                # sqlc 自動生成コード (編集禁止)
@@ -36,9 +38,10 @@ make db-status
 make db-new name=add_sessions_table
 make dev-api
 make dev-admin-api
+make dev-platform-api
 make run-batch-publish
 cd server && go mod tidy
-cd server && go build ./...
+cd server && make build
 ```
 
 ## 画像ストレージ設定
@@ -66,8 +69,6 @@ cd server && go build ./...
   - 既定ポート: `:8001` (`ADMIN_API_ADDR` で変更可能)
 
 これにより、公開系と管理系を別プロセス・別経路で運用できます。
-
-詳細な方針と移行手順は [server/docs/api-separation.md](server/docs/api-separation.md) を参照してください。
 
 ## 初期データメモ
 
