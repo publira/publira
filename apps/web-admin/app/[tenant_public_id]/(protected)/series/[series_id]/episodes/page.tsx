@@ -12,18 +12,20 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 
-import { AdminPage } from "../../../../../components/admin-page";
+import { AdminPage } from "../../../../../../components/admin-page";
 
 export const generateStaticParams = () =>
-  createPlaceholderStaticParams("series_id");
+  createPlaceholderStaticParams("tenant_public_id", "series_id");
 
 export default async function SeriesEpisodesPage({
   params,
-}: PageProps<"/series/[series_id]/episodes">) {
-  const { series_id } = await params;
+}: PageProps<"/[tenant_public_id]/series/[series_id]/episodes">) {
+  const { series_id, tenant_public_id } = await params;
+
+  guardPlaceholder(tenant_public_id);
 
   guardPlaceholder(series_id);
-
+  guardPlaceholder(series_id);
   return (
     <AdminPage
       actions={<Button type="button">エピソードと画像を追加</Button>}

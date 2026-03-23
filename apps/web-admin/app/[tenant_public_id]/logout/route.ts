@@ -5,7 +5,11 @@ import {
   ADMIN_SESSION_COOKIE_NAME,
   logoutAdmin,
   sessionCookieOptions,
-} from "../../lib/admin-auth";
+} from "../../../lib/admin-auth";
+
+interface RouteContext {
+  params: Promise<{ tenant_public_id: string }>;
+}
 
 const clearSessionCookie = async () => {
   const cookieStore = await cookies();
@@ -17,12 +21,14 @@ const clearSessionCookie = async () => {
   });
 };
 
-export const POST = async () => {
+export const POST = async (_request: Request, { params }: RouteContext) => {
+  const { tenant_public_id } = await params;
+
   const cookieStore = await cookies();
   const sessionId = cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value ?? "";
 
   try {
-    await logoutAdmin(sessionId);
+    await logoutAdmin(sessionId, tenant_public_id);
   } catch {
     // Always clear local session cookie, even when upstream revoke fails.
   }

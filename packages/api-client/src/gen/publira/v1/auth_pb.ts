@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/auth.proto.
  */
 export const file_publira_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiaAoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJImkKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEioKB3Nlc3Npb24YAiABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLlNlc3Npb24iWwoURGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiFwoVRGVsZXRlU2Vzc2lvblJlc3BvbnNlIlMKDEdldE1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSI1Cg1HZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIiKwoYR2V0VGVuYW50QnlEb21haW5SZXF1ZXN0Eg8KB2RvbWFpbnMYASADKAkiNQoZR2V0VGVuYW50QnlEb21haW5SZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJMuECCgtBdXRoU2VydmljZRJWCg1DcmVhdGVTZXNzaW9uEiAucHVibGlyYS52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdBohLnB1YmxpcmEudjEuQ3JlYXRlU2Vzc2lvblJlc3BvbnNlIgASVgoNRGVsZXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuRGVsZXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkRlbGV0ZVNlc3Npb25SZXNwb25zZSIAEj4KBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLkdldE1lUmVzcG9uc2UiABJiChFHZXRUZW5hbnRCeURvbWFpbhIkLnB1YmxpcmEudjEuR2V0VGVuYW50QnlEb21haW5SZXF1ZXN0GiUucHVibGlyYS52MS5HZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlIgBCPFo6Z2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiaAoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJImkKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEioKB3Nlc3Npb24YAiABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLlNlc3Npb24iWwoURGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiFwoVRGVsZXRlU2Vzc2lvblJlc3BvbnNlIlMKDEdldE1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSI1Cg1HZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIiKwoYR2V0VGVuYW50QnlEb21haW5SZXF1ZXN0Eg8KB2RvbWFpbnMYASADKAkiNQoZR2V0VGVuYW50QnlEb21haW5SZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJIjAKHUdldEFkbWluVGVuYW50QnlEb21haW5SZXF1ZXN0Eg8KB2RvbWFpbnMYASADKAkiOgoeR2V0QWRtaW5UZW5hbnRCeURvbWFpblJlc3BvbnNlEhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAky1AMKC0F1dGhTZXJ2aWNlElYKDUNyZWF0ZVNlc3Npb24SIC5wdWJsaXJhLnYxLkNyZWF0ZVNlc3Npb25SZXF1ZXN0GiEucHVibGlyYS52MS5DcmVhdGVTZXNzaW9uUmVzcG9uc2UiABJWCg1EZWxldGVTZXNzaW9uEiAucHVibGlyYS52MS5EZWxldGVTZXNzaW9uUmVxdWVzdBohLnB1YmxpcmEudjEuRGVsZXRlU2Vzc2lvblJlc3BvbnNlIgASPgoFR2V0TWUSGC5wdWJsaXJhLnYxLkdldE1lUmVxdWVzdBoZLnB1YmxpcmEudjEuR2V0TWVSZXNwb25zZSIAEmIKEUdldFRlbmFudEJ5RG9tYWluEiQucHVibGlyYS52MS5HZXRUZW5hbnRCeURvbWFpblJlcXVlc3QaJS5wdWJsaXJhLnYxLkdldFRlbmFudEJ5RG9tYWluUmVzcG9uc2UiABJxChZHZXRBZG1pblRlbmFudEJ5RG9tYWluEikucHVibGlyYS52MS5HZXRBZG1pblRlbmFudEJ5RG9tYWluUmVxdWVzdBoqLnB1YmxpcmEudjEuR2V0QWRtaW5UZW5hbnRCeURvbWFpblJlc3BvbnNlIgBCPFo6Z2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.CreateSessionRequest
@@ -172,6 +172,40 @@ export const GetTenantByDomainResponseSchema: GenMessage<GetTenantByDomainRespon
   messageDesc(file_publira_v1_auth, 7);
 
 /**
+ * @generated from message publira.v1.GetAdminTenantByDomainRequest
+ */
+export type GetAdminTenantByDomainRequest = Message<"publira.v1.GetAdminTenantByDomainRequest"> & {
+  /**
+   * @generated from field: repeated string domains = 1;
+   */
+  domains: string[];
+};
+
+/**
+ * Describes the message publira.v1.GetAdminTenantByDomainRequest.
+ * Use `create(GetAdminTenantByDomainRequestSchema)` to create a new message.
+ */
+export const GetAdminTenantByDomainRequestSchema: GenMessage<GetAdminTenantByDomainRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 8);
+
+/**
+ * @generated from message publira.v1.GetAdminTenantByDomainResponse
+ */
+export type GetAdminTenantByDomainResponse = Message<"publira.v1.GetAdminTenantByDomainResponse"> & {
+  /**
+   * @generated from field: string tenant_public_id = 1;
+   */
+  tenantPublicId: string;
+};
+
+/**
+ * Describes the message publira.v1.GetAdminTenantByDomainResponse.
+ * Use `create(GetAdminTenantByDomainResponseSchema)` to create a new message.
+ */
+export const GetAdminTenantByDomainResponseSchema: GenMessage<GetAdminTenantByDomainResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 9);
+
+/**
  * @generated from service publira.v1.AuthService
  */
 export const AuthService: GenService<{
@@ -206,6 +240,14 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GetTenantByDomainRequestSchema;
     output: typeof GetTenantByDomainResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.AuthService.GetAdminTenantByDomain
+   */
+  getAdminTenantByDomain: {
+    methodKind: "unary";
+    input: typeof GetAdminTenantByDomainRequestSchema;
+    output: typeof GetAdminTenantByDomainResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_auth, 0);

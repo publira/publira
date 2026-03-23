@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/auth.proto.
  */
 export const file_publira_admin_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL2F1dGgucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEieAokQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJ5CiVBZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJrCiRBZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiJwolQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXNwb25zZSJjChxBZG1pbkF1dGhTZXJ2aWNlR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIkUKHUFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIyiAMKEEFkbWluQXV0aFNlcnZpY2USggEKDUNyZWF0ZVNlc3Npb24SNi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VDcmVhdGVTZXNzaW9uUmVxdWVzdBo3LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXNwb25zZSIAEoIBCg1EZWxldGVTZXNzaW9uEjYucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VEZWxldGVTZXNzaW9uUmVzcG9uc2UiABJqCgVHZXRNZRIuLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldE1lUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldE1lUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL2F1dGgucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEieAokQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJ5CiVBZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJrCiRBZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiJwolQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXNwb25zZSJjChxBZG1pbkF1dGhTZXJ2aWNlR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIkUKHUFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIiOwooQWRtaW5BdXRoU2VydmljZUdldFRlbmFudEJ5RG9tYWluUmVxdWVzdBIPCgdkb21haW5zGAEgAygJIkUKKUFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAkymQQKEEFkbWluQXV0aFNlcnZpY2USggEKDUNyZWF0ZVNlc3Npb24SNi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VDcmVhdGVTZXNzaW9uUmVxdWVzdBo3LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXNwb25zZSIAEoIBCg1EZWxldGVTZXNzaW9uEjYucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VEZWxldGVTZXNzaW9uUmVzcG9uc2UiABJqCgVHZXRNZRIuLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldE1lUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldE1lUmVzcG9uc2UiABKOAQoRR2V0VGVuYW50QnlEb21haW4SOi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlcXVlc3QaOy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlIgBCR1pFZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceCreateSessionRequest
@@ -138,6 +138,40 @@ export const AdminAuthServiceGetMeResponseSchema: GenMessage<AdminAuthServiceGet
   messageDesc(file_publira_admin_v1_auth, 5);
 
 /**
+ * @generated from message publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
+ */
+export type AdminAuthServiceGetTenantByDomainRequest = Message<"publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest"> & {
+  /**
+   * @generated from field: repeated string domains = 1;
+   */
+  domains: string[];
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest.
+ * Use `create(AdminAuthServiceGetTenantByDomainRequestSchema)` to create a new message.
+ */
+export const AdminAuthServiceGetTenantByDomainRequestSchema: GenMessage<AdminAuthServiceGetTenantByDomainRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 6);
+
+/**
+ * @generated from message publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
+ */
+export type AdminAuthServiceGetTenantByDomainResponse = Message<"publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse"> & {
+  /**
+   * @generated from field: string tenant_public_id = 1;
+   */
+  tenantPublicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse.
+ * Use `create(AdminAuthServiceGetTenantByDomainResponseSchema)` to create a new message.
+ */
+export const AdminAuthServiceGetTenantByDomainResponseSchema: GenMessage<AdminAuthServiceGetTenantByDomainResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 7);
+
+/**
  * @generated from service publira.admin.v1.AdminAuthService
  */
 export const AdminAuthService: GenService<{
@@ -164,6 +198,14 @@ export const AdminAuthService: GenService<{
     methodKind: "unary";
     input: typeof AdminAuthServiceGetMeRequestSchema;
     output: typeof AdminAuthServiceGetMeResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminAuthService.GetTenantByDomain
+   */
+  getTenantByDomain: {
+    methodKind: "unary";
+    input: typeof AdminAuthServiceGetTenantByDomainRequestSchema;
+    output: typeof AdminAuthServiceGetTenantByDomainResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_auth, 0);

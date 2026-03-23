@@ -487,6 +487,36 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
+SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain
+FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t
+    ON t.admin_domain = candidate.domain
+    OR (
+        t.admin_domain IS NULL
+        AND candidate.domain = CONCAT('admin.', t.domain)
+    )
+ORDER BY candidate.ord
+LIMIT 1
+`
+
+// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
+func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, getAdminTenantByDomains, pq.Array(domains))
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Name,
+		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+		&i.AdminDomain,
+	)
+	return i, err
+}
+
 const getEpisodeByPublicIDForTenant = `-- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
