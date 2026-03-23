@@ -19,6 +19,7 @@ type Querier interface {
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	// ユーザーに紐づくテナントメンバーシップ件数を取得
 	CountTenantMembershipsByUserID(ctx context.Context, userID uuid.UUID) (int32, error)
+	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
@@ -37,6 +38,7 @@ type Querier interface {
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
+	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (Creator, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
@@ -64,6 +66,7 @@ type Querier interface {
 	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
 	// 管理操作監査ログ一覧取得（フィルタ対応）
 	ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogsParams) ([]AdminAuditLog, error)
+	ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]Creator, error)
 	// エンドユーザー（platform_user_roles未保持）の一覧取得
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error)
@@ -82,6 +85,7 @@ type Querier interface {
 	RevokeSession(ctx context.Context, id uuid.UUID) error
 	// ユーザーの全セッションを失効させる
 	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
+	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error

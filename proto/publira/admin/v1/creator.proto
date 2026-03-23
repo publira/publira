@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message ListCreatorsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListCreatorsResponse {
+  repeated publira.types.v1.Creator creators = 1;
+}
+
+message CreateCreatorRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string name = 2;
+  string profile_text = 3;
+}
+
+message CreateCreatorResponse {
+  publira.types.v1.Creator creator = 1;
+}
+
+message UpdateCreatorRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  string name = 3;
+  string profile_text = 4;
+}
+
+message UpdateCreatorResponse {
+  publira.types.v1.Creator creator = 1;
+}
+
+service AdminCreatorService {
+  rpc ListCreators(ListCreatorsRequest) returns (ListCreatorsResponse) {}
+  rpc CreateCreator(CreateCreatorRequest) returns (CreateCreatorResponse) {}
+  rpc UpdateCreator(UpdateCreatorRequest) returns (UpdateCreatorResponse) {}
+}

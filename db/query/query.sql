@@ -632,6 +632,43 @@ FROM tenant_memberships tm
 WHERE tm.tenant_id = $1
 ORDER BY tm.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+-- name: ListCreatorsByTenant :many
+SELECT id,
+    tenant_id,
+    public_id,
+    name,
+    profile_text,
+    created_at
+FROM creators
+WHERE tenant_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+-- name: CreateCreator :one
+INSERT INTO creators (
+        id,
+        tenant_id,
+        public_id,
+        name,
+        profile_text
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+-- name: GetCreatorByPublicIDForTenant :one
+SELECT id,
+    tenant_id,
+    public_id,
+    name,
+    profile_text,
+    created_at
+FROM creators
+WHERE tenant_id = $1
+    AND public_id = $2
+LIMIT 1;
+-- name: UpdateCreator :exec
+UPDATE creators
+SET name = $2,
+    profile_text = $3
+WHERE id = $1;
 
 -- name: GetTenantMembershipByUserAndTenant :one
 -- ユーザーとテナントIDでメンバーシップを取得する

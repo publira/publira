@@ -132,6 +132,15 @@ rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 ),
 )
 mux.Handle(adminPath, adminHandler)
+	creatorPath, creatorHandler := publiraadminv1connect.NewAdminCreatorServiceHandler(
+		server,
+		connect.WithInterceptors(
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(creatorPath, creatorHandler)
 adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
 mux.Handle(adminAuthPath, adminAuthHandler)
 return mux
