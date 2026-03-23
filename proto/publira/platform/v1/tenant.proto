@@ -11,6 +11,7 @@ message Tenant {
   string status = 3;
   string created_at = 4;
   string domain = 5;
+  string admin_domain = 7;
   reserved 6;
 }
 
@@ -39,6 +40,7 @@ message CreateTenantRequest {
   string name = 1;
   string domain = 3;
   repeated string initial_admin_emails = 4;
+  string admin_domain = 5;
   reserved 2;
 }
 
@@ -115,6 +117,7 @@ message UpdateTenantRequest {
   string public_id = 1;
   string name = 2;
   string domain = 4;
+  string admin_domain = 5;
   reserved 3;
 }
 

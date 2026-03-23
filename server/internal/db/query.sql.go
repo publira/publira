@@ -320,16 +320,17 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 }
 
 const createTenant = `-- name: CreateTenant :one
-INSERT INTO tenants (id, public_id, domain, name, status)
-VALUES ($1, $2, $3, $4, 'active')
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
+VALUES ($1, $2, $3, $4, $5, 'active')
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
 `
 
 type CreateTenantParams struct {
-	ID       uuid.UUID `json:"id"`
-	PublicID string    `json:"public_id"`
-	Domain   string    `json:"domain"`
-	Name     string    `json:"name"`
+	ID          uuid.UUID      `json:"id"`
+	PublicID    string         `json:"public_id"`
+	Domain      string         `json:"domain"`
+	AdminDomain sql.NullString `json:"admin_domain"`
+	Name        string         `json:"name"`
 }
 
 // プラットフォーム管理者向けテナント作成
@@ -338,6 +339,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		arg.ID,
 		arg.PublicID,
 		arg.Domain,
+		arg.AdminDomain,
 		arg.Name,
 	)
 	var i Tenant
@@ -349,6 +351,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
+		&i.AdminDomain,
 	)
 	return i, err
 }
@@ -871,7 +874,7 @@ func (q *Queries) GetSessionByTokenHashForTenant(ctx context.Context, arg GetSes
 }
 
 const getTenantByDomains = `-- name: GetTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status
+SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
@@ -890,12 +893,13 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
+		&i.AdminDomain,
 	)
 	return i, err
 }
 
 const getTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -912,6 +916,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
+		&i.AdminDomain,
 	)
 	return i, err
 }
@@ -1754,7 +1759,7 @@ func (q *Queries) ListTenantRolesByUserAndTenant(ctx context.Context, arg ListTe
 }
 
 const listTenants = `-- name: ListTenants :many
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
@@ -1795,6 +1800,7 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 			&i.DefaultReadingPeriodHours,
 			&i.CreatedAt,
 			&i.Status,
+			&i.AdminDomain,
 		); err != nil {
 			return nil, err
 		}
@@ -1895,20 +1901,26 @@ func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBasePara
 
 const updateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
-SET name = $2, domain = $3
-WHERE public_id = $1
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status
+SET name = $1, domain = $2, admin_domain = $3
+WHERE public_id = $4
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
 `
 
 type UpdateTenantInfoParams struct {
-	PublicID string `json:"public_id"`
-	Name     string `json:"name"`
-	Domain   string `json:"domain"`
+	Name        string         `json:"name"`
+	Domain      string         `json:"domain"`
+	AdminDomain sql.NullString `json:"admin_domain"`
+	PublicID    string         `json:"public_id"`
 }
 
 // テナントの名前・ドメインを更新する
 func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error) {
-	row := q.db.QueryRowContext(ctx, updateTenantInfo, arg.PublicID, arg.Name, arg.Domain)
+	row := q.db.QueryRowContext(ctx, updateTenantInfo,
+		arg.Name,
+		arg.Domain,
+		arg.AdminDomain,
+		arg.PublicID,
+	)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -1918,6 +1930,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
+		&i.AdminDomain,
 	)
 	return i, err
 }
@@ -1926,7 +1939,7 @@ const updateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
 `
 
 type UpdateTenantStatusParams struct {
@@ -1946,6 +1959,7 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.DefaultReadingPeriodHours,
 		&i.CreatedAt,
 		&i.Status,
+		&i.AdminDomain,
 	)
 	return i, err
 }

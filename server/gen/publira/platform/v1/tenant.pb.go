@@ -29,6 +29,7 @@ type Tenant struct {
 	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	Domain        string                 `protobuf:"bytes,5,opt,name=domain,proto3" json:"domain,omitempty"`
+	AdminDomain   string                 `protobuf:"bytes,7,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -94,6 +95,13 @@ func (x *Tenant) GetCreatedAt() string {
 func (x *Tenant) GetDomain() string {
 	if x != nil {
 		return x.Domain
+	}
+	return ""
+}
+
+func (x *Tenant) GetAdminDomain() string {
+	if x != nil {
+		return x.AdminDomain
 	}
 	return ""
 }
@@ -312,6 +320,7 @@ type CreateTenantRequest struct {
 	Name               string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Domain             string                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
 	InitialAdminEmails []string               `protobuf:"bytes,4,rep,name=initial_admin_emails,json=initialAdminEmails,proto3" json:"initial_admin_emails,omitempty"`
+	AdminDomain        string                 `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -365,6 +374,13 @@ func (x *CreateTenantRequest) GetInitialAdminEmails() []string {
 		return x.InitialAdminEmails
 	}
 	return nil
+}
+
+func (x *CreateTenantRequest) GetAdminDomain() string {
+	if x != nil {
+		return x.AdminDomain
+	}
+	return ""
 }
 
 type CreateTenantResponse struct {
@@ -1085,6 +1101,7 @@ type UpdateTenantRequest struct {
 	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Domain        string                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
+	AdminDomain   string                 `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1140,6 +1157,13 @@ func (x *UpdateTenantRequest) GetDomain() string {
 	return ""
 }
 
+func (x *UpdateTenantRequest) GetAdminDomain() string {
+	if x != nil {
+		return x.AdminDomain
+	}
+	return ""
+}
+
 type UpdateTenantResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *Tenant                `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1188,14 +1212,15 @@ var File_publira_platform_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\x8e\x01\n" +
+	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\xb1\x01\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x16\n" +
-	"\x06domain\x18\x05 \x01(\tR\x06domainJ\x04\b\x06\x10\a\"\x8b\x01\n" +
+	"\x06domain\x18\x05 \x01(\tR\x06domain\x12!\n" +
+	"\fadmin_domain\x18\a \x01(\tR\vadminDomainJ\x04\b\x06\x10\a\"\x8b\x01\n" +
 	"\x12ListTenantsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12\x12\n" +
@@ -1207,11 +1232,12 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"H\n" +
 	"\x11GetTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"y\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\x9c\x01\n" +
 	"\x13CreateTenantRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x03 \x01(\tR\x06domain\x120\n" +
-	"\x14initial_admin_emails\x18\x04 \x03(\tR\x12initialAdminEmailsJ\x04\b\x02\x10\x03\"K\n" +
+	"\x14initial_admin_emails\x18\x04 \x03(\tR\x12initialAdminEmails\x12!\n" +
+	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomainJ\x04\b\x02\x10\x03\"K\n" +
 	"\x14CreateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"3\n" +
 	"\x14SuspendTenantRequest\x12\x1b\n" +
@@ -1252,11 +1278,12 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\"B\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
-	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\"d\n" +
+	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\"\x87\x01\n" +
 	"\x13UpdateTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
-	"\x06domain\x18\x04 \x01(\tR\x06domainJ\x04\b\x03\x10\x04\"K\n" +
+	"\x06domain\x18\x04 \x01(\tR\x06domain\x12!\n" +
+	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomainJ\x04\b\x03\x10\x04\"K\n" +
 	"\x14UpdateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xdd\b\n" +
 	"\x15PlatformTenantService\x12b\n" +

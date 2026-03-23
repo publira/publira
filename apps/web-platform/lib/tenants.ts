@@ -1,6 +1,7 @@
 import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
 
 export interface PlatformTenantSummary {
+  adminDomain: string;
   createdAt: string;
   domain: string;
   name: string;
@@ -14,6 +15,7 @@ export interface ListPlatformTenantsInput {
 }
 
 export interface PlatformTenantDetail {
+  adminDomain: string;
   createdAt: string;
   domain: string;
   name: string;
@@ -31,6 +33,7 @@ export interface PlatformTenantMemberSummary {
 }
 
 export interface CreatePlatformTenantInput {
+  adminDomain?: string;
   domain: string;
   initialAdminEmails?: string[];
   name: string;
@@ -69,6 +72,7 @@ export const listPlatformTenants = async (
     return {
       ok: true,
       tenants: (response.tenants ?? []).map((tenant) => ({
+        adminDomain: tenant.adminDomain,
         createdAt: tenant.createdAt,
         domain: tenant.domain,
         name: tenant.name,
@@ -85,6 +89,7 @@ export const listPlatformTenants = async (
 };
 
 const mapTenant = (tenant?: {
+  adminDomain: string;
   createdAt: string;
   domain: string;
   name: string;
@@ -96,6 +101,7 @@ const mapTenant = (tenant?: {
   }
 
   return {
+    adminDomain: tenant.adminDomain,
     createdAt: tenant.createdAt,
     domain: tenant.domain,
     name: tenant.name,
@@ -204,6 +210,7 @@ export const createPlatformTenant = async (
 
   const name = input.name.trim();
   const domain = input.domain.trim();
+  const adminDomain = input.adminDomain?.trim() ?? "";
   const initialAdminEmails = (input.initialAdminEmails ?? [])
     .map((email) => email.trim())
     .filter((email) => email.length > 0);
@@ -211,6 +218,7 @@ export const createPlatformTenant = async (
   try {
     const response = await apiClient.tenants.createTenant(
       {
+        adminDomain,
         domain,
         initialAdminEmails,
         name,
@@ -232,6 +240,12 @@ export const createPlatformTenant = async (
       message.includes("already_exists") ||
       message.includes("already exists")
     ) {
+      if (message.includes("admin_domain")) {
+        return {
+          message: "管理画面ドメインが既に使用されています。",
+          ok: false,
+        };
+      }
       if (message.includes("domain")) {
         return {
           message: "ドメインが既に使用されています。",
@@ -291,7 +305,8 @@ export type RemovePlatformTenantMemberResult =
 export const updatePlatformTenant = async (
   publicId: string,
   name: string,
-  domain: string
+  domain: string,
+  adminDomain?: string
 ): Promise<UpdatePlatformTenantResult> => {
   const sid = await resolveSessionId();
   if (!sid) {
@@ -302,6 +317,7 @@ export const updatePlatformTenant = async (
   }
   const trimmedName = name.trim();
   const trimmedDomain = domain.trim();
+  const trimmedAdminDomain = adminDomain?.trim() ?? "";
   if (!trimmedName) {
     return { message: "テナント名は必須です。", ok: false };
   }
@@ -312,6 +328,7 @@ export const updatePlatformTenant = async (
   try {
     await apiClient.tenants.updateTenant(
       {
+        adminDomain: trimmedAdminDomain,
         domain: trimmedDomain,
         name: trimmedName,
         publicId,
@@ -333,6 +350,20 @@ export const updatePlatformTenant = async (
       }
       if (msg.includes("not_found")) {
         return { message: "テナントが見つかりません。", ok: false };
+      }
+      if (msg.includes("already_exists") || msg.includes("already exists")) {
+        if (msg.includes("admin_domain")) {
+          return {
+            message: "管理画面ドメインが既に使用されています。",
+            ok: false,
+          };
+        }
+        if (msg.includes("domain")) {
+          return {
+            message: "ドメインが既に使用されています。",
+            ok: false,
+          };
+        }
       }
     }
     return {

@@ -12,6 +12,7 @@ import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { AdminDomainPreview } from "../../../../components/admin-domain-preview";
 import { PlatformPage } from "../../../../components/platform-page";
 import { TenantDomainCautions } from "../../../../components/tenant-domain-cautions";
 import { createPlatformTenant } from "../../../../lib/tenants";
@@ -25,6 +26,7 @@ const createTenantAction = async (formData: FormData): Promise<void> => {
 
   const name = String(formData.get("tenant_name") ?? "").trim();
   const domain = String(formData.get("tenant_domain") ?? "").trim();
+  const adminDomain = String(formData.get("tenant_admin_domain") ?? "").trim();
   const initialAdminEmailsRaw = String(
     formData.get("initial_admin_emails") ?? ""
   );
@@ -42,6 +44,7 @@ const createTenantAction = async (formData: FormData): Promise<void> => {
   }
 
   const result = await createPlatformTenant({
+    adminDomain,
     domain,
     initialAdminEmails,
     name,
@@ -111,6 +114,21 @@ export default async function TenantNewPage({
                 />
               </FieldContent>
               <TenantDomainCautions mode="create" />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="tenant_admin_domain">
+                管理画面ドメイン
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="tenant_admin_domain"
+                  name="tenant_admin_domain"
+                  placeholder="admin.tenant-example.example.com"
+                  type="text"
+                />
+              </FieldContent>
+              <AdminDomainPreview adminDomain="" showCurrentDomain={false} />
             </Field>
 
             <Field>

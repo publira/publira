@@ -1,6 +1,6 @@
 -- name: ListTenants :many
 -- プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status
+SELECT *
 FROM tenants
 WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
   AND (sqlc.narg('filter_public_id')::text = '' OR public_id ILIKE '%' || sqlc.narg('filter_public_id')::text || '%')
@@ -9,8 +9,8 @@ ORDER BY created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: CreateTenant :one
 -- プラットフォーム管理者向けテナント作成
-INSERT INTO tenants (id, public_id, domain, name, status)
-VALUES ($1, $2, $3, $4, 'active')
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
+VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active')
 RETURNING *;
 -- name: UpdateTenantStatus :one
 -- テナントの状態 (active / suspended) を更新する
@@ -21,8 +21,8 @@ RETURNING *;
 -- name: UpdateTenantInfo :one
 -- テナントの名前・ドメインを更新する
 UPDATE tenants
-SET name = $2, domain = $3
-WHERE public_id = $1
+SET name = sqlc.arg('name'), domain = sqlc.arg('domain'), admin_domain = sqlc.narg('admin_domain')
+WHERE public_id = sqlc.arg('public_id')
 RETURNING *;
 -- name: GetTenantByDomains :one
 -- 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
