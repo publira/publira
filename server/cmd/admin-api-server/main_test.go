@@ -33,6 +33,7 @@ const (
 	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\nUPDATE series\nSET title = $2,\n    label_id = $3,\n    updated_at = NOW()\nWHERE id = $1\n"
 	updateSeriesPublicationQuery                         = "-- name: UpdateSeriesPublication :exec\nUPDATE series\nSET is_published = $2,\n    published_at = CASE\n        WHEN $2 THEN COALESCE(published_at, NOW())\n        ELSE NULL\n    END,\n    updated_at = NOW()\nWHERE id = $1\n"
 	getEpisodeByPublicIDForTenantQuery                   = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
+	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery       = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\nSELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order\nFROM episode_images\nWHERE episode_id = $1\n"
 	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\nUPDATE episode_listings el\nSET status = CASE\n        WHEN $3 IS NULL THEN 'draft'\n        ELSE 'scheduled'\n    END,\n    scheduled_at = $3,\n    published_at = CASE\n        WHEN $3 IS NULL THEN NULL\n        ELSE el.published_at\n    END\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\nWHERE el.episode_id = e.id\n    AND s.tenant_id = $1\n    AND e.public_id = $2\n"
 )
 
@@ -666,17 +667,20 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 		WithArgs(tenantID, "EPISODE001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
 			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+		WithArgs(episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 
 	mock.ExpectQuery("INSERT INTO episode_images").
-		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/png", int64(67), int32(0), int32(1), int32(1)).
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/png", int64(67), int32(1), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(0), int32(1), int32(1), now))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(1), int32(1), int32(1), now))
 	expectAdminAuditLogInsert(mock)
 
 	mock.ExpectQuery("INSERT INTO episode_images").
-		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", int64(163), int32(1), int32(1), int32(1)).
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", int64(163), int32(2), int32(1), int32(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(1), int32(1), int32(1), now))
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(2), int32(1), int32(1), now))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -747,6 +751,9 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 					WithArgs(tenantID, "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
 						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+				mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+					WithArgs(sqlmock.AnyArg()).
+					WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 			},
 			wantCode: connect.CodeInvalidArgument,
 		},

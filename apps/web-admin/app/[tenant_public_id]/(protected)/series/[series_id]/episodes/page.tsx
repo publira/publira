@@ -1,4 +1,4 @@
-import { Button } from "@publira/ui-components/button";
+import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -7,13 +7,19 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
+import { FormMessage } from "@publira/ui-components/form-message";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { AdminPage } from "../../../../../../components/admin-page";
+import { FlashToast } from "../../../../../../components/flash-toast";
+import { listEpisodes } from "../../../../../../lib/episode";
+import { EpisodesSortableList } from "./_components/episodes-sortable-list";
+import { reorderEpisodesAction } from "./_lib/actions";
 
 export const metadata: Metadata = {
   title: "エピソード",
@@ -29,31 +35,78 @@ export default async function SeriesEpisodesPage({
   guardPlaceholder(tenant_public_id);
   guardPlaceholder(series_id);
 
+  const result = await listEpisodes({
+    seriesPublicId: series_id,
+    tenantPublicId: tenant_public_id,
+  });
+
   return (
     <AdminPage
-      actions={<Button type="button">エピソードと画像を追加</Button>}
-      description="下書き、本文編集、画像追加、予約公開までをシリーズ配下の同じ管理ページで扱う前提です。"
+      actions={
+        <div className="flex gap-2">
+          <LinkButton
+            render={<Link href={`/series/${series_id}/episodes/new`} />}
+          >
+            新規作成
+          </LinkButton>
+          <LinkButton
+            render={<Link href={`/series/${series_id}`} />}
+            variant="outline"
+          >
+            シリーズへ戻る
+          </LinkButton>
+        </div>
+      }
+      description="シリーズ配下のエピソードを管理します。"
       eyebrow={`Series ${series_id}`}
-      title="エピソード"
+      title="エピソード一覧"
     >
+      <FlashToast
+        keyName="reordered"
+        title="エピソードの表示順を更新しました。"
+      />
+      <FlashToast
+        keyName="reorder_error"
+        title="エピソードの表示順更新に失敗しました。"
+      />
+
       <Card>
         <CardHeader>
-          <CardTitle>シリーズ配下のエピソード運用</CardTitle>
+          <CardTitle>エピソード管理</CardTitle>
           <CardDescription>
-            シリーズ ID {series_id}{" "}
-            に属するエピソード本文と添付画像を同じコンテキストで扱い、公開制御まで一続きの導線に寄せます。
+            一覧・新規作成・個別編集の導線をこの配下に集約しています。
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EmptyState
-            actions={
-              <Button type="button" variant="outline">
-                画像要件を定義
-              </Button>
-            }
-            description="エピソード一覧、本文エディタ、画像アップロード、予約公開 UI をシリーズ詳細配下に追加できます。"
-            title="シリーズ配下のエピソード管理ページに画像追加導線をまとめます。"
-          />
+          {result.ok ? null : (
+            <FormMessage variant="destructive">{result.message}</FormMessage>
+          )}
+
+          {result.episodes.length === 0 ? (
+            <EmptyState
+              actions={
+                <LinkButton
+                  render={<Link href={`/series/${series_id}/episodes/new`} />}
+                >
+                  エピソードを新規作成
+                </LinkButton>
+              }
+              description="まだエピソードがありません。まずは新規作成してください。"
+              title="このシリーズのエピソードは未登録です。"
+            />
+          ) : (
+            <div className="grid gap-3">
+              <p className="text-xs text-muted-foreground">
+                エピソードはカードをドラッグ＆ドロップして並び替えできます。
+              </p>
+              <EpisodesSortableList
+                episodes={result.episodes}
+                reorderAction={reorderEpisodesAction}
+                seriesPublicId={series_id}
+                tenantPublicId={tenant_public_id}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </AdminPage>

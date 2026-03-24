@@ -54,6 +54,25 @@ message GetSeriesResponse {
   publira.types.v1.Series series = 1;
 }
 
+message ListEpisodesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+}
+
+message ListEpisodesResponse {
+  repeated publira.types.v1.Episode episodes = 1;
+}
+
+message ReorderEpisodesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+  repeated string episode_public_ids = 3;
+}
+
+message ReorderEpisodesResponse {
+  repeated publira.types.v1.Episode episodes = 1;
+}
+
 message CreateEpisodeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
@@ -85,6 +104,25 @@ message UploadEpisodeImagesResponse {
   repeated publira.types.v1.EpisodeImage images = 1;
 }
 
+message ListEpisodeImagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+}
+
+message ListEpisodeImagesResponse {
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
+message ReorderEpisodeImagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+  repeated string image_ids = 3;
+}
+
+message ReorderEpisodeImagesResponse {
+  repeated publira.types.v1.EpisodeImage images = 1;
+}
+
 message UpdateEpisodePublishScheduleRequest {
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
@@ -100,7 +138,11 @@ service AdminSeriesService {
   rpc UpdateSeries(UpdateSeriesRequest) returns (UpdateSeriesResponse) {}
   rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
   rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
+  rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse) {}
+  rpc ReorderEpisodes(ReorderEpisodesRequest) returns (ReorderEpisodesResponse) {}
   rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
   rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}
+  rpc ListEpisodeImages(ListEpisodeImagesRequest) returns (ListEpisodeImagesResponse) {}
+  rpc ReorderEpisodeImages(ReorderEpisodeImagesRequest) returns (ReorderEpisodeImagesResponse) {}
   rpc UpdateEpisodePublishSchedule(UpdateEpisodePublishScheduleRequest) returns (UpdateEpisodePublishScheduleResponse) {}
 }

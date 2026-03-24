@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/series.proto.
  */
 export const file_publira_admin_v1_series: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3Nlcmllcy5wcm90bxIQcHVibGlyYS5hZG1pbi52MSLQAQoTQ3JlYXRlU2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdGl0bGUYAiABKAkSEAoIc3lub3BzaXMYAyABKAkSFwoPbGFiZWxfcHVibGljX2lkGAQgASgJEhQKDGlzX3B1Ymxpc2hlZBgFIAEoCBIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBRIaChJjcmVhdG9yX3B1YmxpY19pZHMYByADKAkiQAoUQ3JlYXRlU2VyaWVzUmVzcG9uc2USKAoGc2VyaWVzGAEgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMiygEKE1VwZGF0ZVNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIQCghzeW5vcHNpcxgEIAEoCRIUCgxpc19wdWJsaXNoZWQYBSABKAgSHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBiABKAUSGgoSY3JlYXRvcl9wdWJsaWNfaWRzGAcgAygJIkAKFFVwZGF0ZVNlcmllc1Jlc3BvbnNlEigKBnNlcmllcxgBIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzImMKEUxpc3RTZXJpZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRIOCgZvZmZzZXQYAyABKAUiZAoSTGlzdFNlcmllc1Jlc3BvbnNlEigKBnNlcmllcxgBIAMoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEiQKHGRlZmF1bHRfcmVhZGluZ19wZXJpb2RfaG91cnMYAiABKAUiVgoQR2V0U2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIj0KEUdldFNlcmllc1Jlc3BvbnNlEigKBnNlcmllcxgBIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzIsgBChRDcmVhdGVFcGlzb2RlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGAoQc2VyaWVzX3B1YmxpY19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRITCgtvcmRlcl9pbmRleBgEIAEoBRINCgVwcmljZRgFIAEoBRIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBRIUCgxzY2hlZHVsZWRfYXQYByABKAkiQwoVQ3JlYXRlRXBpc29kZVJlc3BvbnNlEioKB2VwaXNvZGUYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUiYQoSRXBpc29kZUltYWdlVXBsb2FkEhAKCGZpbGVuYW1lGAEgASgJEhQKDGNvbnRlbnRfdHlwZRgCIAEoCRIMCgRkYXRhGAMgASgMEhUKDWRpc3BsYXlfb3JkZXIYBCABKAUingEKGlVwbG9hZEVwaXNvZGVJbWFnZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRI0CgZpbWFnZXMYAyADKAsyJC5wdWJsaXJhLmFkbWluLnYxLkVwaXNvZGVJbWFnZVVwbG9hZCJNChtVcGxvYWRFcGlzb2RlSW1hZ2VzUmVzcG9uc2USLgoGaW1hZ2VzGAEgAygLMh4ucHVibGlyYS50eXBlcy52MS5FcGlzb2RlSW1hZ2UihwEKI1VwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIUCgxzY2hlZHVsZWRfYXQYAyABKAkiUgokVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZVJlc3BvbnNlEioKB2VwaXNvZGUYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUy9QUKEkFkbWluU2VyaWVzU2VydmljZRJfCgxDcmVhdGVTZXJpZXMSJS5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZVNlcmllc1JlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZVNlcmllc1Jlc3BvbnNlIgASXwoMVXBkYXRlU2VyaWVzEiUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVTZXJpZXNSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5VcGRhdGVTZXJpZXNSZXNwb25zZSIAElkKCkxpc3RTZXJpZXMSIy5wdWJsaXJhLmFkbWluLnYxLkxpc3RTZXJpZXNSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5MaXN0U2VyaWVzUmVzcG9uc2UiABJWCglHZXRTZXJpZXMSIi5wdWJsaXJhLmFkbWluLnYxLkdldFNlcmllc1JlcXVlc3QaIy5wdWJsaXJhLmFkbWluLnYxLkdldFNlcmllc1Jlc3BvbnNlIgASYgoNQ3JlYXRlRXBpc29kZRImLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlRXBpc29kZVJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUVwaXNvZGVSZXNwb25zZSIAEnQKE1VwbG9hZEVwaXNvZGVJbWFnZXMSLC5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZEVwaXNvZGVJbWFnZXNSZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5VcGxvYWRFcGlzb2RlSW1hZ2VzUmVzcG9uc2UiABKPAQocVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZRI1LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZVJlcXVlc3QaNi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGVSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3Nlcmllcy5wcm90bxIQcHVibGlyYS5hZG1pbi52MSLQAQoTQ3JlYXRlU2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdGl0bGUYAiABKAkSEAoIc3lub3BzaXMYAyABKAkSFwoPbGFiZWxfcHVibGljX2lkGAQgASgJEhQKDGlzX3B1Ymxpc2hlZBgFIAEoCBIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBRIaChJjcmVhdG9yX3B1YmxpY19pZHMYByADKAkiQAoUQ3JlYXRlU2VyaWVzUmVzcG9uc2USKAoGc2VyaWVzGAEgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMiygEKE1VwZGF0ZVNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIQCghzeW5vcHNpcxgEIAEoCRIUCgxpc19wdWJsaXNoZWQYBSABKAgSHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBiABKAUSGgoSY3JlYXRvcl9wdWJsaWNfaWRzGAcgAygJIkAKFFVwZGF0ZVNlcmllc1Jlc3BvbnNlEigKBnNlcmllcxgBIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzImMKEUxpc3RTZXJpZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRIOCgZvZmZzZXQYAyABKAUiZAoSTGlzdFNlcmllc1Jlc3BvbnNlEigKBnNlcmllcxgBIAMoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEiQKHGRlZmF1bHRfcmVhZGluZ19wZXJpb2RfaG91cnMYAiABKAUiVgoQR2V0U2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIj0KEUdldFNlcmllc1Jlc3BvbnNlEigKBnNlcmllcxgBIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzImAKE0xpc3RFcGlzb2Rlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkiQwoUTGlzdEVwaXNvZGVzUmVzcG9uc2USKwoIZXBpc29kZXMYASADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUifwoWUmVvcmRlckVwaXNvZGVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSGAoQc2VyaWVzX3B1YmxpY19pZBgCIAEoCRIaChJlcGlzb2RlX3B1YmxpY19pZHMYAyADKAkiRgoXUmVvcmRlckVwaXNvZGVzUmVzcG9uc2USKwoIZXBpc29kZXMYASADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUiyAEKFENyZWF0ZUVwaXNvZGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIYChBzZXJpZXNfcHVibGljX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEhMKC29yZGVyX2luZGV4GAQgASgFEg0KBXByaWNlGAUgASgFEhwKFHJlYWRpbmdfcGVyaW9kX2hvdXJzGAYgASgFEhQKDHNjaGVkdWxlZF9hdBgHIAEoCSJDChVDcmVhdGVFcGlzb2RlUmVzcG9uc2USKgoHZXBpc29kZRgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZSJhChJFcGlzb2RlSW1hZ2VVcGxvYWQSEAoIZmlsZW5hbWUYASABKAkSFAoMY29udGVudF90eXBlGAIgASgJEgwKBGRhdGEYAyABKAwSFQoNZGlzcGxheV9vcmRlchgEIAEoBSKeAQoaVXBsb2FkRXBpc29kZUltYWdlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhkKEWVwaXNvZGVfcHVibGljX2lkGAIgASgJEjQKBmltYWdlcxgDIAMoCzIkLnB1YmxpcmEuYWRtaW4udjEuRXBpc29kZUltYWdlVXBsb2FkIk0KG1VwbG9hZEVwaXNvZGVJbWFnZXNSZXNwb25zZRIuCgZpbWFnZXMYASADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZSJmChhMaXN0RXBpc29kZUltYWdlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhkKEWVwaXNvZGVfcHVibGljX2lkGAIgASgJIksKGUxpc3RFcGlzb2RlSW1hZ2VzUmVzcG9uc2USLgoGaW1hZ2VzGAEgAygLMh4ucHVibGlyYS50eXBlcy52MS5FcGlzb2RlSW1hZ2UifAobUmVvcmRlckVwaXNvZGVJbWFnZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIRCglpbWFnZV9pZHMYAyADKAkiTgocUmVvcmRlckVwaXNvZGVJbWFnZXNSZXNwb25zZRIuCgZpbWFnZXMYASADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZSKHAQojVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhkKEWVwaXNvZGVfcHVibGljX2lkGAIgASgJEhQKDHNjaGVkdWxlZF9hdBgDIAEoCSJSCiRVcGRhdGVFcGlzb2RlUHVibGlzaFNjaGVkdWxlUmVzcG9uc2USKgoHZXBpc29kZRgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZTKpCQoSQWRtaW5TZXJpZXNTZXJ2aWNlEl8KDENyZWF0ZVNlcmllcxIlLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlU2VyaWVzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlU2VyaWVzUmVzcG9uc2UiABJfCgxVcGRhdGVTZXJpZXMSJS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVNlcmllc1JlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVNlcmllc1Jlc3BvbnNlIgASWQoKTGlzdFNlcmllcxIjLnB1YmxpcmEuYWRtaW4udjEuTGlzdFNlcmllc1JlcXVlc3QaJC5wdWJsaXJhLmFkbWluLnYxLkxpc3RTZXJpZXNSZXNwb25zZSIAElYKCUdldFNlcmllcxIiLnB1YmxpcmEuYWRtaW4udjEuR2V0U2VyaWVzUmVxdWVzdBojLnB1YmxpcmEuYWRtaW4udjEuR2V0U2VyaWVzUmVzcG9uc2UiABJfCgxMaXN0RXBpc29kZXMSJS5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2Rlc1JlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2Rlc1Jlc3BvbnNlIgASaAoPUmVvcmRlckVwaXNvZGVzEigucHVibGlyYS5hZG1pbi52MS5SZW9yZGVyRXBpc29kZXNSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5SZW9yZGVyRXBpc29kZXNSZXNwb25zZSIAEmIKDUNyZWF0ZUVwaXNvZGUSJi5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUVwaXNvZGVSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5DcmVhdGVFcGlzb2RlUmVzcG9uc2UiABJ0ChNVcGxvYWRFcGlzb2RlSW1hZ2VzEiwucHVibGlyYS5hZG1pbi52MS5VcGxvYWRFcGlzb2RlSW1hZ2VzUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkRXBpc29kZUltYWdlc1Jlc3BvbnNlIgASbgoRTGlzdEVwaXNvZGVJbWFnZXMSKi5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2RlSW1hZ2VzUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVJbWFnZXNSZXNwb25zZSIAEncKFFJlb3JkZXJFcGlzb2RlSW1hZ2VzEi0ucHVibGlyYS5hZG1pbi52MS5SZW9yZGVyRXBpc29kZUltYWdlc1JlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJFcGlzb2RlSW1hZ2VzUmVzcG9uc2UiABKPAQocVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZRI1LnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlRXBpc29kZVB1Ymxpc2hTY2hlZHVsZVJlcXVlc3QaNi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUVwaXNvZGVQdWJsaXNoU2NoZWR1bGVSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.CreateSeriesRequest
@@ -231,6 +231,89 @@ export const GetSeriesResponseSchema: GenMessage<GetSeriesResponse> = /*@__PURE_
   messageDesc(file_publira_admin_v1_series, 7);
 
 /**
+ * @generated from message publira.admin.v1.ListEpisodesRequest
+ */
+export type ListEpisodesRequest = Message<"publira.admin.v1.ListEpisodesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string series_public_id = 2;
+   */
+  seriesPublicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListEpisodesRequest.
+ * Use `create(ListEpisodesRequestSchema)` to create a new message.
+ */
+export const ListEpisodesRequestSchema: GenMessage<ListEpisodesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 8);
+
+/**
+ * @generated from message publira.admin.v1.ListEpisodesResponse
+ */
+export type ListEpisodesResponse = Message<"publira.admin.v1.ListEpisodesResponse"> & {
+  /**
+   * @generated from field: repeated publira.types.v1.Episode episodes = 1;
+   */
+  episodes: Episode[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ListEpisodesResponse.
+ * Use `create(ListEpisodesResponseSchema)` to create a new message.
+ */
+export const ListEpisodesResponseSchema: GenMessage<ListEpisodesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 9);
+
+/**
+ * @generated from message publira.admin.v1.ReorderEpisodesRequest
+ */
+export type ReorderEpisodesRequest = Message<"publira.admin.v1.ReorderEpisodesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string series_public_id = 2;
+   */
+  seriesPublicId: string;
+
+  /**
+   * @generated from field: repeated string episode_public_ids = 3;
+   */
+  episodePublicIds: string[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ReorderEpisodesRequest.
+ * Use `create(ReorderEpisodesRequestSchema)` to create a new message.
+ */
+export const ReorderEpisodesRequestSchema: GenMessage<ReorderEpisodesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 10);
+
+/**
+ * @generated from message publira.admin.v1.ReorderEpisodesResponse
+ */
+export type ReorderEpisodesResponse = Message<"publira.admin.v1.ReorderEpisodesResponse"> & {
+  /**
+   * @generated from field: repeated publira.types.v1.Episode episodes = 1;
+   */
+  episodes: Episode[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ReorderEpisodesResponse.
+ * Use `create(ReorderEpisodesResponseSchema)` to create a new message.
+ */
+export const ReorderEpisodesResponseSchema: GenMessage<ReorderEpisodesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 11);
+
+/**
  * @generated from message publira.admin.v1.CreateEpisodeRequest
  */
 export type CreateEpisodeRequest = Message<"publira.admin.v1.CreateEpisodeRequest"> & {
@@ -275,7 +358,7 @@ export type CreateEpisodeRequest = Message<"publira.admin.v1.CreateEpisodeReques
  * Use `create(CreateEpisodeRequestSchema)` to create a new message.
  */
 export const CreateEpisodeRequestSchema: GenMessage<CreateEpisodeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_series, 8);
+  messageDesc(file_publira_admin_v1_series, 12);
 
 /**
  * @generated from message publira.admin.v1.CreateEpisodeResponse
@@ -292,7 +375,7 @@ export type CreateEpisodeResponse = Message<"publira.admin.v1.CreateEpisodeRespo
  * Use `create(CreateEpisodeResponseSchema)` to create a new message.
  */
 export const CreateEpisodeResponseSchema: GenMessage<CreateEpisodeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_series, 9);
+  messageDesc(file_publira_admin_v1_series, 13);
 
 /**
  * @generated from message publira.admin.v1.EpisodeImageUpload
@@ -324,7 +407,7 @@ export type EpisodeImageUpload = Message<"publira.admin.v1.EpisodeImageUpload"> 
  * Use `create(EpisodeImageUploadSchema)` to create a new message.
  */
 export const EpisodeImageUploadSchema: GenMessage<EpisodeImageUpload> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_series, 10);
+  messageDesc(file_publira_admin_v1_series, 14);
 
 /**
  * @generated from message publira.admin.v1.UploadEpisodeImagesRequest
@@ -351,7 +434,7 @@ export type UploadEpisodeImagesRequest = Message<"publira.admin.v1.UploadEpisode
  * Use `create(UploadEpisodeImagesRequestSchema)` to create a new message.
  */
 export const UploadEpisodeImagesRequestSchema: GenMessage<UploadEpisodeImagesRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_series, 11);
+  messageDesc(file_publira_admin_v1_series, 15);
 
 /**
  * @generated from message publira.admin.v1.UploadEpisodeImagesResponse
@@ -368,7 +451,90 @@ export type UploadEpisodeImagesResponse = Message<"publira.admin.v1.UploadEpisod
  * Use `create(UploadEpisodeImagesResponseSchema)` to create a new message.
  */
 export const UploadEpisodeImagesResponseSchema: GenMessage<UploadEpisodeImagesResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_series, 12);
+  messageDesc(file_publira_admin_v1_series, 16);
+
+/**
+ * @generated from message publira.admin.v1.ListEpisodeImagesRequest
+ */
+export type ListEpisodeImagesRequest = Message<"publira.admin.v1.ListEpisodeImagesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string episode_public_id = 2;
+   */
+  episodePublicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListEpisodeImagesRequest.
+ * Use `create(ListEpisodeImagesRequestSchema)` to create a new message.
+ */
+export const ListEpisodeImagesRequestSchema: GenMessage<ListEpisodeImagesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 17);
+
+/**
+ * @generated from message publira.admin.v1.ListEpisodeImagesResponse
+ */
+export type ListEpisodeImagesResponse = Message<"publira.admin.v1.ListEpisodeImagesResponse"> & {
+  /**
+   * @generated from field: repeated publira.types.v1.EpisodeImage images = 1;
+   */
+  images: EpisodeImage[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ListEpisodeImagesResponse.
+ * Use `create(ListEpisodeImagesResponseSchema)` to create a new message.
+ */
+export const ListEpisodeImagesResponseSchema: GenMessage<ListEpisodeImagesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 18);
+
+/**
+ * @generated from message publira.admin.v1.ReorderEpisodeImagesRequest
+ */
+export type ReorderEpisodeImagesRequest = Message<"publira.admin.v1.ReorderEpisodeImagesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string episode_public_id = 2;
+   */
+  episodePublicId: string;
+
+  /**
+   * @generated from field: repeated string image_ids = 3;
+   */
+  imageIds: string[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ReorderEpisodeImagesRequest.
+ * Use `create(ReorderEpisodeImagesRequestSchema)` to create a new message.
+ */
+export const ReorderEpisodeImagesRequestSchema: GenMessage<ReorderEpisodeImagesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 19);
+
+/**
+ * @generated from message publira.admin.v1.ReorderEpisodeImagesResponse
+ */
+export type ReorderEpisodeImagesResponse = Message<"publira.admin.v1.ReorderEpisodeImagesResponse"> & {
+  /**
+   * @generated from field: repeated publira.types.v1.EpisodeImage images = 1;
+   */
+  images: EpisodeImage[];
+};
+
+/**
+ * Describes the message publira.admin.v1.ReorderEpisodeImagesResponse.
+ * Use `create(ReorderEpisodeImagesResponseSchema)` to create a new message.
+ */
+export const ReorderEpisodeImagesResponseSchema: GenMessage<ReorderEpisodeImagesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_series, 20);
 
 /**
  * @generated from message publira.admin.v1.UpdateEpisodePublishScheduleRequest
@@ -395,7 +561,7 @@ export type UpdateEpisodePublishScheduleRequest = Message<"publira.admin.v1.Upda
  * Use `create(UpdateEpisodePublishScheduleRequestSchema)` to create a new message.
  */
 export const UpdateEpisodePublishScheduleRequestSchema: GenMessage<UpdateEpisodePublishScheduleRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_series, 13);
+  messageDesc(file_publira_admin_v1_series, 21);
 
 /**
  * @generated from message publira.admin.v1.UpdateEpisodePublishScheduleResponse
@@ -412,7 +578,7 @@ export type UpdateEpisodePublishScheduleResponse = Message<"publira.admin.v1.Upd
  * Use `create(UpdateEpisodePublishScheduleResponseSchema)` to create a new message.
  */
 export const UpdateEpisodePublishScheduleResponseSchema: GenMessage<UpdateEpisodePublishScheduleResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_series, 14);
+  messageDesc(file_publira_admin_v1_series, 22);
 
 /**
  * @generated from service publira.admin.v1.AdminSeriesService
@@ -451,6 +617,22 @@ export const AdminSeriesService: GenService<{
     output: typeof GetSeriesResponseSchema;
   },
   /**
+   * @generated from rpc publira.admin.v1.AdminSeriesService.ListEpisodes
+   */
+  listEpisodes: {
+    methodKind: "unary";
+    input: typeof ListEpisodesRequestSchema;
+    output: typeof ListEpisodesResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminSeriesService.ReorderEpisodes
+   */
+  reorderEpisodes: {
+    methodKind: "unary";
+    input: typeof ReorderEpisodesRequestSchema;
+    output: typeof ReorderEpisodesResponseSchema;
+  },
+  /**
    * @generated from rpc publira.admin.v1.AdminSeriesService.CreateEpisode
    */
   createEpisode: {
@@ -465,6 +647,22 @@ export const AdminSeriesService: GenService<{
     methodKind: "unary";
     input: typeof UploadEpisodeImagesRequestSchema;
     output: typeof UploadEpisodeImagesResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminSeriesService.ListEpisodeImages
+   */
+  listEpisodeImages: {
+    methodKind: "unary";
+    input: typeof ListEpisodeImagesRequestSchema;
+    output: typeof ListEpisodeImagesResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminSeriesService.ReorderEpisodeImages
+   */
+  reorderEpisodeImages: {
+    methodKind: "unary";
+    input: typeof ReorderEpisodeImagesRequestSchema;
+    output: typeof ReorderEpisodeImagesResponseSchema;
   },
   /**
    * @generated from rpc publira.admin.v1.AdminSeriesService.UpdateEpisodePublishSchedule
