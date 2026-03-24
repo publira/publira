@@ -41,9 +41,26 @@ message AdminAuthServiceGetTenantByDomainResponse {
   string tenant_public_id = 1;
 }
 
+message AdminAuthServiceGetTenantRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+}
+
+message AdminAuthServiceTenant {
+  string public_id = 1;
+  string name = 2;
+  string domain = 3;
+  string admin_domain = 4;
+}
+
+message AdminAuthServiceGetTenantResponse {
+  AdminAuthServiceTenant tenant = 1;
+}
+
 service AdminAuthService {
   rpc CreateSession(AdminAuthServiceCreateSessionRequest) returns (AdminAuthServiceCreateSessionResponse) {}
   rpc DeleteSession(AdminAuthServiceDeleteSessionRequest) returns (AdminAuthServiceDeleteSessionResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
   rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
+  rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}
 }

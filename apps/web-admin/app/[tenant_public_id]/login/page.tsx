@@ -8,6 +8,7 @@ import {
 } from "@publira/utils/next-static-params";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import {
   ADMIN_SESSION_COOKIE_NAME,
@@ -75,10 +76,15 @@ const loginAction = async (formData: FormData): Promise<void> => {
   redirect(next);
 };
 
-export default async function LoginPage({
-  params,
-  searchParams,
-}: LoginPageProps) {
+const LoginPageFallback = () => (
+  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+    <div className="h-11 animate-pulse rounded bg-muted/70" />
+    <div className="h-11 animate-pulse rounded bg-muted/70" />
+    <div className="h-10 animate-pulse rounded bg-muted" />
+  </div>
+);
+
+const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
@@ -86,6 +92,55 @@ export default async function LoginPage({
   const errorMessage = sp.error?.trim();
   const nextPath = sanitizeRedirectPath(sp.next);
 
+  return (
+    <form action={loginAction} className="space-y-4">
+      <input name="tenant_public_id" type="hidden" value={tenant_public_id} />
+      <input name="next" type="hidden" value={nextPath} />
+
+      <Field>
+        <FieldLabel htmlFor="email" required>
+          メールアドレス
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="email"
+            id="email"
+            name="email"
+            placeholder="admin@example.com"
+            required
+            type="email"
+          />
+        </FieldContent>
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="password" required>
+          パスワード
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="current-password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            type="password"
+          />
+        </FieldContent>
+      </Field>
+
+      {errorMessage ? (
+        <FormMessage variant="destructive">{errorMessage}</FormMessage>
+      ) : null}
+
+      <Button className="mt-2 w-full" type="submit">
+        ログイン
+      </Button>
+    </form>
+  );
+};
+
+export default function LoginPage(props: LoginPageProps) {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
@@ -95,54 +150,9 @@ export default async function LoginPage({
         </div>
 
         <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-          <form action={loginAction} className="space-y-4">
-            <input
-              name="tenant_public_id"
-              type="hidden"
-              value={tenant_public_id}
-            />
-            <input name="next" type="hidden" value={nextPath} />
-
-            <Field>
-              <FieldLabel htmlFor="email" required>
-                メールアドレス
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="email"
-                  id="email"
-                  name="email"
-                  placeholder="admin@example.com"
-                  required
-                  type="email"
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="password" required>
-                パスワード
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="current-password"
-                  id="password"
-                  name="password"
-                  placeholder="••••••••"
-                  required
-                  type="password"
-                />
-              </FieldContent>
-            </Field>
-
-            {errorMessage ? (
-              <FormMessage variant="destructive">{errorMessage}</FormMessage>
-            ) : null}
-
-            <Button className="mt-2 w-full" type="submit">
-              ログイン
-            </Button>
-          </form>
+          <Suspense fallback={<LoginPageFallback />}>
+            <LoginPageContent {...props} />
+          </Suspense>
         </div>
       </div>
     </main>

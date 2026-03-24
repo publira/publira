@@ -6,7 +6,7 @@ import {
   ADMIN_SESSION_COOKIE_NAME,
   buildLoginUrl,
 } from "./lib/admin-auth-shared";
-import { resolveAdminTenantPublicId } from "./lib/admin-tenant";
+import { resolveTenantPublicId } from "./lib/tenant";
 
 const PUBLIC_PATHS = new Set(["/login", "/logout", "/healthz"]);
 
@@ -17,7 +17,7 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next();
   }
 
-  const tenantPublicId = await resolveAdminTenantPublicId(
+  const tenantPublicId = await resolveTenantPublicId(
     getTenantDomainCandidates(request.headers)
   );
 

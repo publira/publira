@@ -150,6 +150,30 @@ func (s *adminServer) GetMe(
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role}}), nil
 }
 
+func (s *adminServer) GetTenant(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantResponse], error) {
+	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	adminDomain := ""
+	if tenant.AdminDomain.Valid {
+		adminDomain = tenant.AdminDomain.String
+	}
+
+	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantResponse{
+		Tenant: &publiraadminv1.AdminAuthServiceTenant{
+			PublicId:    tenant.PublicID,
+			Name:        tenant.Name,
+			Domain:      tenant.Domain,
+			AdminDomain: adminDomain,
+		},
+	}), nil
+}
+
 func (s *adminServer) GetTenantByDomain(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantByDomainRequest],

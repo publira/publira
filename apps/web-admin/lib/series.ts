@@ -1,24 +1,5 @@
-import { createAdminApiClient } from "@publira/api-client/admin/client";
-import { cookies } from "next/headers";
-
-import { ADMIN_SESSION_COOKIE_NAME } from "./admin-auth-shared";
-
-// gRPC transport is used for internal Next.js → Go API communication
-const grpcBaseUrl =
-  process.env.PUBLIRA_ADMIN_GRPC_URL ?? "http://localhost:8101";
-
-const adminApiClient = createAdminApiClient({
-  baseUrl: grpcBaseUrl,
-  transport: "grpc",
-});
-
-const buildSessionHeaders = (sessionId: string) =>
-  ({ headers: { "X-Publira-Session-Id": sessionId } }) as never;
-
-const resolveSessionId = async (): Promise<string> => {
-  const cookieStore = await cookies();
-  return cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
-};
+import { apiClient, withSessionHeaders } from "./api";
+import { getSessionId } from "./session";
 
 export interface SeriesItem {
   publicId: string;
@@ -110,7 +91,9 @@ const mapSeries = (series: {
 export const listSeries = async (
   tenantPublicId: string
 ): Promise<ListSeriesResult> => {
-  const sessionId = await resolveSessionId();
+  "use cache: private";
+
+  const sessionId = await getSessionId();
   if (!sessionId) {
     return {
       defaultReadingPeriodHours: 0,
@@ -121,13 +104,13 @@ export const listSeries = async (
   }
 
   try {
-    const response = await adminApiClient.series.listSeries(
+    const response = await apiClient.series.listSeries(
       {
         limit: 100,
         offset: 0,
         tenant: { tenantPublicId },
       },
-      buildSessionHeaders(sessionId)
+      withSessionHeaders(sessionId)
     );
 
     return {
@@ -151,7 +134,9 @@ export const getSeries = async (input: {
   tenantPublicId: string;
   publicId: string;
 }): Promise<GetSeriesResult> => {
-  const sessionId = await resolveSessionId();
+  "use cache: private";
+
+  const sessionId = await getSessionId();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -160,12 +145,12 @@ export const getSeries = async (input: {
   }
 
   try {
-    const response = await adminApiClient.series.getSeries(
+    const response = await apiClient.series.getSeries(
       {
         publicId: input.publicId,
         tenant: { tenantPublicId: input.tenantPublicId },
       },
-      buildSessionHeaders(sessionId)
+      withSessionHeaders(sessionId)
     );
 
     if (!response.series?.publicId?.trim()) {
@@ -195,7 +180,7 @@ export const createSeries = async (input: {
   labelPublicId: string;
   isPublished: boolean;
 }): Promise<CreateSeriesResult> => {
-  const sessionId = await resolveSessionId();
+  const sessionId = await getSessionId();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -204,7 +189,7 @@ export const createSeries = async (input: {
   }
 
   try {
-    const response = await adminApiClient.series.createSeries(
+    const response = await apiClient.series.createSeries(
       {
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
@@ -213,7 +198,7 @@ export const createSeries = async (input: {
         tenant: { tenantPublicId: input.tenantPublicId },
         title: input.title,
       },
-      buildSessionHeaders(sessionId)
+      withSessionHeaders(sessionId)
     );
 
     if (!response.series?.publicId?.trim()) {
@@ -246,7 +231,7 @@ export const updateSeries = async (input: {
   readingPeriodHours: number;
   isPublished: boolean;
 }): Promise<UpdateSeriesResult> => {
-  const sessionId = await resolveSessionId();
+  const sessionId = await getSessionId();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -255,7 +240,7 @@ export const updateSeries = async (input: {
   }
 
   try {
-    const response = await adminApiClient.series.updateSeries(
+    const response = await apiClient.series.updateSeries(
       {
         isPublished: input.isPublished,
         publicId: input.publicId,
@@ -264,7 +249,7 @@ export const updateSeries = async (input: {
         tenant: { tenantPublicId: input.tenantPublicId },
         title: input.title,
       },
-      buildSessionHeaders(sessionId)
+      withSessionHeaders(sessionId)
     );
 
     if (!response.series?.publicId?.trim()) {

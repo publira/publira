@@ -11,8 +11,13 @@ import {
   createPlaceholderStaticParams,
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 
 import { AdminPage } from "../../../../../../components/admin-page";
+
+export const metadata: Metadata = {
+  title: "エピソード",
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id", "series_id");
@@ -21,11 +26,9 @@ export default async function SeriesEpisodesPage({
   params,
 }: PageProps<"/[tenant_public_id]/series/[series_id]/episodes">) {
   const { series_id, tenant_public_id } = await params;
-
   guardPlaceholder(tenant_public_id);
+  guardPlaceholder(series_id);
 
-  guardPlaceholder(series_id);
-  guardPlaceholder(series_id);
   return (
     <AdminPage
       actions={<Button type="button">エピソードと画像を追加</Button>}

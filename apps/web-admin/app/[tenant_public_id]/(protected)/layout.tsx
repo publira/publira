@@ -2,16 +2,14 @@ import {
   guardPlaceholder,
   createPlaceholderStaticParams,
 } from "@publira/utils/next-static-params";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { connection } from "next/server";
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 import { AdminLayout } from "../../../components/admin-layout";
-import {
-  ADMIN_SESSION_COOKIE_NAME,
-  getAdminCurrentUser,
-} from "../../../lib/admin-auth";
+import { getAdminCurrentUser } from "../../../lib/admin-auth";
+import { getTenantForSession } from "../../../lib/tenant-detail";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");
@@ -21,25 +19,69 @@ interface ProtectedLayoutProps {
   params: Promise<{ tenant_public_id: string }>;
 }
 
-export default async function ProtectedLayout({
-  children,
-  params,
-}: ProtectedLayoutProps) {
-  await connection();
+const buildTenantTitleBase = (tenantName: string): string =>
+  `管理画面 | ${tenantName}`;
 
+export const generateMetadata = async ({
+  params,
+}: {
+  params: Promise<{ tenant_public_id: string }>;
+}): Promise<Metadata> => {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value ?? "";
-  if (!sessionId) {
-    redirect("/login");
-  }
+  const tenant = await getTenantForSession(tenant_public_id);
 
-  const currentUser = await getAdminCurrentUser(sessionId, tenant_public_id);
+  const base = tenant ? buildTenantTitleBase(tenant.name) : "管理画面";
+
+  return {
+    title: {
+      default: base,
+      template: `%s | ${base}`,
+    },
+  };
+};
+
+const ProtectedLayoutFallback = () => (
+  <div className="min-h-dvh bg-[linear-gradient(180deg,rgba(255,253,248,0.72),rgba(246,242,233,0.9))]">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="h-14 animate-pulse rounded-xl border border-border/70 bg-card/60" />
+      <div className="mt-6 grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <div className="h-96 animate-pulse rounded-2xl border border-border/70 bg-card/60" />
+        <div className="h-96 animate-pulse rounded-2xl border border-border/70 bg-card/60" />
+      </div>
+    </div>
+  </div>
+);
+
+export const ProtectedLayoutContent = async ({
+  children,
+  params,
+}: ProtectedLayoutProps) => {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
+  const currentUser = await getAdminCurrentUser(tenant_public_id);
   if (!currentUser) {
     redirect("/login");
   }
 
-  return <AdminLayout currentUser={currentUser}>{children}</AdminLayout>;
+  const tenant = await getTenantForSession(tenant_public_id);
+  if (!tenant) {
+    notFound();
+  }
+
+  return (
+    <AdminLayout currentUser={currentUser} tenant={tenant}>
+      {children}
+    </AdminLayout>
+  );
+};
+
+export default function ProtectedLayout(props: ProtectedLayoutProps) {
+  return (
+    <Suspense fallback={<ProtectedLayoutFallback />}>
+      <ProtectedLayoutContent {...props} />
+    </Suspense>
+  );
 }
