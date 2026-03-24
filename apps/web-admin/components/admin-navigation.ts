@@ -16,6 +16,12 @@ export const navigation: NavSection[] = [
         icon: CollectionIcon,
         label: "シリーズ",
       },
+      {
+        description: "クリエイター情報の管理",
+        href: "/creators",
+        icon: CollectionIcon,
+        label: "クリエイター",
+      },
     ],
     title: "運用",
   },

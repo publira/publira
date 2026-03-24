@@ -8,61 +8,56 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { AdminPage } from "../../../../../components/admin-page";
-import { listSeries } from "../../../../../lib/series";
-import { SeriesForm } from "../_components/series-form";
-import { createSeriesAction } from "../_lib/actions";
+import { CreatorForm } from "../_components/creator-form";
+import { createCreatorAction } from "../_lib/actions";
 
 export const metadata: Metadata = {
-  title: "シリーズ新規作成",
+  title: "クリエイター新規作成",
 };
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");
 
-const NewSeriesFormSkeleton = () => (
+const NewCreatorFormSkeleton = () => (
   <div className="rounded-2xl border border-border/70 bg-card p-6">
     <div className="grid gap-4">
       <div className="h-20 animate-pulse rounded bg-muted/70" />
-      <div className="h-24 animate-pulse rounded bg-muted/70" />
       <div className="h-32 animate-pulse rounded bg-muted/70" />
       <div className="ml-auto h-10 w-36 animate-pulse rounded bg-muted" />
     </div>
   </div>
 );
 
-const NewSeriesFormData = async ({
+const NewCreatorFormData = async ({
   params,
-}: PageProps<"/[tenant_public_id]/series/new">) => {
+}: PageProps<"/[tenant_public_id]/creators/new">) => {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
-  const listResult = await listSeries(tenant_public_id);
-
   return (
-    <SeriesForm
-      action={createSeriesAction}
-      defaultReadingPeriodHours={listResult.defaultReadingPeriodHours}
+    <CreatorForm
+      action={createCreatorAction}
       mode="create"
       tenantPublicId={tenant_public_id}
     />
   );
 };
 
-export default function NewSeriesPage(
-  props: PageProps<"/[tenant_public_id]/series/new">
+export default function NewCreatorPage(
+  props: PageProps<"/[tenant_public_id]/creators/new">
 ) {
   return (
     <AdminPage
       actions={
-        <LinkButton render={<Link href="/series" />} variant="outline">
+        <LinkButton render={<Link href="/creators" />} variant="outline">
           一覧へ戻る
         </LinkButton>
       }
-      description="新しいシリーズを作成します。"
-      title="シリーズを新規作成"
+      description="新しいクリエイターを登録します。"
+      title="クリエイター新規作成"
     >
-      <Suspense fallback={<NewSeriesFormSkeleton />}>
-        <NewSeriesFormData {...props} />
+      <Suspense fallback={<NewCreatorFormSkeleton />}>
+        <NewCreatorFormData {...props} />
       </Suspense>
     </AdminPage>
   );

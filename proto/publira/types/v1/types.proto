@@ -25,6 +25,7 @@ message Creator {
   string public_id = 1;
   string name = 2;
   string role = 3;
+  string profile_text = 4;
 }
 
 message Label {
