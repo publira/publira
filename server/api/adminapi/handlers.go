@@ -72,10 +72,11 @@ func toProtoEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.EpisodeImag
 	}
 }
 
-func toProtoCreator(publicID, name string) *publirattypesv1.Creator {
+func toProtoCreator(publicID, name, profileText string) *publirattypesv1.Creator {
 	return &publirattypesv1.Creator{
-		PublicId: publicID,
-		Name:     name,
+		PublicId:    publicID,
+		Name:        name,
+		ProfileText: profileText,
 	}
 }
 
@@ -166,7 +167,7 @@ func (s *adminServer) syncSeriesCreators(
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		items = append(items, toProtoCreator(creator.PublicID, creator.Name))
+		items = append(items, toProtoCreator(creator.PublicID, creator.Name, creator.ProfileText.String))
 	}
 	return items, nil
 }
@@ -433,7 +434,7 @@ func (s *adminServer) ListCreators(
 	}
 	items := make([]*publirattypesv1.Creator, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, toProtoCreator(row.PublicID, row.Name))
+		items = append(items, toProtoCreator(row.PublicID, row.Name, row.ProfileText.String))
 	}
 	return connect.NewResponse(&publiraadminv1.ListCreatorsResponse{Creators: items}), nil
 }
@@ -502,7 +503,7 @@ func (s *adminServer) CreateCreator(
 			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: toProtoCreator(created.PublicID, created.Name)}), nil
+	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: toProtoCreator(created.PublicID, created.Name, created.ProfileText.String)}), nil
 }
 
 func (s *adminServer) UpdateCreator(
@@ -550,7 +551,7 @@ func (s *adminServer) UpdateCreator(
 			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: toProtoCreator(updated.PublicID, updated.Name)}), nil
+	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: toProtoCreator(updated.PublicID, updated.Name, updated.ProfileText.String)}), nil
 }
 
 func (s *adminServer) CreateLabel(
