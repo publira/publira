@@ -1,14 +1,9 @@
-import { createAdminApiClient } from "@publira/api-client/admin/client";
-
 import {
   ADMIN_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./admin-auth-shared";
-
-const adminApiClient = createAdminApiClient({
-  baseUrl: process.env.PUBLIRA_ADMIN_GRPC_URL ?? "http://localhost:8101",
-  transport: "grpc",
-});
+import { apiClient } from "./api";
+import { getSessionId } from "./session";
 
 export type AdminLoginResult =
   | {
@@ -53,7 +48,7 @@ export const loginAdmin = async (
   tenantPublicId: string
 ): Promise<AdminLoginResult> => {
   try {
-    const response = await adminApiClient.auth.createSession({
+    const response = await apiClient.auth.createSession({
       email,
       password,
       tenant: { tenantPublicId },
@@ -91,23 +86,24 @@ export const logoutAdmin = async (
     return;
   }
 
-  await adminApiClient.auth.deleteSession({
+  await apiClient.auth.deleteSession({
     sessionId,
     tenant: { tenantPublicId },
   });
 };
 
 export const getAdminCurrentUser = async (
-  sessionId: string,
   tenantPublicId: string
 ): Promise<AdminCurrentUser | null> => {
-  const token = sessionId.trim();
+  "use cache: private";
+
+  const token = await getSessionId();
   if (!token) {
     return null;
   }
 
   try {
-    const response = await adminApiClient.auth.getMe({
+    const response = await apiClient.auth.getMe({
       sessionId: token,
       tenant: { tenantPublicId },
     });
@@ -128,10 +124,9 @@ export const getAdminCurrentUser = async (
 };
 
 export const isAdminSessionValid = async (
-  sessionId: string,
   tenantPublicId: string
 ): Promise<boolean> => {
-  const user = await getAdminCurrentUser(sessionId, tenantPublicId);
+  const user = await getAdminCurrentUser(tenantPublicId);
   return user !== null;
 };
 

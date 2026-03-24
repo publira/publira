@@ -7,8 +7,13 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
+import type { Metadata } from "next";
 
 import { AdminPage } from "../../../../components/admin-page";
+
+export const metadata: Metadata = {
+  title: "設定",
+};
 
 export default function SettingsPage() {
   return (

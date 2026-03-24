@@ -12,7 +12,7 @@ vi.mock("@publira/api-client/admin/client", () => ({
   }),
 }));
 
-describe("admin-tenant", () => {
+describe("tenant", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -24,11 +24,11 @@ describe("admin-tenant", () => {
       tenantPublicId: "tenant_admin_001",
     });
 
-    const { resolveAdminTenantPublicId } = await import("./admin-tenant");
+    const { resolveTenantPublicId } = await import("./tenant");
 
-    await expect(
-      resolveAdminTenantPublicId(["admin.example.com"])
-    ).resolves.toBe("tenant_admin_001");
+    await expect(resolveTenantPublicId(["admin.example.com"])).resolves.toBe(
+      "tenant_admin_001"
+    );
 
     expect(mockGetTenantByDomain).toHaveBeenCalledWith({
       domains: ["admin.example.com"],
@@ -38,10 +38,10 @@ describe("admin-tenant", () => {
   it("未登録ドメインでは null を返す", async () => {
     mockGetTenantByDomain.mockRejectedValueOnce(new Error("not found"));
 
-    const { resolveAdminTenantPublicId } = await import("./admin-tenant");
+    const { resolveTenantPublicId } = await import("./tenant");
 
     await expect(
-      resolveAdminTenantPublicId(["admin.unknown.example"])
+      resolveTenantPublicId(["admin.unknown.example"])
     ).resolves.toBeNull();
   });
 });

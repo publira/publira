@@ -44,6 +44,9 @@ const (
 	// AdminAuthServiceGetTenantByDomainProcedure is the fully-qualified name of the AdminAuthService's
 	// GetTenantByDomain RPC.
 	AdminAuthServiceGetTenantByDomainProcedure = "/publira.admin.v1.AdminAuthService/GetTenantByDomain"
+	// AdminAuthServiceGetTenantProcedure is the fully-qualified name of the AdminAuthService's
+	// GetTenant RPC.
+	AdminAuthServiceGetTenantProcedure = "/publira.admin.v1.AdminAuthService/GetTenant"
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
@@ -52,6 +55,7 @@ type AdminAuthServiceClient interface {
 	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
+	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -89,6 +93,12 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminAuthServiceMethods.ByName("GetTenantByDomain")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenant: connect.NewClient[v1.AdminAuthServiceGetTenantRequest, v1.AdminAuthServiceGetTenantResponse](
+			httpClient,
+			baseURL+AdminAuthServiceGetTenantProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("GetTenant")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -98,6 +108,7 @@ type adminAuthServiceClient struct {
 	deleteSession     *connect.Client[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse]
 	getMe             *connect.Client[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse]
 	getTenantByDomain *connect.Client[v1.AdminAuthServiceGetTenantByDomainRequest, v1.AdminAuthServiceGetTenantByDomainResponse]
+	getTenant         *connect.Client[v1.AdminAuthServiceGetTenantRequest, v1.AdminAuthServiceGetTenantResponse]
 }
 
 // CreateSession calls publira.admin.v1.AdminAuthService.CreateSession.
@@ -120,12 +131,18 @@ func (c *adminAuthServiceClient) GetTenantByDomain(ctx context.Context, req *con
 	return c.getTenantByDomain.CallUnary(ctx, req)
 }
 
+// GetTenant calls publira.admin.v1.AdminAuthService.GetTenant.
+func (c *adminAuthServiceClient) GetTenant(ctx context.Context, req *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error) {
+	return c.getTenant.CallUnary(ctx, req)
+}
+
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
+	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
 }
 
 // NewAdminAuthServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -159,6 +176,12 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminAuthServiceMethods.ByName("GetTenantByDomain")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminAuthServiceGetTenantHandler := connect.NewUnaryHandler(
+		AdminAuthServiceGetTenantProcedure,
+		svc.GetTenant,
+		connect.WithSchema(adminAuthServiceMethods.ByName("GetTenant")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminAuthServiceCreateSessionProcedure:
@@ -169,6 +192,8 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 			adminAuthServiceGetMeHandler.ServeHTTP(w, r)
 		case AdminAuthServiceGetTenantByDomainProcedure:
 			adminAuthServiceGetTenantByDomainHandler.ServeHTTP(w, r)
+		case AdminAuthServiceGetTenantProcedure:
+			adminAuthServiceGetTenantHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -192,4 +217,8 @@ func (UnimplementedAdminAuthServiceHandler) GetMe(context.Context, *connect.Requ
 
 func (UnimplementedAdminAuthServiceHandler) GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.GetTenantByDomain is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.GetTenant is not implemented"))
 }

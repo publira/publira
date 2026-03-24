@@ -119,6 +119,27 @@ export interface ConsoleHeaderProps {
   actions?: ReactNode;
 }
 
+const roleLabelMap: Record<string, string> = {
+  // 後方互換: 旧ロール値
+  admin: "テナント管理者",
+  auditor: "監査担当",
+  editor: "編集担当",
+  tenant_admin: "テナント管理者",
+  tenant_auditor: "監査担当",
+  tenant_editor: "編集担当",
+  tenant_member: "メンバー",
+  tenant_owner: "オーナー",
+};
+
+const toRoleLabel = (role: string): string => {
+  const normalized = role.trim().toLowerCase();
+  if (!normalized) {
+    return "権限未設定";
+  }
+
+  return roleLabelMap[normalized] ?? role.trim();
+};
+
 export const ConsoleHeader = ({
   navId,
   eyebrow,
@@ -127,6 +148,7 @@ export const ConsoleHeader = ({
   actions,
 }: ConsoleHeaderProps) => {
   const { mobileNavOpen, onOpenMobileNav } = useConsoleNav();
+  const roleLabel = toRoleLabel(currentUser.role);
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 backdrop-blur">
@@ -163,7 +185,7 @@ export const ConsoleHeader = ({
             </p>
           </div>
           <StatusChip className="hidden sm:inline-flex" status="info">
-            {currentUser.role}
+            {roleLabel}
           </StatusChip>
           {actions}
           <form action="/logout" method="post">

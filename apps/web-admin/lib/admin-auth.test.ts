@@ -2,8 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser, isAdminSessionValid } from "./admin-auth";
 
-const { mockGetMe } = vi.hoisted(() => ({
+const { mockGetMe, mockGetSessionId } = vi.hoisted(() => ({
   mockGetMe: vi.fn(),
+  mockGetSessionId: vi.fn(),
+}));
+
+vi.mock("./session", () => ({
+  getSessionId: mockGetSessionId,
 }));
 
 vi.mock("@publira/api-client/admin/client", () => ({
@@ -18,24 +23,28 @@ vi.mock("@publira/api-client/admin/client", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetSessionId.mockResolvedValue("valid-token");
 });
 
 describe("getAdminCurrentUser", () => {
   it("空の sessionId に対して null を返す", async () => {
-    const result = await getAdminCurrentUser("", "tenant_001");
+    mockGetSessionId.mockResolvedValueOnce("");
+    const result = await getAdminCurrentUser("tenant_001");
     expect(result).toBeNull();
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
   it("空白のみの sessionId に対して null を返す", async () => {
-    const result = await getAdminCurrentUser("   ", "tenant_001");
+    // getSessionId は常にトリム済みの値を返すため、空白のみのケースは空文字と同等
+    mockGetSessionId.mockResolvedValueOnce("");
+    const result = await getAdminCurrentUser("tenant_001");
     expect(result).toBeNull();
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
   it("API が user を返さない場合に null を返す", async () => {
     mockGetMe.mockResolvedValueOnce({});
-    const result = await getAdminCurrentUser("valid-token", "tenant_001");
+    const result = await getAdminCurrentUser("tenant_001");
     expect(result).toBeNull();
   });
 
@@ -43,7 +52,7 @@ describe("getAdminCurrentUser", () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "テスト", publicId: "", role: "admin" },
     });
-    const result = await getAdminCurrentUser("valid-token", "tenant_001");
+    const result = await getAdminCurrentUser("tenant_001");
     expect(result).toBeNull();
   });
 
@@ -51,7 +60,7 @@ describe("getAdminCurrentUser", () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "山田太郎", publicId: "user-001", role: "admin" },
     });
-    const result = await getAdminCurrentUser("valid-token", "tenant_001");
+    const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({
       name: "山田太郎",
       publicId: "user-001",
@@ -59,11 +68,12 @@ describe("getAdminCurrentUser", () => {
     });
   });
 
-  it("sessionId を trim してから API を呼ぶ", async () => {
+  it("getSessionId が返したセッション ID をそのまま API に渡す", async () => {
+    mockGetSessionId.mockResolvedValueOnce("valid-token");
     mockGetMe.mockResolvedValueOnce({
       user: { name: "テスト", publicId: "user-001", role: "admin" },
     });
-    await getAdminCurrentUser("  valid-token  ", "tenant_001");
+    await getAdminCurrentUser("tenant_001");
     expect(mockGetMe).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: "valid-token",
@@ -74,7 +84,7 @@ describe("getAdminCurrentUser", () => {
 
   it("API がエラーをスローした場合に null を返す", async () => {
     mockGetMe.mockRejectedValueOnce(new Error("Network error"));
-    const result = await getAdminCurrentUser("valid-token", "tenant_001");
+    const result = await getAdminCurrentUser("tenant_001");
     expect(result).toBeNull();
   });
 
@@ -82,14 +92,15 @@ describe("getAdminCurrentUser", () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "  ", publicId: "user-002", role: "" },
     });
-    const result = await getAdminCurrentUser("valid-token", "tenant_001");
+    const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({ name: "", publicId: "user-002", role: "" });
   });
 });
 
 describe("isAdminSessionValid", () => {
   it("空の sessionId に対して false を返す", async () => {
-    const result = await isAdminSessionValid("", "tenant_001");
+    mockGetSessionId.mockResolvedValueOnce("");
+    const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
   });
 
@@ -97,13 +108,13 @@ describe("isAdminSessionValid", () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "テスト", publicId: "user-001", role: "admin" },
     });
-    const result = await isAdminSessionValid("valid-token", "tenant_001");
+    const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(true);
   });
 
   it("API がエラーをスローした場合に false を返す", async () => {
     mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
-    const result = await isAdminSessionValid("invalid-token", "tenant_001");
+    const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
   });
 });
