@@ -6,17 +6,21 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminPage } from "../../../../components/admin-page";
-import { listCreators } from "../../../../lib/creator";
-import { CreatorManager } from "./_components/creator-manager";
+import { listLabels } from "../../../../lib/label";
+import { LabelManager } from "./_components/label-manager";
+
+interface LabelPageProps {
+  params: Promise<{ tenant_public_id: string }>;
+}
 
 export const metadata: Metadata = {
-  title: "著者",
+  title: "レーベル",
 };
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");
 
-const CreatorManagerSkeleton = () => (
+const LabelManagerSkeleton = () => (
   <div className="rounded-2xl border border-border/70 bg-card p-6">
     <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
     <div className="grid gap-3">
@@ -27,32 +31,28 @@ const CreatorManagerSkeleton = () => (
   </div>
 );
 
-const CreatorManagerData = async ({
-  params,
-}: PageProps<"/[tenant_public_id]/creators">) => {
+const LabelManagerData = async ({ params }: LabelPageProps) => {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
-  const listResult = await listCreators(tenant_public_id);
+  const listResult = await listLabels(tenant_public_id);
 
   return (
-    <CreatorManager
+    <LabelManager
+      initialLabels={listResult.labels}
       initialListErrorMessage={listResult.ok ? undefined : listResult.message}
-      initialCreators={listResult.creators}
     />
   );
 };
 
-export default function CreatorPage(
-  props: PageProps<"/[tenant_public_id]/creators">
-) {
+export default function LabelPage(props: LabelPageProps) {
   return (
     <AdminPage
-      description="著者一覧の確認と、編集への遷移を行います。"
-      title="著者"
+      description="レーベル一覧の確認と、編集への遷移を行います。"
+      title="レーベル"
     >
-      <Suspense fallback={<CreatorManagerSkeleton />}>
-        <CreatorManagerData {...props} />
+      <Suspense fallback={<LabelManagerSkeleton />}>
+        <LabelManagerData {...props} />
       </Suspense>
     </AdminPage>
   );

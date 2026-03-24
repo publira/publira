@@ -111,7 +111,7 @@ export const SeriesManager = ({
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
                       <LinkButton
-                        href={`/series/${series.publicId}/edit`}
+                        href={`/series/${series.publicId}`}
                         variant="outline"
                       >
                         編集

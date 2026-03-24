@@ -8,13 +8,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../../../components/admin-page";
-import { getCreator } from "../../../../../../lib/creator";
-import { CreatorForm } from "../../_components/creator-form";
-import { updateCreatorAction } from "../../_lib/actions";
+import { AdminPage } from "../../../../../components/admin-page";
+import { FlashToast } from "../../../../../components/flash-toast";
+import { getCreator } from "../../../../../lib/creator";
+import { CreatorForm } from "../_components/creator-form";
+import { updateCreatorAction } from "../_lib/actions";
 
 export const metadata: Metadata = {
-  title: "クリエイター編集",
+  title: "著者編集",
 };
 
 export const generateStaticParams = () =>
@@ -30,9 +31,14 @@ const EditCreatorFormSkeleton = () => (
   </div>
 );
 
-const EditCreatorFormData = async ({
-  params,
-}: PageProps<"/[tenant_public_id]/creators/[creator_public_id]/edit">) => {
+interface EditCreatorPageProps {
+  params: Promise<{
+    creator_public_id: string;
+    tenant_public_id: string;
+  }>;
+}
+
+const EditCreatorFormData = async ({ params }: EditCreatorPageProps) => {
   const { creator_public_id, tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
   guardPlaceholder(creator_public_id);
@@ -65,9 +71,7 @@ const EditCreatorFormData = async ({
   );
 };
 
-export default function EditCreatorPage(
-  props: PageProps<"/[tenant_public_id]/creators/[creator_public_id]/edit">
-) {
+export default function EditCreatorPage(props: EditCreatorPageProps) {
   return (
     <AdminPage
       actions={
@@ -75,9 +79,10 @@ export default function EditCreatorPage(
           一覧へ戻る
         </LinkButton>
       }
-      description="クリエイターの情報を編集します。"
-      title="クリエイター編集"
+      description="著者の情報を編集します。"
+      title="著者編集"
     >
+      <FlashToast title="著者を作成しました。" />
       <Suspense fallback={<EditCreatorFormSkeleton />}>
         <EditCreatorFormData {...props} />
       </Suspense>

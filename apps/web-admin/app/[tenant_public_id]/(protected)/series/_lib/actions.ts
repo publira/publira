@@ -1,5 +1,7 @@
 "use server";
 
+import { redirect } from "next/navigation";
+
 import { createSeries, updateSeries } from "../../../../../lib/series";
 import type { SeriesActionState } from "../series-types";
 
@@ -97,12 +99,7 @@ export const createSeriesAction = async (
     };
   }
 
-  return {
-    message: "シリーズを作成しました。",
-    mode: "create",
-    ok: true,
-    series: result.series,
-  };
+  redirect(`/series/${result.series.publicId}?created=1`);
 };
 
 export const updateSeriesAction = async (

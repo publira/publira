@@ -8,56 +8,55 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { AdminPage } from "../../../../../components/admin-page";
-import { CreatorForm } from "../_components/creator-form";
-import { createCreatorAction } from "../_lib/actions";
+import { LabelForm } from "../_components/label-form";
+import { createLabelAction } from "../_lib/actions";
+
+interface NewLabelPageProps {
+  params: Promise<{ tenant_public_id: string }>;
+}
 
 export const metadata: Metadata = {
-  title: "著者新規作成",
+  title: "レーベル新規作成",
 };
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");
 
-const NewCreatorFormSkeleton = () => (
+const NewLabelFormSkeleton = () => (
   <div className="rounded-2xl border border-border/70 bg-card p-6">
     <div className="grid gap-4">
       <div className="h-20 animate-pulse rounded bg-muted/70" />
-      <div className="h-32 animate-pulse rounded bg-muted/70" />
       <div className="ml-auto h-10 w-36 animate-pulse rounded bg-muted" />
     </div>
   </div>
 );
 
-const NewCreatorFormData = async ({
-  params,
-}: PageProps<"/[tenant_public_id]/creators/new">) => {
+const NewLabelFormData = async ({ params }: NewLabelPageProps) => {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
   return (
-    <CreatorForm
-      action={createCreatorAction}
+    <LabelForm
+      action={createLabelAction}
       mode="create"
       tenantPublicId={tenant_public_id}
     />
   );
 };
 
-export default function NewCreatorPage(
-  props: PageProps<"/[tenant_public_id]/creators/new">
-) {
+export default function NewLabelPage(props: NewLabelPageProps) {
   return (
     <AdminPage
       actions={
-        <LinkButton render={<Link href="/creators" />} variant="outline">
+        <LinkButton render={<Link href="/labels" />} variant="outline">
           一覧へ戻る
         </LinkButton>
       }
-      description="新しい著者を登録します。"
-      title="著者新規作成"
+      description="新しいレーベルを登録します。"
+      title="レーベル新規作成"
     >
-      <Suspense fallback={<NewCreatorFormSkeleton />}>
-        <NewCreatorFormData {...props} />
+      <Suspense fallback={<NewLabelFormSkeleton />}>
+        <NewLabelFormData {...props} />
       </Suspense>
     </AdminPage>
   );

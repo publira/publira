@@ -3,32 +3,31 @@ import { cacheTag } from "next/cache";
 import { apiClient, withSessionHeaders } from "./api";
 import { getSessionId } from "./session";
 
-export interface CreatorItem {
+export interface LabelItem {
   publicId: string;
   name: string;
-  profileText: string;
 }
 
-export type ListCreatorsResult =
-  | { ok: true; creators: CreatorItem[] }
-  | { ok: false; message: string; creators: CreatorItem[] };
+export type ListLabelsResult =
+  | { ok: true; labels: LabelItem[] }
+  | { ok: false; message: string; labels: LabelItem[] };
 
-export type CreateCreatorResult =
-  | { ok: true; creator: CreatorItem }
+export type CreateLabelResult =
+  | { ok: true; label: LabelItem }
   | { ok: false; message: string };
 
-export type UpdateCreatorResult =
-  | { ok: true; creator: CreatorItem }
+export type UpdateLabelResult =
+  | { ok: true; label: LabelItem }
   | { ok: false; message: string };
 
-export type GetCreatorResult =
-  | { ok: true; creator: CreatorItem }
+export type GetLabelResult =
+  | { ok: true; label: LabelItem }
   | { ok: false; message: string };
 
 const genericListErrorMessage =
-  "著者一覧の取得に失敗しました。時間をおいて再試行してください。";
+  "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。";
 const genericMutationErrorMessage =
-  "著者の保存に失敗しました。時間をおいて再試行してください。";
+  "レーベルの保存に失敗しました。時間をおいて再試行してください。";
 
 const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
   if (!(error instanceof Error)) {
@@ -62,33 +61,28 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
   return fallbackMessage;
 };
 
-const mapCreator = (creator: {
-  publicId: string;
-  name: string;
-  profileText: string;
-}): CreatorItem => ({
-  name: creator.name,
-  profileText: creator.profileText,
-  publicId: creator.publicId,
+const mapLabel = (label: { publicId: string; name: string }): LabelItem => ({
+  name: label.name,
+  publicId: label.publicId,
 });
 
-export const listCreators = async (
+export const listLabels = async (
   tenantPublicId: string
-): Promise<ListCreatorsResult> => {
+): Promise<ListLabelsResult> => {
   "use cache: private";
-  cacheTag(`creators-${tenantPublicId}`);
+  cacheTag(`labels-${tenantPublicId}`);
 
   const sessionId = await getSessionId();
   if (!sessionId) {
     return {
-      creators: [],
+      labels: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
     };
   }
 
   try {
-    const response = await apiClient.creator.listCreators(
+    const response = await apiClient.label.listLabels(
       {
         limit: 100,
         offset: 0,
@@ -98,25 +92,24 @@ export const listCreators = async (
     );
 
     return {
-      creators: (response.creators ?? [])
-        .map((item) => mapCreator(item))
+      labels: (response.labels ?? [])
+        .map((item) => mapLabel(item))
         .toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
       ok: true,
     };
   } catch (error) {
     return {
-      creators: [],
+      labels: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
     };
   }
 };
 
-export const createCreator = async (input: {
+export const createLabel = async (input: {
   tenantPublicId: string;
   name: string;
-  profileText: string;
-}): Promise<CreateCreatorResult> => {
+}): Promise<CreateLabelResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
     return {
@@ -126,16 +119,15 @@ export const createCreator = async (input: {
   }
 
   try {
-    const response = await apiClient.creator.createCreator(
+    const response = await apiClient.label.createLabel(
       {
         name: input.name,
-        profileText: input.profileText,
         tenant: { tenantPublicId: input.tenantPublicId },
       },
       withSessionHeaders(sessionId)
     );
 
-    if (!response.creator?.publicId?.trim()) {
+    if (!response.label?.publicId?.trim()) {
       return {
         message: genericMutationErrorMessage,
         ok: false,
@@ -143,7 +135,7 @@ export const createCreator = async (input: {
     }
 
     return {
-      creator: mapCreator(response.creator),
+      label: mapLabel(response.label),
       ok: true,
     };
   } catch (error) {
@@ -154,12 +146,11 @@ export const createCreator = async (input: {
   }
 };
 
-export const updateCreator = async (input: {
+export const updateLabel = async (input: {
   tenantPublicId: string;
   publicId: string;
   name: string;
-  profileText: string;
-}): Promise<UpdateCreatorResult> => {
+}): Promise<UpdateLabelResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
     return {
@@ -169,17 +160,16 @@ export const updateCreator = async (input: {
   }
 
   try {
-    const response = await apiClient.creator.updateCreator(
+    const response = await apiClient.label.updateLabel(
       {
         name: input.name,
-        profileText: input.profileText,
         publicId: input.publicId,
         tenant: { tenantPublicId: input.tenantPublicId },
       },
       withSessionHeaders(sessionId)
     );
 
-    if (!response.creator?.publicId?.trim()) {
+    if (!response.label?.publicId?.trim()) {
       return {
         message: genericMutationErrorMessage,
         ok: false,
@@ -187,7 +177,7 @@ export const updateCreator = async (input: {
     }
 
     return {
-      creator: mapCreator(response.creator),
+      label: mapLabel(response.label),
       ok: true,
     };
   } catch (error) {
@@ -198,13 +188,13 @@ export const updateCreator = async (input: {
   }
 };
 
-export const getCreator = async (input: {
+export const getLabel = async (input: {
   tenantPublicId: string;
   publicId: string;
-}): Promise<GetCreatorResult> => {
+}): Promise<GetLabelResult> => {
   "use cache: private";
-  cacheTag(`creators-${input.tenantPublicId}`);
-  cacheTag(`creator-${input.tenantPublicId}-${input.publicId}`);
+  cacheTag(`labels-${input.tenantPublicId}`);
+  cacheTag(`label-${input.tenantPublicId}-${input.publicId}`);
 
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -215,7 +205,7 @@ export const getCreator = async (input: {
   }
 
   try {
-    const response = await listCreators(input.tenantPublicId);
+    const response = await listLabels(input.tenantPublicId);
 
     if (!response.ok) {
       return {
@@ -224,18 +214,18 @@ export const getCreator = async (input: {
       };
     }
 
-    const creator = response.creators.find(
-      (c) => c.publicId === input.publicId
+    const label = response.labels.find(
+      (item) => item.publicId === input.publicId
     );
-    if (!creator) {
+    if (!label) {
       return {
-        message: "著者が見つかりません。",
+        message: "レーベルが見つかりません。",
         ok: false,
       };
     }
 
     return {
-      creator,
+      label,
       ok: true,
     };
   } catch (error) {

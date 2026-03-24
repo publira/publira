@@ -3,17 +3,15 @@
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createCreator, updateCreator } from "../../../../../lib/creator";
-import type { CreatorActionState } from "../creator-types";
+import { createLabel, updateLabel } from "../../../../../lib/label";
+import type { LabelActionState } from "../label-types";
 
 const parseCommonFields = (formData: FormData) => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  const profileText = String(formData.get("profile_text") ?? "").trim();
 
   return {
     name,
-    profileText,
     tenantPublicId,
   };
 };
@@ -21,7 +19,7 @@ const parseCommonFields = (formData: FormData) => {
 const validateCommonFields = (
   input: ReturnType<typeof parseCommonFields>,
   mode: "create" | "update"
-): CreatorActionState | null => {
+): LabelActionState | null => {
   if (!input.tenantPublicId) {
     return {
       message: "テナント ID が見つかりません。",
@@ -32,7 +30,7 @@ const validateCommonFields = (
 
   if (!input.name) {
     return {
-      message: "名前は必須です。",
+      message: "レーベル名は必須です。",
       mode,
       ok: false,
     };
@@ -41,19 +39,18 @@ const validateCommonFields = (
   return null;
 };
 
-export const createCreatorAction = async (
-  _prevState: CreatorActionState,
+export const createLabelAction = async (
+  _prevState: LabelActionState,
   formData: FormData
-): Promise<CreatorActionState> => {
+): Promise<LabelActionState> => {
   const input = parseCommonFields(formData);
   const commonValidation = validateCommonFields(input, "create");
   if (commonValidation) {
     return commonValidation;
   }
 
-  const result = await createCreator({
+  const result = await createLabel({
     name: input.name,
-    profileText: input.profileText,
     tenantPublicId: input.tenantPublicId,
   });
 
@@ -65,15 +62,15 @@ export const createCreatorAction = async (
     };
   }
 
-  updateTag(`creators-${input.tenantPublicId}`);
+  updateTag(`labels-${input.tenantPublicId}`);
 
-  redirect(`/creators/${result.creator.publicId}?created=1`);
+  redirect(`/labels/${result.label.publicId}?created=1`);
 };
 
-export const updateCreatorAction = async (
-  _prevState: CreatorActionState,
+export const updateLabelAction = async (
+  _prevState: LabelActionState,
   formData: FormData
-): Promise<CreatorActionState> => {
+): Promise<LabelActionState> => {
   const input = parseCommonFields(formData);
   const commonValidation = validateCommonFields(input, "update");
   if (commonValidation) {
@@ -83,15 +80,14 @@ export const updateCreatorAction = async (
   const publicId = String(formData.get("public_id") ?? "").trim();
   if (!publicId) {
     return {
-      message: "更新対象の著者 ID が見つかりません。",
+      message: "更新対象のレーベル ID が見つかりません。",
       mode: "update",
       ok: false,
     };
   }
 
-  const result = await updateCreator({
+  const result = await updateLabel({
     name: input.name,
-    profileText: input.profileText,
     publicId,
     tenantPublicId: input.tenantPublicId,
   });
@@ -104,12 +100,12 @@ export const updateCreatorAction = async (
     };
   }
 
-  updateTag(`creators-${input.tenantPublicId}`);
-  updateTag(`creator-${input.tenantPublicId}-${publicId}`);
+  updateTag(`labels-${input.tenantPublicId}`);
+  updateTag(`label-${input.tenantPublicId}-${publicId}`);
 
   return {
-    creator: result.creator,
-    message: "著者を更新しました。",
+    label: result.label,
+    message: "レーベルを更新しました。",
     mode: "update",
     ok: true,
   };

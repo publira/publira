@@ -8,10 +8,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../../../components/admin-page";
-import { getSeries } from "../../../../../../lib/series";
-import { SeriesForm } from "../../_components/series-form";
-import { updateSeriesAction } from "../../_lib/actions";
+import { AdminPage } from "../../../../../components/admin-page";
+import { FlashToast } from "../../../../../components/flash-toast";
+import { getSeries } from "../../../../../lib/series";
+import { SeriesForm } from "../_components/series-form";
+import { updateSeriesAction } from "../_lib/actions";
 
 export const metadata: Metadata = {
   title: "シリーズ編集",
@@ -31,9 +32,14 @@ const EditSeriesFormSkeleton = () => (
   </div>
 );
 
-const EditSeriesFormData = async ({
-  params,
-}: PageProps<"/[tenant_public_id]/series/[series_id]/edit">) => {
+interface EditSeriesPageProps {
+  params: Promise<{
+    series_id: string;
+    tenant_public_id: string;
+  }>;
+}
+
+const EditSeriesFormData = async ({ params }: EditSeriesPageProps) => {
   const { series_id, tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
   guardPlaceholder(series_id);
@@ -67,9 +73,7 @@ const EditSeriesFormData = async ({
   );
 };
 
-export default function EditSeriesPage(
-  props: PageProps<"/[tenant_public_id]/series/[series_id]/edit">
-) {
+export default function EditSeriesPage(props: EditSeriesPageProps) {
   return (
     <AdminPage
       actions={
@@ -80,6 +84,7 @@ export default function EditSeriesPage(
       description="シリーズ情報を編集します。"
       title="シリーズを編集"
     >
+      <FlashToast title="シリーズを作成しました。" />
       <Suspense fallback={<EditSeriesFormSkeleton />}>
         <EditSeriesFormData {...props} />
       </Suspense>

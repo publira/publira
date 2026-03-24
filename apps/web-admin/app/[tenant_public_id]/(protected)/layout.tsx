@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { AdminLayout } from "../../../components/admin-layout";
+import { AdminToastProvider } from "../../../components/admin-toast-provider";
 import { getAdminCurrentUser } from "../../../lib/admin-auth";
 import { getTenantForSession } from "../../../lib/tenant-detail";
 
@@ -73,7 +74,7 @@ export const ProtectedLayoutContent = async ({
 
   return (
     <AdminLayout currentUser={currentUser} tenant={tenant}>
-      {children}
+      <AdminToastProvider>{children}</AdminToastProvider>
     </AdminLayout>
   );
 };
