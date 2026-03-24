@@ -44,6 +44,8 @@ type Querier interface {
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (Creator, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
+	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
+	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
@@ -74,6 +76,8 @@ type Querier interface {
 	// エンドユーザー（platform_user_roles未保持）の一覧取得
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error)
+	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]EpisodeImage, error)
+	ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]Label, error)
 	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
@@ -92,6 +96,8 @@ type Querier interface {
 	// ユーザーの全セッションを失効させる
 	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
+	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
+	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error

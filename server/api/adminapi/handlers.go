@@ -60,6 +60,26 @@ func toProtoEpisode(row dbmodels.GetEpisodeByPublicIDForTenantRow) *publirattype
 	return episode
 }
 
+func toProtoEpisodeFromListRow(row dbmodels.ListEpisodesBySeriesForTenantRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		PublicId:   row.PublicID,
+		Title:      row.Title,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
 func toProtoEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.EpisodeImage {
 	return &publirattypesv1.EpisodeImage{
 		Id:            row.ID.String(),
@@ -661,6 +681,105 @@ func (s *adminServer) GetSeries(
 	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{Series: series}), nil
 }
 
+func (s *adminServer) ListEpisodes(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListEpisodesRequest],
+) (*connect.Response[publiraadminv1.ListEpisodesResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
+	}
+
+	rows, err := s.queries.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: req.Msg.SeriesPublicId,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	episodes := make([]*publirattypesv1.Episode, 0, len(rows))
+	for _, row := range rows {
+		episodes = append(episodes, toProtoEpisodeFromListRow(row))
+	}
+
+	return connect.NewResponse(&publiraadminv1.ListEpisodesResponse{Episodes: episodes}), nil
+}
+
+func (s *adminServer) ReorderEpisodes(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ReorderEpisodesRequest],
+) (*connect.Response[publiraadminv1.ReorderEpisodesResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
+	}
+	if len(req.Msg.EpisodePublicIds) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids are required"))
+	}
+
+	rows, err := s.queries.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: req.Msg.SeriesPublicId,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if len(rows) != len(req.Msg.EpisodePublicIds) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids must include all episodes in the series"))
+	}
+
+	validEpisodeIDs := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		validEpisodeIDs[row.PublicID] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(req.Msg.EpisodePublicIds))
+	for _, episodePublicID := range req.Msg.EpisodePublicIds {
+		if strings.TrimSpace(episodePublicID) == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids contains empty value"))
+		}
+		if _, ok := validEpisodeIDs[episodePublicID]; !ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids contains unknown episode"))
+		}
+		if _, ok := seen[episodePublicID]; ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids contains duplicate episode"))
+		}
+		seen[episodePublicID] = struct{}{}
+	}
+
+	for index, episodePublicID := range req.Msg.EpisodePublicIds {
+		if err := s.queries.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx, dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams{
+			TenantID:   tenant.ID,
+			PublicID:   req.Msg.SeriesPublicId,
+			PublicID_2: episodePublicID,
+			OrderIndex: int32(index + 1),
+		}); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	updatedRows, err := s.queries.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: req.Msg.SeriesPublicId,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	episodes := make([]*publirattypesv1.Episode, 0, len(updatedRows))
+	for _, row := range updatedRows {
+		episodes = append(episodes, toProtoEpisodeFromListRow(row))
+	}
+
+	return connect.NewResponse(&publiraadminv1.ReorderEpisodesResponse{Episodes: episodes}), nil
+}
+
 func (s *adminServer) CreateEpisode(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateEpisodeRequest],
@@ -762,6 +881,10 @@ func (s *adminServer) UploadEpisodeImages(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	maxDisplayOrder, err := s.queries.GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx, episode.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	items := make([]*publirattypesv1.EpisodeImage, 0, len(req.Msg.Images))
 	for index, imageUpload := range req.Msg.Images {
 		if len(imageUpload.Data) == 0 {
@@ -781,10 +904,7 @@ func (s *adminServer) UploadEpisodeImages(
 		if imageConfig.Width <= 0 || imageConfig.Height <= 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d] has invalid dimensions", index))
 		}
-		displayOrder := imageUpload.DisplayOrder
-		if displayOrder < 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].display_order must be >= 0", index))
-		}
+		displayOrder := maxDisplayOrder + int32(index) + 1
 		ext := strings.ToLower(filepath.Ext(strings.TrimSpace(imageUpload.Filename)))
 		if ext == "" {
 			ext = ".bin"
@@ -829,6 +949,112 @@ func (s *adminServer) UploadEpisodeImages(
 		}
 	}
 	return connect.NewResponse(&publiraadminv1.UploadEpisodeImagesResponse{Images: items}), nil
+}
+
+func (s *adminServer) ListEpisodeImages(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ListEpisodeImagesRequest],
+) (*connect.Response[publiraadminv1.ListEpisodeImagesResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	if episodePublicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	}
+	episode, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	rows, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, episode.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	images := make([]*publirattypesv1.EpisodeImage, 0, len(rows))
+	for _, row := range rows {
+		images = append(images, toProtoEpisodeImage(row))
+	}
+
+	return connect.NewResponse(&publiraadminv1.ListEpisodeImagesResponse{Images: images}), nil
+}
+
+func (s *adminServer) ReorderEpisodeImages(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.ReorderEpisodeImagesRequest],
+) (*connect.Response[publiraadminv1.ReorderEpisodeImagesResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId)
+	if episodePublicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
+	}
+	if len(req.Msg.ImageIds) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids are required"))
+	}
+	episode, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	rows, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, episode.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if len(rows) != len(req.Msg.ImageIds) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids must include all images in the episode"))
+	}
+
+	validImageIDs := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		validImageIDs[row.ID.String()] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(req.Msg.ImageIds))
+	for _, imageID := range req.Msg.ImageIds {
+		if strings.TrimSpace(imageID) == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids contains empty value"))
+		}
+		if _, ok := validImageIDs[imageID]; !ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids contains unknown image"))
+		}
+		if _, ok := seen[imageID]; ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids contains duplicate image"))
+		}
+		seen[imageID] = struct{}{}
+	}
+
+	for index, imageID := range req.Msg.ImageIds {
+		parsedImageID, err := uuid.Parse(imageID)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids contains invalid uuid"))
+		}
+		if err := s.queries.UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx, dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisodeParams{
+			ID:           parsedImageID,
+			EpisodeID:    episode.ID,
+			DisplayOrder: int32(index + 1),
+		}); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	updatedRows, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, episode.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	images := make([]*publirattypesv1.EpisodeImage, 0, len(updatedRows))
+	for _, row := range updatedRows {
+		images = append(images, toProtoEpisodeImage(row))
+	}
+
+	return connect.NewResponse(&publiraadminv1.ReorderEpisodeImagesResponse{Images: images}), nil
 }
 
 func (s *adminServer) UpdateEpisodePublishSchedule(

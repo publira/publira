@@ -735,6 +735,39 @@ func (q *Queries) GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelB
 	return i, err
 }
 
+const getMaxEpisodeImageDisplayOrderByEpisodeID = `-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one
+SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
+FROM episode_images
+WHERE episode_id = $1
+`
+
+func (q *Queries) GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, getMaxEpisodeImageDisplayOrderByEpisodeID, episodeID)
+	var max_display_order int32
+	err := row.Scan(&max_display_order)
+	return max_display_order, err
+}
+
+const getMaxEpisodeOrderIndexBySeriesForTenant = `-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
+SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+`
+
+type GetMaxEpisodeOrderIndexBySeriesForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, getMaxEpisodeOrderIndexBySeriesForTenant, arg.TenantID, arg.PublicID)
+	var max_order_index int32
+	err := row.Scan(&max_order_index)
+	return max_order_index, err
+}
+
 const getPlatformOperatorByPublicID = `-- name: GetPlatformOperatorByPublicID :one
 SELECT u.id,
     u.public_id,
@@ -1572,6 +1605,127 @@ func (q *Queries) ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uu
 	return items, nil
 }
 
+const listEpisodeImagesByEpisodePublicIDForTenant = `-- name: ListEpisodeImagesByEpisodePublicIDForTenant :many
+SELECT ei.id, ei.tenant_id, ei.episode_id, ei.storage_provider, ei.object_key, ei.image_url, ei.content_type, ei.file_size_bytes, ei.display_order, ei.width, ei.height, ei.created_at
+FROM episode_images ei
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE s.tenant_id = $1
+    AND e.public_id = $2
+ORDER BY ei.display_order ASC,
+    ei.created_at ASC
+`
+
+type ListEpisodeImagesByEpisodePublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]EpisodeImage, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodeImagesByEpisodePublicIDForTenant, arg.TenantID, arg.PublicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EpisodeImage
+	for rows.Next() {
+		var i EpisodeImage
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.EpisodeID,
+			&i.StorageProvider,
+			&i.ObjectKey,
+			&i.ImageUrl,
+			&i.ContentType,
+			&i.FileSizeBytes,
+			&i.DisplayOrder,
+			&i.Width,
+			&i.Height,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodesBySeriesForTenant = `-- name: ListEpisodesBySeriesForTenant :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+ORDER BY e.order_index ASC,
+    e.created_at ASC
+`
+
+type ListEpisodesBySeriesForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+type ListEpisodesBySeriesForTenantRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Title              string        `json:"title"`
+	OrderIndex         int32         `json:"order_index"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Status             string        `json:"status"`
+	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+}
+
+func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenant, arg.TenantID, arg.PublicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesBySeriesForTenantRow
+	for rows.Next() {
+		var i ListEpisodesBySeriesForTenantRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Title,
+			&i.OrderIndex,
+			&i.Price,
+			&i.ReadingPeriodHours,
+			&i.Status,
+			&i.ScheduledAt,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEpisodesReadyToPublish = `-- name: ListEpisodesReadyToPublish :many
 SELECT el.episode_id
 FROM episode_listings el
@@ -2242,6 +2396,51 @@ type UpdateCreatorParams struct {
 
 func (q *Queries) UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error {
 	_, err := q.db.ExecContext(ctx, updateCreator, arg.ID, arg.Name, arg.ProfileText)
+	return err
+}
+
+const updateEpisodeImageDisplayOrderByIDForEpisode = `-- name: UpdateEpisodeImageDisplayOrderByIDForEpisode :exec
+UPDATE episode_images
+SET display_order = $3
+WHERE id = $1
+    AND episode_id = $2
+`
+
+type UpdateEpisodeImageDisplayOrderByIDForEpisodeParams struct {
+	ID           uuid.UUID `json:"id"`
+	EpisodeID    uuid.UUID `json:"episode_id"`
+	DisplayOrder int32     `json:"display_order"`
+}
+
+func (q *Queries) UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error {
+	_, err := q.db.ExecContext(ctx, updateEpisodeImageDisplayOrderByIDForEpisode, arg.ID, arg.EpisodeID, arg.DisplayOrder)
+	return err
+}
+
+const updateEpisodeOrderIndexByPublicIDForTenantAndSeries = `-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec
+UPDATE episodes e
+SET order_index = $4
+FROM series s
+WHERE e.series_id = s.id
+    AND s.tenant_id = $1
+    AND s.public_id = $2
+    AND e.public_id = $3
+`
+
+type UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	PublicID   string    `json:"public_id"`
+	PublicID_2 string    `json:"public_id_2"`
+	OrderIndex int32     `json:"order_index"`
+}
+
+func (q *Queries) UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error {
+	_, err := q.db.ExecContext(ctx, updateEpisodeOrderIndexByPublicIDForTenantAndSeries,
+		arg.TenantID,
+		arg.PublicID,
+		arg.PublicID_2,
+		arg.OrderIndex,
+	)
 	return err
 }
 

@@ -355,6 +355,41 @@ WHERE s.tenant_id = $1
     AND e.series_id = $2
     AND el.status = 'published'
 ORDER BY e.order_index ASC;
+
+-- name: ListEpisodesBySeriesForTenant :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+ORDER BY e.order_index ASC,
+    e.created_at ASC;
+
+-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
+SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2;
+
+-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec
+UPDATE episodes e
+SET order_index = $4
+FROM series s
+WHERE e.series_id = s.id
+    AND s.tenant_id = $1
+    AND s.public_id = $2
+    AND e.public_id = $3;
+
 -- name: GetSeriesDetail :one
 SELECT s.id,
     s.public_id,
@@ -591,6 +626,28 @@ FROM episode_images
 WHERE episode_id = $1
 ORDER BY display_order ASC,
     created_at ASC;
+
+-- name: ListEpisodeImagesByEpisodePublicIDForTenant :many
+SELECT ei.*
+FROM episode_images ei
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE s.tenant_id = $1
+    AND e.public_id = $2
+ORDER BY ei.display_order ASC,
+    ei.created_at ASC;
+
+-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one
+SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
+FROM episode_images
+WHERE episode_id = $1;
+
+-- name: UpdateEpisodeImageDisplayOrderByIDForEpisode :exec
+UPDATE episode_images
+SET display_order = $3
+WHERE id = $1
+    AND episode_id = $2;
+
 -- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec
 UPDATE episode_listings el
 SET status = CASE
