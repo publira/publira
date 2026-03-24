@@ -17,7 +17,6 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useState } from "react";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
@@ -38,7 +37,6 @@ export const CreatorForm = ({
   action,
   initialCreator,
 }: CreatorFormProps) => {
-  const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);
   const [name, setName] = useState(initialCreator?.name ?? "");
   const [profileText, setProfileText] = useState(
@@ -49,12 +47,6 @@ export const CreatorForm = ({
     setName(initialCreator?.name ?? "");
     setProfileText(initialCreator?.profileText ?? "");
   }, [initialCreator?.name, initialCreator?.profileText, mode]);
-
-  useEffect(() => {
-    if (state?.ok && state.mode === "create") {
-      router.push(`/creators/${state.creator.publicId}/edit`);
-    }
-  }, [router, state]);
 
   const handleNameChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,9 +63,9 @@ export const CreatorForm = ({
   );
 
   const isUpdate = mode === "update";
-  let submitLabel = "クリエイターを作成";
+  let submitLabel = "著者を作成";
   if (isUpdate) {
-    submitLabel = "クリエイターを更新";
+    submitLabel = "著者を更新";
   }
   if (isPending) {
     submitLabel = "送信中...";
@@ -82,9 +74,7 @@ export const CreatorForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          {isUpdate ? "クリエイター情報" : "新規クリエイター"}
-        </CardTitle>
+        <CardTitle>{isUpdate ? "著者情報" : "新規著者"}</CardTitle>
         <CardDescription>
           {isUpdate
             ? "名前とプロフィールを編集します。"
@@ -124,12 +114,12 @@ export const CreatorForm = ({
                 id="creator_profile_text"
                 name="profile_text"
                 onChange={handleProfileTextChange}
-                placeholder="クリエイターの紹介文を入力"
+                placeholder="著者の紹介文を入力"
                 rows={5}
                 value={profileText}
               />
               <FieldDescription>
-                クリエイターの自己紹介や経歴などを記入できます。
+                著者の自己紹介や経歴などを記入できます。
               </FieldDescription>
             </FieldContent>
           </Field>

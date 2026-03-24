@@ -6,6 +6,7 @@ import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
+import { AdminLabelService } from "../gen/publira/admin/v1/label_pb.js";
 import { AdminSeriesService } from "../gen/publira/admin/v1/series_pb.js";
 import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
 
@@ -19,6 +20,7 @@ export type AdminApiClientOptions = {
 export interface AdminApiClient {
   auth: Client<typeof AdminAuthService>;
   creator: Client<typeof AdminCreatorService>;
+  label: Client<typeof AdminLabelService>;
   series: Client<typeof AdminSeriesService>;
   theme: Client<typeof TenantThemeService>;
 }
@@ -42,6 +44,7 @@ export const createAdminApiClient = (
   return {
     auth: createClient(AdminAuthService, transportInstance),
     creator: createClient(AdminCreatorService, transportInstance),
+    label: createClient(AdminLabelService, transportInstance),
     series: createClient(AdminSeriesService, transportInstance),
     theme: createClient(TenantThemeService, transportInstance),
   };

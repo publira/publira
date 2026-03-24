@@ -21,43 +21,33 @@ import {
 import Link from "next/link";
 import { useMemo } from "react";
 
-import type { CreatorListItem } from "../creator-types";
+import type { LabelListItem } from "../label-types";
 
-interface CreatorManagerProps {
-  initialCreators: CreatorListItem[];
+interface LabelManagerProps {
+  initialLabels: LabelListItem[];
   initialListErrorMessage?: string;
 }
 
-const excerpt = (text: string, max = 56) => {
-  const normalized = text.replaceAll(/\s+/g, " ").trim();
-  if (normalized.length <= max) {
-    return normalized || "-";
-  }
-
-  return `${normalized.slice(0, max)}...`;
-};
-
-export const CreatorManager = ({
-  initialCreators,
+export const LabelManager = ({
+  initialLabels,
   initialListErrorMessage,
-}: CreatorManagerProps) => {
-  const sortedCreators = useMemo(
-    () =>
-      initialCreators.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
-    [initialCreators]
+}: LabelManagerProps) => {
+  const sortedLabels = useMemo(
+    () => initialLabels.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
+    [initialLabels]
   );
 
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>著者一覧</CardTitle>
+          <CardTitle>レーベル一覧</CardTitle>
           <CardDescription>
-            名前やプロフィールを確認し、必要な著者を編集します。
+            レーベル名を確認し、必要な項目を編集します。
           </CardDescription>
         </div>
-        <LinkButton render={<Link href="/creators/new" />} variant="outline">
-          著者を新規作成
+        <LinkButton render={<Link href="/labels/new" />} variant="outline">
+          レーベルを新規作成
         </LinkButton>
       </CardHeader>
       <CardContent>
@@ -67,29 +57,27 @@ export const CreatorManager = ({
           </FormMessage>
         ) : null}
 
-        {sortedCreators.length === 0 ? (
+        {sortedLabels.length === 0 ? (
           <EmptyState
-            description="新規作成ページから著者を作成してください。"
-            title="著者がまだ登録されていません。"
+            description="新規作成ページからレーベルを作成してください。"
+            title="レーベルがまだ登録されていません。"
           />
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>名前</TableHead>
-                <TableHead>プロフィール</TableHead>
+                <TableHead>レーベル名</TableHead>
                 <TableHead className="w-56">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedCreators.map((creator) => (
-                <TableRow key={creator.publicId}>
-                  <TableCell className="font-medium">{creator.name}</TableCell>
-                  <TableCell>{excerpt(creator.profileText)}</TableCell>
+              {sortedLabels.map((label) => (
+                <TableRow key={label.publicId}>
+                  <TableCell className="font-medium">{label.name}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
                       <LinkButton
-                        render={<Link href={`/creators/${creator.publicId}`} />}
+                        render={<Link href={`/labels/${label.publicId}`} />}
                         variant="outline"
                       >
                         編集

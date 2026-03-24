@@ -363,7 +363,7 @@ SELECT s.id,
     sl.synopsis,
     s.is_published,
     s.published_at,
-    -- 複数のクリエイター情報をJSON配列として1カラムにまとめる
+    -- 複数の著者情報をJSON配列として1カラムにまとめる
     COALESCE(
         json_agg(
             json_build_object(
