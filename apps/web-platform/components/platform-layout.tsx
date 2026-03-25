@@ -50,26 +50,14 @@ export const PlatformLayout = ({
           <div className="flex items-start justify-between gap-3">
             <div className="grid gap-1">
               <p className="text-sm font-medium text-foreground">
-                Platform Scope
+                運用ステータス
               </p>
               <p className="text-xs leading-5 text-muted-foreground">
-                web-platform
-                はテナント横断の運用領域です。各テナント内コンテンツの入稿や編集は
-                web-admin 側の責務として分離します。
+                Platform Console は現在利用可能です。
               </p>
             </div>
             <StatusChip status="success">Online</StatusChip>
           </div>
-        }
-        footerNote={
-          <>
-            <p className="text-sm font-medium text-foreground">共通導線</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              全画面で「サイドバー + ヘッダー +
-              ページヘッダー」を固定し、個別画面 Issue
-              を同じ器で着手できる状態にしています。
-            </p>
-          </>
         }
         logoLabel="Platform Console"
         navId="platform-navigation"

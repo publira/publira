@@ -124,6 +124,10 @@ const roleLabelMap: Record<string, string> = {
   admin: "テナント管理者",
   auditor: "監査担当",
   editor: "編集担当",
+  platform_auditor: "監査担当",
+  platform_operator: "オペレーター",
+  platform_owner: "プラットフォーム管理者",
+  platform_super_admin: "スーパー管理者",
   tenant_admin: "テナント管理者",
   tenant_auditor: "監査担当",
   tenant_editor: "編集担当",
@@ -206,7 +210,7 @@ export interface ConsoleSidebarProps {
   logoLabel: string;
   contextInfo: ReactNode;
   navigation: NavSection[];
-  footerNote: ReactNode;
+  footerNote?: ReactNode;
 }
 
 export const ConsoleSidebar = ({
@@ -300,9 +304,11 @@ export const ConsoleSidebar = ({
         </div>
       </nav>
 
-      <div className="mt-6 rounded-2xl border border-border/70 bg-card p-4">
-        {footerNote}
-      </div>
+      {footerNote ? (
+        <div className="mt-6 rounded-2xl border border-border/70 bg-card p-4">
+          {footerNote}
+        </div>
+      ) : null}
     </>
   );
 
