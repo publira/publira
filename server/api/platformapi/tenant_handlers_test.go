@@ -144,6 +144,60 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
+func TestAddTenantMemberByEmailSuccess(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	targetUserID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
+		WithArgs("TENANT001").
+		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil))
+
+	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByEmailForTenantQuery)).
+		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "alice@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id"}).
+			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID))
+
+	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUserRolesQuery)).
+		WithArgs(targetUserID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}))
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(testCreateTenantUserRoleQuery)).
+		WithArgs(sqlmock.AnyArg(), targetUserID, "tenant_admin").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now))
+	mock.ExpectCommit()
+
+	resp, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		Email:          "alice@example.com",
+		Role:           "tenant_admin",
+	}))
+	if err != nil {
+		t.Fatalf("AddTenantMember by email: %v", err)
+	}
+	if resp.Msg.Member.UserPublicId != "USER000001" {
+		t.Fatalf("member.user_public_id = %q, want USER000001", resp.Msg.Member.UserPublicId)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestAddTenantMemberRequiresPublicIDOrEmail(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+
+	_, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
+		TenantPublicId: "TENANT001",
+		Role:           "tenant_admin",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("AddTenantMember code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
 func TestAddTenantMemberTenantNotFound(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 

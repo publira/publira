@@ -118,6 +118,19 @@ describe("getPlatformCurrentOperator", () => {
     );
   });
 
+  it("role は API の値をそのまま返す", async () => {
+    mockGetMe.mockResolvedValueOnce({
+      user: { name: "Admin", publicId: "usr_1", role: "super-admin" },
+    });
+
+    const result = await getPlatformCurrentOperator();
+    expect(result).toEqual({
+      name: "Admin",
+      publicId: "usr_1",
+      role: "super-admin",
+    });
+  });
+
   it("セッションが解決できない場合は null を返す (API を呼ばない)", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 

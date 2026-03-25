@@ -10,6 +10,7 @@ import {
   unsuspendPlatformOperator,
   updatePlatformOperatorRole,
 } from "../../../../../lib/operators";
+import { isPlatformSuperAdmin } from "../../../../../lib/roles";
 import type { OperatorRoleFormState } from "../_components/operator-role-form";
 
 export const updateOperatorRoleAction = async (
@@ -24,7 +25,7 @@ export const updateOperatorRoleAction = async (
   }
 
   const me = await getPlatformCurrentOperator();
-  if (me?.role !== "platform_super_admin") {
+  if (!me || !isPlatformSuperAdmin(me.role)) {
     return { message: "この操作を行う権限がありません。", ok: false };
   }
   if (me.publicId === publicId) {
@@ -48,7 +49,7 @@ export const suspendOperatorAction = async (
   publicId: string
 ): Promise<void> => {
   const me = await getPlatformCurrentOperator();
-  if (!me || me.role !== "platform_super_admin" || me.publicId === publicId) {
+  if (!me || !isPlatformSuperAdmin(me.role) || me.publicId === publicId) {
     return;
   }
   await suspendPlatformOperator(publicId);
@@ -60,7 +61,7 @@ export const unsuspendOperatorAction = async (
   publicId: string
 ): Promise<void> => {
   const me = await getPlatformCurrentOperator();
-  if (!me || me.role !== "platform_super_admin") {
+  if (!me || !isPlatformSuperAdmin(me.role)) {
     return;
   }
   await unsuspendPlatformOperator(publicId);
@@ -72,7 +73,7 @@ export const deactivateOperatorAction = async (
   publicId: string
 ): Promise<void> => {
   const me = await getPlatformCurrentOperator();
-  if (!me || me.role !== "platform_super_admin" || me.publicId === publicId) {
+  if (!me || !isPlatformSuperAdmin(me.role) || me.publicId === publicId) {
     return;
   }
   await deactivatePlatformOperator(publicId);

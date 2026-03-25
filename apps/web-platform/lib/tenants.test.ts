@@ -292,19 +292,6 @@ describe("createPlatformTenant", () => {
   });
 
   it("メンバー追加時はエンドユーザーをメール検索して userPublicId に解決する", async () => {
-    mockListOperators.mockResolvedValueOnce({ operators: [] });
-    mockListUsers.mockResolvedValueOnce({
-      users: [
-        {
-          createdAt: "2026-03-01T00:00:00Z",
-          email: "member@example.com",
-          name: "Member",
-          publicId: "user_member_001",
-          status: "active",
-          tenantIds: [],
-        },
-      ],
-    });
     mockAddTenantMember.mockResolvedValueOnce({});
 
     await expect(
@@ -317,32 +304,20 @@ describe("createPlatformTenant", () => {
 
     expect(mockAddTenantMember).toHaveBeenCalledWith(
       {
+        email: "member@example.com",
         role: "tenant_admin",
         tenantPublicId: "tenant_seifuu",
-        userPublicId: "user_member_001",
       },
       { headers: { "X-Publira-Session-Id": "sess_abc" } }
     );
   });
 
-  it("メンバー追加時はオペレーターもメール検索対象に含める", async () => {
-    mockListOperators.mockResolvedValueOnce({
-      operators: [
-        {
-          createdAt: "2026-03-01T00:00:00Z",
-          email: "op@example.com",
-          name: "Operator",
-          publicId: "user_operator_001",
-          role: "platform_operator",
-          status: "active",
-        },
-      ],
-    });
+  it("メンバー追加時はメールを小文字正規化して送信する", async () => {
     mockAddTenantMember.mockResolvedValueOnce({});
 
     await expect(
       addPlatformTenantMember({
-        email: "op@example.com",
+        email: "Member@Example.COM",
         role: "tenant_admin",
         tenantPublicId: "tenant_seifuu",
       })
@@ -350,12 +325,28 @@ describe("createPlatformTenant", () => {
 
     expect(mockAddTenantMember).toHaveBeenCalledWith(
       {
+        email: "member@example.com",
         role: "tenant_admin",
         tenantPublicId: "tenant_seifuu",
-        userPublicId: "user_operator_001",
       },
       { headers: { "X-Publira-Session-Id": "sess_abc" } }
     );
-    expect(mockListUsers).not.toHaveBeenCalled();
+  });
+
+  it("対象テナントに該当ユーザーがいない場合は見つからないエラーを返す", async () => {
+    mockAddTenantMember.mockRejectedValueOnce(
+      new Error("not_found: member not found")
+    );
+
+    await expect(
+      addPlatformTenantMember({
+        email: "member@example.com",
+        role: "tenant_admin",
+        tenantPublicId: "tenant_seifuu",
+      })
+    ).resolves.toEqual({
+      message: "指定したメールアドレスのユーザーが見つかりません。",
+      ok: false,
+    });
   });
 });

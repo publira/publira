@@ -144,6 +144,8 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
 	}
 	adminDomain := nullableTrimmedString(req.Msg.AdminDomain)
+	initialAdminEmails := make([]string, 0, len(req.Msg.InitialAdminEmails))
+	seenInitialAdminEmail := make(map[string]struct{}, len(req.Msg.InitialAdminEmails))
 	for _, rawEmail := range req.Msg.InitialAdminEmails {
 		email := strings.TrimSpace(strings.ToLower(rawEmail))
 		if email == "" {
@@ -152,6 +154,11 @@ func (s *platformServer) CreateTenant(
 		if _, err := mail.ParseAddress(email); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid initial_admin_emails"))
 		}
+		if _, exists := seenInitialAdminEmail[email]; exists {
+			continue
+		}
+		seenInitialAdminEmail[email] = struct{}{}
+		initialAdminEmails = append(initialAdminEmails, email)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -179,6 +186,66 @@ func (s *platformServer) CreateTenant(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New(field+" already exists"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	for _, email := range initialAdminEmails {
+		user, err := txq.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			Email:    email,
+		})
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+
+			temporaryPassword, err := createOperatorPassword()
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+			passwordHash, err := auth.HashPassword(temporaryPassword)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+			userID, err := uuid.NewV7()
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+
+			user, err = txq.CreateUser(ctx, dbmodels.CreateUserParams{
+				ID:           userID,
+				TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
+				PublicID:     generatePublicID(),
+				Email:        email,
+				PasswordHash: passwordHash,
+				Name:         email,
+			})
+			if err != nil {
+				if isUniqueViolation(err) {
+					return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("initial_admin_emails already exists"))
+				}
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+		}
+
+		roles, err := txq.ListTenantUserRoles(ctx, user.ID)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if len(roles) > 0 {
+			continue
+		}
+
+		_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
+			ID:     uuid.Must(uuid.NewV7()),
+			UserID: user.ID,
+			Role:   auth.RoleTenantAdmin,
+		})
+		if err != nil {
+			if isUniqueViolation(err) {
+				continue
+			}
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -325,11 +392,11 @@ func (s *platformServer) ResumeTenant(
 func normalizeTenantMemberRole(rawRole string) (string, bool) {
 	role := strings.TrimSpace(rawRole)
 	switch role {
-	case auth.RoleTenantAdmin, auth.RoleLegacyAdmin:
+	case auth.RoleTenantAdmin:
 		return auth.RoleTenantAdmin, true
-	case auth.RoleTenantEditor, auth.RoleLegacyEditor:
+	case auth.RoleTenantEditor:
 		return auth.RoleTenantEditor, true
-	case auth.RoleTenantAuditor, auth.RoleLegacyAuditor:
+	case auth.RoleTenantAuditor:
 		return auth.RoleTenantAuditor, true
 	default:
 		return "", false
@@ -403,8 +470,17 @@ func (s *platformServer) AddTenantMember(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
 	}
 	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
-	if userPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_public_id is required"))
+	email := strings.TrimSpace(strings.ToLower(req.Msg.Email))
+	if userPublicID == "" && email == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_public_id or email is required"))
+	}
+	if userPublicID != "" && email != "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_public_id and email cannot both be set"))
+	}
+	if email != "" {
+		if _, err := mail.ParseAddress(email); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email"))
+		}
 	}
 	normalizedRole, ok := normalizeTenantMemberRole(req.Msg.Role)
 	if !ok {
@@ -419,10 +495,29 @@ func (s *platformServer) AddTenantMember(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, err := s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID: userPublicID,
-	})
+	var user dbmodels.GetUserByPublicIDForTenantRow
+	if userPublicID != "" {
+		user, err = s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			PublicID: userPublicID,
+		})
+	} else {
+		userByEmail, lookupErr := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			Email:    email,
+		})
+		if lookupErr == nil {
+			user = dbmodels.GetUserByPublicIDForTenantRow{
+				CreatedAt: userByEmail.CreatedAt,
+				Email:     userByEmail.Email,
+				ID:        userByEmail.ID,
+				Name:      userByEmail.Name,
+				PublicID:  userByEmail.PublicID,
+				Status:    userByEmail.Status,
+			}
+		}
+		err = lookupErr
+	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))

@@ -14,6 +14,7 @@ import { notFound } from "next/navigation";
 
 import { PlatformPage } from "../../../../components/platform-page";
 import { getPlatformCurrentOperator } from "../../../../lib/auth";
+import { canManageEndUsers } from "../../../../lib/roles";
 import {
   getEndUserStatusLabel,
   getEndUserStatusTone,
@@ -35,9 +36,6 @@ interface UserDetailPageProps {
     user_public_id: string;
   }>;
 }
-
-const canManageEndUsers = (role: string | undefined): boolean =>
-  role === "platform_super_admin" || role === "platform_operator";
 
 export default async function UserDetailPage({ params }: UserDetailPageProps) {
   const { user_public_id: userPublicId } = await params;

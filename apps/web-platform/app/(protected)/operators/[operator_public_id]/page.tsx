@@ -20,6 +20,7 @@ import {
   getOperatorStatusLabel,
 } from "../../../../lib/operator-labels";
 import { getPlatformOperator } from "../../../../lib/operators";
+import { isPlatformSuperAdmin } from "../../../../lib/roles";
 import { DangerConfirmButton } from "./_components/danger-confirm-button";
 import { OperatorRoleForm } from "./_components/operator-role-form";
 import {
@@ -54,7 +55,7 @@ export default async function OperatorDetailPage({
   }
 
   const isSelf = currentOperator?.publicId === operator.publicId;
-  const isSuperAdmin = currentOperator?.role === "platform_super_admin";
+  const isSuperAdmin = isPlatformSuperAdmin(currentOperator?.role);
   const isDeactivated = operator.status === "inactive";
   const canModify = isSuperAdmin && !isSelf && !isDeactivated;
   const canSuspend = isSuperAdmin && !isSelf && operator.status === "active";
