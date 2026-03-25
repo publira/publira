@@ -8,6 +8,7 @@ export interface SeriesItem {
   readingPeriodHours: number;
   labelName: string;
   creatorNames: string[];
+  creatorPublicIds: string[];
   isPublished: boolean;
 }
 
@@ -75,11 +76,14 @@ const mapSeries = (series: {
   synopsis: string;
   readingPeriodHours?: number;
   label?: { name: string };
-  creators: { name: string }[];
+  creators: { publicId: string; name: string }[];
 }): SeriesItem => ({
   creatorNames: (series.creators ?? [])
     .map((creator) => creator.name.trim())
     .filter((name) => name.length > 0),
+  creatorPublicIds: (series.creators ?? [])
+    .map((creator) => creator.publicId.trim())
+    .filter((publicId) => publicId.length > 0),
   isPublished: false,
   labelName: series.label?.name?.trim() ?? "",
   publicId: series.publicId,
@@ -178,6 +182,7 @@ export const createSeries = async (input: {
   synopsis: string;
   readingPeriodHours: number;
   labelPublicId: string;
+  creatorPublicIds: string[];
   isPublished: boolean;
 }): Promise<CreateSeriesResult> => {
   const sessionId = await getSessionId();
@@ -191,6 +196,7 @@ export const createSeries = async (input: {
   try {
     const response = await apiClient.series.createSeries(
       {
+        creatorPublicIds: input.creatorPublicIds,
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         readingPeriodHours: input.readingPeriodHours,
@@ -229,6 +235,7 @@ export const updateSeries = async (input: {
   title: string;
   synopsis: string;
   readingPeriodHours: number;
+  creatorPublicIds: string[];
   isPublished: boolean;
 }): Promise<UpdateSeriesResult> => {
   const sessionId = await getSessionId();
@@ -242,6 +249,7 @@ export const updateSeries = async (input: {
   try {
     const response = await apiClient.series.updateSeries(
       {
+        creatorPublicIds: input.creatorPublicIds,
         isPublished: input.isPublished,
         publicId: input.publicId,
         readingPeriodHours: input.readingPeriodHours,

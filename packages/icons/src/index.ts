@@ -1,3 +1,4 @@
+export { CheckIcon } from "./check-icon";
 export { CloseIcon } from "./close-icon";
 export { CollectionIcon } from "./collection-icon";
 export { DashboardIcon } from "./dashboard-icon";

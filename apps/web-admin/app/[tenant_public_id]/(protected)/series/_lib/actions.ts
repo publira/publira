@@ -13,9 +13,14 @@ const parseCommonFields = (formData: FormData) => {
     formData.get("reading_period_hours") ?? ""
   ).trim();
   const isPublished = String(formData.get("is_published") ?? "") === "on";
+  const creatorPublicIds = formData
+    .getAll("creator_public_ids")
+    .map((value) => String(value).trim())
+    .filter((value) => value.length > 0);
   const readingPeriodHours = Number.parseInt(readingPeriodHoursRaw, 10);
 
   return {
+    creatorPublicIds,
     isPublished,
     readingPeriodHours,
     synopsis,
@@ -83,6 +88,7 @@ export const createSeriesAction = async (
   }
 
   const result = await createSeries({
+    creatorPublicIds: input.creatorPublicIds,
     isPublished: input.isPublished,
     labelPublicId,
     readingPeriodHours: input.readingPeriodHours,
@@ -122,6 +128,7 @@ export const updateSeriesAction = async (
   }
 
   const result = await updateSeries({
+    creatorPublicIds: input.creatorPublicIds,
     isPublished: input.isPublished,
     publicId,
     readingPeriodHours: input.readingPeriodHours,
