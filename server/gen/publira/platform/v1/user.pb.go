@@ -111,9 +111,10 @@ type ListEndUsersRequest struct {
 	Limit  int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	Offset int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
 	// フィルタ条件
-	CreatedAfter  string `protobuf:"bytes,3,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`    // RFC3339形式
-	Status        string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`                                    // active, suspended, inactive
-	CreatedBefore string `protobuf:"bytes,5,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"` // RFC3339形式
+	CreatedAfter  string   `protobuf:"bytes,3,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`    // RFC3339形式
+	Status        string   `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`                                    // active, suspended, inactive
+	CreatedBefore string   `protobuf:"bytes,5,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"` // RFC3339形式
+	PublicIds     []string `protobuf:"bytes,6,rep,name=public_ids,json=publicIds,proto3" json:"public_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -181,6 +182,13 @@ func (x *ListEndUsersRequest) GetCreatedBefore() string {
 		return x.CreatedBefore
 	}
 	return ""
+}
+
+func (x *ListEndUsersRequest) GetPublicIds() []string {
+	if x != nil {
+		return x.PublicIds
+	}
+	return nil
 }
 
 type ListEndUsersResponse struct {
@@ -592,13 +600,15 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"tenant_ids\x18\x06 \x03(\tR\ttenantIds\"\xa7\x01\n" +
+	"tenant_ids\x18\x06 \x03(\tR\ttenantIds\"\xc6\x01\n" +
 	"\x13ListEndUsersRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12#\n" +
 	"\rcreated_after\x18\x03 \x01(\tR\fcreatedAfter\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12%\n" +
-	"\x0ecreated_before\x18\x05 \x01(\tR\rcreatedBefore\"J\n" +
+	"\x0ecreated_before\x18\x05 \x01(\tR\rcreatedBefore\x12\x1d\n" +
+	"\n" +
+	"public_ids\x18\x06 \x03(\tR\tpublicIds\"J\n" +
 	"\x14ListEndUsersResponse\x122\n" +
 	"\x05users\x18\x01 \x03(\v2\x1c.publira.platform.v1.EndUserR\x05users\"0\n" +
 	"\x11GetEndUserRequest\x12\x1b\n" +

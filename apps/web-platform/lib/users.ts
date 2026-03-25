@@ -14,6 +14,7 @@ export interface ListPlatformEndUsersInput {
   createdBefore?: string;
   limit?: number;
   offset?: number;
+  publicIds?: string[];
   status?: string;
 }
 
@@ -54,12 +55,19 @@ export const listPlatformEndUsers = async (
   }
 
   try {
+    const publicIds = [
+      ...new Set(
+        (input.publicIds ?? []).map((value) => value.trim()).filter(Boolean)
+      ),
+    ];
+
     const response = await apiClient.users.listEndUsers(
       {
         createdAfter: input.createdAfter ?? "",
         createdBefore: input.createdBefore ?? "",
         limit: Math.max(1, input.limit ?? 20),
         offset: Math.max(0, input.offset ?? 0),
+        publicIds,
         status: input.status ?? "",
       } as never,
       buildSessionHeaders(sid)

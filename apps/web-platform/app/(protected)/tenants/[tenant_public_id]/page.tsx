@@ -64,7 +64,7 @@ export default async function TenantDetailPage({
           <LinkButton
             render={
               <Link
-                href={`/audit-logs?resource=${encodeURIComponent(tenant.publicId)}`}
+                href={`/audit-logs?tenant_public_id=${encodeURIComponent(tenant.publicId)}`}
               />
             }
             variant="outline"

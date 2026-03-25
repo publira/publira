@@ -8,6 +8,7 @@ package dbmodels
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -58,12 +59,35 @@ func (q *Queries) InsertAdminAuditLog(ctx context.Context, arg InsertAdminAuditL
 }
 
 const listAdminAuditLogs = `-- name: ListAdminAuditLogs :many
-SELECT id, actor_user_public_id, actor_role, tenant_public_id, action, target_type, target_id, outcome, reason, client_ip, created_at
-FROM admin_audit_logs
-WHERE ($1::text IS NULL OR actor_user_public_id = $1::text)
-  AND ($2::text IS NULL OR tenant_public_id = $2::text)
-  AND ($3::text IS NULL OR action = $3::text)
-ORDER BY created_at DESC
+SELECT a.id,
+    a.actor_user_public_id,
+    a.actor_role,
+    a.tenant_public_id,
+    a.action,
+    a.target_type,
+    a.target_id,
+    a.outcome,
+    a.reason,
+    a.client_ip,
+    a.created_at,
+    COALESCE(actor_u.name, ''::text) AS actor_name,
+    COALESCE(tenant_t.name, ''::text) AS tenant_name,
+    CASE
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
+        WHEN a.target_type IN ('user', 'operator') THEN COALESCE(target_u.name, ''::text)
+        ELSE ''::text
+    END AS target_name
+FROM admin_audit_logs a
+    LEFT JOIN users actor_u ON actor_u.public_id = a.actor_user_public_id
+    LEFT JOIN tenants tenant_t ON tenant_t.public_id = a.tenant_public_id
+    LEFT JOIN users target_u ON target_u.public_id = a.target_id
+    AND a.target_type IN ('user', 'operator')
+    LEFT JOIN tenants target_t ON target_t.public_id = a.target_id
+    AND a.target_type = 'tenant'
+WHERE ($1::text IS NULL OR a.actor_user_public_id = $1::text)
+  AND ($2::text IS NULL OR a.tenant_public_id = $2::text)
+  AND ($3::text IS NULL OR a.action = $3::text)
+ORDER BY a.created_at DESC
 LIMIT $5 OFFSET $4
 `
 
@@ -75,8 +99,25 @@ type ListAdminAuditLogsParams struct {
 	Limit                   int32          `json:"limit"`
 }
 
+type ListAdminAuditLogsRow struct {
+	ID                uuid.UUID      `json:"id"`
+	ActorUserPublicID string         `json:"actor_user_public_id"`
+	ActorRole         string         `json:"actor_role"`
+	TenantPublicID    sql.NullString `json:"tenant_public_id"`
+	Action            string         `json:"action"`
+	TargetType        sql.NullString `json:"target_type"`
+	TargetID          sql.NullString `json:"target_id"`
+	Outcome           string         `json:"outcome"`
+	Reason            sql.NullString `json:"reason"`
+	ClientIp          sql.NullString `json:"client_ip"`
+	CreatedAt         time.Time      `json:"created_at"`
+	ActorName         string         `json:"actor_name"`
+	TenantName        string         `json:"tenant_name"`
+	TargetName        string         `json:"target_name"`
+}
+
 // 管理操作監査ログ一覧取得（フィルタ対応）
-func (q *Queries) ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogsParams) ([]AdminAuditLog, error) {
+func (q *Queries) ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogsParams) ([]ListAdminAuditLogsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAdminAuditLogs,
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantPublicID,
@@ -88,9 +129,9 @@ func (q *Queries) ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogs
 		return nil, err
 	}
 	defer rows.Close()
-	var items []AdminAuditLog
+	var items []ListAdminAuditLogsRow
 	for rows.Next() {
-		var i AdminAuditLog
+		var i ListAdminAuditLogsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ActorUserPublicID,
@@ -103,6 +144,9 @@ func (q *Queries) ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogs
 			&i.Reason,
 			&i.ClientIp,
 			&i.CreatedAt,
+			&i.ActorName,
+			&i.TenantName,
+			&i.TargetName,
 		); err != nil {
 			return nil, err
 		}

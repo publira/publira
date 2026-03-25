@@ -15,6 +15,9 @@ message PlatformAuditLog {
   string reason = 8;
   string client_ip = 9;
   string created_at = 10;
+  string actor_name = 11;
+  string tenant_name = 12;
+  string target_name = 13;
 }
 
 message ListAuditLogsRequest {

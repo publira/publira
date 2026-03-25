@@ -31,6 +31,32 @@ func endUserToProto(u dbmodels.ListEndUsersRow, tenantIDs []string) *publiraspla
 	}
 }
 
+func normalizePublicIDs(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(values))
+	publicIDs := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		publicIDs = append(publicIDs, trimmed)
+	}
+
+	if len(publicIDs) == 0 {
+		return nil
+	}
+
+	return publicIDs
+}
+
 func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID string) (dbmodels.GetUserByPublicIDRow, error) {
 	user, err := s.queries.GetUserByPublicID(ctx, userID)
 	if err != nil {
@@ -99,12 +125,14 @@ func (s *platformServer) ListEndUsers(
 	}
 
 	filterStatus := strings.TrimSpace(req.Msg.Status)
+	publicIDs := normalizePublicIDs(req.Msg.PublicIds)
 
 	users, err := s.queries.ListEndUsers(ctx, dbmodels.ListEndUsersParams{
 		Limit:         limit,
 		Offset:        offset,
 		CreatedAfter:  createdAfterFilter,
 		CreatedBefore: createdBeforeFilter,
+		PublicIds:     publicIDs,
 		Status:        sql.NullString{String: filterStatus, Valid: filterStatus != ""},
 	})
 	if err != nil {

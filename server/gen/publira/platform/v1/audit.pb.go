@@ -33,6 +33,9 @@ type PlatformAuditLog struct {
 	Reason            string                 `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
 	ClientIp          string                 `protobuf:"bytes,9,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
 	CreatedAt         string                 `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ActorName         string                 `protobuf:"bytes,11,opt,name=actor_name,json=actorName,proto3" json:"actor_name,omitempty"`
+	TenantName        string                 `protobuf:"bytes,12,opt,name=tenant_name,json=tenantName,proto3" json:"tenant_name,omitempty"`
+	TargetName        string                 `protobuf:"bytes,13,opt,name=target_name,json=targetName,proto3" json:"target_name,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -133,6 +136,27 @@ func (x *PlatformAuditLog) GetClientIp() string {
 func (x *PlatformAuditLog) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *PlatformAuditLog) GetActorName() string {
+	if x != nil {
+		return x.ActorName
+	}
+	return ""
+}
+
+func (x *PlatformAuditLog) GetTenantName() string {
+	if x != nil {
+		return x.TenantName
+	}
+	return ""
+}
+
+func (x *PlatformAuditLog) GetTargetName() string {
+	if x != nil {
+		return x.TargetName
 	}
 	return ""
 }
@@ -261,7 +285,7 @@ var File_publira_platform_v1_audit_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/platform/v1/audit.proto\x12\x13publira.platform.v1\"\xd0\x02\n" +
+	"\x1fpublira/platform/v1/audit.proto\x12\x13publira.platform.v1\"\xb1\x03\n" +
 	"\x10PlatformAuditLog\x12/\n" +
 	"\x14actor_user_public_id\x18\x01 \x01(\tR\x11actorUserPublicId\x12\x1d\n" +
 	"\n" +
@@ -276,7 +300,13 @@ const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\tclient_ip\x18\t \x01(\tR\bclientIp\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\n" +
-	" \x01(\tR\tcreatedAt\"\xb7\x01\n" +
+	" \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"actor_name\x18\v \x01(\tR\tactorName\x12\x1f\n" +
+	"\vtenant_name\x18\f \x01(\tR\n" +
+	"tenantName\x12\x1f\n" +
+	"\vtarget_name\x18\r \x01(\tR\n" +
+	"targetName\"\xb7\x01\n" +
 	"\x14ListAuditLogsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12(\n" +

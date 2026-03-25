@@ -1,3 +1,5 @@
+import { Badge } from "@publira/ui-components/badge";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -5,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { Input } from "@publira/ui-components/input";
+import { Select } from "@publira/ui-components/select";
 import {
   Table,
   TableBody,
@@ -14,38 +18,445 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import type { Metadata } from "next";
+import Form from "next/form";
+import Link from "next/link";
 
 import { PlatformPage } from "../../../components/platform-page";
+import {
+  auditActionOptions,
+  getAuditActionLabel,
+} from "../../../lib/audit-log-labels";
+import { listPlatformAuditLogs } from "../../../lib/audit-logs";
+import type {
+  ListPlatformAuditLogsResult,
+  PlatformAuditLogSummary,
+} from "../../../lib/audit-logs";
+import { getOperatorRoleLabel } from "../../../lib/operator-labels";
+import { getTenantRoleLabel } from "../../../lib/tenant-labels";
 
 export const metadata: Metadata = {
   title: "監査ログ",
 };
 
-const auditLogs = [
-  {
-    action: "tenant.status.updated",
-    actor: "operator.sato",
-    at: "2026-03-21 09:45",
-    resource: "tenant_hoshikawa",
-  },
-  {
-    action: "operator.role.updated",
-    actor: "owner.nakano",
-    at: "2026-03-20 21:14",
-    resource: "operator.kimura",
-  },
-  {
-    action: "tenant.created",
-    actor: "operator.yamada",
-    at: "2026-03-20 10:07",
-    resource: "tenant_kuushisha",
-  },
-] as const;
+interface AuditLogsPageProps {
+  searchParams: Promise<{
+    action?: string;
+    actor_user_public_id?: string;
+    offset?: string;
+    resource?: string;
+    tenant_public_id?: string;
+  }>;
+}
 
-export default function AuditLogsPage() {
+const pageSize = 20;
+
+const parseOffset = (value: string | undefined): number => {
+  const parsed = Number.parseInt(value ?? "0", 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return parsed;
+};
+
+const buildAuditLogsPath = (params: {
+  action?: string;
+  actorUserPublicId?: string;
+  offset: number;
+  tenantPublicId?: string;
+}): string => {
+  const search = new URLSearchParams();
+  if (params.tenantPublicId) {
+    search.set("tenant_public_id", params.tenantPublicId);
+  }
+  if (params.actorUserPublicId) {
+    search.set("actor_user_public_id", params.actorUserPublicId);
+  }
+  if (params.action) {
+    search.set("action", params.action);
+  }
+  if (params.offset > 0) {
+    search.set("offset", String(params.offset));
+  }
+  const query = search.toString();
+  return query ? `/audit-logs?${query}` : "/audit-logs";
+};
+
+const formatTimestamp = (value: string): string => {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+};
+
+const getOutcomeTone = (
+  outcome: string
+): "destructive" | "info" | "muted" | "success" | "warning" => {
+  switch (outcome) {
+    case "success": {
+      return "success";
+    }
+    case "failure":
+    case "failed": {
+      return "destructive";
+    }
+    case "pending": {
+      return "warning";
+    }
+    case "": {
+      return "muted";
+    }
+    default: {
+      return "info";
+    }
+  }
+};
+
+const buildTargetLabel = (targetType: string, targetId: string): string => {
+  if (targetType && targetId) {
+    return `${targetType}: ${targetId}`;
+  }
+  return targetId || targetType || "-";
+};
+
+const isUserTargetType = (targetType: string): boolean =>
+  targetType === "operator" || targetType === "user";
+
+const isTenantTargetType = (targetType: string): boolean =>
+  targetType === "tenant";
+
+const buildEmptyMessage = (hasFilter: boolean): string =>
+  hasFilter
+    ? "条件に一致する監査ログが見つかりませんでした。"
+    : "監査ログはまだ記録されていません。";
+
+const getActorRoleLabel = (role: string): string => {
+  if (!role) {
+    return "未設定";
+  }
+
+  const operatorLabel = getOperatorRoleLabel(role);
+  if (operatorLabel !== role) {
+    return operatorLabel;
+  }
+
+  const tenantLabel = getTenantRoleLabel(role);
+  if (tenantLabel !== role) {
+    return tenantLabel;
+  }
+
+  switch (role) {
+    case "platform_owner": {
+      return "プラットフォーム管理者";
+    }
+    default: {
+      return role;
+    }
+  }
+};
+
+const getSummaryText = (
+  result: ListPlatformAuditLogsResult,
+  offset: number
+): string => {
+  if (!result.ok) {
+    return "-";
+  }
+  if (result.auditLogs.length === 0) {
+    return "0件を表示";
+  }
+  return `${offset + 1}〜${offset + result.auditLogs.length}件を表示`;
+};
+
+const AuditLogsFilters = ({
+  actionFilter,
+  actorFilter,
+  hasFilter,
+  tenantFilter,
+}: {
+  actionFilter: string;
+  actorFilter: string;
+  hasFilter: boolean;
+  tenantFilter: string;
+}) => (
+  <Form
+    action="/audit-logs"
+    className="flex flex-wrap gap-3"
+    key={`${tenantFilter}::${actorFilter}::${actionFilter}`}
+  >
+    <Input
+      className="w-48"
+      defaultValue={tenantFilter}
+      name="tenant_public_id"
+      placeholder="テナント公開IDで絞り込み"
+      type="search"
+    />
+    <Input
+      className="w-48"
+      defaultValue={actorFilter}
+      name="actor_user_public_id"
+      placeholder="操作者公開IDで絞り込み"
+      type="search"
+    />
+    <Select
+      className="w-56"
+      defaultValue={actionFilter || undefined}
+      items={auditActionOptions}
+      name="action"
+      placeholder="すべてのイベント"
+    />
+    <Button type="submit">絞り込む</Button>
+    {hasFilter ? (
+      <Link
+        className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+        href="/audit-logs"
+      >
+        クリア
+      </Link>
+    ) : null}
+  </Form>
+);
+
+const AuditLogsPagination = ({
+  actionFilter,
+  actorFilter,
+  hasNext,
+  hasPrev,
+  nextOffset,
+  prevOffset,
+  summaryText,
+  tenantFilter,
+}: {
+  actionFilter: string;
+  actorFilter: string;
+  hasNext: boolean;
+  hasPrev: boolean;
+  nextOffset: number;
+  prevOffset: number;
+  summaryText: string;
+  tenantFilter: string;
+}) => (
+  <div className="flex items-center justify-between gap-3">
+    <p className="text-xs text-muted-foreground">{summaryText}</p>
+    <div className="flex items-center gap-2">
+      {hasPrev ? (
+        <LinkButton
+          render={
+            <Link
+              href={buildAuditLogsPath({
+                action: actionFilter || undefined,
+                actorUserPublicId: actorFilter || undefined,
+                offset: prevOffset,
+                tenantPublicId: tenantFilter || undefined,
+              })}
+            />
+          }
+          size="sm"
+          variant="outline"
+        >
+          前へ
+        </LinkButton>
+      ) : (
+        <Button disabled size="sm" variant="outline">
+          前へ
+        </Button>
+      )}
+
+      {hasNext ? (
+        <LinkButton
+          render={
+            <Link
+              href={buildAuditLogsPath({
+                action: actionFilter || undefined,
+                actorUserPublicId: actorFilter || undefined,
+                offset: nextOffset,
+                tenantPublicId: tenantFilter || undefined,
+              })}
+            />
+          }
+          size="sm"
+          variant="outline"
+        >
+          次へ
+        </LinkButton>
+      ) : (
+        <Button disabled size="sm" variant="outline">
+          次へ
+        </Button>
+      )}
+    </div>
+  </div>
+);
+
+const AuditLogsTableBody = ({
+  hasFilter,
+  result,
+}: {
+  hasFilter: boolean;
+  result: ListPlatformAuditLogsResult;
+}) => {
+  if (!result.ok) {
+    return <TableBody />;
+  }
+
+  if (result.auditLogs.length === 0) {
+    return (
+      <TableBody>
+        <TableRow>
+          <TableCell className="text-muted-foreground" colSpan={6}>
+            {buildEmptyMessage(hasFilter)}
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    );
+  }
+
+  const renderTarget = (log: PlatformAuditLogSummary) => {
+    if (log.targetId && isUserTargetType(log.targetType)) {
+      return (
+        <Link
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          href={`/users/${log.targetId}`}
+        >
+          {log.targetName || buildTargetLabel(log.targetType, log.targetId)}
+        </Link>
+      );
+    }
+
+    if (log.targetId && isTenantTargetType(log.targetType)) {
+      return (
+        <Link
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          href={`/tenants/${log.targetId}`}
+        >
+          {log.targetName || buildTargetLabel(log.targetType, log.targetId)}
+        </Link>
+      );
+    }
+
+    return <p>{buildTargetLabel(log.targetType, log.targetId)}</p>;
+  };
+
+  return (
+    <TableBody>
+      {result.auditLogs.map((log) => (
+        <TableRow
+          key={`${log.createdAt}-${log.actorUserPublicId}-${log.action}-${log.targetId}`}
+        >
+          <TableCell>{formatTimestamp(log.createdAt)}</TableCell>
+          <TableCell>
+            <div className="grid gap-1">
+              {log.actorUserPublicId ? (
+                <Link
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  href={`/users/${log.actorUserPublicId}`}
+                >
+                  {log.actorName || log.actorUserPublicId}
+                </Link>
+              ) : (
+                <p className="text-sm">-</p>
+              )}
+              <p className="font-mono text-xs text-muted-foreground">
+                {log.actorUserPublicId || "-"}
+              </p>
+              <p>
+                <Badge tone="info">{getActorRoleLabel(log.actorRole)}</Badge>
+              </p>
+            </div>
+          </TableCell>
+          <TableCell>
+            <div className="grid gap-1">
+              <p className="font-medium">{getAuditActionLabel(log.action)}</p>
+              <p className="font-mono text-xs text-muted-foreground">
+                {log.action || "-"}
+              </p>
+              <p>
+                <Badge tone={getOutcomeTone(log.outcome)}>
+                  {log.outcome || "unknown"}
+                </Badge>
+              </p>
+            </div>
+          </TableCell>
+          <TableCell>
+            <div className="grid gap-1">
+              {renderTarget(log)}
+              {log.reason ? (
+                <p className="text-xs text-muted-foreground">{log.reason}</p>
+              ) : null}
+            </div>
+          </TableCell>
+          <TableCell>
+            {log.tenantPublicId ? (
+              <div className="grid gap-1">
+                <Link
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  href={`/tenants/${log.tenantPublicId}`}
+                >
+                  {log.tenantName || log.tenantPublicId}
+                </Link>
+                <p className="font-mono text-xs text-muted-foreground">
+                  {log.tenantPublicId}
+                </p>
+              </div>
+            ) : (
+              <span className="font-mono text-xs text-muted-foreground">-</span>
+            )}
+          </TableCell>
+          <TableCell>
+            {log.tenantPublicId ? (
+              <LinkButton
+                render={<Link href={`/tenants/${log.tenantPublicId}`} />}
+                size="sm"
+                variant="outline"
+              >
+                詳細
+              </LinkButton>
+            ) : (
+              <span className="text-xs text-muted-foreground">-</span>
+            )}
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  );
+};
+
+export default async function AuditLogsPage({
+  searchParams,
+}: AuditLogsPageProps) {
+  const params = await searchParams;
+  const tenantFilter =
+    params.tenant_public_id?.trim() ?? params.resource?.trim() ?? "";
+  const actorFilter = params.actor_user_public_id?.trim() ?? "";
+  const actionFilter = params.action?.trim() ?? "";
+  const offset = parseOffset(params.offset);
+  const hasFilter = Boolean(tenantFilter || actorFilter || actionFilter);
+
+  const result = await listPlatformAuditLogs({
+    action: actionFilter || undefined,
+    actorUserPublicId: actorFilter || undefined,
+    limit: pageSize,
+    offset,
+    tenantPublicId: tenantFilter || undefined,
+  });
+
+  const hasPrev = offset > 0;
+  const hasNext = result.ok && result.auditLogs.length === pageSize;
+  const prevOffset = Math.max(0, offset - pageSize);
+  const nextOffset = offset + pageSize;
+  const summaryText = getSummaryText(result, offset);
+
   return (
     <PlatformPage
-      description="テナント横断オペレーションの追跡点を固定するための初期監査ログ画面です。"
+      description="テナント横断で重要操作を追跡し、対象テナント詳細へ遷移できる監査ログ画面です。"
       eyebrow="Platform Governance"
       title="監査ログ"
     >
@@ -53,10 +464,24 @@ export default function AuditLogsPage() {
         <CardHeader>
           <CardTitle>イベント一覧</CardTitle>
           <CardDescription>
-            初期リリースでは「誰が」「いつ」「何を変更したか」を必須項目として定義します。
+            actor / action / target / timestamp
+            を基準に監査イベントを確認します。
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-4">
+          <AuditLogsFilters
+            actionFilter={actionFilter}
+            actorFilter={actorFilter}
+            hasFilter={hasFilter}
+            tenantFilter={tenantFilter}
+          />
+
+          {result.ok ? null : (
+            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              監査ログの取得に失敗しました: {result.message}
+            </p>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -64,19 +489,23 @@ export default function AuditLogsPage() {
                 <TableHead>実行者</TableHead>
                 <TableHead>操作</TableHead>
                 <TableHead>対象</TableHead>
+                <TableHead>テナント</TableHead>
+                <TableHead className="w-32" />
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {auditLogs.map((log) => (
-                <TableRow key={`${log.at}-${log.resource}`}>
-                  <TableCell>{log.at}</TableCell>
-                  <TableCell>{log.actor}</TableCell>
-                  <TableCell className="font-medium">{log.action}</TableCell>
-                  <TableCell>{log.resource}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
+            <AuditLogsTableBody hasFilter={hasFilter} result={result} />
           </Table>
+
+          <AuditLogsPagination
+            actionFilter={actionFilter}
+            actorFilter={actorFilter}
+            hasNext={hasNext}
+            hasPrev={hasPrev}
+            nextOffset={nextOffset}
+            prevOffset={prevOffset}
+            summaryText={summaryText}
+            tenantFilter={tenantFilter}
+          />
         </CardContent>
       </Card>
     </PlatformPage>

@@ -687,6 +687,7 @@ WHERE NOT EXISTS (
     AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
     AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
     AND (sqlc.narg('status')::text = '' OR u.status = sqlc.narg('status')::text)
+    AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
@@ -814,7 +815,8 @@ LIMIT 1;
 -- name: GetTenantsByEndUser :many
 -- エンドユーザーが所属するテナント一覧を取得
 SELECT DISTINCT t.id,
-    t.public_id
+    t.public_id,
+    t.created_at
 FROM tenants t
     JOIN tenant_memberships tm ON tm.tenant_id = t.id
 WHERE tm.user_id = $1
