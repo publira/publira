@@ -1,7 +1,9 @@
+import { normalizePlatformRole } from "./roles";
+
 export type OperatorRoleTone = "info";
 
 export const getOperatorRoleLabel = (role: string): string => {
-  switch (role) {
+  switch (normalizePlatformRole(role)) {
     case "platform_auditor": {
       return "監査担当";
     }

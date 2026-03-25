@@ -190,9 +190,7 @@ SELECT pu.public_id,
             WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
-                    WHEN pur.role = 'super-admin' THEN 3
                     WHEN pur.role = 'platform_operator' THEN 2
-                    WHEN pur.role = 'platform-operator' THEN 2
                     WHEN pur.role = 'platform_auditor' THEN 1
                     ELSE 0
                 END DESC,
@@ -218,9 +216,7 @@ SELECT pu.id,
             WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
-                    WHEN pur.role = 'super-admin' THEN 3
                     WHEN pur.role = 'platform_operator' THEN 2
-                    WHEN pur.role = 'platform-operator' THEN 2
                     WHEN pur.role = 'platform_auditor' THEN 1
                     ELSE 0
                 END DESC,
@@ -698,7 +694,11 @@ WHERE NOT EXISTS (
     )
     AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
     AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
-    AND (sqlc.narg('status')::text = '' OR u.status = sqlc.narg('status')::text)
+    AND (
+        sqlc.narg('status')::text IS NULL
+        OR sqlc.narg('status')::text = ''
+        OR u.status = sqlc.narg('status')::text
+    )
     AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
@@ -716,11 +716,8 @@ SELECT u.id AS user_id,
             WHERE tur.user_id = u.id
             ORDER BY CASE
                     WHEN tur.role = 'tenant_admin' THEN 3
-                    WHEN tur.role = 'admin' THEN 3
                     WHEN tur.role = 'tenant_editor' THEN 2
-                    WHEN tur.role = 'editor' THEN 2
                     WHEN tur.role = 'tenant_auditor' THEN 1
-                    WHEN tur.role = 'auditor' THEN 1
                     ELSE 0
                 END DESC,
                 tur.role ASC

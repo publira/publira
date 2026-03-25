@@ -3,6 +3,7 @@ import {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./auth-shared";
+import { normalizePlatformRole } from "./roles";
 
 export interface PlatformCurrentOperator {
   name: string;
@@ -52,7 +53,11 @@ export const getPlatformCurrentOperator =
       if (!user) {
         return null;
       }
-      return { name: user.name, publicId: user.publicId, role: user.role };
+      return {
+        name: user.name,
+        publicId: user.publicId,
+        role: normalizePlatformRole(user.role),
+      };
     } catch {
       return null;
     }

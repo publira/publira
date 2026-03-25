@@ -26,10 +26,14 @@ import {
   getEndUserStatusLabel,
   getEndUserStatusTone,
 } from "../../../lib/user-labels";
-import { listPlatformEndUsers } from "../../../lib/users";
+import {
+  listPlatformEndUsers,
+  listPlatformTenantFilterOptions,
+} from "../../../lib/users";
 import type {
   ListPlatformEndUsersResult,
   PlatformEndUserSummary,
+  PlatformTenantFilterOption,
 } from "../../../lib/users";
 
 export const metadata: Metadata = {
@@ -55,10 +59,14 @@ const buildUsersPath = (params: {
   limit: number;
   offset: number;
   status?: string;
+  tenantPublicId?: string;
 }): string => {
   const search = new URLSearchParams();
   if (params.status) {
     search.set("status", params.status);
+  }
+  if (params.tenantPublicId) {
+    search.set("tenant_public_id", params.tenantPublicId);
   }
   if (params.createdFrom) {
     search.set("created_from", params.createdFrom);
@@ -94,6 +102,7 @@ interface UsersPageProps {
     limit?: string;
     offset?: string;
     status?: string;
+    tenant_public_id?: string;
   }>;
 }
 
@@ -103,6 +112,7 @@ interface UsersFilters {
   limit: number;
   offset: number;
   statusFilter: string;
+  tenantPublicIdFilter: string;
 }
 
 interface PaginationState {
@@ -116,6 +126,7 @@ const parseUsersFilters = (
   params: Awaited<UsersPageProps["searchParams"]>
 ): UsersFilters => {
   const statusFilter = params.status?.trim() ?? "";
+  const tenantPublicIdFilter = params.tenant_public_id?.trim() ?? "";
   const createdFromFilter = params.created_from?.trim() ?? "";
   const createdToFilter = params.created_to?.trim() ?? "";
 
@@ -137,6 +148,7 @@ const parseUsersFilters = (
     limit,
     offset,
     statusFilter,
+    tenantPublicIdFilter,
   };
 };
 
@@ -173,17 +185,21 @@ const UsersFilterForm = ({
   hasFilter,
   limit,
   statusFilter,
+  tenantItems,
+  tenantPublicIdFilter,
 }: {
   createdFromFilter: string;
   createdToFilter: string;
   hasFilter: boolean;
   limit: number;
   statusFilter: string;
+  tenantItems: PlatformTenantFilterOption[];
+  tenantPublicIdFilter: string;
 }) => (
   <Form
     action="/users"
     className="flex flex-wrap gap-3"
-    key={`${statusFilter}::${createdFromFilter}::${createdToFilter}::${limit}`}
+    key={`${statusFilter}::${tenantPublicIdFilter}::${createdFromFilter}::${createdToFilter}::${limit}`}
   >
     <Select
       className="w-44"
@@ -191,6 +207,16 @@ const UsersFilterForm = ({
       items={statusSelectItems}
       name="status"
       placeholder="すべての状態"
+    />
+    <Select
+      className="w-56"
+      defaultValue={tenantPublicIdFilter || undefined}
+      items={tenantItems.map((tenant) => ({
+        label: tenant.name,
+        value: tenant.publicId,
+      }))}
+      name="tenant_public_id"
+      placeholder="すべてのテナント"
     />
     <Input
       className="w-44"
@@ -237,7 +263,7 @@ const UsersTableSection = ({
       <TableRow>
         <TableHead>公開ID</TableHead>
         <TableHead>氏名</TableHead>
-        <TableHead>メール</TableHead>
+        <TableHead>テナント</TableHead>
         <TableHead className="w-44">登録日</TableHead>
         <TableHead className="w-32">状態</TableHead>
         <TableHead className="w-28" />
@@ -253,12 +279,23 @@ const UsersTableSection = ({
       ) : null}
       {result.ok
         ? users.map((user) => (
-            <TableRow key={user.publicId || user.email}>
+            <TableRow key={user.publicId}>
               <TableCell className="font-mono text-xs">
                 {user.publicId}
               </TableCell>
               <TableCell>{user.name || "未設定"}</TableCell>
-              <TableCell>{user.email}</TableCell>
+              <TableCell>
+                {user.primaryTenantPublicId ? (
+                  <Link
+                    className="underline-offset-4 hover:underline"
+                    href={`/tenants/${user.primaryTenantPublicId}`}
+                  >
+                    {user.primaryTenantName || user.primaryTenantPublicId}
+                  </Link>
+                ) : (
+                  "未所属"
+                )}
+              </TableCell>
               <TableCell>{user.createdAt || "未設定"}</TableCell>
               <TableCell>
                 <Badge tone={getEndUserStatusTone(user.status)}>
@@ -287,12 +324,14 @@ const PaginationControls = ({
   limit,
   pagination,
   statusFilter,
+  tenantPublicIdFilter,
 }: {
   createdFromFilter: string;
   createdToFilter: string;
   limit: number;
   pagination: PaginationState;
   statusFilter: string;
+  tenantPublicIdFilter: string;
 }) => (
   <div className="flex items-center gap-2">
     {pagination.hasPrev ? (
@@ -305,6 +344,7 @@ const PaginationControls = ({
               limit,
               offset: pagination.prevOffset,
               status: statusFilter || undefined,
+              tenantPublicId: tenantPublicIdFilter || undefined,
             })}
           />
         }
@@ -329,6 +369,7 @@ const PaginationControls = ({
               limit,
               offset: pagination.nextOffset,
               status: statusFilter || undefined,
+              tenantPublicId: tenantPublicIdFilter || undefined,
             })}
           />
         }
@@ -348,6 +389,7 @@ const PaginationControls = ({
 export default async function UsersPage({ searchParams }: UsersPageProps) {
   const params = await searchParams;
   const filters = parseUsersFilters(params);
+  const tenantItems = await listPlatformTenantFilterOptions();
 
   const result = await listPlatformEndUsers({
     createdAfter: filters.createdFromFilter || undefined,
@@ -355,11 +397,15 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     limit: filters.limit,
     offset: filters.offset,
     status: filters.statusFilter || undefined,
+    tenantPublicId: filters.tenantPublicIdFilter || undefined,
   });
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(
-    filters.statusFilter || filters.createdFromFilter || filters.createdToFilter
+    filters.statusFilter ||
+    filters.tenantPublicIdFilter ||
+    filters.createdFromFilter ||
+    filters.createdToFilter
   );
   const pagination = buildPaginationState(
     result,
@@ -377,7 +423,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         <CardHeader>
           <CardTitle>ユーザー一覧</CardTitle>
           <CardDescription>
-            公開ID・氏名・メール・登録日・ステータスを確認し、詳細画面で操作します。
+            公開ID・氏名・所属テナント・登録日・ステータスを確認し、詳細画面で操作します。
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -387,6 +433,8 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
             hasFilter={hasFilter}
             limit={filters.limit}
             statusFilter={filters.statusFilter}
+            tenantItems={tenantItems}
+            tenantPublicIdFilter={filters.tenantPublicIdFilter}
           />
 
           {result.ok ? null : (
@@ -411,6 +459,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
               limit={filters.limit}
               pagination={pagination}
               statusFilter={filters.statusFilter}
+              tenantPublicIdFilter={filters.tenantPublicIdFilter}
             />
           </div>
         </CardContent>

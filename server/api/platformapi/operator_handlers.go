@@ -21,9 +21,9 @@ import (
 func normalizePlatformOperatorRole(rawRole string) (string, bool) {
 	role := strings.TrimSpace(rawRole)
 	switch role {
-	case rolePlatformSuperAdmin, auth.RoleLegacySuperAdmin:
+	case rolePlatformSuperAdmin:
 		return rolePlatformSuperAdmin, true
-	case rolePlatformOperator, auth.RoleLegacyPlatformOps:
+	case rolePlatformOperator:
 		return rolePlatformOperator, true
 	case auth.RolePlatformAuditor:
 		return auth.RolePlatformAuditor, true

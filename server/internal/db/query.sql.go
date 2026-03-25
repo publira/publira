@@ -798,9 +798,7 @@ SELECT pu.id,
             WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
-                    WHEN pur.role = 'super-admin' THEN 3
                     WHEN pur.role = 'platform_operator' THEN 2
-                    WHEN pur.role = 'platform-operator' THEN 2
                     WHEN pur.role = 'platform_auditor' THEN 1
                     ELSE 0
                 END DESC,
@@ -1559,7 +1557,11 @@ WHERE NOT EXISTS (
     )
     AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)
     AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)
-    AND ($3::text = '' OR u.status = $3::text)
+    AND (
+        $3::text IS NULL
+        OR $3::text = ''
+        OR u.status = $3::text
+    )
     AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
 ORDER BY u.created_at DESC
 LIMIT $6 OFFSET $5
@@ -1875,9 +1877,7 @@ SELECT pu.public_id,
             WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
-                    WHEN pur.role = 'super-admin' THEN 3
                     WHEN pur.role = 'platform_operator' THEN 2
-                    WHEN pur.role = 'platform-operator' THEN 2
                     WHEN pur.role = 'platform_auditor' THEN 1
                     ELSE 0
                 END DESC,
@@ -2267,11 +2267,8 @@ SELECT u.id AS user_id,
             WHERE tur.user_id = u.id
             ORDER BY CASE
                     WHEN tur.role = 'tenant_admin' THEN 3
-                    WHEN tur.role = 'admin' THEN 3
                     WHEN tur.role = 'tenant_editor' THEN 2
-                    WHEN tur.role = 'editor' THEN 2
                     WHEN tur.role = 'tenant_auditor' THEN 1
-                    WHEN tur.role = 'auditor' THEN 1
                     ELSE 0
                 END DESC,
                 tur.role ASC

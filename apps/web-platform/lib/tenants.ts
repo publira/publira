@@ -373,84 +373,6 @@ export const updatePlatformTenant = async (
   }
 };
 
-const resolvePlatformUserPublicIdByEmail = async (
-  email: string,
-  sid: string
-): Promise<
-  { ok: true; userPublicId: string } | { ok: false; message: string }
-> => {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) {
-    return {
-      message: "メールアドレスは必須です。",
-      ok: false,
-    };
-  }
-
-  try {
-    const operatorsResponse = await apiClient.operators.listOperators(
-      {} as never,
-      buildSessionHeaders(sid)
-    );
-    const matchedOperator = (operatorsResponse.operators ?? []).find(
-      (operator) => operator.email.trim().toLowerCase() === normalizedEmail
-    );
-
-    if (matchedOperator?.publicId) {
-      return {
-        ok: true,
-        userPublicId: matchedOperator.publicId,
-      };
-    }
-  } catch {
-    // fallback to end-user search
-  }
-
-  const limit = 200;
-  const maxPages = 10;
-
-  try {
-    for (let page = 0; page < maxPages; page += 1) {
-      const offset = page * limit;
-      const response = await apiClient.users.listEndUsers(
-        {
-          createdAfter: "",
-          limit,
-          offset,
-          status: "",
-        } as never,
-        buildSessionHeaders(sid)
-      );
-
-      const users = response.users ?? [];
-      const matchedUser = users.find(
-        (user) => user.email.trim().toLowerCase() === normalizedEmail
-      );
-
-      if (matchedUser?.publicId) {
-        return {
-          ok: true,
-          userPublicId: matchedUser.publicId,
-        };
-      }
-
-      if (users.length < limit) {
-        break;
-      }
-    }
-
-    return {
-      message: "指定したメールアドレスのユーザーが見つかりません。",
-      ok: false,
-    };
-  } catch {
-    return {
-      message: "ユーザー検索に失敗しました。時間をおいて再試行してください。",
-      ok: false,
-    };
-  }
-};
-
 export const addPlatformTenantMember = async (
   input: AddPlatformTenantMemberInput
 ): Promise<AddPlatformTenantMemberResult> => {
@@ -470,17 +392,12 @@ export const addPlatformTenantMember = async (
     };
   }
 
-  const resolvedUser = await resolvePlatformUserPublicIdByEmail(email, sid);
-  if (!resolvedUser.ok) {
-    return resolvedUser;
-  }
-
   try {
     await apiClient.tenants.addTenantMember(
       {
+        email: email.toLowerCase(),
         role,
         tenantPublicId,
-        userPublicId: resolvedUser.userPublicId,
       } as never,
       buildSessionHeaders(sid)
     );
@@ -494,6 +411,12 @@ export const addPlatformTenantMember = async (
       ) {
         return {
           message: "このユーザーは既にメンバーとして追加されています。",
+          ok: false,
+        };
+      }
+      if (message.includes("not_found")) {
+        return {
+          message: "指定したメールアドレスのユーザーが見つかりません。",
           ok: false,
         };
       }

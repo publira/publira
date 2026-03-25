@@ -797,6 +797,7 @@ type AddTenantMemberRequest struct {
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
 	UserPublicId   string                 `protobuf:"bytes,2,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
 	Role           string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	Email          string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -848,6 +849,13 @@ func (x *AddTenantMemberRequest) GetUserPublicId() string {
 func (x *AddTenantMemberRequest) GetRole() string {
 	if x != nil {
 		return x.Role
+	}
+	return ""
+}
+
+func (x *AddTenantMemberRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
 	}
 	return ""
 }
@@ -1261,11 +1269,12 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\"X\n" +
 	"\x19ListTenantMembersResponse\x12;\n" +
-	"\amembers\x18\x01 \x03(\v2!.publira.platform.v1.TenantMemberR\amembers\"|\n" +
+	"\amembers\x18\x01 \x03(\v2!.publira.platform.v1.TenantMemberR\amembers\"\x92\x01\n" +
 	"\x16AddTenantMemberRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"T\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x14\n" +
+	"\x05email\x18\x04 \x01(\tR\x05email\"T\n" +
 	"\x17AddTenantMemberResponse\x129\n" +
 	"\x06member\x18\x01 \x01(\v2!.publira.platform.v1.TenantMemberR\x06member\"\x83\x01\n" +
 	"\x1dUpdateTenantMemberRoleRequest\x12(\n" +

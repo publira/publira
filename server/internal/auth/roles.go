@@ -6,14 +6,9 @@ const (
 	RolePlatformOperator   = "platform_operator"
 	RolePlatformSuperAdmin = "platform_super_admin"
 	RolePlatformAuditor    = "platform_auditor"
-	RoleLegacyPlatformOps  = "platform-operator"
-	RoleLegacySuperAdmin   = "super-admin"
 	RoleTenantAdmin        = "tenant_admin"
 	RoleTenantEditor       = "tenant_editor"
 	RoleTenantAuditor      = "tenant_auditor"
-	RoleLegacyAdmin        = "admin"
-	RoleLegacyEditor       = "editor"
-	RoleLegacyAuditor      = "auditor"
 )
 
 func ResolvePlatformRole(roles []string) string {
@@ -22,17 +17,21 @@ func ResolvePlatformRole(roles []string) string {
 	for _, role := range roles {
 		normalized := strings.TrimSpace(role)
 		priority := -1
+		resolvedRole := ""
 		switch normalized {
-		case RolePlatformSuperAdmin, RoleLegacySuperAdmin:
+		case RolePlatformSuperAdmin:
 			priority = 3
-		case RolePlatformOperator, RoleLegacyPlatformOps:
+			resolvedRole = RolePlatformSuperAdmin
+		case RolePlatformOperator:
 			priority = 2
+			resolvedRole = RolePlatformOperator
 		case RolePlatformAuditor:
 			priority = 1
+			resolvedRole = RolePlatformAuditor
 		}
 		if priority > bestPriority {
 			bestPriority = priority
-			bestRole = normalized
+			bestRole = resolvedRole
 		}
 	}
 	return bestRole
@@ -48,19 +47,24 @@ func ResolveTenantRole(roles []string) string {
 	for _, role := range roles {
 		normalized := strings.TrimSpace(role)
 		priority := -1
+		resolvedRole := ""
 		switch normalized {
-		case RoleTenantAdmin, RoleLegacyAdmin:
+		case RoleTenantAdmin:
 			priority = 3
-		case RoleTenantEditor, RoleLegacyEditor:
+			resolvedRole = RoleTenantAdmin
+		case RoleTenantEditor:
 			priority = 2
-		case RoleTenantAuditor, RoleLegacyAuditor:
+			resolvedRole = RoleTenantEditor
+		case RoleTenantAuditor:
 			priority = 1
+			resolvedRole = RoleTenantAuditor
 		default:
 			priority = 0
+			resolvedRole = normalized
 		}
 		if priority > bestPriority {
 			bestPriority = priority
-			bestRole = normalized
+			bestRole = resolvedRole
 		}
 	}
 	return bestRole

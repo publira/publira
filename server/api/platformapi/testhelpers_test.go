@@ -31,6 +31,7 @@ const (
 
 	// テナントメンバー
 	testGetTenantByPublicIDQuery           = "-- name: GetTenantByPublicID :one\n"
+	testGetUserByEmailForTenantQuery       = "-- name: GetUserByEmailForTenant :one\n"
 	testGetUserByPublicIDForTenantQuery    = "-- name: GetUserByPublicIDForTenant :one\n"
 	testListTenantUserRolesQuery           = "-- name: ListTenantUserRoles :many\n"
 	testCreateTenantUserRoleQuery          = "-- name: CreateTenantUserRole :one\n"

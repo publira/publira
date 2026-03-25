@@ -1,4 +1,5 @@
 import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import { normalizePlatformRole } from "./roles";
 
 export interface PlatformOperatorSummary {
   createdAt: string;
@@ -40,7 +41,7 @@ export const listPlatformOperators = async (): Promise<
       email: operator.email,
       name: operator.name,
       publicId: operator.publicId,
-      role: operator.role,
+      role: normalizePlatformRole(operator.role),
       status: operator.status,
     }));
   } catch {
