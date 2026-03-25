@@ -52,8 +52,8 @@ interface SetupPageProps {
 export default async function SetupPage({ searchParams }: SetupPageProps) {
   await connection();
 
-  const setupDone = await isSetupCompleted();
-  if (setupDone) {
+  const setupStatus = await isSetupCompleted();
+  if (setupStatus === true) {
     redirect("/login");
   }
 
@@ -69,83 +69,93 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
         </div>
 
         <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-          <p className="text-sm text-muted-foreground">
-            最初の管理ユーザーアカウントを作成してください。
-          </p>
+          {setupStatus === null ? (
+            <FormMessage variant="destructive">
+              APIサーバーに接続できません。サーバーの起動状態を確認してから再試行してください。
+            </FormMessage>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                最初の管理ユーザーアカウントを作成してください。
+              </p>
 
-          <form action={setupAction} className="space-y-4">
-            <Field>
-              <FieldLabel htmlFor="name" required>
-                氏名
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="name"
-                  id="name"
-                  name="name"
-                  placeholder="管理者 太郎"
-                  required
-                  type="text"
-                />
-              </FieldContent>
-            </Field>
+              <form action={setupAction} className="space-y-4">
+                <Field>
+                  <FieldLabel htmlFor="name" required>
+                    氏名
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      autoComplete="name"
+                      id="name"
+                      name="name"
+                      placeholder="管理者 太郎"
+                      required
+                      type="text"
+                    />
+                  </FieldContent>
+                </Field>
 
-            <Field>
-              <FieldLabel htmlFor="email" required>
-                メールアドレス
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="email"
-                  id="email"
-                  name="email"
-                  placeholder="admin@example.com"
-                  required
-                  type="email"
-                />
-              </FieldContent>
-            </Field>
+                <Field>
+                  <FieldLabel htmlFor="email" required>
+                    メールアドレス
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      autoComplete="email"
+                      id="email"
+                      name="email"
+                      placeholder="admin@example.com"
+                      required
+                      type="email"
+                    />
+                  </FieldContent>
+                </Field>
 
-            <Field>
-              <FieldLabel htmlFor="password" required>
-                パスワード
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="new-password"
-                  id="password"
-                  name="password"
-                  placeholder="••••••••"
-                  required
-                  type="password"
-                />
-              </FieldContent>
-            </Field>
+                <Field>
+                  <FieldLabel htmlFor="password" required>
+                    パスワード
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      autoComplete="new-password"
+                      id="password"
+                      name="password"
+                      placeholder="••••••••"
+                      required
+                      type="password"
+                    />
+                  </FieldContent>
+                </Field>
 
-            <Field>
-              <FieldLabel htmlFor="confirmPassword" required>
-                パスワード（確認）
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="new-password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  placeholder="••••••••"
-                  required
-                  type="password"
-                />
-              </FieldContent>
-            </Field>
+                <Field>
+                  <FieldLabel htmlFor="confirmPassword" required>
+                    パスワード（確認）
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      autoComplete="new-password"
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      placeholder="••••••••"
+                      required
+                      type="password"
+                    />
+                  </FieldContent>
+                </Field>
 
-            {errorMessage ? (
-              <FormMessage variant="destructive">{errorMessage}</FormMessage>
-            ) : null}
+                {errorMessage ? (
+                  <FormMessage variant="destructive">
+                    {errorMessage}
+                  </FormMessage>
+                ) : null}
 
-            <Button className="mt-2 w-full" type="submit">
-              管理ユーザーを作成する
-            </Button>
-          </form>
+                <Button className="mt-2 w-full" type="submit">
+                  管理ユーザーを作成する
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </main>
