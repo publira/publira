@@ -8,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { MultiCombobox } from "@publira/ui-components/combobox";
+import type { MultiComboboxItem } from "@publira/ui-components/combobox";
 import {
   Field,
   FieldContent,
@@ -17,9 +19,14 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
+
+interface CreatorOption {
+  publicId: string;
+  name: string;
+}
 
 interface SeriesFormProps {
   mode: "create" | "update";
@@ -29,26 +36,52 @@ interface SeriesFormProps {
     formData: FormData
   ) => Promise<SeriesActionState>;
   defaultReadingPeriodHours: number;
+  creators: CreatorOption[];
+  creatorsErrorMessage?: string;
   initialSeries?: SeriesListItem;
 }
+
+const getSubmitLabel = (
+  mode: "create" | "update",
+  isPending: boolean
+): string => {
+  if (isPending) {
+    return "送信中...";
+  }
+
+  return mode === "update" ? "シリーズを更新" : "シリーズを作成";
+};
 
 export const SeriesForm = ({
   mode,
   tenantPublicId,
   action,
   defaultReadingPeriodHours,
+  creators,
+  creatorsErrorMessage,
   initialSeries,
 }: SeriesFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
+  const creatorItems = useMemo<MultiComboboxItem[]>(
+    () =>
+      creators
+        .map((creator) => ({
+          label: creator.name,
+          value: creator.publicId,
+        }))
+        .toSorted((a, b) => a.label.localeCompare(b.label, "ja")),
+    [creators]
+  );
+  const [selectedCreatorPublicIds, setSelectedCreatorPublicIds] = useState<
+    string[]
+  >([]);
+
+  useEffect(() => {
+    setSelectedCreatorPublicIds(initialSeries?.creatorPublicIds ?? []);
+  }, [initialSeries?.creatorPublicIds, mode]);
 
   const isUpdate = mode === "update";
-  let submitLabel = "シリーズを作成";
-  if (isUpdate) {
-    submitLabel = "シリーズを更新";
-  }
-  if (isPending) {
-    submitLabel = "送信中...";
-  }
+  const submitLabel = getSubmitLabel(mode, isPending);
 
   return (
     <Card>
@@ -119,6 +152,46 @@ export const SeriesForm = ({
                 required
                 rows={5}
               />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="series_creator_combobox">
+              クリエイター
+            </FieldLabel>
+            <FieldContent>
+              {creatorsErrorMessage ? (
+                <FormMessage variant="destructive">
+                  {creatorsErrorMessage}
+                </FormMessage>
+              ) : null}
+
+              {creatorItems.length === 0 ? (
+                <FieldDescription>
+                  選択可能なクリエイターがいません。先にクリエイターを作成してください。
+                </FieldDescription>
+              ) : (
+                <MultiCombobox
+                  id="series_creator_combobox"
+                  items={creatorItems}
+                  onValueChange={setSelectedCreatorPublicIds}
+                  searchPlaceholder="クリエイター名で検索"
+                  value={selectedCreatorPublicIds}
+                />
+              )}
+
+              {selectedCreatorPublicIds.map((publicId) => (
+                <input
+                  key={publicId}
+                  name="creator_public_ids"
+                  type="hidden"
+                  value={publicId}
+                />
+              ))}
+
+              <FieldDescription>
+                複数選択できます。シリーズに紐づけるクリエイターを選んでください。
+              </FieldDescription>
             </FieldContent>
           </Field>
 

@@ -5,6 +5,7 @@ export interface SeriesListItem {
   readingPeriodHours: number;
   labelName: string;
   creatorNames: string[];
+  creatorPublicIds: string[];
   isPublished: boolean;
 }
 

@@ -17,6 +17,8 @@ export {
 } from "./card";
 export { Checkbox } from "./checkbox";
 export type { CheckboxProps } from "./checkbox";
+export { MultiCombobox } from "./combobox";
+export type { MultiComboboxItem, MultiComboboxProps } from "./combobox";
 export {
   ConfirmDialog,
   Dialog,

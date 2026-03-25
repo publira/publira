@@ -4,6 +4,7 @@ export default defineConfig({
   dts: true,
   entry: [
     "src/index.ts",
+    "src/check-icon.tsx",
     "src/close-icon.tsx",
     "src/collection-icon.tsx",
     "src/dashboard-icon.tsx",

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { AdminPage } from "../../../../../components/admin-page";
+import { listCreators } from "../../../../../lib/creator";
 import { listSeries } from "../../../../../lib/series";
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
@@ -36,11 +37,18 @@ const NewSeriesFormData = async ({
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
-  const listResult = await listSeries(tenant_public_id);
+  const [listResult, creatorsResult] = await Promise.all([
+    listSeries(tenant_public_id),
+    listCreators(tenant_public_id),
+  ]);
 
   return (
     <SeriesForm
       action={createSeriesAction}
+      creators={creatorsResult.creators}
+      creatorsErrorMessage={
+        creatorsResult.ok ? undefined : creatorsResult.message
+      }
       defaultReadingPeriodHours={listResult.defaultReadingPeriodHours}
       mode="create"
       tenantPublicId={tenant_public_id}

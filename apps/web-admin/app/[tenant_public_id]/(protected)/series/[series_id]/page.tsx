@@ -10,6 +10,7 @@ import { Suspense } from "react";
 
 import { AdminPage } from "../../../../../components/admin-page";
 import { FlashToast } from "../../../../../components/flash-toast";
+import { listCreators } from "../../../../../lib/creator";
 import { getSeries } from "../../../../../lib/series";
 import { SeriesForm } from "../_components/series-form";
 import { updateSeriesAction } from "../_lib/actions";
@@ -44,10 +45,13 @@ const EditSeriesFormData = async ({ params }: EditSeriesPageProps) => {
   guardPlaceholder(tenant_public_id);
   guardPlaceholder(series_id);
 
-  const result = await getSeries({
-    publicId: series_id,
-    tenantPublicId: tenant_public_id,
-  });
+  const [result, creatorsResult] = await Promise.all([
+    getSeries({
+      publicId: series_id,
+      tenantPublicId: tenant_public_id,
+    }),
+    listCreators(tenant_public_id),
+  ]);
 
   if (!result.ok) {
     return (
@@ -65,6 +69,10 @@ const EditSeriesFormData = async ({ params }: EditSeriesPageProps) => {
   return (
     <SeriesForm
       action={updateSeriesAction}
+      creators={creatorsResult.creators}
+      creatorsErrorMessage={
+        creatorsResult.ok ? undefined : creatorsResult.message
+      }
       defaultReadingPeriodHours={result.series.readingPeriodHours}
       initialSeries={result.series}
       mode="update"
