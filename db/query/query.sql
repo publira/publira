@@ -69,7 +69,7 @@ RETURNING *;
 -- name: CreateSession :one
 INSERT INTO sessions (
         id,
-    current_tenant_id,
+        tenant_id,
         user_id,
         token_hash,
         expires_at
@@ -79,7 +79,7 @@ RETURNING *;
 -- name: GetSessionByTokenHashForTenant :one
 SELECT *
 FROM sessions
-WHERE current_tenant_id = $1
+WHERE tenant_id = $1
     AND token_hash = $2
 LIMIT 1;
 
@@ -92,19 +92,46 @@ LIMIT 1;
 UPDATE sessions
 SET revoked_at = NOW()
 WHERE id = $1;
--- name: GetUserByEmailForTenant :one
-SELECT u.*
-FROM users u
-    JOIN tenant_memberships tm ON tm.user_id = u.id
-    AND tm.tenant_id = $1
-    AND tm.status = 'active'
-WHERE u.email = $2
+-- name: CreatePlatformSession :one
+INSERT INTO platform_sessions (
+        id,
+        platform_user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+-- name: GetPlatformSessionByTokenHash :one
+SELECT *
+FROM platform_sessions
+WHERE token_hash = $1
 LIMIT 1;
-
--- name: GetUserByEmail :one
+-- name: RevokePlatformSession :exec
+UPDATE platform_sessions
+SET revoked_at = NOW()
+WHERE id = $1;
+-- name: TerminatePlatformUserSessions :exec
+-- プラットフォームユーザーの全セッションを失効させる
+UPDATE platform_sessions
+SET revoked_at = NOW()
+WHERE platform_user_id = $1
+    AND revoked_at IS NULL;
+-- name: GetUserByEmailForTenant :one
 SELECT *
 FROM users
+WHERE tenant_id = $1
+    AND email = $2
+LIMIT 1;
+
+-- name: GetPlatformUserByEmail :one
+SELECT *
+FROM platform_users
 WHERE email = $1
+LIMIT 1;
+-- name: GetPlatformUserByID :one
+SELECT *
+FROM platform_users
+WHERE id = $1
 LIMIT 1;
 -- name: GetUserByID :one
 SELECT *
@@ -113,54 +140,54 @@ WHERE id = $1;
 -- name: CountPlatformUsers :one
 -- プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
 SELECT COUNT(*)::int
-FROM (
-        SELECT DISTINCT user_id
-        FROM platform_user_roles
-    ) platform_users;
--- name: CreateUser :one
-INSERT INTO users (id, public_id, email, password_hash, name)
+FROM platform_users;
+-- name: CreatePlatformUser :one
+INSERT INTO platform_users (id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
-
--- name: CreateTenantMembership :one
-INSERT INTO tenant_memberships (id, user_id, tenant_id, status)
-VALUES ($1, $2, $3, $4)
+-- name: UpdatePlatformUserStatus :one
+-- プラットフォームユーザーのステータスを更新
+UPDATE platform_users
+SET status = $2
+WHERE public_id = $1
 RETURNING *;
-
--- name: CreateTenantMemberRole :one
-INSERT INTO tenant_member_roles (id, membership_id, role)
-VALUES ($1, $2, $3)
+-- name: CreateUser :one
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: CreatePlatformUserRole :one
-INSERT INTO platform_user_roles (id, user_id, role)
+INSERT INTO platform_user_roles (id, platform_user_id, role)
 VALUES ($1, $2, $3)
 RETURNING *;
 
--- name: ListTenantRolesByUserAndTenant :many
-SELECT tmr.role
-FROM tenant_memberships tm
-    JOIN tenant_member_roles tmr ON tmr.membership_id = tm.id
-WHERE tm.user_id = $1
-    AND tm.tenant_id = $2
-    AND tm.status = 'active'
-ORDER BY tmr.role;
+-- name: CreateTenantUserRole :one
+INSERT INTO tenant_user_roles (id, user_id, role)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: ListTenantUserRoles :many
+-- テナントユーザーのロール一覧を取得する
+SELECT role
+FROM tenant_user_roles
+WHERE user_id = $1
+ORDER BY role;
 
 -- name: ListPlatformUserRoles :many
 SELECT role
 FROM platform_user_roles
-WHERE user_id = $1
+WHERE platform_user_id = $1
 ORDER BY role;
 
 -- name: ListPlatformOperators :many
-SELECT u.public_id,
-    u.email,
-    u.name,
+SELECT pu.public_id,
+    pu.email,
+    pu.name,
     COALESCE(
         (
             SELECT pur.role
             FROM platform_user_roles pur
-            WHERE pur.user_id = u.id
+            WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
                     WHEN pur.role = 'super-admin' THEN 3
@@ -174,26 +201,21 @@ SELECT u.public_id,
         ),
         ''::text
     )::text AS role,
-    u.status,
-    u.created_at
-FROM users u
-WHERE EXISTS (
-        SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
-    )
-ORDER BY u.created_at DESC;
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+ORDER BY pu.created_at DESC;
 
 -- name: GetPlatformOperatorByPublicID :one
-SELECT u.id,
-    u.public_id,
-    u.email,
-    u.name,
+SELECT pu.id,
+    pu.public_id,
+    pu.email,
+    pu.name,
     COALESCE(
         (
             SELECT pur.role
             FROM platform_user_roles pur
-            WHERE pur.user_id = u.id
+            WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
                     WHEN pur.role = 'super-admin' THEN 3
@@ -207,20 +229,15 @@ SELECT u.id,
         ),
         ''::text
     )::text AS role,
-    u.status,
-    u.created_at
-FROM users u
-WHERE u.public_id = $1
-    AND EXISTS (
-        SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
-    )
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+WHERE pu.public_id = $1
 LIMIT 1;
 
--- name: DeletePlatformUserRolesByUserID :exec
+-- name: DeletePlatformUserRolesByPlatformUserID :exec
 DELETE FROM platform_user_roles
-WHERE user_id = $1;
+WHERE platform_user_id = $1;
 
 -- name: CountAllTenants :one
 SELECT COUNT(*)::int
@@ -242,8 +259,8 @@ FROM users u
 WHERE u.status = 'inactive'
     AND NOT EXISTS (
         SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
     );
 
 -- name: ListRecentPlatformEvents :many
@@ -262,11 +279,11 @@ FROM (
         UNION ALL
         SELECT 'operator_role_granted'::text AS event_type,
             'Operator Role Granted'::text AS action,
-            u.public_id::text AS target,
+            pu.public_id::text AS target,
             ''::text AS actor,
             pur.created_at AS occurred_at
         FROM platform_user_roles pur
-            JOIN users u ON u.id = pur.user_id
+            JOIN platform_users pu ON pu.id = pur.platform_user_id
         UNION ALL
         SELECT 'end_user_created'::text AS event_type,
             'End User Created'::text AS action,
@@ -276,8 +293,8 @@ FROM (
         FROM users u
         WHERE NOT EXISTS (
                 SELECT 1
-                FROM platform_user_roles pur
-                WHERE pur.user_id = u.id
+                FROM tenant_user_roles tur
+                WHERE tur.user_id = u.id
             )
     ) events
 ORDER BY occurred_at DESC
@@ -666,7 +683,7 @@ WHERE el.episode_id = e.id
     AND e.public_id = $2;
 
 -- name: ListEndUsers :many
--- エンドユーザー（platform_user_roles未保持）の一覧取得
+-- エンドユーザー（tenant_user_roles未保持）の一覧取得
 SELECT u.id,
     u.public_id,
     u.name,
@@ -676,13 +693,8 @@ SELECT u.id,
 FROM users u
 WHERE NOT EXISTS (
         SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
-    )
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_memberships tm
-        WHERE tm.user_id = u.id
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
     )
     AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
     AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
@@ -691,37 +703,41 @@ WHERE NOT EXISTS (
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
--- name: ListTenantMemberships :many
--- テナントに所属するメンバー一覧を取得する
+-- name: ListTenantUsers :many
+-- テナントに所属する管理・編集ユーザー一覧を取得する
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
     u.email,
     COALESCE(
         (
-            SELECT tmr.role
-            FROM tenant_member_roles tmr
-            WHERE tmr.membership_id = tm.id
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
             ORDER BY CASE
-                    WHEN tmr.role = 'tenant_admin' THEN 3
-                    WHEN tmr.role = 'admin' THEN 3
-                    WHEN tmr.role = 'tenant_editor' THEN 2
-                    WHEN tmr.role = 'editor' THEN 2
-                    WHEN tmr.role = 'tenant_auditor' THEN 1
-                    WHEN tmr.role = 'auditor' THEN 1
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    WHEN tur.role = 'auditor' THEN 1
                     ELSE 0
                 END DESC,
-                tmr.role ASC
+                tur.role ASC
             LIMIT 1
         ),
         ''::text
     )::text AS role,
-    tm.status,
-    tm.created_at
-FROM tenant_memberships tm
-    JOIN users u ON u.id = tm.user_id
-WHERE tm.tenant_id = $1
-ORDER BY tm.created_at DESC
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: ListCreatorsByTenant :many
 SELECT id,
@@ -784,50 +800,47 @@ UPDATE labels
 SET name = $2
 WHERE id = $1;
 
--- name: GetTenantMembershipByUserAndTenant :one
--- ユーザーとテナントIDでメンバーシップを取得する
-SELECT tm.id, tm.user_id, tm.tenant_id, tm.status, tm.created_at
-FROM tenant_memberships tm
-WHERE tm.user_id = $1
-    AND tm.tenant_id = $2
-LIMIT 1;
-
--- name: DeleteTenantMembership :exec
-DELETE FROM tenant_memberships
-WHERE id = $1;
-
--- name: DeleteTenantMemberRolesByMembershipID :exec
-DELETE FROM tenant_member_roles
-WHERE membership_id = $1;
+-- name: DeleteTenantUserRolesByUserID :exec
+-- テナントユーザーのロールをすべて削除する
+DELETE FROM tenant_user_roles
+WHERE user_id = $1;
 
 -- name: GetUserByPublicID :one
--- public_idでユーザーを取得
+-- public_idでテナントユーザーを取得
 SELECT u.id,
     u.public_id,
     u.name,
     u.email,
     u.status,
+    u.tenant_id,
     u.created_at
 FROM users u
 WHERE u.public_id = $1
 LIMIT 1;
 
--- name: GetTenantsByEndUser :many
--- エンドユーザーが所属するテナント一覧を取得
-SELECT DISTINCT t.id,
+-- name: GetUserByPublicIDForTenant :one
+-- テナントスコープで public_id からユーザーを取得
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.tenant_id,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.public_id = $2
+LIMIT 1;
+
+-- name: GetTenantByUserID :one
+-- ユーザーが所属するテナントを取得
+SELECT t.id,
     t.public_id,
     t.created_at
 FROM tenants t
-    JOIN tenant_memberships tm ON tm.tenant_id = t.id
-WHERE tm.user_id = $1
-    AND tm.status = 'active'
-ORDER BY t.created_at DESC;
-
--- name: CountTenantMembershipsByUserID :one
--- ユーザーに紐づくテナントメンバーシップ件数を取得
-SELECT COUNT(*)::int
-FROM tenant_memberships
-WHERE user_id = $1;
+    JOIN users u ON u.tenant_id = t.id
+WHERE u.id = $1
+LIMIT 1;
 
 -- name: UpdateUserStatus :one
 -- ユーザーのステータスを更新

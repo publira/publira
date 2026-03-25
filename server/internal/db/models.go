@@ -11,18 +11,18 @@ import (
 	"github.com/google/uuid"
 )
 
-type AdminAuditLog struct {
-	ID                uuid.UUID      `json:"id"`
-	ActorUserPublicID string         `json:"actor_user_public_id"`
-	ActorRole         string         `json:"actor_role"`
-	TenantPublicID    sql.NullString `json:"tenant_public_id"`
-	Action            string         `json:"action"`
-	TargetType        sql.NullString `json:"target_type"`
-	TargetID          sql.NullString `json:"target_id"`
-	Outcome           string         `json:"outcome"`
-	Reason            sql.NullString `json:"reason"`
-	ClientIp          sql.NullString `json:"client_ip"`
-	CreatedAt         time.Time      `json:"created_at"`
+type AuditLog struct {
+	ID          uuid.UUID      `json:"id"`
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	ActorUserID uuid.UUID      `json:"actor_user_id"`
+	ActorRole   string         `json:"actor_role"`
+	Action      string         `json:"action"`
+	TargetType  sql.NullString `json:"target_type"`
+	TargetID    sql.NullString `json:"target_id"`
+	Outcome     string         `json:"outcome"`
+	Reason      sql.NullString `json:"reason"`
+	ClientIp    sql.NullString `json:"client_ip"`
+	CreatedAt   time.Time      `json:"created_at"`
 }
 
 type Creator struct {
@@ -75,11 +75,43 @@ type Label struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type PlatformAuditLog struct {
+	ID                  uuid.UUID      `json:"id"`
+	ActorRole           string         `json:"actor_role"`
+	Action              string         `json:"action"`
+	TargetType          sql.NullString `json:"target_type"`
+	TargetID            sql.NullString `json:"target_id"`
+	Outcome             string         `json:"outcome"`
+	Reason              sql.NullString `json:"reason"`
+	ClientIp            sql.NullString `json:"client_ip"`
+	CreatedAt           time.Time      `json:"created_at"`
+	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+}
+
+type PlatformSession struct {
+	ID             uuid.UUID    `json:"id"`
+	PlatformUserID uuid.UUID    `json:"platform_user_id"`
+	TokenHash      string       `json:"token_hash"`
+	ExpiresAt      time.Time    `json:"expires_at"`
+	RevokedAt      sql.NullTime `json:"revoked_at"`
+	CreatedAt      time.Time    `json:"created_at"`
+}
+
+type PlatformUser struct {
+	ID           uuid.UUID `json:"id"`
+	PublicID     string    `json:"public_id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"password_hash"`
+	Name         string    `json:"name"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 type PlatformUserRole struct {
-	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
+	ID             uuid.UUID `json:"id"`
+	Role           string    `json:"role"`
+	CreatedAt      time.Time `json:"created_at"`
+	PlatformUserID uuid.UUID `json:"platform_user_id"`
 }
 
 type Purchase struct {
@@ -119,13 +151,13 @@ type SeriesListing struct {
 }
 
 type Session struct {
-	ID              uuid.UUID     `json:"id"`
-	CurrentTenantID uuid.NullUUID `json:"current_tenant_id"`
-	UserID          uuid.UUID     `json:"user_id"`
-	TokenHash       string        `json:"token_hash"`
-	ExpiresAt       time.Time     `json:"expires_at"`
-	RevokedAt       sql.NullTime  `json:"revoked_at"`
-	CreatedAt       time.Time     `json:"created_at"`
+	ID        uuid.UUID    `json:"id"`
+	TenantID  uuid.UUID    `json:"tenant_id"`
+	UserID    uuid.UUID    `json:"user_id"`
+	TokenHash string       `json:"token_hash"`
+	ExpiresAt time.Time    `json:"expires_at"`
+	RevokedAt sql.NullTime `json:"revoked_at"`
+	CreatedAt time.Time    `json:"created_at"`
 }
 
 type Tenant struct {
@@ -139,21 +171,6 @@ type Tenant struct {
 	AdminDomain               sql.NullString `json:"admin_domain"`
 }
 
-type TenantMemberRole struct {
-	ID           uuid.UUID `json:"id"`
-	MembershipID uuid.UUID `json:"membership_id"`
-	Role         string    `json:"role"`
-	CreatedAt    time.Time `json:"created_at"`
-}
-
-type TenantMembership struct {
-	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 type TenantTheme struct {
 	TenantID       uuid.UUID      `json:"tenant_id"`
 	PrimaryColor   string         `json:"primary_color"`
@@ -163,12 +180,20 @@ type TenantTheme struct {
 	UpdatedAt      time.Time      `json:"updated_at"`
 }
 
+type TenantUserRole struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type User struct {
-	ID           uuid.UUID `json:"id"`
-	PublicID     string    `json:"public_id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"password_hash"`
-	Name         string    `json:"name"`
-	CreatedAt    time.Time `json:"created_at"`
-	Status       string    `json:"status"`
+	ID           uuid.UUID     `json:"id"`
+	PublicID     string        `json:"public_id"`
+	Email        string        `json:"email"`
+	PasswordHash string        `json:"password_hash"`
+	Name         string        `json:"name"`
+	CreatedAt    time.Time     `json:"created_at"`
+	Status       string        `json:"status"`
+	TenantID     uuid.NullUUID `json:"tenant_id"`
 }

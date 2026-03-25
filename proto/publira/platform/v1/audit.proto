@@ -11,6 +11,7 @@ message PlatformAuditLog {
   string action = 4;
   string target_type = 5;
   string target_id = 6;
+  string target_public_id = 14;
   string outcome = 7;
   string reason = 8;
   string client_ip = 9;

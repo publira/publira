@@ -9,6 +9,7 @@ export interface PlatformAuditLogSummary {
   outcome: string;
   reason: string;
   targetId: string;
+  targetPublicId: string;
   targetName: string;
   targetType: string;
   tenantName: string;
@@ -70,9 +71,10 @@ export const listPlatformAuditLogs = async (
         reason: log.reason,
         targetId: log.targetId,
         targetName: log.targetName,
+        targetPublicId: log.targetPublicId ?? "",
         targetType: log.targetType,
-        tenantName: log.tenantName,
-        tenantPublicId: log.tenantPublicId,
+        tenantName: log.tenantName ?? "",
+        tenantPublicId: log.tenantPublicId ?? "",
       })),
       ok: true,
     };

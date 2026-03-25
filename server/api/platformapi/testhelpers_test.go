@@ -1,0 +1,106 @@
+package platformapi
+
+import (
+	"log/slog"
+	"regexp"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db"
+)
+
+const (
+	// プラットフォームオペレーター・認証
+	testGetPlatformSessionByTokenHashQuery      = "-- name: GetPlatformSessionByTokenHash :one\n"
+	testGetPlatformUserByIDQuery                = "-- name: GetPlatformUserByID :one\n"
+	testGetPlatformUserByEmailQuery             = "-- name: GetPlatformUserByEmail :one\n"
+	testListPlatformUserRolesQuery              = "-- name: ListPlatformUserRoles :many\n"
+	testCreatePlatformUserQuery                 = "-- name: CreatePlatformUser :one\n"
+	testCreatePlatformUserRoleQuery             = "-- name: CreatePlatformUserRole :one\n"
+	testGetPlatformOperatorByPublicIDQuery      = "-- name: GetPlatformOperatorByPublicID :one\n"
+	testDeletePlatformUserRolesByPlatformUserID = "-- name: DeletePlatformUserRolesByPlatformUserID :exec\n"
+	testUpdatePlatformUserStatusQuery           = "-- name: UpdatePlatformUserStatus :one\n"
+	testTerminatePlatformUserSessionsQuery      = "-- name: TerminatePlatformUserSessions :exec\n"
+	testPlatformSessionToken                    = "platform-session-token"
+
+	// テナントメンバー
+	testGetTenantByPublicIDQuery           = "-- name: GetTenantByPublicID :one\n"
+	testGetUserByPublicIDForTenantQuery    = "-- name: GetUserByPublicIDForTenant :one\n"
+	testListTenantUserRolesQuery           = "-- name: ListTenantUserRoles :many\n"
+	testCreateTenantUserRoleQuery          = "-- name: CreateTenantUserRole :one\n"
+	testDeleteTenantUserRolesByUserIDQuery = "-- name: DeleteTenantUserRolesByUserID :exec\n"
+	testListTenantUsersQuery               = "-- name: ListTenantUsers :many\n"
+
+	// エンドユーザー
+	testListEndUsersQuery          = "-- name: ListEndUsers :many\n"
+	testGetUserByPublicIDQuery     = "-- name: GetUserByPublicID :one\n"
+	testGetTenantByUserIDQuery     = "-- name: GetTenantByUserID :one\n"
+	testUpdateUserStatusQuery      = "-- name: UpdateUserStatus :one\n"
+	testTerminateUserSessionsQuery = "-- name: TerminateUserSessions :exec\n"
+	testDeleteUserByIDQuery        = "-- name: DeleteUserByID :exec\n"
+)
+
+func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmock) {
+	t.Helper()
+
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	queries := dbmodels.New(db)
+	return &platformServer{
+		queries:  queries,
+		db:       db,
+		recorder: auditlog.New(queries, slog.Default()),
+	}, mock
+}
+
+func operatorTestUserColumns() []string {
+	return []string{"id", "public_id", "email", "password_hash", "name", "status", "created_at"}
+}
+
+func operatorTestColumns() []string {
+	return []string{"id", "public_id", "email", "name", "role", "status", "created_at"}
+}
+
+func newAuthedOperatorRequest[T any](msg *T) *connect.Request[T] {
+	req := connect.NewRequest(msg)
+	req.Header().Set("X-Publira-Session-Id", testPlatformSessionToken)
+	return req
+}
+
+func expectOperatorAuth(mock sqlmock.Sqlmock, userID uuid.UUID, role string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSessionByTokenHashQuery)).
+		WithArgs(auth.HashToken(testPlatformSessionToken)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), userID, auth.HashToken(testPlatformSessionToken), now.Add(time.Hour), nil, now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
+}
+
+func expectOperatorAuditLogInsert(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("INSERT INTO platform_audit_logs").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+func assertOperatorHandlerExpectations(t *testing.T, mock sqlmock.Sqlmock) {
+	t.Helper()
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet SQL expectations: %v", err)
+	}
+}

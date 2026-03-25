@@ -43,8 +43,6 @@ interface AuditLogsPageProps {
     action?: string;
     actor_user_public_id?: string;
     offset?: string;
-    resource?: string;
-    tenant_public_id?: string;
   }>;
 }
 
@@ -62,12 +60,8 @@ const buildAuditLogsPath = (params: {
   action?: string;
   actorUserPublicId?: string;
   offset: number;
-  tenantPublicId?: string;
 }): string => {
   const search = new URLSearchParams();
-  if (params.tenantPublicId) {
-    search.set("tenant_public_id", params.tenantPublicId);
-  }
   if (params.actorUserPublicId) {
     search.set("actor_user_public_id", params.actorUserPublicId);
   }
@@ -127,8 +121,10 @@ const buildTargetLabel = (targetType: string, targetId: string): string => {
   return targetId || targetType || "-";
 };
 
-const isUserTargetType = (targetType: string): boolean =>
-  targetType === "operator" || targetType === "user";
+const isOperatorTargetType = (targetType: string): boolean =>
+  targetType === "operator";
+
+const isUserTargetType = (targetType: string): boolean => targetType === "user";
 
 const isTenantTargetType = (targetType: string): boolean =>
   targetType === "tenant";
@@ -180,25 +176,16 @@ const AuditLogsFilters = ({
   actionFilter,
   actorFilter,
   hasFilter,
-  tenantFilter,
 }: {
   actionFilter: string;
   actorFilter: string;
   hasFilter: boolean;
-  tenantFilter: string;
 }) => (
   <Form
     action="/audit-logs"
     className="flex flex-wrap gap-3"
-    key={`${tenantFilter}::${actorFilter}::${actionFilter}`}
+    key={`${actorFilter}::${actionFilter}`}
   >
-    <Input
-      className="w-48"
-      defaultValue={tenantFilter}
-      name="tenant_public_id"
-      placeholder="テナント公開IDで絞り込み"
-      type="search"
-    />
     <Input
       className="w-48"
       defaultValue={actorFilter}
@@ -233,7 +220,6 @@ const AuditLogsPagination = ({
   nextOffset,
   prevOffset,
   summaryText,
-  tenantFilter,
 }: {
   actionFilter: string;
   actorFilter: string;
@@ -242,7 +228,6 @@ const AuditLogsPagination = ({
   nextOffset: number;
   prevOffset: number;
   summaryText: string;
-  tenantFilter: string;
 }) => (
   <div className="flex items-center justify-between gap-3">
     <p className="text-xs text-muted-foreground">{summaryText}</p>
@@ -255,7 +240,6 @@ const AuditLogsPagination = ({
                 action: actionFilter || undefined,
                 actorUserPublicId: actorFilter || undefined,
                 offset: prevOffset,
-                tenantPublicId: tenantFilter || undefined,
               })}
             />
           }
@@ -278,7 +262,6 @@ const AuditLogsPagination = ({
                 action: actionFilter || undefined,
                 actorUserPublicId: actorFilter || undefined,
                 offset: nextOffset,
-                tenantPublicId: tenantFilter || undefined,
               })}
             />
           }
@@ -311,7 +294,7 @@ const AuditLogsTableBody = ({
     return (
       <TableBody>
         <TableRow>
-          <TableCell className="text-muted-foreground" colSpan={6}>
+          <TableCell className="text-muted-foreground" colSpan={4}>
             {buildEmptyMessage(hasFilter)}
           </TableCell>
         </TableRow>
@@ -320,24 +303,46 @@ const AuditLogsTableBody = ({
   }
 
   const renderTarget = (log: PlatformAuditLogSummary) => {
-    if (log.targetId && isUserTargetType(log.targetType)) {
+    if (log.targetPublicId && isOperatorTargetType(log.targetType)) {
       return (
         <Link
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          href={`/users/${log.targetId}`}
+          href={`/operators/${log.targetPublicId}`}
         >
-          {log.targetName || buildTargetLabel(log.targetType, log.targetId)}
+          {log.targetName || log.targetPublicId}
         </Link>
       );
     }
 
-    if (log.targetId && isTenantTargetType(log.targetType)) {
+    if (log.targetPublicId && isUserTargetType(log.targetType)) {
       return (
         <Link
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          href={`/tenants/${log.targetId}`}
+          href={`/users/${log.targetPublicId}`}
         >
-          {log.targetName || buildTargetLabel(log.targetType, log.targetId)}
+          {log.targetName || log.targetPublicId}
+        </Link>
+      );
+    }
+
+    if (log.tenantPublicId) {
+      return (
+        <Link
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          href={`/tenants/${log.tenantPublicId}`}
+        >
+          {log.targetName || log.tenantName || log.tenantPublicId}
+        </Link>
+      );
+    }
+
+    if (log.targetPublicId && isTenantTargetType(log.targetType)) {
+      return (
+        <Link
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          href={`/tenants/${log.targetPublicId}`}
+        >
+          {log.targetName || log.targetPublicId}
         </Link>
       );
     }
@@ -349,7 +354,7 @@ const AuditLogsTableBody = ({
     <TableBody>
       {result.auditLogs.map((log) => (
         <TableRow
-          key={`${log.createdAt}-${log.actorUserPublicId}-${log.action}-${log.targetId}`}
+          key={`${log.createdAt}-${log.actorUserPublicId}-${log.action}-${log.targetType}-${log.targetId}`}
         >
           <TableCell>{formatTimestamp(log.createdAt)}</TableCell>
           <TableCell>
@@ -357,7 +362,7 @@ const AuditLogsTableBody = ({
               {log.actorUserPublicId ? (
                 <Link
                   className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  href={`/users/${log.actorUserPublicId}`}
+                  href={`/operators/${log.actorUserPublicId}`}
                 >
                   {log.actorName || log.actorUserPublicId}
                 </Link>
@@ -393,36 +398,6 @@ const AuditLogsTableBody = ({
               ) : null}
             </div>
           </TableCell>
-          <TableCell>
-            {log.tenantPublicId ? (
-              <div className="grid gap-1">
-                <Link
-                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  href={`/tenants/${log.tenantPublicId}`}
-                >
-                  {log.tenantName || log.tenantPublicId}
-                </Link>
-                <p className="font-mono text-xs text-muted-foreground">
-                  {log.tenantPublicId}
-                </p>
-              </div>
-            ) : (
-              <span className="font-mono text-xs text-muted-foreground">-</span>
-            )}
-          </TableCell>
-          <TableCell>
-            {log.tenantPublicId ? (
-              <LinkButton
-                render={<Link href={`/tenants/${log.tenantPublicId}`} />}
-                size="sm"
-                variant="outline"
-              >
-                詳細
-              </LinkButton>
-            ) : (
-              <span className="text-xs text-muted-foreground">-</span>
-            )}
-          </TableCell>
         </TableRow>
       ))}
     </TableBody>
@@ -433,19 +408,16 @@ export default async function AuditLogsPage({
   searchParams,
 }: AuditLogsPageProps) {
   const params = await searchParams;
-  const tenantFilter =
-    params.tenant_public_id?.trim() ?? params.resource?.trim() ?? "";
   const actorFilter = params.actor_user_public_id?.trim() ?? "";
   const actionFilter = params.action?.trim() ?? "";
   const offset = parseOffset(params.offset);
-  const hasFilter = Boolean(tenantFilter || actorFilter || actionFilter);
+  const hasFilter = Boolean(actorFilter || actionFilter);
 
   const result = await listPlatformAuditLogs({
     action: actionFilter || undefined,
     actorUserPublicId: actorFilter || undefined,
     limit: pageSize,
     offset,
-    tenantPublicId: tenantFilter || undefined,
   });
 
   const hasPrev = offset > 0;
@@ -456,7 +428,7 @@ export default async function AuditLogsPage({
 
   return (
     <PlatformPage
-      description="テナント横断で重要操作を追跡し、対象テナント詳細へ遷移できる監査ログ画面です。"
+      description="重要操作を横断的に追跡し、対象リソースの詳細へ遷移できる監査ログ画面です。"
       eyebrow="Platform Governance"
       title="監査ログ"
     >
@@ -473,7 +445,6 @@ export default async function AuditLogsPage({
             actionFilter={actionFilter}
             actorFilter={actorFilter}
             hasFilter={hasFilter}
-            tenantFilter={tenantFilter}
           />
 
           {result.ok ? null : (
@@ -489,8 +460,6 @@ export default async function AuditLogsPage({
                 <TableHead>実行者</TableHead>
                 <TableHead>操作</TableHead>
                 <TableHead>対象</TableHead>
-                <TableHead>テナント</TableHead>
-                <TableHead className="w-32" />
               </TableRow>
             </TableHeader>
             <AuditLogsTableBody hasFilter={hasFilter} result={result} />
@@ -504,7 +473,6 @@ export default async function AuditLogsPage({
             nextOffset={nextOffset}
             prevOffset={prevOffset}
             summaryText={summaryText}
-            tenantFilter={tenantFilter}
           />
         </CardContent>
       </Card>

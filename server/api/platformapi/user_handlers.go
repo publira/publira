@@ -66,19 +66,11 @@ func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID str
 		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
 	}
 
-	roles, err := s.platformRoles(ctx, user.ID)
+	tenantRoles, err := s.queries.ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
 		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
 	}
-	if len(roles) > 0 {
-		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate platform role users"))
-	}
-
-	tenantMembershipCount, err := s.queries.CountTenantMembershipsByUserID(ctx, user.ID)
-	if err != nil {
-		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
-	}
-	if tenantMembershipCount > 0 {
+	if len(tenantRoles) > 0 {
 		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
 	}
 
@@ -144,14 +136,14 @@ func (s *platformServer) ListEndUsers(
 	}
 
 	for _, u := range users {
-		tenants, err := s.queries.GetTenantsByEndUser(ctx, u.ID)
+		tenant, err := s.queries.GetTenantByUserID(ctx, u.ID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
-		tenantIDs := make([]string, len(tenants))
-		for i, t := range tenants {
-			tenantIDs[i] = t.PublicID
+		tenantIDs := []string{}
+		if err == nil {
+			tenantIDs = []string{tenant.PublicID}
 		}
 
 		resp.Users = append(resp.Users, endUserToProto(u, tenantIDs))
@@ -182,14 +174,14 @@ func (s *platformServer) GetEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenants, err := s.queries.GetTenantsByEndUser(ctx, user.ID)
+	tenant, err := s.queries.GetTenantByUserID(ctx, user.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenantIDs := make([]string, len(tenants))
-	for i, t := range tenants {
-		tenantIDs[i] = t.PublicID
+	tenantIDs := []string{}
+	if err == nil {
+		tenantIDs = []string{tenant.PublicID}
 	}
 
 	endUser := &publirasplatformv1.EndUser{
@@ -239,14 +231,14 @@ func (s *platformServer) SuspendEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenants, err := s.queries.GetTenantsByEndUser(ctx, updated.ID)
+	tenant, err := s.queries.GetTenantByUserID(ctx, updated.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenantIDs := make([]string, len(tenants))
-	for i, t := range tenants {
-		tenantIDs[i] = t.PublicID
+	tenantIDs := []string{}
+	if err == nil {
+		tenantIDs = []string{tenant.PublicID}
 	}
 
 	endUser := &publirasplatformv1.EndUser{
@@ -258,14 +250,14 @@ func (s *platformServer) SuspendEndUser(
 		TenantIds: tenantIDs,
 	}
 
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: actorUser.PublicID,
-		ActorRole:         actorRole,
-		Action:            "user_suspended",
-		TargetType:        "user",
-		TargetID:          updated.PublicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: actorUser.ID,
+		ActorRole:           actorRole,
+		Action:              "user_suspended",
+		TargetType:          "user",
+		TargetID:            updated.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.SuspendEndUserResponse{
@@ -304,14 +296,14 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenants, err := s.queries.GetTenantsByEndUser(ctx, updated.ID)
+	tenant, err := s.queries.GetTenantByUserID(ctx, updated.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenantIDs := make([]string, len(tenants))
-	for i, t := range tenants {
-		tenantIDs[i] = t.PublicID
+	tenantIDs := []string{}
+	if err == nil {
+		tenantIDs = []string{tenant.PublicID}
 	}
 
 	endUser := &publirasplatformv1.EndUser{
@@ -323,14 +315,14 @@ func (s *platformServer) UnsuspendEndUser(
 		TenantIds: tenantIDs,
 	}
 
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: actorUser.PublicID,
-		ActorRole:         actorRole,
-		Action:            "user_activated",
-		TargetType:        "user",
-		TargetID:          updated.PublicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: actorUser.ID,
+		ActorRole:           actorRole,
+		Action:              "user_activated",
+		TargetType:          "user",
+		TargetID:            updated.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.UnsuspendEndUserResponse{
@@ -363,14 +355,14 @@ func (s *platformServer) DeleteEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: actorUser.PublicID,
-		ActorRole:         actorRole,
-		Action:            "user_deleted",
-		TargetType:        "user",
-		TargetID:          publicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: actorUser.ID,
+		ActorRole:           actorRole,
+		Action:              "user_deleted",
+		TargetType:          "user",
+		TargetID:            user.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.DeleteEndUserResponse{

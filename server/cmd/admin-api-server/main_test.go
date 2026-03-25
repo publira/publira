@@ -23,18 +23,18 @@ import (
 )
 
 const (
-	getTenantByPublicIDQuery                             = "-- name: GetTenantByPublicID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\nFROM tenants\nWHERE public_id = $1\nLIMIT 1\n"
-	getSessionByTokenHashForTenantQuery                  = "-- name: GetSessionByTokenHashForTenant :one\nSELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE current_tenant_id = $1\n    AND token_hash = $2\nLIMIT 1\n"
-	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\nSELECT id, tenant_id, public_id, name, created_at\nFROM labels\nWHERE tenant_id = $1\n    AND public_id = $2\nLIMIT 1\n"
-	getUserByIDQuery                                     = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at, status\nFROM users\nWHERE id = $1\n"
-	listTenantRolesByUserAndTenantQuery                 = "-- name: ListTenantRolesByUserAndTenant :many\nSELECT tmr.role\nFROM tenant_memberships tm\n    JOIN tenant_member_roles tmr ON tmr.membership_id = tm.id\nWHERE tm.user_id = $1\n    AND tm.tenant_id = $2\n    AND tm.status = 'active'\nORDER BY tmr.role\n"
-	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\nSELECT s.id,\n    s.public_id,\n    s.title,\n    sl.synopsis,\n    sl.reading_period_hours,\n    s.is_published,\n    s.published_at\nFROM series s\n    LEFT JOIN series_listings sl ON sl.series_id = s.id\nWHERE s.tenant_id = $1\nORDER BY s.created_at DESC\nLIMIT $2 OFFSET $3\n"
-	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\nSELECT s.id,\n    s.public_id,\n    s.title,\n    sl.synopsis,\n    sl.reading_period_hours,\n    s.is_published,\n    s.published_at\nFROM series s\n    LEFT JOIN series_listings sl ON sl.series_id = s.id\nWHERE s.tenant_id = $1\n    AND s.public_id = $2\nLIMIT 1\n"
-	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\nUPDATE series\nSET title = $2,\n    label_id = $3,\n    updated_at = NOW()\nWHERE id = $1\n"
-	updateSeriesPublicationQuery                         = "-- name: UpdateSeriesPublication :exec\nUPDATE series\nSET is_published = $2,\n    published_at = CASE\n        WHEN $2 THEN COALESCE(published_at, NOW())\n        ELSE NULL\n    END,\n    updated_at = NOW()\nWHERE id = $1\n"
-	getEpisodeByPublicIDForTenantQuery                   = "-- name: GetEpisodeByPublicIDForTenant :one\nSELECT e.id,\n    e.public_id,\n    e.title,\n    e.order_index,\n    el.price,\n    el.reading_period_hours,\n    el.status,\n    el.scheduled_at,\n    el.published_at\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\n    JOIN episode_listings el ON el.episode_id = e.id\nWHERE s.tenant_id = $1\n    AND e.public_id = $2\nLIMIT 1\n"
-	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery       = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\nSELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order\nFROM episode_images\nWHERE episode_id = $1\n"
-	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\nUPDATE episode_listings el\nSET status = CASE\n        WHEN $3 IS NULL THEN 'draft'\n        ELSE 'scheduled'\n    END,\n    scheduled_at = $3,\n    published_at = CASE\n        WHEN $3 IS NULL THEN NULL\n        ELSE el.published_at\n    END\nFROM episodes e\n    JOIN series s ON s.id = e.series_id\nWHERE el.episode_id = e.id\n    AND s.tenant_id = $1\n    AND e.public_id = $2\n"
+	getTenantByPublicIDQuery                             = "-- name: GetTenantByPublicID :one\n"
+	getSessionByTokenHashForTenantQuery                  = "-- name: GetSessionByTokenHashForTenant :one\n"
+	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\n"
+	getUserByIDQuery                                     = "-- name: GetUserByID :one\n"
+	listTenantRolesByUserAndTenantQuery                  = "-- name: ListTenantUserRoles :many\n"
+	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\n"
+	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\n"
+	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\n"
+	updateSeriesPublicationQuery                         = "-- name: UpdateSeriesPublication :exec\n"
+	getEpisodeByPublicIDForTenantQuery                   = "-- name: GetEpisodeByPublicIDForTenant :one\n"
+	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery       = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
+	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
 )
 
 func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
@@ -107,17 +107,17 @@ func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID strin
 
 func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, sessionToken string, now time.Time) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHashForTenantQuery)).
-		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, auth.HashToken(sessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "current_tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+		WithArgs(tenantID, auth.HashToken(sessionToken)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
 			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, auth.HashToken(sessionToken), now.Add(time.Hour), nil, now))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status"}).
-			AddRow(userID, "USER001", "user@example.com", "hashed", "User", now, "active"))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id"}).
+			AddRow(userID, "USER001", "user@example.com", "hashed", "User", now, "active", tenantID))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantRolesByUserAndTenantQuery)).
-		WithArgs(userID, tenantID).
+		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("editor"))
 }
 
@@ -129,7 +129,7 @@ func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 }
 
 func expectAdminAuditLogInsert(mock sqlmock.Sqlmock) {
-	mock.ExpectExec("INSERT INTO admin_audit_logs").
+	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
@@ -525,7 +525,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil))
-	mock.ExpectExec("INSERT INTO admin_audit_logs").
+	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -824,7 +824,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 					WithArgs(tenantID, "EPISODE001").
 					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
 						AddRow(uuid.Must(uuid.NewV7()), "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", normalized, nil))
-				mock.ExpectExec("INSERT INTO admin_audit_logs").
+				mock.ExpectExec("INSERT INTO audit_logs").
 					WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			wantSuccess: true,

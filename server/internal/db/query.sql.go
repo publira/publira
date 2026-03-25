@@ -46,8 +46,8 @@ FROM users u
 WHERE u.status = 'inactive'
     AND NOT EXISTS (
         SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
     )
 `
 
@@ -60,10 +60,7 @@ func (q *Queries) CountPendingEndUsers(ctx context.Context) (int32, error) {
 
 const countPlatformUsers = `-- name: CountPlatformUsers :one
 SELECT COUNT(*)::int
-FROM (
-        SELECT DISTINCT user_id
-        FROM platform_user_roles
-    ) platform_users
+FROM platform_users
 `
 
 // プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
@@ -82,20 +79,6 @@ WHERE status = 'suspended'
 
 func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
 	row := q.db.QueryRowContext(ctx, countSuspendedTenants)
-	var column_1 int32
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
-const countTenantMembershipsByUserID = `-- name: CountTenantMembershipsByUserID :one
-SELECT COUNT(*)::int
-FROM tenant_memberships
-WHERE user_id = $1
-`
-
-// ユーザーに紐づくテナントメンバーシップ件数を取得
-func (q *Queries) CountTenantMembershipsByUserID(ctx context.Context, userID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, countTenantMembershipsByUserID, userID)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -282,26 +265,98 @@ func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label
 	return i, err
 }
 
+const createPlatformSession = `-- name: CreatePlatformSession :one
+INSERT INTO platform_sessions (
+        id,
+        platform_user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4)
+RETURNING id, platform_user_id, token_hash, expires_at, revoked_at, created_at
+`
+
+type CreatePlatformSessionParams struct {
+	ID             uuid.UUID `json:"id"`
+	PlatformUserID uuid.UUID `json:"platform_user_id"`
+	TokenHash      string    `json:"token_hash"`
+	ExpiresAt      time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreatePlatformSession(ctx context.Context, arg CreatePlatformSessionParams) (PlatformSession, error) {
+	row := q.db.QueryRowContext(ctx, createPlatformSession,
+		arg.ID,
+		arg.PlatformUserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i PlatformSession
+	err := row.Scan(
+		&i.ID,
+		&i.PlatformUserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createPlatformUser = `-- name: CreatePlatformUser :one
+INSERT INTO platform_users (id, public_id, email, password_hash, name)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, public_id, email, password_hash, name, status, created_at
+`
+
+type CreatePlatformUserParams struct {
+	ID           uuid.UUID `json:"id"`
+	PublicID     string    `json:"public_id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"password_hash"`
+	Name         string    `json:"name"`
+}
+
+func (q *Queries) CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, createPlatformUser,
+		arg.ID,
+		arg.PublicID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Name,
+	)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPlatformUserRole = `-- name: CreatePlatformUserRole :one
-INSERT INTO platform_user_roles (id, user_id, role)
+INSERT INTO platform_user_roles (id, platform_user_id, role)
 VALUES ($1, $2, $3)
-RETURNING id, user_id, role, created_at
+RETURNING id, role, created_at, platform_user_id
 `
 
 type CreatePlatformUserRoleParams struct {
-	ID     uuid.UUID `json:"id"`
-	UserID uuid.UUID `json:"user_id"`
-	Role   string    `json:"role"`
+	ID             uuid.UUID `json:"id"`
+	PlatformUserID uuid.UUID `json:"platform_user_id"`
+	Role           string    `json:"role"`
 }
 
 func (q *Queries) CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error) {
-	row := q.db.QueryRowContext(ctx, createPlatformUserRole, arg.ID, arg.UserID, arg.Role)
+	row := q.db.QueryRowContext(ctx, createPlatformUserRole, arg.ID, arg.PlatformUserID, arg.Role)
 	var i PlatformUserRole
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.Role,
 		&i.CreatedAt,
+		&i.PlatformUserID,
 	)
 	return i, err
 }
@@ -379,27 +434,27 @@ func (q *Queries) CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreat
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
         id,
-    current_tenant_id,
+        tenant_id,
         user_id,
         token_hash,
         expires_at
     )
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
+RETURNING id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
 `
 
 type CreateSessionParams struct {
-	ID              uuid.UUID     `json:"id"`
-	CurrentTenantID uuid.NullUUID `json:"current_tenant_id"`
-	UserID          uuid.UUID     `json:"user_id"`
-	TokenHash       string        `json:"token_hash"`
-	ExpiresAt       time.Time     `json:"expires_at"`
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
 	row := q.db.QueryRowContext(ctx, createSession,
 		arg.ID,
-		arg.CurrentTenantID,
+		arg.TenantID,
 		arg.UserID,
 		arg.TokenHash,
 		arg.ExpiresAt,
@@ -407,7 +462,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	var i Session
 	err := row.Scan(
 		&i.ID,
-		&i.CurrentTenantID,
+		&i.TenantID,
 		&i.UserID,
 		&i.TokenHash,
 		&i.ExpiresAt,
@@ -454,78 +509,49 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 	return i, err
 }
 
-const createTenantMemberRole = `-- name: CreateTenantMemberRole :one
-INSERT INTO tenant_member_roles (id, membership_id, role)
+const createTenantUserRole = `-- name: CreateTenantUserRole :one
+INSERT INTO tenant_user_roles (id, user_id, role)
 VALUES ($1, $2, $3)
-RETURNING id, membership_id, role, created_at
+RETURNING id, user_id, role, created_at
 `
 
-type CreateTenantMemberRoleParams struct {
-	ID           uuid.UUID `json:"id"`
-	MembershipID uuid.UUID `json:"membership_id"`
-	Role         string    `json:"role"`
+type CreateTenantUserRoleParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+	Role   string    `json:"role"`
 }
 
-func (q *Queries) CreateTenantMemberRole(ctx context.Context, arg CreateTenantMemberRoleParams) (TenantMemberRole, error) {
-	row := q.db.QueryRowContext(ctx, createTenantMemberRole, arg.ID, arg.MembershipID, arg.Role)
-	var i TenantMemberRole
+func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error) {
+	row := q.db.QueryRowContext(ctx, createTenantUserRole, arg.ID, arg.UserID, arg.Role)
+	var i TenantUserRole
 	err := row.Scan(
 		&i.ID,
-		&i.MembershipID,
+		&i.UserID,
 		&i.Role,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
-const createTenantMembership = `-- name: CreateTenantMembership :one
-INSERT INTO tenant_memberships (id, user_id, tenant_id, status)
-VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, tenant_id, status, created_at
-`
-
-type CreateTenantMembershipParams struct {
-	ID       uuid.UUID `json:"id"`
-	UserID   uuid.UUID `json:"user_id"`
-	TenantID uuid.UUID `json:"tenant_id"`
-	Status   string    `json:"status"`
-}
-
-func (q *Queries) CreateTenantMembership(ctx context.Context, arg CreateTenantMembershipParams) (TenantMembership, error) {
-	row := q.db.QueryRowContext(ctx, createTenantMembership,
-		arg.ID,
-		arg.UserID,
-		arg.TenantID,
-		arg.Status,
-	)
-	var i TenantMembership
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.TenantID,
-		&i.Status,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, public_id, email, password_hash, name)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, public_id, email, password_hash, name, created_at, status
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id
 `
 
 type CreateUserParams struct {
-	ID           uuid.UUID `json:"id"`
-	PublicID     string    `json:"public_id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"password_hash"`
-	Name         string    `json:"name"`
+	ID           uuid.UUID     `json:"id"`
+	TenantID     uuid.NullUUID `json:"tenant_id"`
+	PublicID     string        `json:"public_id"`
+	Email        string        `json:"email"`
+	PasswordHash string        `json:"password_hash"`
+	Name         string        `json:"name"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, createUser,
 		arg.ID,
+		arg.TenantID,
 		arg.PublicID,
 		arg.Email,
 		arg.PasswordHash,
@@ -540,17 +566,18 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Name,
 		&i.CreatedAt,
 		&i.Status,
+		&i.TenantID,
 	)
 	return i, err
 }
 
-const deletePlatformUserRolesByUserID = `-- name: DeletePlatformUserRolesByUserID :exec
+const deletePlatformUserRolesByPlatformUserID = `-- name: DeletePlatformUserRolesByPlatformUserID :exec
 DELETE FROM platform_user_roles
-WHERE user_id = $1
+WHERE platform_user_id = $1
 `
 
-func (q *Queries) DeletePlatformUserRolesByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deletePlatformUserRolesByUserID, userID)
+func (q *Queries) DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deletePlatformUserRolesByPlatformUserID, platformUserID)
 	return err
 }
 
@@ -564,23 +591,14 @@ func (q *Queries) DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID u
 	return err
 }
 
-const deleteTenantMemberRolesByMembershipID = `-- name: DeleteTenantMemberRolesByMembershipID :exec
-DELETE FROM tenant_member_roles
-WHERE membership_id = $1
+const deleteTenantUserRolesByUserID = `-- name: DeleteTenantUserRolesByUserID :exec
+DELETE FROM tenant_user_roles
+WHERE user_id = $1
 `
 
-func (q *Queries) DeleteTenantMemberRolesByMembershipID(ctx context.Context, membershipID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteTenantMemberRolesByMembershipID, membershipID)
-	return err
-}
-
-const deleteTenantMembership = `-- name: DeleteTenantMembership :exec
-DELETE FROM tenant_memberships
-WHERE id = $1
-`
-
-func (q *Queries) DeleteTenantMembership(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteTenantMembership, id)
+// テナントユーザーのロールをすべて削除する
+func (q *Queries) DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteTenantUserRolesByUserID, userID)
 	return err
 }
 
@@ -769,15 +787,15 @@ func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, 
 }
 
 const getPlatformOperatorByPublicID = `-- name: GetPlatformOperatorByPublicID :one
-SELECT u.id,
-    u.public_id,
-    u.email,
-    u.name,
+SELECT pu.id,
+    pu.public_id,
+    pu.email,
+    pu.name,
     COALESCE(
         (
             SELECT pur.role
             FROM platform_user_roles pur
-            WHERE pur.user_id = u.id
+            WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
                     WHEN pur.role = 'super-admin' THEN 3
@@ -791,15 +809,10 @@ SELECT u.id,
         ),
         ''::text
     )::text AS role,
-    u.status,
-    u.created_at
-FROM users u
-WHERE u.public_id = $1
-    AND EXISTS (
-        SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
-    )
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+WHERE pu.public_id = $1
 LIMIT 1
 `
 
@@ -822,6 +835,71 @@ func (q *Queries) GetPlatformOperatorByPublicID(ctx context.Context, publicID st
 		&i.Email,
 		&i.Name,
 		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPlatformSessionByTokenHash = `-- name: GetPlatformSessionByTokenHash :one
+SELECT id, platform_user_id, token_hash, expires_at, revoked_at, created_at
+FROM platform_sessions
+WHERE token_hash = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPlatformSessionByTokenHash(ctx context.Context, tokenHash string) (PlatformSession, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformSessionByTokenHash, tokenHash)
+	var i PlatformSession
+	err := row.Scan(
+		&i.ID,
+		&i.PlatformUserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPlatformUserByEmail = `-- name: GetPlatformUserByEmail :one
+SELECT id, public_id, email, password_hash, name, status, created_at
+FROM platform_users
+WHERE email = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformUserByEmail, email)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPlatformUserByID = `-- name: GetPlatformUserByID :one
+SELECT id, public_id, email, password_hash, name, status, created_at
+FROM platform_users
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformUserByID, id)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
 	)
@@ -1034,7 +1112,7 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 }
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
-SELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
+SELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
 FROM sessions
 WHERE token_hash = $1
 LIMIT 1
@@ -1045,7 +1123,7 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 	var i Session
 	err := row.Scan(
 		&i.ID,
-		&i.CurrentTenantID,
+		&i.TenantID,
 		&i.UserID,
 		&i.TokenHash,
 		&i.ExpiresAt,
@@ -1056,24 +1134,24 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 }
 
 const getSessionByTokenHashForTenant = `-- name: GetSessionByTokenHashForTenant :one
-SELECT id, current_tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
+SELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
 FROM sessions
-WHERE current_tenant_id = $1
+WHERE tenant_id = $1
     AND token_hash = $2
 LIMIT 1
 `
 
 type GetSessionByTokenHashForTenantParams struct {
-	CurrentTenantID uuid.NullUUID `json:"current_tenant_id"`
-	TokenHash       string        `json:"token_hash"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	TokenHash string    `json:"token_hash"`
 }
 
 func (q *Queries) GetSessionByTokenHashForTenant(ctx context.Context, arg GetSessionByTokenHashForTenantParams) (Session, error) {
-	row := q.db.QueryRowContext(ctx, getSessionByTokenHashForTenant, arg.CurrentTenantID, arg.TokenHash)
+	row := q.db.QueryRowContext(ctx, getSessionByTokenHashForTenant, arg.TenantID, arg.TokenHash)
 	var i Session
 	err := row.Scan(
 		&i.ID,
-		&i.CurrentTenantID,
+		&i.TenantID,
 		&i.UserID,
 		&i.TokenHash,
 		&i.ExpiresAt,
@@ -1131,30 +1209,27 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 	return i, err
 }
 
-const getTenantMembershipByUserAndTenant = `-- name: GetTenantMembershipByUserAndTenant :one
-SELECT tm.id, tm.user_id, tm.tenant_id, tm.status, tm.created_at
-FROM tenant_memberships tm
-WHERE tm.user_id = $1
-    AND tm.tenant_id = $2
+const getTenantByUserID = `-- name: GetTenantByUserID :one
+SELECT t.id,
+    t.public_id,
+    t.created_at
+FROM tenants t
+    JOIN users u ON u.tenant_id = t.id
+WHERE u.id = $1
 LIMIT 1
 `
 
-type GetTenantMembershipByUserAndTenantParams struct {
-	UserID   uuid.UUID `json:"user_id"`
-	TenantID uuid.UUID `json:"tenant_id"`
+type GetTenantByUserIDRow struct {
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
-// ユーザーとテナントIDでメンバーシップを取得する
-func (q *Queries) GetTenantMembershipByUserAndTenant(ctx context.Context, arg GetTenantMembershipByUserAndTenantParams) (TenantMembership, error) {
-	row := q.db.QueryRowContext(ctx, getTenantMembershipByUserAndTenant, arg.UserID, arg.TenantID)
-	var i TenantMembership
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.TenantID,
-		&i.Status,
-		&i.CreatedAt,
-	)
+// ユーザーが所属するテナントを取得
+func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getTenantByUserID, id)
+	var i GetTenantByUserIDRow
+	err := row.Scan(&i.ID, &i.PublicID, &i.CreatedAt)
 	return i, err
 }
 
@@ -1178,82 +1253,17 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UU
 	return i, err
 }
 
-const getTenantsByEndUser = `-- name: GetTenantsByEndUser :many
-SELECT DISTINCT t.id,
-    t.public_id,
-    t.created_at
-FROM tenants t
-    JOIN tenant_memberships tm ON tm.tenant_id = t.id
-WHERE tm.user_id = $1
-    AND tm.status = 'active'
-ORDER BY t.created_at DESC
-`
-
-type GetTenantsByEndUserRow struct {
-	ID        uuid.UUID `json:"id"`
-	PublicID  string    `json:"public_id"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-// エンドユーザーが所属するテナント一覧を取得
-func (q *Queries) GetTenantsByEndUser(ctx context.Context, userID uuid.UUID) ([]GetTenantsByEndUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTenantsByEndUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetTenantsByEndUserRow
-	for rows.Next() {
-		var i GetTenantsByEndUserRow
-		if err := rows.Scan(&i.ID, &i.PublicID, &i.CreatedAt); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, public_id, email, password_hash, name, created_at, status
-FROM users
-WHERE email = $1
-LIMIT 1
-`
-
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.PublicID,
-		&i.Email,
-		&i.PasswordHash,
-		&i.Name,
-		&i.CreatedAt,
-		&i.Status,
-	)
-	return i, err
-}
-
 const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
-SELECT u.id, u.public_id, u.email, u.password_hash, u.name, u.created_at, u.status
-FROM users u
-    JOIN tenant_memberships tm ON tm.user_id = u.id
-    AND tm.tenant_id = $1
-    AND tm.status = 'active'
-WHERE u.email = $2
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id
+FROM users
+WHERE tenant_id = $1
+    AND email = $2
 LIMIT 1
 `
 
 type GetUserByEmailForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Email    string    `json:"email"`
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	Email    string        `json:"email"`
 }
 
 func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error) {
@@ -1267,12 +1277,13 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 		&i.Name,
 		&i.CreatedAt,
 		&i.Status,
+		&i.TenantID,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, name, created_at, status
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id
 FROM users
 WHERE id = $1
 `
@@ -1288,6 +1299,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.Name,
 		&i.CreatedAt,
 		&i.Status,
+		&i.TenantID,
 	)
 	return i, err
 }
@@ -1298,6 +1310,7 @@ SELECT u.id,
     u.name,
     u.email,
     u.status,
+    u.tenant_id,
     u.created_at
 FROM users u
 WHERE u.public_id = $1
@@ -1305,15 +1318,16 @@ LIMIT 1
 `
 
 type GetUserByPublicIDRow struct {
-	ID        uuid.UUID `json:"id"`
-	PublicID  string    `json:"public_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID     `json:"id"`
+	PublicID  string        `json:"public_id"`
+	Name      string        `json:"name"`
+	Email     string        `json:"email"`
+	Status    string        `json:"status"`
+	TenantID  uuid.NullUUID `json:"tenant_id"`
+	CreatedAt time.Time     `json:"created_at"`
 }
 
-// public_idでユーザーを取得
+// public_idでテナントユーザーを取得
 func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByPublicID, publicID)
 	var i GetUserByPublicIDRow
@@ -1323,6 +1337,52 @@ func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (GetUs
 		&i.Name,
 		&i.Email,
 		&i.Status,
+		&i.TenantID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByPublicIDForTenant = `-- name: GetUserByPublicIDForTenant :one
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.tenant_id,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND u.public_id = $2
+LIMIT 1
+`
+
+type GetUserByPublicIDForTenantParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	PublicID string        `json:"public_id"`
+}
+
+type GetUserByPublicIDForTenantRow struct {
+	ID        uuid.UUID     `json:"id"`
+	PublicID  string        `json:"public_id"`
+	Name      string        `json:"name"`
+	Email     string        `json:"email"`
+	Status    string        `json:"status"`
+	TenantID  uuid.NullUUID `json:"tenant_id"`
+	CreatedAt time.Time     `json:"created_at"`
+}
+
+// テナントスコープで public_id からユーザーを取得
+func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var i GetUserByPublicIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.Email,
+		&i.Status,
+		&i.TenantID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -1494,13 +1554,8 @@ SELECT u.id,
 FROM users u
 WHERE NOT EXISTS (
         SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
-    )
-    AND NOT EXISTS (
-        SELECT 1
-        FROM tenant_memberships tm
-        WHERE tm.user_id = u.id
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
     )
     AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)
     AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)
@@ -1528,7 +1583,7 @@ type ListEndUsersRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// エンドユーザー（platform_user_roles未保持）の一覧取得
+// エンドユーザー（tenant_user_roles未保持）の一覧取得
 func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEndUsers,
 		arg.CreatedAfter,
@@ -1810,14 +1865,14 @@ func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenant
 }
 
 const listPlatformOperators = `-- name: ListPlatformOperators :many
-SELECT u.public_id,
-    u.email,
-    u.name,
+SELECT pu.public_id,
+    pu.email,
+    pu.name,
     COALESCE(
         (
             SELECT pur.role
             FROM platform_user_roles pur
-            WHERE pur.user_id = u.id
+            WHERE pur.platform_user_id = pu.id
             ORDER BY CASE
                     WHEN pur.role = 'platform_super_admin' THEN 3
                     WHEN pur.role = 'super-admin' THEN 3
@@ -1831,15 +1886,10 @@ SELECT u.public_id,
         ),
         ''::text
     )::text AS role,
-    u.status,
-    u.created_at
-FROM users u
-WHERE EXISTS (
-        SELECT 1
-        FROM platform_user_roles pur
-        WHERE pur.user_id = u.id
-    )
-ORDER BY u.created_at DESC
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+ORDER BY pu.created_at DESC
 `
 
 type ListPlatformOperatorsRow struct {
@@ -1884,12 +1934,12 @@ func (q *Queries) ListPlatformOperators(ctx context.Context) ([]ListPlatformOper
 const listPlatformUserRoles = `-- name: ListPlatformUserRoles :many
 SELECT role
 FROM platform_user_roles
-WHERE user_id = $1
+WHERE platform_user_id = $1
 ORDER BY role
 `
 
-func (q *Queries) ListPlatformUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformUserRoles, userID)
+func (q *Queries) ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listPlatformUserRoles, platformUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -2002,11 +2052,11 @@ FROM (
         UNION ALL
         SELECT 'operator_role_granted'::text AS event_type,
             'Operator Role Granted'::text AS action,
-            u.public_id::text AS target,
+            pu.public_id::text AS target,
             ''::text AS actor,
             pur.created_at AS occurred_at
         FROM platform_user_roles pur
-            JOIN users u ON u.id = pur.user_id
+            JOIN platform_users pu ON pu.id = pur.platform_user_id
         UNION ALL
         SELECT 'end_user_created'::text AS event_type,
             'End User Created'::text AS action,
@@ -2016,8 +2066,8 @@ FROM (
         FROM users u
         WHERE NOT EXISTS (
                 SELECT 1
-                FROM platform_user_roles pur
-                WHERE pur.user_id = u.id
+                FROM tenant_user_roles tur
+                WHERE tur.user_id = u.id
             )
     ) events
 ORDER BY occurred_at DESC
@@ -2174,46 +2224,81 @@ func (q *Queries) ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds [
 	return items, nil
 }
 
-const listTenantMemberships = `-- name: ListTenantMemberships :many
+const listTenantUserRoles = `-- name: ListTenantUserRoles :many
+SELECT role
+FROM tenant_user_roles
+WHERE user_id = $1
+ORDER BY role
+`
+
+// テナントユーザーのロール一覧を取得する
+func (q *Queries) ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantUserRoles, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var role string
+		if err := rows.Scan(&role); err != nil {
+			return nil, err
+		}
+		items = append(items, role)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantUsers = `-- name: ListTenantUsers :many
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
     u.email,
     COALESCE(
         (
-            SELECT tmr.role
-            FROM tenant_member_roles tmr
-            WHERE tmr.membership_id = tm.id
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
             ORDER BY CASE
-                    WHEN tmr.role = 'tenant_admin' THEN 3
-                    WHEN tmr.role = 'admin' THEN 3
-                    WHEN tmr.role = 'tenant_editor' THEN 2
-                    WHEN tmr.role = 'editor' THEN 2
-                    WHEN tmr.role = 'tenant_auditor' THEN 1
-                    WHEN tmr.role = 'auditor' THEN 1
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    WHEN tur.role = 'auditor' THEN 1
                     ELSE 0
                 END DESC,
-                tmr.role ASC
+                tur.role ASC
             LIMIT 1
         ),
         ''::text
     )::text AS role,
-    tm.status,
-    tm.created_at
-FROM tenant_memberships tm
-    JOIN users u ON u.id = tm.user_id
-WHERE tm.tenant_id = $1
-ORDER BY tm.created_at DESC
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+ORDER BY u.created_at DESC
 LIMIT $3 OFFSET $2
 `
 
-type ListTenantMembershipsParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Offset   int32     `json:"offset"`
-	Limit    int32     `json:"limit"`
+type ListTenantUsersParams struct {
+	TenantID uuid.NullUUID `json:"tenant_id"`
+	Offset   int32         `json:"offset"`
+	Limit    int32         `json:"limit"`
 }
 
-type ListTenantMembershipsRow struct {
+type ListTenantUsersRow struct {
 	UserID    uuid.UUID `json:"user_id"`
 	PublicID  string    `json:"public_id"`
 	Name      string    `json:"name"`
@@ -2223,16 +2308,16 @@ type ListTenantMembershipsRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// テナントに所属するメンバー一覧を取得する
-func (q *Queries) ListTenantMemberships(ctx context.Context, arg ListTenantMembershipsParams) ([]ListTenantMembershipsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantMemberships, arg.TenantID, arg.Offset, arg.Limit)
+// テナントに所属する管理・編集ユーザー一覧を取得する
+func (q *Queries) ListTenantUsers(ctx context.Context, arg ListTenantUsersParams) ([]ListTenantUsersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantUsers, arg.TenantID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListTenantMembershipsRow
+	var items []ListTenantUsersRow
 	for rows.Next() {
-		var i ListTenantMembershipsRow
+		var i ListTenantUsersRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.PublicID,
@@ -2245,44 +2330,6 @@ func (q *Queries) ListTenantMemberships(ctx context.Context, arg ListTenantMembe
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listTenantRolesByUserAndTenant = `-- name: ListTenantRolesByUserAndTenant :many
-SELECT tmr.role
-FROM tenant_memberships tm
-    JOIN tenant_member_roles tmr ON tmr.membership_id = tm.id
-WHERE tm.user_id = $1
-    AND tm.tenant_id = $2
-    AND tm.status = 'active'
-ORDER BY tmr.role
-`
-
-type ListTenantRolesByUserAndTenantParams struct {
-	UserID   uuid.UUID `json:"user_id"`
-	TenantID uuid.UUID `json:"tenant_id"`
-}
-
-func (q *Queries) ListTenantRolesByUserAndTenant(ctx context.Context, arg ListTenantRolesByUserAndTenantParams) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantRolesByUserAndTenant, arg.UserID, arg.TenantID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var role string
-		if err := rows.Scan(&role); err != nil {
-			return nil, err
-		}
-		items = append(items, role)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2362,6 +2409,17 @@ func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID)
 	return err
 }
 
+const revokePlatformSession = `-- name: RevokePlatformSession :exec
+UPDATE platform_sessions
+SET revoked_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) RevokePlatformSession(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, revokePlatformSession, id)
+	return err
+}
+
 const revokeSession = `-- name: RevokeSession :exec
 UPDATE sessions
 SET revoked_at = NOW()
@@ -2370,6 +2428,19 @@ WHERE id = $1
 
 func (q *Queries) RevokeSession(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, revokeSession, id)
+	return err
+}
+
+const terminatePlatformUserSessions = `-- name: TerminatePlatformUserSessions :exec
+UPDATE platform_sessions
+SET revoked_at = NOW()
+WHERE platform_user_id = $1
+    AND revoked_at IS NULL
+`
+
+// プラットフォームユーザーの全セッションを失効させる
+func (q *Queries) TerminatePlatformUserSessions(ctx context.Context, platformUserID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, terminatePlatformUserSessions, platformUserID)
 	return err
 }
 
@@ -2494,6 +2565,34 @@ func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error 
 	return err
 }
 
+const updatePlatformUserStatus = `-- name: UpdatePlatformUserStatus :one
+UPDATE platform_users
+SET status = $2
+WHERE public_id = $1
+RETURNING id, public_id, email, password_hash, name, status, created_at
+`
+
+type UpdatePlatformUserStatusParams struct {
+	PublicID string `json:"public_id"`
+	Status   string `json:"status"`
+}
+
+// プラットフォームユーザーのステータスを更新
+func (q *Queries) UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, updatePlatformUserStatus, arg.PublicID, arg.Status)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const updateSeriesBase = `-- name: UpdateSeriesBase :exec
 UPDATE series
 SET title = $2,
@@ -2603,7 +2702,7 @@ const updateUserStatus = `-- name: UpdateUserStatus :one
 UPDATE users
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id
 `
 
 type UpdateUserStatusParams struct {
@@ -2623,6 +2722,7 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 		&i.Name,
 		&i.CreatedAt,
 		&i.Status,
+		&i.TenantID,
 	)
 	return i, err
 }

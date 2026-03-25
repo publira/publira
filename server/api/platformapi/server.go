@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/auditlog"
@@ -25,8 +26,8 @@ type platformServer struct {
 }
 
 type platformActor struct {
-	UserPublicID string
-	Role         string
+	UserID uuid.UUID
+	Role   string
 }
 
 type platformActorContextKey struct{}
@@ -56,7 +57,7 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger) http.Handler {
 				if err != nil {
 					return nil, err
 				}
-				ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserPublicID: user.PublicID, Role: role})
+				ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserID: user.ID, Role: role})
 				return next(ctx, req)
 			}
 		})),

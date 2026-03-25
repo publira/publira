@@ -297,15 +297,15 @@ func (s *adminServer) CreateSeries(
 		return nil, err
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "series_created",
-			TargetType:        "series",
-			TargetID:          base.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "series_created",
+			TargetType:  "series",
+			TargetID:    base.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: &publirattypesv1.Series{
@@ -362,15 +362,15 @@ func (s *adminServer) UpdateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "series_updated",
-			TargetType:        "series",
-			TargetID:          current.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "series_updated",
+			TargetType:  "series",
+			TargetID:    current.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	series := toProtoSeries(updated)
@@ -512,15 +512,15 @@ func (s *adminServer) CreateCreator(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "creator_created",
-			TargetType:        "creator",
-			TargetID:          created.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "creator_created",
+			TargetType:  "creator",
+			TargetID:    created.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.CreateCreatorResponse{Creator: toProtoCreator(created.PublicID, created.Name, created.ProfileText.String)}), nil
@@ -560,15 +560,15 @@ func (s *adminServer) UpdateCreator(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "creator_updated",
-			TargetType:        "creator",
-			TargetID:          updated.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "creator_updated",
+			TargetType:  "creator",
+			TargetID:    updated.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateCreatorResponse{Creator: toProtoCreator(updated.PublicID, updated.Name, updated.ProfileText.String)}), nil
@@ -599,15 +599,15 @@ func (s *adminServer) CreateLabel(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "label_created",
-			TargetType:        "label",
-			TargetID:          created.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "label_created",
+			TargetType:  "label",
+			TargetID:    created.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: toProtoLabel(created.PublicID, created.Name)}), nil
@@ -643,15 +643,15 @@ func (s *adminServer) UpdateLabel(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "label_updated",
-			TargetType:        "label",
-			TargetID:          updated.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "label_updated",
+			TargetType:  "label",
+			TargetID:    updated.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: toProtoLabel(updated.PublicID, updated.Name)}), nil
@@ -849,15 +849,15 @@ func (s *adminServer) CreateEpisode(
 		episode.PublishedAt = listing.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "episode_created",
-			TargetType:        "episode",
-			TargetID:          base.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "episode_created",
+			TargetType:  "episode",
+			TargetID:    base.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.CreateEpisodeResponse{Episode: episode}), nil
@@ -936,15 +936,15 @@ func (s *adminServer) UploadEpisodeImages(
 		}
 		items = append(items, toProtoEpisodeImage(created))
 		if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-			s.recorder.Record(ctx, auditlog.Entry{
-				ActorUserPublicID: sessionCtx.User.PublicID,
-				ActorRole:         sessionCtx.Role,
-				TenantPublicID:    tenant.PublicID,
-				Action:            "episode_image_uploaded",
-				TargetType:        "episode",
-				TargetID:          req.Msg.EpisodePublicId,
-				Outcome:           auditlog.OutcomeSuccess,
-				ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+			s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+				TenantID:    tenant.ID,
+				ActorUserID: sessionCtx.User.ID,
+				ActorRole:   sessionCtx.Role,
+				Action:      "episode_image_uploaded",
+				TargetType:  "episode",
+				TargetID:    req.Msg.EpisodePublicId,
+				Outcome:     auditlog.OutcomeSuccess,
+				ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 			})
 		}
 	}
@@ -1085,15 +1085,15 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: sessionCtx.User.PublicID,
-			ActorRole:         sessionCtx.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "episode_updated",
-			TargetType:        "episode",
-			TargetID:          ep.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+			TenantID:    tenant.ID,
+			ActorUserID: sessionCtx.User.ID,
+			ActorRole:   sessionCtx.Role,
+			Action:      "episode_updated",
+			TargetType:  "episode",
+			TargetID:    ep.PublicID,
+			Outcome:     auditlog.OutcomeSuccess,
+			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: toProtoEpisode(ep)}), nil
