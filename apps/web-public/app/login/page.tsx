@@ -2,10 +2,6 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -17,14 +13,11 @@ import {
   loginPublic,
   sanitizeRedirectPath,
   sessionCookieOptions,
-} from "../../../lib/auth";
+} from "../../lib/auth";
 
 export const metadata: Metadata = {
   title: "ログイン",
 };
-
-export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_public_id");
 
 const buildLoginErrorPath = (message: string, returnToPath: string): string => {
   const params = new URLSearchParams({
@@ -39,12 +32,11 @@ const loginAction = async (formData: FormData): Promise<void> => {
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const tenantPublicId = String(formData.get("tenantPublicId") ?? "").trim();
   const returnToPath = sanitizeRedirectPath(
     String(formData.get("returnTo") ?? "/")
   );
 
-  const result = await loginPublic(email, password, tenantPublicId);
+  const result = await loginPublic(email, password);
   if (!result) {
     redirect(
       buildLoginErrorPath(
@@ -75,7 +67,7 @@ const pickFirstQueryParam = (
 };
 
 const getLoginViewModel = async (
-  searchParams: PageProps<"/[tenant_public_id]/login">["searchParams"]
+  searchParams: PageProps<"/login">["searchParams"]
 ): Promise<{ errorMessage?: string; returnToPath: string }> => {
   const params = await searchParams;
   const error = pickFirstQueryParam(params.error);
@@ -90,16 +82,13 @@ const getLoginViewModel = async (
 const LoginForm = ({
   errorMessage,
   returnToPath,
-  tenantPublicId,
 }: {
   errorMessage?: string;
   returnToPath: string;
-  tenantPublicId: string;
 }) => (
   <>
     <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <form action={loginAction} className="space-y-4">
-        <input name="tenantPublicId" type="hidden" value={tenantPublicId} />
         <input name="returnTo" type="hidden" value={returnToPath} />
 
         <Field>
@@ -157,29 +146,13 @@ const LoginForm = ({
 
 const LoginFormContent = async ({
   searchParams,
-  tenantPublicId,
-}: {
-  searchParams: PageProps<"/[tenant_public_id]/login">["searchParams"];
-  tenantPublicId: string;
-}) => {
+}: Pick<PageProps<"/login">, "searchParams">) => {
   const { errorMessage, returnToPath } = await getLoginViewModel(searchParams);
 
-  return (
-    <LoginForm
-      errorMessage={errorMessage}
-      returnToPath={returnToPath}
-      tenantPublicId={tenantPublicId}
-    />
-  );
+  return <LoginForm errorMessage={errorMessage} returnToPath={returnToPath} />;
 };
 
-export default async function LoginPage({
-  params,
-  searchParams,
-}: PageProps<"/[tenant_public_id]/login">) {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
+export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
@@ -189,15 +162,9 @@ export default async function LoginPage({
             静かに読む、持続可能に出版する
           </p>
         </div>
-        <Suspense
-          fallback={
-            <LoginForm returnToPath="/" tenantPublicId={tenant_public_id} />
-          }
-        >
-          <LoginFormContent
-            searchParams={searchParams}
-            tenantPublicId={tenant_public_id}
-          />
+
+        <Suspense fallback={<LoginForm returnToPath="/" />}>
+          <LoginFormContent searchParams={searchParams} />
         </Suspense>
       </div>
     </main>

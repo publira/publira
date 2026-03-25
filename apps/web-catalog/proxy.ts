@@ -61,5 +61,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 };
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!web-catalog-assets/|_next/static|_next/image|favicon.ico).*)",
+  ],
 };

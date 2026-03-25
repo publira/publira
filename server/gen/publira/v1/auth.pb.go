@@ -134,6 +134,126 @@ func (x *CreateSessionResponse) GetSession() *v1.Session {
 	return nil
 }
 
+type CreateUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateUserRequest) Reset() {
+	*x = CreateUserRequest{}
+	mi := &file_publira_v1_auth_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateUserRequest) ProtoMessage() {}
+
+func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateUserRequest.ProtoReflect.Descriptor instead.
+func (*CreateUserRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CreateUserRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *CreateUserRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+type CreateUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Session       *v1.Session            `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateUserResponse) Reset() {
+	*x = CreateUserResponse{}
+	mi := &file_publira_v1_auth_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateUserResponse) ProtoMessage() {}
+
+func (x *CreateUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateUserResponse.ProtoReflect.Descriptor instead.
+func (*CreateUserResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CreateUserResponse) GetUser() *v1.User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *CreateUserResponse) GetSession() *v1.Session {
+	if x != nil {
+		return x.Session
+	}
+	return nil
+}
+
 type DeleteSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -144,7 +264,7 @@ type DeleteSessionRequest struct {
 
 func (x *DeleteSessionRequest) Reset() {
 	*x = DeleteSessionRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[2]
+	mi := &file_publira_v1_auth_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -156,7 +276,7 @@ func (x *DeleteSessionRequest) String() string {
 func (*DeleteSessionRequest) ProtoMessage() {}
 
 func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[2]
+	mi := &file_publira_v1_auth_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -169,7 +289,7 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{2}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *DeleteSessionRequest) GetTenant() *v1.TenantContext {
@@ -194,7 +314,7 @@ type DeleteSessionResponse struct {
 
 func (x *DeleteSessionResponse) Reset() {
 	*x = DeleteSessionResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[3]
+	mi := &file_publira_v1_auth_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -206,7 +326,7 @@ func (x *DeleteSessionResponse) String() string {
 func (*DeleteSessionResponse) ProtoMessage() {}
 
 func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[3]
+	mi := &file_publira_v1_auth_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -219,7 +339,7 @@ func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{3}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{5}
 }
 
 type GetMeRequest struct {
@@ -232,7 +352,7 @@ type GetMeRequest struct {
 
 func (x *GetMeRequest) Reset() {
 	*x = GetMeRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[4]
+	mi := &file_publira_v1_auth_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -244,7 +364,7 @@ func (x *GetMeRequest) String() string {
 func (*GetMeRequest) ProtoMessage() {}
 
 func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[4]
+	mi := &file_publira_v1_auth_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -257,7 +377,7 @@ func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
 func (*GetMeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{4}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetMeRequest) GetTenant() *v1.TenantContext {
@@ -283,7 +403,7 @@ type GetMeResponse struct {
 
 func (x *GetMeResponse) Reset() {
 	*x = GetMeResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[5]
+	mi := &file_publira_v1_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -295,7 +415,7 @@ func (x *GetMeResponse) String() string {
 func (*GetMeResponse) ProtoMessage() {}
 
 func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[5]
+	mi := &file_publira_v1_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -308,7 +428,7 @@ func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeResponse.ProtoReflect.Descriptor instead.
 func (*GetMeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{5}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetMeResponse) GetUser() *v1.User {
@@ -327,7 +447,7 @@ type GetTenantByDomainRequest struct {
 
 func (x *GetTenantByDomainRequest) Reset() {
 	*x = GetTenantByDomainRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_v1_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -339,7 +459,7 @@ func (x *GetTenantByDomainRequest) String() string {
 func (*GetTenantByDomainRequest) ProtoMessage() {}
 
 func (x *GetTenantByDomainRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_v1_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -352,7 +472,7 @@ func (x *GetTenantByDomainRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantByDomainRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantByDomainRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetTenantByDomainRequest) GetDomains() []string {
@@ -371,7 +491,7 @@ type GetTenantByDomainResponse struct {
 
 func (x *GetTenantByDomainResponse) Reset() {
 	*x = GetTenantByDomainResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_v1_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -383,7 +503,7 @@ func (x *GetTenantByDomainResponse) String() string {
 func (*GetTenantByDomainResponse) ProtoMessage() {}
 
 func (x *GetTenantByDomainResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_v1_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,7 +516,7 @@ func (x *GetTenantByDomainResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantByDomainResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantByDomainResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{7}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetTenantByDomainResponse) GetTenantPublicId() string {
@@ -415,7 +535,7 @@ type GetAdminTenantByDomainRequest struct {
 
 func (x *GetAdminTenantByDomainRequest) Reset() {
 	*x = GetAdminTenantByDomainRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_v1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -427,7 +547,7 @@ func (x *GetAdminTenantByDomainRequest) String() string {
 func (*GetAdminTenantByDomainRequest) ProtoMessage() {}
 
 func (x *GetAdminTenantByDomainRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_v1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -440,7 +560,7 @@ func (x *GetAdminTenantByDomainRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminTenantByDomainRequest.ProtoReflect.Descriptor instead.
 func (*GetAdminTenantByDomainRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetAdminTenantByDomainRequest) GetDomains() []string {
@@ -459,7 +579,7 @@ type GetAdminTenantByDomainResponse struct {
 
 func (x *GetAdminTenantByDomainResponse) Reset() {
 	*x = GetAdminTenantByDomainResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_v1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -471,7 +591,7 @@ func (x *GetAdminTenantByDomainResponse) String() string {
 func (*GetAdminTenantByDomainResponse) ProtoMessage() {}
 
 func (x *GetAdminTenantByDomainResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_v1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -484,7 +604,7 @@ func (x *GetAdminTenantByDomainResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminTenantByDomainResponse.ProtoReflect.Descriptor instead.
 func (*GetAdminTenantByDomainResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetAdminTenantByDomainResponse) GetTenantPublicId() string {
@@ -506,6 +626,14 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x03 \x01(\tR\bpassword\"x\n" +
 	"\x15CreateSessionResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x123\n" +
+	"\asession\x18\x02 \x01(\v2\x19.publira.types.v1.SessionR\asession\"\x92\x01\n" +
+	"\x11CreateUserRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1a\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\"u\n" +
+	"\x12CreateUserResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x123\n" +
 	"\asession\x18\x02 \x01(\v2\x19.publira.types.v1.SessionR\asession\"n\n" +
 	"\x14DeleteSessionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
@@ -525,9 +653,11 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x1dGetAdminTenantByDomainRequest\x12\x18\n" +
 	"\adomains\x18\x01 \x03(\tR\adomains\"J\n" +
 	"\x1eGetAdminTenantByDomainResponse\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId2\xd4\x03\n" +
+	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId2\xa3\x04\n" +
 	"\vAuthService\x12V\n" +
-	"\rCreateSession\x12 .publira.v1.CreateSessionRequest\x1a!.publira.v1.CreateSessionResponse\"\x00\x12V\n" +
+	"\rCreateSession\x12 .publira.v1.CreateSessionRequest\x1a!.publira.v1.CreateSessionResponse\"\x00\x12M\n" +
+	"\n" +
+	"CreateUser\x12\x1d.publira.v1.CreateUserRequest\x1a\x1e.publira.v1.CreateUserResponse\"\x00\x12V\n" +
 	"\rDeleteSession\x12 .publira.v1.DeleteSessionRequest\x1a!.publira.v1.DeleteSessionResponse\"\x00\x12>\n" +
 	"\x05GetMe\x12\x18.publira.v1.GetMeRequest\x1a\x19.publira.v1.GetMeResponse\"\x00\x12b\n" +
 	"\x11GetTenantByDomain\x12$.publira.v1.GetTenantByDomainRequest\x1a%.publira.v1.GetTenantByDomainResponse\"\x00\x12q\n" +
@@ -545,44 +675,51 @@ func file_publira_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_v1_auth_proto_rawDescData
 }
 
-var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_publira_v1_auth_proto_goTypes = []any{
 	(*CreateSessionRequest)(nil),           // 0: publira.v1.CreateSessionRequest
 	(*CreateSessionResponse)(nil),          // 1: publira.v1.CreateSessionResponse
-	(*DeleteSessionRequest)(nil),           // 2: publira.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),          // 3: publira.v1.DeleteSessionResponse
-	(*GetMeRequest)(nil),                   // 4: publira.v1.GetMeRequest
-	(*GetMeResponse)(nil),                  // 5: publira.v1.GetMeResponse
-	(*GetTenantByDomainRequest)(nil),       // 6: publira.v1.GetTenantByDomainRequest
-	(*GetTenantByDomainResponse)(nil),      // 7: publira.v1.GetTenantByDomainResponse
-	(*GetAdminTenantByDomainRequest)(nil),  // 8: publira.v1.GetAdminTenantByDomainRequest
-	(*GetAdminTenantByDomainResponse)(nil), // 9: publira.v1.GetAdminTenantByDomainResponse
-	(*v1.TenantContext)(nil),               // 10: publira.types.v1.TenantContext
-	(*v1.User)(nil),                        // 11: publira.types.v1.User
-	(*v1.Session)(nil),                     // 12: publira.types.v1.Session
+	(*CreateUserRequest)(nil),              // 2: publira.v1.CreateUserRequest
+	(*CreateUserResponse)(nil),             // 3: publira.v1.CreateUserResponse
+	(*DeleteSessionRequest)(nil),           // 4: publira.v1.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),          // 5: publira.v1.DeleteSessionResponse
+	(*GetMeRequest)(nil),                   // 6: publira.v1.GetMeRequest
+	(*GetMeResponse)(nil),                  // 7: publira.v1.GetMeResponse
+	(*GetTenantByDomainRequest)(nil),       // 8: publira.v1.GetTenantByDomainRequest
+	(*GetTenantByDomainResponse)(nil),      // 9: publira.v1.GetTenantByDomainResponse
+	(*GetAdminTenantByDomainRequest)(nil),  // 10: publira.v1.GetAdminTenantByDomainRequest
+	(*GetAdminTenantByDomainResponse)(nil), // 11: publira.v1.GetAdminTenantByDomainResponse
+	(*v1.TenantContext)(nil),               // 12: publira.types.v1.TenantContext
+	(*v1.User)(nil),                        // 13: publira.types.v1.User
+	(*v1.Session)(nil),                     // 14: publira.types.v1.Session
 }
 var file_publira_v1_auth_proto_depIdxs = []int32{
-	10, // 0: publira.v1.CreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 1: publira.v1.CreateSessionResponse.user:type_name -> publira.types.v1.User
-	12, // 2: publira.v1.CreateSessionResponse.session:type_name -> publira.types.v1.Session
-	10, // 3: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 4: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 5: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
-	0,  // 6: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
-	2,  // 7: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
-	4,  // 8: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	6,  // 9: publira.v1.AuthService.GetTenantByDomain:input_type -> publira.v1.GetTenantByDomainRequest
-	8,  // 10: publira.v1.AuthService.GetAdminTenantByDomain:input_type -> publira.v1.GetAdminTenantByDomainRequest
-	1,  // 11: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
-	3,  // 12: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
-	5,  // 13: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	7,  // 14: publira.v1.AuthService.GetTenantByDomain:output_type -> publira.v1.GetTenantByDomainResponse
-	9,  // 15: publira.v1.AuthService.GetAdminTenantByDomain:output_type -> publira.v1.GetAdminTenantByDomainResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	12, // 0: publira.v1.CreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 1: publira.v1.CreateSessionResponse.user:type_name -> publira.types.v1.User
+	14, // 2: publira.v1.CreateSessionResponse.session:type_name -> publira.types.v1.Session
+	12, // 3: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 4: publira.v1.CreateUserResponse.user:type_name -> publira.types.v1.User
+	14, // 5: publira.v1.CreateUserResponse.session:type_name -> publira.types.v1.Session
+	12, // 6: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	12, // 7: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 8: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
+	0,  // 9: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
+	2,  // 10: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
+	4,  // 11: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
+	6,  // 12: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
+	8,  // 13: publira.v1.AuthService.GetTenantByDomain:input_type -> publira.v1.GetTenantByDomainRequest
+	10, // 14: publira.v1.AuthService.GetAdminTenantByDomain:input_type -> publira.v1.GetAdminTenantByDomainRequest
+	1,  // 15: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
+	3,  // 16: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
+	5,  // 17: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
+	7,  // 18: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
+	9,  // 19: publira.v1.AuthService.GetTenantByDomain:output_type -> publira.v1.GetTenantByDomainResponse
+	11, // 20: publira.v1.AuthService.GetAdminTenantByDomain:output_type -> publira.v1.GetAdminTenantByDomainResponse
+	15, // [15:21] is the sub-list for method output_type
+	9,  // [9:15] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_auth_proto_init() }
@@ -596,7 +733,7 @@ func file_publira_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_auth_proto_rawDesc), len(file_publira_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
