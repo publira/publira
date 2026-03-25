@@ -857,3 +857,47 @@ WHERE user_id = $1
 -- ユーザーを物理削除（外部キー制約により関連データも削除）
 DELETE FROM users
 WHERE id = $1;
+-- name: CountPublishedSeriesForTenant :one
+-- テナントの公開中シリーズ数を取得する（ダッシュボード用）
+SELECT COUNT(*)::int AS published_series_count
+FROM series
+WHERE tenant_id = $1
+    AND is_published = true;
+
+-- name: CountDraftEpisodesForTenant :one
+-- テナントの下書きエピソード数を取得する（ダッシュボード用）
+SELECT COUNT(*)::int AS draft_episode_count
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status = 'draft';
+
+-- name: CountScheduledEpisodesForTenant :one
+-- テナントの予約済みエピソード数を取得する（ダッシュボード用）
+SELECT COUNT(*)::int AS scheduled_episode_count
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status = 'scheduled';
+
+-- name: ListRecentEpisodesForDashboard :many
+-- ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
+SELECT
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    el.status,
+    el.scheduled_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status IN ('draft', 'scheduled')
+ORDER BY
+    CASE WHEN el.status = 'scheduled' THEN 0 ELSE 1 END ASC,
+    el.scheduled_at ASC NULLS LAST,
+    e.created_at DESC
+LIMIT $2;

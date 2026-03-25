@@ -13,9 +13,15 @@ import (
 type Querier interface {
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
+	// テナントの下書きエピソード数を取得する（ダッシュボード用）
+	CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountPendingEndUsers(ctx context.Context) (int32, error)
 	// プラットフォーム管理ユーザー数を取得する (初期セットアップ判定用)
 	CountPlatformUsers(ctx context.Context) (int32, error)
+	// テナントの公開中シリーズ数を取得する（ダッシュボード用）
+	CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
+	// テナントの予約済みエピソード数を取得する（ダッシュボード用）
+	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
 	// エピソードのBaseレコードを作成する
@@ -86,6 +92,8 @@ type Querier interface {
 	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
+	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
+	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)
 	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
