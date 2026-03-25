@@ -1,0 +1,72 @@
+import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+
+export interface PlatformDashboardRecentEvent {
+  action: string;
+  actor: string;
+  at: string;
+  eventType: string;
+  target: string;
+}
+
+export interface PlatformDashboardSummary {
+  activeTenants: number;
+  pendingEndUsers: number;
+  recentEvents: PlatformDashboardRecentEvent[];
+  suspendedTenants: number;
+  totalTenants: number;
+}
+
+export type GetPlatformDashboardSummaryResult =
+  | { ok: true; summary: PlatformDashboardSummary }
+  | { ok: false; message: string };
+
+const normalizeRecentEventsLimit = (value?: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 10;
+  }
+
+  return Math.max(1, Math.min(50, Math.trunc(value)));
+};
+
+export const getPlatformDashboardSummary = async (input?: {
+  recentEventsLimit?: number;
+}): Promise<GetPlatformDashboardSummaryResult> => {
+  const sid = await resolveSessionId();
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.dashboard.getDashboardSummary(
+      {
+        recentEventsLimit: normalizeRecentEventsLimit(input?.recentEventsLimit),
+      } as never,
+      buildSessionHeaders(sid)
+    );
+
+    return {
+      ok: true,
+      summary: {
+        activeTenants: response.activeTenants,
+        pendingEndUsers: response.pendingEndUsers,
+        recentEvents: (response.recentEvents ?? []).map((event) => ({
+          action: event.action,
+          actor: event.actor,
+          at: event.at,
+          eventType: event.eventType,
+          target: event.target,
+        })),
+        suspendedTenants: response.suspendedTenants,
+        totalTenants: response.totalTenants,
+      },
+    };
+  } catch (error) {
+    console.error("[getPlatformDashboardSummary] API error:", error);
+    const message =
+      error instanceof Error ? error.message : "不明なエラーが発生しました。";
+    return { message, ok: false };
+  }
+};
