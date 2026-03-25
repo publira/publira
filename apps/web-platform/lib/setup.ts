@@ -1,11 +1,11 @@
 import { apiClient } from "./api-client";
 
-export const isSetupCompleted = async (): Promise<boolean> => {
+export const isSetupCompleted = async (): Promise<boolean | null> => {
   try {
     const response = await apiClient.setup.checkSetupStatus({});
     return response.setupCompleted;
   } catch {
-    return false;
+    return null;
   }
 };
 

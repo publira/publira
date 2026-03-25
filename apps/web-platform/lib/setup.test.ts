@@ -30,10 +30,10 @@ describe("isSetupCompleted", () => {
     await expect(isSetupCompleted()).resolves.toBe(false);
   });
 
-  it("API エラー時は false を返す", async () => {
+  it("API エラー時は null を返す", async () => {
     mockCheckSetupStatus.mockRejectedValueOnce(new Error("network"));
 
-    await expect(isSetupCompleted()).resolves.toBe(false);
+    await expect(isSetupCompleted()).resolves.toBeNull();
   });
 });
 
