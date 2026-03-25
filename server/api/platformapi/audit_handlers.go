@@ -12,9 +12,9 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
-func adminAuditLogToProto(row dbmodels.ListAdminAuditLogsRow) *publirasplatformv1.PlatformAuditLog {
+func platformAuditLogToProto(row dbmodels.ListPlatformAuditLogsRow) *publirasplatformv1.PlatformAuditLog {
 	item := &publirasplatformv1.PlatformAuditLog{
-		ActorUserPublicId: row.ActorUserPublicID,
+		ActorUserPublicId: row.ActorPublicID,
 		ActorRole:         row.ActorRole,
 		Action:            row.Action,
 		Outcome:           row.Outcome,
@@ -23,14 +23,17 @@ func adminAuditLogToProto(row dbmodels.ListAdminAuditLogsRow) *publirasplatformv
 		TenantName:        row.TenantName,
 		TargetName:        row.TargetName,
 	}
-	if row.TenantPublicID.Valid {
-		item.TenantPublicId = row.TenantPublicID.String
+	if row.TenantPublicID != "" {
+		item.TenantPublicId = row.TenantPublicID
 	}
 	if row.TargetType.Valid {
 		item.TargetType = row.TargetType.String
 	}
 	if row.TargetID.Valid {
 		item.TargetId = row.TargetID.String
+	}
+	if row.TargetPublicID != "" {
+		item.TargetPublicId = row.TargetPublicID
 	}
 	if row.Reason.Valid {
 		item.Reason = row.Reason.String
@@ -69,7 +72,7 @@ func (s *platformServer) ListAuditLogs(
 		offset = 0
 	}
 
-	rows, err := s.queries.ListAdminAuditLogs(ctx, dbmodels.ListAdminAuditLogsParams{
+	rows, err := s.queries.ListPlatformAuditLogs(ctx, dbmodels.ListPlatformAuditLogsParams{
 		FilterTenantPublicID:    nullStringFilter(req.Msg.TenantPublicId),
 		FilterActorUserPublicID: nullStringFilter(req.Msg.ActorUserPublicId),
 		FilterAction:            nullStringFilter(req.Msg.Action),
@@ -82,7 +85,7 @@ func (s *platformServer) ListAuditLogs(
 
 	items := make([]*publirasplatformv1.PlatformAuditLog, len(rows))
 	for index, row := range rows {
-		items[index] = adminAuditLogToProto(row)
+		items[index] = platformAuditLogToProto(row)
 	}
 
 	return connect.NewResponse(&publirasplatformv1.ListAuditLogsResponse{AuditLogs: items}), nil

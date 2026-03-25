@@ -41,6 +41,7 @@ describe("listPlatformAuditLogs", () => {
           reason: "",
           targetId: "tenant_001",
           targetName: "テナントA",
+          targetPublicId: "tenant_001",
           targetType: "tenant",
           tenantName: "テナントA",
           tenantPublicId: "tenant_001",
@@ -60,6 +61,7 @@ describe("listPlatformAuditLogs", () => {
           reason: "",
           targetId: "tenant_001",
           targetName: "テナントA",
+          targetPublicId: "tenant_001",
           targetType: "tenant",
           tenantName: "テナントA",
           tenantPublicId: "tenant_001",
@@ -103,6 +105,49 @@ describe("listPlatformAuditLogs", () => {
       },
       { headers: { "X-Publira-Session-Id": "sess_abc" } }
     );
+  });
+
+  it("tenant 情報が空でも監査ログを返せる", async () => {
+    mockListAuditLogs.mockResolvedValueOnce({
+      auditLogs: [
+        {
+          action: "operator.signed_in",
+          actorName: "運営 次郎",
+          actorRole: "platform_owner",
+          actorUserPublicId: "op_002",
+          createdAt: "2026-03-25T02:34:56Z",
+          outcome: "success",
+          reason: "",
+          targetId: "op_002",
+          targetName: "運営 次郎",
+          targetPublicId: "",
+          targetType: "operator",
+          tenantName: undefined,
+          tenantPublicId: undefined,
+        },
+      ],
+    });
+
+    await expect(listPlatformAuditLogs({})).resolves.toEqual({
+      auditLogs: [
+        {
+          action: "operator.signed_in",
+          actorName: "運営 次郎",
+          actorRole: "platform_owner",
+          actorUserPublicId: "op_002",
+          createdAt: "2026-03-25T02:34:56Z",
+          outcome: "success",
+          reason: "",
+          targetId: "op_002",
+          targetName: "運営 次郎",
+          targetPublicId: "",
+          targetType: "operator",
+          tenantName: "",
+          tenantPublicId: "",
+        },
+      ],
+      ok: true,
+    });
   });
 
   it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {

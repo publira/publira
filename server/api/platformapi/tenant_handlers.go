@@ -23,7 +23,6 @@ const (
 
 	defaultListLimit = 20
 	maxListLimit     = 100
-	tenantAdminRole  = auth.RoleTenantAdmin
 )
 
 func tenantUniqueViolationField(err error) string {
@@ -145,8 +144,6 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domain is required"))
 	}
 	adminDomain := nullableTrimmedString(req.Msg.AdminDomain)
-	adminEmails := make([]string, 0, len(req.Msg.InitialAdminEmails))
-	seenEmails := make(map[string]struct{}, len(req.Msg.InitialAdminEmails))
 	for _, rawEmail := range req.Msg.InitialAdminEmails {
 		email := strings.TrimSpace(strings.ToLower(rawEmail))
 		if email == "" {
@@ -155,11 +152,6 @@ func (s *platformServer) CreateTenant(
 		if _, err := mail.ParseAddress(email); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid initial_admin_emails"))
 		}
-		if _, exists := seenEmails[email]; exists {
-			continue
-		}
-		seenEmails[email] = struct{}{}
-		adminEmails = append(adminEmails, email)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -189,60 +181,20 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	for _, adminEmail := range adminEmails {
-		user, err := txq.GetUserByEmail(ctx, adminEmail)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			}
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-
-		membershipID, err := uuid.NewV7()
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-		membership, err := txq.CreateTenantMembership(ctx, dbmodels.CreateTenantMembershipParams{
-			ID:       membershipID,
-			UserID:   user.ID,
-			TenantID: tenant.ID,
-			Status:   defaultMembershipStatus,
-		})
-		if err != nil {
-			if isUniqueViolation(err) {
-				continue
-			}
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-
-		_, err = txq.CreateTenantMemberRole(ctx, dbmodels.CreateTenantMemberRoleParams{
-			ID:           uuid.Must(uuid.NewV7()),
-			MembershipID: membership.ID,
-			Role:         tenantAdminRole,
-		})
-		if err != nil {
-			if isUniqueViolation(err) {
-				continue
-			}
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	// Record audit log
 	if actor, ok := platformActorFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: actor.UserPublicID,
-			ActorRole:         actor.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "tenant_created",
-			TargetType:        "tenant",
-			TargetID:          tenant.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+			ActorPlatformUserID: actor.UserID,
+			ActorRole:           actor.Role,
+			Action:              "tenant_created",
+			TargetType:          "tenant",
+			TargetID:            tenant.ID.String(),
+			Outcome:             auditlog.OutcomeSuccess,
+			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 
@@ -271,15 +223,14 @@ func (s *platformServer) SuspendTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if actor, ok := platformActorFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: actor.UserPublicID,
-			ActorRole:         actor.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "tenant_suspended",
-			TargetType:        "tenant",
-			TargetID:          tenant.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+			ActorPlatformUserID: actor.UserID,
+			ActorRole:           actor.Role,
+			Action:              "tenant_suspended",
+			TargetType:          "tenant",
+			TargetID:            tenant.ID.String(),
+			Outcome:             auditlog.OutcomeSuccess,
+			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 
@@ -319,15 +270,14 @@ func (s *platformServer) UpdateTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if actor, ok := platformActorFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: actor.UserPublicID,
-			ActorRole:         actor.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "tenant_info_updated",
-			TargetType:        "tenant",
-			TargetID:          tenant.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+			ActorPlatformUserID: actor.UserID,
+			ActorRole:           actor.Role,
+			Action:              "tenant_info_updated",
+			TargetType:          "tenant",
+			TargetID:            tenant.ID.String(),
+			Outcome:             auditlog.OutcomeSuccess,
+			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 
@@ -356,15 +306,14 @@ func (s *platformServer) ResumeTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if actor, ok := platformActorFromContext(ctx); ok {
-		s.recorder.Record(ctx, auditlog.Entry{
-			ActorUserPublicID: actor.UserPublicID,
-			ActorRole:         actor.Role,
-			TenantPublicID:    tenant.PublicID,
-			Action:            "tenant_resumed",
-			TargetType:        "tenant",
-			TargetID:          tenant.PublicID,
-			Outcome:           auditlog.OutcomeSuccess,
-			ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+			ActorPlatformUserID: actor.UserID,
+			ActorRole:           actor.Role,
+			Action:              "tenant_resumed",
+			TargetType:          "tenant",
+			TargetID:            tenant.ID.String(),
+			Outcome:             auditlog.OutcomeSuccess,
+			ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
 
@@ -387,7 +336,7 @@ func normalizeTenantMemberRole(rawRole string) (string, bool) {
 	}
 }
 
-func tenantMemberToProto(row dbmodels.ListTenantMembershipsRow) *publirasplatformv1.TenantMember {
+func tenantMemberToProto(row dbmodels.ListTenantUsersRow) *publirasplatformv1.TenantMember {
 	return &publirasplatformv1.TenantMember{
 		UserPublicId: row.PublicID,
 		Name:         row.Name,
@@ -427,8 +376,8 @@ func (s *platformServer) ListTenantMembers(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	rows, err := s.queries.ListTenantMemberships(ctx, dbmodels.ListTenantMembershipsParams{
-		TenantID: tenant.ID,
+	rows, err := s.queries.ListTenantUsers(ctx, dbmodels.ListTenantUsersParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Limit:    limit,
 		Offset:   offset,
 	})
@@ -470,23 +419,23 @@ func (s *platformServer) AddTenantMember(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, err := s.queries.GetUserByPublicID(ctx, userPublicID)
+	user, err := s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		PublicID: userPublicID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	_, err = s.queries.GetTenantMembershipByUserAndTenant(ctx, dbmodels.GetTenantMembershipByUserAndTenantParams{
-		UserID:   user.ID,
-		TenantID: tenant.ID,
-	})
-	if err == nil {
-		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("user is already a member of this tenant"))
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	roles, err := s.queries.ListTenantUserRoles(ctx, user.ID)
+	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if len(roles) > 0 {
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("user already has tenant roles"))
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -497,29 +446,15 @@ func (s *platformServer) AddTenantMember(
 
 	txq := dbmodels.New(tx)
 
-	membershipID, err := uuid.NewV7()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	membership, err := txq.CreateTenantMembership(ctx, dbmodels.CreateTenantMembershipParams{
-		ID:       membershipID,
-		UserID:   user.ID,
-		TenantID: tenant.ID,
-		Status:   defaultMembershipStatus,
+	_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
+		ID:     uuid.Must(uuid.NewV7()),
+		UserID: user.ID,
+		Role:   normalizedRole,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("user is already a member of this tenant"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("user already has this role"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	_, err = txq.CreateTenantMemberRole(ctx, dbmodels.CreateTenantMemberRoleParams{
-		ID:           uuid.Must(uuid.NewV7()),
-		MembershipID: membership.ID,
-		Role:         normalizedRole,
-	})
-	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -533,8 +468,8 @@ func (s *platformServer) AddTenantMember(
 			Name:         user.Name,
 			Email:        user.Email,
 			Role:         normalizedRole,
-			Status:       membership.Status,
-			CreatedAt:    membership.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+			Status:       user.Status,
+			CreatedAt:    user.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 		},
 	}), nil
 }
@@ -564,23 +499,23 @@ func (s *platformServer) UpdateTenantMemberRole(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, err := s.queries.GetUserByPublicID(ctx, userPublicID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	membership, err := s.queries.GetTenantMembershipByUserAndTenant(ctx, dbmodels.GetTenantMembershipByUserAndTenantParams{
-		UserID:   user.ID,
-		TenantID: tenant.ID,
+	user, err := s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		PublicID: userPublicID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	roles, err := s.queries.ListTenantUserRoles(ctx, user.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if len(roles) == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -591,14 +526,14 @@ func (s *platformServer) UpdateTenantMemberRole(
 
 	txq := dbmodels.New(tx)
 
-	if err := txq.DeleteTenantMemberRolesByMembershipID(ctx, membership.ID); err != nil {
+	if err := txq.DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	_, err = txq.CreateTenantMemberRole(ctx, dbmodels.CreateTenantMemberRoleParams{
-		ID:           uuid.Must(uuid.NewV7()),
-		MembershipID: membership.ID,
-		Role:         normalizedRole,
+	_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
+		ID:     uuid.Must(uuid.NewV7()),
+		UserID: user.ID,
+		Role:   normalizedRole,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -614,8 +549,8 @@ func (s *platformServer) UpdateTenantMemberRole(
 			Name:         user.Name,
 			Email:        user.Email,
 			Role:         normalizedRole,
-			Status:       membership.Status,
-			CreatedAt:    membership.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+			Status:       user.Status,
+			CreatedAt:    user.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 		},
 	}), nil
 }
@@ -641,17 +576,9 @@ func (s *platformServer) RemoveTenantMember(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, err := s.queries.GetUserByPublicID(ctx, userPublicID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	membership, err := s.queries.GetTenantMembershipByUserAndTenant(ctx, dbmodels.GetTenantMembershipByUserAndTenantParams{
-		UserID:   user.ID,
-		TenantID: tenant.ID,
+	user, err := s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		PublicID: userPublicID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -660,7 +587,7 @@ func (s *platformServer) RemoveTenantMember(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	if err := s.queries.DeleteTenantMembership(ctx, membership.ID); err != nil {
+	if err := s.queries.DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

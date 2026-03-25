@@ -4,10 +4,7 @@ import { auditActionOptions, getAuditActionLabel } from "./audit-log-labels";
 
 describe("audit-log-labels", () => {
   it("returns Japanese label for known actions", () => {
-    expect(getAuditActionLabel("episode_created")).toBe("エピソードを作成");
-    expect(getAuditActionLabel("episode_image_uploaded")).toBe(
-      "エピソード画像をアップロード"
-    );
+    expect(getAuditActionLabel("operator_updated")).toBe("オペレーターを更新");
     expect(getAuditActionLabel("tenant_suspended")).toBe("テナントを停止");
   });
 
@@ -17,10 +14,10 @@ describe("audit-log-labels", () => {
 
   it("exposes selectable audit action options", () => {
     expect(
-      auditActionOptions.some((item) => item.value === "episode_created")
+      auditActionOptions.some((item) => item.value === "operator_created")
     ).toBe(true);
     expect(
-      auditActionOptions.some((item) => item.value === "episode_image_uploaded")
+      auditActionOptions.some((item) => item.value === "tenant_created")
     ).toBe(true);
   });
 });

@@ -136,7 +136,7 @@ func (s *platformServer) CreateOperator(
 
 	txq := dbmodels.New(tx)
 
-	user, err := txq.GetUserByEmail(ctx, email)
+	user, err := txq.GetPlatformUserByEmail(ctx, email)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeInternal, err)
@@ -154,7 +154,7 @@ func (s *platformServer) CreateOperator(
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		user, err = txq.CreateUser(ctx, dbmodels.CreateUserParams{
+		user, err = txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
 			ID:           userID,
 			PublicID:     generatePublicID(),
 			Email:        email,
@@ -178,9 +178,9 @@ func (s *platformServer) CreateOperator(
 	}
 
 	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
-		ID:     uuid.Must(uuid.NewV7()),
-		UserID: user.ID,
-		Role:   role,
+		ID:             uuid.Must(uuid.NewV7()),
+		PlatformUserID: user.ID,
+		Role:           role,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -197,14 +197,14 @@ func (s *platformServer) CreateOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: currentUser.PublicID,
-		ActorRole:         currentRole,
-		Action:            "operator_created",
-		TargetType:        "operator",
-		TargetID:          operator.PublicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: currentUser.ID,
+		ActorRole:           currentRole,
+		Action:              "operator_created",
+		TargetType:          "operator",
+		TargetID:            operator.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.CreateOperatorResponse{
@@ -252,13 +252,13 @@ func (s *platformServer) UpdateOperatorRole(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot demote yourself"))
 	}
 
-	if err := txq.DeletePlatformUserRolesByUserID(ctx, operator.ID); err != nil {
+	if err := txq.DeletePlatformUserRolesByPlatformUserID(ctx, operator.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
-		ID:     uuid.Must(uuid.NewV7()),
-		UserID: operator.ID,
-		Role:   role,
+		ID:             uuid.Must(uuid.NewV7()),
+		PlatformUserID: operator.ID,
+		Role:           role,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -272,14 +272,14 @@ func (s *platformServer) UpdateOperatorRole(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: currentUser.PublicID,
-		ActorRole:         currentRole,
-		Action:            "operator_updated",
-		TargetType:        "operator",
-		TargetID:          updated.PublicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: currentUser.ID,
+		ActorRole:           currentRole,
+		Action:              "operator_updated",
+		TargetType:          "operator",
+		TargetID:            updated.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.UpdateOperatorRoleResponse{
@@ -326,14 +326,14 @@ func (s *platformServer) SuspendOperator(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is not active"))
 	}
 
-	updatedUser, err := txq.UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
+	updatedUser, err := txq.UpdatePlatformUserStatus(ctx, dbmodels.UpdatePlatformUserStatusParams{
 		PublicID: publicID,
 		Status:   userStatusSuspended,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := txq.TerminateUserSessions(ctx, updatedUser.ID); err != nil {
+	if err := txq.TerminatePlatformUserSessions(ctx, updatedUser.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -345,14 +345,14 @@ func (s *platformServer) SuspendOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: currentUser.PublicID,
-		ActorRole:         currentRole,
-		Action:            "operator_suspended",
-		TargetType:        "operator",
-		TargetID:          updated.PublicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: currentUser.ID,
+		ActorRole:           currentRole,
+		Action:              "operator_suspended",
+		TargetType:          "operator",
+		TargetID:            updated.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.SuspendOperatorResponse{
@@ -396,7 +396,7 @@ func (s *platformServer) UnsuspendOperator(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is not suspended"))
 	}
 
-	_, err = txq.UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
+	_, err = txq.UpdatePlatformUserStatus(ctx, dbmodels.UpdatePlatformUserStatusParams{
 		PublicID: publicID,
 		Status:   userStatusActive,
 	})
@@ -412,14 +412,14 @@ func (s *platformServer) UnsuspendOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: currentUser.PublicID,
-		ActorRole:         currentRole,
-		Action:            "operator_resumed",
-		TargetType:        "operator",
-		TargetID:          updated.PublicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: currentUser.ID,
+		ActorRole:           currentRole,
+		Action:              "operator_resumed",
+		TargetType:          "operator",
+		TargetID:            updated.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.UnsuspendOperatorResponse{
@@ -466,14 +466,14 @@ func (s *platformServer) DeactivateOperator(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("operator is already inactive"))
 	}
 
-	updatedUser, err := txq.UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
+	updatedUser, err := txq.UpdatePlatformUserStatus(ctx, dbmodels.UpdatePlatformUserStatusParams{
 		PublicID: publicID,
 		Status:   userStatusInactive,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := txq.TerminateUserSessions(ctx, updatedUser.ID); err != nil {
+	if err := txq.TerminatePlatformUserSessions(ctx, updatedUser.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -485,14 +485,14 @@ func (s *platformServer) DeactivateOperator(
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.Record(ctx, auditlog.Entry{
-		ActorUserPublicID: currentUser.PublicID,
-		ActorRole:         currentRole,
-		Action:            "operator_deleted",
-		TargetType:        "operator",
-		TargetID:          updated.PublicID,
-		Outcome:           auditlog.OutcomeSuccess,
-		ClientIP:          auditlog.ClientIPFromHeader(req.Header()),
+	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+		ActorPlatformUserID: currentUser.ID,
+		ActorRole:           currentRole,
+		Action:              "operator_deleted",
+		TargetType:          "operator",
+		TargetID:            updated.ID.String(),
+		Outcome:             auditlog.OutcomeSuccess,
+		ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 	})
 
 	return connect.NewResponse(&publirasplatformv1.DeactivateOperatorResponse{

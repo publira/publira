@@ -19,11 +19,8 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
-func (s *adminServer) tenantRole(ctx context.Context, userID, tenantID uuid.UUID) (string, error) {
-	roles, err := s.queries.ListTenantRolesByUserAndTenant(ctx, dbmodels.ListTenantRolesByUserAndTenantParams{
-		UserID:   userID,
-		TenantID: tenantID,
-	})
+func (s *adminServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
+	roles, err := s.queries.ListTenantUserRoles(ctx, userID)
 	if err != nil {
 		return "", connect.NewError(connect.CodeInternal, err)
 	}
@@ -52,7 +49,7 @@ func (s *adminServer) CreateSession(
 		auth.AuditEvent(req.Header(), "admin_login", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: tenant.ID, Email: req.Msg.Email})
+	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Msg.Email})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, "", "invalid_credentials")
@@ -65,7 +62,7 @@ func (s *adminServer) CreateSession(
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
-	role, err := s.tenantRole(ctx, user.ID, tenant.ID)
+	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,11 +78,11 @@ func (s *adminServer) CreateSession(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
-		ID:              sessionID,
-		CurrentTenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		UserID:          user.ID,
-		TokenHash:       auth.HashToken(sessionToken),
-		ExpiresAt:       time.Now().Add(auth.SessionTTL),
+		ID:        sessionID,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		TokenHash: auth.HashToken(sessionToken),
+		ExpiresAt: time.Now().Add(auth.SessionTTL),
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "session_create_failed")

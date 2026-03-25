@@ -87,7 +87,7 @@ func (s *platformServer) CreateInitialUser(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	user, err := txq.CreateUser(ctx, dbmodels.CreateUserParams{
+	user, err := txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
 		ID:           userID,
 		PublicID:     generatePublicID(),
 		Email:        email,
@@ -103,9 +103,9 @@ func (s *platformServer) CreateInitialUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
-		ID:     uuid.Must(uuid.NewV7()),
-		UserID: userID,
-		Role:   rolePlatformSuperAdmin,
+		ID:             uuid.Must(uuid.NewV7()),
+		PlatformUserID: userID,
+		Role:           rolePlatformSuperAdmin,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {

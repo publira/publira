@@ -27,9 +27,10 @@ type TenantContext struct {
 type SessionContext struct {
 	Tenant  dbmodels.Tenant
 	Session dbmodels.Session
-	User dbmodels.User // User is the authenticated user, populated when available.
-	Role string        // Role is the actor's resolved role in the tenant context.
+	User    dbmodels.User // User is the authenticated user, populated when available.
+	Role    string        // Role is the actor's resolved role in the tenant context.
 }
+
 // SessionAuthenticator resolves a session from request metadata.
 type SessionAuthenticator func(
 	ctx context.Context,

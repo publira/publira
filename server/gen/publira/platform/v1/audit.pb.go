@@ -29,6 +29,7 @@ type PlatformAuditLog struct {
 	Action            string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
 	TargetType        string                 `protobuf:"bytes,5,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"`
 	TargetId          string                 `protobuf:"bytes,6,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	TargetPublicId    string                 `protobuf:"bytes,14,opt,name=target_public_id,json=targetPublicId,proto3" json:"target_public_id,omitempty"`
 	Outcome           string                 `protobuf:"bytes,7,opt,name=outcome,proto3" json:"outcome,omitempty"`
 	Reason            string                 `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
 	ClientIp          string                 `protobuf:"bytes,9,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
@@ -108,6 +109,13 @@ func (x *PlatformAuditLog) GetTargetType() string {
 func (x *PlatformAuditLog) GetTargetId() string {
 	if x != nil {
 		return x.TargetId
+	}
+	return ""
+}
+
+func (x *PlatformAuditLog) GetTargetPublicId() string {
+	if x != nil {
+		return x.TargetPublicId
 	}
 	return ""
 }
@@ -285,7 +293,7 @@ var File_publira_platform_v1_audit_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/platform/v1/audit.proto\x12\x13publira.platform.v1\"\xb1\x03\n" +
+	"\x1fpublira/platform/v1/audit.proto\x12\x13publira.platform.v1\"\xdb\x03\n" +
 	"\x10PlatformAuditLog\x12/\n" +
 	"\x14actor_user_public_id\x18\x01 \x01(\tR\x11actorUserPublicId\x12\x1d\n" +
 	"\n" +
@@ -294,7 +302,8 @@ const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\x06action\x18\x04 \x01(\tR\x06action\x12\x1f\n" +
 	"\vtarget_type\x18\x05 \x01(\tR\n" +
 	"targetType\x12\x1b\n" +
-	"\ttarget_id\x18\x06 \x01(\tR\btargetId\x12\x18\n" +
+	"\ttarget_id\x18\x06 \x01(\tR\btargetId\x12(\n" +
+	"\x10target_public_id\x18\x0e \x01(\tR\x0etargetPublicId\x12\x18\n" +
 	"\aoutcome\x18\a \x01(\tR\aoutcome\x12\x16\n" +
 	"\x06reason\x18\b \x01(\tR\x06reason\x12\x1b\n" +
 	"\tclient_ip\x18\t \x01(\tR\bclientIp\x12\x1d\n" +

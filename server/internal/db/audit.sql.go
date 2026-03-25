@@ -13,12 +13,12 @@ import (
 	"github.com/google/uuid"
 )
 
-const insertAdminAuditLog = `-- name: InsertAdminAuditLog :exec
-INSERT INTO admin_audit_logs (
+const insertAuditLog = `-- name: InsertAuditLog :exec
+INSERT INTO audit_logs (
     id,
-    actor_user_public_id,
+    tenant_id,
+    actor_user_id,
     actor_role,
-    tenant_public_id,
     action,
     target_type,
     target_id,
@@ -28,26 +28,26 @@ INSERT INTO admin_audit_logs (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
-type InsertAdminAuditLogParams struct {
-	ID                uuid.UUID      `json:"id"`
-	ActorUserPublicID string         `json:"actor_user_public_id"`
-	ActorRole         string         `json:"actor_role"`
-	TenantPublicID    sql.NullString `json:"tenant_public_id"`
-	Action            string         `json:"action"`
-	TargetType        sql.NullString `json:"target_type"`
-	TargetID          sql.NullString `json:"target_id"`
-	Outcome           string         `json:"outcome"`
-	Reason            sql.NullString `json:"reason"`
-	ClientIp          sql.NullString `json:"client_ip"`
+type InsertAuditLogParams struct {
+	ID          uuid.UUID      `json:"id"`
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	ActorUserID uuid.UUID      `json:"actor_user_id"`
+	ActorRole   string         `json:"actor_role"`
+	Action      string         `json:"action"`
+	TargetType  sql.NullString `json:"target_type"`
+	TargetID    sql.NullString `json:"target_id"`
+	Outcome     string         `json:"outcome"`
+	Reason      sql.NullString `json:"reason"`
+	ClientIp    sql.NullString `json:"client_ip"`
 }
 
-// 管理操作監査ログを記録する
-func (q *Queries) InsertAdminAuditLog(ctx context.Context, arg InsertAdminAuditLogParams) error {
-	_, err := q.db.ExecContext(ctx, insertAdminAuditLog,
+// テナント操作監査ログを記録する
+func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error {
+	_, err := q.db.ExecContext(ctx, insertAuditLog,
 		arg.ID,
-		arg.ActorUserPublicID,
+		arg.TenantID,
+		arg.ActorUserID,
 		arg.ActorRole,
-		arg.TenantPublicID,
 		arg.Action,
 		arg.TargetType,
 		arg.TargetID,
@@ -58,11 +58,52 @@ func (q *Queries) InsertAdminAuditLog(ctx context.Context, arg InsertAdminAuditL
 	return err
 }
 
-const listAdminAuditLogs = `-- name: ListAdminAuditLogs :many
+const insertPlatformAuditLog = `-- name: InsertPlatformAuditLog :exec
+INSERT INTO platform_audit_logs (
+    id,
+    actor_platform_user_id,
+    actor_role,
+    action,
+    target_type,
+    target_id,
+    outcome,
+    reason,
+    client_ip
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+`
+
+type InsertPlatformAuditLogParams struct {
+	ID                  uuid.UUID      `json:"id"`
+	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+	ActorRole           string         `json:"actor_role"`
+	Action              string         `json:"action"`
+	TargetType          sql.NullString `json:"target_type"`
+	TargetID            sql.NullString `json:"target_id"`
+	Outcome             string         `json:"outcome"`
+	Reason              sql.NullString `json:"reason"`
+	ClientIp            sql.NullString `json:"client_ip"`
+}
+
+// 管理操作監査ログを記録する
+func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error {
+	_, err := q.db.ExecContext(ctx, insertPlatformAuditLog,
+		arg.ID,
+		arg.ActorPlatformUserID,
+		arg.ActorRole,
+		arg.Action,
+		arg.TargetType,
+		arg.TargetID,
+		arg.Outcome,
+		arg.Reason,
+		arg.ClientIp,
+	)
+	return err
+}
+
+const listPlatformAuditLogs = `-- name: ListPlatformAuditLogs :many
 SELECT a.id,
-    a.actor_user_public_id,
+    a.actor_platform_user_id,
     a.actor_role,
-    a.tenant_public_id,
     a.action,
     a.target_type,
     a.target_id,
@@ -70,28 +111,38 @@ SELECT a.id,
     a.reason,
     a.client_ip,
     a.created_at,
-    COALESCE(actor_u.name, ''::text) AS actor_name,
-    COALESCE(tenant_t.name, ''::text) AS tenant_name,
+    COALESCE(actor_pu.name, ''::text) AS actor_name,
+    COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
+    COALESCE(target_t.name, ''::text) AS tenant_name,
+    COALESCE(target_t.public_id, ''::text) AS tenant_public_id,
+    CASE
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
+        WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
+        WHEN a.target_type = 'user' THEN COALESCE(target_u.public_id, ''::text)
+        ELSE ''::text
+    END AS target_public_id,
     CASE
         WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
-        WHEN a.target_type IN ('user', 'operator') THEN COALESCE(target_u.name, ''::text)
+        WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
+        WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
         ELSE ''::text
     END AS target_name
-FROM admin_audit_logs a
-    LEFT JOIN users actor_u ON actor_u.public_id = a.actor_user_public_id
-    LEFT JOIN tenants tenant_t ON tenant_t.public_id = a.tenant_public_id
-    LEFT JOIN users target_u ON target_u.public_id = a.target_id
-    AND a.target_type IN ('user', 'operator')
-    LEFT JOIN tenants target_t ON target_t.public_id = a.target_id
+FROM platform_audit_logs a
+    LEFT JOIN platform_users actor_pu ON actor_pu.id = a.actor_platform_user_id
+    LEFT JOIN platform_users target_pu ON target_pu.id::text = a.target_id
+    AND a.target_type = 'operator'
+    LEFT JOIN users target_u ON target_u.id::text = a.target_id
+    AND a.target_type = 'user'
+    LEFT JOIN tenants target_t ON target_t.id::text = a.target_id
     AND a.target_type = 'tenant'
-WHERE ($1::text IS NULL OR a.actor_user_public_id = $1::text)
-  AND ($2::text IS NULL OR a.tenant_public_id = $2::text)
+WHERE ($1::text IS NULL OR actor_pu.public_id = $1::text)
+    AND ($2::text IS NULL OR (a.target_type = 'tenant' AND target_t.public_id = $2::text))
   AND ($3::text IS NULL OR a.action = $3::text)
 ORDER BY a.created_at DESC
 LIMIT $5 OFFSET $4
 `
 
-type ListAdminAuditLogsParams struct {
+type ListPlatformAuditLogsParams struct {
 	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
 	FilterTenantPublicID    sql.NullString `json:"filter_tenant_public_id"`
 	FilterAction            sql.NullString `json:"filter_action"`
@@ -99,26 +150,28 @@ type ListAdminAuditLogsParams struct {
 	Limit                   int32          `json:"limit"`
 }
 
-type ListAdminAuditLogsRow struct {
-	ID                uuid.UUID      `json:"id"`
-	ActorUserPublicID string         `json:"actor_user_public_id"`
-	ActorRole         string         `json:"actor_role"`
-	TenantPublicID    sql.NullString `json:"tenant_public_id"`
-	Action            string         `json:"action"`
-	TargetType        sql.NullString `json:"target_type"`
-	TargetID          sql.NullString `json:"target_id"`
-	Outcome           string         `json:"outcome"`
-	Reason            sql.NullString `json:"reason"`
-	ClientIp          sql.NullString `json:"client_ip"`
-	CreatedAt         time.Time      `json:"created_at"`
-	ActorName         string         `json:"actor_name"`
-	TenantName        string         `json:"tenant_name"`
-	TargetName        string         `json:"target_name"`
+type ListPlatformAuditLogsRow struct {
+	ID                  uuid.UUID      `json:"id"`
+	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+	ActorRole           string         `json:"actor_role"`
+	Action              string         `json:"action"`
+	TargetType          sql.NullString `json:"target_type"`
+	TargetID            sql.NullString `json:"target_id"`
+	Outcome             string         `json:"outcome"`
+	Reason              sql.NullString `json:"reason"`
+	ClientIp            sql.NullString `json:"client_ip"`
+	CreatedAt           time.Time      `json:"created_at"`
+	ActorName           string         `json:"actor_name"`
+	ActorPublicID       string         `json:"actor_public_id"`
+	TenantName          string         `json:"tenant_name"`
+	TenantPublicID      string         `json:"tenant_public_id"`
+	TargetPublicID      string         `json:"target_public_id"`
+	TargetName          string         `json:"target_name"`
 }
 
 // 管理操作監査ログ一覧取得（フィルタ対応）
-func (q *Queries) ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogsParams) ([]ListAdminAuditLogsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAdminAuditLogs,
+func (q *Queries) ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPlatformAuditLogs,
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantPublicID,
 		arg.FilterAction,
@@ -129,14 +182,13 @@ func (q *Queries) ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogs
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListAdminAuditLogsRow
+	var items []ListPlatformAuditLogsRow
 	for rows.Next() {
-		var i ListAdminAuditLogsRow
+		var i ListPlatformAuditLogsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.ActorUserPublicID,
+			&i.ActorPlatformUserID,
 			&i.ActorRole,
-			&i.TenantPublicID,
 			&i.Action,
 			&i.TargetType,
 			&i.TargetID,
@@ -145,7 +197,10 @@ func (q *Queries) ListAdminAuditLogs(ctx context.Context, arg ListAdminAuditLogs
 			&i.ClientIp,
 			&i.CreatedAt,
 			&i.ActorName,
+			&i.ActorPublicID,
 			&i.TenantName,
+			&i.TenantPublicID,
+			&i.TargetPublicID,
 			&i.TargetName,
 		); err != nil {
 			return nil, err
