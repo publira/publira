@@ -40,6 +40,23 @@ func (q *Queries) CountAllTenants(ctx context.Context) (int32, error) {
 	return column_1, err
 }
 
+const countDraftEpisodesForTenant = `-- name: CountDraftEpisodesForTenant :one
+SELECT COUNT(*)::int AS draft_episode_count
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status = 'draft'
+`
+
+// テナントの下書きエピソード数を取得する（ダッシュボード用）
+func (q *Queries) CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countDraftEpisodesForTenant, tenantID)
+	var draft_episode_count int32
+	err := row.Scan(&draft_episode_count)
+	return draft_episode_count, err
+}
+
 const countPendingEndUsers = `-- name: CountPendingEndUsers :one
 SELECT COUNT(*)::int
 FROM users u
@@ -69,6 +86,38 @@ func (q *Queries) CountPlatformUsers(ctx context.Context) (int32, error) {
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const countPublishedSeriesForTenant = `-- name: CountPublishedSeriesForTenant :one
+SELECT COUNT(*)::int AS published_series_count
+FROM series
+WHERE tenant_id = $1
+    AND is_published = true
+`
+
+// テナントの公開中シリーズ数を取得する（ダッシュボード用）
+func (q *Queries) CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countPublishedSeriesForTenant, tenantID)
+	var published_series_count int32
+	err := row.Scan(&published_series_count)
+	return published_series_count, err
+}
+
+const countScheduledEpisodesForTenant = `-- name: CountScheduledEpisodesForTenant :one
+SELECT COUNT(*)::int AS scheduled_episode_count
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status = 'scheduled'
+`
+
+// テナントの予約済みエピソード数を取得する（ダッシュボード用）
+func (q *Queries) CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countScheduledEpisodesForTenant, tenantID)
+	var scheduled_episode_count int32
+	err := row.Scan(&scheduled_episode_count)
+	return scheduled_episode_count, err
 }
 
 const countSuspendedTenants = `-- name: CountSuspendedTenants :one
@@ -2022,6 +2071,71 @@ func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, arg ListPub
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentEpisodesForDashboard = `-- name: ListRecentEpisodesForDashboard :many
+SELECT
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    el.status,
+    el.scheduled_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND el.status IN ('draft', 'scheduled')
+ORDER BY
+    CASE WHEN el.status = 'scheduled' THEN 0 ELSE 1 END ASC,
+    el.scheduled_at ASC NULLS LAST,
+    e.created_at DESC
+LIMIT $2
+`
+
+type ListRecentEpisodesForDashboardParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+}
+
+type ListRecentEpisodesForDashboardRow struct {
+	EpisodePublicID string       `json:"episode_public_id"`
+	EpisodeTitle    string       `json:"episode_title"`
+	SeriesPublicID  string       `json:"series_public_id"`
+	SeriesTitle     string       `json:"series_title"`
+	Status          string       `json:"status"`
+	ScheduledAt     sql.NullTime `json:"scheduled_at"`
+}
+
+// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
+func (q *Queries) ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRecentEpisodesForDashboard, arg.TenantID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecentEpisodesForDashboardRow
+	for rows.Next() {
+		var i ListRecentEpisodesForDashboardRow
+		if err := rows.Scan(
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.Status,
+			&i.ScheduledAt,
 		); err != nil {
 			return nil, err
 		}

@@ -1,5 +1,4 @@
-import { Badge, StatusChip } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
+import { Badge } from "@publira/ui-components/badge";
 import {
   Card,
   CardContent,
@@ -16,220 +15,171 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import {
+  createPlaceholderStaticParams,
+  guardPlaceholder,
+} from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { AdminPage } from "../../../components/admin-page";
+import { getDashboard } from "../../../lib/dashboard";
 
-const stats = [
-  {
-    detail: "今週は 2 件を更新",
-    label: "公開中シリーズ",
-    value: "12",
-  },
-  {
-    detail: "校正待ちは 7 件",
-    label: "下書きエピソード",
-    value: "28",
-  },
-  {
-    detail: "48 時間以内に 3 件",
-    label: "予約公開",
-    value: "9",
-  },
-  {
-    detail: "画像差し替え依頼あり",
-    label: "要確認素材",
-    value: "4",
-  },
-] as const;
+export const metadata: Metadata = {
+  title: "ダッシュボード",
+};
 
-const publishingQueue: {
-  assignee: string;
-  schedule: string;
-  series: string;
-  status: "draft" | "review" | "scheduled";
-  title: string;
-}[] = [
-  {
-    assignee: "佐伯",
-    schedule: "本日 19:00",
-    series: "海風と活版印刷",
-    status: "review",
-    title: "第14話 港で待つ手紙",
-  },
-  {
-    assignee: "小野",
-    schedule: "明日 08:30",
-    series: "月暦工房日誌",
-    status: "scheduled",
-    title: "第3話 硝子温室の朝",
-  },
-  {
-    assignee: "高村",
-    schedule: "未設定",
-    series: "紙魚堂奇譚",
-    status: "draft",
-    title: "第8話 目録の空白",
-  },
-] as const;
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_public_id");
 
-const handoffItems = [
-  {
-    description:
-      "シリーズ編集画面はヘッダー右側のアクション領域を使う前提に揃えます。",
-    label: "ページタイトルと主要アクションの配置を固定化",
-  },
-  {
-    description:
-      "小さい画面ではサイドバーがドロワーへ切り替わり、同じナビゲーション項目を再利用します。",
-    label: "モバイル導線を共通化",
-  },
-  {
-    description:
-      "web-admin/components 配下に閉じたため、公開サイト向け package を汚さずに拡張できます。",
-    label: "Admin 専用レイアウトをアプリ内に隔離",
-  },
-] as const;
-
-const getPublishingQueueTone = (
-  status: (typeof publishingQueue)[number]["status"]
-) => {
+const getQueueStatusTone = (status: "draft" | "scheduled") => {
   if (status === "scheduled") {
     return "info" as const;
   }
-
-  if (status === "review") {
-    return "warning" as const;
-  }
-
   return "muted" as const;
 };
 
-const getPublishingQueueStatusLabel = (
-  status: (typeof publishingQueue)[number]["status"]
-) => {
+const getQueueStatusLabel = (status: "draft" | "scheduled") => {
   if (status === "scheduled") {
     return "予約済み";
   }
-
-  if (status === "review") {
-    return "レビュー中";
-  }
-
   return "下書き";
 };
 
-export default function Page() {
+const DashboardSkeleton = () => (
+  <div className="grid gap-6">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {(["skeleton-1", "skeleton-2", "skeleton-3"] as const).map((key) => (
+        <Card key={key}>
+          <CardHeader className="gap-3">
+            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-8 w-12 animate-pulse rounded bg-muted" />
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+    <Card>
+      <CardHeader>
+        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3">
+          <div className="h-10 animate-pulse rounded bg-muted/70" />
+          <div className="h-10 animate-pulse rounded bg-muted/70" />
+          <div className="h-10 animate-pulse rounded bg-muted/70" />
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+const DashboardContent = async ({
+  params,
+}: PageProps<"/[tenant_public_id]">) => {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
+  const result = await getDashboard(tenant_public_id);
+
+  if (!result.ok) {
+    return (
+      <Card>
+        <CardContent className="p-5">
+          <EmptyState
+            description={result.message}
+            title="データの取得に失敗しました"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { stats, queue } = result;
+
+  const statsItems = [
+    { label: "公開中シリーズ", value: stats.publishedSeriesCount },
+    { label: "下書きエピソード", value: stats.draftEpisodeCount },
+    { label: "予約公開", value: stats.scheduledEpisodeCount },
+  ];
+
   return (
-    <AdminPage
-      actions={
-        <>
-          <Button type="button" variant="outline">
-            公開キューを見る
-          </Button>
-          <Button type="button">シリーズを作成</Button>
-        </>
-      }
-      description="認証後の共通レイアウト、サイドバー、ヘッダー、ページコンテナ、モバイル切り替えをまとめた基礎画面です。ここを起点に各管理画面を同じシェルで実装できます。"
-      eyebrow="Admin Dashboard"
-      title="編集運用のベースライン"
-    >
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((item) => (
+    <div className="grid gap-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {statsItems.map((item) => (
           <Card key={item.label}>
             <CardHeader className="gap-3">
               <CardDescription>{item.label}</CardDescription>
               <CardTitle className="text-3xl">{item.value}</CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 text-sm text-muted-foreground">
-              {item.detail}
-            </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,1fr)]">
-        <Card>
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid gap-1">
-              <CardTitle>公開キュー</CardTitle>
-              <CardDescription>
-                直近で確認が必要なエピソードと公開予定です。
-              </CardDescription>
-            </div>
-            <StatusChip status="warning">2 件がレビュー待ち</StatusChip>
-          </CardHeader>
-
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>公開キュー</CardTitle>
+          <CardDescription>
+            直近で確認が必要なエピソードと公開予定です。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {queue.length === 0 ? (
+            <EmptyState
+              description="現在、下書きまたは予約済みのエピソードはありません。"
+              title="公開キューは空です"
+            />
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>シリーズ</TableHead>
                   <TableHead>エピソード</TableHead>
-                  <TableHead className="w-36">担当</TableHead>
                   <TableHead className="w-36">状態</TableHead>
-                  <TableHead className="w-36">予定</TableHead>
+                  <TableHead className="w-48">予定</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {publishingQueue.map((item) => (
-                  <TableRow key={`${item.series}-${item.title}`}>
-                    <TableCell className="font-medium">{item.series}</TableCell>
-                    <TableCell>{item.title}</TableCell>
-                    <TableCell>{item.assignee}</TableCell>
+                {queue.map((item) => (
+                  <TableRow
+                    key={`${item.seriesPublicId}-${item.episodePublicId}`}
+                  >
+                    <TableCell className="font-medium">
+                      {item.seriesTitle}
+                    </TableCell>
+                    <TableCell>{item.episodeTitle}</TableCell>
                     <TableCell>
-                      <Badge tone={getPublishingQueueTone(item.status)}>
-                        {getPublishingQueueStatusLabel(item.status)}
+                      <Badge tone={getQueueStatusTone(item.status)}>
+                        {getQueueStatusLabel(item.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{item.schedule}</TableCell>
+                    <TableCell>
+                      {item.scheduledAt
+                        ? new Date(item.scheduledAt).toLocaleString("ja-JP", {
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            month: "numeric",
+                            timeZone: "Asia/Tokyo",
+                          })
+                        : "未設定"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>レイアウト引き継ぎ事項</CardTitle>
-              <CardDescription>
-                主要画面 Issue
-                がこのシェルを前提に着手できるよう、固定しておきたい基礎要素です。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              {handoffItems.map((item) => (
-                <div
-                  className="rounded-2xl border border-border/70 bg-muted/35 p-4"
-                  key={item.label}
-                >
-                  <p className="text-sm font-medium text-foreground">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {item.description}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-5">
-              <EmptyState
-                actions={
-                  <Button type="button" variant="outline">
-                    設計メモを確認
-                  </Button>
-                }
-                description="個別画面の本実装は次段階ですが、ページヘッダーとコンテンツコンテナはすでに共通化されています。"
-                title="次の画面はこの枠組みを複製して着手できます。"
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+export default function DashboardPage(props: PageProps<"/[tenant_public_id]">) {
+  return (
+    <AdminPage title="ダッシュボード">
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent {...props} />
+      </Suspense>
     </AdminPage>
   );
 }

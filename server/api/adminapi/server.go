@@ -149,5 +149,14 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	mux.Handle(labelPath, labelHandler)
 	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
 	mux.Handle(adminAuthPath, adminAuthHandler)
+	dashboardPath, dashboardHandler := publiraadminv1connect.NewAdminDashboardServiceHandler(
+		server,
+		connect.WithInterceptors(
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(dashboardPath, dashboardHandler)
 	return mux
 }
