@@ -20,6 +20,7 @@
     "@publira/api-client": "workspace:*",
     "@publira/brand": "workspace:*",
     "@publira/layouts": "workspace:*",
+    "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
     "lru-cache": "^11.2.7",
     "next": "catalog:",

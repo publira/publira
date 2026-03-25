@@ -6,12 +6,14 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"net/mail"
 	"net/http"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
@@ -19,6 +21,58 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+func generatePublicID() string {
+	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
+	return strings.ToUpper(raw[:12])
+}
+
+func (s *apiServer) issueUserSession(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	user dbmodels.User,
+	role string,
+) (*connect.Response[publirav1.CreateSessionResponse], error) {
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	sessionToken := hex.EncodeToString(rawToken)
+	sessionID, err := uuid.NewV7()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
+		ID:        sessionID,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		TokenHash: auth.HashToken(sessionToken),
+		ExpiresAt: time.Now().Add(auth.SessionTTL),
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	resp := &publirav1.CreateSessionResponse{
+		User: &publirattypesv1.User{
+			PublicId: user.PublicID,
+			Name:     user.Name,
+			Role:     role,
+		},
+		Session: &publirattypesv1.Session{
+			SessionId: sessionToken,
+			ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339),
+		},
+	}
+	response := connect.NewResponse(resp)
+	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
+	return response, nil
+}
 
 func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
 	roles, err := s.queries.ListTenantUserRoles(ctx, userID)
@@ -105,35 +159,92 @@ func (s *apiServer) CreateSession(
 	if err != nil {
 		return nil, err
 	}
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	sessionToken := hex.EncodeToString(rawToken)
-	sessionID, err := uuid.NewV7()
-	if err != nil {
-		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "session_id_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
-		ID:        sessionID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(sessionToken),
-		ExpiresAt: time.Now().Add(auth.SessionTTL),
-	})
+	response, err := s.issueUserSession(ctx, tenant, user, role)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
+		return nil, err
+	}
+	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "session_issued")
+	return response, nil
+}
+
+func (s *apiServer) CreateUser(
+	ctx context.Context,
+	req *connect.Request[publirav1.CreateUserRequest],
+) (*connect.Response[publirav1.CreateUserResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	name := strings.TrimSpace(req.Msg.Name)
+	email := strings.TrimSpace(req.Msg.Email)
+	password := strings.TrimSpace(req.Msg.Password)
+	if name == "" || email == "" || password == "" {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name, email, and password are required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+
+	_, err = s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    email,
+	})
+	if err == nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_lookup_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	resp := &publirav1.CreateSessionResponse{
-		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role},
-		Session: &publirattypesv1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
+
+	passwordHash, err := auth.HashPassword(password)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	response := connect.NewResponse(resp)
-	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
-	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "session_issued")
+
+	userID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	user, err := s.queries.CreateUser(ctx, dbmodels.CreateUserParams{
+		ID:           userID,
+		TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		PublicID:     generatePublicID(),
+		Email:        email,
+		PasswordHash: passwordHash,
+		Name:         name,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "email_already_exists")
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+		}
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_create_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	issuedSession, err := s.issueUserSession(ctx, tenant, user, "")
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
+		return nil, err
+	}
+
+	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, user.PublicID, "user_created")
+	response := connect.NewResponse(&publirav1.CreateUserResponse{
+		User:    issuedSession.Msg.User,
+		Session: issuedSession.Msg.Session,
+	})
+	for _, cookie := range issuedSession.Header().Values("Set-Cookie") {
+		response.Header().Add("Set-Cookie", cookie)
+	}
 	return response, nil
 }
 

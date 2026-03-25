@@ -132,6 +132,9 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/ui-components':
+        specifier: workspace:*
+        version: link:../../packages/ui-components
       '@publira/utils':
         specifier: workspace:*
         version: link:../../packages/utils

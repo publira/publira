@@ -18,6 +18,7 @@ export interface SiteLayoutProps {
   navItems?: LayoutLinkItem[];
   primaryAction?: LayoutActionItem;
   secondaryAction?: LayoutActionItem;
+  actions?: ReactNode;
 }
 
 const defaultNavItems: LayoutLinkItem[] = [
@@ -41,6 +42,7 @@ const defaultSecondaryAction: LayoutActionItem = {
 
 export const SiteLayout = ({
   appLabel = "Publira",
+  actions,
   children,
   footerNote = defaultFooterNote,
   navItems = defaultNavItems,
@@ -67,10 +69,12 @@ export const SiteLayout = ({
           ))}
         </nav>
 
-        <SiteLayoutActions
-          primaryAction={primaryAction}
-          secondaryAction={secondaryAction}
-        />
+        {actions ?? (
+          <SiteLayoutActions
+            primaryAction={primaryAction}
+            secondaryAction={secondaryAction}
+          />
+        )}
       </div>
     </header>
 

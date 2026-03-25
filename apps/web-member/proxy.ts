@@ -4,6 +4,8 @@ import { LRUCache } from "lru-cache";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { PUBLIC_SESSION_COOKIE_NAME, buildLoginUrl } from "./lib/auth-shared";
+
 // gRPC transport is used for internal Next.js → Go API communication
 const publicApiClient = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_PUBLIC_GRPC_URL ?? "http://localhost:8100",
@@ -47,6 +49,16 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return NextResponse.next();
   }
 
+  // Check for session cookie
+  const sessionId = request.cookies
+    .get(PUBLIC_SESSION_COOKIE_NAME)
+    ?.value?.trim();
+
+  if (!sessionId) {
+    // Redirect to login if no session
+    return NextResponse.redirect(buildLoginUrl(request.nextUrl));
+  }
+
   const tenantPublicId = await resolveTenantPublicId(
     getTenantDomainCandidates(request.headers)
   );
@@ -61,5 +73,5 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 };
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!web-member-assets/|_next/static|_next/image|favicon.ico).*)"],
 };

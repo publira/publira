@@ -36,6 +36,8 @@ const (
 	// AuthServiceCreateSessionProcedure is the fully-qualified name of the AuthService's CreateSession
 	// RPC.
 	AuthServiceCreateSessionProcedure = "/publira.v1.AuthService/CreateSession"
+	// AuthServiceCreateUserProcedure is the fully-qualified name of the AuthService's CreateUser RPC.
+	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
 	// AuthServiceDeleteSessionProcedure is the fully-qualified name of the AuthService's DeleteSession
 	// RPC.
 	AuthServiceDeleteSessionProcedure = "/publira.v1.AuthService/DeleteSession"
@@ -52,6 +54,7 @@ const (
 // AuthServiceClient is a client for the publira.v1.AuthService service.
 type AuthServiceClient interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
+	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.GetTenantByDomainRequest]) (*connect.Response[v1.GetTenantByDomainResponse], error)
@@ -73,6 +76,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceCreateSessionProcedure,
 			connect.WithSchema(authServiceMethods.ByName("CreateSession")),
+			connect.WithClientOptions(opts...),
+		),
+		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
+			httpClient,
+			baseURL+AuthServiceCreateUserProcedure,
+			connect.WithSchema(authServiceMethods.ByName("CreateUser")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteSession: connect.NewClient[v1.DeleteSessionRequest, v1.DeleteSessionResponse](
@@ -105,6 +114,7 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
 	createSession          *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createUser             *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
 	deleteSession          *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
 	getMe                  *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 	getTenantByDomain      *connect.Client[v1.GetTenantByDomainRequest, v1.GetTenantByDomainResponse]
@@ -114,6 +124,11 @@ type authServiceClient struct {
 // CreateSession calls publira.v1.AuthService.CreateSession.
 func (c *authServiceClient) CreateSession(ctx context.Context, req *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
 	return c.createSession.CallUnary(ctx, req)
+}
+
+// CreateUser calls publira.v1.AuthService.CreateUser.
+func (c *authServiceClient) CreateUser(ctx context.Context, req *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
+	return c.createUser.CallUnary(ctx, req)
 }
 
 // DeleteSession calls publira.v1.AuthService.DeleteSession.
@@ -139,6 +154,7 @@ func (c *authServiceClient) GetAdminTenantByDomain(ctx context.Context, req *con
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
 type AuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
+	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.GetTenantByDomainRequest]) (*connect.Response[v1.GetTenantByDomainResponse], error)
@@ -156,6 +172,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		AuthServiceCreateSessionProcedure,
 		svc.CreateSession,
 		connect.WithSchema(authServiceMethods.ByName("CreateSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceCreateUserHandler := connect.NewUnaryHandler(
+		AuthServiceCreateUserProcedure,
+		svc.CreateUser,
+		connect.WithSchema(authServiceMethods.ByName("CreateUser")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceDeleteSessionHandler := connect.NewUnaryHandler(
@@ -186,6 +208,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case AuthServiceCreateSessionProcedure:
 			authServiceCreateSessionHandler.ServeHTTP(w, r)
+		case AuthServiceCreateUserProcedure:
+			authServiceCreateUserHandler.ServeHTTP(w, r)
 		case AuthServiceDeleteSessionProcedure:
 			authServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
@@ -205,6 +229,10 @@ type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.CreateSession is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.CreateUser is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {
