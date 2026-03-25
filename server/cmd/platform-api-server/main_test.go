@@ -41,15 +41,15 @@ const (
 	listPlatformUserRolesQuery                 = "-- name: ListPlatformUserRoles :many\nSELECT role\nFROM platform_user_roles\nWHERE user_id = $1\nORDER BY role\n"
 	listPlatformOperatorsQuery                 = "-- name: ListPlatformOperators :many\nSELECT u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nORDER BY u.created_at DESC\n"
 	getPlatformOperatorByPublicIDQuery         = "-- name: GetPlatformOperatorByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.email,\n    u.name,\n    COALESCE(\n        (\n            SELECT pur.role\n            FROM platform_user_roles pur\n            WHERE pur.user_id = u.id\n            ORDER BY CASE\n                    WHEN pur.role = 'platform_super_admin' THEN 3\n                    WHEN pur.role = 'super-admin' THEN 3\n                    WHEN pur.role = 'platform_operator' THEN 2\n                    WHEN pur.role = 'platform-operator' THEN 2\n                    WHEN pur.role = 'platform_auditor' THEN 1\n                    ELSE 0\n                END DESC,\n                pur.role ASC\n            LIMIT 1\n        ),\n        ''::text\n    )::text AS role,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\n    AND EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\nLIMIT 1\n"
-	listEndUsersQuery                          = "-- name: ListEndUsers :many\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n    AND NOT EXISTS (\n        SELECT 1\n        FROM tenant_memberships tm\n        WHERE tm.user_id = u.id\n    )\n    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)\n    AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)\n    AND ($3::text = '' OR u.status = $3::text)\nORDER BY u.created_at DESC\nLIMIT $5 OFFSET $4\n"
+	listEndUsersQuery                          = "-- name: ListEndUsers :many\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n    AND NOT EXISTS (\n        SELECT 1\n        FROM tenant_memberships tm\n        WHERE tm.user_id = u.id\n    )\n    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)\n    AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)\n    AND ($3::text = '' OR u.status = $3::text)\n    AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))\nORDER BY u.created_at DESC\nLIMIT $6 OFFSET $5\n"
 	countAllTenantsQuery                       = "-- name: CountAllTenants :one\nSELECT COUNT(*)::int\nFROM tenants\n"
 	countActiveTenantsQuery                    = "-- name: CountActiveTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'active'\n"
 	countSuspendedTenantsQuery                 = "-- name: CountSuspendedTenants :one\nSELECT COUNT(*)::int\nFROM tenants\nWHERE status = 'suspended'\n"
 	countPendingEndUsersQuery                  = "-- name: CountPendingEndUsers :one\nSELECT COUNT(*)::int\nFROM users u\nWHERE u.status = 'inactive'\n    AND NOT EXISTS (\n        SELECT 1\n        FROM platform_user_roles pur\n        WHERE pur.user_id = u.id\n    )\n"
 	listRecentPlatformEventsQuery              = "-- name: ListRecentPlatformEvents :many\nSELECT event_type,\n    action,\n    target,\n    actor,\n    occurred_at\nFROM (\n        SELECT 'tenant_created'::text AS event_type,\n            'Tenant Created'::text AS action,\n            t.public_id::text AS target,\n            ''::text AS actor,\n            t.created_at AS occurred_at\n        FROM tenants t\n        UNION ALL\n        SELECT 'operator_role_granted'::text AS event_type,\n            'Operator Role Granted'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            pur.created_at AS occurred_at\n        FROM platform_user_roles pur\n            JOIN users u ON u.id = pur.user_id\n        UNION ALL\n        SELECT 'end_user_created'::text AS event_type,\n            'End User Created'::text AS action,\n            u.public_id::text AS target,\n            ''::text AS actor,\n            u.created_at AS occurred_at\n        FROM users u\n        WHERE NOT EXISTS (\n                SELECT 1\n                FROM platform_user_roles pur\n                WHERE pur.user_id = u.id\n            )\n    ) events\nORDER BY occurred_at DESC\nLIMIT $1\n"
-	listAdminAuditLogsQuery                    = "-- name: ListAdminAuditLogs :many\nSELECT id, actor_user_public_id, actor_role, tenant_public_id, action, target_type, target_id, outcome, reason, client_ip, created_at\nFROM admin_audit_logs\nWHERE ($1::text IS NULL OR actor_user_public_id = $1::text)\n  AND ($2::text IS NULL OR tenant_public_id = $2::text)\n  AND ($3::text IS NULL OR action = $3::text)\nORDER BY created_at DESC\nLIMIT $5 OFFSET $4\n"
+	listAdminAuditLogsQuery                    = "-- name: ListAdminAuditLogs :many\nSELECT a.id,\n    a.actor_user_public_id,\n    a.actor_role,\n    a.tenant_public_id,\n    a.action,\n    a.target_type,\n    a.target_id,\n    a.outcome,\n    a.reason,\n    a.client_ip,\n    a.created_at,\n    COALESCE(actor_u.name, ''::text) AS actor_name,\n    COALESCE(tenant_t.name, ''::text) AS tenant_name,\n    CASE\n        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)\n        WHEN a.target_type IN ('user', 'operator') THEN COALESCE(target_u.name, ''::text)\n        ELSE ''::text\n    END AS target_name\nFROM admin_audit_logs a\n    LEFT JOIN users actor_u ON actor_u.public_id = a.actor_user_public_id\n    LEFT JOIN tenants tenant_t ON tenant_t.public_id = a.tenant_public_id\n    LEFT JOIN users target_u ON target_u.public_id = a.target_id\n    AND a.target_type IN ('user', 'operator')\n    LEFT JOIN tenants target_t ON target_t.public_id = a.target_id\n    AND a.target_type = 'tenant'\nWHERE ($1::text IS NULL OR a.actor_user_public_id = $1::text)\n  AND ($2::text IS NULL OR a.tenant_public_id = $2::text)\n  AND ($3::text IS NULL OR a.action = $3::text)\nORDER BY a.created_at DESC\nLIMIT $5 OFFSET $4\n"
 	getUserByPublicIDQuery                     = "-- name: GetUserByPublicID :one\nSELECT u.id,\n    u.public_id,\n    u.name,\n    u.email,\n    u.status,\n    u.created_at\nFROM users u\nWHERE u.public_id = $1\nLIMIT 1\n"
-	getTenantsByEndUserQuery                   = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
+	getTenantsByEndUserQuery                   = "-- name: GetTenantsByEndUser :many\nSELECT DISTINCT t.id,\n    t.public_id,\n    t.created_at\nFROM tenants t\n    JOIN tenant_memberships tm ON tm.tenant_id = t.id\nWHERE tm.user_id = $1\n    AND tm.status = 'active'\nORDER BY t.created_at DESC\n"
 	countTenantMembershipsByUserIDQuery        = "-- name: CountTenantMembershipsByUserID :one\nSELECT COUNT(*)::int\nFROM tenant_memberships\nWHERE user_id = $1\n"
 	updateUserStatusQuery                      = "-- name: UpdateUserStatus :one\nUPDATE users\nSET status = $2\nWHERE public_id = $1\nRETURNING id, public_id, email, password_hash, name, created_at, status\n"
 	terminateUserSessionsQuery                 = "-- name: TerminateUserSessions :exec\nUPDATE sessions\nSET revoked_at = NOW()\nWHERE user_id = $1\n    AND revoked_at IS NULL\n"
@@ -776,9 +776,9 @@ func TestListAuditLogs(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAdminAuditLogsQuery)).
 		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, int32(0), int32(20)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "platform_operator", "TENANT001", "tenant_created", "tenant", "TENANT001", "success", nil, "203.0.113.10", now).
-			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER002", "platform_super_admin", nil, "operator_updated", "operator", "PLATUSER003", "success", nil, nil, now.Add(-time.Minute)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "tenant_name", "target_name"}).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "platform_operator", "TENANT001", "tenant_created", "tenant", "TENANT001", "success", nil, "203.0.113.10", now, "Operator One", "Tenant One", "Tenant One").
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER002", "platform_super_admin", nil, "operator_updated", "operator", "PLATUSER003", "success", nil, nil, now.Add(-time.Minute), "Operator Two", "", "Operator Three"))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListAuditLogs(context.Background(), newAuthedRequest(publirasplatformv1.ListAuditLogsRequest{}))
@@ -812,8 +812,8 @@ func TestListAuditLogsWithFilters(t *testing.T) {
 			int32(5),
 			int32(10),
 		).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "platform_operator", "TENANT001", "tenant_created", "tenant", "TENANT001", "success", nil, nil, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "tenant_name", "target_name"}).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "platform_operator", "TENANT001", "tenant_created", "tenant", "TENANT001", "success", nil, nil, now, "Operator One", "Tenant One", "Tenant One"))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListAuditLogs(context.Background(), newAuthedRequest(publirasplatformv1.ListAuditLogsRequest{
@@ -844,7 +844,7 @@ func TestListAuditLogsClampLimit(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAdminAuditLogsQuery)).
 		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, int32(0), int32(100)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "actor_user_public_id", "actor_role", "tenant_public_id", "action", "target_type", "target_id", "outcome", "reason", "client_ip", "created_at", "actor_name", "tenant_name", "target_name"}))
 
 	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
 	_, err := client.ListAuditLogs(context.Background(), newAuthedRequest(publirasplatformv1.ListAuditLogsRequest{Limit: 999}))
@@ -1449,7 +1449,7 @@ func TestListEndUsers(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
 		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListEndUsers(context.Background(), newAuthedRequest(publirasplatformv1.ListEndUsersRequest{}))
@@ -1498,7 +1498,7 @@ func TestGetEndUser(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
 		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetEndUser(context.Background(), newAuthedRequest(publirasplatformv1.GetEndUserRequest{PublicId: "EUSER00001"}))
@@ -1571,7 +1571,7 @@ func TestSuspendEndUser(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
 		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
 	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
@@ -1645,7 +1645,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantsByEndUserQuery)).
 		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
 	expectAdminAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)

@@ -1180,7 +1180,8 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UU
 
 const getTenantsByEndUser = `-- name: GetTenantsByEndUser :many
 SELECT DISTINCT t.id,
-    t.public_id
+    t.public_id,
+    t.created_at
 FROM tenants t
     JOIN tenant_memberships tm ON tm.tenant_id = t.id
 WHERE tm.user_id = $1
@@ -1189,8 +1190,9 @@ ORDER BY t.created_at DESC
 `
 
 type GetTenantsByEndUserRow struct {
-	ID       uuid.UUID `json:"id"`
-	PublicID string    `json:"public_id"`
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // エンドユーザーが所属するテナント一覧を取得
@@ -1203,7 +1205,7 @@ func (q *Queries) GetTenantsByEndUser(ctx context.Context, userID uuid.UUID) ([]
 	var items []GetTenantsByEndUserRow
 	for rows.Next() {
 		var i GetTenantsByEndUserRow
-		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+		if err := rows.Scan(&i.ID, &i.PublicID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1503,14 +1505,16 @@ WHERE NOT EXISTS (
     AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)
     AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)
     AND ($3::text = '' OR u.status = $3::text)
+    AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
 ORDER BY u.created_at DESC
-LIMIT $5 OFFSET $4
+LIMIT $6 OFFSET $5
 `
 
 type ListEndUsersParams struct {
 	CreatedAfter  sql.NullTime   `json:"created_after"`
 	CreatedBefore sql.NullTime   `json:"created_before"`
 	Status        sql.NullString `json:"status"`
+	PublicIds     []string       `json:"public_ids"`
 	Offset        int32          `json:"offset"`
 	Limit         int32          `json:"limit"`
 }
@@ -1530,6 +1534,7 @@ func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]L
 		arg.CreatedAfter,
 		arg.CreatedBefore,
 		arg.Status,
+		pq.Array(arg.PublicIds),
 		arg.Offset,
 		arg.Limit,
 	)

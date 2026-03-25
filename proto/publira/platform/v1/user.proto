@@ -21,6 +21,7 @@ message ListEndUsersRequest {
   string created_after = 3;  // RFC3339形式
   string status = 4;         // active, suspended, inactive
   string created_before = 5; // RFC3339形式
+  repeated string public_ids = 6;
 }
 
 message ListEndUsersResponse {

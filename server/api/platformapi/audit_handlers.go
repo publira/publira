@@ -12,13 +12,16 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
-func adminAuditLogToProto(row dbmodels.AdminAuditLog) *publirasplatformv1.PlatformAuditLog {
+func adminAuditLogToProto(row dbmodels.ListAdminAuditLogsRow) *publirasplatformv1.PlatformAuditLog {
 	item := &publirasplatformv1.PlatformAuditLog{
 		ActorUserPublicId: row.ActorUserPublicID,
 		ActorRole:         row.ActorRole,
 		Action:            row.Action,
 		Outcome:           row.Outcome,
 		CreatedAt:         row.CreatedAt.UTC().Format(time.RFC3339),
+		ActorName:         row.ActorName,
+		TenantName:        row.TenantName,
+		TargetName:        row.TargetName,
 	}
 	if row.TenantPublicID.Valid {
 		item.TenantPublicId = row.TenantPublicID.String

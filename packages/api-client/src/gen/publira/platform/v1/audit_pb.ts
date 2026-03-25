@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/audit.proto.
  */
 export const file_publira_platform_v1_audit: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL2F1ZGl0LnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIt4BChBQbGF0Zm9ybUF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX3JvbGUYAiABKAkSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEg8KB291dGNvbWUYByABKAkSDgoGcmVhc29uGAggASgJEhEKCWNsaWVudF9pcBgJIAEoCRISCgpjcmVhdGVkX2F0GAogASgJIn0KFExpc3RBdWRpdExvZ3NSZXF1ZXN0Eg0KBWxpbWl0GAEgASgFEg4KBm9mZnNldBgCIAEoBRIYChB0ZW5hbnRfcHVibGljX2lkGAMgASgJEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAQgASgJEg4KBmFjdGlvbhgFIAEoCSJSChVMaXN0QXVkaXRMb2dzUmVzcG9uc2USOQoKYXVkaXRfbG9ncxgBIAMoCzIlLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdWRpdExvZzKDAQoXUGxhdGZvcm1BdWRpdExvZ1NlcnZpY2USaAoNTGlzdEF1ZGl0TG9ncxIpLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdEF1ZGl0TG9nc1JlcXVlc3QaKi5wdWJsaXJhLnBsYXRmb3JtLnYxLkxpc3RBdWRpdExvZ3NSZXNwb25zZSIAQk5aTGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
+  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL2F1ZGl0LnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIpwCChBQbGF0Zm9ybUF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX3JvbGUYAiABKAkSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEg8KB291dGNvbWUYByABKAkSDgoGcmVhc29uGAggASgJEhEKCWNsaWVudF9pcBgJIAEoCRISCgpjcmVhdGVkX2F0GAogASgJEhIKCmFjdG9yX25hbWUYCyABKAkSEwoLdGVuYW50X25hbWUYDCABKAkSEwoLdGFyZ2V0X25hbWUYDSABKAkifQoUTGlzdEF1ZGl0TG9nc1JlcXVlc3QSDQoFbGltaXQYASABKAUSDgoGb2Zmc2V0GAIgASgFEhgKEHRlbmFudF9wdWJsaWNfaWQYAyABKAkSHAoUYWN0b3JfdXNlcl9wdWJsaWNfaWQYBCABKAkSDgoGYWN0aW9uGAUgASgJIlIKFUxpc3RBdWRpdExvZ3NSZXNwb25zZRI5CgphdWRpdF9sb2dzGAEgAygLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1ZGl0TG9nMoMBChdQbGF0Zm9ybUF1ZGl0TG9nU2VydmljZRJoCg1MaXN0QXVkaXRMb2dzEikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0QXVkaXRMb2dzUmVxdWVzdBoqLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdEF1ZGl0TG9nc1Jlc3BvbnNlIgBCTlpMZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3BsYXRmb3JtL3YxO3B1YmxpcmFzcGxhdGZvcm12MWIGcHJvdG8z");
 
 /**
  * @generated from message publira.platform.v1.PlatformAuditLog
@@ -65,6 +65,21 @@ export type PlatformAuditLog = Message<"publira.platform.v1.PlatformAuditLog"> &
    * @generated from field: string created_at = 10;
    */
   createdAt: string;
+
+  /**
+   * @generated from field: string actor_name = 11;
+   */
+  actorName: string;
+
+  /**
+   * @generated from field: string tenant_name = 12;
+   */
+  tenantName: string;
+
+  /**
+   * @generated from field: string target_name = 13;
+   */
+  targetName: string;
 };
 
 /**
