@@ -112,6 +112,9 @@ jobs:
       - name: Dependencies / Install
         run: make setup
 
+      - name: Build / Packages
+        run: pnpm --filter "./packages/*" build
+
       - name: Validate / Go Tests
         working-directory: server
         run: go test ./...
