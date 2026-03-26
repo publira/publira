@@ -61,7 +61,8 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && tsdown"
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run --passWithNoTests"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.11.0",
@@ -71,6 +72,7 @@
   },
   "devDependencies": {
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -178,6 +178,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   apps/web-catalog:
     dependencies:
@@ -294,6 +297,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   apps/web-platform:
     dependencies:
@@ -404,6 +410,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   packages/api-client:
     dependencies:
@@ -426,8 +435,15 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
-  packages/brand: {}
+  packages/brand:
+    devDependencies:
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   packages/icons:
     dependencies:
@@ -450,6 +466,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   packages/layouts:
     dependencies:
@@ -490,6 +509,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   packages/next-config:
     dependencies:
@@ -503,6 +525,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   packages/public-web-shared:
     dependencies:
@@ -525,8 +550,15 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
-  packages/tsconfig: {}
+  packages/tsconfig:
+    devDependencies:
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   packages/ui-components:
     dependencies:
@@ -564,6 +596,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
   packages/utils:
     dependencies:
@@ -586,6 +621,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.0(@types/node@24.11.1)(vite@7.3.1(@types/node@24.11.1)(jiti@2.6.1)(lightningcss@1.32.0))
 
 packages:
 
