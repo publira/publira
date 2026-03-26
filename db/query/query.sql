@@ -604,7 +604,9 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    s.public_id AS series_public_id,
+    s.title AS series_title
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id

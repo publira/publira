@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Episode, Series, TenantContext } from "../types/v1/types_pb";
+import type { Episode, EpisodeImage, Series, TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/catalog.proto.
  */
 export const file_publira_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJHChtMaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2USKAoGc2VyaWVzGAEgAygLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMiXAoWR2V0U2VyaWVzRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJInAKF0dldFNlcmllc0RldGFpbFJlc3BvbnNlEigKBnNlcmllcxgBIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEisKCGVwaXNvZGVzGAIgAygLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlIl0KF0dldEVwaXNvZGVEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkicAoYR2V0RXBpc29kZURldGFpbFJlc3BvbnNlEioKB2VwaXNvZGUYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUSKAoGc2VyaWVzGAIgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMyuQIKDkNhdGFsb2dTZXJ2aWNlEmgKE0xpc3RQdWJsaXNoZWRTZXJpZXMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRTZXJpZXNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2UiABJcCg9HZXRTZXJpZXNEZXRhaWwSIi5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlc3BvbnNlIgASXwoQR2V0RXBpc29kZURldGFpbBIjLnB1YmxpcmEudjEuR2V0RXBpc29kZURldGFpbFJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXNwb25zZSIAQjxaOmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJHChtMaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2USKAoGc2VyaWVzGAEgAygLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMiXAoWR2V0U2VyaWVzRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJInAKF0dldFNlcmllc0RldGFpbFJlc3BvbnNlEigKBnNlcmllcxgBIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEisKCGVwaXNvZGVzGAIgAygLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlIl0KF0dldEVwaXNvZGVEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkioAEKGEdldEVwaXNvZGVEZXRhaWxSZXNwb25zZRIqCgdlcGlzb2RlGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlEigKBnNlcmllcxgCIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEi4KBmltYWdlcxgDIAMoCzIeLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZUltYWdlMrkCCg5DYXRhbG9nU2VydmljZRJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.ListPublishedSeriesRequest
@@ -125,9 +125,8 @@ export const GetEpisodeDetailRequestSchema: GenMessage<GetEpisodeDetailRequest> 
   messageDesc(file_publira_v1_catalog, 4);
 
 /**
- * Episode metadata for public viewing.
- * Response is intentionally metadata-only to keep payload size bounded.
- * Episode body/content is excluded from API response and logging scope.
+ * Episode detail for public viewing.
+ * Body/content is represented as ordered images for the reader UI.
  *
  * @generated from message publira.v1.GetEpisodeDetailResponse
  */
@@ -141,6 +140,11 @@ export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailRespo
    * @generated from field: publira.types.v1.Series series = 2;
    */
   series?: Series;
+
+  /**
+   * @generated from field: repeated publira.types.v1.EpisodeImage images = 3;
+   */
+  images: EpisodeImage[];
 };
 
 /**

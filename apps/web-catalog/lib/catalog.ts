@@ -1,4 +1,8 @@
 import { apiClient } from "./api-client";
+import { EpisodeNotFoundError } from "./errors";
+import { SeriesNotFoundError } from "./series-not-found-error";
+
+export { EpisodeNotFoundError, SeriesNotFoundError };
 
 export interface SeriesListItem {
   publicId: string;
@@ -17,6 +21,32 @@ export interface EpisodeItem {
   publishedAt: string;
 }
 
+export interface EpisodeImageItem {
+  contentType: string;
+  displayOrder: number;
+  fileSizeBytes: number;
+  height: number;
+  id: string;
+  imageUrl: string;
+  width: number;
+}
+
+export interface EpisodeDetail {
+  orderIndex: number;
+  price: number;
+  publicId: string;
+  publishedAt: string;
+  readingPeriodHours: number;
+  scheduledAt: string;
+  status: string;
+  title: string;
+}
+
+export interface EpisodeSeriesSummary {
+  publicId: string;
+  title: string;
+}
+
 export interface SeriesDetail {
   publicId: string;
   title: string;
@@ -24,13 +54,6 @@ export interface SeriesDetail {
   labelName: string;
   creatorNames: string[];
   readingPeriodHours: number;
-}
-
-export class SeriesNotFoundError extends Error {
-  constructor() {
-    super("シリーズが見つかりませんでした。");
-    this.name = "SeriesNotFoundError";
-  }
 }
 
 export const listPublishedSeries = async (
@@ -100,5 +123,58 @@ export const getSeriesDetail = async (
   return {
     episodes: result.episodes,
     series: result.series,
+  };
+};
+
+export const getEpisodeDetail = async (
+  tenantPublicId: string,
+  seriesPublicId: string,
+  episodePublicId: string
+): Promise<{
+  episode: EpisodeDetail;
+  images: EpisodeImageItem[];
+  series: EpisodeSeriesSummary;
+}> => {
+  "use cache";
+
+  const response = await apiClient.catalog.getEpisodeDetail({
+    publicId: episodePublicId,
+    tenant: { tenantPublicId },
+  });
+
+  const series = response.series
+    ? {
+        publicId: response.series.publicId,
+        title: response.series.title,
+      }
+    : undefined;
+
+  if (!response.episode || !series || series.publicId !== seriesPublicId) {
+    throw new EpisodeNotFoundError();
+  }
+
+  return {
+    episode: {
+      orderIndex: response.episode.orderIndex,
+      price: response.episode.price,
+      publicId: response.episode.publicId,
+      publishedAt: response.episode.publishedAt,
+      readingPeriodHours: response.episode.readingPeriodHours ?? 0,
+      scheduledAt: response.episode.scheduledAt,
+      status: response.episode.status,
+      title: response.episode.title,
+    },
+    images: (response.images ?? [])
+      .map((image) => ({
+        contentType: image.contentType,
+        displayOrder: image.displayOrder,
+        fileSizeBytes: Number(image.fileSizeBytes),
+        height: image.height,
+        id: image.id,
+        imageUrl: image.imageUrl,
+        width: image.width,
+      }))
+      .toSorted((left, right) => left.displayOrder - right.displayOrder),
+    series,
   };
 };

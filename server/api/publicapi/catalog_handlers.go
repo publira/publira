@@ -144,5 +144,19 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&publirav1.GetEpisodeDetailResponse{Episode: toProtoPublishedEpisode(row)}), nil
+	images, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, row.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
+		Episode: toProtoPublishedEpisode(row),
+		Series:  toProtoPublishedSeries(row),
+		Images:  make([]*publirattypesv1.EpisodeImage, 0, len(images)),
+	})
+	for _, image := range images {
+		res.Msg.Images = append(res.Msg.Images, toProtoEpisodeImage(image))
+	}
+
+	return res, nil
 }

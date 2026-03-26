@@ -31,12 +31,12 @@ message GetEpisodeDetailRequest {
   string public_id = 2;
 }
 
-// Episode metadata for public viewing.
-// Response is intentionally metadata-only to keep payload size bounded.
-// Episode body/content is excluded from API response and logging scope.
+// Episode detail for public viewing.
+// Body/content is represented as ordered images for the reader UI.
 message GetEpisodeDetailResponse {
   publira.types.v1.Episode episode = 1;
   publira.types.v1.Series series = 2;
+  repeated publira.types.v1.EpisodeImage images = 3;
 }
 
 service CatalogService {

@@ -962,7 +962,9 @@ SELECT e.id,
     el.reading_period_hours,
     el.status,
     el.scheduled_at,
-    el.published_at
+    el.published_at,
+    s.public_id AS series_public_id,
+    s.title AS series_title
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -992,6 +994,8 @@ type GetPublishedEpisodeByPublicIDForTenantRow struct {
 	Status             string        `json:"status"`
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
+	SeriesPublicID     string        `json:"series_public_id"`
+	SeriesTitle        string        `json:"series_title"`
 }
 
 func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error) {
@@ -1007,6 +1011,8 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
+		&i.SeriesPublicID,
+		&i.SeriesTitle,
 	)
 	return i, err
 }
