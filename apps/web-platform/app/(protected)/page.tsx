@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -31,22 +32,6 @@ export const metadata: Metadata = {
 };
 
 const recentEventsLimit = 6;
-
-const formatTimestamp = (value: string): string => {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-};
 
 const getRecentEventLabel = (event: PlatformDashboardRecentEvent): string => {
   switch (event.eventType) {
@@ -261,7 +246,9 @@ export default async function Page() {
                           )}
                         </TableCell>
                         <TableCell>{event.actor || "system"}</TableCell>
-                        <TableCell>{formatTimestamp(event.at)}</TableCell>
+                        <TableCell>
+                          {formatDateTime(event.at, { fallback: "-" })}
+                        </TableCell>
                       </TableRow>
                     );
                   })

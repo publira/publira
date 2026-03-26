@@ -1,3 +1,4 @@
+import { formatDateTime } from "@publira/utils";
 import {
   createPlaceholderStaticParams,
   guardPlaceholders,
@@ -13,22 +14,6 @@ import {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id", "series_id", "episode_id");
-
-const formatDateTime = (value: string) => {
-  if (!value) {
-    return "未設定";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "未設定";
-  }
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-};
 
 const EpisodeDetailSkeleton = () => (
   <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -99,7 +84,9 @@ const EpisodeDetailData = async (
               #{episode.orderIndex}
             </span>
             <span>{priceLabel}</span>
-            <span>公開 {formatDateTime(episode.publishedAt)}</span>
+            <span>
+              公開 {formatDateTime(episode.publishedAt, { fallback: "未設定" })}
+            </span>
           </div>
           <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight sm:text-4xl">
             {episode.title}
@@ -169,7 +156,7 @@ const EpisodeDetailData = async (
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-muted-foreground">公開日</dt>
                 <dd className="text-right font-medium">
-                  {formatDateTime(episode.publishedAt)}
+                  {formatDateTime(episode.publishedAt, { fallback: "未設定" })}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
@@ -188,7 +175,9 @@ const EpisodeDetailData = async (
                 <div className="flex items-start justify-between gap-4">
                   <dt className="text-muted-foreground">公開予定</dt>
                   <dd className="text-right font-medium">
-                    {formatDateTime(episode.scheduledAt)}
+                    {formatDateTime(episode.scheduledAt, {
+                      fallback: "未設定",
+                    })}
                   </dd>
                 </div>
               )}

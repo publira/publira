@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
@@ -73,22 +74,6 @@ const buildAuditLogsPath = (params: {
   }
   const query = search.toString();
   return query ? `/audit-logs?${query}` : "/audit-logs";
-};
-
-const formatTimestamp = (value: string): string => {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
 };
 
 const getOutcomeTone = (
@@ -356,7 +341,9 @@ const AuditLogsTableBody = ({
         <TableRow
           key={`${log.createdAt}-${log.actorUserPublicId}-${log.action}-${log.targetType}-${log.targetId}`}
         >
-          <TableCell>{formatTimestamp(log.createdAt)}</TableCell>
+          <TableCell>
+            {formatDateTime(log.createdAt, { fallback: "-" })}
+          </TableCell>
           <TableCell>
             <div className="grid gap-1">
               {log.actorUserPublicId ? (
