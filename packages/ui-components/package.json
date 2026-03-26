@@ -86,7 +86,8 @@
     "./styles.css": "./styles.css"
   },
   "scripts": {
-    "build": "rm -rf dist && tsdown"
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run --passWithNoTests"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
@@ -99,7 +100,8 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "react": "^19.0.0",

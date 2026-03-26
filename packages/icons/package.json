@@ -37,7 +37,8 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && tsdown"
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run --passWithNoTests"
   },
   "dependencies": {
     "lucide-react": "0.577.0"
@@ -46,7 +47,8 @@
     "@publira/tsconfig": "workspace:*",
     "@types/react": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "react": "^19.0.0"

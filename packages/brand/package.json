@@ -5,5 +5,11 @@
   "type": "module",
   "exports": {
     "./theme.css": "./theme.css"
+  },
+  "scripts": {
+    "test": "vitest --run --passWithNoTests"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
   }
 }

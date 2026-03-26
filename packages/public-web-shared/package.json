@@ -25,7 +25,8 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && tsdown"
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run --passWithNoTests"
   },
   "dependencies": {
     "@publira/api-client": "workspace:*",
@@ -35,7 +36,8 @@
     "@publira/tsconfig": "workspace:*",
     "next": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "next": "^16.2.0"
