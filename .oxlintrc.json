@@ -5,5 +5,5 @@
     "./node_modules/ultracite/config/oxlint/react/.oxlintrc.json",
     "./node_modules/ultracite/config/oxlint/next/.oxlintrc.json"
   ],
-  "ignorePatterns": ["**/src/gen/**"]
+  "ignorePatterns": ["**/src/gen/**", ".agents/skills/**"]
 }

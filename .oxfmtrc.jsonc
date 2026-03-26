@@ -12,7 +12,7 @@
     "order": "asc",
   },
   "experimentalSortPackageJson": true,
-  "ignorePatterns": ["**/src/gen/**"],
+  "ignorePatterns": ["**/src/gen/**", ".agents/skills/**"],
   "jsxSingleQuote": false,
   "printWidth": 80,
   "quoteProps": "as-needed",
