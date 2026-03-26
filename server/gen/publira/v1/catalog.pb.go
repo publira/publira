@@ -282,13 +282,13 @@ func (x *GetEpisodeDetailRequest) GetPublicId() string {
 	return ""
 }
 
-// Episode metadata for public viewing.
-// Response is intentionally metadata-only to keep payload size bounded.
-// Episode body/content is excluded from API response and logging scope.
+// Episode detail for public viewing.
+// Body/content is represented as ordered images for the reader UI.
 type GetEpisodeDetailResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Episode       *v1.Episode            `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
 	Series        *v1.Series             `protobuf:"bytes,2,opt,name=series,proto3" json:"series,omitempty"`
+	Images        []*v1.EpisodeImage     `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -337,6 +337,13 @@ func (x *GetEpisodeDetailResponse) GetSeries() *v1.Series {
 	return nil
 }
 
+func (x *GetEpisodeDetailResponse) GetImages() []*v1.EpisodeImage {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
 var File_publira_v1_catalog_proto protoreflect.FileDescriptor
 
 const file_publira_v1_catalog_proto_rawDesc = "" +
@@ -357,10 +364,11 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"o\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x81\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xb9\x01\n" +
 	"\x18GetEpisodeDetailResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
-	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series2\xb9\x02\n" +
+	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +
+	"\x06images\x18\x03 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images2\xb9\x02\n" +
 	"\x0eCatalogService\x12h\n" +
 	"\x13ListPublishedSeries\x12&.publira.v1.ListPublishedSeriesRequest\x1a'.publira.v1.ListPublishedSeriesResponse\"\x00\x12\\\n" +
 	"\x0fGetSeriesDetail\x12\".publira.v1.GetSeriesDetailRequest\x1a#.publira.v1.GetSeriesDetailResponse\"\x00\x12_\n" +
@@ -389,6 +397,7 @@ var file_publira_v1_catalog_proto_goTypes = []any{
 	(*v1.TenantContext)(nil),            // 6: publira.types.v1.TenantContext
 	(*v1.Series)(nil),                   // 7: publira.types.v1.Series
 	(*v1.Episode)(nil),                  // 8: publira.types.v1.Episode
+	(*v1.EpisodeImage)(nil),             // 9: publira.types.v1.EpisodeImage
 }
 var file_publira_v1_catalog_proto_depIdxs = []int32{
 	6,  // 0: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
@@ -399,17 +408,18 @@ var file_publira_v1_catalog_proto_depIdxs = []int32{
 	6,  // 5: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
 	8,  // 6: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
 	7,  // 7: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
-	0,  // 8: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	2,  // 9: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	4,  // 10: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	1,  // 11: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	3,  // 12: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	5,  // 13: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	9,  // 8: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
+	0,  // 9: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	2,  // 10: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	4,  // 11: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	1,  // 12: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	3,  // 13: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	5,  // 14: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	12, // [12:15] is the sub-list for method output_type
+	9,  // [9:12] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }

@@ -46,3 +46,22 @@ func toProtoPublishedEpisode(row dbmodels.GetPublishedEpisodeByPublicIDForTenant
 	}
 	return episode
 }
+
+func toProtoPublishedSeries(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) *publirattypesv1.Series {
+	return &publirattypesv1.Series{
+		PublicId: row.SeriesPublicID,
+		Title:    row.SeriesTitle,
+	}
+}
+
+func toProtoEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.EpisodeImage {
+	return &publirattypesv1.EpisodeImage{
+		Id:            row.ID.String(),
+		ImageUrl:      row.ImageUrl,
+		ContentType:   row.ContentType,
+		FileSizeBytes: row.FileSizeBytes,
+		DisplayOrder:  row.DisplayOrder,
+		Width:         row.Width,
+		Height:        row.Height,
+	}
+}
