@@ -1,44 +1,13 @@
-import { createPublicApiClient } from "@publira/api-client/public/client";
+import {
+  createPublicGrpcApiClient,
+  createTenantPublicIdResolver,
+} from "@publira/public-web-shared";
 import { getTenantDomainCandidates } from "@publira/utils";
-import { LRUCache } from "lru-cache";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-// gRPC transport is used for internal Next.js → Go API communication
-const publicApiClient = createPublicApiClient({
-  baseUrl: process.env.PUBLIRA_PUBLIC_GRPC_URL ?? "http://localhost:8100",
-  transport: "grpc",
-});
-
-const tenantCache = new LRUCache<string, { tenantPublicId: string | null }>({
-  max: 500,
-  ttl: 300_000,
-});
-
-const resolveTenantPublicId = async (
-  domainCandidates: readonly string[]
-): Promise<string | null> => {
-  if (domainCandidates.length === 0) {
-    return null;
-  }
-
-  const cacheKey = domainCandidates.join("\0");
-  const cached = tenantCache.get(cacheKey);
-  if (cached !== undefined) {
-    return cached.tenantPublicId;
-  }
-
-  try {
-    const response = await publicApiClient.auth.getTenantByDomain({
-      domains: [...domainCandidates],
-    });
-    const tenantPublicId = response.tenantPublicId?.trim() || null;
-    tenantCache.set(cacheKey, { tenantPublicId });
-    return tenantPublicId;
-  } catch {
-    return null;
-  }
-};
+const publicApiClient = createPublicGrpcApiClient();
+const resolveTenantPublicId = createTenantPublicIdResolver(publicApiClient);
 
 export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;

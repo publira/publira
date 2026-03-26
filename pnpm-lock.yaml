@@ -132,6 +132,9 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/public-web-shared':
+        specifier: workspace:*
+        version: link:../../packages/public-web-shared
       '@publira/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components
@@ -184,9 +187,15 @@ importers:
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@publira/icons':
+        specifier: workspace:*
+        version: link:../../packages/icons
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/public-web-shared':
+        specifier: workspace:*
+        version: link:../../packages/public-web-shared
       '@publira/utils':
         specifier: workspace:*
         version: link:../../packages/utils
@@ -239,6 +248,9 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/public-web-shared':
+        specifier: workspace:*
+        version: link:../../packages/public-web-shared
       '@publira/utils':
         specifier: workspace:*
         version: link:../../packages/utils
@@ -346,6 +358,9 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
+      '@publira/public-web-shared':
+        specifier: workspace:*
+        version: link:../../packages/public-web-shared
       '@publira/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components
@@ -479,6 +494,28 @@ importers:
         specifier: ^16.2.0
         version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.4(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/public-web-shared:
+    dependencies:
+      '@publira/api-client':
+        specifier: workspace:*
+        version: link:../api-client
+      lru-cache:
+        specifier: ^11.2.7
+        version: 11.2.7
+    devDependencies:
+      '@publira/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      next:
+        specifier: 'catalog:'
+        version: 16.2.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       tsdown:
         specifier: 'catalog:'
         version: 0.21.4(typescript@5.9.3)
