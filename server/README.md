@@ -34,6 +34,7 @@ server/
 
 ```bash
 make db-init
+make db-seed
 make db-status
 make db-new name=add_sessions_table
 make dev-api

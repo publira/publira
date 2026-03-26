@@ -55,3 +55,21 @@ make setup
 ```
 
 Dev Container では `migrate` CLI (golang-migrate) を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
+
+## ローカル DB 初期化
+
+```bash
+make db-init
+```
+
+`db-init` は次を順に実行します。
+
+1. migration 適用 (`db/migrations/`)
+2. baseline seed 適用 (`db/seeds/baseline/`)
+
+### migration と seed の責務
+
+- migration: スキーマの変更（DDL）
+- seed: ローカル開発・画面確認用の初期データ（DML、冪等）
+
+seed の詳細と固定ログイン情報は `db/seeds/README.md` を参照してください。

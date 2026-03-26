@@ -1,7 +1,7 @@
 DB_URL := "postgres://postgres:password@db:5432/publira?sslmode=disable"
 MIGRATE := migrate -path db/migrations -database $(DB_URL)
 
-.PHONY: setup gen build-server db-init db-reset db-status db-rollback db-new dev-api dev-admin-api dev-platform-api dev-web run-batch-publish
+.PHONY: setup gen build-server db-init db-seed db-reset db-status db-rollback db-new dev-api dev-admin-api dev-platform-api dev-web run-batch-publish
 
 setup:
 	pnpm install
@@ -16,6 +16,10 @@ build-server:
 
 db-init:
 	$(MIGRATE) up
+	$(MAKE) db-seed
+
+db-seed:
+	psql $(DB_URL) -v ON_ERROR_STOP=1 -f db/seeds/seed.sql
 
 db-reset:
 	psql $(DB_URL) -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
