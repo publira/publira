@@ -1,35 +1,13 @@
-export const PUBLIC_SESSION_COOKIE_NAME = "publira_public_session";
+import {
+  buildPublicLoginUrl,
+  PUBLIC_SESSION_COOKIE_NAME,
+  sanitizeRedirectPath,
+} from "@publira/public-web-shared";
 
-export const sanitizeRedirectPath = (
-  path: string | null | undefined
-): string => {
-  if (!path || !path.startsWith("/")) {
-    return "/";
-  }
+export { PUBLIC_SESSION_COOKIE_NAME, sanitizeRedirectPath };
 
-  // 自サイト内へのリダイレクトのみ許可
-  // //で始まる場合や /login で始まる場合は拒否
-  if (path.startsWith("//") || path.startsWith("/login")) {
-    return "/";
-  }
-
-  // バージョン付きのカタログページなど特定パターンは許可
-  // 例: /${tenant_public_id}/セクション, /privacy, /terms
-  return path;
-};
-
-export const buildLoginUrl = (
-  requestUrl: URL,
-  tenantPublicId?: string
-): URL => {
-  const loginUrl = tenantPublicId
-    ? new URL(`/${tenantPublicId}/login`, requestUrl)
-    : new URL("/login", requestUrl);
-
-  const nextPath = `${requestUrl.pathname}${requestUrl.search}`;
-  loginUrl.searchParams.set("returnTo", nextPath);
-  return loginUrl;
-};
+export const buildLoginUrl = (requestUrl: URL, tenantPublicId?: string): URL =>
+  buildPublicLoginUrl(requestUrl, { tenantPublicId });
 
 export const buildAuthUrl = (
   requestUrl: URL,
