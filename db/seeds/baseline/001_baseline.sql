@@ -124,21 +124,29 @@ ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     name = EXCLUDED.name;
 
-WITH creator_seed AS (
-    SELECT '018f0e71-1000-7000-8000-000000000001'::uuid AS id
-),
-tenant_scope AS (
+WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
     WHERE t.domain = 'localhost'
+),
+creator_seed AS (
+    SELECT
+        gs.n,
+        (
+            '018f0e71-'
+            || LPAD(TO_HEX(gs.n), 4, '0')
+            || '-7000-8000-'
+            || LPAD(TO_HEX(gs.n), 12, '0')
+        )::uuid AS id
+    FROM GENERATE_SERIES(1, 100) AS gs(n)
 )
 INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
 SELECT
     cs.id,
     ts.id,
     UPPER(SUBSTRING(REPLACE(cs.id::text, '-', '') FROM 1 FOR 12)),
-    'Seed Creator 01',
-    'Seed data creator profile'
+    FORMAT('Seed Author %s', LPAD(cs.n::text, 3, '0')),
+    FORMAT('Profile text for Seed Author %s', LPAD(cs.n::text, 3, '0'))
 FROM creator_seed cs
 CROSS JOIN tenant_scope ts
 ON CONFLICT (public_id) DO UPDATE
@@ -218,23 +226,30 @@ WITH tenant_scope AS (
     FROM tenants t
     WHERE t.domain = 'localhost'
 ),
-creator_scope AS (
-    SELECT c.id
+seed_series AS (
+    SELECT
+        s.id AS series_id,
+        ROW_NUMBER() OVER (ORDER BY s.public_id) AS series_no
+    FROM series s
+    JOIN tenant_scope ts ON ts.id = s.tenant_id
+    WHERE s.title LIKE 'Seed Series %'
+),
+seed_creators AS (
+    SELECT
+        c.id AS creator_id,
+        ROW_NUMBER() OVER (ORDER BY c.public_id) AS creator_no
     FROM creators c
     JOIN tenant_scope ts ON ts.id = c.tenant_id
-    WHERE c.name = 'Seed Creator 01'
-    LIMIT 1
+    WHERE c.name LIKE 'Seed Author %'
 )
 INSERT INTO series_creators (series_id, creator_id, role, display_order)
 SELECT
-    s.id,
-    cs.id,
+    ss.series_id,
+    sc.creator_id,
     'author',
     1
-FROM series s
-JOIN tenant_scope ts ON ts.id = s.tenant_id
-CROSS JOIN creator_scope cs
-WHERE s.title LIKE 'Seed Series %'
+FROM seed_series ss
+JOIN seed_creators sc ON sc.creator_no = ss.series_no
 ON CONFLICT (series_id, creator_id) DO UPDATE
 SET role = EXCLUDED.role,
     display_order = EXCLUDED.display_order;
