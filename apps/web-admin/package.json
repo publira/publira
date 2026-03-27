@@ -23,11 +23,12 @@
     "@publira/layouts": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
-    "lru-cache": "^11.2.7",
+    "lru-cache": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tailwindcss": "catalog:"
+    "tailwindcss": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",

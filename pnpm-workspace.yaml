@@ -8,6 +8,7 @@ catalog:
   "@types/node": 24.11.1
   "@types/react": 19.2.14
   "@types/react-dom": 19.2.3
+  lru-cache: 11.2.7
   next: 16.2.0
   react: 19.2.4
   react-dom: 19.2.4
@@ -15,3 +16,4 @@ catalog:
   tsdown: 0.21.4
   typescript: 5.9.3
   vitest: 4.1.0
+  zod: 4.3.6

@@ -22,7 +22,7 @@
     "@publira/layouts": "workspace:*",
     "@publira/public-web-shared": "workspace:*",
     "@publira/utils": "workspace:*",
-    "lru-cache": "^11.2.7",
+    "lru-cache": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

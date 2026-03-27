@@ -100,6 +100,109 @@ func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatform
 	return err
 }
 
+const listAuditLogsByTenant = `-- name: ListAuditLogsByTenant :many
+SELECT a.id,
+    a.tenant_id,
+    a.actor_user_id,
+    a.actor_role,
+    a.action,
+    a.target_type,
+    a.target_id,
+    a.outcome,
+    a.reason,
+    a.client_ip,
+    a.created_at,
+    COALESCE(actor_u.public_id, ''::text) AS actor_public_id,
+    COALESCE(actor_u.name, ''::text) AS actor_name
+FROM audit_logs a
+    LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
+WHERE a.tenant_id = $1
+    AND ($2::text IS NULL OR actor_u.public_id = $2::text)
+    AND ($3::text IS NULL OR a.action = $3::text)
+    AND ($4::timestamptz IS NULL OR a.created_at >= $4::timestamptz)
+    AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
+    AND (
+        ($6::timestamptz IS NULL AND $7::uuid IS NULL)
+        OR (a.created_at, a.id) < ($6::timestamptz, $7::uuid)
+    )
+ORDER BY a.created_at DESC, a.id DESC
+LIMIT $8
+`
+
+type ListAuditLogsByTenantParams struct {
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
+	FilterAction            sql.NullString `json:"filter_action"`
+	FilterCreatedFrom       sql.NullTime   `json:"filter_created_from"`
+	FilterCreatedTo         sql.NullTime   `json:"filter_created_to"`
+	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
+	CursorID                uuid.NullUUID  `json:"cursor_id"`
+	Limit                   int32          `json:"limit"`
+}
+
+type ListAuditLogsByTenantRow struct {
+	ID            uuid.UUID      `json:"id"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	ActorUserID   uuid.UUID      `json:"actor_user_id"`
+	ActorRole     string         `json:"actor_role"`
+	Action        string         `json:"action"`
+	TargetType    sql.NullString `json:"target_type"`
+	TargetID      sql.NullString `json:"target_id"`
+	Outcome       string         `json:"outcome"`
+	Reason        sql.NullString `json:"reason"`
+	ClientIp      sql.NullString `json:"client_ip"`
+	CreatedAt     time.Time      `json:"created_at"`
+	ActorPublicID string         `json:"actor_public_id"`
+	ActorName     string         `json:"actor_name"`
+}
+
+// テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
+func (q *Queries) ListAuditLogsByTenant(ctx context.Context, arg ListAuditLogsByTenantParams) ([]ListAuditLogsByTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAuditLogsByTenant,
+		arg.TenantID,
+		arg.FilterActorUserPublicID,
+		arg.FilterAction,
+		arg.FilterCreatedFrom,
+		arg.FilterCreatedTo,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAuditLogsByTenantRow
+	for rows.Next() {
+		var i ListAuditLogsByTenantRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ActorUserID,
+			&i.ActorRole,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.Outcome,
+			&i.Reason,
+			&i.ClientIp,
+			&i.CreatedAt,
+			&i.ActorPublicID,
+			&i.ActorName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlatformAuditLogs = `-- name: ListPlatformAuditLogs :many
 SELECT a.id,
     a.actor_platform_user_id,

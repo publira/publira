@@ -21,6 +21,9 @@ catalogs:
     '@types/react-dom':
       specifier: 19.2.3
       version: 19.2.3
+    lru-cache:
+      specifier: 11.2.7
+      version: 11.2.7
     next:
       specifier: 16.2.0
       version: 16.2.0
@@ -42,6 +45,9 @@ catalogs:
     vitest:
       specifier: 4.1.0
       version: 4.1.0
+    zod:
+      specifier: 4.3.6
+      version: 4.3.6
 
 importers:
 
@@ -84,7 +90,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/utils
       lru-cache:
-        specifier: ^11.2.7
+        specifier: 'catalog:'
         version: 11.2.7
       next:
         specifier: 'catalog:'
@@ -98,6 +104,9 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.2
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -142,7 +151,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/utils
       lru-cache:
-        specifier: ^11.2.7
+        specifier: 'catalog:'
         version: 11.2.7
       next:
         specifier: 'catalog:'
@@ -203,7 +212,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/utils
       lru-cache:
-        specifier: ^11.2.7
+        specifier: 'catalog:'
         version: 11.2.7
       next:
         specifier: 'catalog:'
@@ -261,7 +270,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/utils
       lru-cache:
-        specifier: ^11.2.7
+        specifier: 'catalog:'
         version: 11.2.7
       next:
         specifier: 'catalog:'
@@ -377,7 +386,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/utils
       lru-cache:
-        specifier: ^11.2.7
+        specifier: 'catalog:'
         version: 11.2.7
       next:
         specifier: 'catalog:'
@@ -535,7 +544,7 @@ importers:
         specifier: workspace:*
         version: link:../api-client
       lru-cache:
-        specifier: ^11.2.7
+        specifier: 'catalog:'
         version: 11.2.7
     devDependencies:
       '@publira/tsconfig':
@@ -2367,6 +2376,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -3668,3 +3680,5 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  zod@4.3.6: {}

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message AdminTenantUser {
+  string public_id = 1;
+  string name = 2;
+  string role = 3;
+}
+
+message ListTenantUsersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string query = 2;
+  int32 limit = 3;
+}
+
+message ListTenantUsersResponse {
+  repeated AdminTenantUser users = 1;
+}
+
+service AdminUserService {
+  rpc ListTenantUsers(ListTenantUsersRequest) returns (ListTenantUsersResponse) {}
+}

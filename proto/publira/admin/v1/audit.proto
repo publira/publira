@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message AdminAuditLog {
+  string actor_user_public_id = 1;
+  string actor_name = 2;
+  string actor_role = 3;
+  string action = 4;
+  string target_type = 5;
+  string target_id = 6;
+  string outcome = 7;
+  string reason = 8;
+  string client_ip = 9;
+  string created_at = 10;
+}
+
+message ListAuditLogsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  int32 limit = 2;
+  string cursor = 3;
+  string actor_user_public_id = 4;
+  string action = 5;
+  string created_from = 6;
+  string created_to = 7;
+}
+
+message ListAuditLogsResponse {
+  repeated AdminAuditLog audit_logs = 1;
+  string next_cursor = 2;
+}
+
+service AdminAuditLogService {
+  rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse) {}
+}
