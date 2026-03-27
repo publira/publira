@@ -4,12 +4,14 @@ import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
+import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
 import { AdminDashboardService } from "../gen/publira/admin/v1/dashboard_pb.js";
 import { AdminLabelService } from "../gen/publira/admin/v1/label_pb.js";
 import { AdminSeriesService } from "../gen/publira/admin/v1/series_pb.js";
 import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
+import { AdminUserService } from "../gen/publira/admin/v1/user_pb.js";
 
 export type TransportType = "connect" | "grpc";
 
@@ -19,12 +21,14 @@ export type AdminApiClientOptions = {
 } & Omit<ConnectTransportOptions, "baseUrl">;
 
 export interface AdminApiClient {
+  audit: Client<typeof AdminAuditLogService>;
   auth: Client<typeof AdminAuthService>;
   creator: Client<typeof AdminCreatorService>;
   dashboard: Client<typeof AdminDashboardService>;
   label: Client<typeof AdminLabelService>;
   series: Client<typeof AdminSeriesService>;
   theme: Client<typeof TenantThemeService>;
+  users: Client<typeof AdminUserService>;
 }
 
 export const createAdminApiClient = (
@@ -44,11 +48,13 @@ export const createAdminApiClient = (
         });
 
   return {
+    audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
     creator: createClient(AdminCreatorService, transportInstance),
     dashboard: createClient(AdminDashboardService, transportInstance),
     label: createClient(AdminLabelService, transportInstance),
     series: createClient(AdminSeriesService, transportInstance),
     theme: createClient(TenantThemeService, transportInstance),
+    users: createClient(AdminUserService, transportInstance),
   };
 };

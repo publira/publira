@@ -34,6 +34,12 @@ export const navigation: NavSection[] = [
   {
     items: [
       {
+        description: "操作履歴の確認と追跡",
+        href: "/audit-logs",
+        icon: CollectionIcon,
+        label: "監査ログ",
+      },
+      {
         description: "ブランドと運用ルールの管理",
         href: "/settings",
         icon: SettingsIcon,

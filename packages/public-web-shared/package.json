@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@publira/api-client": "workspace:*",
-    "lru-cache": "^11.2.7"
+    "lru-cache": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",

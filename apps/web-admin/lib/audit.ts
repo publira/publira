@@ -1,0 +1,219 @@
+import { apiClient, withSessionHeaders } from "./api";
+import { getSessionId } from "./session";
+
+export interface AuditLogItem {
+  action: string;
+  actorName: string;
+  actorRole: string;
+  actorUserPublicId: string;
+  clientIp: string;
+  createdAt: string;
+  outcome: "failure" | "success" | "unknown";
+  reason: string;
+  targetId: string;
+  targetType: string;
+}
+
+export interface AuditLogFilters {
+  action?: string;
+  actorUserPublicId?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface AuditActorCandidate {
+  name: string;
+  publicId: string;
+  role: string;
+}
+
+export type ListAuditActorCandidatesResult =
+  | {
+      ok: true;
+      actors: AuditActorCandidate[];
+    }
+  | {
+      ok: false;
+      actors: AuditActorCandidate[];
+      message: string;
+    };
+
+export type ListAuditLogsResult =
+  | {
+      ok: true;
+      auditLogs: AuditLogItem[];
+      nextCursor: string;
+    }
+  | {
+      ok: false;
+      auditLogs: AuditLogItem[];
+      message: string;
+      nextCursor: string;
+    };
+
+const genericListErrorMessage =
+  "監査ログの取得に失敗しました。時間をおいて再試行してください。";
+
+const mapErrorToMessage = (error: unknown): string => {
+  if (!(error instanceof Error)) {
+    return genericListErrorMessage;
+  }
+
+  const message = error.message.toLowerCase();
+
+  if (
+    message.includes("unauthenticated") ||
+    message.includes("permission_denied")
+  ) {
+    return "セッションが無効です。再ログインしてください。";
+  }
+
+  if (
+    message.includes("invalid_argument") ||
+    message.includes("rfc3339") ||
+    message.includes("cursor")
+  ) {
+    return "フィルタ条件に誤りがあります。入力内容を確認してください。";
+  }
+
+  return genericListErrorMessage;
+};
+
+const normalizeDateStart = (value?: string): string => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return "";
+  }
+  return new Date(`${trimmed}T00:00:00.000Z`).toISOString();
+};
+
+const normalizeDateEnd = (value?: string): string => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return "";
+  }
+  return new Date(`${trimmed}T00:00:00.000Z`).toISOString();
+};
+
+const mapAuditLog = (item: {
+  action: string;
+  actorName: string;
+  actorRole: string;
+  actorUserPublicId: string;
+  clientIp: string;
+  createdAt: string;
+  outcome: string;
+  reason: string;
+  targetId: string;
+  targetType: string;
+}): AuditLogItem => ({
+  action: item.action,
+  actorName: item.actorName,
+  actorRole: item.actorRole,
+  actorUserPublicId: item.actorUserPublicId,
+  clientIp: item.clientIp,
+  createdAt: item.createdAt,
+  outcome:
+    item.outcome === "success" || item.outcome === "failure"
+      ? item.outcome
+      : "unknown",
+  reason: item.reason,
+  targetId: item.targetId,
+  targetType: item.targetType,
+});
+
+const mapAuditActorCandidate = (item: {
+  name: string;
+  publicId: string;
+  role: string;
+}): AuditActorCandidate => ({
+  name: item.name,
+  publicId: item.publicId,
+  role: item.role,
+});
+
+export const listAuditActorCandidates = async (
+  tenantPublicId: string,
+  options: {
+    limit?: number;
+    query?: string;
+  } = {}
+): Promise<ListAuditActorCandidatesResult> => {
+  const sessionId = await getSessionId();
+  if (!sessionId) {
+    return {
+      actors: [],
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.users.listTenantUsers(
+      {
+        limit: options.limit ?? 100,
+        query: options.query?.trim() ?? "",
+        tenant: { tenantPublicId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      actors: (response.users ?? []).map((item) =>
+        mapAuditActorCandidate(item)
+      ),
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      actors: [],
+      message: mapErrorToMessage(error),
+      ok: false,
+    };
+  }
+};
+
+export const listAuditLogs = async (
+  tenantPublicId: string,
+  filters: AuditLogFilters = {}
+): Promise<ListAuditLogsResult> => {
+  const sessionId = await getSessionId();
+  if (!sessionId) {
+    return {
+      auditLogs: [],
+      message: "セッションが無効です。再ログインしてください。",
+      nextCursor: "",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.audit.listAuditLogs(
+      {
+        action: filters.action?.trim() ?? "",
+        actorUserPublicId: filters.actorUserPublicId?.trim() ?? "",
+        createdFrom: normalizeDateStart(filters.createdFrom),
+        createdTo: normalizeDateEnd(filters.createdTo),
+        cursor: filters.cursor?.trim() ?? "",
+        limit: filters.limit ?? 20,
+        tenant: { tenantPublicId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      auditLogs: (response.auditLogs ?? []).map((item) => mapAuditLog(item)),
+      nextCursor: response.nextCursor ?? "",
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      auditLogs: [],
+      message: mapErrorToMessage(error),
+      nextCursor: "",
+      ok: false,
+    };
+  }
+};

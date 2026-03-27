@@ -78,6 +78,8 @@ type Querier interface {
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
 	// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
 	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
+	// テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
+	ListAuditLogsByTenant(ctx context.Context, arg ListAuditLogsByTenantParams) ([]ListAuditLogsByTenantRow, error)
 	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]Creator, error)
 	ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]Creator, error)
 	// エンドユーザー（tenant_user_roles未保持）の一覧取得
