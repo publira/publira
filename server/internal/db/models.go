@@ -171,6 +171,15 @@ type Tenant struct {
 	AdminDomain               sql.NullString `json:"admin_domain"`
 }
 
+type TenantConfig struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CopyrightText   sql.NullString `json:"copyright_text"`
+	SiteDescription sql.NullString `json:"site_description"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	SiteTagline     sql.NullString `json:"site_tagline"`
+}
+
 type TenantTheme struct {
 	TenantID       uuid.UUID      `json:"tenant_id"`
 	PrimaryColor   string         `json:"primary_color"`

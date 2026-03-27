@@ -6,6 +6,8 @@ import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
 import { AuthService } from "../gen/publira/v1/auth_pb.js";
 import { CatalogService } from "../gen/publira/v1/catalog_pb.js";
+import { TenantService } from "../gen/publira/v1/tenant_pb.js";
+import { DomainService } from "../gen/publira/v1/domain_pb.js";
 
 export type TransportType = "connect" | "grpc";
 
@@ -17,6 +19,8 @@ export type PublicApiClientOptions = {
 export interface PublicApiClient {
   auth: Client<typeof AuthService>;
   catalog: Client<typeof CatalogService>;
+  tenant: Client<typeof TenantService>;
+  domain: Client<typeof DomainService>;
 }
 
 export const createPublicApiClient = (
@@ -38,5 +42,7 @@ export const createPublicApiClient = (
   return {
     auth: createClient(AuthService, transportInstance),
     catalog: createClient(CatalogService, transportInstance),
+    domain: createClient(DomainService, transportInstance),
+    tenant: createClient(TenantService, transportInstance),
   };
 };

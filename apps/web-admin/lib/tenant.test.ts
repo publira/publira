@@ -44,4 +44,14 @@ describe("tenant", () => {
       resolveTenantPublicId(["admin.unknown.example"])
     ).resolves.toBeNull();
   });
+
+  it("想定外エラーは再送出する", async () => {
+    mockGetTenantByDomain.mockRejectedValueOnce(new Error("db timeout"));
+
+    const { resolveTenantPublicId } = await import("./tenant");
+
+    await expect(resolveTenantPublicId(["admin.example.com"])).rejects.toThrow(
+      "db timeout"
+    );
+  });
 });

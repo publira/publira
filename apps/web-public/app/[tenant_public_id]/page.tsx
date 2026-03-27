@@ -11,8 +11,43 @@ import {
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { FormActions } from "@publira/ui-components/form-actions";
 import { Input } from "@publira/ui-components/input";
+import {
+  createPlaceholderStaticParams,
+  guardPlaceholder,
+} from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 
-export default function Page() {
+import { getTenantSiteInfo, getTenantSiteLabel } from "../../lib/tenant";
+
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_public_id");
+
+export const generateMetadata = async ({
+  params,
+}: {
+  params: Promise<{ tenant_public_id: string }>;
+}): Promise<Metadata> => {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
+  const info = await getTenantSiteInfo(tenant_public_id);
+  const siteLabel = info?.siteLabel ?? "サイト";
+  const siteTagline = info?.siteTagline?.trim();
+
+  return {
+    title: {
+      absolute: siteTagline ? `${siteLabel} - ${siteTagline}` : siteLabel,
+    },
+  };
+};
+
+export default async function Page({
+  params,
+}: PageProps<"/[tenant_public_id]">) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
+  const siteLabel = await getTenantSiteLabel(tenant_public_id);
   return (
     <main className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-b from-surface via-background to-muted/40" />
@@ -24,16 +59,17 @@ export default function Page() {
             tone="muted"
             variant="outline"
           >
-            Publira Preview
+            {siteLabel} 公式サイト
           </Badge>
 
           <div className="space-y-4">
             <h1 className="font-['Noto_Serif_JP',serif] text-4xl leading-tight font-semibold md:text-6xl">
               Publish your stories in a calm, elegant space.
+              {siteLabel} サイト
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
               読書体験を邪魔しない静かなデザインと、更新しやすい運用導線をひとつにした
-              公開ページの仮デザインです。
+              {siteLabel} の公開ページです。
             </p>
           </div>
 

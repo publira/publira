@@ -2,6 +2,7 @@ import {
   createPlaceholderStaticParams,
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -12,9 +13,25 @@ import {
   sessionCookieOptions,
   signupPublic,
 } from "../../../lib/auth";
+import { getTenantSiteInfo, getTenantSiteLabel } from "../../../lib/tenant";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");
+
+export const generateMetadata = async ({
+  params,
+}: {
+  params: Promise<{ tenant_public_id: string }>;
+}): Promise<Metadata> => {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
+  const siteLabel = await getTenantSiteLabel(tenant_public_id);
+
+  return {
+    title: `新規登録 | ${siteLabel}`,
+  };
+};
 
 const buildSignupErrorPath = (message: string): string => {
   const params = new URLSearchParams({ error: message });
@@ -167,14 +184,18 @@ export default async function SignupPage({
 
   guardPlaceholder(tenant_public_id);
 
+  const info = await getTenantSiteInfo(tenant_public_id);
+  const siteLabel = info?.siteLabel ?? "サイト";
+  const siteTagline = info?.siteTagline?.trim();
+
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            静かに読む、持続可能に出版する
-          </p>
+          <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
+          {siteTagline ? (
+            <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
+          ) : null}
         </div>
 
         <Suspense

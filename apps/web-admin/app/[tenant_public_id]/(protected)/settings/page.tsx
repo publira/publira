@@ -1,47 +1,54 @@
-import { Button } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
+import {
+  createPlaceholderStaticParams,
+  guardPlaceholder,
+} from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
 import { AdminPage } from "../../../../components/admin-page";
+import { getTenantSiteSettings } from "../../../../lib/site-settings";
+import { SiteSettingsForm } from "./_components/site-settings-form";
+import { updateSiteSettingsAction } from "./_lib/actions";
 
 export const metadata: Metadata = {
   title: "設定",
 };
 
-export default function SettingsPage() {
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_public_id");
+
+export default async function SettingsPage({
+  params,
+}: PageProps<"/[tenant_public_id]">) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
+  const settingsResult = await getTenantSiteSettings(tenant_public_id);
+
+  if (!settingsResult.ok) {
+    return (
+      <AdminPage
+        description="テナントごとの公開表示設定を管理します。"
+        title="設定"
+      >
+        <EmptyState
+          description={settingsResult.message}
+          title="設定を読み込めませんでした"
+        />
+      </AdminPage>
+    );
+  }
+
   return (
     <AdminPage
-      actions={<Button type="button">設定を編集</Button>}
-      description="ブランド、運用設定、権限ポリシーなどを置く前提のページです。"
+      description="テナントごとの公開表示設定を管理します。"
       title="設定"
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>設定ページの着手点</CardTitle>
-          <CardDescription>
-            ここではブランドトークンと整合する外観を維持しつつ、管理画面固有の設定
-            UI を展開できます。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EmptyState
-            actions={
-              <Button type="button" variant="outline">
-                テーマ設定を追加
-              </Button>
-            }
-            description="設定画面も同じページヘッダーとコンテンツ幅を共有します。"
-            title="ブランド設定と運用ポリシー UI をここへ実装します。"
-          />
-        </CardContent>
-      </Card>
+      <SiteSettingsForm
+        action={updateSiteSettingsAction}
+        initialSettings={settingsResult.settings}
+        tenantPublicId={tenant_public_id}
+      />
     </AdminPage>
   );
 }

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1";
+
+message GetTenantByDomainRequest {
+  repeated string domains = 1;
+}
+
+message GetTenantByDomainResponse {
+  string tenant_public_id = 1;
+}
+
+service DomainService {
+  rpc GetTenantByDomain(GetTenantByDomainRequest) returns (GetTenantByDomainResponse) {}
+}

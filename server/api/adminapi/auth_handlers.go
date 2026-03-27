@@ -199,3 +199,83 @@ func (s *adminServer) GetTenantByDomain(
 		TenantPublicId: tenant.PublicID,
 	}), nil
 }
+
+func (s *adminServer) GetTenantConfig(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantConfigRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantConfigResponse], error) {
+	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := s.queries.GetTenantConfigByTenantID(ctx, tenant.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantConfigResponse{}), nil
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	response := &publiraadminv1.AdminAuthServiceGetTenantConfigResponse{}
+	if config.CopyrightText.Valid {
+		response.CopyrightText = config.CopyrightText.String
+	}
+	if config.SiteDescription.Valid {
+		response.SiteDescription = config.SiteDescription.String
+	}
+	if config.SiteTagline.Valid {
+		response.SiteTagline = config.SiteTagline.String
+	}
+
+	return connect.NewResponse(response), nil
+}
+
+func (s *adminServer) UpdateTenantConfig(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceUpdateTenantConfigResponse], error) {
+	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	copyrightText := sql.NullString{String: req.Msg.CopyrightText, Valid: strings.TrimSpace(req.Msg.CopyrightText) != ""}
+	siteDescription := sql.NullString{String: req.Msg.SiteDescription, Valid: strings.TrimSpace(req.Msg.SiteDescription) != ""}
+	siteTagline := sql.NullString{String: req.Msg.SiteTagline, Valid: strings.TrimSpace(req.Msg.SiteTagline) != ""}
+
+	config, err := s.queries.UpdateTenantConfig(ctx, dbmodels.UpdateTenantConfigParams{
+		TenantID:        tenant.ID,
+		CopyrightText:   copyrightText,
+		SiteDescription: siteDescription,
+		SiteTagline:     siteTagline,
+	})
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+
+		config, err = s.queries.CreateTenantConfig(ctx, dbmodels.CreateTenantConfigParams{
+			TenantID:        tenant.ID,
+			CopyrightText:   copyrightText,
+			SiteDescription: siteDescription,
+			SiteTagline:     siteTagline,
+		})
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	response := &publiraadminv1.AdminAuthServiceUpdateTenantConfigResponse{}
+	if config.CopyrightText.Valid {
+		response.CopyrightText = config.CopyrightText.String
+	}
+	if config.SiteDescription.Valid {
+		response.SiteDescription = config.SiteDescription.String
+	}
+	if config.SiteTagline.Valid {
+		response.SiteTagline = config.SiteTagline.String
+	}
+
+	return connect.NewResponse(response), nil
+}

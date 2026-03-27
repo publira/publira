@@ -9,6 +9,12 @@ import { NextResponse } from "next/server";
 const publicApiClient = createPublicGrpcApiClient();
 const resolveTenantPublicId = createTenantPublicIdResolver(publicApiClient);
 
+const serviceUnavailableResponse = () =>
+  new NextResponse("Service Unavailable", {
+    status: 503,
+    headers: { "Retry-After": "30" },
+  });
+
 export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;
 
@@ -16,9 +22,14 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return NextResponse.next();
   }
 
-  const tenantPublicId = await resolveTenantPublicId(
-    getTenantDomainCandidates(request.headers)
-  );
+  let tenantPublicId: string | null;
+  try {
+    tenantPublicId = await resolveTenantPublicId(
+      getTenantDomainCandidates(request.headers)
+    );
+  } catch {
+    return serviceUnavailableResponse();
+  }
 
   if (!tenantPublicId) {
     return new NextResponse("Not Found", { status: 404 });

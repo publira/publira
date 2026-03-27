@@ -10,6 +10,12 @@ import { resolveTenantPublicId } from "./lib/tenant";
 
 const PUBLIC_PATHS = new Set(["/login", "/logout", "/healthz"]);
 
+const serviceUnavailableResponse = () =>
+  new NextResponse("Service Unavailable", {
+    status: 503,
+    headers: { "Retry-After": "30" },
+  });
+
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
@@ -17,9 +23,14 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next();
   }
 
-  const tenantPublicId = await resolveTenantPublicId(
-    getTenantDomainCandidates(request.headers)
-  );
+  let tenantPublicId: string | null;
+  try {
+    tenantPublicId = await resolveTenantPublicId(
+      getTenantDomainCandidates(request.headers)
+    );
+  } catch {
+    return serviceUnavailableResponse();
+  }
 
   if (!tenantPublicId) {
     return new NextResponse("Not Found", { status: 404 });

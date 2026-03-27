@@ -903,3 +903,20 @@ ORDER BY
     el.scheduled_at ASC NULLS LAST,
     e.created_at DESC
 LIMIT $2;
+
+-- name: GetTenantConfigByTenantID :one
+SELECT *
+FROM tenant_config
+WHERE tenant_id = $1
+LIMIT 1;
+
+-- name: CreateTenantConfig :one
+INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: UpdateTenantConfig :one
+UPDATE tenant_config
+SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
+WHERE tenant_id = $1
+RETURNING *;

@@ -36,6 +36,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// プラットフォーム管理者向けテナント作成
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
+	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
 	CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
@@ -65,6 +66,7 @@ type Querier interface {
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	// ユーザーが所属するテナントを取得
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
+	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantTheme, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
@@ -121,6 +123,7 @@ type Querier interface {
 	UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error)
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
+	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)
 	// テナントの名前・ドメインを更新する
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	// テナントの状態 (active / suspended) を更新する
