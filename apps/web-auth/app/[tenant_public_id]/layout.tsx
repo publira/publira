@@ -9,11 +9,7 @@ import { getTenantSiteInfo } from "../../lib/tenant";
 
 const buildAuthTitleBase = (siteLabel: string): string => siteLabel;
 
-const AuthFooter = ({
-  copyrightText,
-}: {
-  copyrightText?: string;
-}) => {
+const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
   const normalizedCopyrightText = copyrightText?.trim() ?? "";
 
   if (!normalizedCopyrightText) {
@@ -75,9 +71,5 @@ export default async function TenantLayout({
   const info = await getTenantSiteInfo(tenant_public_id);
   const copyrightText = info?.copyrightText;
 
-  return (
-    <AuthShell copyrightText={copyrightText}>
-      {children}
-    </AuthShell>
-  );
+  return <AuthShell copyrightText={copyrightText}>{children}</AuthShell>;
 }

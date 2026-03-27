@@ -1,6 +1,12 @@
 import {
   SiteLayout,
   SiteLayoutActions,
+  SiteLayoutBrand,
+  SiteLayoutFooter,
+  SiteLayoutHeader,
+  SiteLayoutHeaderActions,
+  SiteLayoutMain,
+  SiteLayoutNav,
   getAuthActions,
 } from "@publira/layouts";
 import {
@@ -9,23 +15,11 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { Suspense } from "react";
 
 import { PUBLIC_SESSION_COOKIE_NAME } from "../../lib/auth";
 import { getTenantSiteInfo } from "../../lib/tenant";
 
-const HeaderActionsFallback = () => {
-  const { primaryAction, secondaryAction } = getAuthActions(false);
-
-  return (
-    <SiteLayoutActions
-      primaryAction={primaryAction}
-      secondaryAction={secondaryAction}
-    />
-  );
-};
-
-const DynamicHeaderActions = async () => {
+const getHeaderActionsContent = async () => {
   const cookieStore = await cookies();
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
@@ -42,6 +36,34 @@ const DynamicHeaderActions = async () => {
 
 const buildPublicTitleBase = (siteLabel: string): string => siteLabel;
 
+const resolveTenantInfo = async (
+  params: Promise<{ tenant_public_id: string }>
+) => {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+  return getTenantSiteInfo(tenant_public_id);
+};
+
+const getAppLabel = async (
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
+): Promise<string | undefined> => {
+  const tenantInfo = await tenantInfoPromise;
+  return tenantInfo?.siteLabel?.trim() || undefined;
+};
+
+const getCopyrightText = async (
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
+): Promise<string | undefined> => {
+  const tenantInfo = await tenantInfoPromise;
+  return tenantInfo?.copyrightText?.trim() || undefined;
+};
+
+const getFooterNote = async (
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
+): Promise<string | undefined> => {
+  const tenantInfo = await tenantInfoPromise;
+  return tenantInfo?.siteDescription?.trim() || undefined;
+};
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");
@@ -72,35 +94,24 @@ export const generateMetadata = async ({
   };
 };
 
-export default async function TenantLayout({
+export default function TenantLayout({
   children,
   params,
 }: LayoutProps<"/[tenant_public_id]">) {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const info = await getTenantSiteInfo(tenant_public_id);
-  const siteLabel = info?.siteLabel ?? "サイト";
-  const copyrightText = info?.copyrightText?.trim();
+  const tenantInfoPromise = resolveTenantInfo(params);
 
   return (
-    <Suspense fallback={null}>
-      <SiteLayout
-        appLabel={siteLabel}
-        copyrightText={copyrightText}
-        footerNote={
-          getTenantSiteInfo(tenant_public_id).then(
-            (info) => info?.siteDescription?.trim(),
-          )
-        }
-        actions={
-          <Suspense fallback={<HeaderActionsFallback />}>
-            <DynamicHeaderActions />
-          </Suspense>
-        }
-      >
-        {children}
-      </SiteLayout>
-    </Suspense>
+    <SiteLayout>
+      <SiteLayoutHeader>
+        <SiteLayoutBrand label={getAppLabel(tenantInfoPromise)} />
+        <SiteLayoutNav />
+        <SiteLayoutHeaderActions content={getHeaderActionsContent()} />
+      </SiteLayoutHeader>
+      <SiteLayoutMain>{children}</SiteLayoutMain>
+      <SiteLayoutFooter
+        copyrightText={getCopyrightText(tenantInfoPromise)}
+        footerNote={getFooterNote(tenantInfoPromise)}
+      />
+    </SiteLayout>
   );
 }

@@ -6,8 +6,8 @@ import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
 import { AuthService } from "../gen/publira/v1/auth_pb.js";
 import { CatalogService } from "../gen/publira/v1/catalog_pb.js";
-import { TenantService } from "../gen/publira/v1/tenant_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
+import { TenantService } from "../gen/publira/v1/tenant_pb.js";
 
 export type TransportType = "connect" | "grpc";
 

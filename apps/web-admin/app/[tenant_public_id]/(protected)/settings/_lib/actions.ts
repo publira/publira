@@ -1,7 +1,7 @@
 "use server";
 
-import type { SiteSettingsActionState } from "../settings-types";
 import { updateTenantSiteSettings } from "../../../../../lib/site-settings";
+import type { SiteSettingsActionState } from "../settings-types";
 
 export const updateSiteSettingsAction = async (
   _prevState: SiteSettingsActionState,

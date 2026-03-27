@@ -1,6 +1,6 @@
+import { Skeleton } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
-
-import { SiteLayoutActions } from "./site-layout-actions";
 
 export interface LayoutLinkItem {
   href: string;
@@ -11,97 +11,164 @@ export interface LayoutActionItem extends LayoutLinkItem {
   className?: string;
 }
 
-export interface SiteLayoutProps {
-  children: ReactNode;
-  appLabel?: string;
-  footerNote?: string | Promise<string | undefined>;
-  copyrightText?: string | Promise<string | undefined>;
-  navItems?: LayoutLinkItem[];
-  primaryAction?: LayoutActionItem;
-  secondaryAction?: LayoutActionItem;
-  actions?: ReactNode;
-}
-
-const defaultNavItems: LayoutLinkItem[] = [
-  { href: "/", label: "Home" },
+export const defaultSiteLayoutNavItems: LayoutLinkItem[] = [
   { href: "/authors", label: "Authors" },
   { href: "/series", label: "Series" },
 ];
 
-const defaultFooterNote = "";
-
-const defaultPrimaryAction: LayoutActionItem = {
-  href: "/signup",
-  label: "Start",
+const normalizeLayoutText = (
+  value: string | undefined | null
+): string | undefined => {
+  const normalized = value?.trim();
+  return normalized || undefined;
 };
 
-const defaultSecondaryAction: LayoutActionItem = {
-  href: "/login",
-  label: "Sign in",
-};
+const SiteLayoutBrandText = async ({
+  href,
+  label,
+}: {
+  href: string;
+  label?: string | Promise<string | undefined>;
+}) => {
+  const resolvedAppLabel = await label;
+  const normalizedLabel = normalizeLayoutText(resolvedAppLabel);
 
-export const SiteLayout = async ({
-  appLabel = "サイト",
-  actions,
-  children,
-  copyrightText,
-  footerNote = defaultFooterNote,
-  navItems = defaultNavItems,
-  primaryAction = defaultPrimaryAction,
-  secondaryAction = defaultSecondaryAction,
-}: SiteLayoutProps) => {
-  // Promise を解決
-  const resolvedCopyrightText =
-    copyrightText instanceof Promise ? await copyrightText : copyrightText;
-  const resolvedFooterNote =
-    footerNote instanceof Promise ? await footerNote : footerNote;
+  if (!normalizedLabel) {
+    return null;
+  }
 
-  const normalizedCopyrightText = resolvedCopyrightText?.trim() ?? "";
-  const normalizedFooterNote = resolvedFooterNote?.trim() ?? "";
-
-  // 両方ないならフッター全体を消す
-  const hasFooterContent = normalizedCopyrightText || normalizedFooterNote;
-
+  // oxlint-disable-next-line nextjs/no-html-link-for-pages
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b border-border/70 bg-card/70 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          {/* oxlint-disable-next-line nextjs/no-html-link-for-pages */}
-          <a className="font-serif text-lg font-semibold" href="/">
-            {appLabel}
-          </a>
-
-          <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
-            {navItems.map((item) => (
-              <a
-                className="transition-colors hover:text-foreground"
-                href={item.href}
-                key={item.href}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
-
-          {actions ?? (
-            <SiteLayoutActions
-              primaryAction={primaryAction}
-              secondaryAction={secondaryAction}
-            />
-          )}
-        </div>
-      </header>
-
-      <main className="flex-1">{children}</main>
-
-      {hasFooterContent && (
-        <footer className="border-t border-border/70 bg-surface">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-            {normalizedFooterNote && <p>{normalizedFooterNote}</p>}
-            {normalizedCopyrightText && <p>{normalizedCopyrightText}</p>}
-          </div>
-        </footer>
-      )}
-    </div>
+    <a className="font-serif text-lg font-semibold" href={href}>
+      {normalizedLabel}
+    </a>
   );
 };
+
+export const SiteLayoutBrandSkeleton = () => (
+  <Skeleton className="inline-block h-5 w-24 rounded" />
+);
+
+export const SiteLayoutFooterSkeleton = () => (
+  <footer className="border-t border-border/70 bg-surface" role="status">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 md:flex-row md:items-center md:justify-between">
+      <Skeleton className="inline-block h-4 w-56 rounded" />
+      <Skeleton className="inline-block h-4 w-48 rounded" />
+    </div>
+  </footer>
+);
+
+const SiteLayoutFooterContentInner = async ({
+  copyrightText,
+  footerNote,
+}: {
+  copyrightText?: string | Promise<string | undefined>;
+  footerNote?: string | Promise<string | undefined>;
+}) => {
+  const [resolvedFooterNote, resolvedCopyrightText] = await Promise.all([
+    footerNote,
+    copyrightText,
+  ]);
+
+  const normalizedFooterNote = normalizeLayoutText(resolvedFooterNote);
+  const normalizedCopyrightText = normalizeLayoutText(resolvedCopyrightText);
+
+  if (!normalizedFooterNote && !normalizedCopyrightText) {
+    return null;
+  }
+
+  return (
+    <footer className="border-t border-border/70 bg-surface">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+        {normalizedFooterNote && <p>{normalizedFooterNote}</p>}
+        {normalizedCopyrightText && <p>{normalizedCopyrightText}</p>}
+      </div>
+    </footer>
+  );
+};
+
+const SiteLayoutAsyncContent = async ({
+  content,
+}: {
+  content: ReactNode | Promise<ReactNode>;
+}) => await content;
+
+export const SiteLayout = ({ children }: { children: ReactNode }) => (
+  <div className="flex min-h-dvh flex-col bg-background text-foreground">
+    {children}
+  </div>
+);
+
+export const SiteLayoutHeader = ({ children }: { children: ReactNode }) => (
+  <header className="border-b border-border/70 bg-card/70 backdrop-blur">
+    <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
+      {children}
+    </div>
+  </header>
+);
+
+export const SiteLayoutBrand = ({
+  href = "/",
+  label,
+}: {
+  href?: string;
+  label?: string | Promise<string | undefined>;
+}) => (
+  <Suspense fallback={<SiteLayoutBrandSkeleton />}>
+    <SiteLayoutBrandText href={href} label={label} />
+  </Suspense>
+);
+
+export const SiteLayoutNav = ({
+  items = defaultSiteLayoutNavItems,
+}: {
+  items?: LayoutLinkItem[];
+}) => (
+  <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
+    {items.map((item) => (
+      <a
+        className="transition-colors hover:text-foreground"
+        href={item.href}
+        key={item.href}
+      >
+        {item.label}
+      </a>
+    ))}
+  </nav>
+);
+
+export const SiteLayoutMain = ({ children }: { children: ReactNode }) => (
+  <main className="flex-1">{children}</main>
+);
+
+export const SiteLayoutHeaderActionsSkeleton = () => (
+  <div className="flex items-center gap-2" role="status">
+    <Skeleton className="inline-block h-8 w-20 rounded-md" />
+    <Skeleton className="inline-block h-8 w-24 rounded-md" />
+  </div>
+);
+
+export const SiteLayoutHeaderActions = ({
+  content,
+}: {
+  content: ReactNode | Promise<ReactNode>;
+}) => (
+  <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
+    <SiteLayoutAsyncContent content={content} />
+  </Suspense>
+);
+
+export const SiteLayoutFooter = ({
+  copyrightText,
+  footerNote,
+}: {
+  copyrightText?: string | Promise<string | undefined>;
+  footerNote?: string | Promise<string | undefined>;
+}) => (
+  <Suspense fallback={<SiteLayoutFooterSkeleton />}>
+    <SiteLayoutFooterContentInner
+      copyrightText={copyrightText}
+      footerNote={footerNote}
+    />
+  </Suspense>
+);

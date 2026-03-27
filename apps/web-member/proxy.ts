@@ -13,8 +13,8 @@ const resolveTenantPublicId = createTenantPublicIdResolver(publicApiClient);
 
 const serviceUnavailableResponse = () =>
   new NextResponse("Service Unavailable", {
-    status: 503,
     headers: { "Retry-After": "30" },
+    status: 503,
   });
 
 export const proxy = async (request: NextRequest): Promise<NextResponse> => {
