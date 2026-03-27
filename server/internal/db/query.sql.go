@@ -558,6 +558,38 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 	return i, err
 }
 
+const createTenantConfig = `-- name: CreateTenantConfig :one
+INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
+VALUES ($1, $2, $3, $4)
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline
+`
+
+type CreateTenantConfigParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CopyrightText   sql.NullString `json:"copyright_text"`
+	SiteDescription sql.NullString `json:"site_description"`
+	SiteTagline     sql.NullString `json:"site_tagline"`
+}
+
+func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, createTenantConfig,
+		arg.TenantID,
+		arg.CopyrightText,
+		arg.SiteDescription,
+		arg.SiteTagline,
+	)
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CopyrightText,
+		&i.SiteDescription,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteTagline,
+	)
+	return i, err
+}
+
 const createTenantUserRole = `-- name: CreateTenantUserRole :one
 INSERT INTO tenant_user_roles (id, user_id, role)
 VALUES ($1, $2, $3)
@@ -1283,6 +1315,27 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 	row := q.db.QueryRowContext(ctx, getTenantByUserID, id)
 	var i GetTenantByUserIDRow
 	err := row.Scan(&i.ID, &i.PublicID, &i.CreatedAt)
+	return i, err
+}
+
+const getTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
+SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline
+FROM tenant_config
+WHERE tenant_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, getTenantConfigByTenantID, tenantID)
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CopyrightText,
+		&i.SiteDescription,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteTagline,
+	)
 	return i, err
 }
 
@@ -2748,6 +2801,39 @@ type UpdateSeriesPublicationParams struct {
 func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error {
 	_, err := q.db.ExecContext(ctx, updateSeriesPublication, arg.ID, arg.IsPublished)
 	return err
+}
+
+const updateTenantConfig = `-- name: UpdateTenantConfig :one
+UPDATE tenant_config
+SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
+WHERE tenant_id = $1
+RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline
+`
+
+type UpdateTenantConfigParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CopyrightText   sql.NullString `json:"copyright_text"`
+	SiteDescription sql.NullString `json:"site_description"`
+	SiteTagline     sql.NullString `json:"site_tagline"`
+}
+
+func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, updateTenantConfig,
+		arg.TenantID,
+		arg.CopyrightText,
+		arg.SiteDescription,
+		arg.SiteTagline,
+	)
+	var i TenantConfig
+	err := row.Scan(
+		&i.TenantID,
+		&i.CopyrightText,
+		&i.SiteDescription,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteTagline,
+	)
+	return i, err
 }
 
 const updateTenantInfo = `-- name: UpdateTenantInfo :one

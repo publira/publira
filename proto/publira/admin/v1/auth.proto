@@ -57,10 +57,37 @@ message AdminAuthServiceGetTenantResponse {
   AdminAuthServiceTenant tenant = 1;
 }
 
+message AdminAuthServiceGetTenantConfigRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+}
+
+message AdminAuthServiceGetTenantConfigResponse {
+  string copyright_text = 1;
+  string site_description = 2;
+  string site_tagline = 3;
+}
+
+message AdminAuthServiceUpdateTenantConfigRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  string copyright_text = 3;
+  string site_description = 4;
+  string site_tagline = 5;
+}
+
+message AdminAuthServiceUpdateTenantConfigResponse {
+  string copyright_text = 1;
+  string site_description = 2;
+  string site_tagline = 3;
+}
+
 service AdminAuthService {
   rpc CreateSession(AdminAuthServiceCreateSessionRequest) returns (AdminAuthServiceCreateSessionResponse) {}
   rpc DeleteSession(AdminAuthServiceDeleteSessionRequest) returns (AdminAuthServiceDeleteSessionResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
   rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
   rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}
+  rpc GetTenantConfig(AdminAuthServiceGetTenantConfigRequest) returns (AdminAuthServiceGetTenantConfigResponse) {}
+  rpc UpdateTenantConfig(AdminAuthServiceUpdateTenantConfigRequest) returns (AdminAuthServiceUpdateTenantConfigResponse) {}
 }

@@ -5,6 +5,34 @@ interface TenantCacheValue {
   tenantPublicId: string | null;
 }
 
+const isNotFoundError = (error: unknown): boolean => {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    message?: unknown;
+    rawMessage?: unknown;
+  };
+
+  if (candidate.code === 5 || candidate.code === "not_found") {
+    return true;
+  }
+
+  if (
+    typeof candidate.message === "string" &&
+    candidate.message.toLowerCase().includes("not found")
+  ) {
+    return true;
+  }
+
+  return (
+    typeof candidate.rawMessage === "string" &&
+    candidate.rawMessage.toLowerCase().includes("not found")
+  );
+};
+
 export const createTenantPublicIdResolver = (
   publicApiClient: PublicApiClient,
   options?: {
@@ -31,14 +59,19 @@ export const createTenantPublicIdResolver = (
     }
 
     try {
-      const response = await publicApiClient.auth.getTenantByDomain({
+      const response = await publicApiClient.domain.getTenantByDomain({
         domains: [...domainCandidates],
       });
       const tenantPublicId = response.tenantPublicId?.trim() || null;
       tenantCache.set(cacheKey, { tenantPublicId });
       return tenantPublicId;
-    } catch {
-      return null;
+    } catch (error) {
+      if (isNotFoundError(error)) {
+        tenantCache.set(cacheKey, { tenantPublicId: null });
+        return null;
+      }
+
+      throw error;
     }
   };
 };

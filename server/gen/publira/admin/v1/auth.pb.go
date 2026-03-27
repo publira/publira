@@ -570,6 +570,254 @@ func (x *AdminAuthServiceGetTenantResponse) GetTenant() *AdminAuthServiceTenant 
 	return nil
 }
 
+type AdminAuthServiceGetTenantConfigRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceGetTenantConfigRequest) Reset() {
+	*x = AdminAuthServiceGetTenantConfigRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceGetTenantConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceGetTenantConfigRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceGetTenantConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceGetTenantConfigRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceGetTenantConfigRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AdminAuthServiceGetTenantConfigRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceGetTenantConfigRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type AdminAuthServiceGetTenantConfigResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CopyrightText   string                 `protobuf:"bytes,1,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
+	SiteDescription string                 `protobuf:"bytes,2,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
+	SiteTagline     string                 `protobuf:"bytes,3,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceGetTenantConfigResponse) Reset() {
+	*x = AdminAuthServiceGetTenantConfigResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceGetTenantConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceGetTenantConfigResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceGetTenantConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceGetTenantConfigResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceGetTenantConfigResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AdminAuthServiceGetTenantConfigResponse) GetCopyrightText() string {
+	if x != nil {
+		return x.CopyrightText
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceGetTenantConfigResponse) GetSiteDescription() string {
+	if x != nil {
+		return x.SiteDescription
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceGetTenantConfigResponse) GetSiteTagline() string {
+	if x != nil {
+		return x.SiteTagline
+	}
+	return ""
+}
+
+type AdminAuthServiceUpdateTenantConfigRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SessionId       string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	CopyrightText   string                 `protobuf:"bytes,3,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
+	SiteDescription string                 `protobuf:"bytes,4,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
+	SiteTagline     string                 `protobuf:"bytes,5,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) Reset() {
+	*x = AdminAuthServiceUpdateTenantConfigRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceUpdateTenantConfigRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceUpdateTenantConfigRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceUpdateTenantConfigRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) GetCopyrightText() string {
+	if x != nil {
+		return x.CopyrightText
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) GetSiteDescription() string {
+	if x != nil {
+		return x.SiteDescription
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigRequest) GetSiteTagline() string {
+	if x != nil {
+		return x.SiteTagline
+	}
+	return ""
+}
+
+type AdminAuthServiceUpdateTenantConfigResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CopyrightText   string                 `protobuf:"bytes,1,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
+	SiteDescription string                 `protobuf:"bytes,2,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
+	SiteTagline     string                 `protobuf:"bytes,3,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigResponse) Reset() {
+	*x = AdminAuthServiceUpdateTenantConfigResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceUpdateTenantConfigResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceUpdateTenantConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceUpdateTenantConfigResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceUpdateTenantConfigResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigResponse) GetCopyrightText() string {
+	if x != nil {
+		return x.CopyrightText
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigResponse) GetSiteDescription() string {
+	if x != nil {
+		return x.SiteDescription
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigResponse) GetSiteTagline() string {
+	if x != nil {
+		return x.SiteTagline
+	}
+	return ""
+}
+
 var File_publira_admin_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_auth_proto_rawDesc = "" +
@@ -607,13 +855,34 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\x06domain\x18\x03 \x01(\tR\x06domain\x12!\n" +
 	"\fadmin_domain\x18\x04 \x01(\tR\vadminDomain\"e\n" +
 	"!AdminAuthServiceGetTenantResponse\x12@\n" +
-	"\x06tenant\x18\x01 \x01(\v2(.publira.admin.v1.AdminAuthServiceTenantR\x06tenant2\x91\x05\n" +
+	"\x06tenant\x18\x01 \x01(\v2(.publira.admin.v1.AdminAuthServiceTenantR\x06tenant\"\x80\x01\n" +
+	"&AdminAuthServiceGetTenantConfigRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\"\x9e\x01\n" +
+	"'AdminAuthServiceGetTenantConfigResponse\x12%\n" +
+	"\x0ecopyright_text\x18\x01 \x01(\tR\rcopyrightText\x12)\n" +
+	"\x10site_description\x18\x02 \x01(\tR\x0fsiteDescription\x12!\n" +
+	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\"\xf8\x01\n" +
+	")AdminAuthServiceUpdateTenantConfigRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12%\n" +
+	"\x0ecopyright_text\x18\x03 \x01(\tR\rcopyrightText\x12)\n" +
+	"\x10site_description\x18\x04 \x01(\tR\x0fsiteDescription\x12!\n" +
+	"\fsite_tagline\x18\x05 \x01(\tR\vsiteTagline\"\xa1\x01\n" +
+	"*AdminAuthServiceUpdateTenantConfigResponse\x12%\n" +
+	"\x0ecopyright_text\x18\x01 \x01(\tR\rcopyrightText\x12)\n" +
+	"\x10site_description\x18\x02 \x01(\tR\x0fsiteDescription\x12!\n" +
+	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline2\xb0\a\n" +
 	"\x10AdminAuthService\x12\x82\x01\n" +
 	"\rCreateSession\x126.publira.admin.v1.AdminAuthServiceCreateSessionRequest\x1a7.publira.admin.v1.AdminAuthServiceCreateSessionResponse\"\x00\x12\x82\x01\n" +
 	"\rDeleteSession\x126.publira.admin.v1.AdminAuthServiceDeleteSessionRequest\x1a7.publira.admin.v1.AdminAuthServiceDeleteSessionResponse\"\x00\x12j\n" +
 	"\x05GetMe\x12..publira.admin.v1.AdminAuthServiceGetMeRequest\x1a/.publira.admin.v1.AdminAuthServiceGetMeResponse\"\x00\x12\x8e\x01\n" +
 	"\x11GetTenantByDomain\x12:.publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest\x1a;.publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse\"\x00\x12v\n" +
-	"\tGetTenant\x122.publira.admin.v1.AdminAuthServiceGetTenantRequest\x1a3.publira.admin.v1.AdminAuthServiceGetTenantResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\tGetTenant\x122.publira.admin.v1.AdminAuthServiceGetTenantRequest\x1a3.publira.admin.v1.AdminAuthServiceGetTenantResponse\"\x00\x12\x88\x01\n" +
+	"\x0fGetTenantConfig\x128.publira.admin.v1.AdminAuthServiceGetTenantConfigRequest\x1a9.publira.admin.v1.AdminAuthServiceGetTenantConfigResponse\"\x00\x12\x91\x01\n" +
+	"\x12UpdateTenantConfig\x12;.publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest\x1a<.publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_auth_proto_rawDescOnce sync.Once
@@ -627,47 +896,57 @@ func file_publira_admin_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_auth_proto_rawDescData
 }
 
-var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_publira_admin_v1_auth_proto_goTypes = []any{
-	(*AdminAuthServiceCreateSessionRequest)(nil),      // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest
-	(*AdminAuthServiceCreateSessionResponse)(nil),     // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse
-	(*AdminAuthServiceDeleteSessionRequest)(nil),      // 2: publira.admin.v1.AdminAuthServiceDeleteSessionRequest
-	(*AdminAuthServiceDeleteSessionResponse)(nil),     // 3: publira.admin.v1.AdminAuthServiceDeleteSessionResponse
-	(*AdminAuthServiceGetMeRequest)(nil),              // 4: publira.admin.v1.AdminAuthServiceGetMeRequest
-	(*AdminAuthServiceGetMeResponse)(nil),             // 5: publira.admin.v1.AdminAuthServiceGetMeResponse
-	(*AdminAuthServiceGetTenantByDomainRequest)(nil),  // 6: publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
-	(*AdminAuthServiceGetTenantByDomainResponse)(nil), // 7: publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
-	(*AdminAuthServiceGetTenantRequest)(nil),          // 8: publira.admin.v1.AdminAuthServiceGetTenantRequest
-	(*AdminAuthServiceTenant)(nil),                    // 9: publira.admin.v1.AdminAuthServiceTenant
-	(*AdminAuthServiceGetTenantResponse)(nil),         // 10: publira.admin.v1.AdminAuthServiceGetTenantResponse
-	(*v1.TenantContext)(nil),                          // 11: publira.types.v1.TenantContext
-	(*v1.User)(nil),                                   // 12: publira.types.v1.User
-	(*v1.Session)(nil),                                // 13: publira.types.v1.Session
+	(*AdminAuthServiceCreateSessionRequest)(nil),       // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest
+	(*AdminAuthServiceCreateSessionResponse)(nil),      // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse
+	(*AdminAuthServiceDeleteSessionRequest)(nil),       // 2: publira.admin.v1.AdminAuthServiceDeleteSessionRequest
+	(*AdminAuthServiceDeleteSessionResponse)(nil),      // 3: publira.admin.v1.AdminAuthServiceDeleteSessionResponse
+	(*AdminAuthServiceGetMeRequest)(nil),               // 4: publira.admin.v1.AdminAuthServiceGetMeRequest
+	(*AdminAuthServiceGetMeResponse)(nil),              // 5: publira.admin.v1.AdminAuthServiceGetMeResponse
+	(*AdminAuthServiceGetTenantByDomainRequest)(nil),   // 6: publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
+	(*AdminAuthServiceGetTenantByDomainResponse)(nil),  // 7: publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
+	(*AdminAuthServiceGetTenantRequest)(nil),           // 8: publira.admin.v1.AdminAuthServiceGetTenantRequest
+	(*AdminAuthServiceTenant)(nil),                     // 9: publira.admin.v1.AdminAuthServiceTenant
+	(*AdminAuthServiceGetTenantResponse)(nil),          // 10: publira.admin.v1.AdminAuthServiceGetTenantResponse
+	(*AdminAuthServiceGetTenantConfigRequest)(nil),     // 11: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
+	(*AdminAuthServiceGetTenantConfigResponse)(nil),    // 12: publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
+	(*AdminAuthServiceUpdateTenantConfigRequest)(nil),  // 13: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
+	(*AdminAuthServiceUpdateTenantConfigResponse)(nil), // 14: publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
+	(*v1.TenantContext)(nil),                           // 15: publira.types.v1.TenantContext
+	(*v1.User)(nil),                                    // 16: publira.types.v1.User
+	(*v1.Session)(nil),                                 // 17: publira.types.v1.Session
 }
 var file_publira_admin_v1_auth_proto_depIdxs = []int32{
-	11, // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse.user:type_name -> publira.types.v1.User
-	13, // 2: publira.admin.v1.AdminAuthServiceCreateSessionResponse.session:type_name -> publira.types.v1.Session
-	11, // 3: publira.admin.v1.AdminAuthServiceDeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 4: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 5: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
-	11, // 6: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse.user:type_name -> publira.types.v1.User
+	17, // 2: publira.admin.v1.AdminAuthServiceCreateSessionResponse.session:type_name -> publira.types.v1.Session
+	15, // 3: publira.admin.v1.AdminAuthServiceDeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 4: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 5: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
+	15, // 6: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
 	9,  // 7: publira.admin.v1.AdminAuthServiceGetTenantResponse.tenant:type_name -> publira.admin.v1.AdminAuthServiceTenant
-	0,  // 8: publira.admin.v1.AdminAuthService.CreateSession:input_type -> publira.admin.v1.AdminAuthServiceCreateSessionRequest
-	2,  // 9: publira.admin.v1.AdminAuthService.DeleteSession:input_type -> publira.admin.v1.AdminAuthServiceDeleteSessionRequest
-	4,  // 10: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
-	6,  // 11: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
-	8,  // 12: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
-	1,  // 13: publira.admin.v1.AdminAuthService.CreateSession:output_type -> publira.admin.v1.AdminAuthServiceCreateSessionResponse
-	3,  // 14: publira.admin.v1.AdminAuthService.DeleteSession:output_type -> publira.admin.v1.AdminAuthServiceDeleteSessionResponse
-	5,  // 15: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
-	7,  // 16: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
-	10, // 17: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	15, // 8: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 9: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 10: publira.admin.v1.AdminAuthService.CreateSession:input_type -> publira.admin.v1.AdminAuthServiceCreateSessionRequest
+	2,  // 11: publira.admin.v1.AdminAuthService.DeleteSession:input_type -> publira.admin.v1.AdminAuthServiceDeleteSessionRequest
+	4,  // 12: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
+	6,  // 13: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
+	8,  // 14: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
+	11, // 15: publira.admin.v1.AdminAuthService.GetTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
+	13, // 16: publira.admin.v1.AdminAuthService.UpdateTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
+	1,  // 17: publira.admin.v1.AdminAuthService.CreateSession:output_type -> publira.admin.v1.AdminAuthServiceCreateSessionResponse
+	3,  // 18: publira.admin.v1.AdminAuthService.DeleteSession:output_type -> publira.admin.v1.AdminAuthServiceDeleteSessionResponse
+	5,  // 19: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
+	7,  // 20: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
+	10, // 21: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
+	12, // 22: publira.admin.v1.AdminAuthService.GetTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
+	14, // 23: publira.admin.v1.AdminAuthService.UpdateTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
+	17, // [17:24] is the sub-list for method output_type
+	10, // [10:17] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_auth_proto_init() }
@@ -681,7 +960,7 @@ func file_publira_admin_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_auth_proto_rawDesc), len(file_publira_admin_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

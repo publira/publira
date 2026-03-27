@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+message GetTenantRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantResponse {
+  string tenant_public_id = 1;
+  string tenant_name = 2;
+  string tenant_domain = 3;
+  string copyright_text = 4;
+  string site_description = 5;
+  string site_tagline = 6;
+}
+
+service TenantService {
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
+}

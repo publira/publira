@@ -47,6 +47,12 @@ const (
 	// AdminAuthServiceGetTenantProcedure is the fully-qualified name of the AdminAuthService's
 	// GetTenant RPC.
 	AdminAuthServiceGetTenantProcedure = "/publira.admin.v1.AdminAuthService/GetTenant"
+	// AdminAuthServiceGetTenantConfigProcedure is the fully-qualified name of the AdminAuthService's
+	// GetTenantConfig RPC.
+	AdminAuthServiceGetTenantConfigProcedure = "/publira.admin.v1.AdminAuthService/GetTenantConfig"
+	// AdminAuthServiceUpdateTenantConfigProcedure is the fully-qualified name of the AdminAuthService's
+	// UpdateTenantConfig RPC.
+	AdminAuthServiceUpdateTenantConfigProcedure = "/publira.admin.v1.AdminAuthService/UpdateTenantConfig"
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
@@ -56,6 +62,8 @@ type AdminAuthServiceClient interface {
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
 	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
+	GetTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantConfigResponse], error)
+	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -99,16 +107,30 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminAuthServiceMethods.ByName("GetTenant")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantConfig: connect.NewClient[v1.AdminAuthServiceGetTenantConfigRequest, v1.AdminAuthServiceGetTenantConfigResponse](
+			httpClient,
+			baseURL+AdminAuthServiceGetTenantConfigProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("GetTenantConfig")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantConfig: connect.NewClient[v1.AdminAuthServiceUpdateTenantConfigRequest, v1.AdminAuthServiceUpdateTenantConfigResponse](
+			httpClient,
+			baseURL+AdminAuthServiceUpdateTenantConfigProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("UpdateTenantConfig")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // adminAuthServiceClient implements AdminAuthServiceClient.
 type adminAuthServiceClient struct {
-	createSession     *connect.Client[v1.AdminAuthServiceCreateSessionRequest, v1.AdminAuthServiceCreateSessionResponse]
-	deleteSession     *connect.Client[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse]
-	getMe             *connect.Client[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse]
-	getTenantByDomain *connect.Client[v1.AdminAuthServiceGetTenantByDomainRequest, v1.AdminAuthServiceGetTenantByDomainResponse]
-	getTenant         *connect.Client[v1.AdminAuthServiceGetTenantRequest, v1.AdminAuthServiceGetTenantResponse]
+	createSession      *connect.Client[v1.AdminAuthServiceCreateSessionRequest, v1.AdminAuthServiceCreateSessionResponse]
+	deleteSession      *connect.Client[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse]
+	getMe              *connect.Client[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse]
+	getTenantByDomain  *connect.Client[v1.AdminAuthServiceGetTenantByDomainRequest, v1.AdminAuthServiceGetTenantByDomainResponse]
+	getTenant          *connect.Client[v1.AdminAuthServiceGetTenantRequest, v1.AdminAuthServiceGetTenantResponse]
+	getTenantConfig    *connect.Client[v1.AdminAuthServiceGetTenantConfigRequest, v1.AdminAuthServiceGetTenantConfigResponse]
+	updateTenantConfig *connect.Client[v1.AdminAuthServiceUpdateTenantConfigRequest, v1.AdminAuthServiceUpdateTenantConfigResponse]
 }
 
 // CreateSession calls publira.admin.v1.AdminAuthService.CreateSession.
@@ -136,6 +158,16 @@ func (c *adminAuthServiceClient) GetTenant(ctx context.Context, req *connect.Req
 	return c.getTenant.CallUnary(ctx, req)
 }
 
+// GetTenantConfig calls publira.admin.v1.AdminAuthService.GetTenantConfig.
+func (c *adminAuthServiceClient) GetTenantConfig(ctx context.Context, req *connect.Request[v1.AdminAuthServiceGetTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantConfigResponse], error) {
+	return c.getTenantConfig.CallUnary(ctx, req)
+}
+
+// UpdateTenantConfig calls publira.admin.v1.AdminAuthService.UpdateTenantConfig.
+func (c *adminAuthServiceClient) UpdateTenantConfig(ctx context.Context, req *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error) {
+	return c.updateTenantConfig.CallUnary(ctx, req)
+}
+
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
@@ -143,6 +175,8 @@ type AdminAuthServiceHandler interface {
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
 	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
+	GetTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantConfigResponse], error)
+	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
 }
 
 // NewAdminAuthServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -182,6 +216,18 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminAuthServiceMethods.ByName("GetTenant")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminAuthServiceGetTenantConfigHandler := connect.NewUnaryHandler(
+		AdminAuthServiceGetTenantConfigProcedure,
+		svc.GetTenantConfig,
+		connect.WithSchema(adminAuthServiceMethods.ByName("GetTenantConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceUpdateTenantConfigHandler := connect.NewUnaryHandler(
+		AdminAuthServiceUpdateTenantConfigProcedure,
+		svc.UpdateTenantConfig,
+		connect.WithSchema(adminAuthServiceMethods.ByName("UpdateTenantConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminAuthServiceCreateSessionProcedure:
@@ -194,6 +240,10 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 			adminAuthServiceGetTenantByDomainHandler.ServeHTTP(w, r)
 		case AdminAuthServiceGetTenantProcedure:
 			adminAuthServiceGetTenantHandler.ServeHTTP(w, r)
+		case AdminAuthServiceGetTenantConfigProcedure:
+			adminAuthServiceGetTenantConfigHandler.ServeHTTP(w, r)
+		case AdminAuthServiceUpdateTenantConfigProcedure:
+			adminAuthServiceUpdateTenantConfigHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -221,4 +271,12 @@ func (UnimplementedAdminAuthServiceHandler) GetTenantByDomain(context.Context, *
 
 func (UnimplementedAdminAuthServiceHandler) GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.GetTenant is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) GetTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.GetTenantConfig is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.UpdateTenantConfig is not implemented"))
 }

@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+import { getTenantSiteLabel } from "../../../lib/tenant";
+
 const generateRandomAuthors = () =>
   Array.from({ length: 12 }, (_, i) => ({
     description: "静かに読む、持続可能に出版する",
@@ -5,14 +9,31 @@ const generateRandomAuthors = () =>
     name: `著者 ${i + 1}`,
   }));
 
-export default function AuthorsPage() {
+export const generateMetadata = async ({
+  params,
+}: {
+  params: Promise<{ tenant_public_id: string }>;
+}): Promise<Metadata> => {
+  const { tenant_public_id } = await params;
+  const siteLabel = await getTenantSiteLabel(tenant_public_id);
+
+  return {
+    title: `著者一覧 | ${siteLabel}`,
+  };
+};
+
+export default async function AuthorsPage({
+  params,
+}: PageProps<"/[tenant_public_id]/authors">) {
+  const { tenant_public_id } = await params;
+  const siteLabel = await getTenantSiteLabel(tenant_public_id);
   const authors = generateRandomAuthors();
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       <h1 className="mb-2 font-serif text-4xl font-bold">著者一覧</h1>
       <p className="mb-8 text-muted-foreground">
-        Publira に登録されている著者をご紹介します
+        {siteLabel} に登録されている著者をご紹介します
       </p>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

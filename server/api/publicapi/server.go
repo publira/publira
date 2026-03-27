@@ -51,7 +51,7 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattype
 }
 
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
-// CatalogService と AuthService のみ公開し、管理 API (AdminSeriesService) は含みません。
+// CatalogService / AuthService / TenantService / DomainService を公開し、管理 API は含みません。
 func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler {
 	server := &apiServer{queries: queries, storage: storageProvider}
 	mux := http.NewServeMux()
@@ -76,4 +76,8 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	mux.Handle(path, handler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server)
 	mux.Handle(authPath, authHandler)
+	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server)
+	mux.Handle(tenantPath, tenantHandler)
+	domainPath, domainHandler := publirav1connect.NewDomainServiceHandler(server)
+	mux.Handle(domainPath, domainHandler)
 }

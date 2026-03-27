@@ -45,27 +45,9 @@ message GetMeResponse {
   publira.types.v1.User user = 1;
 }
 
-message GetTenantByDomainRequest {
-  repeated string domains = 1;
-}
-
-message GetTenantByDomainResponse {
-  string tenant_public_id = 1;
-}
-
-message GetAdminTenantByDomainRequest {
-  repeated string domains = 1;
-}
-
-message GetAdminTenantByDomainResponse {
-  string tenant_public_id = 1;
-}
-
 service AuthService {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
-  rpc GetTenantByDomain(GetTenantByDomainRequest) returns (GetTenantByDomainResponse) {}
-  rpc GetAdminTenantByDomain(GetAdminTenantByDomainRequest) returns (GetAdminTenantByDomainResponse) {}
 }

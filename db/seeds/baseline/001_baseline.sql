@@ -18,6 +18,25 @@ SET domain = EXCLUDED.domain,
     name = EXCLUDED.name,
     status = EXCLUDED.status;
 
+INSERT INTO tenant_config (
+    tenant_id,
+    copyright_text,
+    site_description,
+    site_tagline
+)
+SELECT
+    t.id,
+    '© Publira Seed Tenant',
+    'Seed Tenant の公開向け説明テキストです。',
+    '読むたび、世界がひらく。'
+FROM tenants t
+WHERE t.domain = 'localhost'
+ON CONFLICT (tenant_id) DO UPDATE
+SET copyright_text = EXCLUDED.copyright_text,
+    site_description = EXCLUDED.site_description,
+    site_tagline = EXCLUDED.site_tagline,
+    updated_at = NOW();
+
 WITH platform_user_seed AS (
     SELECT '018f0e6b-1000-7000-8000-000000000001'::uuid AS id
 )

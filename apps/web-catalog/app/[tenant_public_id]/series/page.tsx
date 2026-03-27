@@ -3,13 +3,30 @@ import {
   createPlaceholderStaticParams,
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { listPublishedSeries } from "../../../lib/catalog";
+import { getTenantSiteLabel } from "../../../lib/tenant";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");
+
+export const generateMetadata = async ({
+  params,
+}: {
+  params: Promise<{ tenant_public_id: string }>;
+}): Promise<Metadata> => {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
+  const siteLabel = await getTenantSiteLabel(tenant_public_id);
+
+  return {
+    title: `シリーズ一覧 | ${siteLabel}`,
+  };
+};
 
 const SeriesCardSkeleton = () => (
   <div className="overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm">
@@ -96,14 +113,19 @@ const SeriesListData = async (
   );
 };
 
-export default function SeriesPage(
+export default async function SeriesPage(
   props: PageProps<"/[tenant_public_id]/series">
 ) {
+  const { tenant_public_id } = await props.params;
+  guardPlaceholder(tenant_public_id);
+
+  const siteLabel = await getTenantSiteLabel(tenant_public_id);
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       <h1 className="mb-2 font-serif text-4xl font-bold">シリーズ一覧</h1>
       <p className="mb-8 text-muted-foreground">
-        Publira に登録されているシリーズをご紹介します
+        {siteLabel} に登録されているシリーズをご紹介します
       </p>
 
       <Suspense fallback={<SeriesListSkeleton />}>
