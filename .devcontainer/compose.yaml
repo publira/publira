@@ -39,27 +39,37 @@ services:
       # web-catalog (port 3001)
       - "traefik.http.routers.web-catalog.rule=PathPrefix(`/authors`) || PathPrefix(`/series`) || PathPrefix(`/web-catalog-assets`)"
       - "traefik.http.routers.web-catalog.entrypoints=web"
+      - "traefik.http.routers.web-catalog.priority=10"
       - "traefik.http.routers.web-catalog.service=web-catalog"
       - "traefik.http.services.web-catalog.loadbalancer.server.port=3001"
 
       # web-member (port 3002)
       - "traefik.http.routers.web-member.rule=Path(`/my`) || PathPrefix(`/notifications`) || PathPrefix(`/settings`) || PathPrefix(`/web-member-assets`)"
       - "traefik.http.routers.web-member.entrypoints=web"
+      - "traefik.http.routers.web-member.priority=10"
       - "traefik.http.routers.web-member.service=web-member"
       - "traefik.http.services.web-member.loadbalancer.server.port=3002"
 
       # web-auth (port 3003)
       - "traefik.http.routers.web-auth.rule=Path(`/login`) || Path(`/signup`) || Path(`/logout`) || PathPrefix(`/web-auth-assets`)"
       - "traefik.http.routers.web-auth.entrypoints=web"
+      - "traefik.http.routers.web-auth.priority=10"
       - "traefik.http.routers.web-auth.service=web-auth"
       - "traefik.http.services.web-auth.loadbalancer.server.port=3003"
 
       # web-admin on dedicated host: admin.*:3080
-      - "traefik.http.routers.web-admin.rule=HostRegexp(`admin.{domain:.+}`)"
+      - "traefik.http.routers.web-admin.rule=HostRegexp(`^admin\\d*\\..*$`)"
       - "traefik.http.routers.web-admin.entrypoints=web"
-      - "traefik.http.routers.web-admin.priority=10"
+      - "traefik.http.routers.web-admin.priority=100"
       - "traefik.http.routers.web-admin.service=web-admin"
       - "traefik.http.services.web-admin.loadbalancer.server.port=4000"
+
+      # web-platform on dedicated host: platform.*:3080
+      - "traefik.http.routers.web-platform.rule=HostRegexp(`^platform\\..*$`)"
+      - "traefik.http.routers.web-platform.entrypoints=web"
+      - "traefik.http.routers.web-platform.priority=100"
+      - "traefik.http.routers.web-platform.service=web-platform"
+      - "traefik.http.services.web-platform.loadbalancer.server.port=4100"
 
       # api-server on /api -> app:8000 (strip /api before forwarding)
       - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
