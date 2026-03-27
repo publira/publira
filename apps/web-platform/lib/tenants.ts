@@ -113,7 +113,7 @@ const mapTenant = (tenant?: {
 export const getPlatformTenant = async (
   publicId: string
 ): Promise<PlatformTenantDetail | null> => {
-  // "use cache: private";
+  "use cache: private";
 
   const sid = await resolveSessionId();
   if (!publicId.trim() || !sid) {
@@ -134,7 +134,7 @@ export const getPlatformTenant = async (
 export const listPlatformTenantMembers = async (
   tenantPublicId: string
 ): Promise<PlatformTenantMemberSummary[]> => {
-  // "use cache: private";
+  "use cache: private";
 
   const sid = await resolveSessionId();
   if (!tenantPublicId.trim() || !sid) {

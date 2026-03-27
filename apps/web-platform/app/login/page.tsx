@@ -1,70 +1,95 @@
+import type { ParsedUrlQuery } from "node:querystring";
+
+import { Skeleton } from "@publira/ui-components";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import * as z from "zod";
 
-import {
-  PLATFORM_SESSION_COOKIE_NAME,
-  loginPlatform,
-  sanitizeRedirectPath,
-  sessionCookieOptions,
-} from "../../lib/auth";
+import { loginAction } from "./_lib/actions";
 
 export const metadata: Metadata = {
   title: "ログイン",
 };
 
-interface LoginPageProps {
-  searchParams: Promise<{
-    error?: string;
-    next?: string;
-  }>;
-}
+const searchParamsSchema = z.object({
+  error: z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : ""),
+    z.string().optional()
+  ),
+  next: z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : ""),
+    z.string().optional()
+  ),
+});
 
-const buildLoginErrorPath = (message: string, nextPath: string): string => {
-  const params = new URLSearchParams({
-    error: message,
-    next: sanitizeRedirectPath(nextPath),
-  });
-  return `/login?${params.toString()}`;
-};
-
-const loginAction = async (formData: FormData): Promise<void> => {
-  "use server";
-
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const nextPath = sanitizeRedirectPath(String(formData.get("next") ?? "/"));
-
-  const result = await loginPlatform(email, password);
-  if (!result) {
-    redirect(
-      buildLoginErrorPath(
-        "メールアドレスまたはパスワードが正しくありません。",
-        nextPath
-      )
-    );
-  }
-
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions,
-    expires: result.expiresAt,
-    name: PLATFORM_SESSION_COOKIE_NAME,
-    value: result.sessionId,
-  });
-
-  redirect(nextPath);
-};
-
-export default async function LoginPage({ searchParams }: LoginPageProps) {
+const LoginForm = async ({
+  searchParams,
+}: {
+  searchParams: Promise<ParsedUrlQuery>;
+}) => {
   const params = await searchParams;
-  const errorMessage = params.error?.trim();
-  const nextPath = sanitizeRedirectPath(params.next);
+  const { error, next } = searchParamsSchema.parse(params);
 
+  return (
+    <form action={loginAction} className="space-y-4">
+      <input name="next" type="hidden" value={next} />
+
+      <Field>
+        <FieldLabel htmlFor="email" required>
+          メールアドレス
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="email"
+            id="email"
+            name="email"
+            placeholder="operator@example.com"
+            required
+            type="email"
+          />
+        </FieldContent>
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="password" required>
+          パスワード
+        </FieldLabel>
+        <FieldContent>
+          <Input
+            autoComplete="current-password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            type="password"
+          />
+        </FieldContent>
+      </Field>
+
+      {error ? <FormMessage variant="destructive">{error}</FormMessage> : null}
+
+      <Button className="mt-2 w-full" type="submit">
+        ログイン
+      </Button>
+    </form>
+  );
+};
+
+const LoginFormSkeleton = () => (
+  <div className="space-y-4">
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-1/2" />
+    <Skeleton className="h-5 w-full" />
+  </div>
+);
+
+export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
@@ -76,49 +101,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
 
         <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-          <form action={loginAction} className="space-y-4">
-            <input name="next" type="hidden" value={nextPath} />
-
-            <Field>
-              <FieldLabel htmlFor="email" required>
-                メールアドレス
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="email"
-                  id="email"
-                  name="email"
-                  placeholder="operator@example.com"
-                  required
-                  type="email"
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="password" required>
-                パスワード
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  autoComplete="current-password"
-                  id="password"
-                  name="password"
-                  placeholder="••••••••"
-                  required
-                  type="password"
-                />
-              </FieldContent>
-            </Field>
-
-            {errorMessage ? (
-              <FormMessage variant="destructive">{errorMessage}</FormMessage>
-            ) : null}
-
-            <Button className="mt-2 w-full" type="submit">
-              ログイン
-            </Button>
-          </form>
+          <Suspense fallback={<LoginFormSkeleton />}>
+            <LoginForm searchParams={searchParams} />
+          </Suspense>
         </div>
       </div>
     </main>
