@@ -16,7 +16,7 @@ export const buildSessionHeaders = (sessionId: string) =>
   ({ headers: { "X-Publira-Session-Id": sessionId } }) as never;
 
 const getSessionIdFromCookie = async (): Promise<string> => {
-  // "use cache: private";
+  "use cache: private";
 
   const cookieStore = await cookies();
   return cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value?.trim() ?? "";

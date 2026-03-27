@@ -68,16 +68,6 @@ export const AdminLayout = ({
             <StatusChip status="success">Online</StatusChip>
           </div>
         }
-        footerNote={
-          <>
-            <p className="text-sm font-medium text-foreground">
-              モバイル切り替え対応
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              サイドバーは小さい画面ではドロワーに切り替わり、将来の管理画面でも同じナビゲーション構造を再利用できます。
-            </p>
-          </>
-        }
         logoLabel="Admin Console"
         navId="admin-navigation"
         navigation={navigation}
