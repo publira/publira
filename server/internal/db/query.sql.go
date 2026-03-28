@@ -1106,10 +1106,14 @@ SELECT s.id,
     COALESCE(
         json_agg(
             json_build_object(
+                    'public_id',
+                    c.public_id,
                 'name',
                 c.name,
-                'role',
-                sc.role
+                    'role',
+                    sc.role,
+                    'profile_text',
+                    c.profile_text
             )
             ORDER BY sc.display_order ASC
         ) FILTER (
@@ -1499,13 +1503,36 @@ SELECT s.id,
     s.public_id,
     s.title,
     sl.synopsis,
-    s.published_at
+    s.published_at,
+    COALESCE(
+        json_agg(
+            json_build_object(
+                'public_id',
+                c.public_id,
+                'name',
+                c.name,
+                'role',
+                sc.role,
+                'profile_text',
+                c.profile_text
+            )
+            ORDER BY sc.display_order ASC
+        ) FILTER (
+            WHERE c.id IS NOT NULL
+        ),
+        '[]'
+    )::jsonb AS creators
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_creators sc ON s.id = sc.series_id
+    LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+GROUP BY s.id,
+    sl.series_id,
+    sl.synopsis
 ORDER BY s.published_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -1517,11 +1544,12 @@ type ListActiveSeriesParams struct {
 }
 
 type ListActiveSeriesRow struct {
-	ID          uuid.UUID      `json:"id"`
-	PublicID    string         `json:"public_id"`
-	Title       string         `json:"title"`
-	Synopsis    sql.NullString `json:"synopsis"`
-	PublishedAt sql.NullTime   `json:"published_at"`
+	ID          uuid.UUID       `json:"id"`
+	PublicID    string          `json:"public_id"`
+	Title       string          `json:"title"`
+	Synopsis    sql.NullString  `json:"synopsis"`
+	PublishedAt sql.NullTime    `json:"published_at"`
+	Creators    json.RawMessage `json:"creators"`
 }
 
 // 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
@@ -1540,6 +1568,7 @@ func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesPara
 			&i.Title,
 			&i.Synopsis,
 			&i.PublishedAt,
+			&i.Creators,
 		); err != nil {
 			return nil, err
 		}
