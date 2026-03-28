@@ -1,6 +1,8 @@
 import { apiClient } from "./api-client";
 
 export const isSetupCompleted = async (): Promise<boolean | null> => {
+  "use cache: private";
+
   try {
     const response = await apiClient.setup.checkSetupStatus({});
     return response.setupCompleted;

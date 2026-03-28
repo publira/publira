@@ -40,17 +40,19 @@ interface EditSeriesPageProps {
   }>;
 }
 
-const EditSeriesFormData = async ({ params }: EditSeriesPageProps) => {
-  const { series_id, tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-  guardPlaceholder(series_id);
-
+const EditSeriesFormData = async ({
+  seriesId,
+  tenantPublicId,
+}: {
+  seriesId: string;
+  tenantPublicId: string;
+}) => {
   const [result, creatorsResult] = await Promise.all([
     getSeries({
-      publicId: series_id,
-      tenantPublicId: tenant_public_id,
+      publicId: seriesId,
+      tenantPublicId,
     }),
-    listCreators(tenant_public_id),
+    listCreators(tenantPublicId),
   ]);
 
   if (!result.ok) {
@@ -76,12 +78,16 @@ const EditSeriesFormData = async ({ params }: EditSeriesPageProps) => {
       defaultReadingPeriodHours={result.series.readingPeriodHours}
       initialSeries={result.series}
       mode="update"
-      tenantPublicId={tenant_public_id}
+      tenantPublicId={tenantPublicId}
     />
   );
 };
 
-export default function EditSeriesPage(props: EditSeriesPageProps) {
+export default async function EditSeriesPage({ params }: EditSeriesPageProps) {
+  const { series_id, tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+  guardPlaceholder(series_id);
+
   return (
     <AdminPage
       actions={
@@ -94,7 +100,10 @@ export default function EditSeriesPage(props: EditSeriesPageProps) {
     >
       <FlashToast title="シリーズを作成しました。" />
       <Suspense fallback={<EditSeriesFormSkeleton />}>
-        <EditSeriesFormData {...props} />
+        <EditSeriesFormData
+          seriesId={series_id}
+          tenantPublicId={tenant_public_id}
+        />
       </Suspense>
     </AdminPage>
   );

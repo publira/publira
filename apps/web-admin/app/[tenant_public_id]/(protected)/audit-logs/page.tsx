@@ -93,17 +93,16 @@ const AuditLogsSkeleton = () => (
 );
 
 const AuditLogsContent = async ({
-  params,
   searchParams,
-}: AuditLogsPageProps) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const sp = await searchParams;
-  const filters = parseAuditLogFilters(sp, allowedActionValues);
+  tenantPublicId,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+  tenantPublicId: string;
+}) => {
+  const filters = parseAuditLogFilters(searchParams, allowedActionValues);
 
   const [result, actorCandidatesResult] = await Promise.all([
-    listAuditLogs(tenant_public_id, {
+    listAuditLogs(tenantPublicId, {
       action: filters.action,
       actorUserPublicId: filters.actor,
       createdFrom: filters.from,
@@ -111,7 +110,7 @@ const AuditLogsContent = async ({
       cursor: filters.cursor,
       limit: pageSize,
     }),
-    listAuditActorCandidates(tenant_public_id, {
+    listAuditActorCandidates(tenantPublicId, {
       limit: 100,
       query: filters.actor,
     }),
@@ -269,7 +268,7 @@ const AuditLogsContent = async ({
                 <div className="flex gap-2">
                   {filters.cursor ? (
                     <LinkButton
-                      href={resetHref || `/${tenant_public_id}/audit-logs`}
+                      href={resetHref || `/${tenantPublicId}/audit-logs`}
                       variant="outline"
                     >
                       先頭へ戻る
@@ -295,14 +294,21 @@ const AuditLogsContent = async ({
   );
 };
 
-export default function AuditLogsPage(props: AuditLogsPageProps) {
+export default async function AuditLogsPage({
+  params,
+  searchParams,
+}: AuditLogsPageProps) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+  const sp = await searchParams;
+
   return (
     <AdminPage
       description="テナント内の操作履歴を確認し、変更の追跡や説明責任に利用します。"
       title="監査ログ"
     >
       <Suspense fallback={<AuditLogsSkeleton />}>
-        <AuditLogsContent {...props} />
+        <AuditLogsContent searchParams={sp} tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );

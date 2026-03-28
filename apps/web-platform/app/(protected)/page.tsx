@@ -18,6 +18,7 @@ import {
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { PlatformPage } from "../../components/platform-page";
 import { getAuditActionLabel } from "../../lib/audit-log-labels";
@@ -135,7 +136,51 @@ const getStatCards = (summary: PlatformDashboardSummary | null) =>
     },
   ] as const;
 
-export default async function Page() {
+const DashboardSkeleton = () => (
+  <div className="grid gap-6">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {(["s1", "s2", "s3", "s4"] as const).map((key) => (
+        <Card key={key}>
+          <CardHeader className="gap-3">
+            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-8 w-12 animate-pulse rounded bg-muted" />
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="h-4 w-40 animate-pulse rounded bg-muted/70" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3">
+            <div className="h-10 animate-pulse rounded bg-muted/70" />
+            <div className="h-10 animate-pulse rounded bg-muted/70" />
+            <div className="h-10 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-2">
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+);
+
+const DashboardContent = async () => {
   const result = await getPlatformDashboardSummary({
     recentEventsLimit,
   });
@@ -143,21 +188,7 @@ export default async function Page() {
   const stats = getStatCards(summary);
 
   return (
-    <PlatformPage
-      actions={
-        <>
-          <LinkButton render={<Link href="/audit-logs" />} variant="outline">
-            監査ログを見る
-          </LinkButton>
-          <LinkButton render={<Link href="/tenants" />}>
-            テナント一覧へ
-          </LinkButton>
-        </>
-      }
-      description="プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。"
-      eyebrow="Platform Dashboard"
-      title="横断オペレーションの基準点"
-    >
+    <>
       {result.ok ? null : (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           ダッシュボードの取得に失敗しました: {result.message}
@@ -293,6 +324,30 @@ export default async function Page() {
           </CardContent>
         </Card>
       </div>
+    </>
+  );
+};
+
+export default function Page() {
+  return (
+    <PlatformPage
+      actions={
+        <>
+          <LinkButton render={<Link href="/audit-logs" />} variant="outline">
+            監査ログを見る
+          </LinkButton>
+          <LinkButton render={<Link href="/tenants" />}>
+            テナント一覧へ
+          </LinkButton>
+        </>
+      }
+      description="プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。"
+      eyebrow="Platform Dashboard"
+      title="横断オペレーションの基準点"
+    >
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent />
+      </Suspense>
     </PlatformPage>
   );
 }

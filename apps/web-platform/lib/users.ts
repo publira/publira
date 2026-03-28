@@ -296,6 +296,8 @@ const listTenantScopedUsersFallback = async (
 export const listPlatformEndUsers = async (
   input: ListPlatformEndUsersInput
 ): Promise<ListPlatformEndUsersResult> => {
+  "use cache: private";
+
   const sid = await resolveSessionId();
   if (!sid) {
     return {
@@ -353,6 +355,8 @@ export const listPlatformEndUsers = async (
 export const listPlatformTenantFilterOptions = async (): Promise<
   PlatformTenantFilterOption[]
 > => {
+  "use cache: private";
+
   const sid = await resolveSessionId();
   if (!sid) {
     return [];
@@ -404,6 +408,8 @@ export type GetPlatformEndUserResult =
 export const getPlatformEndUser = async (
   publicId: string
 ): Promise<GetPlatformEndUserResult> => {
+  "use cache: private";
+
   const normalizedPublicId = normalizePublicId(publicId);
   if (!normalizedPublicId) {
     return { ok: true, user: null };

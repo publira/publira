@@ -12,6 +12,7 @@ import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { AdminDomainPreview } from "../../../../components/admin-domain-preview";
 import { PlatformPage } from "../../../../components/platform-page";
@@ -40,11 +41,41 @@ interface TenantDetailPageProps {
   }>;
 }
 
-export default async function TenantDetailPage({
-  params,
-}: TenantDetailPageProps) {
-  const { tenant_public_id: tenantPublicId } = await params;
+const TenantDetailSkeleton = () => (
+  <div className="grid gap-6">
+    <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="h-16 animate-pulse rounded bg-muted/70" />
+            <div className="h-16 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-32 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="h-16 animate-pulse rounded bg-muted/70" />
+            <div className="h-16 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+);
 
+const TenantDetailContent = async ({
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
   const tenant = await getPlatformTenant(tenantPublicId);
 
   if (!tenant) {
@@ -203,5 +234,17 @@ export default async function TenantDetailPage({
         </div>
       </div>
     </PlatformPage>
+  );
+};
+
+export default async function TenantDetailPage({
+  params,
+}: TenantDetailPageProps) {
+  const { tenant_public_id: tenantPublicId } = await params;
+
+  return (
+    <Suspense fallback={<TenantDetailSkeleton />}>
+      <TenantDetailContent tenantPublicId={tenantPublicId} />
+    </Suspense>
   );
 }

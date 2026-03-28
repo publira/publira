@@ -2,10 +2,8 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { guardPlaceholder } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -17,8 +15,9 @@ import {
   sessionCookieOptions,
 } from "../../../lib/admin-auth";
 
-export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_public_id");
+export const metadata: Metadata = {
+  title: "ログイン",
+};
 
 interface LoginPageProps {
   params: Promise<{ tenant_public_id: string }>;
@@ -93,50 +92,52 @@ const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
   const nextPath = sanitizeRedirectPath(sp.next);
 
   return (
-    <form action={loginAction} className="space-y-4">
-      <input name="tenant_public_id" type="hidden" value={tenant_public_id} />
-      <input name="next" type="hidden" value={nextPath} />
+    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+      <form action={loginAction} className="space-y-4">
+        <input name="tenant_public_id" type="hidden" value={tenant_public_id} />
+        <input name="next" type="hidden" value={nextPath} />
 
-      <Field>
-        <FieldLabel htmlFor="email" required>
-          メールアドレス
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            autoComplete="email"
-            id="email"
-            name="email"
-            placeholder="admin@example.com"
-            required
-            type="email"
-          />
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel htmlFor="email" required>
+            メールアドレス
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="email"
+              id="email"
+              name="email"
+              placeholder="admin@example.com"
+              required
+              type="email"
+            />
+          </FieldContent>
+        </Field>
 
-      <Field>
-        <FieldLabel htmlFor="password" required>
-          パスワード
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            autoComplete="current-password"
-            id="password"
-            name="password"
-            placeholder="••••••••"
-            required
-            type="password"
-          />
-        </FieldContent>
-      </Field>
+        <Field>
+          <FieldLabel htmlFor="password" required>
+            パスワード
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              autoComplete="current-password"
+              id="password"
+              name="password"
+              placeholder="••••••••"
+              required
+              type="password"
+            />
+          </FieldContent>
+        </Field>
 
-      {errorMessage ? (
-        <FormMessage variant="destructive">{errorMessage}</FormMessage>
-      ) : null}
+        {errorMessage ? (
+          <FormMessage variant="destructive">{errorMessage}</FormMessage>
+        ) : null}
 
-      <Button className="mt-2 w-full" type="submit">
-        ログイン
-      </Button>
-    </form>
+        <Button className="mt-2 w-full" type="submit">
+          ログイン
+        </Button>
+      </form>
+    </div>
   );
 };
 
@@ -149,11 +150,9 @@ export default function LoginPage(props: LoginPageProps) {
           <p className="mt-2 text-sm text-muted-foreground">管理画面ログイン</p>
         </div>
 
-        <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-          <Suspense fallback={<LoginPageFallback />}>
-            <LoginPageContent {...props} />
-          </Suspense>
-        </div>
+        <Suspense fallback={<LoginPageFallback />}>
+          <LoginPageContent {...props} />
+        </Suspense>
       </div>
     </main>
   );

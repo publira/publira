@@ -1,9 +1,13 @@
-"use client";
-
 export {
-  ConsoleLayout,
   ConsoleHeader,
+  ConsoleHeaderSkeleton,
+  ConsoleHeaderUser,
+  ConsoleHeaderUserSkeleton,
+  ConsoleLayout,
+  ConsoleLayoutContent,
+  ConsoleLayoutMain,
   ConsoleSidebar,
+  ConsoleSidebarSkeleton,
   defaultConsoleGradient,
 } from "./console-layout";
 export type {

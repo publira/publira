@@ -11,6 +11,7 @@ import { Field, FieldLabel } from "@publira/ui-components/field";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { PlatformPage } from "../../../../components/platform-page";
 import { getPlatformCurrentOperator } from "../../../../lib/auth";
@@ -40,11 +41,37 @@ interface OperatorDetailPageProps {
   }>;
 }
 
-export default async function OperatorDetailPage({
-  params,
-}: OperatorDetailPageProps) {
-  const { operator_public_id: operatorPublicId } = await params;
+const OperatorDetailSkeleton = () => (
+  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
+    <Card>
+      <CardHeader>
+        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4">
+          <div className="h-16 animate-pulse rounded bg-muted/70" />
+          <div className="h-16 animate-pulse rounded bg-muted/70" />
+          <div className="h-16 animate-pulse rounded bg-muted/70" />
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-20 animate-pulse rounded bg-muted/70" />
+      </CardContent>
+    </Card>
+  </div>
+);
 
+const OperatorDetailContent = async ({
+  operatorPublicId,
+}: {
+  operatorPublicId: string;
+}) => {
   const [operator, currentOperator] = await Promise.all([
     getPlatformOperator(operatorPublicId),
     getPlatformCurrentOperator(),
@@ -178,5 +205,17 @@ export default async function OperatorDetailPage({
         )}
       </div>
     </PlatformPage>
+  );
+};
+
+export default async function OperatorDetailPage({
+  params,
+}: OperatorDetailPageProps) {
+  const { operator_public_id: operatorPublicId } = await params;
+
+  return (
+    <Suspense fallback={<OperatorDetailSkeleton />}>
+      <OperatorDetailContent operatorPublicId={operatorPublicId} />
+    </Suspense>
   );
 }

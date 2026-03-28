@@ -31,6 +31,8 @@ export type ListPlatformAuditLogsResult =
 export const listPlatformAuditLogs = async (
   input: ListPlatformAuditLogsInput
 ): Promise<ListPlatformAuditLogsResult> => {
+  "use cache: private";
+
   const sid = await resolveSessionId();
   if (!sid) {
     return {

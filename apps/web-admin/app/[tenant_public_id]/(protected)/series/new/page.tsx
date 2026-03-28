@@ -32,14 +32,13 @@ const NewSeriesFormSkeleton = () => (
 );
 
 const NewSeriesFormData = async ({
-  params,
-}: PageProps<"/[tenant_public_id]/series/new">) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
   const [listResult, creatorsResult] = await Promise.all([
-    listSeries(tenant_public_id),
-    listCreators(tenant_public_id),
+    listSeries(tenantPublicId),
+    listCreators(tenantPublicId),
   ]);
 
   return (
@@ -51,14 +50,17 @@ const NewSeriesFormData = async ({
       }
       defaultReadingPeriodHours={listResult.defaultReadingPeriodHours}
       mode="create"
-      tenantPublicId={tenant_public_id}
+      tenantPublicId={tenantPublicId}
     />
   );
 };
 
-export default function NewSeriesPage(
-  props: PageProps<"/[tenant_public_id]/series/new">
-) {
+export default async function NewSeriesPage({
+  params,
+}: PageProps<"/[tenant_public_id]/series/new">) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
   return (
     <AdminPage
       actions={
@@ -70,7 +72,7 @@ export default function NewSeriesPage(
       title="シリーズを新規作成"
     >
       <Suspense fallback={<NewSeriesFormSkeleton />}>
-        <NewSeriesFormData {...props} />
+        <NewSeriesFormData tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );

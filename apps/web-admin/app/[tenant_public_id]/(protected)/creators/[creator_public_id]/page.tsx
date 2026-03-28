@@ -38,14 +38,16 @@ interface EditCreatorPageProps {
   }>;
 }
 
-const EditCreatorFormData = async ({ params }: EditCreatorPageProps) => {
-  const { creator_public_id, tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-  guardPlaceholder(creator_public_id);
-
+const EditCreatorFormData = async ({
+  creatorPublicId,
+  tenantPublicId,
+}: {
+  creatorPublicId: string;
+  tenantPublicId: string;
+}) => {
   const result = await getCreator({
-    publicId: creator_public_id,
-    tenantPublicId: tenant_public_id,
+    publicId: creatorPublicId,
+    tenantPublicId,
   });
 
   if (!result.ok) {
@@ -66,12 +68,18 @@ const EditCreatorFormData = async ({ params }: EditCreatorPageProps) => {
       action={updateCreatorAction}
       initialCreator={result.creator}
       mode="update"
-      tenantPublicId={tenant_public_id}
+      tenantPublicId={tenantPublicId}
     />
   );
 };
 
-export default function EditCreatorPage(props: EditCreatorPageProps) {
+export default async function EditCreatorPage({
+  params,
+}: EditCreatorPageProps) {
+  const { creator_public_id, tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+  guardPlaceholder(creator_public_id);
+
   return (
     <AdminPage
       actions={
@@ -84,7 +92,10 @@ export default function EditCreatorPage(props: EditCreatorPageProps) {
     >
       <FlashToast title="著者を作成しました。" />
       <Suspense fallback={<EditCreatorFormSkeleton />}>
-        <EditCreatorFormData {...props} />
+        <EditCreatorFormData
+          creatorPublicId={creator_public_id}
+          tenantPublicId={tenant_public_id}
+        />
       </Suspense>
     </AdminPage>
   );

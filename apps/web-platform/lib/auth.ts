@@ -43,6 +43,8 @@ export const logoutPlatform = async (sessionId: string): Promise<void> => {
 
 export const getPlatformCurrentOperator =
   async (): Promise<PlatformCurrentOperator | null> => {
+    "use cache: private";
+
     const sid = await resolveSessionId();
     if (!sid) {
       return null;

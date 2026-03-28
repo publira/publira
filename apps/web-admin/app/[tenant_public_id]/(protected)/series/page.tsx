@@ -28,12 +28,11 @@ const SeriesManagerSkeleton = () => (
 );
 
 const SeriesManagerData = async ({
-  params,
-}: PageProps<"/[tenant_public_id]/series">) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const listResult = await listSeries(tenant_public_id);
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
+  const listResult = await listSeries(tenantPublicId);
 
   return (
     <SeriesManager
@@ -43,16 +42,19 @@ const SeriesManagerData = async ({
   );
 };
 
-export default function SeriesPage(
-  props: PageProps<"/[tenant_public_id]/series">
-) {
+export default async function SeriesPage({
+  params,
+}: PageProps<"/[tenant_public_id]/series">) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
   return (
     <AdminPage
       description="シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。"
       title="シリーズ"
     >
       <Suspense fallback={<SeriesManagerSkeleton />}>
-        <SeriesManagerData {...props} />
+        <SeriesManagerData tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );

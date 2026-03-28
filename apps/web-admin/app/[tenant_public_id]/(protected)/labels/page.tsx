@@ -31,11 +31,12 @@ const LabelManagerSkeleton = () => (
   </div>
 );
 
-const LabelManagerData = async ({ params }: LabelPageProps) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const listResult = await listLabels(tenant_public_id);
+const LabelManagerData = async ({
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
+  const listResult = await listLabels(tenantPublicId);
 
   return (
     <LabelManager
@@ -45,14 +46,17 @@ const LabelManagerData = async ({ params }: LabelPageProps) => {
   );
 };
 
-export default function LabelPage(props: LabelPageProps) {
+export default async function LabelPage({ params }: LabelPageProps) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
   return (
     <AdminPage
       description="レーベル一覧の確認と、編集への遷移を行います。"
       title="レーベル"
     >
       <Suspense fallback={<LabelManagerSkeleton />}>
-        <LabelManagerData {...props} />
+        <LabelManagerData tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );

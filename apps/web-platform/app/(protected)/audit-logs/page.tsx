@@ -21,6 +21,7 @@ import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { PlatformPage } from "../../../components/platform-page";
 import {
@@ -48,6 +49,28 @@ interface AuditLogsPageProps {
 }
 
 const pageSize = 20;
+
+const AuditLogsSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="h-5 w-36 animate-pulse rounded bg-muted" />
+      <div className="h-4 w-72 animate-pulse rounded bg-muted/70" />
+    </CardHeader>
+    <CardContent className="grid gap-4">
+      <div className="flex gap-3">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 w-56 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 w-24 animate-pulse rounded bg-muted/70" />
+      </div>
+      <div className="grid gap-3">
+        <div className="h-12 animate-pulse rounded bg-muted/70" />
+        <div className="h-12 animate-pulse rounded bg-muted/70" />
+        <div className="h-12 animate-pulse rounded bg-muted/70" />
+        <div className="h-12 animate-pulse rounded bg-muted/70" />
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const parseOffset = (value: string | undefined): number => {
   const parsed = Number.parseInt(value ?? "0", 10);
@@ -391,13 +414,15 @@ const AuditLogsTableBody = ({
   );
 };
 
-export default async function AuditLogsPage({
-  searchParams,
-}: AuditLogsPageProps) {
-  const params = await searchParams;
-  const actorFilter = params.actor_user_public_id?.trim() ?? "";
-  const actionFilter = params.action?.trim() ?? "";
-  const offset = parseOffset(params.offset);
+const AuditLogsContent = async ({
+  actionFilter,
+  actorFilter,
+  offset,
+}: {
+  actionFilter: string;
+  actorFilter: string;
+  offset: number;
+}) => {
   const hasFilter = Boolean(actorFilter || actionFilter);
 
   const result = await listPlatformAuditLogs({
@@ -414,55 +439,73 @@ export default async function AuditLogsPage({
   const summaryText = getSummaryText(result, offset);
 
   return (
+    <Card>
+      <CardHeader>
+        <CardTitle>イベント一覧</CardTitle>
+        <CardDescription>
+          actor / action / target / timestamp を基準に監査イベントを確認します。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <AuditLogsFilters
+          actionFilter={actionFilter}
+          actorFilter={actorFilter}
+          hasFilter={hasFilter}
+        />
+
+        {result.ok ? null : (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            監査ログの取得に失敗しました: {result.message}
+          </p>
+        )}
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>時刻</TableHead>
+              <TableHead>実行者</TableHead>
+              <TableHead>操作</TableHead>
+              <TableHead>対象</TableHead>
+            </TableRow>
+          </TableHeader>
+          <AuditLogsTableBody hasFilter={hasFilter} result={result} />
+        </Table>
+
+        <AuditLogsPagination
+          actionFilter={actionFilter}
+          actorFilter={actorFilter}
+          hasNext={hasNext}
+          hasPrev={hasPrev}
+          nextOffset={nextOffset}
+          prevOffset={prevOffset}
+          summaryText={summaryText}
+        />
+      </CardContent>
+    </Card>
+  );
+};
+
+export default async function AuditLogsPage({
+  searchParams,
+}: AuditLogsPageProps) {
+  const params = await searchParams;
+  const actorFilter = params.actor_user_public_id?.trim() ?? "";
+  const actionFilter = params.action?.trim() ?? "";
+  const offset = parseOffset(params.offset);
+
+  return (
     <PlatformPage
       description="重要操作を横断的に追跡し、対象リソースの詳細へ遷移できる監査ログ画面です。"
       eyebrow="Platform Governance"
       title="監査ログ"
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>イベント一覧</CardTitle>
-          <CardDescription>
-            actor / action / target / timestamp
-            を基準に監査イベントを確認します。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <AuditLogsFilters
-            actionFilter={actionFilter}
-            actorFilter={actorFilter}
-            hasFilter={hasFilter}
-          />
-
-          {result.ok ? null : (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              監査ログの取得に失敗しました: {result.message}
-            </p>
-          )}
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>時刻</TableHead>
-                <TableHead>実行者</TableHead>
-                <TableHead>操作</TableHead>
-                <TableHead>対象</TableHead>
-              </TableRow>
-            </TableHeader>
-            <AuditLogsTableBody hasFilter={hasFilter} result={result} />
-          </Table>
-
-          <AuditLogsPagination
-            actionFilter={actionFilter}
-            actorFilter={actorFilter}
-            hasNext={hasNext}
-            hasPrev={hasPrev}
-            nextOffset={nextOffset}
-            prevOffset={prevOffset}
-            summaryText={summaryText}
-          />
-        </CardContent>
-      </Card>
+      <Suspense fallback={<AuditLogsSkeleton />}>
+        <AuditLogsContent
+          actionFilter={actionFilter}
+          actorFilter={actorFilter}
+          offset={offset}
+        />
+      </Suspense>
     </PlatformPage>
   );
 }

@@ -74,12 +74,11 @@ const DashboardSkeleton = () => (
 );
 
 const DashboardContent = async ({
-  params,
-}: PageProps<"/[tenant_public_id]">) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const result = await getDashboard(tenant_public_id);
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
+  const result = await getDashboard(tenantPublicId);
 
   if (!result.ok) {
     return (
@@ -174,11 +173,16 @@ const DashboardContent = async ({
   );
 };
 
-export default function DashboardPage(props: PageProps<"/[tenant_public_id]">) {
+export default async function DashboardPage({
+  params,
+}: PageProps<"/[tenant_public_id]">) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
   return (
     <AdminPage title="ダッシュボード">
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent {...props} />
+        <DashboardContent tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );

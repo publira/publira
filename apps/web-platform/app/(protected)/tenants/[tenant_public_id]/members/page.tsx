@@ -1,7 +1,9 @@
 import { LinkButton } from "@publira/ui-components/button";
+import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { PlatformPage } from "../../../../../components/platform-page";
 import {
@@ -26,11 +28,29 @@ interface TenantMembersPageProps {
   }>;
 }
 
-export default async function TenantMembersPage({
-  params,
-}: TenantMembersPageProps) {
-  const { tenant_public_id: tenantPublicId } = await params;
+const TenantMembersSkeleton = () => (
+  <div className="grid gap-6">
+    <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
+    <Card>
+      <CardHeader>
+        <div className="h-5 w-36 animate-pulse rounded bg-muted" />
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3">
+          <div className="h-10 animate-pulse rounded bg-muted/70" />
+          <div className="h-10 animate-pulse rounded bg-muted/70" />
+          <div className="h-10 animate-pulse rounded bg-muted/70" />
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
 
+const TenantMembersContent = async ({
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
   const [tenant, members] = await Promise.all([
     getPlatformTenant(tenantPublicId),
     listPlatformTenantMembers(tenantPublicId),
@@ -63,5 +83,17 @@ export default async function TenantMembersPage({
         />
       </div>
     </PlatformPage>
+  );
+};
+
+export default async function TenantMembersPage({
+  params,
+}: TenantMembersPageProps) {
+  const { tenant_public_id: tenantPublicId } = await params;
+
+  return (
+    <Suspense fallback={<TenantMembersSkeleton />}>
+      <TenantMembersContent tenantPublicId={tenantPublicId} />
+    </Suspense>
   );
 }

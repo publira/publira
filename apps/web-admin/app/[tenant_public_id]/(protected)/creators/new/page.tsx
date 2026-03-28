@@ -28,24 +28,20 @@ const NewCreatorFormSkeleton = () => (
   </div>
 );
 
-const NewCreatorFormData = async ({
+const NewCreatorFormData = ({ tenantPublicId }: { tenantPublicId: string }) => (
+  <CreatorForm
+    action={createCreatorAction}
+    mode="create"
+    tenantPublicId={tenantPublicId}
+  />
+);
+
+export default async function NewCreatorPage({
   params,
-}: PageProps<"/[tenant_public_id]/creators/new">) => {
+}: PageProps<"/[tenant_public_id]/creators/new">) {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
-  return (
-    <CreatorForm
-      action={createCreatorAction}
-      mode="create"
-      tenantPublicId={tenant_public_id}
-    />
-  );
-};
-
-export default function NewCreatorPage(
-  props: PageProps<"/[tenant_public_id]/creators/new">
-) {
   return (
     <AdminPage
       actions={
@@ -57,7 +53,7 @@ export default function NewCreatorPage(
       title="著者新規作成"
     >
       <Suspense fallback={<NewCreatorFormSkeleton />}>
-        <NewCreatorFormData {...props} />
+        <NewCreatorFormData tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );
