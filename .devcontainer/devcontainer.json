@@ -37,5 +37,5 @@
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
   },
-  "postCreateCommand": "make setup"
+  "postCreateCommand": "task setup && task db:setup"
 }

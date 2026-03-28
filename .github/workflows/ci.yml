@@ -1,6 +1,8 @@
 name: CI
 
 env:
+  # renovate: datasource=github-releases depName=go-task/task versioning=semver-coerced
+  TASK_VERSION: 3.49.1
   # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
   SQLC_VERSION: 1.30.0
   # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
@@ -47,6 +49,11 @@ jobs:
           go-version: 1.26.1
           cache-dependency-path: server/go.sum
 
+      - name: Install Task
+        uses: go-task/setup-task@v2
+        with:
+          version: ${{ env.TASK_VERSION }}
+
       - name: Setup / pnpm
         uses: pnpm/action-setup@v4
 
@@ -76,7 +83,7 @@ jobs:
           rm -f /tmp/migrate /tmp/migrate.tgz
 
       - name: Dependencies / Install
-        run: make setup
+        run: task setup
 
       - name: Validate / DB Migrations
         run: |
@@ -106,11 +113,16 @@ jobs:
           go-version: 1.26.1
           cache-dependency-path: server/go.sum
 
+      - name: Install Task
+        uses: go-task/setup-task@v2
+        with:
+          version: ${{ env.TASK_VERSION }}
+
       - name: Setup / pnpm
         uses: pnpm/action-setup@v4
 
       - name: Dependencies / Install
-        run: make setup
+        run: task setup
 
       - name: Build / Packages
         run: pnpm build --filter "./packages/*"
@@ -140,15 +152,19 @@ jobs:
           go-version: 1.26.1
           cache-dependency-path: server/go.sum
 
+      - name: Install Task
+        uses: go-task/setup-task@v2
+        with:
+          version: ${{ env.TASK_VERSION }}
+
       - name: Setup / pnpm
         uses: pnpm/action-setup@v4
 
       - name: Dependencies / Install
-        run: make setup
+        run: task setup
 
       - name: Build / Web
         run: pnpm build
 
       - name: Build / Server
-        working-directory: server
-        run: make build
+        run: task server:build

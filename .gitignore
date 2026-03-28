@@ -15,6 +15,7 @@ next-env.d.ts
 
 # Go
 server/bin/
+.task/
 *.test
 *.prof
 

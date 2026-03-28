@@ -17,7 +17,7 @@ Web フロントエンド群です。Turborepo 上で Next.js アプリをマイ
 
 ```bash
 # 全アプリ起動
-make dev-web
+task server:dev-web
 
 # 個別起動
 cd apps/web-public  && pnpm dev
