@@ -1,0 +1,37 @@
+version: "3"
+
+vars:
+  BIN_DIR: bin
+  GO_SOURCES:
+    - ./**/*.go
+    - ./go.mod
+    - ./go.sum
+
+tasks:
+  tidy:
+    cmds:
+      - go mod tidy
+
+  build:
+    cmds:
+      - go build -o {{.BIN_DIR}}/ ./cmd/...
+    sources:
+      - "{{.GO_SOURCES}}"
+    generates:
+      - "{{.BIN_DIR}}/*"
+
+  run:
+    dir: "{{ .USER_WORKING_DIR }}/server"
+    cmds:
+      - go run ./cmd/{{.NAME}}
+    sources:
+      - "{{.GO_SOURCES}}"
+    requires:
+      vars: [NAME]
+
+  dev-api:
+    cmds: [{ task: run, vars: { NAME: api-server } }]
+  dev-admin-api:
+    cmds: [{ task: run, vars: { NAME: admin-api-server } }]
+  dev-platform-api:
+    cmds: [{ task: run, vars: { NAME: platform-api-server } }]

@@ -51,7 +51,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 ## セットアップ
 
 ```bash
-make setup
+task setup
 ```
 
 Dev Container では `migrate` CLI (golang-migrate) を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
@@ -59,10 +59,10 @@ Dev Container では `migrate` CLI (golang-migrate) を同梱しています。D
 ## ローカル DB 初期化
 
 ```bash
-make db-init
+task db:setup
 ```
 
-`db-init` は次を順に実行します。
+`db:setup` は次を順に実行します。
 
 1. migration 適用 (`db/migrations/`)
 2. baseline seed 適用 (`db/seeds/baseline/`)

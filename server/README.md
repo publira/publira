@@ -11,7 +11,7 @@ server/
 │   ├── admin-api-server/  # 管理向け ConnectRPC API サーバー
 │   ├── platform-api-server/ # プラットフォーム管理向け ConnectRPC API サーバー
 │   └── publish-episodes/  # 単発バッチ処理
-├── bin/                   # make build で生成されるバイナリ
+├── bin/                   # task build で生成されるバイナリ
 ├── gen/                   # buf 自動生成コード (編集禁止)
 └── internal/
     └── db/                # sqlc 自動生成コード (編集禁止)
@@ -26,23 +26,21 @@ server/
 
 ## 実装ルール
 
-1. スキーマ駆動開発: API/DB の変更は `proto/` または `db/migrations/` の golang-migrate 形式 (`.up.sql` / `.down.sql`) を先に変更し、`make gen` を実行する
+1. スキーマ駆動開発: API/DB の変更は `proto/` または `db/migrations/` の golang-migrate 形式 (`.up.sql` / `.down.sql`) を先に変更し、`task gen` を実行する
 2. `cmd/` は薄く保ち、実装は `internal/` に寄せる
 3. バッチは常駐型にせず、1 回の処理で終了する
 
 ## 開発コマンド
 
 ```bash
-make db-init
-make db-seed
-make db-status
-make db-new name=add_sessions_table
-make dev-api
-make dev-admin-api
-make dev-platform-api
-make run-batch-publish
-cd server && go mod tidy
-cd server && make build
+task db:setup
+task db:seed
+task db:create NAME=add_sessions_table
+task server:dev-api
+task server:dev-admin-api
+task server:dev-platform-api
+task server:tidy
+task server:build
 ```
 
 ## エントリポイント詳細

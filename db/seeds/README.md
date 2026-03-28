@@ -16,7 +16,7 @@
 
 ## 実行順序
 
-`make db-init` で以下を順に実行します。
+`task db:setup` で以下を順に実行します。
 
 1. migration (`db/migrations/`)
 2. baseline seed (`db/seeds/baseline/`)

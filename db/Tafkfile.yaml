@@ -1,0 +1,38 @@
+version: "3"
+
+vars:
+  DB_URL: postgres://postgres:password@db:5432/publira?sslmode=disable
+  MIGRATE: migrate -path ./migrations -database {{.DB_URL}}
+
+tasks:
+  migrate:
+    cmds:
+      - "{{.MIGRATE}} up"
+
+  rollback:
+    cmds:
+      - "{{.MIGRATE}} down 1"
+
+  seed:
+    cmds:
+      - psql {{.DB_URL}} -f seeds/seed.sql
+
+  drop:
+    cmds:
+      - psql {{.DB_URL}} -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+  setup:
+    cmds:
+      - task: migrate
+      - task: seed
+
+  reset:
+    cmds:
+      - task: drop
+      - task: setup
+
+  create:
+    cmds:
+      - migrate create -ext sql -dir ./migrations -tz UTC {{.NAME}}
+    requires:
+      vars: [NAME]

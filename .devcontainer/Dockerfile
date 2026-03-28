@@ -1,5 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/go:2.1.1-1.26-bookworm@sha256:4da2693c134c65e87f73fcebcd4b3c0e8a9b208384fd8c1f84c4414b5cd06c20
 
+# renovate: datasource=github-releases depName=go-task/task versioning=semver-coerced
+ARG TASK_VERSION=3.49.1
 # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
 ARG SQLC_VERSION=1.30.0
 # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
@@ -11,6 +13,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
  && apt-get -y install --no-install-recommends postgresql-client
 
 RUN set -eux; \
+  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d v${TASK_VERSION}; \
 	arch="$(dpkg --print-architecture)"; \
 	case "$arch" in \
 		amd64) sqlc_arch="amd64"; buf_arch="x86_64"; migrate_arch="amd64" ;; \
