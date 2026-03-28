@@ -1,6 +1,7 @@
 import { StatusChip } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import { Skeleton } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -13,12 +14,49 @@ export interface ConsoleLayoutProps {
   gradient?: string;
 }
 
-export const ConsoleLayout = ({ children, gradient }: ConsoleLayoutProps) => (
-  <ConsoleLayoutClient gradient={gradient}>{children}</ConsoleLayoutClient>
-);
-
 export const defaultConsoleGradient =
   "bg-[radial-gradient(circle_at_top_left,rgba(15,124,130,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(217,111,74,0.13),transparent_30%),linear-gradient(180deg,rgba(255,253,248,0.78),rgba(246,242,233,0.98))]";
+
+const ConsoleLayoutStaticShell = ({ gradient }: { gradient?: string }) => (
+  <div className="relative min-h-dvh bg-background text-foreground">
+    <div
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute inset-0",
+        gradient ?? defaultConsoleGradient
+      )}
+    />
+    <div className="relative flex min-h-dvh">
+      <aside
+        aria-hidden="true"
+        className="hidden w-72 max-w-none flex-col border-r border-border/70 bg-card/95 px-4 py-4 lg:flex"
+      >
+        <div className="grid gap-3">
+          <Skeleton className="h-5 w-24 rounded" />
+          <Skeleton className="h-4 w-40 rounded" />
+          <Skeleton className="h-48 w-full rounded" />
+        </div>
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-0">
+        <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 px-4 py-4 backdrop-blur">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+            <Skeleton className="h-6 w-48 rounded" />
+            <Skeleton className="h-6 w-24 rounded" />
+          </div>
+        </header>
+        <main className="flex-1 overflow-x-hidden">
+          <div className="p-8" />
+        </main>
+      </div>
+    </div>
+  </div>
+);
+
+export const ConsoleLayout = ({ children, gradient }: ConsoleLayoutProps) => (
+  <Suspense fallback={<ConsoleLayoutStaticShell gradient={gradient} />}>
+    <ConsoleLayoutClient gradient={gradient}>{children}</ConsoleLayoutClient>
+  </Suspense>
+);
 
 export const ConsoleLayoutMain = ({ children }: { children: ReactNode }) => (
   <main className="flex-1 overflow-x-hidden">{children}</main>

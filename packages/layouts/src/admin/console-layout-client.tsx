@@ -3,8 +3,7 @@
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { CloseIcon, MenuIcon } from "@publira/icons";
 import { cn } from "@publira/utils";
-import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 
 const DEFAULT_GRADIENT =
@@ -19,7 +18,6 @@ export const ConsoleLayoutClient = ({
   children,
   gradient = DEFAULT_GRADIENT,
 }: ConsoleLayoutClientProps) => {
-  const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const onCloseMobileNav = useCallback(() => {
@@ -33,10 +31,6 @@ export const ConsoleLayoutClient = ({
   const handleOpenChange = useCallback((open: boolean) => {
     setMobileNavOpen(open);
   }, []);
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
 
   return (
     <BaseDrawer.Root modal open={mobileNavOpen} onOpenChange={handleOpenChange}>
