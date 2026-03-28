@@ -258,15 +258,15 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 
 	tests := []struct {
 		episodeID uuid.UUID
-		name     string
-		publicID string
-		rows     *sqlmock.Rows
-		wantCode connect.Code
+		name      string
+		publicID  string
+		rows      *sqlmock.Rows
+		wantCode  connect.Code
 	}{
 		{
 			episodeID: normalEpisodeID,
-			name:     "normal",
-			publicID: "EPISODE001",
+			name:      "normal",
+			publicID:  "EPISODE001",
 			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
 				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title"),
 		},

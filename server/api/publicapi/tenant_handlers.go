@@ -39,11 +39,11 @@ func (s *apiServer) GetTenant(
 	}
 
 	return connect.NewResponse(&publirav1.GetTenantResponse{
-		TenantPublicId:   tenant.PublicID,
-		TenantName:       tenant.Name,
-		TenantDomain:     tenant.Domain,
-		CopyrightText:    copyrightText,
-		SiteDescription:  siteDescription,
-		SiteTagline:      siteTagline,
+		TenantPublicId:  tenant.PublicID,
+		TenantName:      tenant.Name,
+		TenantDomain:    tenant.Domain,
+		CopyrightText:   copyrightText,
+		SiteDescription: siteDescription,
+		SiteTagline:     siteTagline,
 	}), nil
 }

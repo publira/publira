@@ -2,8 +2,17 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
+
+const testEncryptionKey = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE"
+
+func setValidEncryptionEnv(t *testing.T) {
+	t.Helper()
+	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
+	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
+}
 
 func setenv(t *testing.T, key, value string) {
 	t.Helper()
@@ -90,5 +99,45 @@ func TestNew_InvalidForcePathStyle(t *testing.T) {
 	_, err := New()
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestNew_MissingEncryptionKeys(t *testing.T) {
+	setenv(t, "SECRET_ENCRYPTION_KEYS", "")
+	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
+
+	_, err := New()
+	if err == nil || !strings.Contains(err.Error(), "SECRET_ENCRYPTION_KEYS") {
+		t.Fatalf("err = %v, want SECRET_ENCRYPTION_KEYS error", err)
+	}
+}
+
+func TestNew_MissingPrimaryEncryptionKeyID(t *testing.T) {
+	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
+	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "")
+
+	_, err := New()
+	if err == nil || !strings.Contains(err.Error(), "SECRET_ENCRYPTION_PRIMARY_KEY_ID") {
+		t.Fatalf("err = %v, want SECRET_ENCRYPTION_PRIMARY_KEY_ID error", err)
+	}
+}
+
+func TestNew_InvalidPrimaryEncryptionKeyID(t *testing.T) {
+	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
+	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k2")
+
+	_, err := New()
+	if err == nil || !strings.Contains(err.Error(), "SECRET_ENCRYPTION_PRIMARY_KEY_ID") {
+		t.Fatalf("err = %v, want SECRET_ENCRYPTION_PRIMARY_KEY_ID error", err)
+	}
+}
+
+func TestNew_InvalidEncryptionKeyLength(t *testing.T) {
+	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:Zm9v")
+	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
+
+	_, err := New()
+	if err == nil || !strings.Contains(err.Error(), "invalid key length") {
+		t.Fatalf("err = %v, want invalid key length", err)
 	}
 }

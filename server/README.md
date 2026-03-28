@@ -65,6 +65,30 @@ task server:build
   - `S3_FORCE_PATH_STYLE` (任意, `true`/`false`)
   - `S3_PUBLIC_BASE_URL` (任意)
 
+## 機密情報の暗号化設定 (AES-GCM)
+
+機密情報を保存時に AES-GCM で暗号化するための基盤を用意しています。
+現時点では機密項目の保存経路に適用したときに、以下の環境変数を設定してください。
+
+- `SECRET_ENCRYPTION_KEYS`
+  - 形式: `key-id-1:base64key,key-id-2:base64key`
+  - `base64key` は 16/24/32 byte の AES 鍵を Base64 (標準 or URL-safe) でエンコードした値
+- `SECRET_ENCRYPTION_PRIMARY_KEY_ID`
+  - `SECRET_ENCRYPTION_KEYS` に含まれる key-id を指定
+  - 新規暗号化時はこの key-id を使用
+
+鍵ローテーション方針:
+
+1. 新鍵を `SECRET_ENCRYPTION_KEYS` に追加する
+2. `SECRET_ENCRYPTION_PRIMARY_KEY_ID` を新鍵 ID に切り替える
+3. 既存データを再保存/再暗号化して旧鍵暗号文を徐々に置換する
+4. 旧鍵で復号されるデータがなくなったことを確認してから旧鍵を削除する
+
+注意:
+
+- 鍵や平文をログへ出力しない
+- 暗号化/復号に失敗した場合は処理を継続せず失敗として扱う
+
 ## API サーバ分離
 
 - 公開 API サーバー: `server/cmd/api-server`
