@@ -15,8 +15,10 @@ import (
 )
 
 type creatorJSON struct {
-	Name string `json:"name"`
-	Role string `json:"role"`
+	PublicID    string `json:"public_id"`
+	Name        string `json:"name"`
+	Role        string `json:"role"`
+	ProfileText string `json:"profile_text"`
 }
 
 type episodeJSON struct {
@@ -55,6 +57,21 @@ func (s *apiServer) ListPublishedSeries(
 		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
 		if row.Synopsis.Valid {
 			item.Synopsis = row.Synopsis.String
+		}
+		creators := make([]creatorJSON, 0)
+		if len(row.Creators) > 0 {
+			if err := json.Unmarshal(row.Creators, &creators); err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+		}
+		item.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
+		for _, creator := range creators {
+			item.Creators = append(item.Creators, &publirattypesv1.Creator{
+				PublicId:    creator.PublicID,
+				Name:        creator.Name,
+				Role:        creator.Role,
+				ProfileText: creator.ProfileText,
+			})
 		}
 		items = append(items, item)
 	}
@@ -105,7 +122,12 @@ func (s *apiServer) GetSeriesDetail(
 	}
 	res.Msg.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
-		res.Msg.Series.Creators = append(res.Msg.Series.Creators, &publirattypesv1.Creator{Name: creator.Name, Role: creator.Role})
+		res.Msg.Series.Creators = append(res.Msg.Series.Creators, &publirattypesv1.Creator{
+			PublicId:    creator.PublicID,
+			Name:        creator.Name,
+			Role:        creator.Role,
+			ProfileText: creator.ProfileText,
+		})
 	}
 	for _, episode := range episodes {
 		item := &publirattypesv1.Episode{

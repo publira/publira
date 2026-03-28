@@ -301,13 +301,36 @@ SELECT s.id,
     s.public_id,
     s.title,
     sl.synopsis,
-    s.published_at
+    s.published_at,
+    COALESCE(
+        json_agg(
+            json_build_object(
+                'public_id',
+                c.public_id,
+                'name',
+                c.name,
+                'role',
+                sc.role,
+                'profile_text',
+                c.profile_text
+            )
+            ORDER BY sc.display_order ASC
+        ) FILTER (
+            WHERE c.id IS NOT NULL
+        ),
+        '[]'
+    )::jsonb AS creators
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_creators sc ON s.id = sc.series_id
+    LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+GROUP BY s.id,
+    sl.series_id,
+    sl.synopsis
 ORDER BY s.published_at DESC
 LIMIT $2 OFFSET $3;
 -- name: CreateEpisodeBase :one
@@ -415,10 +438,14 @@ SELECT s.id,
     COALESCE(
         json_agg(
             json_build_object(
+                    'public_id',
+                    c.public_id,
                 'name',
                 c.name,
-                'role',
-                sc.role
+                    'role',
+                    sc.role,
+                    'profile_text',
+                    c.profile_text
             )
             ORDER BY sc.display_order ASC
         ) FILTER (
