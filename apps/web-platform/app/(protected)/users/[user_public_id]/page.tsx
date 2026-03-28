@@ -11,6 +11,7 @@ import { Field, FieldLabel } from "@publira/ui-components/field";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { PlatformPage } from "../../../../components/platform-page";
 import { getPlatformCurrentOperator } from "../../../../lib/auth";
@@ -37,9 +38,37 @@ interface UserDetailPageProps {
   }>;
 }
 
-export default async function UserDetailPage({ params }: UserDetailPageProps) {
-  const { user_public_id: userPublicId } = await params;
+const UserDetailSkeleton = () => (
+  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
+    <Card>
+      <CardHeader>
+        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4">
+          <div className="h-12 animate-pulse rounded bg-muted/70" />
+          <div className="h-12 animate-pulse rounded bg-muted/70" />
+          <div className="h-12 animate-pulse rounded bg-muted/70" />
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-16 animate-pulse rounded bg-muted/70" />
+      </CardContent>
+    </Card>
+  </div>
+);
 
+const UserDetailContent = async ({
+  userPublicId,
+}: {
+  userPublicId: string;
+}) => {
   const [userResult, currentOperator] = await Promise.all([
     getPlatformEndUser(userPublicId),
     getPlatformCurrentOperator(),
@@ -167,5 +196,15 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
         </Card>
       </div>
     </PlatformPage>
+  );
+};
+
+export default async function UserDetailPage({ params }: UserDetailPageProps) {
+  const { user_public_id: userPublicId } = await params;
+
+  return (
+    <Suspense fallback={<UserDetailSkeleton />}>
+      <UserDetailContent userPublicId={userPublicId} />
+    </Suspense>
   );
 }

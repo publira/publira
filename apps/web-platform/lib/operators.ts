@@ -26,6 +26,8 @@ const genericErrorMessage =
 export const listPlatformOperators = async (): Promise<
   PlatformOperatorSummary[]
 > => {
+  "use cache: private";
+
   const sessionId = await resolveSessionId();
   if (!sessionId) {
     return [];
@@ -125,6 +127,8 @@ export const unsuspendPlatformOperator = async (
 export const getPlatformOperator = async (
   publicId: string
 ): Promise<PlatformOperatorSummary | null> => {
+  "use cache: private";
+
   if (!publicId.trim()) {
     return null;
   }

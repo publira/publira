@@ -20,6 +20,7 @@ import {
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { PlatformPage } from "../../../components/platform-page";
 import {
@@ -39,6 +40,28 @@ import type {
 export const metadata: Metadata = {
   title: "ユーザー管理",
 };
+
+const UsersTableSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="h-5 w-32 animate-pulse rounded bg-muted" />
+      <div className="h-4 w-80 animate-pulse rounded bg-muted/70" />
+    </CardHeader>
+    <CardContent className="grid gap-4">
+      <div className="flex flex-wrap gap-3">
+        <div className="h-10 w-44 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 w-56 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 w-44 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 w-44 animate-pulse rounded bg-muted/70" />
+      </div>
+      <div className="grid gap-3">
+        <div className="h-10 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 animate-pulse rounded bg-muted/70" />
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const statusSelectItems = [
   { label: "有効", value: "active" },
@@ -386,9 +409,7 @@ const PaginationControls = ({
   </div>
 );
 
-export default async function UsersPage({ searchParams }: UsersPageProps) {
-  const params = await searchParams;
-  const filters = parseUsersFilters(params);
+const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
   const tenantItems = await listPlatformTenantFilterOptions();
 
   const result = await listPlatformEndUsers({
@@ -414,56 +435,67 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
   );
 
   return (
+    <Card>
+      <CardHeader>
+        <CardTitle>ユーザー一覧</CardTitle>
+        <CardDescription>
+          公開ID・氏名・所属テナント・登録日・ステータスを確認し、詳細画面で操作します。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <UsersFilterForm
+          createdFromFilter={filters.createdFromFilter}
+          createdToFilter={filters.createdToFilter}
+          hasFilter={hasFilter}
+          limit={filters.limit}
+          statusFilter={filters.statusFilter}
+          tenantItems={tenantItems}
+          tenantPublicIdFilter={filters.tenantPublicIdFilter}
+        />
+
+        {result.ok ? null : (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            ユーザー一覧の取得に失敗しました: {result.message}
+          </p>
+        )}
+
+        <UsersTableSection
+          hasFilter={hasFilter}
+          result={result}
+          users={users}
+        />
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {buildSummaryText(result, filters.offset, users.length)}
+          </p>
+          <PaginationControls
+            createdFromFilter={filters.createdFromFilter}
+            createdToFilter={filters.createdToFilter}
+            limit={filters.limit}
+            pagination={pagination}
+            statusFilter={filters.statusFilter}
+            tenantPublicIdFilter={filters.tenantPublicIdFilter}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default async function UsersPage({ searchParams }: UsersPageProps) {
+  const params = await searchParams;
+  const filters = parseUsersFilters(params);
+
+  return (
     <PlatformPage
       description="ユーザーの状態確認とアカウント停止・削除を管理します。"
       eyebrow="Platform Users"
       title="ユーザー管理"
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>ユーザー一覧</CardTitle>
-          <CardDescription>
-            公開ID・氏名・所属テナント・登録日・ステータスを確認し、詳細画面で操作します。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <UsersFilterForm
-            createdFromFilter={filters.createdFromFilter}
-            createdToFilter={filters.createdToFilter}
-            hasFilter={hasFilter}
-            limit={filters.limit}
-            statusFilter={filters.statusFilter}
-            tenantItems={tenantItems}
-            tenantPublicIdFilter={filters.tenantPublicIdFilter}
-          />
-
-          {result.ok ? null : (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              ユーザー一覧の取得に失敗しました: {result.message}
-            </p>
-          )}
-
-          <UsersTableSection
-            hasFilter={hasFilter}
-            result={result}
-            users={users}
-          />
-
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
-              {buildSummaryText(result, filters.offset, users.length)}
-            </p>
-            <PaginationControls
-              createdFromFilter={filters.createdFromFilter}
-              createdToFilter={filters.createdToFilter}
-              limit={filters.limit}
-              pagination={pagination}
-              statusFilter={filters.statusFilter}
-              tenantPublicIdFilter={filters.tenantPublicIdFilter}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <Suspense fallback={<UsersTableSkeleton />}>
+        <UsersContent filters={filters} />
+      </Suspense>
     </PlatformPage>
   );
 }

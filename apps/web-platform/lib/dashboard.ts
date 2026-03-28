@@ -31,6 +31,8 @@ const normalizeRecentEventsLimit = (value?: number): number => {
 export const getPlatformDashboardSummary = async (input?: {
   recentEventsLimit?: number;
 }): Promise<GetPlatformDashboardSummaryResult> => {
+  "use cache: private";
+
   const sid = await resolveSessionId();
   if (!sid) {
     return {

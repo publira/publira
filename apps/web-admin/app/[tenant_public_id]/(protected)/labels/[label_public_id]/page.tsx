@@ -37,14 +37,16 @@ const EditLabelFormSkeleton = () => (
   </div>
 );
 
-const EditLabelFormData = async ({ params }: EditLabelPageProps) => {
-  const { label_public_id, tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-  guardPlaceholder(label_public_id);
-
+const EditLabelFormData = async ({
+  labelPublicId,
+  tenantPublicId,
+}: {
+  labelPublicId: string;
+  tenantPublicId: string;
+}) => {
   const result = await getLabel({
-    publicId: label_public_id,
-    tenantPublicId: tenant_public_id,
+    publicId: labelPublicId,
+    tenantPublicId,
   });
 
   if (!result.ok) {
@@ -65,12 +67,16 @@ const EditLabelFormData = async ({ params }: EditLabelPageProps) => {
       action={updateLabelAction}
       initialLabel={result.label}
       mode="update"
-      tenantPublicId={tenant_public_id}
+      tenantPublicId={tenantPublicId}
     />
   );
 };
 
-export default function EditLabelPage(props: EditLabelPageProps) {
+export default async function EditLabelPage({ params }: EditLabelPageProps) {
+  const { label_public_id, tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+  guardPlaceholder(label_public_id);
+
   return (
     <AdminPage
       actions={
@@ -83,7 +89,10 @@ export default function EditLabelPage(props: EditLabelPageProps) {
     >
       <FlashToast title="レーベルを作成しました。" />
       <Suspense fallback={<EditLabelFormSkeleton />}>
-        <EditLabelFormData {...props} />
+        <EditLabelFormData
+          labelPublicId={label_public_id}
+          tenantPublicId={tenant_public_id}
+        />
       </Suspense>
     </AdminPage>
   );

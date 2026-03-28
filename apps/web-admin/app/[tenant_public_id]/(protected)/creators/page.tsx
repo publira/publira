@@ -28,12 +28,11 @@ const CreatorManagerSkeleton = () => (
 );
 
 const CreatorManagerData = async ({
-  params,
-}: PageProps<"/[tenant_public_id]/creators">) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const listResult = await listCreators(tenant_public_id);
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
+  const listResult = await listCreators(tenantPublicId);
 
   return (
     <CreatorManager
@@ -43,16 +42,19 @@ const CreatorManagerData = async ({
   );
 };
 
-export default function CreatorPage(
-  props: PageProps<"/[tenant_public_id]/creators">
-) {
+export default async function CreatorPage({
+  params,
+}: PageProps<"/[tenant_public_id]/creators">) {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+
   return (
     <AdminPage
       description="著者一覧の確認と、編集への遷移を行います。"
       title="著者"
     >
       <Suspense fallback={<CreatorManagerSkeleton />}>
-        <CreatorManagerData {...props} />
+        <CreatorManagerData tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );

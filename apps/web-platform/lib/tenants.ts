@@ -53,6 +53,8 @@ export type ListPlatformTenantsResult =
 export const listPlatformTenants = async (
   input: ListPlatformTenantsInput
 ): Promise<ListPlatformTenantsResult> => {
+  "use cache: private";
+
   const sid = await resolveSessionId();
   if (!sid) {
     return {

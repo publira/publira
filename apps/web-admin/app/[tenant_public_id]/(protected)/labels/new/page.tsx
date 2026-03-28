@@ -31,20 +31,18 @@ const NewLabelFormSkeleton = () => (
   </div>
 );
 
-const NewLabelFormData = async ({ params }: NewLabelPageProps) => {
+const NewLabelFormData = ({ tenantPublicId }: { tenantPublicId: string }) => (
+  <LabelForm
+    action={createLabelAction}
+    mode="create"
+    tenantPublicId={tenantPublicId}
+  />
+);
+
+export default async function NewLabelPage({ params }: NewLabelPageProps) {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
-  return (
-    <LabelForm
-      action={createLabelAction}
-      mode="create"
-      tenantPublicId={tenant_public_id}
-    />
-  );
-};
-
-export default function NewLabelPage(props: NewLabelPageProps) {
   return (
     <AdminPage
       actions={
@@ -56,7 +54,7 @@ export default function NewLabelPage(props: NewLabelPageProps) {
       title="レーベル新規作成"
     >
       <Suspense fallback={<NewLabelFormSkeleton />}>
-        <NewLabelFormData {...props} />
+        <NewLabelFormData tenantPublicId={tenant_public_id} />
       </Suspense>
     </AdminPage>
   );
