@@ -10,19 +10,24 @@ import (
 // TestAdminHandlerExposesOnlyAdminRoutes は、NewHandler が管理 API (AdminSeriesService, AdminAuthService) だけ
 // 公開し、公開 API (CatalogService, AuthService) は登録しないことを検証する。
 func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
-	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default()))
+	ts := newAdminRouteTestServer(t)
 	t.Cleanup(ts.Close)
 
-	assertRouteStatus(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", false)
-	assertRouteStatus(t, ts, "/publira.admin.v1.AdminCreatorService/ListCreators", false)
-	assertRouteStatus(t, ts, "/publira.admin.v1.AdminLabelService/ListLabels", false)
-	assertRouteStatus(t, ts, "/publira.admin.v1.AdminAuthService/GetMe", false)
-	assertRouteStatus(t, ts, "/publira.admin.v1.AdminDashboardService/GetDashboard", false)
-	assertRouteStatus(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)
-	assertRouteStatus(t, ts, "/publira.v1.AuthService/GetMe", true)
+	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", true)
+	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminCreatorService/ListCreators", true)
+	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminLabelService/ListLabels", true)
+	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminAuthService/GetMe", true)
+	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminDashboardService/GetDashboard", true)
+	assertRouteRegistered(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", false)
+	assertRouteRegistered(t, ts, "/publira.v1.AuthService/GetMe", false)
 }
 
-func assertRouteStatus(t *testing.T, ts *httptest.Server, path string, wantNotFound bool) {
+func newAdminRouteTestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(NewHandler(nil, nil, slog.Default()))
+}
+
+func assertRouteRegistered(t *testing.T, ts *httptest.Server, path string, wantRegistered bool) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, ts.URL+path, nil)
 	if err != nil {
@@ -34,8 +39,8 @@ func assertRouteStatus(t *testing.T, ts *httptest.Server, path string, wantNotFo
 	}
 	_ = resp.Body.Close()
 
-	gotNotFound := resp.StatusCode == http.StatusNotFound
-	if gotNotFound != wantNotFound {
-		t.Fatalf("path %s status = %d, not_found = %v, want not_found = %v", path, resp.StatusCode, gotNotFound, wantNotFound)
+	gotRegistered := resp.StatusCode != http.StatusNotFound
+	if gotRegistered != wantRegistered {
+		t.Fatalf("path %s status = %d, registered = %v, want registered = %v", path, resp.StatusCode, gotRegistered, wantRegistered)
 	}
 }

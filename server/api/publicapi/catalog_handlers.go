@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/api/protomapper"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
@@ -172,12 +173,12 @@ func (s *apiServer) GetEpisodeDetail(
 	}
 
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
-		Episode: toProtoPublishedEpisode(row),
-		Series:  toProtoPublishedSeries(row),
+		Episode: protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row),
+		Series:  protomapper.SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row),
 		Images:  make([]*publirattypesv1.EpisodeImage, 0, len(images)),
 	})
 	for _, image := range images {
-		res.Msg.Images = append(res.Msg.Images, toProtoEpisodeImage(image))
+		res.Msg.Images = append(res.Msg.Images, protomapper.EpisodeImageFromEpisodeImage(image))
 	}
 
 	return res, nil
