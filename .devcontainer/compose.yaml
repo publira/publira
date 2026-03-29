@@ -27,6 +27,7 @@ services:
       - ../..:/workspaces:cached
     depends_on:
       - db
+      - mailpit
     labels:
       # web-public fallback (port 3000)
       - "traefik.enable=true"
@@ -89,6 +90,12 @@ services:
       POSTGRES_DB: publira
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
+  mailpit:
+    image: axllent/mailpit:v1.29.5@sha256:c5a6d0ba4d08187f70f305471da5fd9ad424fdfc2f25a2308226a786335dfa9f
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
 
 volumes:
   postgres-data:

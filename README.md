@@ -73,3 +73,17 @@ task db:setup
 - seed: ローカル開発・画面確認用の初期データ（DML、冪等）
 
 seed の詳細と固定ログイン情報は `db/seeds/README.md` を参照してください。
+
+## 開発用メール確認 (Mailpit)
+
+Dev Container 起動時に Mailpit コンテナも起動します。
+
+- Mailpit UI: `http://localhost:8025`
+- SMTP (コンテナ内から): `host=mailpit`, `port=1025`
+
+ローカル seed (`task db:setup`) では platform/tenant SMTP の初期値が Mailpit 向けになります。
+
+1. `task db:setup` を実行して初期データを反映
+2. `task dev` (または API/Web 個別タスク) を起動
+3. SMTP テスト送信や通知送信を実行
+4. Mailpit UI (`http://localhost:8025`) で受信メールを確認

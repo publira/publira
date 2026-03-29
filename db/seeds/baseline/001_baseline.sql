@@ -482,11 +482,11 @@ INSERT INTO platform_smtp_config (
 )
 VALUES (
     TRUE,
-    'smtp.platform.local',
-    587,
-    'platform-smtp-user',
+    'mailpit',
+    1025,
+    'mailpit',
     'enc:seed:platform:dummy-ciphertext-v1',
-    'starttls',
+    'none',
     'no-reply@platform.local',
     'support@platform.local'
 )
@@ -516,11 +516,11 @@ INSERT INTO tenant_smtp_config (
 SELECT
     t.id,
     FALSE,
-    'smtp.tenant.local',
-    465,
-    'tenant-smtp-user',
+    'mailpit',
+    1025,
+    'mailpit',
     'enc:seed:tenant:dummy-ciphertext-v1',
-    'tls',
+    'none',
     'Seed Tenant Mail',
     'no-reply@tenant.local',
     'help@tenant.local'
