@@ -48,8 +48,8 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantQuery)).
 		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "Series Title", "Synopsis", nil, true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "Series Title", nil, nil, "Synopsis", nil, true, now))
 	mock.ExpectQuery("FROM series_creators").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
@@ -188,8 +188,8 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "Before", "Old synopsis", nil, true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, true, now))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
 		WithArgs(seriesID, "After", uuid.NullUUID{}).
@@ -209,8 +209,8 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "After", "New synopsis", nil, true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, true, now))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -317,8 +317,8 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "Before", "Old synopsis", nil, true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "Before", nil, nil, "Old synopsis", nil, true, now))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesBaseQuery)).
 		WithArgs(seriesID, "After", uuid.NullUUID{}).
@@ -352,8 +352,8 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "After", "New synopsis", nil, true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "After", nil, nil, "New synopsis", nil, true, now))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
@@ -391,20 +391,20 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 		{
 			name:     "normal",
 			publicID: "SERIES001",
-			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", "Synopsis", nil, true, time.Now()),
+			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+				AddRow(uuid.Must(uuid.NewV7()), "SERIES001", "Series Title", nil, nil, "Synopsis", nil, true, time.Now()),
 			wantSeriesID: "SERIES001",
 		},
 		{
 			name:     "cross-tenant",
 			publicID: "SERIES_OTHER_TENANT",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}),
 			wantCode: connect.CodeNotFound,
 		},
 		{
 			name:     "not-found",
 			publicID: "SERIES_MISSING",
-			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}),
+			rows:     sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}),
 			wantCode: connect.CodeNotFound,
 		},
 	}

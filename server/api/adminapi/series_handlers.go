@@ -221,7 +221,22 @@ func (s *adminServer) UpdateSeries(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queries.UpdateSeriesBase(ctx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: uuid.NullUUID{}})
+	labelPublicID := strings.TrimSpace(req.Msg.LabelPublicId)
+	if labelPublicID == "" && current.LabelPublicID.Valid {
+		labelPublicID = current.LabelPublicID.String
+	}
+	labelID := uuid.NullUUID{}
+	if labelPublicID != "" {
+		label, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: labelPublicID})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
+			}
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
+	}
+	err = s.queries.UpdateSeriesBase(ctx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -290,6 +305,9 @@ func (s *adminServer) ListSeries(
 	itemByID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	for _, row := range rows {
 		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
+		if row.LabelPublicID.Valid {
+			item.Label = protomapper.Label(row.LabelPublicID.String, row.LabelName.String)
+		}
 		if row.Synopsis.Valid {
 			item.Synopsis = row.Synopsis.String
 		}

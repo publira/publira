@@ -167,6 +167,7 @@ type UpdateSeriesRequest struct {
 	IsPublished        bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
 	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
 	CreatorPublicIds   []string               `protobuf:"bytes,7,rep,name=creator_public_ids,json=creatorPublicIds,proto3" json:"creator_public_ids,omitempty"`
+	LabelPublicId      string                 `protobuf:"bytes,8,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -248,6 +249,13 @@ func (x *UpdateSeriesRequest) GetCreatorPublicIds() []string {
 		return x.CreatorPublicIds
 	}
 	return nil
+}
+
+func (x *UpdateSeriesRequest) GetLabelPublicId() string {
+	if x != nil {
+		return x.LabelPublicId
+	}
+	return ""
 }
 
 type UpdateSeriesResponse struct {
@@ -1328,7 +1336,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12,\n" +
 	"\x12creator_public_ids\x18\a \x03(\tR\x10creatorPublicIds\"H\n" +
 	"\x14CreateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xa0\x02\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xc8\x02\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -1336,7 +1344,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\bsynopsis\x18\x04 \x01(\tR\bsynopsis\x12!\n" +
 	"\fis_published\x18\x05 \x01(\bR\visPublished\x120\n" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12,\n" +
-	"\x12creator_public_ids\x18\a \x03(\tR\x10creatorPublicIds\"H\n" +
+	"\x12creator_public_ids\x18\a \x03(\tR\x10creatorPublicIds\x12&\n" +
+	"\x0flabel_public_id\x18\b \x01(\tR\rlabelPublicId\"H\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"z\n" +
 	"\x11ListSeriesRequest\x127\n" +

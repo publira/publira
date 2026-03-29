@@ -1053,11 +1053,14 @@ const getSeriesByPublicIDForTenant = `-- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
     s.title,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
     s.published_at
 FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.public_id = $2
@@ -1073,6 +1076,8 @@ type GetSeriesByPublicIDForTenantRow struct {
 	ID                 uuid.UUID      `json:"id"`
 	PublicID           string         `json:"public_id"`
 	Title              string         `json:"title"`
+	LabelPublicID      sql.NullString `json:"label_public_id"`
+	LabelName          sql.NullString `json:"label_name"`
 	Synopsis           sql.NullString `json:"synopsis"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
 	IsPublished        bool           `json:"is_published"`
@@ -1086,6 +1091,8 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.ID,
 		&i.PublicID,
 		&i.Title,
+		&i.LabelPublicID,
+		&i.LabelName,
 		&i.Synopsis,
 		&i.ReadingPeriodHours,
 		&i.IsPublished,
@@ -2317,11 +2324,14 @@ const listSeriesByTenant = `-- name: ListSeriesByTenant :many
 SELECT s.id,
     s.public_id,
     s.title,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
     s.published_at
 FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
 ORDER BY s.created_at DESC
@@ -2338,6 +2348,8 @@ type ListSeriesByTenantRow struct {
 	ID                 uuid.UUID      `json:"id"`
 	PublicID           string         `json:"public_id"`
 	Title              string         `json:"title"`
+	LabelPublicID      sql.NullString `json:"label_public_id"`
+	LabelName          sql.NullString `json:"label_name"`
 	Synopsis           sql.NullString `json:"synopsis"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
 	IsPublished        bool           `json:"is_published"`
@@ -2357,6 +2369,8 @@ func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenant
 			&i.ID,
 			&i.PublicID,
 			&i.Title,
+			&i.LabelPublicID,
+			&i.LabelName,
 			&i.Synopsis,
 			&i.ReadingPeriodHours,
 			&i.IsPublished,
