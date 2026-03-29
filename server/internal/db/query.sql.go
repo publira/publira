@@ -808,6 +808,60 @@ func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpis
 	return i, err
 }
 
+const getEpisodeByPublicIDForTenantAndSeries = `-- name: GetEpisodeByPublicIDForTenantAndSeries :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND e.public_id = $3
+LIMIT 1
+`
+
+type GetEpisodeByPublicIDForTenantAndSeriesParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	PublicID   string    `json:"public_id"`
+	PublicID_2 string    `json:"public_id_2"`
+}
+
+type GetEpisodeByPublicIDForTenantAndSeriesRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Title              string        `json:"title"`
+	OrderIndex         int32         `json:"order_index"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Status             string        `json:"status"`
+	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+}
+
+func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error) {
+	row := q.db.QueryRowContext(ctx, getEpisodeByPublicIDForTenantAndSeries, arg.TenantID, arg.PublicID, arg.PublicID_2)
+	var i GetEpisodeByPublicIDForTenantAndSeriesRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.OrderIndex,
+		&i.Price,
+		&i.ReadingPeriodHours,
+		&i.Status,
+		&i.ScheduledAt,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
 const getLabelByPublicIDForTenant = `-- name: GetLabelByPublicIDForTenant :one
 SELECT id, tenant_id, public_id, name, created_at
 FROM labels

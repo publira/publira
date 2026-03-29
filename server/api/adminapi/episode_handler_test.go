@@ -1,6 +1,7 @@
 package adminapi
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"database/sql"
@@ -382,6 +383,162 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 	}
 
 	assertExpectations(t, mock)
+}
+
+func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := "session-token"
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+		WithArgs(tenantID, "SERIES001", "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+		WithArgs(episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+
+	mock.ExpectQuery("INSERT INTO episode_images").
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/png", int64(67), int32(1), int32(1), int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(1), int32(1), int32(1), now))
+	expectAdminAuditLogInsert(mock)
+
+	mock.ExpectQuery("INSERT INTO episode_images").
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", int64(163), int32(2), int32(1), int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(2), int32(1), int32(1), now))
+	expectAdminAuditLogInsert(mock)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		SeriesPublicId:  "SERIES001",
+		EpisodePublicId: "EPISODE001",
+		ArchiveData: makeZipArchive(t,
+			archiveEntry{name: "010.jpg", data: oneByOneJPEG},
+			archiveEntry{name: "002.png", data: oneByOnePNG},
+		),
+		ArchiveFilename:    "episode-images.zip",
+		ArchiveContentType: "application/zip",
+	})
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
+
+	resp, err := client.UploadEpisodeImages(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadEpisodeImages: %v", err)
+	}
+	if len(resp.Msg.Images) != 2 {
+		t.Fatalf("images count = %d, want 2", len(resp.Msg.Images))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
+	tests := []struct {
+		name     string
+		request  *publiraadminv1.UploadEpisodeImagesRequest
+		setup    func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time)
+		wantCode connect.Code
+	}{
+		{
+			name: "invalid-zip",
+			request: &publiraadminv1.UploadEpisodeImagesRequest{
+				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				SeriesPublicId:  "SERIES001",
+				EpisodePublicId: "EPISODE001",
+				ArchiveData:     []byte("not-a-zip"),
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "invalid-path",
+			request: &publiraadminv1.UploadEpisodeImagesRequest{
+				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				SeriesPublicId:  "SERIES001",
+				EpisodePublicId: "EPISODE001",
+				ArchiveData: makeZipArchive(t,
+					archiveEntry{name: "../001.png", data: oneByOnePNG},
+				),
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "series-episode-mismatch",
+			request: &publiraadminv1.UploadEpisodeImagesRequest{
+				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				SeriesPublicId:  "SERIES_OTHER",
+				EpisodePublicId: "EPISODE001",
+				ArchiveData: makeZipArchive(t,
+					archiveEntry{name: "001.png", data: oneByOnePNG},
+				),
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+					WithArgs(tenantID, "SERIES_OTHER", "EPISODE001").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}))
+			},
+			wantCode: connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAdminServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			sessionToken := "session-token"
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			if tc.setup != nil {
+				tc.setup(mock, tenantID, now)
+			}
+
+			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(tc.request)
+			req.Header().Set("X-Publira-Session-Id", sessionToken)
+
+			_, err := client.UploadEpisodeImages(context.Background(), req)
+			if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("UploadEpisodeImages code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+type archiveEntry struct {
+	name string
+	data []byte
+}
+
+func makeZipArchive(t *testing.T, entries ...archiveEntry) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	writer := zip.NewWriter(&buf)
+	for _, entry := range entries {
+		fileWriter, err := writer.Create(entry.name)
+		if err != nil {
+			t.Fatalf("writer.Create(%q): %v", entry.name, err)
+		}
+		if _, err := fileWriter.Write(entry.data); err != nil {
+			t.Fatalf("fileWriter.Write(%q): %v", entry.name, err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("writer.Close: %v", err)
+	}
+	return buf.Bytes()
 }
 
 func generateJPEG(t *testing.T, width, height int) []byte {

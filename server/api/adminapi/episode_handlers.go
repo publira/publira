@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,15 +15,8 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
-	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
-)
-
-const (
-	imageProcessingTimeout       = 15 * time.Second
-	imagePersistenceRetryMax     = 3
-	imagePersistenceRetryBackoff = 100 * time.Millisecond
 )
 
 func parseScheduledAtOrZero(value string) (sql.NullTime, error) {
@@ -49,17 +40,6 @@ func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (s
 		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New("scheduled_at must be in the future"))
 	}
 	return sql.NullTime{Time: normalized, Valid: true}, nil
-}
-
-func sleepWithContext(ctx context.Context, d time.Duration) error {
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C:
-		return nil
-	}
 }
 
 func (s *adminServer) ListEpisodes(
@@ -252,107 +232,18 @@ func (s *adminServer) UploadEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	if len(req.Msg.Images) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("images are required"))
-	}
-	episode, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId})
+	items, err := episodeimages.Service{Queries: s.queries, Storage: s.storage, Recorder: s.recorder}.Upload(ctx, episodeimages.UploadRequest{
+		Tenant:          tenant,
+		SeriesPublicID:  req.Msg.SeriesPublicId,
+		EpisodePublicID: req.Msg.EpisodePublicId,
+		Images:          req.Msg.Images,
+		ArchiveData:     req.Msg.ArchiveData,
+		Headers:         req.Header(),
+	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
-	maxDisplayOrder, err := s.queries.GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx, episode.ID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	items := make([]*publirattypesv1.EpisodeImage, 0, len(req.Msg.Images))
-	displayOrder := maxDisplayOrder
-	for index, imageUpload := range req.Msg.Images {
-		if len(imageUpload.Data) == 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d].data is required", index))
-		}
 
-		variants, buildErr := imageproc.BuildVariants(imageUpload.Data, imageUpload.ContentType)
-		if buildErr != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d]: %w", index, buildErr))
-		}
-
-		objectPrefix := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(filepath.Base(imageUpload.Filename), filepath.Ext(imageUpload.Filename))))
-		if objectPrefix == "" {
-			objectPrefix = strings.ToLower(strings.ReplaceAll(imageUpload.Filename, " ", "-"))
-		}
-		if objectPrefix == "" {
-			objectPrefix = "image"
-		}
-		baseObjectID := uuid.NewString()
-		for _, variant := range variants {
-			displayOrder++
-			objectKey := fmt.Sprintf("tenants/%s/episodes/%s/%s-%s-%s%s", tenant.PublicID, req.Msg.EpisodePublicId, objectPrefix, baseObjectID, variant.Label, variant.Extension)
-
-			variantCtx, cancel := context.WithTimeout(ctx, imageProcessingTimeout)
-			created, persistErr := func() (dbmodels.EpisodeImage, error) {
-				var lastErr error
-				for attempt := 1; attempt <= imagePersistenceRetryMax; attempt++ {
-					uploaded, uploadErr := s.storage.Upload(variantCtx, storage.UploadRequest{
-						ObjectKey:   objectKey,
-						ContentType: variant.ContentType,
-						Data:        variant.Data,
-					})
-					if uploadErr != nil {
-						lastErr = uploadErr
-					} else {
-						episodeImageID, idErr := uuid.NewV7()
-						if idErr != nil {
-							cancel()
-							return dbmodels.EpisodeImage{}, idErr
-						}
-						createdRow, createErr := s.queries.CreateEpisodeImage(variantCtx, dbmodels.CreateEpisodeImageParams{
-							ID:              episodeImageID,
-							TenantID:        tenant.ID,
-							EpisodeID:       episode.ID,
-							StorageProvider: uploaded.Provider,
-							ObjectKey:       uploaded.ObjectKey,
-							ImageUrl:        uploaded.URL,
-							ContentType:     variant.ContentType,
-							FileSizeBytes:   uploaded.SizeBytes,
-							DisplayOrder:    displayOrder,
-							Width:           int32(variant.Width),
-							Height:          int32(variant.Height),
-						})
-						if createErr == nil {
-							return createdRow, nil
-						}
-						lastErr = createErr
-					}
-					if attempt < imagePersistenceRetryMax {
-						if err := sleepWithContext(variantCtx, time.Duration(attempt)*imagePersistenceRetryBackoff); err != nil {
-							return dbmodels.EpisodeImage{}, err
-						}
-					}
-				}
-				return dbmodels.EpisodeImage{}, fmt.Errorf("variant persistence failed after %d attempts: %w", imagePersistenceRetryMax, lastErr)
-			}()
-			cancel()
-			if persistErr != nil {
-				return nil, connect.NewError(connect.CodeInternal, persistErr)
-			}
-
-			items = append(items, protomapper.EpisodeImageFromEpisodeImage(created))
-			if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-				s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
-					TenantID:    tenant.ID,
-					ActorUserID: sessionCtx.User.ID,
-					ActorRole:   sessionCtx.Role,
-					Action:      "episode_image_uploaded",
-					TargetType:  "episode",
-					TargetID:    req.Msg.EpisodePublicId,
-					Outcome:     auditlog.OutcomeSuccess,
-					ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
-				})
-			}
-		}
-	}
 	return connect.NewResponse(&publiraadminv1.UploadEpisodeImagesResponse{Images: items}), nil
 }
 
