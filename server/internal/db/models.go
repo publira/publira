@@ -97,6 +97,19 @@ type PlatformSession struct {
 	CreatedAt      time.Time    `json:"created_at"`
 }
 
+type PlatformSmtpConfig struct {
+	Singleton         bool           `json:"singleton"`
+	Host              string         `json:"host"`
+	Port              int32          `json:"port"`
+	Username          string         `json:"username"`
+	PasswordEncrypted string         `json:"password_encrypted"`
+	Encryption        string         `json:"encryption"`
+	FromAddress       string         `json:"from_address"`
+	ReplyTo           sql.NullString `json:"reply_to"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+}
+
 type PlatformUser struct {
 	ID           uuid.UUID `json:"id"`
 	PublicID     string    `json:"public_id"`
@@ -178,6 +191,21 @@ type TenantConfig struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	SiteTagline     sql.NullString `json:"site_tagline"`
+}
+
+type TenantSmtpConfig struct {
+	TenantID            uuid.UUID      `json:"tenant_id"`
+	SmtpOverrideEnabled bool           `json:"smtp_override_enabled"`
+	Host                sql.NullString `json:"host"`
+	Port                sql.NullInt32  `json:"port"`
+	Username            sql.NullString `json:"username"`
+	PasswordEncrypted   sql.NullString `json:"password_encrypted"`
+	Encryption          sql.NullString `json:"encryption"`
+	FromName            sql.NullString `json:"from_name"`
+	FromAddress         sql.NullString `json:"from_address"`
+	ReplyTo             sql.NullString `json:"reply_to"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
 }
 
 type TenantTheme struct {
