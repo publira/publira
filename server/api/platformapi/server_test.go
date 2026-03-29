@@ -8,11 +8,12 @@ import (
 )
 
 func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
-	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default()))
+	ts := httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil))
 	t.Cleanup(ts.Close)
 
 	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformTenantService/ListTenants", true)
 	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformTenantService/CreateTenant", true)
+	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformEmailSettingsService/GetPlatformEmailSettings", true)
 	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformAuthService/GetMe", true)
 	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformDashboardService/GetDashboardSummary", true)
 	assertPlatformRouteRegistered(t, ts, "/publira.platform.v1.PlatformAuditLogService/ListAuditLogs", true)

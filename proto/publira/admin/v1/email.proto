@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+enum SecretUpdateMode {
+  SECRET_UPDATE_MODE_UNSPECIFIED = 0;
+  SECRET_UPDATE_MODE_UNCHANGED = 1;
+  SECRET_UPDATE_MODE_REPLACE = 2;
+  SECRET_UPDATE_MODE_CLEAR = 3;
+}
+
+enum TestEmailRecipientType {
+  TEST_EMAIL_RECIPIENT_TYPE_UNSPECIFIED = 0;
+  TEST_EMAIL_RECIPIENT_TYPE_SELF = 1;
+  TEST_EMAIL_RECIPIENT_TYPE_CUSTOM = 2;
+}
+
+message TenantEmailSettings {
+  bool smtp_override_enabled = 1;
+  string host = 2;
+  int32 port = 3;
+  string username = 4;
+  string encryption = 5;
+  string from_name = 6;
+  string from_address = 7;
+  string reply_to = 8;
+  bool has_password = 9;
+}
+
+message GetTenantEmailSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+}
+
+message GetTenantEmailSettingsResponse {
+  TenantEmailSettings settings = 1;
+}
+
+message UpdateTenantEmailSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  bool smtp_override_enabled = 3;
+  string host = 4;
+  int32 port = 5;
+  string username = 6;
+  SecretUpdateMode password_update_mode = 7;
+  string password = 8;
+  string encryption = 9;
+  string from_name = 10;
+  string from_address = 11;
+  string reply_to = 12;
+}
+
+message UpdateTenantEmailSettingsResponse {
+  TenantEmailSettings settings = 1;
+}
+
+message SendTenantSmtpTestEmailRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  TestEmailRecipientType recipient_type = 3;
+  string recipient_email = 4;
+  bool smtp_override_enabled = 5;
+  string host = 6;
+  int32 port = 7;
+  string username = 8;
+  SecretUpdateMode password_update_mode = 9;
+  string password = 10;
+  string encryption = 11;
+  string from_name = 12;
+  string from_address = 13;
+  string reply_to = 14;
+}
+
+message SendTenantSmtpTestEmailResponse {
+  string recipient_email = 1;
+}
+
+service AdminEmailSettingsService {
+  rpc GetTenantEmailSettings(GetTenantEmailSettingsRequest) returns (GetTenantEmailSettingsResponse) {}
+  rpc UpdateTenantEmailSettings(UpdateTenantEmailSettingsRequest) returns (UpdateTenantEmailSettingsResponse) {}
+  rpc SendTenantSmtpTestEmail(SendTenantSmtpTestEmailRequest) returns (SendTenantSmtpTestEmailResponse) {}
+}

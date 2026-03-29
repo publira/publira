@@ -17,6 +17,7 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminCreatorService/ListCreators", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminLabelService/ListLabels", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminAuthService/GetMe", true)
+	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminEmailSettingsService/GetTenantEmailSettings", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminDashboardService/GetDashboard", true)
 	assertRouteRegistered(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", false)
 	assertRouteRegistered(t, ts, "/publira.v1.AuthService/GetMe", false)
@@ -24,7 +25,7 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 
 func newAdminRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(NewHandler(nil, nil, slog.Default()))
+	return httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil))
 }
 
 func assertRouteRegistered(t *testing.T, ts *httptest.Server, path string, wantRegistered bool) {
