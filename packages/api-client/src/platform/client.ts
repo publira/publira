@@ -7,6 +7,7 @@ import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 import { PlatformAuditLogService } from "../gen/publira/platform/v1/audit_pb.js";
 import { PlatformAuthService } from "../gen/publira/platform/v1/auth_pb.js";
 import { PlatformDashboardService } from "../gen/publira/platform/v1/dashboard_pb.js";
+import { PlatformEmailSettingsService } from "../gen/publira/platform/v1/email_pb.js";
 import { PlatformOperatorService } from "../gen/publira/platform/v1/operator_pb.js";
 import { PlatformSetupService } from "../gen/publira/platform/v1/setup_pb.js";
 import { PlatformTenantService } from "../gen/publira/platform/v1/tenant_pb.js";
@@ -23,6 +24,7 @@ export interface PlatformApiClient {
   auth: Client<typeof PlatformAuthService>;
   auditLogs: Client<typeof PlatformAuditLogService>;
   dashboard: Client<typeof PlatformDashboardService>;
+  emailSettings: Client<typeof PlatformEmailSettingsService>;
   operators: Client<typeof PlatformOperatorService>;
   setup: Client<typeof PlatformSetupService>;
   tenants: Client<typeof PlatformTenantService>;
@@ -49,6 +51,10 @@ export const createPlatformApiClient = (
     auditLogs: createClient(PlatformAuditLogService, transportInstance),
     auth: createClient(PlatformAuthService, transportInstance),
     dashboard: createClient(PlatformDashboardService, transportInstance),
+    emailSettings: createClient(
+      PlatformEmailSettingsService,
+      transportInstance
+    ),
     operators: createClient(PlatformOperatorService, transportInstance),
     setup: createClient(PlatformSetupService, transportInstance),
     tenants: createClient(PlatformTenantService, transportInstance),
