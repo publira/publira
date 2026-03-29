@@ -6,6 +6,7 @@ export interface SeriesItem {
   title: string;
   synopsis: string;
   readingPeriodHours: number;
+  labelPublicId: string;
   labelName: string;
   creatorNames: string[];
   creatorPublicIds: string[];
@@ -75,7 +76,7 @@ const mapSeries = (series: {
   title: string;
   synopsis: string;
   readingPeriodHours?: number;
-  label?: { name: string };
+  label?: { publicId: string; name: string };
   creators: { publicId: string; name: string }[];
 }): SeriesItem => ({
   creatorNames: (series.creators ?? [])
@@ -86,6 +87,7 @@ const mapSeries = (series: {
     .filter((publicId) => publicId.length > 0),
   isPublished: false,
   labelName: series.label?.name?.trim() ?? "",
+  labelPublicId: series.label?.publicId?.trim() ?? "",
   publicId: series.publicId,
   readingPeriodHours: series.readingPeriodHours ?? 0,
   synopsis: series.synopsis,
@@ -235,6 +237,7 @@ export const updateSeries = async (input: {
   title: string;
   synopsis: string;
   readingPeriodHours: number;
+  labelPublicId: string;
   creatorPublicIds: string[];
   isPublished: boolean;
 }): Promise<UpdateSeriesResult> => {
@@ -251,6 +254,7 @@ export const updateSeries = async (input: {
       {
         creatorPublicIds: input.creatorPublicIds,
         isPublished: input.isPublished,
+        labelPublicId: input.labelPublicId,
         publicId: input.publicId,
         readingPeriodHours: input.readingPeriodHours,
         synopsis: input.synopsis,

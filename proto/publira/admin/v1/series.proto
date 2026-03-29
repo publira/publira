@@ -28,6 +28,7 @@ message UpdateSeriesRequest {
   bool is_published = 5;
   int32 reading_period_hours = 6;
   repeated string creator_public_ids = 7;
+  string label_public_id = 8;
 }
 
 message UpdateSeriesResponse {

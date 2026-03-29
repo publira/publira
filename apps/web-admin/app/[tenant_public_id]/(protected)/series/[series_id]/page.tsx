@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import { AdminPage } from "../../../../../components/admin-page";
 import { FlashToast } from "../../../../../components/flash-toast";
 import { listCreators } from "../../../../../lib/creator";
+import { listLabels } from "../../../../../lib/label";
 import { getSeries } from "../../../../../lib/series";
 import { SeriesForm } from "../_components/series-form";
 import { updateSeriesAction } from "../_lib/actions";
@@ -47,12 +48,13 @@ const EditSeriesFormData = async ({
   seriesId: string;
   tenantPublicId: string;
 }) => {
-  const [result, creatorsResult] = await Promise.all([
+  const [result, creatorsResult, labelsResult] = await Promise.all([
     getSeries({
       publicId: seriesId,
       tenantPublicId,
     }),
     listCreators(tenantPublicId),
+    listLabels(tenantPublicId),
   ]);
 
   if (!result.ok) {
@@ -77,6 +79,8 @@ const EditSeriesFormData = async ({
       }
       defaultReadingPeriodHours={result.series.readingPeriodHours}
       initialSeries={result.series}
+      labels={labelsResult.labels}
+      labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="update"
       tenantPublicId={tenantPublicId}
     />

@@ -12,6 +12,9 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 		PublicId: row.PublicID,
 		Title:    row.Title,
 	}
+	if row.LabelPublicID.Valid {
+		series.Label = Label(row.LabelPublicID.String, row.LabelName.String)
+	}
 	if row.Synopsis.Valid {
 		series.Synopsis = row.Synopsis.String
 	}

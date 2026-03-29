@@ -32,8 +32,8 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "SERIES001", "Series Title", "Synopsis", nil, true, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}).
+			AddRow(seriesID, "SERIES001", "Series Title", nil, nil, "Synopsis", nil, true, now))
 
 	mock.ExpectQuery("INSERT INTO episodes").
 		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 1", int32(1)).
@@ -136,7 +136,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
 					WithArgs(tenantID, "SERIES_OTHER_TENANT").
-					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "reading_period_hours", "is_published", "published_at"}))
+					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}))
 			},
 			wantCode: connect.CodeNotFound,
 		},

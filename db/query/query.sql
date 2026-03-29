@@ -551,11 +551,14 @@ WHERE id = $1;
 SELECT s.id,
     s.public_id,
     s.title,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
     s.published_at
 FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
 ORDER BY s.created_at DESC
@@ -564,11 +567,14 @@ LIMIT $2 OFFSET $3;
 SELECT s.id,
     s.public_id,
     s.title,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
     s.published_at
 FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND s.public_id = $2

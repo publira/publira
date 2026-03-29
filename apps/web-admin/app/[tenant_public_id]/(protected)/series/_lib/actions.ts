@@ -9,6 +9,7 @@ const parseCommonFields = (formData: FormData) => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
+  const labelPublicId = String(formData.get("label_public_id") ?? "").trim();
   const readingPeriodHoursRaw = String(
     formData.get("reading_period_hours") ?? ""
   ).trim();
@@ -22,6 +23,7 @@ const parseCommonFields = (formData: FormData) => {
   return {
     creatorPublicIds,
     isPublished,
+    labelPublicId,
     readingPeriodHours,
     synopsis,
     tenantPublicId,
@@ -65,6 +67,14 @@ const validateCommonFields = (
     };
   }
 
+  if (!input.labelPublicId) {
+    return {
+      message: "レーベルは必須です。",
+      mode,
+      ok: false,
+    };
+  }
+
   return null;
 };
 
@@ -78,19 +88,10 @@ export const createSeriesAction = async (
     return commonValidation;
   }
 
-  const labelPublicId = String(formData.get("label_public_id") ?? "").trim();
-  if (!labelPublicId) {
-    return {
-      message: "レーベル公開 ID は必須です。",
-      mode: "create",
-      ok: false,
-    };
-  }
-
   const result = await createSeries({
     creatorPublicIds: input.creatorPublicIds,
     isPublished: input.isPublished,
-    labelPublicId,
+    labelPublicId: input.labelPublicId,
     readingPeriodHours: input.readingPeriodHours,
     synopsis: input.synopsis,
     tenantPublicId: input.tenantPublicId,
@@ -130,6 +131,7 @@ export const updateSeriesAction = async (
   const result = await updateSeries({
     creatorPublicIds: input.creatorPublicIds,
     isPublished: input.isPublished,
+    labelPublicId: input.labelPublicId,
     publicId,
     readingPeriodHours: input.readingPeriodHours,
     synopsis: input.synopsis,

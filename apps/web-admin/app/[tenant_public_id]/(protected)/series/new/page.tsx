@@ -9,6 +9,7 @@ import { Suspense } from "react";
 
 import { AdminPage } from "../../../../../components/admin-page";
 import { listCreators } from "../../../../../lib/creator";
+import { listLabels } from "../../../../../lib/label";
 import { listSeries } from "../../../../../lib/series";
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
@@ -36,9 +37,10 @@ const NewSeriesFormData = async ({
 }: {
   tenantPublicId: string;
 }) => {
-  const [listResult, creatorsResult] = await Promise.all([
+  const [listResult, creatorsResult, labelsResult] = await Promise.all([
     listSeries(tenantPublicId),
     listCreators(tenantPublicId),
+    listLabels(tenantPublicId),
   ]);
 
   return (
@@ -49,6 +51,8 @@ const NewSeriesFormData = async ({
         creatorsResult.ok ? undefined : creatorsResult.message
       }
       defaultReadingPeriodHours={listResult.defaultReadingPeriodHours}
+      labels={labelsResult.labels}
+      labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="create"
       tenantPublicId={tenantPublicId}
     />
