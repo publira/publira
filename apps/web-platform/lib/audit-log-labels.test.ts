@@ -6,6 +6,12 @@ describe("audit-log-labels", () => {
   it("returns Japanese label for known actions", () => {
     expect(getAuditActionLabel("operator_updated")).toBe("オペレーターを更新");
     expect(getAuditActionLabel("tenant_suspended")).toBe("テナントを停止");
+    expect(getAuditActionLabel("platform_email_settings_updated")).toBe(
+      "SMTP設定を更新"
+    );
+    expect(getAuditActionLabel("platform_smtp_test_email_sent")).toBe(
+      "SMTP 接続テストメールを送信"
+    );
   });
 
   it("returns original action for unknown values", () => {
@@ -18,6 +24,16 @@ describe("audit-log-labels", () => {
     ).toBe(true);
     expect(
       auditActionOptions.some((item) => item.value === "tenant_created")
+    ).toBe(true);
+    expect(
+      auditActionOptions.some(
+        (item) => item.value === "platform_email_settings_updated"
+      )
+    ).toBe(true);
+    expect(
+      auditActionOptions.some(
+        (item) => item.value === "platform_smtp_test_email_sent"
+      )
     ).toBe(true);
   });
 });

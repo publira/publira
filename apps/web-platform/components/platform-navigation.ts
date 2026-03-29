@@ -33,6 +33,12 @@ export const navigation: NavSection[] = [
   {
     items: [
       {
+        description: "SMTP などプラットフォーム共通設定を管理",
+        href: "/settings/email",
+        icon: SettingsIcon,
+        label: "設定",
+      },
+      {
         description: "プラットフォーム運用者のロールと権限を管理",
         href: "/operators",
         icon: SettingsIcon,
