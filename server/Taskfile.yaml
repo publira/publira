@@ -8,11 +8,9 @@ vars:
     - ./go.sum
 
 tasks:
-  tidy:
-    cmds:
-      - go mod tidy
-
+  # Public tasks are alphabetized; internal tasks are at the bottom.
   build:
+    desc: Build all server command binaries
     cmds:
       - go build -o {{.BIN_DIR}}/ ./cmd/...
     sources:
@@ -20,7 +18,37 @@ tasks:
     generates:
       - "{{.BIN_DIR}}/*"
 
+  clean:
+    desc: Remove compiled server binaries
+    cmds:
+      - rm -rf {{.BIN_DIR}}
+
+  deps:
+    desc: Install and update server dependencies
+    cmds:
+      - task: tidy
+
+  dev:
+    desc: Run all server development APIs together
+    deps:
+      - task: dev-api
+      - task: dev-admin-api
+      - task: dev-platform-api
+
+  dev-admin-api:
+    desc: Run the admin API server in development mode
+    cmds: [{ task: run, vars: { NAME: admin-api-server } }]
+
+  dev-api:
+    desc: Run the public API server in development mode
+    cmds: [{ task: run, vars: { NAME: api-server } }]
+
+  dev-platform-api:
+    desc: Run the platform API server in development mode
+    cmds: [{ task: run, vars: { NAME: platform-api-server } }]
+
   run:
+    desc: Run a specific server command by name
     dir: "{{ .USER_WORKING_DIR }}/server"
     cmds:
       - go run ./cmd/{{.NAME}}
@@ -29,9 +57,17 @@ tasks:
     requires:
       vars: [NAME]
 
-  dev-api:
-    cmds: [{ task: run, vars: { NAME: api-server } }]
-  dev-admin-api:
-    cmds: [{ task: run, vars: { NAME: admin-api-server } }]
-  dev-platform-api:
-    cmds: [{ task: run, vars: { NAME: platform-api-server } }]
+  setup:
+    desc: Prepare server dependency setup
+    cmds:
+      - task: deps
+
+  test:
+    desc: Run all Go tests in the server module
+    cmds:
+      - go test ./...
+
+  tidy:
+    desc: Sync and clean up Go module dependencies
+    cmds:
+      - go mod tidy

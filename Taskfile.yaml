@@ -9,12 +9,49 @@ includes:
     dir: ./server
 
 tasks:
-  setup:
+  # Public tasks are alphabetized; internal tasks are at the bottom.
+  deps:
+    desc: Install and update project dependencies
     cmds:
       - pnpm install
-      - task: server:tidy
+      - task: server:deps
+
+  dev:
+    desc: Start both web and server development tasks
+    deps:
+      - task: dev-web
+      - task: server:dev
 
   gen:
+    desc: Generate SQL and protobuf artifacts
     cmds:
       - sqlc generate
       - buf generate
+
+  lint:
+    desc: Run frontend and shared lint checks
+    cmds:
+      - pnpm check
+
+  setup:
+    desc: Run project dependency and database setup
+    cmds:
+      - task: deps
+      - task: db:setup
+
+  test:
+    desc: Run monorepo tests and server Go tests
+    cmds:
+      - pnpm test
+      - task: server:test
+
+  typecheck:
+    desc: Run TypeScript type checks across packages
+    cmds:
+      - pnpm typecheck
+
+  dev-web:
+    desc: Start web development servers via Turbo
+    internal: true
+    cmds:
+      - pnpm dev
