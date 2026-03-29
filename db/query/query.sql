@@ -628,6 +628,24 @@ FROM episodes e
 WHERE s.tenant_id = $1
     AND e.public_id = $2
 LIMIT 1;
+
+-- name: GetEpisodeByPublicIDForTenantAndSeries :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND e.public_id = $3
+LIMIT 1;
 -- name: GetPublishedEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,

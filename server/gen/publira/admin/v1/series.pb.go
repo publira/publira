@@ -915,12 +915,16 @@ func (x *EpisodeImageUpload) GetDisplayOrder() int32 {
 }
 
 type UploadEpisodeImagesRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	EpisodePublicId string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
-	Images          []*EpisodeImageUpload  `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	EpisodePublicId    string                 `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	Images             []*EpisodeImageUpload  `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
+	SeriesPublicId     string                 `protobuf:"bytes,4,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
+	ArchiveData        []byte                 `protobuf:"bytes,5,opt,name=archive_data,json=archiveData,proto3" json:"archive_data,omitempty"`
+	ArchiveFilename    string                 `protobuf:"bytes,6,opt,name=archive_filename,json=archiveFilename,proto3" json:"archive_filename,omitempty"`
+	ArchiveContentType string                 `protobuf:"bytes,7,opt,name=archive_content_type,json=archiveContentType,proto3" json:"archive_content_type,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *UploadEpisodeImagesRequest) Reset() {
@@ -972,6 +976,34 @@ func (x *UploadEpisodeImagesRequest) GetImages() []*EpisodeImageUpload {
 		return x.Images
 	}
 	return nil
+}
+
+func (x *UploadEpisodeImagesRequest) GetSeriesPublicId() string {
+	if x != nil {
+		return x.SeriesPublicId
+	}
+	return ""
+}
+
+func (x *UploadEpisodeImagesRequest) GetArchiveData() []byte {
+	if x != nil {
+		return x.ArchiveData
+	}
+	return nil
+}
+
+func (x *UploadEpisodeImagesRequest) GetArchiveFilename() string {
+	if x != nil {
+		return x.ArchiveFilename
+	}
+	return ""
+}
+
+func (x *UploadEpisodeImagesRequest) GetArchiveContentType() string {
+	if x != nil {
+		return x.ArchiveContentType
+	}
+	return ""
 }
 
 type UploadEpisodeImagesResponse struct {
@@ -1386,11 +1418,15 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12!\n" +
 	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x12\n" +
 	"\x04data\x18\x03 \x01(\fR\x04data\x12#\n" +
-	"\rdisplay_order\x18\x04 \x01(\x05R\fdisplayOrder\"\xbf\x01\n" +
+	"\rdisplay_order\x18\x04 \x01(\x05R\fdisplayOrder\"\xe9\x02\n" +
 	"\x1aUploadEpisodeImagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
 	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12<\n" +
-	"\x06images\x18\x03 \x03(\v2$.publira.admin.v1.EpisodeImageUploadR\x06images\"U\n" +
+	"\x06images\x18\x03 \x03(\v2$.publira.admin.v1.EpisodeImageUploadR\x06images\x12(\n" +
+	"\x10series_public_id\x18\x04 \x01(\tR\x0eseriesPublicId\x12!\n" +
+	"\farchive_data\x18\x05 \x01(\fR\varchiveData\x12)\n" +
+	"\x10archive_filename\x18\x06 \x01(\tR\x0farchiveFilename\x120\n" +
+	"\x14archive_content_type\x18\a \x01(\tR\x12archiveContentType\"U\n" +
 	"\x1bUploadEpisodeImagesResponse\x126\n" +
 	"\x06images\x18\x01 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\"\x7f\n" +
 	"\x18ListEpisodeImagesRequest\x127\n" +

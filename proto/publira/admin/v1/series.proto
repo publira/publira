@@ -99,6 +99,10 @@ message UploadEpisodeImagesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string episode_public_id = 2;
   repeated EpisodeImageUpload images = 3;
+  string series_public_id = 4;
+  bytes archive_data = 5;
+  string archive_filename = 6;
+  string archive_content_type = 7;
 }
 
 message UploadEpisodeImagesResponse {

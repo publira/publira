@@ -31,6 +31,7 @@ const (
 	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\n"
 	updateSeriesPublicationQuery                         = "-- name: UpdateSeriesPublication :exec\n"
 	getEpisodeByPublicIDForTenantQuery                   = "-- name: GetEpisodeByPublicIDForTenant :one\n"
+	getEpisodeByPublicIDForTenantAndSeriesQuery          = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
 	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery       = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
 	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
 )
