@@ -33,7 +33,7 @@
   "hostRequirements": {
     "cpus": 4
   },
-  "forwardPorts": [3080, 8080],
+  "forwardPorts": [3080, 8080, 8025],
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
   },
