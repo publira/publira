@@ -40,6 +40,8 @@ const (
 	testCreateTenantUserRoleQuery          = "-- name: CreateTenantUserRole :one\n"
 	testDeleteTenantUserRolesByUserIDQuery = "-- name: DeleteTenantUserRolesByUserID :exec\n"
 	testListTenantUsersQuery               = "-- name: ListTenantUsers :many\n"
+	testGetPlatformSMTPConfigQuery         = "-- name: GetPlatformSMTPConfig :one\n"
+	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
 
 	// エンドユーザー
 	testListEndUsersQuery          = "-- name: ListEndUsers :many\n"
@@ -142,7 +144,7 @@ func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) 
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default()))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil))
 	t.Cleanup(server.Close)
 	return server, mock
 }

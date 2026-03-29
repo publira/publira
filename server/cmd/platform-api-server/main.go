@@ -16,6 +16,8 @@ import (
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/secretcrypto"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
 const (
@@ -39,6 +41,15 @@ func main() {
 	}
 	defer db.Close()
 
+	var encryptor *secretcrypto.Manager
+	if len(cfg.Encryption.Keys) > 0 {
+		encryptor, err = secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if err != nil {
+			logger.Error("failed to initialize secret encryption manager", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	addr := strings.TrimSpace(os.Getenv("PLATFORM_API_ADDR"))
 	if addr == "" {
 		addr = defaultPlatformServerURL
@@ -49,7 +60,7 @@ func main() {
 		grpcAddr = defaultPlatformGrpcServerURL
 	}
 
-	handler := platformapi.NewHandler(db, dbmodels.New(db), logger)
+	handler := platformapi.NewHandler(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient())
 
 	// Start Connect server on public port
 	logger.Info("starting platform api server (Connect)", "addr", addr)

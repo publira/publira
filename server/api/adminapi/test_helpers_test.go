@@ -23,6 +23,9 @@ const (
 	listAuditLogsByTenantQuery                           = "-- name: ListAuditLogsByTenant :many\n"
 	getUserByIDQuery                                     = "-- name: GetUserByID :one\n"
 	listTenantRolesByUserAndTenantQuery                  = "-- name: ListTenantUserRoles :many\n"
+	getPlatformSMTPConfigQuery                           = "-- name: GetPlatformSMTPConfig :one\n"
+	getTenantSMTPConfigByTenantIDQuery                   = "-- name: GetTenantSMTPConfigByTenantID :one\n"
+	upsertTenantSMTPConfigQuery                          = "-- name: UpsertTenantSMTPConfig :one\n"
 	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\n"
 	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\n"
 	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\n"
@@ -41,7 +44,7 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(NewHandler(dbmodels.New(db), &testStorageProvider{}, slog.Default()))
+	server := httptest.NewServer(NewHandler(dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil))
 	t.Cleanup(server.Close)
 	return server, mock
 }
@@ -101,6 +104,10 @@ func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID strin
 }
 
 func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, sessionToken string, now time.Time) {
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+}
+
+func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, sessionToken string, now time.Time, role string) {
 	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHashForTenantQuery)).
 		WithArgs(tenantID, auth.HashToken(sessionToken)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
@@ -113,7 +120,7 @@ func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID,
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantRolesByUserAndTenantQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("editor"))
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
 }
 
 func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {

@@ -18,6 +18,8 @@ import (
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/secretcrypto"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 	localstorage "github.com/publira/publira/server/internal/storage/local"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
@@ -42,6 +44,15 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
+
+	var encryptor *secretcrypto.Manager
+	if len(cfg.Encryption.Keys) > 0 {
+		encryptor, err = secretcrypto.NewManager(cfg.Encryption.Keys, cfg.Encryption.PrimaryKeyID)
+		if err != nil {
+			logger.Error("failed to initialize secret encryption manager", "error", err)
+			os.Exit(1)
+		}
+	}
 	storageProvider, err := newStorageProvider(context.Background(), cfg.Storage)
 	if err != nil {
 		logger.Error("failed to initialize storage provider", "error", err)
@@ -58,7 +69,7 @@ func main() {
 		grpcAddr = defaultAdminGrpcServerURL
 	}
 
-	handler := adminapi.NewHandler(dbmodels.New(db), storageProvider, logger)
+	handler := adminapi.NewHandler(dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient())
 
 	// Start Connect server on public port
 	logger.Info("starting admin api server (Connect)", "addr", addr)

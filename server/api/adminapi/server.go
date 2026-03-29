@@ -16,7 +16,9 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -26,9 +28,11 @@ type Querier interface {
 }
 
 type adminServer struct {
-	queries  Querier
-	storage  storage.Provider
-	recorder *auditlog.Recorder
+	queries   Querier
+	storage   storage.Provider
+	recorder  *auditlog.Recorder
+	encryptor emailsettings.SecretManager
+	tester    internalsmtp.Tester
 }
 
 func invalidSessionError() error {
@@ -105,11 +109,13 @@ func (s *adminServer) authenticateSession(
 
 // NewHandler は管理 API 専用の HTTP ハンドラを返します。
 // AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
-func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.Logger) http.Handler {
+func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
 	server := &adminServer{
-		queries:  queries,
-		storage:  storageProvider,
-		recorder: auditlog.New(queries, logger),
+		queries:   queries,
+		storage:   storageProvider,
+		recorder:  auditlog.New(queries, logger),
+		encryptor: encryptor,
+		tester:    tester,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -165,6 +171,15 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 		),
 	)
 	mux.Handle(userPath, userHandler)
+	emailPath, emailHandler := publiraadminv1connect.NewAdminEmailSettingsServiceHandler(
+		server,
+		connect.WithInterceptors(
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(emailPath, emailHandler)
 	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
 	mux.Handle(adminAuthPath, adminAuthHandler)
 	dashboardPath, dashboardHandler := publiraadminv1connect.NewAdminDashboardServiceHandler(
