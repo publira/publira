@@ -1,6 +1,7 @@
 package secretcrypto
 
 import (
+	"encoding/base64"
 	"errors"
 	"strings"
 	"testing"
@@ -88,7 +89,24 @@ func TestManagerDecryptTamperedCiphertext(t *testing.T) {
 		t.Fatalf("EncryptString: %v", err)
 	}
 
-	tampered := ciphertext[:len(ciphertext)-1] + "A"
+	parts := strings.Split(ciphertext, ":")
+	if len(parts) != 5 {
+		t.Fatalf("ciphertext envelope parts = %d, want 5", len(parts))
+	}
+
+	rawCiphertext, err := base64.RawURLEncoding.DecodeString(parts[4])
+	if err != nil {
+		t.Fatalf("DecodeString: %v", err)
+	}
+	if len(rawCiphertext) == 0 {
+		t.Fatal("raw ciphertext must not be empty")
+	}
+
+	// Flip a bit to ensure ciphertext authentication fails deterministically.
+	rawCiphertext[0] ^= 0x01
+	parts[4] = base64.RawURLEncoding.EncodeToString(rawCiphertext)
+	tampered := strings.Join(parts, ":")
+
 	_, err = mgr.DecryptString(tampered)
 	if err == nil {
 		t.Fatal("DecryptString error = nil, want decrypt failed")
