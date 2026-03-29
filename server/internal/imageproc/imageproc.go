@@ -1,0 +1,213 @@
+package imageproc
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"image"
+	_ "image/gif"
+	"image/jpeg"
+	_ "image/jpeg"
+	"image/png"
+	_ "image/png"
+	"math"
+	"net/http"
+	"strings"
+
+	xdraw "golang.org/x/image/draw"
+)
+
+const (
+	// MaxUploadBytes は入稿画像の上限サイズ (20 MiB) です。
+	MaxUploadBytes = 20 << 20
+	// MaxPixels は入稿画像の上限ピクセル数です。
+	MaxPixels = 40_000_000
+)
+
+// variantTargetWidths は生成する派生画像の幅 (px) のリストです。
+// 入稿画像の幅がターゲット幅以下の場合、その派生は生成しません。
+var variantTargetWidths = []int{480, 960, 1440}
+
+// Variant は派生画像の情報を保持します。
+type Variant struct {
+	// Label は "w480" のように幅を示すラベルです (object key 生成に利用します)。
+	Label string
+	// ContentType は "image/jpeg" や "image/png" などの MIME タイプです。
+	ContentType string
+	// Extension は ".jpg" や ".png" などのファイル拡張子です。
+	Extension string
+	// Width / Height はピクセル単位の画像サイズです。
+	Width  int
+	Height int
+	// Data はエンコード済みの画像バイト列です。
+	Data []byte
+}
+
+// BuildVariants は raw バイト列から複数サイズの派生画像を生成して返します。
+//
+// 入稿画像の幅が 480 / 960 / 1440 px を超える場合はそれぞれのサイズにリサイズした
+// 派生を生成し、元サイズも含めた全バリアントを返します。
+// 以下の場合は error を返します:
+//   - データが空 / 上限サイズ超過
+//   - content_type が image/* でない
+//   - デコード不能 / 寸法が 0 以下 / ピクセル数が上限超過
+func BuildVariants(raw []byte, contentType string) ([]Variant, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("image data is required")
+	}
+	if len(raw) > MaxUploadBytes {
+		return nil, fmt.Errorf("image size exceeds %d bytes", MaxUploadBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return nil, errors.New("content_type must be image/*")
+	}
+
+	cfg, sourceFormat, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return nil, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return nil, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return nil, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
+	}
+
+	outContentType, outExt := outputFormat(sourceFormat)
+	widths := selectWidths(cfg.Width)
+
+	needsDecode := outContentType != sourceFormatContentType(sourceFormat)
+	if !needsDecode {
+		for _, w := range widths {
+			if w != cfg.Width {
+				needsDecode = true
+				break
+			}
+		}
+	}
+
+	var srcImg image.Image
+	if needsDecode {
+		decoded, _, decodeErr := image.Decode(bytes.NewReader(raw))
+		if decodeErr != nil {
+			return nil, errors.New("image is not decodable")
+		}
+		srcImg = decoded
+	}
+
+	variants := make([]Variant, 0, len(widths))
+	for _, width := range widths {
+		height := scaledHeight(cfg.Width, cfg.Height, width)
+
+		if width == cfg.Width && outContentType == sourceFormatContentType(sourceFormat) {
+			variants = append(variants, Variant{
+				Label:       fmt.Sprintf("w%d", width),
+				ContentType: outContentType,
+				Extension:   outExt,
+				Width:       width,
+				Height:      height,
+				Data:        raw,
+			})
+			continue
+		}
+
+		encoded, encodeErr := encode(srcImg, width, height, outContentType)
+		if encodeErr != nil {
+			return nil, fmt.Errorf("encode variant w%d: %w", width, encodeErr)
+		}
+		variants = append(variants, Variant{
+			Label:       fmt.Sprintf("w%d", width),
+			ContentType: outContentType,
+			Extension:   outExt,
+			Width:       width,
+			Height:      height,
+			Data:        encoded,
+		})
+	}
+
+	return variants, nil
+}
+
+// outputFormat は入稿フォーマットから出力 MIME タイプとファイル拡張子を決定します。
+// PNG / GIF はロスレス保持のため PNG に、それ以外は JPEG に変換します。
+func outputFormat(sourceFormat string) (contentType, extension string) {
+	switch strings.ToLower(strings.TrimSpace(sourceFormat)) {
+	case "png", "gif":
+		return "image/png", ".png"
+	default:
+		return "image/jpeg", ".jpg"
+	}
+}
+
+// sourceFormatContentType は image.DecodeConfig が返すフォーマット名を MIME タイプに変換します。
+func sourceFormatContentType(sourceFormat string) string {
+	switch strings.ToLower(strings.TrimSpace(sourceFormat)) {
+	case "png":
+		return "image/png"
+	case "jpeg", "jpg":
+		return "image/jpeg"
+	case "gif":
+		return "image/gif"
+	default:
+		return ""
+	}
+}
+
+// selectWidths は sourceWidth に応じて生成する派生幅の一覧を返します。
+// sourceWidth 未満のターゲット幅のみ含め、末尾に sourceWidth 自体を追加します。
+func selectWidths(sourceWidth int) []int {
+	if sourceWidth <= 0 {
+		return []int{1}
+	}
+	selected := make([]int, 0, len(variantTargetWidths)+1)
+	seen := make(map[int]struct{}, len(variantTargetWidths)+1)
+	for _, w := range variantTargetWidths {
+		if sourceWidth > w {
+			if _, ok := seen[w]; !ok {
+				selected = append(selected, w)
+				seen[w] = struct{}{}
+			}
+		}
+	}
+	if _, ok := seen[sourceWidth]; !ok {
+		selected = append(selected, sourceWidth)
+	}
+	return selected
+}
+
+// scaledHeight はアスペクト比を保ちながら targetWidth に対する高さを計算します。
+func scaledHeight(sourceWidth, sourceHeight, targetWidth int) int {
+	if sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 {
+		return 1
+	}
+	h := int(math.Round(float64(sourceHeight) * float64(targetWidth) / float64(sourceWidth)))
+	if h < 1 {
+		return 1
+	}
+	return h
+}
+
+// encode は src を width×height にリサイズして指定フォーマットでエンコードします。
+// Catmull-Rom カーネルを使用して高品質な縮小を行います。
+func encode(src image.Image, width, height int, contentType string) ([]byte, error) {
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+	xdraw.CatmullRom.Scale(dst, dst.Bounds(), src, src.Bounds(), xdraw.Over, nil)
+
+	var buf bytes.Buffer
+	switch contentType {
+	case "image/png":
+		if err := png.Encode(&buf, dst); err != nil {
+			return nil, err
+		}
+	default:
+		if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 82}); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
+}

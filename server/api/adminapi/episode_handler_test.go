@@ -1,8 +1,12 @@
 package adminapi
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"regexp"
 	"testing"
 	"time"
@@ -305,6 +309,94 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 			assertExpectations(t, mock)
 		})
 	}
+}
+
+func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := "session-token"
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeImageDisplayOrderByEpisodeIDQuery)).
+		WithArgs(episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
+
+	variantSizes := []struct {
+		width  int32
+		height int32
+	}{
+		{width: 480, height: 270},
+		{width: 960, height: 540},
+		{width: 1440, height: 810},
+		{width: 1600, height: 900},
+	}
+
+	for i, variant := range variantSizes {
+		displayOrder := int32(i + 1)
+		mock.ExpectQuery("INSERT INTO episode_images").
+			WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", sqlmock.AnyArg(), displayOrder, variant.width, variant.height).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
+				AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj", "local://obj", "image/jpeg", int64(2048), displayOrder, variant.width, variant.height, now))
+		expectAdminAuditLogInsert(mock)
+	}
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		EpisodePublicId: "EPISODE001",
+		Images: []*publiraadminv1.EpisodeImageUpload{
+			{Filename: "landscape.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 1600, 900), DisplayOrder: 0},
+		},
+	})
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
+
+	resp, err := client.UploadEpisodeImages(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadEpisodeImages: %v", err)
+	}
+	if len(resp.Msg.Images) != 4 {
+		t.Fatalf("images count = %d, want 4", len(resp.Msg.Images))
+	}
+
+	got := make(map[int32]int32, len(resp.Msg.Images))
+	for _, img := range resp.Msg.Images {
+		got[img.Width] = img.Height
+	}
+	for _, variant := range variantSizes {
+		height, ok := got[variant.width]
+		if !ok {
+			t.Fatalf("missing variant width=%d", variant.width)
+		}
+		if height != variant.height {
+			t.Fatalf("variant width=%d height=%d, want %d", variant.width, height, variant.height)
+		}
+	}
+
+	assertExpectations(t, mock)
+}
+
+func generateJPEG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			img.Set(x, y, color.RGBA{R: uint8(x % 255), G: uint8(y % 255), B: 180, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
+		t.Fatalf("jpeg.Encode: %v", err)
+	}
+	return buf.Bytes()
 }
 
 func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
