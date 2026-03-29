@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"log/slog"
+	"net/http/httptest"
 	"regexp"
 	"testing"
 	"time"
@@ -9,7 +10,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
+	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
@@ -104,4 +107,107 @@ func assertOperatorHandlerExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet SQL expectations: %v", err)
 	}
+}
+
+// HTTP/Connect Integration Test Helpers
+
+// Constants for HTTP integration tests (Connect RPC via NewHandler)
+const (
+	integrationListTenantsQuery              = "-- name: ListTenants :many\n"
+	integrationCreateTenantQuery             = "-- name: CreateTenant :one\n"
+	integrationUpdateTenantStatusQuery       = "-- name: UpdateTenantStatus :one\n"
+	integrationListPlatformOperatorsQuery    = "-- name: ListPlatformOperators :many\n"
+	integrationCountAllTenantsQuery          = "-- name: CountAllTenants :one\n"
+	integrationCountActiveTenantsQuery       = "-- name: CountActiveTenants :one\n"
+	integrationCountSuspendedTenantsQuery    = "-- name: CountSuspendedTenants :one\n"
+	integrationCountPendingEndUsersQuery     = "-- name: CountPendingEndUsers :one\n"
+	integrationListRecentPlatformEventsQuery = "-- name: ListRecentPlatformEvents :many\n"
+	integrationListAdminAuditLogsQuery       = "-- name: ListPlatformAuditLogs :many\n"
+	integrationSessionToken                  = "platform-session-token"
+	integrationPlatformRole                  = "platform_operator"
+)
+
+func integrationTenantColumns() []string {
+	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain"}
+}
+
+func integrationOperatorColumns() []string {
+	return []string{"public_id", "email", "name", "role", "status", "created_at"}
+}
+
+func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default()))
+	t.Cleanup(server.Close)
+	return server, mock
+}
+
+func newIntegrationRequest[T any](msg T) *connect.Request[T] {
+	return connect.NewRequest(&msg)
+}
+
+func newAuthedIntegrationRequest[T any](msg T) *connect.Request[T] {
+	req := connect.NewRequest(&msg)
+	req.Header().Set("X-Publira-Session-Id", integrationSessionToken)
+	return req
+}
+
+func newAuthedCreateTenantIntegrationRequest(msg *publirasplatformv1.CreateTenantRequest) *connect.Request[publirasplatformv1.CreateTenantRequest] {
+	req := connect.NewRequest(msg)
+	req.Header().Set("X-Publira-Session-Id", integrationSessionToken)
+	return req
+}
+
+func validIntegrationCreateTenantRequest() *publirasplatformv1.CreateTenantRequest {
+	return &publirasplatformv1.CreateTenantRequest{
+		Name:               "New Tenant",
+		Domain:             "new.example.com",
+		InitialAdminEmails: []string{"owner@example.com"},
+	}
+}
+
+func expectIntegrationAuth(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
+	_ = tenantID
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSessionByTokenHashQuery)).
+		WithArgs(auth.HashToken(integrationSessionToken)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), userID, auth.HashToken(integrationSessionToken), now.Add(time.Hour), nil, now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "status", "created_at"}).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+
+	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(role))
+}
+
+func assertIntegrationExpectations(t *testing.T, mock sqlmock.Sqlmock) {
+	t.Helper()
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet SQL expectations: %v", err)
+	}
+}
+
+func expectIntegrationAuditLogInsert(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("INSERT INTO platform_audit_logs").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+func duplicatePublicIDError() error {
+	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_public_id_key"}
+}
+
+func duplicateDomainError() error {
+	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_domain_key"}
+}
+
+func duplicateAdminDomainError() error {
+	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_admin_domain_key"}
 }
