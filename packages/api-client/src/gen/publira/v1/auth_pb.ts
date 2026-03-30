@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/auth.proto.
  */
 export const file_publira_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiaAoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJImkKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEioKB3Nlc3Npb24YAiABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLlNlc3Npb24icwoRQ3JlYXRlVXNlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSEAoIcGFzc3dvcmQYBCABKAkiZgoSQ3JlYXRlVXNlclJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJYChZWZXJpZnlVc2VyRW1haWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCSIrChdWZXJpZnlVc2VyRW1haWxSZXNwb25zZRIQCgh2ZXJpZmllZBgBIAEoCCJbChREZWxldGVTZXNzaW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSIXChVEZWxldGVTZXNzaW9uUmVzcG9uc2UiUwoMR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIjUKDUdldE1lUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlcjKqAwoLQXV0aFNlcnZpY2USVgoNQ3JlYXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuQ3JlYXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkNyZWF0ZVNlc3Npb25SZXNwb25zZSIAEk0KCkNyZWF0ZVVzZXISHS5wdWJsaXJhLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0Gh4ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVzcG9uc2UiABJcCg9WZXJpZnlVc2VyRW1haWwSIi5wdWJsaXJhLnYxLlZlcmlmeVVzZXJFbWFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLlZlcmlmeVVzZXJFbWFpbFJlc3BvbnNlIgASVgoNRGVsZXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuRGVsZXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkRlbGV0ZVNlc3Npb25SZXNwb25zZSIAEj4KBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLkdldE1lUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiaAoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJImkKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEioKB3Nlc3Npb24YAiABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLlNlc3Npb24icwoRQ3JlYXRlVXNlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSEAoIcGFzc3dvcmQYBCABKAkiZgoSQ3JlYXRlVXNlclJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJYChZWZXJpZnlVc2VyRW1haWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCSIrChdWZXJpZnlVc2VyRW1haWxSZXNwb25zZRIQCgh2ZXJpZmllZBgBIAEoCCKkAQoZUmVxdWVzdEVtYWlsQ2hhbmdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCRIVCg1jdXJyZW50X2VtYWlsGAMgASgJEhEKCW5ld19lbWFpbBgEIAEoCRIYChBjdXJyZW50X3Bhc3N3b3JkGAUgASgJIi8KGlJlcXVlc3RFbWFpbENoYW5nZVJlc3BvbnNlEhEKCXJlcXVlc3RlZBgBIAEoCCJbChlDb25maXJtRW1haWxDaGFuZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCSJiChpDb25maXJtRW1haWxDaGFuZ2VSZXNwb25zZRIRCgljb25maXJtZWQYASABKAgSDwoHY2hhbmdlZBgCIAEoCBIgChhwZW5kaW5nX2NvbmZpcm1hdGlvbl9mb3IYAyABKAkiWwoURGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiFwoVRGVsZXRlU2Vzc2lvblJlc3BvbnNlIlMKDEdldE1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSI1Cg1HZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIy+AQKC0F1dGhTZXJ2aWNlElYKDUNyZWF0ZVNlc3Npb24SIC5wdWJsaXJhLnYxLkNyZWF0ZVNlc3Npb25SZXF1ZXN0GiEucHVibGlyYS52MS5DcmVhdGVTZXNzaW9uUmVzcG9uc2UiABJNCgpDcmVhdGVVc2VyEh0ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVxdWVzdBoeLnB1YmxpcmEudjEuQ3JlYXRlVXNlclJlc3BvbnNlIgASXAoPVmVyaWZ5VXNlckVtYWlsEiIucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXF1ZXN0GiMucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXNwb25zZSIAEmUKElJlcXVlc3RFbWFpbENoYW5nZRIlLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVxdWVzdBomLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2UiABJlChJDb25maXJtRW1haWxDaGFuZ2USJS5wdWJsaXJhLnYxLkNvbmZpcm1FbWFpbENoYW5nZVJlcXVlc3QaJi5wdWJsaXJhLnYxLkNvbmZpcm1FbWFpbENoYW5nZVJlc3BvbnNlIgASVgoNRGVsZXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuRGVsZXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkRlbGV0ZVNlc3Npb25SZXNwb25zZSIAEj4KBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLkdldE1lUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.CreateSessionRequest
@@ -157,6 +157,109 @@ export const VerifyUserEmailResponseSchema: GenMessage<VerifyUserEmailResponse> 
   messageDesc(file_publira_v1_auth, 5);
 
 /**
+ * @generated from message publira.v1.RequestEmailChangeRequest
+ */
+export type RequestEmailChangeRequest = Message<"publira.v1.RequestEmailChangeRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string session_id = 2;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: string current_email = 3;
+   */
+  currentEmail: string;
+
+  /**
+   * @generated from field: string new_email = 4;
+   */
+  newEmail: string;
+
+  /**
+   * @generated from field: string current_password = 5;
+   */
+  currentPassword: string;
+};
+
+/**
+ * Describes the message publira.v1.RequestEmailChangeRequest.
+ * Use `create(RequestEmailChangeRequestSchema)` to create a new message.
+ */
+export const RequestEmailChangeRequestSchema: GenMessage<RequestEmailChangeRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 6);
+
+/**
+ * @generated from message publira.v1.RequestEmailChangeResponse
+ */
+export type RequestEmailChangeResponse = Message<"publira.v1.RequestEmailChangeResponse"> & {
+  /**
+   * @generated from field: bool requested = 1;
+   */
+  requested: boolean;
+};
+
+/**
+ * Describes the message publira.v1.RequestEmailChangeResponse.
+ * Use `create(RequestEmailChangeResponseSchema)` to create a new message.
+ */
+export const RequestEmailChangeResponseSchema: GenMessage<RequestEmailChangeResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 7);
+
+/**
+ * @generated from message publira.v1.ConfirmEmailChangeRequest
+ */
+export type ConfirmEmailChangeRequest = Message<"publira.v1.ConfirmEmailChangeRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.v1.ConfirmEmailChangeRequest.
+ * Use `create(ConfirmEmailChangeRequestSchema)` to create a new message.
+ */
+export const ConfirmEmailChangeRequestSchema: GenMessage<ConfirmEmailChangeRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 8);
+
+/**
+ * @generated from message publira.v1.ConfirmEmailChangeResponse
+ */
+export type ConfirmEmailChangeResponse = Message<"publira.v1.ConfirmEmailChangeResponse"> & {
+  /**
+   * @generated from field: bool confirmed = 1;
+   */
+  confirmed: boolean;
+
+  /**
+   * @generated from field: bool changed = 2;
+   */
+  changed: boolean;
+
+  /**
+   * @generated from field: string pending_confirmation_for = 3;
+   */
+  pendingConfirmationFor: string;
+};
+
+/**
+ * Describes the message publira.v1.ConfirmEmailChangeResponse.
+ * Use `create(ConfirmEmailChangeResponseSchema)` to create a new message.
+ */
+export const ConfirmEmailChangeResponseSchema: GenMessage<ConfirmEmailChangeResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 9);
+
+/**
  * @generated from message publira.v1.DeleteSessionRequest
  */
 export type DeleteSessionRequest = Message<"publira.v1.DeleteSessionRequest"> & {
@@ -176,7 +279,7 @@ export type DeleteSessionRequest = Message<"publira.v1.DeleteSessionRequest"> & 
  * Use `create(DeleteSessionRequestSchema)` to create a new message.
  */
 export const DeleteSessionRequestSchema: GenMessage<DeleteSessionRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 6);
+  messageDesc(file_publira_v1_auth, 10);
 
 /**
  * @generated from message publira.v1.DeleteSessionResponse
@@ -189,7 +292,7 @@ export type DeleteSessionResponse = Message<"publira.v1.DeleteSessionResponse"> 
  * Use `create(DeleteSessionResponseSchema)` to create a new message.
  */
 export const DeleteSessionResponseSchema: GenMessage<DeleteSessionResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 7);
+  messageDesc(file_publira_v1_auth, 11);
 
 /**
  * @generated from message publira.v1.GetMeRequest
@@ -211,7 +314,7 @@ export type GetMeRequest = Message<"publira.v1.GetMeRequest"> & {
  * Use `create(GetMeRequestSchema)` to create a new message.
  */
 export const GetMeRequestSchema: GenMessage<GetMeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 8);
+  messageDesc(file_publira_v1_auth, 12);
 
 /**
  * @generated from message publira.v1.GetMeResponse
@@ -228,7 +331,7 @@ export type GetMeResponse = Message<"publira.v1.GetMeResponse"> & {
  * Use `create(GetMeResponseSchema)` to create a new message.
  */
 export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 9);
+  messageDesc(file_publira_v1_auth, 13);
 
 /**
  * @generated from service publira.v1.AuthService
@@ -257,6 +360,22 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof VerifyUserEmailRequestSchema;
     output: typeof VerifyUserEmailResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.AuthService.RequestEmailChange
+   */
+  requestEmailChange: {
+    methodKind: "unary";
+    input: typeof RequestEmailChangeRequestSchema;
+    output: typeof RequestEmailChangeResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.AuthService.ConfirmEmailChange
+   */
+  confirmEmailChange: {
+    methodKind: "unary";
+    input: typeof ConfirmEmailChangeRequestSchema;
+    output: typeof ConfirmEmailChangeResponseSchema;
   },
   /**
    * @generated from rpc publira.v1.AuthService.DeleteSession

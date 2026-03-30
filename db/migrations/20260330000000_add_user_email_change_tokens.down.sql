@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS idx_user_email_change_tokens_tenant_new_token;
+DROP INDEX IF EXISTS idx_user_email_change_tokens_tenant_current_token;
+DROP INDEX IF EXISTS idx_user_email_change_tokens_user_id;
+DROP TABLE IF EXISTS user_email_change_tokens;

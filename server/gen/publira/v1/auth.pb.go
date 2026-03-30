@@ -350,6 +350,238 @@ func (x *VerifyUserEmailResponse) GetVerified() bool {
 	return false
 }
 
+type RequestEmailChangeRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SessionId       string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	CurrentEmail    string                 `protobuf:"bytes,3,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
+	NewEmail        string                 `protobuf:"bytes,4,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
+	CurrentPassword string                 `protobuf:"bytes,5,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RequestEmailChangeRequest) Reset() {
+	*x = RequestEmailChangeRequest{}
+	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestEmailChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestEmailChangeRequest) ProtoMessage() {}
+
+func (x *RequestEmailChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestEmailChangeRequest.ProtoReflect.Descriptor instead.
+func (*RequestEmailChangeRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RequestEmailChangeRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *RequestEmailChangeRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *RequestEmailChangeRequest) GetCurrentEmail() string {
+	if x != nil {
+		return x.CurrentEmail
+	}
+	return ""
+}
+
+func (x *RequestEmailChangeRequest) GetNewEmail() string {
+	if x != nil {
+		return x.NewEmail
+	}
+	return ""
+}
+
+func (x *RequestEmailChangeRequest) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
+	}
+	return ""
+}
+
+type RequestEmailChangeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requested     bool                   `protobuf:"varint,1,opt,name=requested,proto3" json:"requested,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestEmailChangeResponse) Reset() {
+	*x = RequestEmailChangeResponse{}
+	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestEmailChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestEmailChangeResponse) ProtoMessage() {}
+
+func (x *RequestEmailChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestEmailChangeResponse.ProtoReflect.Descriptor instead.
+func (*RequestEmailChangeResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RequestEmailChangeResponse) GetRequested() bool {
+	if x != nil {
+		return x.Requested
+	}
+	return false
+}
+
+type ConfirmEmailChangeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConfirmEmailChangeRequest) Reset() {
+	*x = ConfirmEmailChangeRequest{}
+	mi := &file_publira_v1_auth_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConfirmEmailChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfirmEmailChangeRequest) ProtoMessage() {}
+
+func (x *ConfirmEmailChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConfirmEmailChangeRequest.ProtoReflect.Descriptor instead.
+func (*ConfirmEmailChangeRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ConfirmEmailChangeRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ConfirmEmailChangeRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type ConfirmEmailChangeResponse struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Confirmed              bool                   `protobuf:"varint,1,opt,name=confirmed,proto3" json:"confirmed,omitempty"`
+	Changed                bool                   `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	PendingConfirmationFor string                 `protobuf:"bytes,3,opt,name=pending_confirmation_for,json=pendingConfirmationFor,proto3" json:"pending_confirmation_for,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ConfirmEmailChangeResponse) Reset() {
+	*x = ConfirmEmailChangeResponse{}
+	mi := &file_publira_v1_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConfirmEmailChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfirmEmailChangeResponse) ProtoMessage() {}
+
+func (x *ConfirmEmailChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConfirmEmailChangeResponse.ProtoReflect.Descriptor instead.
+func (*ConfirmEmailChangeResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ConfirmEmailChangeResponse) GetConfirmed() bool {
+	if x != nil {
+		return x.Confirmed
+	}
+	return false
+}
+
+func (x *ConfirmEmailChangeResponse) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
+func (x *ConfirmEmailChangeResponse) GetPendingConfirmationFor() string {
+	if x != nil {
+		return x.PendingConfirmationFor
+	}
+	return ""
+}
+
 type DeleteSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -360,7 +592,7 @@ type DeleteSessionRequest struct {
 
 func (x *DeleteSessionRequest) Reset() {
 	*x = DeleteSessionRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_v1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +604,7 @@ func (x *DeleteSessionRequest) String() string {
 func (*DeleteSessionRequest) ProtoMessage() {}
 
 func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_v1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +617,7 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteSessionRequest) GetTenant() *v1.TenantContext {
@@ -410,7 +642,7 @@ type DeleteSessionResponse struct {
 
 func (x *DeleteSessionResponse) Reset() {
 	*x = DeleteSessionResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_v1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -422,7 +654,7 @@ func (x *DeleteSessionResponse) String() string {
 func (*DeleteSessionResponse) ProtoMessage() {}
 
 func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_v1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -435,7 +667,7 @@ func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSessionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{7}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 type GetMeRequest struct {
@@ -448,7 +680,7 @@ type GetMeRequest struct {
 
 func (x *GetMeRequest) Reset() {
 	*x = GetMeRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_v1_auth_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -460,7 +692,7 @@ func (x *GetMeRequest) String() string {
 func (*GetMeRequest) ProtoMessage() {}
 
 func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_v1_auth_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -473,7 +705,7 @@ func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
 func (*GetMeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetMeRequest) GetTenant() *v1.TenantContext {
@@ -499,7 +731,7 @@ type GetMeResponse struct {
 
 func (x *GetMeResponse) Reset() {
 	*x = GetMeResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_v1_auth_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -511,7 +743,7 @@ func (x *GetMeResponse) String() string {
 func (*GetMeResponse) ProtoMessage() {}
 
 func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_v1_auth_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -524,7 +756,7 @@ func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeResponse.ProtoReflect.Descriptor instead.
 func (*GetMeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetMeResponse) GetUser() *v1.User {
@@ -559,7 +791,23 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"5\n" +
 	"\x17VerifyUserEmailResponse\x12\x1a\n" +
-	"\bverified\x18\x01 \x01(\bR\bverified\"n\n" +
+	"\bverified\x18\x01 \x01(\bR\bverified\"\xe0\x01\n" +
+	"\x19RequestEmailChangeRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12#\n" +
+	"\rcurrent_email\x18\x03 \x01(\tR\fcurrentEmail\x12\x1b\n" +
+	"\tnew_email\x18\x04 \x01(\tR\bnewEmail\x12)\n" +
+	"\x10current_password\x18\x05 \x01(\tR\x0fcurrentPassword\":\n" +
+	"\x1aRequestEmailChangeResponse\x12\x1c\n" +
+	"\trequested\x18\x01 \x01(\bR\trequested\"j\n" +
+	"\x19ConfirmEmailChangeRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\x8e\x01\n" +
+	"\x1aConfirmEmailChangeResponse\x12\x1c\n" +
+	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\x12\x18\n" +
+	"\achanged\x18\x02 \x01(\bR\achanged\x128\n" +
+	"\x18pending_confirmation_for\x18\x03 \x01(\tR\x16pendingConfirmationFor\"n\n" +
 	"\x14DeleteSessionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
@@ -570,12 +818,14 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\";\n" +
 	"\rGetMeResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user2\xaa\x03\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user2\xf8\x04\n" +
 	"\vAuthService\x12V\n" +
 	"\rCreateSession\x12 .publira.v1.CreateSessionRequest\x1a!.publira.v1.CreateSessionResponse\"\x00\x12M\n" +
 	"\n" +
 	"CreateUser\x12\x1d.publira.v1.CreateUserRequest\x1a\x1e.publira.v1.CreateUserResponse\"\x00\x12\\\n" +
-	"\x0fVerifyUserEmail\x12\".publira.v1.VerifyUserEmailRequest\x1a#.publira.v1.VerifyUserEmailResponse\"\x00\x12V\n" +
+	"\x0fVerifyUserEmail\x12\".publira.v1.VerifyUserEmailRequest\x1a#.publira.v1.VerifyUserEmailResponse\"\x00\x12e\n" +
+	"\x12RequestEmailChange\x12%.publira.v1.RequestEmailChangeRequest\x1a&.publira.v1.RequestEmailChangeResponse\"\x00\x12e\n" +
+	"\x12ConfirmEmailChange\x12%.publira.v1.ConfirmEmailChangeRequest\x1a&.publira.v1.ConfirmEmailChangeResponse\"\x00\x12V\n" +
 	"\rDeleteSession\x12 .publira.v1.DeleteSessionRequest\x1a!.publira.v1.DeleteSessionResponse\"\x00\x12>\n" +
 	"\x05GetMe\x12\x18.publira.v1.GetMeRequest\x1a\x19.publira.v1.GetMeResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 
@@ -591,48 +841,58 @@ func file_publira_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_v1_auth_proto_rawDescData
 }
 
-var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_publira_v1_auth_proto_goTypes = []any{
-	(*CreateSessionRequest)(nil),    // 0: publira.v1.CreateSessionRequest
-	(*CreateSessionResponse)(nil),   // 1: publira.v1.CreateSessionResponse
-	(*CreateUserRequest)(nil),       // 2: publira.v1.CreateUserRequest
-	(*CreateUserResponse)(nil),      // 3: publira.v1.CreateUserResponse
-	(*VerifyUserEmailRequest)(nil),  // 4: publira.v1.VerifyUserEmailRequest
-	(*VerifyUserEmailResponse)(nil), // 5: publira.v1.VerifyUserEmailResponse
-	(*DeleteSessionRequest)(nil),    // 6: publira.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),   // 7: publira.v1.DeleteSessionResponse
-	(*GetMeRequest)(nil),            // 8: publira.v1.GetMeRequest
-	(*GetMeResponse)(nil),           // 9: publira.v1.GetMeResponse
-	(*v1.TenantContext)(nil),        // 10: publira.types.v1.TenantContext
-	(*v1.User)(nil),                 // 11: publira.types.v1.User
-	(*v1.Session)(nil),              // 12: publira.types.v1.Session
+	(*CreateSessionRequest)(nil),       // 0: publira.v1.CreateSessionRequest
+	(*CreateSessionResponse)(nil),      // 1: publira.v1.CreateSessionResponse
+	(*CreateUserRequest)(nil),          // 2: publira.v1.CreateUserRequest
+	(*CreateUserResponse)(nil),         // 3: publira.v1.CreateUserResponse
+	(*VerifyUserEmailRequest)(nil),     // 4: publira.v1.VerifyUserEmailRequest
+	(*VerifyUserEmailResponse)(nil),    // 5: publira.v1.VerifyUserEmailResponse
+	(*RequestEmailChangeRequest)(nil),  // 6: publira.v1.RequestEmailChangeRequest
+	(*RequestEmailChangeResponse)(nil), // 7: publira.v1.RequestEmailChangeResponse
+	(*ConfirmEmailChangeRequest)(nil),  // 8: publira.v1.ConfirmEmailChangeRequest
+	(*ConfirmEmailChangeResponse)(nil), // 9: publira.v1.ConfirmEmailChangeResponse
+	(*DeleteSessionRequest)(nil),       // 10: publira.v1.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),      // 11: publira.v1.DeleteSessionResponse
+	(*GetMeRequest)(nil),               // 12: publira.v1.GetMeRequest
+	(*GetMeResponse)(nil),              // 13: publira.v1.GetMeResponse
+	(*v1.TenantContext)(nil),           // 14: publira.types.v1.TenantContext
+	(*v1.User)(nil),                    // 15: publira.types.v1.User
+	(*v1.Session)(nil),                 // 16: publira.types.v1.Session
 }
 var file_publira_v1_auth_proto_depIdxs = []int32{
-	10, // 0: publira.v1.CreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 1: publira.v1.CreateSessionResponse.user:type_name -> publira.types.v1.User
-	12, // 2: publira.v1.CreateSessionResponse.session:type_name -> publira.types.v1.Session
-	10, // 3: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 4: publira.v1.CreateUserResponse.user:type_name -> publira.types.v1.User
-	12, // 5: publira.v1.CreateUserResponse.session:type_name -> publira.types.v1.Session
-	10, // 6: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 7: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 8: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 9: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
-	0,  // 10: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
-	2,  // 11: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
-	4,  // 12: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
-	6,  // 13: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
-	8,  // 14: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	1,  // 15: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
-	3,  // 16: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
-	5,  // 17: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
-	7,  // 18: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
-	9,  // 19: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	15, // [15:20] is the sub-list for method output_type
-	10, // [10:15] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	14, // 0: publira.v1.CreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 1: publira.v1.CreateSessionResponse.user:type_name -> publira.types.v1.User
+	16, // 2: publira.v1.CreateSessionResponse.session:type_name -> publira.types.v1.Session
+	14, // 3: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 4: publira.v1.CreateUserResponse.user:type_name -> publira.types.v1.User
+	16, // 5: publira.v1.CreateUserResponse.session:type_name -> publira.types.v1.Session
+	14, // 6: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 7: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 8: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 9: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 10: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 11: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
+	0,  // 12: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
+	2,  // 13: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
+	4,  // 14: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
+	6,  // 15: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
+	8,  // 16: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
+	10, // 17: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
+	12, // 18: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
+	1,  // 19: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
+	3,  // 20: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
+	5,  // 21: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
+	7,  // 22: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
+	9,  // 23: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
+	11, // 24: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
+	13, // 25: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
+	19, // [19:26] is the sub-list for method output_type
+	12, // [12:19] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_auth_proto_init() }
@@ -646,7 +906,7 @@ func file_publira_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_auth_proto_rawDesc), len(file_publira_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

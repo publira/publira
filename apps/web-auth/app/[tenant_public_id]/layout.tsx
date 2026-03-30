@@ -1,13 +1,9 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { guardPlaceholder } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { getTenantSiteInfo } from "../../lib/tenant";
-
-const buildAuthTitleBase = (siteLabel: string): string => siteLabel;
 
 const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
   const normalizedCopyrightText = copyrightText?.trim() ?? "";
@@ -25,51 +21,60 @@ const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
   );
 };
 
+const AuthFooterContent = async ({
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
+  const info = await getTenantSiteInfo(tenantPublicId);
+  return <AuthFooter copyrightText={info?.copyrightText} />;
+};
+
 const AuthShell = ({
   children,
-  copyrightText,
+  tenantPublicId,
 }: {
   children: ReactNode;
-  copyrightText?: string;
+  tenantPublicId: string;
 }) => (
   <div className="flex min-h-dvh flex-col bg-background text-foreground">
     <div className="flex-1">{children}</div>
-    <AuthFooter copyrightText={copyrightText} />
+    <Suspense fallback={null}>
+      <AuthFooterContent tenantPublicId={tenantPublicId} />
+    </Suspense>
   </div>
 );
 
-export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_public_id");
+const AuthShellFallback = ({ children }: { children: ReactNode }) => (
+  <div className="flex min-h-dvh flex-col bg-background text-foreground">
+    <div className="flex-1">{children}</div>
+  </div>
+);
 
-export const generateMetadata = async ({
+export const metadata: Metadata = {
+  title: {
+    default: "Publira",
+    template: "%s | Publira",
+  },
+};
+
+const TenantLayoutContent = async ({
+  children,
   params,
-}: {
-  params: Promise<{ tenant_public_id: string }>;
-}): Promise<Metadata> => {
+}: LayoutProps<"/[tenant_public_id]">) => {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
-  const info = await getTenantSiteInfo(tenant_public_id);
-  const siteLabel = info?.siteLabel ?? "サイト";
-  const base = buildAuthTitleBase(siteLabel);
-
-  return {
-    title: {
-      default: base,
-      template: `%s | ${base}`,
-    },
-  };
+  return <AuthShell tenantPublicId={tenant_public_id}>{children}</AuthShell>;
 };
 
-export default async function TenantLayout({
+export default function TenantLayout({
   children,
   params,
 }: LayoutProps<"/[tenant_public_id]">) {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const info = await getTenantSiteInfo(tenant_public_id);
-  const copyrightText = info?.copyrightText;
-
-  return <AuthShell copyrightText={copyrightText}>{children}</AuthShell>;
+  return (
+    <Suspense fallback={<AuthShellFallback>{children}</AuthShellFallback>}>
+      <TenantLayoutContent params={params}>{children}</TenantLayoutContent>
+    </Suspense>
+  );
 }

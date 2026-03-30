@@ -653,6 +653,61 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const createUserEmailChangeToken = `-- name: CreateUserEmailChangeToken :one
+INSERT INTO user_email_change_tokens (
+        id,
+        tenant_id,
+        user_id,
+        current_email,
+        new_email,
+        current_email_token_hash,
+        new_email_token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, tenant_id, user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at
+`
+
+type CreateUserEmailChangeTokenParams struct {
+	ID                    uuid.UUID `json:"id"`
+	TenantID              uuid.UUID `json:"tenant_id"`
+	UserID                uuid.UUID `json:"user_id"`
+	CurrentEmail          string    `json:"current_email"`
+	NewEmail              string    `json:"new_email"`
+	CurrentEmailTokenHash string    `json:"current_email_token_hash"`
+	NewEmailTokenHash     string    `json:"new_email_token_hash"`
+	ExpiresAt             time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error) {
+	row := q.db.QueryRowContext(ctx, createUserEmailChangeToken,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.CurrentEmail,
+		arg.NewEmail,
+		arg.CurrentEmailTokenHash,
+		arg.NewEmailTokenHash,
+		arg.ExpiresAt,
+	)
+	var i UserEmailChangeToken
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.CurrentEmail,
+		&i.NewEmail,
+		&i.CurrentEmailTokenHash,
+		&i.NewEmailTokenHash,
+		&i.CurrentEmailConfirmedAt,
+		&i.NewEmailConfirmedAt,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createUserEmailVerificationToken = `-- name: CreateUserEmailVerificationToken :one
 INSERT INTO user_email_verification_tokens (
         id,
@@ -733,6 +788,17 @@ WHERE id = $1
 // ユーザーを物理削除（外部キー制約により関連データも削除）
 func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteUserByID, id)
+	return err
+}
+
+const deleteUserEmailChangeTokensByUserID = `-- name: DeleteUserEmailChangeTokensByUserID :exec
+DELETE FROM user_email_change_tokens
+WHERE user_id = $1
+    AND completed_at IS NULL
+`
+
+func (q *Queries) DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteUserEmailChangeTokensByUserID, userID)
 	return err
 }
 
@@ -1599,6 +1665,63 @@ func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByP
 		&i.Status,
 		&i.TenantID,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserEmailChangeTokenByHashForTenant = `-- name: GetUserEmailChangeTokenByHashForTenant :one
+SELECT id, tenant_id, user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at,
+    CASE
+        WHEN current_email_token_hash = $2 THEN 'current_email'::text
+        ELSE 'new_email'::text
+    END AS matched_target
+FROM user_email_change_tokens
+WHERE tenant_id = $1
+    AND (
+        current_email_token_hash = $2
+        OR new_email_token_hash = $2
+    )
+LIMIT 1
+`
+
+type GetUserEmailChangeTokenByHashForTenantParams struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	CurrentEmailTokenHash string    `json:"current_email_token_hash"`
+}
+
+type GetUserEmailChangeTokenByHashForTenantRow struct {
+	ID                      uuid.UUID    `json:"id"`
+	TenantID                uuid.UUID    `json:"tenant_id"`
+	UserID                  uuid.UUID    `json:"user_id"`
+	CurrentEmail            string       `json:"current_email"`
+	NewEmail                string       `json:"new_email"`
+	CurrentEmailTokenHash   string       `json:"current_email_token_hash"`
+	NewEmailTokenHash       string       `json:"new_email_token_hash"`
+	CurrentEmailConfirmedAt sql.NullTime `json:"current_email_confirmed_at"`
+	NewEmailConfirmedAt     sql.NullTime `json:"new_email_confirmed_at"`
+	ExpiresAt               time.Time    `json:"expires_at"`
+	CompletedAt             sql.NullTime `json:"completed_at"`
+	CreatedAt               time.Time    `json:"created_at"`
+	MatchedTarget           string       `json:"matched_target"`
+}
+
+func (q *Queries) GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserEmailChangeTokenByHashForTenant, arg.TenantID, arg.CurrentEmailTokenHash)
+	var i GetUserEmailChangeTokenByHashForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.CurrentEmail,
+		&i.NewEmail,
+		&i.CurrentEmailTokenHash,
+		&i.NewEmailTokenHash,
+		&i.CurrentEmailConfirmedAt,
+		&i.NewEmailConfirmedAt,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.MatchedTarget,
 	)
 	return i, err
 }
@@ -2748,6 +2871,39 @@ func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID)
 	return err
 }
 
+const markUserEmailChangeCompleted = `-- name: MarkUserEmailChangeCompleted :exec
+UPDATE user_email_change_tokens
+SET completed_at = COALESCE(completed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markUserEmailChangeCompleted, id)
+	return err
+}
+
+const markUserEmailChangeCurrentEmailConfirmed = `-- name: MarkUserEmailChangeCurrentEmailConfirmed :exec
+UPDATE user_email_change_tokens
+SET current_email_confirmed_at = COALESCE(current_email_confirmed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markUserEmailChangeCurrentEmailConfirmed, id)
+	return err
+}
+
+const markUserEmailChangeNewEmailConfirmed = `-- name: MarkUserEmailChangeNewEmailConfirmed :exec
+UPDATE user_email_change_tokens
+SET new_email_confirmed_at = COALESCE(new_email_confirmed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markUserEmailChangeNewEmailConfirmed, id)
+	return err
+}
+
 const markUserEmailVerificationTokenUsed = `-- name: MarkUserEmailVerificationTokenUsed :exec
 UPDATE user_email_verification_tokens
 SET used_at = NOW()
@@ -3078,6 +3234,36 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+	)
+	return i, err
+}
+
+const updateUserEmailByID = `-- name: UpdateUserEmailByID :one
+UPDATE users
+SET email = $2
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+`
+
+type UpdateUserEmailByIDParams struct {
+	ID    uuid.UUID `json:"id"`
+	Email string    `json:"email"`
+}
+
+// ユーザーのメールアドレスをID指定で更新
+func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserEmailByID, arg.ID, arg.Email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }

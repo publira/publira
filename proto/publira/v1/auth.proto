@@ -38,6 +38,29 @@ message VerifyUserEmailResponse {
   bool verified = 1;
 }
 
+message RequestEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  string current_email = 3;
+  string new_email = 4;
+  string current_password = 5;
+}
+
+message RequestEmailChangeResponse {
+  bool requested = 1;
+}
+
+message ConfirmEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message ConfirmEmailChangeResponse {
+  bool confirmed = 1;
+  bool changed = 2;
+  string pending_confirmation_for = 3;
+}
+
 message DeleteSessionRequest {
   publira.types.v1.TenantContext tenant = 1;
   string session_id = 2;
@@ -58,6 +81,8 @@ service AuthService {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
+  rpc RequestEmailChange(RequestEmailChangeRequest) returns (RequestEmailChangeResponse) {}
+  rpc ConfirmEmailChange(ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse) {}
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
 }

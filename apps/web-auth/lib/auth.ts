@@ -84,6 +84,31 @@ export const verifyPublicEmail = async (
   }
 };
 
+export const confirmPublicEmailChange = async (
+  token: string,
+  tenantPublicId: string
+): Promise<{
+  changed: boolean;
+  confirmed: boolean;
+  pendingConfirmationFor: string;
+} | null> => {
+  try {
+    const response = await apiClient.auth.confirmEmailChange({
+      tenant: {
+        tenantPublicId,
+      },
+      token,
+    });
+    return {
+      changed: Boolean(response.changed),
+      confirmed: Boolean(response.confirmed),
+      pendingConfirmationFor: response.pendingConfirmationFor,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const logoutPublic = async (
   sessionId: string,
   tenantPublicId: string

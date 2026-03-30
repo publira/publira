@@ -1,29 +1,14 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { guardPlaceholder } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { getTenantSiteInfo, getTenantSiteLabel } from "../../../../lib/tenant";
+import { TenantDocumentTitle } from "../../../../components/tenant-document-title";
+import { getTenantSiteInfo } from "../../../../lib/tenant";
 
-export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_public_id");
-
-export const generateMetadata = async ({
-  params,
-}: {
-  params: Promise<{ tenant_public_id: string }>;
-}): Promise<Metadata> => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const siteLabel = await getTenantSiteLabel(tenant_public_id);
-
-  return {
-    title: `メール確認待ち | ${siteLabel}`,
-  };
+export const metadata: Metadata = {
+  title: "メール確認待ち",
 };
 
 const pickFirstQueryParam = (
@@ -42,6 +27,8 @@ const SignupPendingContent = async ({
   params: Promise<{ tenant_public_id: string }>;
   searchParams: Promise<{ email?: string | string[] }>;
 }) => {
+  await connection();
+
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
@@ -55,6 +42,7 @@ const SignupPendingContent = async ({
   return (
     <>
       <header className="text-center">
+        <TenantDocumentTitle pageTitle="メール確認待ち" siteLabel={siteLabel} />
         <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
         {siteTagline ? (
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
