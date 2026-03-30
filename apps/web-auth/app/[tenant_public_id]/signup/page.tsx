@@ -1,31 +1,15 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { guardPlaceholder } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { TenantDocumentTitle } from "../../../components/tenant-document-title";
 import { signupPublic } from "../../../lib/auth";
-import { getTenantSiteInfo, getTenantSiteLabel } from "../../../lib/tenant";
+import { getTenantSiteInfo } from "../../../lib/tenant";
 
-export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_public_id");
-
-export const generateMetadata = async ({
-  params,
-}: {
-  params: Promise<{ tenant_public_id: string }>;
-}): Promise<Metadata> => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const siteLabel = await getTenantSiteLabel(tenant_public_id);
-
-  return {
-    title: `新規登録 | ${siteLabel}`,
-  };
+export const metadata: Metadata = {
+  title: "新規登録",
 };
 
 const buildSignupErrorPath = (message: string): string => {
@@ -172,10 +156,10 @@ const SignupFormContent = async ({
   return <SignupForm error={error} tenantPublicId={tenantPublicId} />;
 };
 
-export default async function SignupPage({
+const SignupPageContent = async ({
   params,
   searchParams,
-}: PageProps<"/[tenant_public_id]/signup">) {
+}: PageProps<"/[tenant_public_id]/signup">) => {
   const { tenant_public_id } = await params;
 
   guardPlaceholder(tenant_public_id);
@@ -185,24 +169,45 @@ export default async function SignupPage({
   const siteTagline = info?.siteTagline?.trim();
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
-          {siteTagline ? (
-            <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
-          ) : null}
-        </div>
-
-        <Suspense
-          fallback={<SignupForm error="" tenantPublicId={tenant_public_id} />}
-        >
-          <SignupFormContent
-            searchParams={searchParams}
-            tenantPublicId={tenant_public_id}
-          />
-        </Suspense>
+    <div className="w-full max-w-sm">
+      <div className="mb-8 text-center">
+        <TenantDocumentTitle pageTitle="新規登録" siteLabel={siteLabel} />
+        <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
+        {siteTagline ? (
+          <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
+        ) : null}
       </div>
+
+      <Suspense
+        fallback={<SignupForm error="" tenantPublicId={tenant_public_id} />}
+      >
+        <SignupFormContent
+          searchParams={searchParams}
+          tenantPublicId={tenant_public_id}
+        />
+      </Suspense>
+    </div>
+  );
+};
+
+const SignupPageFallback = () => (
+  <div className="w-full max-w-sm">
+    <div className="mb-8 text-center">
+      <h1 className="font-serif text-2xl font-semibold">サイト</h1>
+    </div>
+    <SignupForm error="" tenantPublicId="" />
+  </div>
+);
+
+export default function SignupPage({
+  params,
+  searchParams,
+}: PageProps<"/[tenant_public_id]/signup">) {
+  return (
+    <main className="flex min-h-dvh items-center justify-center px-4">
+      <Suspense fallback={<SignupPageFallback />}>
+        <SignupPageContent params={params} searchParams={searchParams} />
+      </Suspense>
     </main>
   );
 }

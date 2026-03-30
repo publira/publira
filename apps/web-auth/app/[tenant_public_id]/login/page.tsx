@@ -2,41 +2,25 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { guardPlaceholder } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { TenantDocumentTitle } from "../../../components/tenant-document-title";
 import {
   PUBLIC_SESSION_COOKIE_NAME,
   loginPublic,
   sanitizeRedirectPath,
   sessionCookieOptions,
 } from "../../../lib/auth";
-import { getTenantSiteInfo, getTenantSiteLabel } from "../../../lib/tenant";
+import { getTenantSiteInfo } from "../../../lib/tenant";
 
-export const generateMetadata = async ({
-  params,
-}: {
-  params: Promise<{ tenant_public_id: string }>;
-}): Promise<Metadata> => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  const siteLabel = await getTenantSiteLabel(tenant_public_id);
-
-  return {
-    title: `ログイン | ${siteLabel}`,
-  };
+export const metadata: Metadata = {
+  title: "ログイン",
 };
-
-export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_public_id");
 
 const buildLoginErrorPath = (message: string, returnToPath: string): string => {
   const params = new URLSearchParams({
@@ -185,10 +169,10 @@ const LoginFormContent = async ({
   );
 };
 
-export default async function LoginPage({
+const LoginPageContent = async ({
   params,
   searchParams,
-}: PageProps<"/[tenant_public_id]/login">) {
+}: PageProps<"/[tenant_public_id]/login">) => {
   const { tenant_public_id } = await params;
   guardPlaceholder(tenant_public_id);
 
@@ -197,25 +181,46 @@ export default async function LoginPage({
   const siteTagline = info?.siteTagline?.trim();
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
-          {siteTagline ? (
-            <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
-          ) : null}
-        </div>
-        <Suspense
-          fallback={
-            <LoginForm returnToPath="/" tenantPublicId={tenant_public_id} />
-          }
-        >
-          <LoginFormContent
-            searchParams={searchParams}
-            tenantPublicId={tenant_public_id}
-          />
-        </Suspense>
+    <div className="w-full max-w-sm">
+      <div className="mb-8 text-center">
+        <TenantDocumentTitle pageTitle="ログイン" siteLabel={siteLabel} />
+        <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
+        {siteTagline ? (
+          <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
+        ) : null}
       </div>
+      <Suspense
+        fallback={
+          <LoginForm returnToPath="/" tenantPublicId={tenant_public_id} />
+        }
+      >
+        <LoginFormContent
+          searchParams={searchParams}
+          tenantPublicId={tenant_public_id}
+        />
+      </Suspense>
+    </div>
+  );
+};
+
+const LoginPageFallback = () => (
+  <div className="w-full max-w-sm">
+    <div className="mb-8 text-center">
+      <h1 className="font-serif text-2xl font-semibold">サイト</h1>
+    </div>
+    <LoginForm returnToPath="/" tenantPublicId="" />
+  </div>
+);
+
+export default function LoginPage({
+  params,
+  searchParams,
+}: PageProps<"/[tenant_public_id]/login">) {
+  return (
+    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+      <Suspense fallback={<LoginPageFallback />}>
+        <LoginPageContent params={params} searchParams={searchParams} />
+      </Suspense>
     </main>
   );
 }

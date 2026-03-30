@@ -236,6 +236,21 @@ type User struct {
 	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
 }
 
+type UserEmailChangeToken struct {
+	ID                      uuid.UUID    `json:"id"`
+	TenantID                uuid.UUID    `json:"tenant_id"`
+	UserID                  uuid.UUID    `json:"user_id"`
+	CurrentEmail            string       `json:"current_email"`
+	NewEmail                string       `json:"new_email"`
+	CurrentEmailTokenHash   string       `json:"current_email_token_hash"`
+	NewEmailTokenHash       string       `json:"new_email_token_hash"`
+	CurrentEmailConfirmedAt sql.NullTime `json:"current_email_confirmed_at"`
+	NewEmailConfirmedAt     sql.NullTime `json:"new_email_confirmed_at"`
+	ExpiresAt               time.Time    `json:"expires_at"`
+	CompletedAt             sql.NullTime `json:"completed_at"`
+	CreatedAt               time.Time    `json:"created_at"`
+}
+
 type UserEmailVerificationToken struct {
 	ID        uuid.UUID    `json:"id"`
 	TenantID  uuid.UUID    `json:"tenant_id"`

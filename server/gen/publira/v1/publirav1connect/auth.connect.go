@@ -41,6 +41,12 @@ const (
 	// AuthServiceVerifyUserEmailProcedure is the fully-qualified name of the AuthService's
 	// VerifyUserEmail RPC.
 	AuthServiceVerifyUserEmailProcedure = "/publira.v1.AuthService/VerifyUserEmail"
+	// AuthServiceRequestEmailChangeProcedure is the fully-qualified name of the AuthService's
+	// RequestEmailChange RPC.
+	AuthServiceRequestEmailChangeProcedure = "/publira.v1.AuthService/RequestEmailChange"
+	// AuthServiceConfirmEmailChangeProcedure is the fully-qualified name of the AuthService's
+	// ConfirmEmailChange RPC.
+	AuthServiceConfirmEmailChangeProcedure = "/publira.v1.AuthService/ConfirmEmailChange"
 	// AuthServiceDeleteSessionProcedure is the fully-qualified name of the AuthService's DeleteSession
 	// RPC.
 	AuthServiceDeleteSessionProcedure = "/publira.v1.AuthService/DeleteSession"
@@ -53,6 +59,8 @@ type AuthServiceClient interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
@@ -86,6 +94,18 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
 			connect.WithClientOptions(opts...),
 		),
+		requestEmailChange: connect.NewClient[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse](
+			httpClient,
+			baseURL+AuthServiceRequestEmailChangeProcedure,
+			connect.WithSchema(authServiceMethods.ByName("RequestEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmEmailChange: connect.NewClient[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse](
+			httpClient,
+			baseURL+AuthServiceConfirmEmailChangeProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ConfirmEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteSession: connect.NewClient[v1.DeleteSessionRequest, v1.DeleteSessionResponse](
 			httpClient,
 			baseURL+AuthServiceDeleteSessionProcedure,
@@ -103,11 +123,13 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	createSession   *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	createUser      *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
-	verifyUserEmail *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
-	deleteSession   *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	getMe           *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	createSession      *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createUser         *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	verifyUserEmail    *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
+	requestEmailChange *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
+	confirmEmailChange *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
+	deleteSession      *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	getMe              *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 }
 
 // CreateSession calls publira.v1.AuthService.CreateSession.
@@ -125,6 +147,16 @@ func (c *authServiceClient) VerifyUserEmail(ctx context.Context, req *connect.Re
 	return c.verifyUserEmail.CallUnary(ctx, req)
 }
 
+// RequestEmailChange calls publira.v1.AuthService.RequestEmailChange.
+func (c *authServiceClient) RequestEmailChange(ctx context.Context, req *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error) {
+	return c.requestEmailChange.CallUnary(ctx, req)
+}
+
+// ConfirmEmailChange calls publira.v1.AuthService.ConfirmEmailChange.
+func (c *authServiceClient) ConfirmEmailChange(ctx context.Context, req *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error) {
+	return c.confirmEmailChange.CallUnary(ctx, req)
+}
+
 // DeleteSession calls publira.v1.AuthService.DeleteSession.
 func (c *authServiceClient) DeleteSession(ctx context.Context, req *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {
 	return c.deleteSession.CallUnary(ctx, req)
@@ -140,6 +172,8 @@ type AuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
@@ -169,6 +203,18 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceRequestEmailChangeHandler := connect.NewUnaryHandler(
+		AuthServiceRequestEmailChangeProcedure,
+		svc.RequestEmailChange,
+		connect.WithSchema(authServiceMethods.ByName("RequestEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceConfirmEmailChangeHandler := connect.NewUnaryHandler(
+		AuthServiceConfirmEmailChangeProcedure,
+		svc.ConfirmEmailChange,
+		connect.WithSchema(authServiceMethods.ByName("ConfirmEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceDeleteSessionHandler := connect.NewUnaryHandler(
 		AuthServiceDeleteSessionProcedure,
 		svc.DeleteSession,
@@ -189,6 +235,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceCreateUserHandler.ServeHTTP(w, r)
 		case AuthServiceVerifyUserEmailProcedure:
 			authServiceVerifyUserEmailHandler.ServeHTTP(w, r)
+		case AuthServiceRequestEmailChangeProcedure:
+			authServiceRequestEmailChangeHandler.ServeHTTP(w, r)
+		case AuthServiceConfirmEmailChangeProcedure:
+			authServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
 		case AuthServiceDeleteSessionProcedure:
 			authServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
@@ -212,6 +262,14 @@ func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *connect.Requ
 
 func (UnimplementedAuthServiceHandler) VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.VerifyUserEmail is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.RequestEmailChange is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ConfirmEmailChange is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {

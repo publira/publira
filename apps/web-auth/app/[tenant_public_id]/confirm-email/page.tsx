@@ -5,11 +5,11 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "../../../components/tenant-document-title";
-import { verifyPublicEmail } from "../../../lib/auth";
+import { confirmPublicEmailChange } from "../../../lib/auth";
 import { getTenantSiteInfo } from "../../../lib/tenant";
 
 export const metadata: Metadata = {
-  title: "メール確認",
+  title: "メール変更確認",
 };
 
 const pickFirstQueryParam = (
@@ -21,7 +21,7 @@ const pickFirstQueryParam = (
   return value;
 };
 
-const VerificationResult = async ({
+const ConfirmationResult = async ({
   tenantPublicId,
   token,
 }: {
@@ -36,20 +36,30 @@ const VerificationResult = async ({
         </section>
         <div className="text-center text-sm">
           <Link
-            href="/signup"
+            href="/settings"
             className="font-medium text-primary hover:underline"
           >
-            新規登録へ戻る
+            設定へ戻る
           </Link>
         </div>
       </>
     );
   }
 
-  const verified = await verifyPublicEmail(token, tenantPublicId);
-  const message = verified
-    ? "メールアドレスの確認が完了しました。ログインしてください。"
-    : "確認に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
+  const result = await confirmPublicEmailChange(token, tenantPublicId);
+  let message =
+    "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
+
+  if (result) {
+    if (result.changed) {
+      message = "メールアドレスの変更が完了しました。";
+    } else if (result.confirmed) {
+      message =
+        result.pendingConfirmationFor === "current_email"
+          ? "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。"
+          : "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。";
+    }
+  }
 
   return (
     <>
@@ -58,17 +68,17 @@ const VerificationResult = async ({
       </section>
       <div className="text-center text-sm">
         <Link
-          href={verified ? "/login" : "/signup"}
+          href={result?.changed ? "/my" : "/settings"}
           className="font-medium text-primary hover:underline"
         >
-          {verified ? "ログイン画面へ" : "新規登録へ戻る"}
+          {result?.changed ? "マイページへ" : "設定へ戻る"}
         </Link>
       </div>
     </>
   );
 };
 
-const VerificationFallback = () => (
+const ConfirmationFallback = () => (
   <>
     <header className="text-center">
       <h1 className="font-serif text-2xl font-semibold">サイト</h1>
@@ -77,14 +87,17 @@ const VerificationFallback = () => (
       <p>確認処理を実行しています...</p>
     </section>
     <div className="text-center text-sm">
-      <Link href="/signup" className="font-medium text-primary hover:underline">
-        新規登録へ戻る
+      <Link
+        href="/settings"
+        className="font-medium text-primary hover:underline"
+      >
+        設定へ戻る
       </Link>
     </div>
   </>
 );
 
-const VerifyPageContent = async ({
+const ConfirmEmailPageContent = async ({
   params,
   searchParams,
 }: {
@@ -106,19 +119,19 @@ const VerifyPageContent = async ({
   return (
     <>
       <header className="text-center">
-        <TenantDocumentTitle pageTitle="メール確認" siteLabel={siteLabel} />
+        <TenantDocumentTitle pageTitle="メール変更確認" siteLabel={siteLabel} />
         <h1 className="font-serif text-2xl font-semibold">{siteLabel}</h1>
         {siteTagline ? (
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
         ) : null}
       </header>
 
-      <VerificationResult tenantPublicId={tenant_public_id} token={token} />
+      <ConfirmationResult tenantPublicId={tenant_public_id} token={token} />
     </>
   );
 };
 
-export default function VerifyPage({
+export default function ConfirmEmailPage({
   params,
   searchParams,
 }: {
@@ -128,8 +141,11 @@ export default function VerifyPage({
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <Suspense fallback={<VerificationFallback />}>
-          <VerifyPageContent params={params} searchParams={searchParams} />
+        <Suspense fallback={<ConfirmationFallback />}>
+          <ConfirmEmailPageContent
+            params={params}
+            searchParams={searchParams}
+          />
         </Suspense>
       </div>
     </main>

@@ -52,7 +52,7 @@ services:
       - "traefik.http.services.web-member.loadbalancer.server.port=3002"
 
       # web-auth (port 3003)
-      - "traefik.http.routers.web-auth.rule=PathRegexp(`^/(login|logout|verify)$|^/signup(/.*)?$|^/web-auth-assets(/.*)?$`)"
+      - "traefik.http.routers.web-auth.rule=PathRegexp(`^/(login|logout|verify|confirm-email)$|^/signup(/.*)?$|^/web-auth-assets(/.*)?$`)"
       - "traefik.http.routers.web-auth.entrypoints=web"
       - "traefik.http.routers.web-auth.priority=10"
       - "traefik.http.routers.web-auth.service=web-auth"
