@@ -617,7 +617,7 @@ func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUser
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
 `
 
 type CreateUserParams struct {
@@ -648,6 +648,48 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.Status,
 		&i.TenantID,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const createUserEmailVerificationToken = `-- name: CreateUserEmailVerificationToken :one
+INSERT INTO user_email_verification_tokens (
+        id,
+        tenant_id,
+        user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, user_id, token_hash, expires_at, used_at, created_at
+`
+
+type CreateUserEmailVerificationTokenParams struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error) {
+	row := q.db.QueryRowContext(ctx, createUserEmailVerificationToken,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i UserEmailVerificationToken
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -1425,7 +1467,7 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UU
 }
 
 const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
 FROM users
 WHERE tenant_id = $1
     AND email = $2
@@ -1449,12 +1491,13 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 		&i.CreatedAt,
 		&i.Status,
 		&i.TenantID,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
 FROM users
 WHERE id = $1
 `
@@ -1471,6 +1514,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 		&i.Status,
 		&i.TenantID,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
@@ -1554,6 +1598,34 @@ func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByP
 		&i.Email,
 		&i.Status,
 		&i.TenantID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserEmailVerificationTokenByHashForTenant = `-- name: GetUserEmailVerificationTokenByHashForTenant :one
+SELECT id, tenant_id, user_id, token_hash, expires_at, used_at, created_at
+FROM user_email_verification_tokens
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1
+`
+
+type GetUserEmailVerificationTokenByHashForTenantParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	TokenHash string    `json:"token_hash"`
+}
+
+func (q *Queries) GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error) {
+	row := q.db.QueryRowContext(ctx, getUserEmailVerificationTokenByHashForTenant, arg.TenantID, arg.TokenHash)
+	var i UserEmailVerificationToken
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.UsedAt,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -2676,6 +2748,18 @@ func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID)
 	return err
 }
 
+const markUserEmailVerificationTokenUsed = `-- name: MarkUserEmailVerificationTokenUsed :exec
+UPDATE user_email_verification_tokens
+SET used_at = NOW()
+WHERE id = $1
+    AND used_at IS NULL
+`
+
+func (q *Queries) MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markUserEmailVerificationTokenUsed, id)
+	return err
+}
+
 const revokePlatformSession = `-- name: RevokePlatformSession :exec
 UPDATE platform_sessions
 SET revoked_at = NOW()
@@ -2998,11 +3082,41 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 	return i, err
 }
 
+const updateUserEmailVerifiedAtByID = `-- name: UpdateUserEmailVerifiedAtByID :one
+UPDATE users
+SET email_verified_at = $2
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+`
+
+type UpdateUserEmailVerifiedAtByIDParams struct {
+	ID              uuid.UUID    `json:"id"`
+	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
+}
+
+// ユーザーのメール確認日時を更新
+func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserEmailVerifiedAtByID, arg.ID, arg.EmailVerifiedAt)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
 const updateUserStatus = `-- name: UpdateUserStatus :one
 UPDATE users
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
 `
 
 type UpdateUserStatusParams struct {
@@ -3023,6 +3137,37 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 		&i.CreatedAt,
 		&i.Status,
 		&i.TenantID,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const updateUserStatusByID = `-- name: UpdateUserStatusByID :one
+UPDATE users
+SET status = $2
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+`
+
+type UpdateUserStatusByIDParams struct {
+	ID     uuid.UUID `json:"id"`
+	Status string    `json:"status"`
+}
+
+// ユーザーのステータスをID指定で更新
+func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserStatusByID, arg.ID, arg.Status)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }

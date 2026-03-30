@@ -39,6 +39,7 @@ type Querier interface {
 	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
 	CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	// テナントユーザーのロールをすべて削除する
@@ -77,6 +78,7 @@ type Querier interface {
 	GetUserByPublicID(ctx context.Context, publicID string) (GetUserByPublicIDRow, error)
 	// テナントスコープで public_id からユーザーを取得
 	GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error)
+	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
 	// テナント操作監査ログを記録する
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// 管理操作監査ログを記録する
@@ -111,6 +113,7 @@ type Querier interface {
 	// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
+	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
 	RevokePlatformSession(ctx context.Context, id uuid.UUID) error
 	RevokeSession(ctx context.Context, id uuid.UUID) error
 	// プラットフォームユーザーの全セッションを失効させる
@@ -131,8 +134,12 @@ type Querier interface {
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	// テナントの状態 (active / suspended) を更新する
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
+	// ユーザーのメール確認日時を更新
+	UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error)
 	// ユーザーのステータスを更新
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
+	// ユーザーのステータスをID指定で更新
+	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)

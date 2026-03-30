@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/auth.proto.
  */
 export const file_publira_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiaAoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJImkKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEioKB3Nlc3Npb24YAiABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLlNlc3Npb24icwoRQ3JlYXRlVXNlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSEAoIcGFzc3dvcmQYBCABKAkiZgoSQ3JlYXRlVXNlclJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJbChREZWxldGVTZXNzaW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSIXChVEZWxldGVTZXNzaW9uUmVzcG9uc2UiUwoMR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIjUKDUdldE1lUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlcjLMAgoLQXV0aFNlcnZpY2USVgoNQ3JlYXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuQ3JlYXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkNyZWF0ZVNlc3Npb25SZXNwb25zZSIAEk0KCkNyZWF0ZVVzZXISHS5wdWJsaXJhLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0Gh4ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVzcG9uc2UiABJWCg1EZWxldGVTZXNzaW9uEiAucHVibGlyYS52MS5EZWxldGVTZXNzaW9uUmVxdWVzdBohLnB1YmxpcmEudjEuRGVsZXRlU2Vzc2lvblJlc3BvbnNlIgASPgoFR2V0TWUSGC5wdWJsaXJhLnYxLkdldE1lUmVxdWVzdBoZLnB1YmxpcmEudjEuR2V0TWVSZXNwb25zZSIAQjxaOmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChVwdWJsaXJhL3YxL2F1dGgucHJvdG8SCnB1YmxpcmEudjEiaAoUQ3JlYXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWVtYWlsGAIgASgJEhAKCHBhc3N3b3JkGAMgASgJImkKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyEioKB3Nlc3Npb24YAiABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLlNlc3Npb24icwoRQ3JlYXRlVXNlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSEAoIcGFzc3dvcmQYBCABKAkiZgoSQ3JlYXRlVXNlclJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJYChZWZXJpZnlVc2VyRW1haWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCSIrChdWZXJpZnlVc2VyRW1haWxSZXNwb25zZRIQCgh2ZXJpZmllZBgBIAEoCCJbChREZWxldGVTZXNzaW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSIXChVEZWxldGVTZXNzaW9uUmVzcG9uc2UiUwoMR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIjUKDUdldE1lUmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnB1YmxpcmEudHlwZXMudjEuVXNlcjKqAwoLQXV0aFNlcnZpY2USVgoNQ3JlYXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuQ3JlYXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkNyZWF0ZVNlc3Npb25SZXNwb25zZSIAEk0KCkNyZWF0ZVVzZXISHS5wdWJsaXJhLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0Gh4ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVzcG9uc2UiABJcCg9WZXJpZnlVc2VyRW1haWwSIi5wdWJsaXJhLnYxLlZlcmlmeVVzZXJFbWFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLlZlcmlmeVVzZXJFbWFpbFJlc3BvbnNlIgASVgoNRGVsZXRlU2Vzc2lvbhIgLnB1YmxpcmEudjEuRGVsZXRlU2Vzc2lvblJlcXVlc3QaIS5wdWJsaXJhLnYxLkRlbGV0ZVNlc3Npb25SZXNwb25zZSIAEj4KBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLkdldE1lUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.CreateSessionRequest
@@ -118,6 +118,45 @@ export const CreateUserResponseSchema: GenMessage<CreateUserResponse> = /*@__PUR
   messageDesc(file_publira_v1_auth, 3);
 
 /**
+ * @generated from message publira.v1.VerifyUserEmailRequest
+ */
+export type VerifyUserEmailRequest = Message<"publira.v1.VerifyUserEmailRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.v1.VerifyUserEmailRequest.
+ * Use `create(VerifyUserEmailRequestSchema)` to create a new message.
+ */
+export const VerifyUserEmailRequestSchema: GenMessage<VerifyUserEmailRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 4);
+
+/**
+ * @generated from message publira.v1.VerifyUserEmailResponse
+ */
+export type VerifyUserEmailResponse = Message<"publira.v1.VerifyUserEmailResponse"> & {
+  /**
+   * @generated from field: bool verified = 1;
+   */
+  verified: boolean;
+};
+
+/**
+ * Describes the message publira.v1.VerifyUserEmailResponse.
+ * Use `create(VerifyUserEmailResponseSchema)` to create a new message.
+ */
+export const VerifyUserEmailResponseSchema: GenMessage<VerifyUserEmailResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_auth, 5);
+
+/**
  * @generated from message publira.v1.DeleteSessionRequest
  */
 export type DeleteSessionRequest = Message<"publira.v1.DeleteSessionRequest"> & {
@@ -137,7 +176,7 @@ export type DeleteSessionRequest = Message<"publira.v1.DeleteSessionRequest"> & 
  * Use `create(DeleteSessionRequestSchema)` to create a new message.
  */
 export const DeleteSessionRequestSchema: GenMessage<DeleteSessionRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 4);
+  messageDesc(file_publira_v1_auth, 6);
 
 /**
  * @generated from message publira.v1.DeleteSessionResponse
@@ -150,7 +189,7 @@ export type DeleteSessionResponse = Message<"publira.v1.DeleteSessionResponse"> 
  * Use `create(DeleteSessionResponseSchema)` to create a new message.
  */
 export const DeleteSessionResponseSchema: GenMessage<DeleteSessionResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 5);
+  messageDesc(file_publira_v1_auth, 7);
 
 /**
  * @generated from message publira.v1.GetMeRequest
@@ -172,7 +211,7 @@ export type GetMeRequest = Message<"publira.v1.GetMeRequest"> & {
  * Use `create(GetMeRequestSchema)` to create a new message.
  */
 export const GetMeRequestSchema: GenMessage<GetMeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 6);
+  messageDesc(file_publira_v1_auth, 8);
 
 /**
  * @generated from message publira.v1.GetMeResponse
@@ -189,7 +228,7 @@ export type GetMeResponse = Message<"publira.v1.GetMeResponse"> & {
  * Use `create(GetMeResponseSchema)` to create a new message.
  */
 export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_auth, 7);
+  messageDesc(file_publira_v1_auth, 9);
 
 /**
  * @generated from service publira.v1.AuthService
@@ -210,6 +249,14 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof CreateUserRequestSchema;
     output: typeof CreateUserResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.AuthService.VerifyUserEmail
+   */
+  verifyUserEmail: {
+    methodKind: "unary";
+    input: typeof VerifyUserEmailRequestSchema;
+    output: typeof VerifyUserEmailResponseSchema;
   },
   /**
    * @generated from rpc publira.v1.AuthService.DeleteSession

@@ -225,12 +225,23 @@ type TenantUserRole struct {
 }
 
 type User struct {
-	ID           uuid.UUID     `json:"id"`
-	PublicID     string        `json:"public_id"`
-	Email        string        `json:"email"`
-	PasswordHash string        `json:"password_hash"`
-	Name         string        `json:"name"`
-	CreatedAt    time.Time     `json:"created_at"`
-	Status       string        `json:"status"`
-	TenantID     uuid.NullUUID `json:"tenant_id"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Email           string        `json:"email"`
+	PasswordHash    string        `json:"password_hash"`
+	Name            string        `json:"name"`
+	CreatedAt       time.Time     `json:"created_at"`
+	Status          string        `json:"status"`
+	TenantID        uuid.NullUUID `json:"tenant_id"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+}
+
+type UserEmailVerificationToken struct {
+	ID        uuid.UUID    `json:"id"`
+	TenantID  uuid.UUID    `json:"tenant_id"`
+	UserID    uuid.UUID    `json:"user_id"`
+	TokenHash string       `json:"token_hash"`
+	ExpiresAt time.Time    `json:"expires_at"`
+	UsedAt    sql.NullTime `json:"used_at"`
+	CreatedAt time.Time    `json:"created_at"`
 }

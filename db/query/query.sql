@@ -76,6 +76,30 @@ INSERT INTO sessions (
     )
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
+
+-- name: CreateUserEmailVerificationToken :one
+INSERT INTO user_email_verification_tokens (
+        id,
+        tenant_id,
+        user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetUserEmailVerificationTokenByHashForTenant :one
+SELECT *
+FROM user_email_verification_tokens
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1;
+
+-- name: MarkUserEmailVerificationTokenUsed :exec
+UPDATE user_email_verification_tokens
+SET used_at = NOW()
+WHERE id = $1
+    AND used_at IS NULL;
 -- name: GetSessionByTokenHashForTenant :one
 SELECT *
 FROM sessions
@@ -897,6 +921,20 @@ LIMIT 1;
 UPDATE users
 SET status = $2
 WHERE public_id = $1
+RETURNING *;
+
+-- name: UpdateUserStatusByID :one
+-- ユーザーのステータスをID指定で更新
+UPDATE users
+SET status = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateUserEmailVerifiedAtByID :one
+-- ユーザーのメール確認日時を更新
+UPDATE users
+SET email_verified_at = $2
+WHERE id = $1
 RETURNING *;
 
 -- name: TerminateUserSessions :exec

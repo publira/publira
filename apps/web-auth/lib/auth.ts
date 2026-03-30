@@ -9,6 +9,12 @@ export interface PublicCurrentUser {
   publicId: string;
 }
 
+export interface SignupPublicResult {
+  expiresAt?: Date;
+  pendingVerification: boolean;
+  sessionId?: string;
+}
+
 export const loginPublic = async (
   email: string,
   password: string,
@@ -37,7 +43,7 @@ export const signupPublic = async (
   email: string,
   password: string,
   tenantPublicId: string
-): Promise<{ expiresAt: Date; sessionId: string } | null> => {
+): Promise<SignupPublicResult | null> => {
   try {
     const response = await apiClient.auth.createUser({
       email,
@@ -49,11 +55,32 @@ export const signupPublic = async (
     });
     const { sessionId, expiresAt } = response.session ?? {};
     if (!sessionId || !expiresAt) {
-      return null;
+      return { pendingVerification: true };
     }
-    return { expiresAt: new Date(expiresAt), sessionId };
+    return {
+      expiresAt: new Date(expiresAt),
+      pendingVerification: false,
+      sessionId,
+    };
   } catch {
     return null;
+  }
+};
+
+export const verifyPublicEmail = async (
+  token: string,
+  tenantPublicId: string
+): Promise<boolean> => {
+  try {
+    const response = await apiClient.auth.verifyUserEmail({
+      tenant: {
+        tenantPublicId,
+      },
+      token,
+    });
+    return Boolean(response.verified);
+  } catch {
+    return false;
   }
 };
 
