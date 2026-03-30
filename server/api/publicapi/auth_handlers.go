@@ -972,3 +972,101 @@ func (s *apiServer) GetMe(
 	}
 	return connect.NewResponse(&publirav1.GetMeResponse{User: &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role}}), nil
 }
+
+func (s *apiServer) UpdateMe(
+	ctx context.Context,
+	req *connect.Request[publirav1.UpdateMeRequest],
+) (*connect.Response[publirav1.UpdateMeResponse], error) {
+	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+	name := strings.TrimSpace(req.Msg.Name)
+	if name == "" {
+		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "invalid_name")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	if len([]rune(name)) > 100 {
+		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "name_too_long")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name must be 100 characters or fewer"))
+	}
+	updated, err := s.queries.UpdateUserNameByID(ctx, dbmodels.UpdateUserNameByIDParams{
+		ID:   user.ID,
+		Name: name,
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "update_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	auth.AuditEvent(req.Header(), "update_me", "success", user.PublicID, user.PublicID, "name_updated")
+	return connect.NewResponse(&publirav1.UpdateMeResponse{User: &publirattypesv1.User{PublicId: updated.PublicID, Name: updated.Name, Role: role}}), nil
+}
+
+func (s *apiServer) DeleteMe(
+	ctx context.Context,
+	req *connect.Request[publirav1.DeleteMeRequest],
+) (*connect.Response[publirav1.DeleteMeResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+	password := strings.TrimSpace(req.Msg.Password)
+	if password == "" {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("password is required"))
+	}
+	if !auth.VerifyPassword(password, user.PasswordHash) {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid password"))
+	}
+	if err := s.queries.TerminateUserSessions(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "session_terminate_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queries.DeleteUserByID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	auth.AuditEvent(req.Header(), "delete_me", "success", tenant.PublicID, user.PublicID, "user_deleted")
+	response := connect.NewResponse(&publirav1.DeleteMeResponse{})
+	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
+	return response, nil
+}
+
+func (s *apiServer) GetNotificationSettings(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetNotificationSettingsRequest],
+) (*connect.Response[publirav1.GetNotificationSettingsResponse], error) {
+	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	settings, err := s.queries.GetUserNotificationSettings(ctx, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: true}), nil
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: settings.EmailNotificationsEnabled}), nil
+}
+
+func (s *apiServer) UpdateNotificationSettings(
+	ctx context.Context,
+	req *connect.Request[publirav1.UpdateNotificationSettingsRequest],
+) (*connect.Response[publirav1.UpdateNotificationSettingsResponse], error) {
+	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	updated, err := s.queries.UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
+		UserID:                    user.ID,
+		EmailNotificationsEnabled: req.Msg.EmailNotificationsEnabled,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
+}

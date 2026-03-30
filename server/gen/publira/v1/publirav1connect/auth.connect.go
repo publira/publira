@@ -58,6 +58,16 @@ const (
 	AuthServiceDeleteSessionProcedure = "/publira.v1.AuthService/DeleteSession"
 	// AuthServiceGetMeProcedure is the fully-qualified name of the AuthService's GetMe RPC.
 	AuthServiceGetMeProcedure = "/publira.v1.AuthService/GetMe"
+	// AuthServiceUpdateMeProcedure is the fully-qualified name of the AuthService's UpdateMe RPC.
+	AuthServiceUpdateMeProcedure = "/publira.v1.AuthService/UpdateMe"
+	// AuthServiceDeleteMeProcedure is the fully-qualified name of the AuthService's DeleteMe RPC.
+	AuthServiceDeleteMeProcedure = "/publira.v1.AuthService/DeleteMe"
+	// AuthServiceGetNotificationSettingsProcedure is the fully-qualified name of the AuthService's
+	// GetNotificationSettings RPC.
+	AuthServiceGetNotificationSettingsProcedure = "/publira.v1.AuthService/GetNotificationSettings"
+	// AuthServiceUpdateNotificationSettingsProcedure is the fully-qualified name of the AuthService's
+	// UpdateNotificationSettings RPC.
+	AuthServiceUpdateNotificationSettingsProcedure = "/publira.v1.AuthService/UpdateNotificationSettings"
 )
 
 // AuthServiceClient is a client for the publira.v1.AuthService service.
@@ -71,6 +81,10 @@ type AuthServiceClient interface {
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
+	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
+	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
+	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the publira.v1.AuthService service. By default, it
@@ -138,20 +152,48 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("GetMe")),
 			connect.WithClientOptions(opts...),
 		),
+		updateMe: connect.NewClient[v1.UpdateMeRequest, v1.UpdateMeResponse](
+			httpClient,
+			baseURL+AuthServiceUpdateMeProcedure,
+			connect.WithSchema(authServiceMethods.ByName("UpdateMe")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteMe: connect.NewClient[v1.DeleteMeRequest, v1.DeleteMeResponse](
+			httpClient,
+			baseURL+AuthServiceDeleteMeProcedure,
+			connect.WithSchema(authServiceMethods.ByName("DeleteMe")),
+			connect.WithClientOptions(opts...),
+		),
+		getNotificationSettings: connect.NewClient[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse](
+			httpClient,
+			baseURL+AuthServiceGetNotificationSettingsProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetNotificationSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateNotificationSettings: connect.NewClient[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse](
+			httpClient,
+			baseURL+AuthServiceUpdateNotificationSettingsProcedure,
+			connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	createSession        *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	createUser           *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
-	verifyUserEmail      *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
-	requestEmailChange   *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
-	confirmEmailChange   *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
-	requestPasswordReset *connect.Client[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse]
-	confirmPasswordReset *connect.Client[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse]
-	deleteSession        *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	getMe                *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	createSession              *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createUser                 *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	verifyUserEmail            *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
+	requestEmailChange         *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
+	confirmEmailChange         *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
+	requestPasswordReset       *connect.Client[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse]
+	confirmPasswordReset       *connect.Client[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse]
+	deleteSession              *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	getMe                      *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	updateMe                   *connect.Client[v1.UpdateMeRequest, v1.UpdateMeResponse]
+	deleteMe                   *connect.Client[v1.DeleteMeRequest, v1.DeleteMeResponse]
+	getNotificationSettings    *connect.Client[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse]
+	updateNotificationSettings *connect.Client[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse]
 }
 
 // CreateSession calls publira.v1.AuthService.CreateSession.
@@ -199,6 +241,26 @@ func (c *authServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.G
 	return c.getMe.CallUnary(ctx, req)
 }
 
+// UpdateMe calls publira.v1.AuthService.UpdateMe.
+func (c *authServiceClient) UpdateMe(ctx context.Context, req *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error) {
+	return c.updateMe.CallUnary(ctx, req)
+}
+
+// DeleteMe calls publira.v1.AuthService.DeleteMe.
+func (c *authServiceClient) DeleteMe(ctx context.Context, req *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error) {
+	return c.deleteMe.CallUnary(ctx, req)
+}
+
+// GetNotificationSettings calls publira.v1.AuthService.GetNotificationSettings.
+func (c *authServiceClient) GetNotificationSettings(ctx context.Context, req *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error) {
+	return c.getNotificationSettings.CallUnary(ctx, req)
+}
+
+// UpdateNotificationSettings calls publira.v1.AuthService.UpdateNotificationSettings.
+func (c *authServiceClient) UpdateNotificationSettings(ctx context.Context, req *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error) {
+	return c.updateNotificationSettings.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
 type AuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
@@ -210,6 +272,10 @@ type AuthServiceHandler interface {
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
+	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
+	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
+	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -273,6 +339,30 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("GetMe")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceUpdateMeHandler := connect.NewUnaryHandler(
+		AuthServiceUpdateMeProcedure,
+		svc.UpdateMe,
+		connect.WithSchema(authServiceMethods.ByName("UpdateMe")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceDeleteMeHandler := connect.NewUnaryHandler(
+		AuthServiceDeleteMeProcedure,
+		svc.DeleteMe,
+		connect.WithSchema(authServiceMethods.ByName("DeleteMe")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceGetNotificationSettingsHandler := connect.NewUnaryHandler(
+		AuthServiceGetNotificationSettingsProcedure,
+		svc.GetNotificationSettings,
+		connect.WithSchema(authServiceMethods.ByName("GetNotificationSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceUpdateNotificationSettingsHandler := connect.NewUnaryHandler(
+		AuthServiceUpdateNotificationSettingsProcedure,
+		svc.UpdateNotificationSettings,
+		connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceCreateSessionProcedure:
@@ -293,6 +383,14 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
 			authServiceGetMeHandler.ServeHTTP(w, r)
+		case AuthServiceUpdateMeProcedure:
+			authServiceUpdateMeHandler.ServeHTTP(w, r)
+		case AuthServiceDeleteMeProcedure:
+			authServiceDeleteMeHandler.ServeHTTP(w, r)
+		case AuthServiceGetNotificationSettingsProcedure:
+			authServiceGetNotificationSettingsHandler.ServeHTTP(w, r)
+		case AuthServiceUpdateNotificationSettingsProcedure:
+			authServiceUpdateNotificationSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -336,4 +434,20 @@ func (UnimplementedAuthServiceHandler) DeleteSession(context.Context, *connect.R
 
 func (UnimplementedAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetMe is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateMe is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.DeleteMe is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetNotificationSettings is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateNotificationSettings is not implemented"))
 }

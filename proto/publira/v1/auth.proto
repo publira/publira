@@ -96,6 +96,43 @@ message GetMeResponse {
   publira.types.v1.User user = 1;
 }
 
+message UpdateMeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  string name = 3;
+}
+
+message UpdateMeResponse {
+  publira.types.v1.User user = 1;
+}
+
+message DeleteMeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  string password = 3;
+}
+
+message DeleteMeResponse {}
+
+message GetNotificationSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+}
+
+message GetNotificationSettingsResponse {
+  bool email_notifications_enabled = 1;
+}
+
+message UpdateNotificationSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  bool email_notifications_enabled = 3;
+}
+
+message UpdateNotificationSettingsResponse {
+  bool email_notifications_enabled = 1;
+}
+
 service AuthService {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
@@ -106,4 +143,8 @@ service AuthService {
   rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse) {}
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
+  rpc UpdateMe(UpdateMeRequest) returns (UpdateMeResponse) {}
+  rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}
+  rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
+  rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
 }

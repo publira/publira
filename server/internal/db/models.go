@@ -261,6 +261,12 @@ type UserEmailVerificationToken struct {
 	CreatedAt time.Time    `json:"created_at"`
 }
 
+type UserNotificationSetting struct {
+	UserID                    uuid.UUID `json:"user_id"`
+	EmailNotificationsEnabled bool      `json:"email_notifications_enabled"`
+	UpdatedAt                 time.Time `json:"updated_at"`
+}
+
 type UserPasswordResetToken struct {
 	ID          uuid.UUID    `json:"id"`
 	TenantID    uuid.UUID    `json:"tenant_id"`
