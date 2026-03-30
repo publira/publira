@@ -109,6 +109,42 @@ export const confirmPublicEmailChange = async (
   }
 };
 
+export const requestPublicPasswordReset = async (
+  email: string,
+  tenantPublicId: string
+): Promise<boolean> => {
+  try {
+    const response = await apiClient.auth.requestPasswordReset({
+      email,
+      tenant: {
+        tenantPublicId,
+      },
+    });
+    return Boolean(response.requested);
+  } catch {
+    return false;
+  }
+};
+
+export const confirmPublicPasswordReset = async (
+  token: string,
+  newPassword: string,
+  tenantPublicId: string
+): Promise<boolean> => {
+  try {
+    const response = await apiClient.auth.confirmPasswordReset({
+      newPassword,
+      tenant: {
+        tenantPublicId,
+      },
+      token,
+    });
+    return Boolean(response.confirmed);
+  } catch {
+    return false;
+  }
+};
+
 export const logoutPublic = async (
   sessionId: string,
   tenantPublicId: string

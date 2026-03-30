@@ -260,3 +260,13 @@ type UserEmailVerificationToken struct {
 	UsedAt    sql.NullTime `json:"used_at"`
 	CreatedAt time.Time    `json:"created_at"`
 }
+
+type UserPasswordResetToken struct {
+	ID          uuid.UUID    `json:"id"`
+	TenantID    uuid.UUID    `json:"tenant_id"`
+	UserID      uuid.UUID    `json:"user_id"`
+	TokenHash   string       `json:"token_hash"`
+	ExpiresAt   time.Time    `json:"expires_at"`
+	CompletedAt sql.NullTime `json:"completed_at"`
+	CreatedAt   time.Time    `json:"created_at"`
+}

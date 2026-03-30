@@ -274,6 +274,17 @@ func emailChangeConfirmationURL(tenant dbmodels.Tenant, token string) (string, e
 	return "https://" + domain + "/confirm-email?token=" + url.QueryEscape(token), nil
 }
 
+func passwordResetConfirmationURL(tenant dbmodels.Tenant, token string) (string, error) {
+	domain := strings.TrimSpace(tenant.Domain)
+	domain = strings.TrimPrefix(domain, "https://")
+	domain = strings.TrimPrefix(domain, "http://")
+	domain = strings.TrimSuffix(domain, "/")
+	if domain == "" {
+		return "", errors.New("tenant domain is not configured")
+	}
+	return "https://" + domain + "/confirm-password?token=" + url.QueryEscape(token), nil
+}
+
 func (s *apiServer) sendVerificationEmail(ctx context.Context, tenant dbmodels.Tenant, user dbmodels.User, token string) error {
 	if s.mailer == nil {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
@@ -367,6 +378,39 @@ func (s *apiServer) sendEmailChangedNotice(
 		"変更後: " + newEmail + "\r\n\r\n" +
 		"この変更に心当たりがない場合は、すぐにパスワード変更などの対応を行ってください。\r\n"
 	if err := s.mailer.SendEmail(ctx, settings, oldEmail, subject, body); err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
+}
+
+func (s *apiServer) sendPasswordResetEmail(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	recipientEmail string,
+	token string,
+) error {
+	if s.mailer == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
+	if err != nil {
+		return err
+	}
+	confirmURL, err := passwordResetConfirmationURL(tenant, token)
+	if err != nil {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	subjectPrefix := strings.TrimSpace(tenant.Name)
+	if subjectPrefix == "" {
+		subjectPrefix = "Publira"
+	}
+	subject := subjectPrefix + " パスワード再設定"
+	body := "パスワード再設定のリクエストを受け付けました。\r\n" +
+		"以下のリンクを開いて新しいパスワードを設定してください。\r\n\r\n" +
+		confirmURL + "\r\n\r\n" +
+		"このリンクの有効期限は24時間です。\r\n" +
+		"心当たりがない場合、このメールは破棄してください。\r\n"
+	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}
 	return nil
@@ -733,6 +777,151 @@ func (s *apiServer) ConfirmEmailChange(
 
 	auth.AuditEvent(req.Header(), "email_change_confirm", "success", tenant.PublicID, user.PublicID, "email_changed")
 	return connect.NewResponse(&publirav1.ConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+}
+
+func (s *apiServer) RequestPasswordReset(
+	ctx context.Context,
+	req *connect.Request[publirav1.RequestPasswordResetRequest],
+) (*connect.Response[publirav1.RequestPasswordResetResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	email := strings.TrimSpace(req.Msg.Email)
+	if email == "" {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+
+	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    email,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, "", "requested")
+			return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
+		}
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.queries.DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	resetToken := hex.EncodeToString(rawToken)
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	_, err = s.queries.CreateUserPasswordResetToken(ctx, dbmodels.CreateUserPasswordResetTokenParams{
+		ID:        tokenID,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		TokenHash: auth.HashToken(resetToken),
+		ExpiresAt: time.Now().Add(emailVerificationTokenTTL),
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.sendPasswordResetEmail(ctx, tenant, user.Email, resetToken); err != nil {
+		_ = s.queries.DeleteUserPasswordResetTokensByUserID(ctx, user.ID)
+		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "reset_email_send_failed")
+		return nil, err
+	}
+
+	auth.AuditEvent(req.Header(), "password_reset_request", "success", tenant.PublicID, user.PublicID, "requested")
+	return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
+}
+
+func (s *apiServer) ConfirmPasswordReset(
+	ctx context.Context,
+	req *connect.Request[publirav1.ConfirmPasswordResetRequest],
+) (*connect.Response[publirav1.ConfirmPasswordResetResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	token := strings.TrimSpace(req.Msg.Token)
+	newPassword := strings.TrimSpace(req.Msg.NewPassword)
+	if token == "" || newPassword == "" {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
+	}
+
+	resetToken, err := s.queries.GetUserPasswordResetTokenByHashForTenant(ctx, dbmodels.GetUserPasswordResetTokenByHashForTenantParams{
+		TenantID:  tenant.ID,
+		TokenHash: auth.HashToken(token),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("password reset token not found"))
+		}
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if resetToken.CompletedAt.Valid {
+		return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
+	}
+	if resetToken.ExpiresAt.Before(time.Now()) {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_expired")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token expired"))
+	}
+
+	user, err := s.queries.GetUserByID(ctx, resetToken.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	passwordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if _, err := s.queries.UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
+		ID:           user.ID,
+		PasswordHash: passwordHash,
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queries.TerminateUserSessions(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "session_terminate_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queries.MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "token_complete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	auth.AuditEvent(req.Header(), "password_reset_confirm", "success", tenant.PublicID, user.PublicID, "confirmed")
+	return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
 }
 
 func (s *apiServer) DeleteSession(
