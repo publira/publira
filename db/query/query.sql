@@ -1038,6 +1038,29 @@ WHERE user_id = $1
 -- ユーザーを物理削除（外部キー制約により関連データも削除）
 DELETE FROM users
 WHERE id = $1;
+
+-- name: UpdateUserNameByID :one
+-- ユーザーの表示名をID指定で更新
+UPDATE users
+SET name = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: GetUserNotificationSettings :one
+-- ユーザーの通知設定を取得
+SELECT *
+FROM user_notification_settings
+WHERE user_id = $1
+LIMIT 1;
+
+-- name: UpsertUserNotificationSettings :one
+-- ユーザーの通知設定を作成または更新
+INSERT INTO user_notification_settings (user_id, email_notifications_enabled, updated_at)
+VALUES ($1, $2, NOW())
+ON CONFLICT (user_id) DO UPDATE
+SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
+    updated_at = NOW()
+RETURNING *;
 -- name: CountPublishedSeriesForTenant :one
 -- テナントの公開中シリーズ数を取得する（ダッシュボード用）
 SELECT COUNT(*)::int AS published_series_count

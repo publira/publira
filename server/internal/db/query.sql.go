@@ -1806,6 +1806,21 @@ func (q *Queries) GetUserEmailVerificationTokenByHashForTenant(ctx context.Conte
 	return i, err
 }
 
+const getUserNotificationSettings = `-- name: GetUserNotificationSettings :one
+SELECT user_id, email_notifications_enabled, updated_at
+FROM user_notification_settings
+WHERE user_id = $1
+LIMIT 1
+`
+
+// ユーザーの通知設定を取得
+func (q *Queries) GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error) {
+	row := q.db.QueryRowContext(ctx, getUserNotificationSettings, userID)
+	var i UserNotificationSetting
+	err := row.Scan(&i.UserID, &i.EmailNotificationsEnabled, &i.UpdatedAt)
+	return i, err
+}
+
 const getUserPasswordResetTokenByHashForTenant = `-- name: GetUserPasswordResetTokenByHashForTenant :one
 SELECT id, tenant_id, user_id, token_hash, expires_at, completed_at, created_at
 FROM user_password_reset_tokens
@@ -3389,6 +3404,36 @@ func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateU
 	return i, err
 }
 
+const updateUserNameByID = `-- name: UpdateUserNameByID :one
+UPDATE users
+SET name = $2
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+`
+
+type UpdateUserNameByIDParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// ユーザーの表示名をID指定で更新
+func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserNameByID, arg.ID, arg.Name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
 const updateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
 UPDATE users
 SET password_hash = $2
@@ -3608,5 +3653,27 @@ func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemePa
 		&i.LogoUrl,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const upsertUserNotificationSettings = `-- name: UpsertUserNotificationSettings :one
+INSERT INTO user_notification_settings (user_id, email_notifications_enabled, updated_at)
+VALUES ($1, $2, NOW())
+ON CONFLICT (user_id) DO UPDATE
+SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
+    updated_at = NOW()
+RETURNING user_id, email_notifications_enabled, updated_at
+`
+
+type UpsertUserNotificationSettingsParams struct {
+	UserID                    uuid.UUID `json:"user_id"`
+	EmailNotificationsEnabled bool      `json:"email_notifications_enabled"`
+}
+
+// ユーザーの通知設定を作成または更新
+func (q *Queries) UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error) {
+	row := q.db.QueryRowContext(ctx, upsertUserNotificationSettings, arg.UserID, arg.EmailNotificationsEnabled)
+	var i UserNotificationSetting
+	err := row.Scan(&i.UserID, &i.EmailNotificationsEnabled, &i.UpdatedAt)
 	return i, err
 }
