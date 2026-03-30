@@ -9,6 +9,7 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  DialogViewport,
 } from "./dialog";
 
 export { ConfirmDialog } from "./confirm-dialog";

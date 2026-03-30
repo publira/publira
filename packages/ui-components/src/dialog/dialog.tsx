@@ -12,15 +12,24 @@ export const DialogPortal = BaseDialog.Portal;
 export const DialogClose = BaseDialog.Close;
 export const DialogTitle = BaseDialog.Title;
 export const DialogDescription = BaseDialog.Description;
+export const DialogViewport = BaseDialog.Viewport;
 
 export const DialogBackdrop = ({
   className,
+  forceRender: _forceRender,
+  render: _render,
   ...props
 }: BaseDialog.Backdrop.Props) => (
-  <BaseDialog.Backdrop
+  // NOTE:
+  // We intentionally render a plain div backdrop instead of BaseDialog.Backdrop.
+  // In this project setup, the Base UI backdrop has intermittently failed to appear
+  // at runtime even when the dialog is open, which results in a transparent overlay.
+  // Keep the overlay token-based so it follows shared brand/theme colors.
+  <div
+    aria-hidden="true"
     {...props}
     className={cn(
-      "fixed inset-0 z-40 bg-foreground/25 backdrop-blur-[1px]",
+      "fixed inset-0 z-40 bg-foreground/20 backdrop-blur-xs",
       className
     )}
   />

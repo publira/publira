@@ -21,6 +21,7 @@ import {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  DialogViewport,
 } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -169,71 +170,79 @@ const TenantMemberRoleDialog = ({
       />
       <DialogPortal>
         <DialogBackdrop />
-        <DialogPopup>
-          <form action={roleFormAction} className="grid gap-4">
-            <input
-              name="tenant_public_id"
-              type="hidden"
-              value={tenantPublicId}
-            />
-            <input
-              name="member_user_public_id"
-              type="hidden"
-              value={member.userPublicId}
-            />
-
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
-                ロールを変更
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
-                {member.name}（{member.email}）のロールを更新します。
-              </DialogDescription>
-            </DialogHeader>
-
-            <Field>
-              <FieldLabel required>新しいロール</FieldLabel>
-              <FieldContent>
-                <div className="flex flex-wrap gap-2">
-                  {tenantRoleOptions.map((roleOption) => (
-                    <label
-                      key={roleOption.value}
-                      className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                    >
-                      <input
-                        defaultChecked={member.role === roleOption.value}
-                        name="member_role"
-                        required
-                        type="radio"
-                        value={roleOption.value}
-                      />
-                      <span>{roleOption.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </FieldContent>
-            </Field>
-
-            {updateState ? (
-              <FormMessage variant={updateState.ok ? "success" : "destructive"}>
-                {updateState.message}
-              </FormMessage>
-            ) : null}
-
-            <DialogFooter>
-              <DialogClose
-                render={
-                  <Button type="button" variant="outline">
-                    キャンセル
-                  </Button>
-                }
+        <DialogViewport>
+          <DialogPopup>
+            <form action={roleFormAction} className="grid gap-4">
+              <input
+                name="tenant_public_id"
+                type="hidden"
+                value={tenantPublicId}
               />
-              <Button disabled={isRolePending} type="submit" variant="outline">
-                {isRolePending ? "更新中..." : "更新する"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogPopup>
+              <input
+                name="member_user_public_id"
+                type="hidden"
+                value={member.userPublicId}
+              />
+
+              <DialogHeader>
+                <DialogTitle className="text-lg font-semibold">
+                  ロールを変更
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  {member.name}（{member.email}）のロールを更新します。
+                </DialogDescription>
+              </DialogHeader>
+
+              <Field>
+                <FieldLabel required>新しいロール</FieldLabel>
+                <FieldContent>
+                  <div className="flex flex-wrap gap-2">
+                    {tenantRoleOptions.map((roleOption) => (
+                      <label
+                        key={roleOption.value}
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                      >
+                        <input
+                          defaultChecked={member.role === roleOption.value}
+                          name="member_role"
+                          required
+                          type="radio"
+                          value={roleOption.value}
+                        />
+                        <span>{roleOption.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </FieldContent>
+              </Field>
+
+              {updateState ? (
+                <FormMessage
+                  variant={updateState.ok ? "success" : "destructive"}
+                >
+                  {updateState.message}
+                </FormMessage>
+              ) : null}
+
+              <DialogFooter>
+                <DialogClose
+                  render={
+                    <Button type="button" variant="outline">
+                      キャンセル
+                    </Button>
+                  }
+                />
+                <Button
+                  disabled={isRolePending}
+                  type="submit"
+                  variant="outline"
+                >
+                  {isRolePending ? "更新中..." : "更新する"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogPopup>
+        </DialogViewport>
       </DialogPortal>
     </Dialog>
   );

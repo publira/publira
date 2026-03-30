@@ -22,6 +22,11 @@ export interface AdminCurrentUser {
   role: string;
 }
 
+export const isTenantAdminRole = (role: string | null | undefined): boolean => {
+  const normalizedRole = role?.trim().toLowerCase();
+  return normalizedRole === "admin" || normalizedRole === "tenant_admin";
+};
+
 const loginFailedMessage = "メールアドレスまたはパスワードが正しくありません。";
 const genericErrorMessage =
   "ログイン処理に失敗しました。時間をおいて再試行してください。";
