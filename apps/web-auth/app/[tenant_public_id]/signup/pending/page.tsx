@@ -62,7 +62,9 @@ const SignupPendingContent = async ({
       </header>
 
       <section className="space-y-3 text-sm leading-6">
-        <p>確認メールを送信しました。メール内のリンクを開いて登録を完了してください。</p>
+        <p>
+          確認メールを送信しました。メール内のリンクを開いて登録を完了してください。
+        </p>
         {email ? (
           <p className="text-muted-foreground">送信先: {email}</p>
         ) : null}
@@ -72,7 +74,10 @@ const SignupPendingContent = async ({
       </section>
 
       <div className="text-center text-sm">
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
           ログイン画面へ戻る
         </Link>
       </div>
@@ -103,7 +108,6 @@ export default function SignupPendingPage({
   params: Promise<{ tenant_public_id: string }>;
   searchParams: Promise<{ email?: string | string[] }>;
 }) {
-
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">

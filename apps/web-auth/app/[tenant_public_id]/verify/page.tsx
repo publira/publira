@@ -50,7 +50,10 @@ const VerificationResult = async ({
           <p>確認リンクが無効です。</p>
         </section>
         <div className="text-center text-sm">
-          <Link href="/signup" className="font-medium text-primary hover:underline">
+          <Link
+            href="/signup"
+            className="font-medium text-primary hover:underline"
+          >
             新規登録へ戻る
           </Link>
         </div>
@@ -134,7 +137,6 @@ export default function VerifyPage({
   params: Promise<{ tenant_public_id: string }>;
   searchParams: Promise<{ token?: string | string[] }>;
 }) {
-
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">

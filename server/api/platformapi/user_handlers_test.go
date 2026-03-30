@@ -27,7 +27,7 @@ func listEndUsersResultColumns() []string {
 
 // UpdateUserStatus の RETURNING カラム
 func updateUserStatusResultColumns() []string {
-	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id"}
+	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at"}
 }
 
 // TestListEndUsers はエンドユーザー一覧の正常系を検証する。
@@ -146,7 +146,7 @@ func TestSuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
 		WithArgs("EUSER00001", "suspended").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil))
 
 	// セッション失効
 	mock.ExpectExec(regexp.QuoteMeta(testTerminateUserSessionsQuery)).
@@ -217,7 +217,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
 		WithArgs("EUSER00001", "active").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
 		WithArgs(endUserID).

@@ -7,9 +7,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import {
-  signupPublic,
-} from "../../../lib/auth";
+import { signupPublic } from "../../../lib/auth";
 import { getTenantSiteInfo, getTenantSiteLabel } from "../../../lib/tenant";
 
 export const generateStaticParams = () =>

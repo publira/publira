@@ -116,8 +116,8 @@ func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uu
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id"}).
-			AddRow(userID, "USER001", "user@example.com", "hashed", "User", now, "active", tenantID))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at"}).
+			AddRow(userID, "USER001", "user@example.com", "hashed", "User", now, "active", tenantID, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantRolesByUserAndTenantQuery)).
 		WithArgs(userID).
