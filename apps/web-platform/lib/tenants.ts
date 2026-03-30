@@ -477,7 +477,8 @@ export const resendPlatformTenantAdminInvitation = async (
       }
     }
     return {
-      message: "招待メールの再送に失敗しました。時間をおいて再試行してください。",
+      message:
+        "招待メールの再送に失敗しました。時間をおいて再試行してください。",
       ok: false,
     };
   }

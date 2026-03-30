@@ -98,7 +98,10 @@ const AcceptInviteFormContent = async ({
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
         <FormMessage variant="destructive">招待が見つかりません。</FormMessage>
         <div className="text-center text-sm">
-          <Link className="font-medium text-primary hover:underline" href="/login">
+          <Link
+            className="font-medium text-primary hover:underline"
+            href="/login"
+          >
             ログイン画面へ
           </Link>
         </div>
@@ -118,7 +121,10 @@ const AcceptInviteFormContent = async ({
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
         <FormMessage variant="destructive">{statusMessage}</FormMessage>
         <div className="text-center text-sm">
-          <Link className="font-medium text-primary hover:underline" href="/login">
+          <Link
+            className="font-medium text-primary hover:underline"
+            href="/login"
+          >
             ログイン画面へ
           </Link>
         </div>
@@ -135,7 +141,11 @@ const AcceptInviteFormContent = async ({
       <form action={acceptInviteAction} className="space-y-4">
         <input name="tenant_public_id" type="hidden" value={tenantPublicId} />
         <input name="token" type="hidden" value={token} />
-        <input name="account_exists" type="hidden" value={String(invitation.accountExists)} />
+        <input
+          name="account_exists"
+          type="hidden"
+          value={String(invitation.accountExists)}
+        />
         <input name="email" type="hidden" value={invitation.email} />
 
         {invitation.accountExists ? (
@@ -149,7 +159,13 @@ const AcceptInviteFormContent = async ({
                 お名前
               </FieldLabel>
               <FieldContent>
-                <Input id="name" name="name" placeholder="山田 太郎" required type="text" />
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="山田 太郎"
+                  required
+                  type="text"
+                />
               </FieldContent>
             </Field>
 
@@ -187,7 +203,9 @@ const AcceptInviteFormContent = async ({
           </>
         )}
 
-        {error ? <FormMessage variant="destructive">{error}</FormMessage> : null}
+        {error ? (
+          <FormMessage variant="destructive">{error}</FormMessage>
+        ) : null}
 
         <Button className="w-full" type="submit" variant="outline">
           招待を承諾する
@@ -209,9 +227,14 @@ const AcceptInviteForm = ({
   if (!token) {
     return (
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <FormMessage variant="destructive">招待トークンが見つかりません。</FormMessage>
+        <FormMessage variant="destructive">
+          招待トークンが見つかりません。
+        </FormMessage>
         <div className="text-center text-sm">
-          <Link className="font-medium text-primary hover:underline" href="/login">
+          <Link
+            className="font-medium text-primary hover:underline"
+            href="/login"
+          >
             ログイン画面へ
           </Link>
         </div>
@@ -220,8 +243,14 @@ const AcceptInviteForm = ({
   }
 
   return (
-    <Suspense fallback={<div className="h-40 animate-pulse rounded bg-muted/70" />}>
-      <AcceptInviteFormContent error={error} tenantPublicId={tenantPublicId} token={token} />
+    <Suspense
+      fallback={<div className="h-40 animate-pulse rounded bg-muted/70" />}
+    >
+      <AcceptInviteFormContent
+        error={error}
+        tenantPublicId={tenantPublicId}
+        token={token}
+      />
     </Suspense>
   );
 };
@@ -241,13 +270,19 @@ export default async function AcceptInvitePage({
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="font-serif text-2xl font-semibold">管理者招待の承諾</h1>
+          <h1 className="font-serif text-2xl font-semibold">
+            管理者招待の承諾
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             招待を承諾すると、このテナントの管理画面にアクセスできます。
           </p>
         </div>
 
-        <AcceptInviteForm error={error} tenantPublicId={tenant_public_id} token={token} />
+        <AcceptInviteForm
+          error={error}
+          tenantPublicId={tenant_public_id}
+          token={token}
+        />
       </div>
     </main>
   );

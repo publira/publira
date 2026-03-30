@@ -227,7 +227,10 @@ export const acceptTenantAdminInvitation = async (
       if (message.includes("not_found")) {
         return { message: "招待が見つかりません。", ok: false };
       }
-      if (message.includes("invalid_argument") || message.includes("required")) {
+      if (
+        message.includes("invalid_argument") ||
+        message.includes("required")
+      ) {
         return { message: "入力内容に誤りがあります。", ok: false };
       }
     }

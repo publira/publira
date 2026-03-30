@@ -173,7 +173,10 @@ export const createTenantAdminInvitationAction = async (
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const email = String(formData.get("invite_email") ?? "").trim();
 
-  const result = await createPlatformTenantAdminInvitation(tenantPublicId, email);
+  const result = await createPlatformTenantAdminInvitation(
+    tenantPublicId,
+    email
+  );
 
   revalidatePath(`/tenants/${tenantPublicId}`);
   revalidatePath(`/tenants/${tenantPublicId}/members`);

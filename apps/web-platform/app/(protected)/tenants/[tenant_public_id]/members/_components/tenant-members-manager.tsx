@@ -150,6 +150,14 @@ interface TenantMemberDeleteButtonProps {
   userPublicId: string;
 }
 
+interface TenantInvitationRowProps {
+  invitation: PlatformTenantAdminInvitation;
+  isCancelPending: boolean;
+  isResendPending: boolean;
+  onCancel: (invitationId: string) => void;
+  onResend: (invitationId: string) => void;
+}
+
 const TenantMemberDeleteButton = ({
   removeAction,
   setDeleteState,
@@ -333,6 +341,67 @@ const TenantMemberRow = ({
   </TableRow>
 );
 
+const TenantInvitationRow = ({
+  invitation,
+  isCancelPending,
+  isResendPending,
+  onCancel,
+  onResend,
+}: TenantInvitationRowProps) => {
+  const canOperate = invitation.status === "pending";
+
+  const handleResendClick = React.useCallback(() => {
+    onResend(invitation.id);
+  }, [invitation.id, onResend]);
+
+  const handleCancelAction = React.useCallback(() => {
+    onCancel(invitation.id);
+  }, [invitation.id, onCancel]);
+
+  return (
+    <TableRow key={invitation.id}>
+      <TableCell>{invitation.email}</TableCell>
+      <TableCell>
+        <Badge tone={invitationStatusTone(invitation.status)}>
+          {invitationStatusLabel(invitation.status)}
+        </Badge>
+      </TableCell>
+      <TableCell>{invitation.createdAt || "-"}</TableCell>
+      <TableCell>{invitation.expiresAt || "-"}</TableCell>
+      <TableCell>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!canOperate || isResendPending || isCancelPending}
+            onClick={handleResendClick}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            再送
+          </Button>
+          <ConfirmDialog
+            actionText={isCancelPending ? "取り消し中..." : "取り消す"}
+            actionVariant="destructive"
+            description="この招待リンクは無効化され、受諾できなくなります。"
+            onAction={handleCancelAction}
+            title="この招待を取り消しますか？"
+            trigger={
+              <Button
+                disabled={!canOperate || isCancelPending || isResendPending}
+                size="sm"
+                type="button"
+                variant="destructive"
+              >
+                取り消し
+              </Button>
+            }
+          />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+};
+
 export const TenantMembersManager = ({
   addAction,
   cancelInvitationAction,
@@ -424,7 +493,11 @@ export const TenantMembersManager = ({
             ) : null}
 
             <div className="flex justify-end">
-              <Button disabled={isInvitePending} type="submit" variant="outline">
+              <Button
+                disabled={isInvitePending}
+                type="submit"
+                variant="outline"
+              >
                 {isInvitePending ? "招待中..." : "管理者を招待"}
               </Button>
             </div>
@@ -574,51 +647,16 @@ export const TenantMembersManager = ({
                 </TableRow>
               ) : null}
 
-              {invitations.map((invitation) => {
-                const canOperate = invitation.status === "pending";
-                return (
-                  <TableRow key={invitation.id}>
-                    <TableCell>{invitation.email}</TableCell>
-                    <TableCell>
-                      <Badge tone={invitationStatusTone(invitation.status)}>
-                        {invitationStatusLabel(invitation.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{invitation.createdAt || "-"}</TableCell>
-                    <TableCell>{invitation.expiresAt || "-"}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          disabled={!canOperate || isResendPending || isCancelPending}
-                          onClick={() => handleResend(invitation.id)}
-                          size="sm"
-                          type="button"
-                          variant="outline"
-                        >
-                          再送
-                        </Button>
-                        <ConfirmDialog
-                          actionText={isCancelPending ? "取り消し中..." : "取り消す"}
-                          actionVariant="destructive"
-                          description="この招待リンクは無効化され、受諾できなくなります。"
-                          onAction={() => handleCancel(invitation.id)}
-                          title="この招待を取り消しますか？"
-                          trigger={
-                            <Button
-                              disabled={!canOperate || isCancelPending || isResendPending}
-                              size="sm"
-                              type="button"
-                              variant="destructive"
-                            >
-                              取り消し
-                            </Button>
-                          }
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {invitations.map((invitation) => (
+                <TenantInvitationRow
+                  invitation={invitation}
+                  isCancelPending={isCancelPending}
+                  isResendPending={isResendPending}
+                  key={invitation.id}
+                  onCancel={handleCancel}
+                  onResend={handleResend}
+                />
+              ))}
             </TableBody>
           </Table>
         </CardContent>
