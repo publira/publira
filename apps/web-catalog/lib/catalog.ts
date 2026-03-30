@@ -12,6 +12,7 @@ export interface SeriesListItem {
   creators: {
     publicId: string;
     name: string;
+    profileText: string;
   }[];
   creatorNames: string[];
 }
@@ -80,6 +81,7 @@ export const listPublishedSeries = async (
     creators: (s.creators ?? [])
       .map((c) => ({
         name: c.name.trim(),
+        profileText: c.profileText.trim(),
         publicId: c.publicId,
       }))
       .filter((c) => c.name.length > 0),

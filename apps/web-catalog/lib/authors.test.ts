@@ -24,8 +24,16 @@ describe("authors", () => {
       {
         creatorNames: ["山田 太郎", "鈴木 花子", "山田 太郎"],
         creators: [
-          { name: "山田 太郎", publicId: "CREATOR_YAMADA" },
-          { name: "鈴木 花子", publicId: "CREATOR_SUZUKI" },
+          {
+            name: "山田 太郎",
+            profileText: "",
+            publicId: "CREATOR_YAMADA",
+          },
+          {
+            name: "鈴木 花子",
+            profileText: "",
+            publicId: "CREATOR_SUZUKI",
+          },
         ],
         labelName: "",
         publicId: "SERIES_1",
@@ -34,7 +42,9 @@ describe("authors", () => {
       },
       {
         creatorNames: ["山田 太郎"],
-        creators: [{ name: "山田 太郎", publicId: "CREATOR_YAMADA" }],
+        creators: [
+          { name: "山田 太郎", profileText: "", publicId: "CREATOR_YAMADA" },
+        ],
         labelName: "",
         publicId: "SERIES_2",
         synopsis: "",
@@ -61,7 +71,7 @@ describe("authors", () => {
     mockListPublishedSeries.mockResolvedValueOnce([
       {
         creatorNames: ["著者A"],
-        creators: [{ name: "著者A", publicId: "CREATOR_A" }],
+        creators: [{ name: "著者A", profileText: "", publicId: "CREATOR_A" }],
         labelName: "",
         publicId: "SERIES_1",
         synopsis: "",
@@ -69,7 +79,7 @@ describe("authors", () => {
       },
       {
         creatorNames: ["著者B"],
-        creators: [{ name: "著者B", publicId: "CREATOR_B" }],
+        creators: [{ name: "著者B", profileText: "", publicId: "CREATOR_B" }],
         labelName: "",
         publicId: "SERIES_2",
         synopsis: "",
@@ -77,7 +87,7 @@ describe("authors", () => {
       },
       {
         creatorNames: ["著者C"],
-        creators: [{ name: "著者C", publicId: "CREATOR_C" }],
+        creators: [{ name: "著者C", profileText: "", publicId: "CREATOR_C" }],
         labelName: "",
         publicId: "SERIES_3",
         synopsis: "",
@@ -101,8 +111,12 @@ describe("authors", () => {
       {
         creatorNames: ["著者A", "著者B"],
         creators: [
-          { name: "著者A", publicId: "CREATOR_A" },
-          { name: "著者B", publicId: "CREATOR_B" },
+          {
+            name: "著者A",
+            profileText: "著者Aのプロフィール",
+            publicId: "CREATOR_A",
+          },
+          { name: "著者B", profileText: "", publicId: "CREATOR_B" },
         ],
         labelName: "",
         publicId: "SERIES_1",
@@ -111,7 +125,13 @@ describe("authors", () => {
       },
       {
         creatorNames: ["著者A"],
-        creators: [{ name: "著者A", publicId: "CREATOR_A" }],
+        creators: [
+          {
+            name: "著者A",
+            profileText: "別シリーズのプロフィール",
+            publicId: "CREATOR_A",
+          },
+        ],
         labelName: "",
         publicId: "SERIES_2",
         synopsis: "",
@@ -122,6 +142,7 @@ describe("authors", () => {
     const detail = await getPublishedAuthorDetail("TENANT_1", authorId);
 
     expect(detail?.name).toBe("著者A");
+    expect(detail?.profileText).toBe("著者Aのプロフィール");
     expect(detail?.series).toEqual([
       { publicId: "SERIES_1", title: "シリーズ1" },
       { publicId: "SERIES_2", title: "シリーズ2" },

@@ -12,6 +12,7 @@ export interface PublishedAuthorListItem {
 export interface PublishedAuthorDetail {
   id: string;
   name: string;
+  profileText: string;
   series: {
     publicId: string;
     title: string;
@@ -26,6 +27,8 @@ export interface PublishedAuthorListResult {
 }
 
 const normalizeAuthorName = (value: string) => value.trim();
+
+const normalizeAuthorProfileText = (value: string) => value.trim();
 
 const encodeFallbackAuthorId = (name: string) =>
   `${FALLBACK_AUTHOR_ID_PREFIX}${Buffer.from(name, "utf8").toString("base64url")}`;
@@ -191,6 +194,7 @@ export const getPublishedAuthorDetail = async (
 
   const relatedSeries = new Map<string, string>();
   let resolvedAuthorName = fallbackAuthorName ?? "";
+  let resolvedAuthorProfileText = "";
 
   let offset = 0;
   let reachedSeriesEnd = false;
@@ -237,6 +241,12 @@ export const getPublishedAuthorDetail = async (
         resolvedAuthorName = normalizeAuthorName(matchedCreator.name);
       }
 
+      if (!resolvedAuthorProfileText) {
+        resolvedAuthorProfileText = normalizeAuthorProfileText(
+          matchedCreator.profileText
+        );
+      }
+
       if (resolvedAuthorName.length > 0) {
         relatedSeries.set(series.publicId, series.title);
       }
@@ -253,6 +263,7 @@ export const getPublishedAuthorDetail = async (
   return {
     id: authorId,
     name: resolvedAuthorName,
+    profileText: resolvedAuthorProfileText,
     series: [...relatedSeries.entries()]
       .map(([publicId, title]) => ({ publicId, title }))
       .toSorted((left, right) => left.title.localeCompare(right.title, "ja")),
