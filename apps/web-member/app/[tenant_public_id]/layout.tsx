@@ -19,6 +19,14 @@ import { cookies } from "next/headers";
 import { PUBLIC_SESSION_COOKIE_NAME } from "../../lib/auth-shared";
 import { getTenantSiteInfo } from "../../lib/tenant";
 
+const resolveTenantPublicId = async (
+  params: Promise<{ tenant_public_id: string }>
+): Promise<string> => {
+  const { tenant_public_id } = await params;
+  guardPlaceholder(tenant_public_id);
+  return tenant_public_id;
+};
+
 const getHeaderActionsContent = async () => {
   const cookieStore = await cookies();
   const hasSession = Boolean(
@@ -39,9 +47,8 @@ const buildMemberTitleBase = (siteLabel: string): string => siteLabel;
 const resolveTenantInfo = async (
   params: Promise<{ tenant_public_id: string }>
 ) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-  return getTenantSiteInfo(tenant_public_id);
+  const tenantPublicId = await resolveTenantPublicId(params);
+  return getTenantSiteInfo(tenantPublicId);
 };
 
 const getAppLabel = async (

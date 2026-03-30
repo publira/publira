@@ -51,27 +51,33 @@ export const getMe = async (
     return null;
   }
 
-  try {
-    const response = await apiClient.auth.getMe(
-      {
-        sessionId: sid,
-        tenant: { tenantPublicId },
-      },
-      buildSessionHeaders(sid)
-    );
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await apiClient.auth.getMe(
+        {
+          sessionId: sid,
+          tenant: { tenantPublicId },
+        },
+        buildSessionHeaders(sid)
+      );
 
-    if (!response.user) {
-      return null;
+      if (!response.user) {
+        return null;
+      }
+
+      return {
+        name: response.user.name,
+        publicId: response.user.publicId,
+        role: response.user.role,
+      };
+    } catch {
+      if (attempt === 1) {
+        return null;
+      }
     }
-
-    return {
-      name: response.user.name,
-      publicId: response.user.publicId,
-      role: response.user.role,
-    };
-  } catch {
-    return null;
   }
+
+  return null;
 };
 
 export const updateMe = async (
