@@ -8,12 +8,16 @@ import { Suspense } from "react";
 import { PlatformPage } from "../../../../../components/platform-page";
 import {
   getPlatformTenant,
+  listPlatformTenantAdminInvitations,
   listPlatformTenantMembers,
 } from "../../../../../lib/tenants";
 import { TenantSectionNav } from "../_components/tenant-section-nav";
 import {
   addTenantMemberAction,
+  cancelTenantAdminInvitationAction,
+  createTenantAdminInvitationAction,
   removeTenantMemberAction,
+  resendTenantAdminInvitationAction,
   updateTenantMemberRoleAction,
 } from "../_lib/actions";
 import { TenantMembersManager } from "./_components/tenant-members-manager";
@@ -51,9 +55,10 @@ const TenantMembersContent = async ({
 }: {
   tenantPublicId: string;
 }) => {
-  const [tenant, members] = await Promise.all([
+  const [tenant, members, invitations] = await Promise.all([
     getPlatformTenant(tenantPublicId),
     listPlatformTenantMembers(tenantPublicId),
+    listPlatformTenantAdminInvitations(tenantPublicId),
   ]);
 
   if (!tenant) {
@@ -76,8 +81,12 @@ const TenantMembersContent = async ({
 
         <TenantMembersManager
           addAction={addTenantMemberAction}
+          cancelInvitationAction={cancelTenantAdminInvitationAction}
+          createInvitationAction={createTenantAdminInvitationAction}
+          invitations={invitations}
           members={members}
           removeAction={removeTenantMemberAction}
+          resendInvitationAction={resendTenantAdminInvitationAction}
           tenantPublicId={tenant.publicId}
           updateRoleAction={updateTenantMemberRoleAction}
         />

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/auth.proto.
  */
 export const file_publira_admin_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL2F1dGgucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEieAokQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJ5CiVBZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJrCiRBZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiJwolQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXNwb25zZSJjChxBZG1pbkF1dGhTZXJ2aWNlR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIkUKHUFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIiOwooQWRtaW5BdXRoU2VydmljZUdldFRlbmFudEJ5RG9tYWluUmVxdWVzdBIPCgdkb21haW5zGAEgAygJIkUKKUFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAkiZwogQWRtaW5BdXRoU2VydmljZUdldFRlbmFudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiXwoWQWRtaW5BdXRoU2VydmljZVRlbmFudBIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZkb21haW4YAyABKAkSFAoMYWRtaW5fZG9tYWluGAQgASgJIl0KIUFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRSZXNwb25zZRI4CgZ0ZW5hbnQYASABKAsyKC5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VUZW5hbnQibQomQWRtaW5BdXRoU2VydmljZUdldFRlbmFudENvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkicQonQWRtaW5BdXRoU2VydmljZUdldFRlbmFudENvbmZpZ1Jlc3BvbnNlEhYKDmNvcHlyaWdodF90ZXh0GAEgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YAiABKAkSFAoMc2l0ZV90YWdsaW5lGAMgASgJIrgBCilBZG1pbkF1dGhTZXJ2aWNlVXBkYXRlVGVuYW50Q29uZmlnUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCRIWCg5jb3B5cmlnaHRfdGV4dBgDIAEoCRIYChBzaXRlX2Rlc2NyaXB0aW9uGAQgASgJEhQKDHNpdGVfdGFnbGluZRgFIAEoCSJ0CipBZG1pbkF1dGhTZXJ2aWNlVXBkYXRlVGVuYW50Q29uZmlnUmVzcG9uc2USFgoOY29weXJpZ2h0X3RleHQYASABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgCIAEoCRIUCgxzaXRlX3RhZ2xpbmUYAyABKAkysAcKEEFkbWluQXV0aFNlcnZpY2USggEKDUNyZWF0ZVNlc3Npb24SNi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VDcmVhdGVTZXNzaW9uUmVxdWVzdBo3LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXNwb25zZSIAEoIBCg1EZWxldGVTZXNzaW9uEjYucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VEZWxldGVTZXNzaW9uUmVzcG9uc2UiABJqCgVHZXRNZRIuLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldE1lUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldE1lUmVzcG9uc2UiABKOAQoRR2V0VGVuYW50QnlEb21haW4SOi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlcXVlc3QaOy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlIgASdgoJR2V0VGVuYW50EjIucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50UmVxdWVzdBozLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldFRlbmFudFJlc3BvbnNlIgASiAEKD0dldFRlbmFudENvbmZpZxI4LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldFRlbmFudENvbmZpZ1JlcXVlc3QaOS5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRDb25maWdSZXNwb25zZSIAEpEBChJVcGRhdGVUZW5hbnRDb25maWcSOy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VVcGRhdGVUZW5hbnRDb25maWdSZXF1ZXN0GjwucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlVXBkYXRlVGVuYW50Q29uZmlnUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL2F1dGgucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEieAokQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJ5CiVBZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJrCiRBZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiJwolQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXNwb25zZSJjChxBZG1pbkF1dGhTZXJ2aWNlR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIkUKHUFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIiOwooQWRtaW5BdXRoU2VydmljZUdldFRlbmFudEJ5RG9tYWluUmVxdWVzdBIPCgdkb21haW5zGAEgAygJIkUKKUFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAkiZwogQWRtaW5BdXRoU2VydmljZUdldFRlbmFudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiXwoWQWRtaW5BdXRoU2VydmljZVRlbmFudBIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZkb21haW4YAyABKAkSFAoMYWRtaW5fZG9tYWluGAQgASgJIl0KIUFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRSZXNwb25zZRI4CgZ0ZW5hbnQYASABKAsyKC5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VUZW5hbnQibQomQWRtaW5BdXRoU2VydmljZUdldFRlbmFudENvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkicQonQWRtaW5BdXRoU2VydmljZUdldFRlbmFudENvbmZpZ1Jlc3BvbnNlEhYKDmNvcHlyaWdodF90ZXh0GAEgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YAiABKAkSFAoMc2l0ZV90YWdsaW5lGAMgASgJInYKNEFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJIoIBCjVBZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QWRtaW5JbnZpdGF0aW9uU3RhdGVSZXNwb25zZRINCgVlbWFpbBgBIAEoCRIOCgZzdGF0dXMYAiABKAkSEgoKZXhwaXJlc19hdBgDIAEoCRIWCg5hY2NvdW50X2V4aXN0cxgEIAEoCCKUAQoyQWRtaW5BdXRoU2VydmljZUFjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEgwKBG5hbWUYAyABKAkSEAoIcGFzc3dvcmQYBCABKAkiYAozQWRtaW5BdXRoU2VydmljZUFjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvblJlc3BvbnNlEhAKCGFjY2VwdGVkGAEgASgIEhcKD2FjY291bnRfY3JlYXRlZBgCIAEoCCK4AQopQWRtaW5BdXRoU2VydmljZVVwZGF0ZVRlbmFudENvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkSFgoOY29weXJpZ2h0X3RleHQYAyABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgEIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBSABKAkidAoqQWRtaW5BdXRoU2VydmljZVVwZGF0ZVRlbmFudENvbmZpZ1Jlc3BvbnNlEhYKDmNvcHlyaWdodF90ZXh0GAEgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YAiABKAkSFAoMc2l0ZV90YWdsaW5lGAMgASgJMpQKChBBZG1pbkF1dGhTZXJ2aWNlEoIBCg1DcmVhdGVTZXNzaW9uEjYucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VDcmVhdGVTZXNzaW9uUmVzcG9uc2UiABKCAQoNRGVsZXRlU2Vzc2lvbhI2LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXF1ZXN0GjcucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlc3BvbnNlIgASagoFR2V0TWUSLi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRNZVJlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlIgASjgEKEUdldFRlbmFudEJ5RG9tYWluEjoucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QnlEb21haW5SZXF1ZXN0GjsucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QnlEb21haW5SZXNwb25zZSIAEnYKCUdldFRlbmFudBIyLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldFRlbmFudFJlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRSZXNwb25zZSIAEogBCg9HZXRUZW5hbnRDb25maWcSOC5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRDb25maWdSZXF1ZXN0GjkucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50Q29uZmlnUmVzcG9uc2UiABKyAQodR2V0VGVuYW50QWRtaW5JbnZpdGF0aW9uU3RhdGUSRi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlcXVlc3QaRy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlc3BvbnNlIgASrAEKG0FjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvbhJELnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUFjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QaRS5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VBY2NlcHRUZW5hbnRBZG1pbkludml0YXRpb25SZXNwb25zZSIAEpEBChJVcGRhdGVUZW5hbnRDb25maWcSOy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VVcGRhdGVUZW5hbnRDb25maWdSZXF1ZXN0GjwucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlVXBkYXRlVGVuYW50Q29uZmlnUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceCreateSessionRequest
@@ -292,6 +292,114 @@ export const AdminAuthServiceGetTenantConfigResponseSchema: GenMessage<AdminAuth
   messageDesc(file_publira_admin_v1_auth, 12);
 
 /**
+ * @generated from message publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
+ */
+export type AdminAuthServiceGetTenantAdminInvitationStateRequest = Message<"publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest.
+ * Use `create(AdminAuthServiceGetTenantAdminInvitationStateRequestSchema)` to create a new message.
+ */
+export const AdminAuthServiceGetTenantAdminInvitationStateRequestSchema: GenMessage<AdminAuthServiceGetTenantAdminInvitationStateRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 13);
+
+/**
+ * @generated from message publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
+ */
+export type AdminAuthServiceGetTenantAdminInvitationStateResponse = Message<"publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse"> & {
+  /**
+   * @generated from field: string email = 1;
+   */
+  email: string;
+
+  /**
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string expires_at = 3;
+   */
+  expiresAt: string;
+
+  /**
+   * @generated from field: bool account_exists = 4;
+   */
+  accountExists: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse.
+ * Use `create(AdminAuthServiceGetTenantAdminInvitationStateResponseSchema)` to create a new message.
+ */
+export const AdminAuthServiceGetTenantAdminInvitationStateResponseSchema: GenMessage<AdminAuthServiceGetTenantAdminInvitationStateResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 14);
+
+/**
+ * @generated from message publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
+ */
+export type AdminAuthServiceAcceptTenantAdminInvitationRequest = Message<"publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string password = 4;
+   */
+  password: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest.
+ * Use `create(AdminAuthServiceAcceptTenantAdminInvitationRequestSchema)` to create a new message.
+ */
+export const AdminAuthServiceAcceptTenantAdminInvitationRequestSchema: GenMessage<AdminAuthServiceAcceptTenantAdminInvitationRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 15);
+
+/**
+ * @generated from message publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
+ */
+export type AdminAuthServiceAcceptTenantAdminInvitationResponse = Message<"publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse"> & {
+  /**
+   * @generated from field: bool accepted = 1;
+   */
+  accepted: boolean;
+
+  /**
+   * @generated from field: bool account_created = 2;
+   */
+  accountCreated: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse.
+ * Use `create(AdminAuthServiceAcceptTenantAdminInvitationResponseSchema)` to create a new message.
+ */
+export const AdminAuthServiceAcceptTenantAdminInvitationResponseSchema: GenMessage<AdminAuthServiceAcceptTenantAdminInvitationResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 16);
+
+/**
  * @generated from message publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
  */
 export type AdminAuthServiceUpdateTenantConfigRequest = Message<"publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest"> & {
@@ -326,7 +434,7 @@ export type AdminAuthServiceUpdateTenantConfigRequest = Message<"publira.admin.v
  * Use `create(AdminAuthServiceUpdateTenantConfigRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceUpdateTenantConfigRequestSchema: GenMessage<AdminAuthServiceUpdateTenantConfigRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 13);
+  messageDesc(file_publira_admin_v1_auth, 17);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
@@ -353,7 +461,7 @@ export type AdminAuthServiceUpdateTenantConfigResponse = Message<"publira.admin.
  * Use `create(AdminAuthServiceUpdateTenantConfigResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceUpdateTenantConfigResponseSchema: GenMessage<AdminAuthServiceUpdateTenantConfigResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 14);
+  messageDesc(file_publira_admin_v1_auth, 18);
 
 /**
  * @generated from service publira.admin.v1.AdminAuthService
@@ -406,6 +514,22 @@ export const AdminAuthService: GenService<{
     methodKind: "unary";
     input: typeof AdminAuthServiceGetTenantConfigRequestSchema;
     output: typeof AdminAuthServiceGetTenantConfigResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState
+   */
+  getTenantAdminInvitationState: {
+    methodKind: "unary";
+    input: typeof AdminAuthServiceGetTenantAdminInvitationStateRequestSchema;
+    output: typeof AdminAuthServiceGetTenantAdminInvitationStateResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation
+   */
+  acceptTenantAdminInvitation: {
+    methodKind: "unary";
+    input: typeof AdminAuthServiceAcceptTenantAdminInvitationRequestSchema;
+    output: typeof AdminAuthServiceAcceptTenantAdminInvitationResponseSchema;
   },
   /**
    * @generated from rpc publira.admin.v1.AdminAuthService.UpdateTenantConfig

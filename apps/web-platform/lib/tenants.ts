@@ -32,6 +32,16 @@ export interface PlatformTenantMemberSummary {
   userPublicId: string;
 }
 
+export interface PlatformTenantAdminInvitation {
+  acceptedAt: string;
+  canceledAt: string;
+  createdAt: string;
+  email: string;
+  expiresAt: string;
+  id: string;
+  status: string;
+}
+
 export interface CreatePlatformTenantInput {
   adminDomain?: string;
   domain: string;
@@ -303,6 +313,228 @@ export type AddPlatformTenantMemberResult =
 export type RemovePlatformTenantMemberResult =
   | { ok: true }
   | { ok: false; message: string };
+
+export type CreateTenantAdminInvitationResult =
+  | {
+      ok: true;
+      invitation?: PlatformTenantAdminInvitation;
+      roleGrantedImmediately?: boolean;
+    }
+  | { ok: false; message: string };
+
+export type UpdateTenantAdminInvitationResult =
+  | { ok: true; invitation?: PlatformTenantAdminInvitation }
+  | { ok: false; message: string };
+
+const mapInvitation = (invitation: {
+  acceptedAt: string;
+  canceledAt: string;
+  createdAt: string;
+  email: string;
+  expiresAt: string;
+  id: string;
+  status: string;
+}): PlatformTenantAdminInvitation => ({
+  acceptedAt: invitation.acceptedAt,
+  canceledAt: invitation.canceledAt,
+  createdAt: invitation.createdAt,
+  email: invitation.email,
+  expiresAt: invitation.expiresAt,
+  id: invitation.id,
+  status: invitation.status,
+});
+
+export const listPlatformTenantAdminInvitations = async (
+  tenantPublicId: string
+): Promise<PlatformTenantAdminInvitation[]> => {
+  "use cache: private";
+
+  const sid = await resolveSessionId();
+  if (!tenantPublicId.trim() || !sid) {
+    return [];
+  }
+
+  try {
+    const response = await apiClient.tenants.listTenantAdminInvitations(
+      {
+        limit: 100,
+        offset: 0,
+        tenantPublicId,
+      } as never,
+      buildSessionHeaders(sid)
+    );
+    return (response.invitations ?? []).map((invitation) =>
+      mapInvitation(invitation)
+    );
+  } catch {
+    return [];
+  }
+};
+
+export const createPlatformTenantAdminInvitation = async (
+  tenantPublicId: string,
+  email: string
+): Promise<CreateTenantAdminInvitationResult> => {
+  const sid = await resolveSessionId();
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+  if (!tenantPublicId.trim() || !email.trim()) {
+    return { message: "必須項目が入力されていません。", ok: false };
+  }
+
+  try {
+    const response = await apiClient.tenants.createTenantAdminInvitation(
+      {
+        email: email.trim().toLowerCase(),
+        tenantPublicId: tenantPublicId.trim(),
+      } as never,
+      buildSessionHeaders(sid)
+    );
+    return {
+      invitation: response.invitation
+        ? mapInvitation(response.invitation)
+        : undefined,
+      ok: true,
+      roleGrantedImmediately: response.roleGrantedImmediately,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("unauthenticated") ||
+        message.includes("permission_denied")
+      ) {
+        return {
+          message: "この操作を行う権限がありません。",
+          ok: false,
+        };
+      }
+      if (
+        message.includes("invalid_argument") ||
+        message.includes("invalid") ||
+        message.includes("required")
+      ) {
+        return {
+          message: "メールアドレスの形式を確認してください。",
+          ok: false,
+        };
+      }
+    }
+    return {
+      message: "招待の作成に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};
+
+export const resendPlatformTenantAdminInvitation = async (
+  tenantPublicId: string,
+  invitationId: string
+): Promise<UpdateTenantAdminInvitationResult> => {
+  const sid = await resolveSessionId();
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+  if (!tenantPublicId.trim() || !invitationId.trim()) {
+    return { message: "必須項目が入力されていません。", ok: false };
+  }
+
+  try {
+    const response = await apiClient.tenants.resendTenantAdminInvitation(
+      {
+        invitationId: invitationId.trim(),
+        tenantPublicId: tenantPublicId.trim(),
+      } as never,
+      buildSessionHeaders(sid)
+    );
+    return {
+      invitation: response.invitation
+        ? mapInvitation(response.invitation)
+        : undefined,
+      ok: true,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("failed_precondition")) {
+        return {
+          message: "この招待は再送できない状態です。",
+          ok: false,
+        };
+      }
+      if (message.includes("not_found")) {
+        return {
+          message: "対象の招待が見つかりません。",
+          ok: false,
+        };
+      }
+    }
+    return {
+      message:
+        "招待メールの再送に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};
+
+export const cancelPlatformTenantAdminInvitation = async (
+  tenantPublicId: string,
+  invitationId: string
+): Promise<UpdateTenantAdminInvitationResult> => {
+  const sid = await resolveSessionId();
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+  if (!tenantPublicId.trim() || !invitationId.trim()) {
+    return { message: "必須項目が入力されていません。", ok: false };
+  }
+
+  try {
+    const response = await apiClient.tenants.cancelTenantAdminInvitation(
+      {
+        invitationId: invitationId.trim(),
+        tenantPublicId: tenantPublicId.trim(),
+      } as never,
+      buildSessionHeaders(sid)
+    );
+    return {
+      invitation: response.invitation
+        ? mapInvitation(response.invitation)
+        : undefined,
+      ok: true,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("failed_precondition")) {
+        return {
+          message: "この招待は取り消しできない状態です。",
+          ok: false,
+        };
+      }
+      if (message.includes("not_found")) {
+        return {
+          message: "対象の招待が見つかりません。",
+          ok: false,
+        };
+      }
+    }
+    return {
+      message: "招待の取り消しに失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};
 
 export const updatePlatformTenant = async (
   publicId: string,

@@ -114,6 +114,54 @@ message RemoveTenantMemberResponse {
   string user_public_id = 1;
 }
 
+message TenantAdminInvitation {
+  string id = 1;
+  string email = 2;
+  string status = 3;
+  string created_at = 4;
+  string expires_at = 5;
+  string accepted_at = 6;
+  string canceled_at = 7;
+}
+
+message ListTenantAdminInvitationsRequest {
+  string tenant_public_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListTenantAdminInvitationsResponse {
+  repeated TenantAdminInvitation invitations = 1;
+}
+
+message CreateTenantAdminInvitationRequest {
+  string tenant_public_id = 1;
+  string email = 2;
+}
+
+message CreateTenantAdminInvitationResponse {
+  TenantAdminInvitation invitation = 1;
+  bool role_granted_immediately = 2;
+}
+
+message ResendTenantAdminInvitationRequest {
+  string tenant_public_id = 1;
+  string invitation_id = 2;
+}
+
+message ResendTenantAdminInvitationResponse {
+  TenantAdminInvitation invitation = 1;
+}
+
+message CancelTenantAdminInvitationRequest {
+  string tenant_public_id = 1;
+  string invitation_id = 2;
+}
+
+message CancelTenantAdminInvitationResponse {
+  TenantAdminInvitation invitation = 1;
+}
+
 message UpdateTenantRequest {
   string public_id = 1;
   string name = 2;
@@ -138,4 +186,8 @@ service PlatformTenantService {
   rpc AddTenantMember(AddTenantMemberRequest) returns (AddTenantMemberResponse) {}
   rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}
   rpc RemoveTenantMember(RemoveTenantMemberRequest) returns (RemoveTenantMemberResponse) {}
+  rpc ListTenantAdminInvitations(ListTenantAdminInvitationsRequest) returns (ListTenantAdminInvitationsResponse) {}
+  rpc CreateTenantAdminInvitation(CreateTenantAdminInvitationRequest) returns (CreateTenantAdminInvitationResponse) {}
+  rpc ResendTenantAdminInvitation(ResendTenantAdminInvitationRequest) returns (ResendTenantAdminInvitationResponse) {}
+  rpc CancelTenantAdminInvitation(CancelTenantAdminInvitationRequest) returns (CancelTenantAdminInvitationResponse) {}
 }

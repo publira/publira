@@ -68,6 +68,30 @@ message AdminAuthServiceGetTenantConfigResponse {
   string site_tagline = 3;
 }
 
+message AdminAuthServiceGetTenantAdminInvitationStateRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message AdminAuthServiceGetTenantAdminInvitationStateResponse {
+  string email = 1;
+  string status = 2;
+  string expires_at = 3;
+  bool account_exists = 4;
+}
+
+message AdminAuthServiceAcceptTenantAdminInvitationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  string name = 3;
+  string password = 4;
+}
+
+message AdminAuthServiceAcceptTenantAdminInvitationResponse {
+  bool accepted = 1;
+  bool account_created = 2;
+}
+
 message AdminAuthServiceUpdateTenantConfigRequest {
   publira.types.v1.TenantContext tenant = 1;
   string session_id = 2;
@@ -89,5 +113,7 @@ service AdminAuthService {
   rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
   rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}
   rpc GetTenantConfig(AdminAuthServiceGetTenantConfigRequest) returns (AdminAuthServiceGetTenantConfigResponse) {}
+  rpc GetTenantAdminInvitationState(AdminAuthServiceGetTenantAdminInvitationStateRequest) returns (AdminAuthServiceGetTenantAdminInvitationStateResponse) {}
+  rpc AcceptTenantAdminInvitation(AdminAuthServiceAcceptTenantAdminInvitationRequest) returns (AdminAuthServiceAcceptTenantAdminInvitationResponse) {}
   rpc UpdateTenantConfig(AdminAuthServiceUpdateTenantConfigRequest) returns (AdminAuthServiceUpdateTenantConfigResponse) {}
 }

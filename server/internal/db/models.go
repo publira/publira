@@ -184,6 +184,18 @@ type Tenant struct {
 	AdminDomain               sql.NullString `json:"admin_domain"`
 }
 
+type TenantAdminInvitation struct {
+	ID         uuid.UUID    `json:"id"`
+	TenantID   uuid.UUID    `json:"tenant_id"`
+	Email      string       `json:"email"`
+	TokenHash  string       `json:"token_hash"`
+	ExpiresAt  time.Time    `json:"expires_at"`
+	AcceptedAt sql.NullTime `json:"accepted_at"`
+	CanceledAt sql.NullTime `json:"canceled_at"`
+	CreatedAt  time.Time    `json:"created_at"`
+	UpdatedAt  time.Time    `json:"updated_at"`
+}
+
 type TenantConfig struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	CopyrightText   sql.NullString `json:"copyright_text"`
