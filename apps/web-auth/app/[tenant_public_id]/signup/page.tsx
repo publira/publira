@@ -3,16 +3,11 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import {
-  PUBLIC_SESSION_COOKIE_NAME,
-  sessionCookieOptions,
-  signupPublic,
-} from "../../../lib/auth";
+import { signupPublic } from "../../../lib/auth";
 import { getTenantSiteInfo, getTenantSiteLabel } from "../../../lib/tenant";
 
 export const generateStaticParams = () =>
@@ -36,6 +31,11 @@ export const generateMetadata = async ({
 const buildSignupErrorPath = (message: string): string => {
   const params = new URLSearchParams({ error: message });
   return `/signup?${params.toString()}`;
+};
+
+const buildSignupPendingPath = (email: string): string => {
+  const params = new URLSearchParams({ email });
+  return `/signup/pending?${params.toString()}`;
 };
 
 const signupAction = async (formData: FormData): Promise<void> => {
@@ -63,13 +63,9 @@ const signupAction = async (formData: FormData): Promise<void> => {
     );
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions,
-    expires: result.expiresAt,
-    name: PUBLIC_SESSION_COOKIE_NAME,
-    value: result.sessionId,
-  });
+  if (result.pendingVerification) {
+    redirect(buildSignupPendingPath(email));
+  }
 
   redirect("/my");
 };

@@ -12,6 +12,8 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailsettings"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -20,8 +22,10 @@ type Querier interface {
 }
 
 type apiServer struct {
-	queries Querier
-	storage storage.Provider
+	queries   Querier
+	storage   storage.Provider
+	encryptor emailsettings.SecretManager
+	mailer    internalsmtp.Sender
 }
 
 func invalidSessionError() error {
@@ -52,8 +56,8 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattype
 
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
 // CatalogService / AuthService / TenantService / DomainService を公開し、管理 API は含みません。
-func NewHandler(queries Querier, storageProvider storage.Provider) http.Handler {
-	server := &apiServer{queries: queries, storage: storageProvider}
+func NewHandler(queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender) http.Handler {
+	server := &apiServer{queries: queries, storage: storageProvider, encryptor: encryptor, mailer: mailer}
 	mux := http.NewServeMux()
 	registerHealthz(mux)
 	registerPublicRoutes(mux, server)

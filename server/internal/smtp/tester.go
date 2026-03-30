@@ -19,6 +19,10 @@ type Tester interface {
 	SendTestEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient string) error
 }
 
+type Sender interface {
+	SendEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient, subject, body string) error
+}
+
 type Client struct {
 	DialTimeout time.Duration
 }
@@ -28,12 +32,22 @@ func NewClient() *Client {
 }
 
 func (c *Client) SendTestEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient string) error {
+	return c.SendEmail(ctx, settings, recipient, "Publira SMTP test", "Publira SMTP connection test message.\r\n")
+}
+
+func (c *Client) SendEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient, subject, body string) error {
 	settings = emailsettings.Normalize(settings)
 	if err := emailsettings.Validate(settings, true); err != nil {
 		return err
 	}
 	if _, err := mail.ParseAddress(strings.TrimSpace(recipient)); err != nil {
 		return err
+	}
+	if strings.TrimSpace(subject) == "" {
+		return errors.New("subject is required")
+	}
+	if strings.TrimSpace(body) == "" {
+		return errors.New("body is required")
 	}
 
 	addr := net.JoinHostPort(settings.Host, fmt.Sprintf("%d", settings.Port))
@@ -65,7 +79,7 @@ func (c *Client) SendTestEmail(ctx context.Context, settings emailsettings.SMTPS
 		return err
 	}
 
-	message := buildMessage(settings, recipient)
+	message := buildMessage(settings, recipient, subject, body)
 	if _, err := io.WriteString(bodyWriter, message); err != nil {
 		_ = bodyWriter.Close()
 		return err
@@ -101,7 +115,7 @@ func UserFacingError(err error) string {
 	}
 }
 
-func buildMessage(settings emailsettings.SMTPSettings, recipient string) string {
+func buildMessage(settings emailsettings.SMTPSettings, recipient, subject, body string) string {
 	from := settings.FromAddress
 	if settings.FromName != "" {
 		from = (&mail.Address{Name: settings.FromName, Address: settings.FromAddress}).String()
@@ -109,14 +123,14 @@ func buildMessage(settings emailsettings.SMTPSettings, recipient string) string 
 	headers := []string{
 		fmt.Sprintf("From: %s", from),
 		fmt.Sprintf("To: %s", recipient),
-		"Subject: Publira SMTP test",
+		fmt.Sprintf("Subject: %s", subject),
 		"MIME-Version: 1.0",
 		"Content-Type: text/plain; charset=UTF-8",
 	}
 	if settings.ReplyTo != "" {
 		headers = append(headers, fmt.Sprintf("Reply-To: %s", settings.ReplyTo))
 	}
-	return strings.Join(headers, "\r\n") + "\r\n\r\nPublira SMTP connection test message.\r\n"
+	return strings.Join(headers, "\r\n") + "\r\n\r\n" + body
 }
 
 func openClient(ctx context.Context, dialer *net.Dialer, addr string, settings emailsettings.SMTPSettings) (*smtp.Client, net.Conn, error) {

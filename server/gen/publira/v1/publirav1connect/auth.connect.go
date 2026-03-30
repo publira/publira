@@ -38,6 +38,9 @@ const (
 	AuthServiceCreateSessionProcedure = "/publira.v1.AuthService/CreateSession"
 	// AuthServiceCreateUserProcedure is the fully-qualified name of the AuthService's CreateUser RPC.
 	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
+	// AuthServiceVerifyUserEmailProcedure is the fully-qualified name of the AuthService's
+	// VerifyUserEmail RPC.
+	AuthServiceVerifyUserEmailProcedure = "/publira.v1.AuthService/VerifyUserEmail"
 	// AuthServiceDeleteSessionProcedure is the fully-qualified name of the AuthService's DeleteSession
 	// RPC.
 	AuthServiceDeleteSessionProcedure = "/publira.v1.AuthService/DeleteSession"
@@ -49,6 +52,7 @@ const (
 type AuthServiceClient interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
@@ -76,6 +80,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("CreateUser")),
 			connect.WithClientOptions(opts...),
 		),
+		verifyUserEmail: connect.NewClient[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse](
+			httpClient,
+			baseURL+AuthServiceVerifyUserEmailProcedure,
+			connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteSession: connect.NewClient[v1.DeleteSessionRequest, v1.DeleteSessionResponse](
 			httpClient,
 			baseURL+AuthServiceDeleteSessionProcedure,
@@ -93,10 +103,11 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	createSession *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	createUser    *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
-	deleteSession *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	getMe         *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	createSession   *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createUser      *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	verifyUserEmail *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
+	deleteSession   *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	getMe           *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 }
 
 // CreateSession calls publira.v1.AuthService.CreateSession.
@@ -107,6 +118,11 @@ func (c *authServiceClient) CreateSession(ctx context.Context, req *connect.Requ
 // CreateUser calls publira.v1.AuthService.CreateUser.
 func (c *authServiceClient) CreateUser(ctx context.Context, req *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
 	return c.createUser.CallUnary(ctx, req)
+}
+
+// VerifyUserEmail calls publira.v1.AuthService.VerifyUserEmail.
+func (c *authServiceClient) VerifyUserEmail(ctx context.Context, req *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error) {
+	return c.verifyUserEmail.CallUnary(ctx, req)
 }
 
 // DeleteSession calls publira.v1.AuthService.DeleteSession.
@@ -123,6 +139,7 @@ func (c *authServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.G
 type AuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
@@ -146,6 +163,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("CreateUser")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceVerifyUserEmailHandler := connect.NewUnaryHandler(
+		AuthServiceVerifyUserEmailProcedure,
+		svc.VerifyUserEmail,
+		connect.WithSchema(authServiceMethods.ByName("VerifyUserEmail")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceDeleteSessionHandler := connect.NewUnaryHandler(
 		AuthServiceDeleteSessionProcedure,
 		svc.DeleteSession,
@@ -164,6 +187,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceCreateSessionHandler.ServeHTTP(w, r)
 		case AuthServiceCreateUserProcedure:
 			authServiceCreateUserHandler.ServeHTTP(w, r)
+		case AuthServiceVerifyUserEmailProcedure:
+			authServiceVerifyUserEmailHandler.ServeHTTP(w, r)
 		case AuthServiceDeleteSessionProcedure:
 			authServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
@@ -183,6 +208,10 @@ func (UnimplementedAuthServiceHandler) CreateSession(context.Context, *connect.R
 
 func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.CreateUser is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.VerifyUserEmail is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {

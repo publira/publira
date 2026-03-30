@@ -23,7 +23,7 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 
 func newPublicRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(NewHandler(nil, nil))
+	return httptest.NewServer(NewHandler(nil, nil, nil, nil))
 }
 
 func assertRouteRegistered(t *testing.T, ts *httptest.Server, path string, wantRegistered bool) {

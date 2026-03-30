@@ -38,21 +38,21 @@ services:
       - "traefik.http.services.web-public.loadbalancer.server.port=3000"
 
       # web-catalog (port 3001)
-      - "traefik.http.routers.web-catalog.rule=PathPrefix(`/authors`) || PathPrefix(`/series`) || PathPrefix(`/web-catalog-assets`)"
+      - "traefik.http.routers.web-catalog.rule=PathRegexp(`^/(authors|series)(/.*)?$|^/web-catalog-assets(/.*)?$`)"
       - "traefik.http.routers.web-catalog.entrypoints=web"
       - "traefik.http.routers.web-catalog.priority=10"
       - "traefik.http.routers.web-catalog.service=web-catalog"
       - "traefik.http.services.web-catalog.loadbalancer.server.port=3001"
 
       # web-member (port 3002)
-      - "traefik.http.routers.web-member.rule=Path(`/my`) || PathPrefix(`/notifications`) || PathPrefix(`/settings`) || PathPrefix(`/web-member-assets`)"
+      - "traefik.http.routers.web-member.rule=PathRegexp(`^/my$|^/(notifications|settings)(/.*)?$|^/web-member-assets(/.*)?$`)"
       - "traefik.http.routers.web-member.entrypoints=web"
       - "traefik.http.routers.web-member.priority=10"
       - "traefik.http.routers.web-member.service=web-member"
       - "traefik.http.services.web-member.loadbalancer.server.port=3002"
 
       # web-auth (port 3003)
-      - "traefik.http.routers.web-auth.rule=Path(`/login`) || Path(`/signup`) || Path(`/logout`) || PathPrefix(`/web-auth-assets`)"
+      - "traefik.http.routers.web-auth.rule=PathRegexp(`^/(login|logout|verify)$|^/signup(/.*)?$|^/web-auth-assets(/.*)?$`)"
       - "traefik.http.routers.web-auth.entrypoints=web"
       - "traefik.http.routers.web-auth.priority=10"
       - "traefik.http.routers.web-auth.service=web-auth"
@@ -73,7 +73,7 @@ services:
       - "traefik.http.services.web-platform.loadbalancer.server.port=4100"
 
       # api-server on /api -> app:8000 (strip /api before forwarding)
-      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.routers.api.priority=100"
       - "traefik.http.routers.api.middlewares=api-strip"

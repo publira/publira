@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,8 +20,11 @@ import (
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
+
+const emailVerificationTokenTTL = 24 * time.Hour
 
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
@@ -155,6 +159,10 @@ func (s *apiServer) CreateSession(
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
+	if user.Status != "active" || !user.EmailVerifiedAt.Valid {
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "email_not_verified")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email is not verified"))
+	}
 	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
 		return nil, err
@@ -166,6 +174,120 @@ func (s *apiServer) CreateSession(
 	}
 	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "session_issued")
 	return response, nil
+}
+
+func tenantEmailSettingsFromRow(config dbmodels.TenantSmtpConfig, password string) emailsettings.SMTPSettings {
+	settings := emailsettings.SMTPSettings{Password: password}
+	if config.Host.Valid {
+		settings.Host = config.Host.String
+	}
+	if config.Port.Valid {
+		settings.Port = config.Port.Int32
+	}
+	if config.Username.Valid {
+		settings.Username = config.Username.String
+	}
+	if config.Encryption.Valid {
+		settings.Encryption = config.Encryption.String
+	}
+	if config.FromName.Valid {
+		settings.FromName = config.FromName.String
+	}
+	if config.FromAddress.Valid {
+		settings.FromAddress = config.FromAddress.String
+	}
+	if config.ReplyTo.Valid {
+		settings.ReplyTo = config.ReplyTo.String
+	}
+	return settings
+}
+
+func platformEmailSettingsFromRow(config dbmodels.PlatformSmtpConfig, password string) emailsettings.SMTPSettings {
+	settings := emailsettings.SMTPSettings{
+		Host:        config.Host,
+		Port:        config.Port,
+		Username:    config.Username,
+		Password:    password,
+		Encryption:  config.Encryption,
+		FromAddress: config.FromAddress,
+	}
+	if config.ReplyTo.Valid {
+		settings.ReplyTo = config.ReplyTo.String
+	}
+	return settings
+}
+
+func (s *apiServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
+	tenantConfig, err := s.queries.GetTenantSMTPConfigByTenantID(ctx, tenantID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
+	}
+	if err == nil && tenantConfig.SmtpOverrideEnabled {
+		password, decryptErr := emailsettings.DecryptPassword(tenantConfig.PasswordEncrypted.String, s.encryptor)
+		if decryptErr != nil {
+			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("tenant smtp settings are not configured"))
+		}
+		settings := tenantEmailSettingsFromRow(tenantConfig, password)
+		if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
+			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
+		}
+		return settings, nil
+	}
+
+	platformConfig, err := s.queries.GetPlatformSMTPConfig(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
+		}
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
+	}
+	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
+	if decryptErr != nil {
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
+	}
+	settings := platformEmailSettingsFromRow(platformConfig, password)
+	if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
+	}
+	return settings, nil
+}
+
+func verificationURL(tenant dbmodels.Tenant, token string) (string, error) {
+	domain := strings.TrimSpace(tenant.Domain)
+	domain = strings.TrimPrefix(domain, "https://")
+	domain = strings.TrimPrefix(domain, "http://")
+	domain = strings.TrimSuffix(domain, "/")
+	if domain == "" {
+		return "", errors.New("tenant domain is not configured")
+	}
+	return "https://" + domain + "/verify?token=" + url.QueryEscape(token), nil
+}
+
+func (s *apiServer) sendVerificationEmail(ctx context.Context, tenant dbmodels.Tenant, user dbmodels.User, token string) error {
+	if s.mailer == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
+	if err != nil {
+		return err
+	}
+	verifyURL, err := verificationURL(tenant, token)
+	if err != nil {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	subjectPrefix := strings.TrimSpace(tenant.Name)
+	if subjectPrefix == "" {
+		subjectPrefix = "Publira"
+	}
+	subject := subjectPrefix + " メールアドレス確認"
+	body := "Publira のご登録ありがとうございます。\r\n" +
+		"以下のリンクを開いてメールアドレス確認を完了してください。\r\n\r\n" +
+		verifyURL + "\r\n\r\n" +
+		"このリンクの有効期限は24時間です。\r\n"
+	if err := s.mailer.SendEmail(ctx, settings, user.Email, subject, body); err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
 }
 
 func (s *apiServer) CreateUser(
@@ -231,21 +353,98 @@ func (s *apiServer) CreateUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	issuedSession, err := s.issueUserSession(ctx, tenant, user, "")
+	user, err = s.queries.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"})
 	if err != nil {
-		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
-		return nil, err
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "set_inactive_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, user.PublicID, "user_created")
-	response := connect.NewResponse(&publirav1.CreateUserResponse{
-		User:    issuedSession.Msg.User,
-		Session: issuedSession.Msg.Session,
-	})
-	for _, cookie := range issuedSession.Header().Values("Set-Cookie") {
-		response.Header().Add("Set-Cookie", cookie)
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	verificationToken := hex.EncodeToString(rawToken)
+	verificationID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	_, err = s.queries.CreateUserEmailVerificationToken(ctx, dbmodels.CreateUserEmailVerificationTokenParams{
+		ID:        verificationID,
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		TokenHash: auth.HashToken(verificationToken),
+		ExpiresAt: time.Now().Add(emailVerificationTokenTTL),
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.sendVerificationEmail(ctx, tenant, user, verificationToken); err != nil {
+		_ = s.queries.DeleteUserByID(ctx, user.ID)
+		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "verification_email_send_failed")
+		return nil, err
+	}
+	auth.AuditEvent(req.Header(), "signup", "success", tenant.PublicID, user.PublicID, "verification_email_sent")
+	response := connect.NewResponse(&publirav1.CreateUserResponse{
+		User: &publirattypesv1.User{
+			PublicId: user.PublicID,
+			Name:     user.Name,
+		},
+	})
 	return response, nil
+}
+
+func (s *apiServer) VerifyUserEmail(
+	ctx context.Context,
+	req *connect.Request[publirav1.VerifyUserEmailRequest],
+) (*connect.Response[publirav1.VerifyUserEmailResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	token := strings.TrimSpace(req.Msg.Token)
+	if token == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+	}
+	verificationToken, err := s.queries.GetUserEmailVerificationTokenByHashForTenant(ctx, dbmodels.GetUserEmailVerificationTokenByHashForTenantParams{
+		TenantID:  tenant.ID,
+		TokenHash: auth.HashToken(token),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("verification token not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if verificationToken.UsedAt.Valid {
+		return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
+	}
+	if verificationToken.ExpiresAt.Before(time.Now()) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("verification token expired"))
+	}
+	user, err := s.queries.GetUserByID(ctx, verificationToken.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queries.MarkUserEmailVerificationTokenUsed(ctx, verificationToken.ID); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if _, err := s.queries.UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+		ID:              user.ID,
+		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	}); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if _, err := s.queries.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
 }
 
 func (s *apiServer) DeleteSession(

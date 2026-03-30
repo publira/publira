@@ -29,6 +29,15 @@ message CreateUserResponse {
   publira.types.v1.Session session = 2;
 }
 
+message VerifyUserEmailRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message VerifyUserEmailResponse {
+  bool verified = 1;
+}
+
 message DeleteSessionRequest {
   publira.types.v1.TenantContext tenant = 1;
   string session_id = 2;
@@ -48,6 +57,7 @@ message GetMeResponse {
 service AuthService {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
+  rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
 }
