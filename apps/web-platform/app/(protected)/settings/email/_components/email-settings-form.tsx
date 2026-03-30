@@ -19,6 +19,7 @@ import {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  DialogViewport,
 } from "@publira/ui-components/dialog";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -64,6 +65,7 @@ export const EmailSettingsForm = ({
   saveAction,
   testAction,
 }: EmailSettingsFormProps) => {
+  const formId = React.useId();
   const [saveState, saveFormAction, isSaving] = useActionState(
     saveAction,
     null
@@ -115,7 +117,11 @@ export const EmailSettingsForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={saveFormAction} className="grid gap-5 sm:max-w-3xl">
+        <form
+          action={saveFormAction}
+          className="grid gap-5 sm:max-w-3xl"
+          id={formId}
+        >
           <Field>
             <FieldLabel htmlFor="host" required>
               ホスト
@@ -287,77 +293,82 @@ export const EmailSettingsForm = ({
               />
               <DialogPortal>
                 <DialogBackdrop />
-                <DialogPopup>
-                  <DialogHeader>
-                    <DialogTitle>SMTP 接続テスト</DialogTitle>
-                    <DialogDescription>
-                      現在のフォーム入力値でテストメールを送信します。
-                    </DialogDescription>
-                  </DialogHeader>
+                <DialogViewport>
+                  <DialogPopup>
+                    <DialogHeader>
+                      <DialogTitle>SMTP 接続テスト</DialogTitle>
+                      <DialogDescription>
+                        現在のフォーム入力値でテストメールを送信します。
+                      </DialogDescription>
+                    </DialogHeader>
 
-                  <div className="mt-4 grid gap-4">
-                    <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                    <div className="mt-4 grid gap-4">
+                      <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                        <input
+                          checked={sendToSelf}
+                          onChange={handleSendToSelfChange}
+                          type="checkbox"
+                        />
+                        自分に送信する
+                      </label>
                       <input
-                        checked={sendToSelf}
-                        onChange={handleSendToSelfChange}
-                        type="checkbox"
+                        form={formId}
+                        name="recipient_type"
+                        type="hidden"
+                        value={
+                          sendToSelf
+                            ? String(TEST_EMAIL_RECIPIENT_TYPE_SELF)
+                            : String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
+                        }
                       />
-                      自分に送信する
-                    </label>
-                    <input
-                      name="recipient_type"
-                      type="hidden"
-                      value={
-                        sendToSelf
-                          ? String(TEST_EMAIL_RECIPIENT_TYPE_SELF)
-                          : String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
-                      }
-                    />
 
-                    {sendToSelf ? null : (
-                      <Field>
-                        <FieldLabel htmlFor="recipient_email" required>
-                          送信先メールアドレス
-                        </FieldLabel>
-                        <FieldContent>
-                          <Input
-                            id="recipient_email"
-                            name="recipient_email"
-                            placeholder="recipient@example.com"
-                            required={!sendToSelf}
-                            type="email"
-                          />
-                        </FieldContent>
-                      </Field>
-                    )}
+                      {sendToSelf ? null : (
+                        <Field>
+                          <FieldLabel htmlFor="recipient_email" required>
+                            送信先メールアドレス
+                          </FieldLabel>
+                          <FieldContent>
+                            <Input
+                              form={formId}
+                              id="recipient_email"
+                              name="recipient_email"
+                              placeholder="recipient@example.com"
+                              required={!sendToSelf}
+                              type="email"
+                            />
+                          </FieldContent>
+                        </Field>
+                      )}
 
-                    {testState ? (
-                      <FormMessage
-                        variant={testState.ok ? "success" : "destructive"}
+                      {testState ? (
+                        <FormMessage
+                          variant={testState.ok ? "success" : "destructive"}
+                        >
+                          {testState.message}
+                        </FormMessage>
+                      ) : null}
+                    </div>
+
+                    <DialogFooter>
+                      <DialogClose
+                        render={
+                          <Button type="button" variant="outline">
+                            閉じる
+                          </Button>
+                        }
+                      />
+                      <Button
+                        disabled={isTesting}
+                        form={formId}
+                        formAction={testFormAction}
+                        type="submit"
+                        variant="outline"
                       >
-                        {testState.message}
-                      </FormMessage>
-                    ) : null}
-                  </div>
-
-                  <DialogFooter>
-                    <DialogClose
-                      render={
-                        <Button type="button" variant="outline">
-                          閉じる
-                        </Button>
-                      }
-                    />
-                    <Button
-                      disabled={isTesting}
-                      formAction={testFormAction}
-                      type="submit"
-                      variant="outline"
-                    >
-                      {isTesting ? "送信中..." : "テストを実行"}
-                    </Button>
-                  </DialogFooter>
-                </DialogPopup>
+                        {isTesting ? "送信中..." : "テストを実行"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogPopup>
+                </DialogViewport>
               </DialogPortal>
             </Dialog>
 

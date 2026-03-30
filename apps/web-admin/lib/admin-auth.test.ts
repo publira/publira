@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getAdminCurrentUser, isAdminSessionValid } from "./admin-auth";
+import {
+  getAdminCurrentUser,
+  isAdminSessionValid,
+  isTenantAdminRole,
+} from "./admin-auth";
 
 const { mockGetMe, mockGetSessionId } = vi.hoisted(() => ({
   mockGetMe: vi.fn(),
@@ -116,5 +120,23 @@ describe("isAdminSessionValid", () => {
     mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
+  });
+});
+
+describe("isTenantAdminRole", () => {
+  it("tenant_admin を許可する", () => {
+    expect(isTenantAdminRole("tenant_admin")).toBe(true);
+  });
+
+  it("admin も許可する", () => {
+    expect(isTenantAdminRole("admin")).toBe(true);
+  });
+
+  it("editor を拒否する", () => {
+    expect(isTenantAdminRole("editor")).toBe(false);
+  });
+
+  it("大文字混在と空白を正規化して判定する", () => {
+    expect(isTenantAdminRole("  TENANT_ADMIN ")).toBe(true);
   });
 });

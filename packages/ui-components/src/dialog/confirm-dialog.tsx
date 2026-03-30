@@ -14,6 +14,7 @@ import {
   DialogPopup,
   DialogPortal,
   DialogTitle,
+  DialogViewport,
 } from "./dialog";
 
 export interface ConfirmDialogProps {
@@ -39,30 +40,32 @@ export const ConfirmDialog = ({
     <AlertDialog.Trigger render={trigger} />
     <DialogPortal>
       <DialogBackdrop />
-      <DialogPopup>
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
-          {description ? (
-            <DialogDescription className="text-sm text-muted-foreground">
-              {description}
-            </DialogDescription>
-          ) : null}
-        </DialogHeader>
+      <DialogViewport>
+        <DialogPopup>
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
+            {description ? (
+              <DialogDescription className="text-sm text-muted-foreground">
+                {description}
+              </DialogDescription>
+            ) : null}
+          </DialogHeader>
 
-        <DialogFooter>
-          <AlertDialog.Close
-            className={cn(buttonVariants({ variant: "outline" }))}
-          >
-            {cancelText}
-          </AlertDialog.Close>
-          <AlertDialog.Close
-            className={cn(buttonVariants({ variant: actionVariant }))}
-            onClick={onAction}
-          >
-            {actionText}
-          </AlertDialog.Close>
-        </DialogFooter>
-      </DialogPopup>
+          <DialogFooter>
+            <AlertDialog.Close
+              className={cn(buttonVariants({ variant: "outline" }))}
+            >
+              {cancelText}
+            </AlertDialog.Close>
+            <AlertDialog.Close
+              className={cn(buttonVariants({ variant: actionVariant }))}
+              onClick={onAction}
+            >
+              {actionText}
+            </AlertDialog.Close>
+          </DialogFooter>
+        </DialogPopup>
+      </DialogViewport>
     </DialogPortal>
   </AlertDialog.Root>
 );
