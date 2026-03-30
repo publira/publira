@@ -41,6 +41,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
+	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	// テナントユーザーのロールをすべて削除する
@@ -48,6 +49,7 @@ type Querier interface {
 	// ユーザーを物理削除（外部キー制約により関連データも削除）
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (Creator, error)
@@ -82,6 +84,7 @@ type Querier interface {
 	GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByPublicIDForTenantParams) (GetUserByPublicIDForTenantRow, error)
 	GetUserEmailChangeTokenByHashForTenant(ctx context.Context, arg GetUserEmailChangeTokenByHashForTenantParams) (GetUserEmailChangeTokenByHashForTenantRow, error)
 	GetUserEmailVerificationTokenByHashForTenant(ctx context.Context, arg GetUserEmailVerificationTokenByHashForTenantParams) (UserEmailVerificationToken, error)
+	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	// テナント操作監査ログを記録する
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// 管理操作監査ログを記録する
@@ -120,6 +123,7 @@ type Querier interface {
 	MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
+	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	RevokePlatformSession(ctx context.Context, id uuid.UUID) error
 	RevokeSession(ctx context.Context, id uuid.UUID) error
 	// プラットフォームユーザーの全セッションを失効させる
@@ -144,6 +148,8 @@ type Querier interface {
 	UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error)
 	// ユーザーのメール確認日時を更新
 	UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error)
+	// ユーザーのパスワードハッシュをID指定で更新
+	UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error)
 	// ユーザーのステータスを更新
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	// ユーザーのステータスをID指定で更新

@@ -102,8 +102,24 @@ INSERT INTO user_email_change_tokens (
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
+-- name: CreateUserPasswordResetToken :one
+INSERT INTO user_password_reset_tokens (
+        id,
+        tenant_id,
+        user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
 -- name: DeleteUserEmailChangeTokensByUserID :exec
 DELETE FROM user_email_change_tokens
+WHERE user_id = $1
+    AND completed_at IS NULL;
+
+-- name: DeleteUserPasswordResetTokensByUserID :exec
+DELETE FROM user_password_reset_tokens
 WHERE user_id = $1
     AND completed_at IS NULL;
 
@@ -128,6 +144,13 @@ WHERE tenant_id = $1
     )
 LIMIT 1;
 
+-- name: GetUserPasswordResetTokenByHashForTenant :one
+SELECT *
+FROM user_password_reset_tokens
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1;
+
 -- name: MarkUserEmailVerificationTokenUsed :exec
 UPDATE user_email_verification_tokens
 SET used_at = NOW()
@@ -146,6 +169,11 @@ WHERE id = $1;
 
 -- name: MarkUserEmailChangeCompleted :exec
 UPDATE user_email_change_tokens
+SET completed_at = COALESCE(completed_at, NOW())
+WHERE id = $1;
+
+-- name: MarkUserPasswordResetTokenCompleted :exec
+UPDATE user_password_reset_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1;
 -- name: GetSessionByTokenHashForTenant :one
@@ -989,6 +1017,13 @@ RETURNING *;
 -- ユーザーのメールアドレスをID指定で更新
 UPDATE users
 SET email = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateUserPasswordHashByID :one
+-- ユーザーのパスワードハッシュをID指定で更新
+UPDATE users
+SET password_hash = $2
 WHERE id = $1
 RETURNING *;
 

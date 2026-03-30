@@ -61,6 +61,25 @@ message ConfirmEmailChangeResponse {
   string pending_confirmation_for = 3;
 }
 
+message RequestPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message RequestPasswordResetResponse {
+  bool requested = 1;
+}
+
+message ConfirmPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  string new_password = 3;
+}
+
+message ConfirmPasswordResetResponse {
+  bool confirmed = 1;
+}
+
 message DeleteSessionRequest {
   publira.types.v1.TenantContext tenant = 1;
   string session_id = 2;
@@ -83,6 +102,8 @@ service AuthService {
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
   rpc RequestEmailChange(RequestEmailChangeRequest) returns (RequestEmailChangeResponse) {}
   rpc ConfirmEmailChange(ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse) {}
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse) {}
+  rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse) {}
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
 }

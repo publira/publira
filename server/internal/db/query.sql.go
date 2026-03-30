@@ -749,6 +749,47 @@ func (q *Queries) CreateUserEmailVerificationToken(ctx context.Context, arg Crea
 	return i, err
 }
 
+const createUserPasswordResetToken = `-- name: CreateUserPasswordResetToken :one
+INSERT INTO user_password_reset_tokens (
+        id,
+        tenant_id,
+        user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, user_id, token_hash, expires_at, completed_at, created_at
+`
+
+type CreateUserPasswordResetTokenParams struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error) {
+	row := q.db.QueryRowContext(ctx, createUserPasswordResetToken,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i UserPasswordResetToken
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const deletePlatformUserRolesByPlatformUserID = `-- name: DeletePlatformUserRolesByPlatformUserID :exec
 DELETE FROM platform_user_roles
 WHERE platform_user_id = $1
@@ -799,6 +840,17 @@ WHERE user_id = $1
 
 func (q *Queries) DeleteUserEmailChangeTokensByUserID(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteUserEmailChangeTokensByUserID, userID)
+	return err
+}
+
+const deleteUserPasswordResetTokensByUserID = `-- name: DeleteUserPasswordResetTokensByUserID :exec
+DELETE FROM user_password_reset_tokens
+WHERE user_id = $1
+    AND completed_at IS NULL
+`
+
+func (q *Queries) DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteUserPasswordResetTokensByUserID, userID)
 	return err
 }
 
@@ -1749,6 +1801,34 @@ func (q *Queries) GetUserEmailVerificationTokenByHashForTenant(ctx context.Conte
 		&i.TokenHash,
 		&i.ExpiresAt,
 		&i.UsedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserPasswordResetTokenByHashForTenant = `-- name: GetUserPasswordResetTokenByHashForTenant :one
+SELECT id, tenant_id, user_id, token_hash, expires_at, completed_at, created_at
+FROM user_password_reset_tokens
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1
+`
+
+type GetUserPasswordResetTokenByHashForTenantParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	TokenHash string    `json:"token_hash"`
+}
+
+func (q *Queries) GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error) {
+	row := q.db.QueryRowContext(ctx, getUserPasswordResetTokenByHashForTenant, arg.TenantID, arg.TokenHash)
+	var i UserPasswordResetToken
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CompletedAt,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -2916,6 +2996,17 @@ func (q *Queries) MarkUserEmailVerificationTokenUsed(ctx context.Context, id uui
 	return err
 }
 
+const markUserPasswordResetTokenCompleted = `-- name: MarkUserPasswordResetTokenCompleted :exec
+UPDATE user_password_reset_tokens
+SET completed_at = COALESCE(completed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markUserPasswordResetTokenCompleted, id)
+	return err
+}
+
 const revokePlatformSession = `-- name: RevokePlatformSession :exec
 UPDATE platform_sessions
 SET revoked_at = NOW()
@@ -3283,6 +3374,36 @@ type UpdateUserEmailVerifiedAtByIDParams struct {
 // ユーザーのメール確認日時を更新
 func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUserEmailVerifiedAtByID, arg.ID, arg.EmailVerifiedAt)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+	)
+	return i, err
+}
+
+const updateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
+UPDATE users
+SET password_hash = $2
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+`
+
+type UpdateUserPasswordHashByIDParams struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"password_hash"`
+}
+
+// ユーザーのパスワードハッシュをID指定で更新
+func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserPasswordHashByID, arg.ID, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,

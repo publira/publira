@@ -72,23 +72,31 @@ const pickFirstQueryParam = (
 
 const getLoginViewModel = async (
   searchParams: PageProps<"/[tenant_public_id]/login">["searchParams"]
-): Promise<{ errorMessage?: string; returnToPath: string }> => {
+): Promise<{
+  errorMessage?: string;
+  resetDone: boolean;
+  returnToPath: string;
+}> => {
   const params = await searchParams;
   const error = pickFirstQueryParam(params.error);
+  const reset = pickFirstQueryParam(params.reset);
   const returnTo = pickFirstQueryParam(params.returnTo);
 
   return {
     errorMessage: error?.trim() || undefined,
+    resetDone: reset === "done",
     returnToPath: sanitizeRedirectPath(returnTo),
   };
 };
 
 const LoginForm = ({
   errorMessage,
+  resetDone,
   returnToPath,
   tenantPublicId,
 }: {
   errorMessage?: string;
+  resetDone?: boolean;
   returnToPath: string;
   tenantPublicId: string;
 }) => (
@@ -134,10 +142,25 @@ const LoginForm = ({
           <FormMessage variant="destructive">{errorMessage}</FormMessage>
         ) : null}
 
+        {resetDone ? (
+          <FormMessage variant="success">
+            パスワードを再設定しました。新しいパスワードでログインしてください。
+          </FormMessage>
+        ) : null}
+
         <Button className="mt-2 w-full" type="submit">
           ログイン
         </Button>
       </form>
+
+      <div className="text-right text-sm">
+        <Link
+          href="/reset-password"
+          className="font-medium text-primary hover:underline"
+        >
+          パスワードをお忘れですか？
+        </Link>
+      </div>
     </div>
 
     <div className="mt-4 text-center text-sm">
@@ -158,11 +181,13 @@ const LoginFormContent = async ({
   searchParams: PageProps<"/[tenant_public_id]/login">["searchParams"];
   tenantPublicId: string;
 }) => {
-  const { errorMessage, returnToPath } = await getLoginViewModel(searchParams);
+  const { errorMessage, resetDone, returnToPath } =
+    await getLoginViewModel(searchParams);
 
   return (
     <LoginForm
       errorMessage={errorMessage}
+      resetDone={resetDone}
       returnToPath={returnToPath}
       tenantPublicId={tenantPublicId}
     />

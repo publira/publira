@@ -47,6 +47,12 @@ const (
 	// AuthServiceConfirmEmailChangeProcedure is the fully-qualified name of the AuthService's
 	// ConfirmEmailChange RPC.
 	AuthServiceConfirmEmailChangeProcedure = "/publira.v1.AuthService/ConfirmEmailChange"
+	// AuthServiceRequestPasswordResetProcedure is the fully-qualified name of the AuthService's
+	// RequestPasswordReset RPC.
+	AuthServiceRequestPasswordResetProcedure = "/publira.v1.AuthService/RequestPasswordReset"
+	// AuthServiceConfirmPasswordResetProcedure is the fully-qualified name of the AuthService's
+	// ConfirmPasswordReset RPC.
+	AuthServiceConfirmPasswordResetProcedure = "/publira.v1.AuthService/ConfirmPasswordReset"
 	// AuthServiceDeleteSessionProcedure is the fully-qualified name of the AuthService's DeleteSession
 	// RPC.
 	AuthServiceDeleteSessionProcedure = "/publira.v1.AuthService/DeleteSession"
@@ -61,6 +67,8 @@ type AuthServiceClient interface {
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
+	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
+	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
@@ -106,6 +114,18 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("ConfirmEmailChange")),
 			connect.WithClientOptions(opts...),
 		),
+		requestPasswordReset: connect.NewClient[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse](
+			httpClient,
+			baseURL+AuthServiceRequestPasswordResetProcedure,
+			connect.WithSchema(authServiceMethods.ByName("RequestPasswordReset")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmPasswordReset: connect.NewClient[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse](
+			httpClient,
+			baseURL+AuthServiceConfirmPasswordResetProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteSession: connect.NewClient[v1.DeleteSessionRequest, v1.DeleteSessionResponse](
 			httpClient,
 			baseURL+AuthServiceDeleteSessionProcedure,
@@ -123,13 +143,15 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	createSession      *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	createUser         *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
-	verifyUserEmail    *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
-	requestEmailChange *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
-	confirmEmailChange *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
-	deleteSession      *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	getMe              *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	createSession        *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createUser           *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	verifyUserEmail      *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
+	requestEmailChange   *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
+	confirmEmailChange   *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
+	requestPasswordReset *connect.Client[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse]
+	confirmPasswordReset *connect.Client[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse]
+	deleteSession        *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	getMe                *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 }
 
 // CreateSession calls publira.v1.AuthService.CreateSession.
@@ -157,6 +179,16 @@ func (c *authServiceClient) ConfirmEmailChange(ctx context.Context, req *connect
 	return c.confirmEmailChange.CallUnary(ctx, req)
 }
 
+// RequestPasswordReset calls publira.v1.AuthService.RequestPasswordReset.
+func (c *authServiceClient) RequestPasswordReset(ctx context.Context, req *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error) {
+	return c.requestPasswordReset.CallUnary(ctx, req)
+}
+
+// ConfirmPasswordReset calls publira.v1.AuthService.ConfirmPasswordReset.
+func (c *authServiceClient) ConfirmPasswordReset(ctx context.Context, req *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error) {
+	return c.confirmPasswordReset.CallUnary(ctx, req)
+}
+
 // DeleteSession calls publira.v1.AuthService.DeleteSession.
 func (c *authServiceClient) DeleteSession(ctx context.Context, req *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {
 	return c.deleteSession.CallUnary(ctx, req)
@@ -174,6 +206,8 @@ type AuthServiceHandler interface {
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
+	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
+	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
@@ -215,6 +249,18 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("ConfirmEmailChange")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceRequestPasswordResetHandler := connect.NewUnaryHandler(
+		AuthServiceRequestPasswordResetProcedure,
+		svc.RequestPasswordReset,
+		connect.WithSchema(authServiceMethods.ByName("RequestPasswordReset")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceConfirmPasswordResetHandler := connect.NewUnaryHandler(
+		AuthServiceConfirmPasswordResetProcedure,
+		svc.ConfirmPasswordReset,
+		connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceDeleteSessionHandler := connect.NewUnaryHandler(
 		AuthServiceDeleteSessionProcedure,
 		svc.DeleteSession,
@@ -239,6 +285,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceRequestEmailChangeHandler.ServeHTTP(w, r)
 		case AuthServiceConfirmEmailChangeProcedure:
 			authServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
+		case AuthServiceRequestPasswordResetProcedure:
+			authServiceRequestPasswordResetHandler.ServeHTTP(w, r)
+		case AuthServiceConfirmPasswordResetProcedure:
+			authServiceConfirmPasswordResetHandler.ServeHTTP(w, r)
 		case AuthServiceDeleteSessionProcedure:
 			authServiceDeleteSessionHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
@@ -270,6 +320,14 @@ func (UnimplementedAuthServiceHandler) RequestEmailChange(context.Context, *conn
 
 func (UnimplementedAuthServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ConfirmEmailChange is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.RequestPasswordReset is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ConfirmPasswordReset is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {
