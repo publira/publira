@@ -22,7 +22,9 @@ export const metadata: Metadata = {
 interface LoginPageProps {
   params: Promise<{ tenant_public_id: string }>;
   searchParams: Promise<{
+    email?: string;
     error?: string;
+    invited?: string;
     next?: string;
   }>;
 }
@@ -89,6 +91,8 @@ const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
 
   const sp = await searchParams;
   const errorMessage = sp.error?.trim();
+  const defaultEmail = sp.email?.trim() ?? "";
+  const invitedDone = sp.invited?.trim() === "done";
   const nextPath = sanitizeRedirectPath(sp.next);
 
   return (
@@ -104,6 +108,7 @@ const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
           <FieldContent>
             <Input
               autoComplete="email"
+              defaultValue={defaultEmail}
               id="email"
               name="email"
               placeholder="admin@example.com"
@@ -128,6 +133,12 @@ const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
             />
           </FieldContent>
         </Field>
+
+        {invitedDone ? (
+          <FormMessage variant="success">
+            招待の承諾が完了しました。ログインしてください。
+          </FormMessage>
+        ) : null}
 
         {errorMessage ? (
           <FormMessage variant="destructive">{errorMessage}</FormMessage>

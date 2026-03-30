@@ -113,6 +113,17 @@ INSERT INTO user_password_reset_tokens (
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: CreateTenantAdminInvitation :one
+INSERT INTO tenant_admin_invitations (
+        id,
+        tenant_id,
+        email,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
 -- name: DeleteUserEmailChangeTokensByUserID :exec
 DELETE FROM user_email_change_tokens
 WHERE user_id = $1
@@ -151,6 +162,27 @@ WHERE tenant_id = $1
     AND token_hash = $2
 LIMIT 1;
 
+-- name: GetTenantAdminInvitationByTenantAndEmail :one
+SELECT *
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND email = $2
+LIMIT 1;
+
+-- name: GetTenantAdminInvitationByIDForTenant :one
+SELECT *
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND id = $2
+LIMIT 1;
+
+-- name: GetTenantAdminInvitationByHashForTenant :one
+SELECT *
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1;
+
 -- name: MarkUserEmailVerificationTokenUsed :exec
 UPDATE user_email_verification_tokens
 SET used_at = NOW()
@@ -176,6 +208,43 @@ WHERE id = $1;
 UPDATE user_password_reset_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1;
+
+-- name: UpdateTenantAdminInvitationForResend :one
+UPDATE tenant_admin_invitations
+SET token_hash = $3,
+    expires_at = $4,
+    canceled_at = NULL,
+    updated_at = NOW()
+WHERE tenant_id = $1
+    AND email = $2
+RETURNING *;
+
+-- name: CancelTenantAdminInvitation :one
+UPDATE tenant_admin_invitations
+SET canceled_at = COALESCE(canceled_at, NOW()),
+    updated_at = NOW()
+WHERE tenant_id = $1
+    AND id = $2
+RETURNING *;
+
+-- name: MarkTenantAdminInvitationAccepted :one
+UPDATE tenant_admin_invitations
+SET accepted_at = COALESCE(accepted_at, NOW()),
+    updated_at = NOW()
+WHERE tenant_id = $1
+    AND id = $2
+RETURNING *;
+
+-- name: ListTenantAdminInvitations :many
+SELECT *
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND (
+        accepted_at IS NULL
+        OR accepted_at >= NOW() - INTERVAL '7 days'
+    )
+ORDER BY created_at DESC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: GetSessionByTokenHashForTenant :one
 SELECT *
 FROM sessions

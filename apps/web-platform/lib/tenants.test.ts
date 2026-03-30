@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   addPlatformTenantMember,
+  cancelPlatformTenantAdminInvitation,
+  createPlatformTenantAdminInvitation,
   createPlatformTenant,
   getPlatformTenant,
+  listPlatformTenantAdminInvitations,
   listPlatformTenantMembers,
   listPlatformTenants,
+  resendPlatformTenantAdminInvitation,
   resumePlatformTenant,
   suspendPlatformTenant,
 } from "./tenants";
@@ -14,7 +18,9 @@ const {
   mockAddTenantMember,
   mockBuildSessionHeaders,
   mockCreateTenant,
+  mockCreateTenantAdminInvitation,
   mockGetTenant,
+  mockListTenantAdminInvitations,
   mockListTenantMembers,
   mockListTenants,
   mockListOperators,
@@ -22,19 +28,25 @@ const {
   mockRemoveTenantMember,
   mockResolveSessionId,
   mockResumeTenant,
+  mockResendTenantAdminInvitation,
   mockSuspendTenant,
   mockUpdateTenantMemberRole,
+  mockCancelTenantAdminInvitation,
 } = vi.hoisted(() => ({
   mockAddTenantMember: vi.fn(),
   mockBuildSessionHeaders: vi.fn(),
+  mockCancelTenantAdminInvitation: vi.fn(),
   mockCreateTenant: vi.fn(),
+  mockCreateTenantAdminInvitation: vi.fn(),
   mockGetTenant: vi.fn(),
   mockListOperators: vi.fn(),
+  mockListTenantAdminInvitations: vi.fn(),
   mockListTenantMembers: vi.fn(),
   mockListTenants: vi.fn(),
   mockListUsers: vi.fn(),
   mockRemoveTenantMember: vi.fn(),
   mockResolveSessionId: vi.fn(),
+  mockResendTenantAdminInvitation: vi.fn(),
   mockResumeTenant: vi.fn(),
   mockSuspendTenant: vi.fn(),
   mockUpdateTenantMemberRole: vi.fn(),
@@ -47,11 +59,15 @@ vi.mock("./api-client", () => ({
     },
     tenants: {
       addTenantMember: mockAddTenantMember,
+      cancelTenantAdminInvitation: mockCancelTenantAdminInvitation,
       createTenant: mockCreateTenant,
+      createTenantAdminInvitation: mockCreateTenantAdminInvitation,
       getTenant: mockGetTenant,
+      listTenantAdminInvitations: mockListTenantAdminInvitations,
       listTenantMembers: mockListTenantMembers,
       listTenants: mockListTenants,
       removeTenantMember: mockRemoveTenantMember,
+      resendTenantAdminInvitation: mockResendTenantAdminInvitation,
       resumeTenant: mockResumeTenant,
       suspendTenant: mockSuspendTenant,
       updateTenantMemberRole: mockUpdateTenantMemberRole,
@@ -347,6 +363,127 @@ describe("createPlatformTenant", () => {
     ).resolves.toEqual({
       message: "指定したメールアドレスのユーザーが見つかりません。",
       ok: false,
+    });
+  });
+});
+
+describe("tenant admin invitations", () => {
+  it("招待一覧を取得する", async () => {
+    mockListTenantAdminInvitations.mockResolvedValueOnce({
+      invitations: [
+        {
+          acceptedAt: "",
+          canceledAt: "",
+          createdAt: "2026-03-30T00:00:00Z",
+          email: "admin@example.com",
+          expiresAt: "2026-03-31T00:00:00Z",
+          id: "inv_001",
+          status: "pending",
+        },
+      ],
+    });
+
+    await expect(
+      listPlatformTenantAdminInvitations("tenant_seifuu")
+    ).resolves.toEqual([
+      {
+        acceptedAt: "",
+        canceledAt: "",
+        createdAt: "2026-03-30T00:00:00Z",
+        email: "admin@example.com",
+        expiresAt: "2026-03-31T00:00:00Z",
+        id: "inv_001",
+        status: "pending",
+      },
+    ]);
+  });
+
+  it("招待作成が成功する", async () => {
+    mockCreateTenantAdminInvitation.mockResolvedValueOnce({
+      invitation: {
+        acceptedAt: "",
+        canceledAt: "",
+        createdAt: "2026-03-30T00:00:00Z",
+        email: "admin@example.com",
+        expiresAt: "2026-03-31T00:00:00Z",
+        id: "inv_001",
+        status: "pending",
+      },
+      roleGrantedImmediately: false,
+    });
+
+    await expect(
+      createPlatformTenantAdminInvitation("tenant_seifuu", "admin@example.com")
+    ).resolves.toEqual({
+      invitation: {
+        acceptedAt: "",
+        canceledAt: "",
+        createdAt: "2026-03-30T00:00:00Z",
+        email: "admin@example.com",
+        expiresAt: "2026-03-31T00:00:00Z",
+        id: "inv_001",
+        status: "pending",
+      },
+      ok: true,
+      roleGrantedImmediately: false,
+    });
+  });
+
+  it("招待再送が成功する", async () => {
+    mockResendTenantAdminInvitation.mockResolvedValueOnce({
+      invitation: {
+        acceptedAt: "",
+        canceledAt: "",
+        createdAt: "2026-03-30T00:00:00Z",
+        email: "admin@example.com",
+        expiresAt: "2026-03-31T00:00:00Z",
+        id: "inv_001",
+        status: "pending",
+      },
+    });
+
+    await expect(
+      resendPlatformTenantAdminInvitation("tenant_seifuu", "inv_001")
+    ).resolves.toEqual({
+      invitation: {
+        acceptedAt: "",
+        canceledAt: "",
+        createdAt: "2026-03-30T00:00:00Z",
+        email: "admin@example.com",
+        expiresAt: "2026-03-31T00:00:00Z",
+        id: "inv_001",
+        status: "pending",
+      },
+      ok: true,
+    });
+  });
+
+  it("招待取り消しが成功する", async () => {
+    mockCancelTenantAdminInvitation.mockResolvedValueOnce({
+      invitation: {
+        acceptedAt: "",
+        canceledAt: "2026-03-30T01:00:00Z",
+        createdAt: "2026-03-30T00:00:00Z",
+        email: "admin@example.com",
+        expiresAt: "2026-03-31T00:00:00Z",
+        id: "inv_001",
+        status: "canceled",
+      },
+    });
+
+    await expect(
+      cancelPlatformTenantAdminInvitation("tenant_seifuu", "inv_001")
+    ).resolves.toEqual({
+      invitation: {
+        acceptedAt: "",
+        canceledAt: "2026-03-30T01:00:00Z",
+        createdAt: "2026-03-30T00:00:00Z",
+        email: "admin@example.com",
+        expiresAt: "2026-03-31T00:00:00Z",
+        id: "inv_001",
+        status: "canceled",
+      },
+      ok: true,
     });
   });
 });

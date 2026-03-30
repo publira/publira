@@ -43,8 +43,14 @@ import {
   getTenantStatusLabel,
   getTenantStatusTone,
 } from "../../../../../../lib/tenant-labels";
-import type { PlatformTenantMemberSummary } from "../../../../../../lib/tenants";
-import type { TenantMemberFormState } from "../../_lib/actions";
+import type {
+  PlatformTenantAdminInvitation,
+  PlatformTenantMemberSummary,
+} from "../../../../../../lib/tenants";
+import type {
+  TenantInvitationFormState,
+  TenantMemberFormState,
+} from "../../_lib/actions";
 
 const tenantRoleOptions = [
   { label: "テナント管理者", value: "tenant_admin" },
@@ -57,17 +63,59 @@ interface TenantMembersManagerProps {
     prevState: TenantMemberFormState,
     formData: FormData
   ) => Promise<TenantMemberFormState>;
+  cancelInvitationAction: (
+    prevState: TenantInvitationFormState,
+    formData: FormData
+  ) => Promise<TenantInvitationFormState>;
+  createInvitationAction: (
+    prevState: TenantInvitationFormState,
+    formData: FormData
+  ) => Promise<TenantInvitationFormState>;
+  invitations: PlatformTenantAdminInvitation[];
   members: PlatformTenantMemberSummary[];
   removeAction: (
     prevState: TenantMemberFormState,
     formData: FormData
   ) => Promise<TenantMemberFormState>;
+  resendInvitationAction: (
+    prevState: TenantInvitationFormState,
+    formData: FormData
+  ) => Promise<TenantInvitationFormState>;
   tenantPublicId: string;
   updateRoleAction: (
     prevState: TenantMemberFormState,
     formData: FormData
   ) => Promise<TenantMemberFormState>;
 }
+
+const invitationStatusTone = (status: string) => {
+  if (status === "pending") {
+    return "warning" as const;
+  }
+  if (status === "accepted") {
+    return "success" as const;
+  }
+  if (status === "expired") {
+    return "muted" as const;
+  }
+  return "destructive" as const;
+};
+
+const invitationStatusLabel = (status: string) => {
+  if (status === "pending") {
+    return "招待中";
+  }
+  if (status === "accepted") {
+    return "承諾済み";
+  }
+  if (status === "expired") {
+    return "期限切れ";
+  }
+  if (status === "canceled") {
+    return "取り消し";
+  }
+  return status;
+};
 
 interface TenantMemberRowProps {
   member: PlatformTenantMemberSummary;
@@ -287,8 +335,12 @@ const TenantMemberRow = ({
 
 export const TenantMembersManager = ({
   addAction,
+  cancelInvitationAction,
+  createInvitationAction,
+  invitations,
   members,
   removeAction,
+  resendInvitationAction,
   tenantPublicId,
   updateRoleAction,
 }: TenantMembersManagerProps) => {
@@ -296,11 +348,90 @@ export const TenantMembersManager = ({
     addAction,
     null
   );
+  const [inviteState, createInviteAction, isInvitePending] = useActionState(
+    createInvitationAction,
+    null
+  );
+  const [invitationActionState, setInvitationActionState] =
+    React.useState<TenantInvitationFormState>(null);
   const [deleteState, setDeleteState] =
     React.useState<TenantMemberFormState>(null);
 
+  const [isResendPending, startResendTransition] = React.useTransition();
+  const [isCancelPending, startCancelTransition] = React.useTransition();
+
+  const handleResend = React.useCallback(
+    (invitationId: string) => {
+      startResendTransition(async () => {
+        const formData = new FormData();
+        formData.set("tenant_public_id", tenantPublicId);
+        formData.set("invitation_id", invitationId);
+        const state = await resendInvitationAction(null, formData);
+        setInvitationActionState(state);
+      });
+    },
+    [resendInvitationAction, tenantPublicId]
+  );
+
+  const handleCancel = React.useCallback(
+    (invitationId: string) => {
+      startCancelTransition(async () => {
+        const formData = new FormData();
+        formData.set("tenant_public_id", tenantPublicId);
+        formData.set("invitation_id", invitationId);
+        const state = await cancelInvitationAction(null, formData);
+        setInvitationActionState(state);
+      });
+    },
+    [cancelInvitationAction, tenantPublicId]
+  );
+
   return (
     <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>テナント管理者を招待</CardTitle>
+          <CardDescription>
+            既存ユーザーなら即時に管理者権限を付与し、未登録メールには招待リンクを送信します。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={createInviteAction} className="grid gap-4">
+            <input
+              name="tenant_public_id"
+              type="hidden"
+              value={tenantPublicId}
+            />
+            <Field>
+              <FieldLabel htmlFor="invite_email" required>
+                招待するメールアドレス
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="invite_email"
+                  name="invite_email"
+                  placeholder="admin@example.com"
+                  required
+                  type="email"
+                />
+              </FieldContent>
+            </Field>
+
+            {inviteState ? (
+              <FormMessage variant={inviteState.ok ? "success" : "destructive"}>
+                {inviteState.message}
+              </FormMessage>
+            ) : null}
+
+            <div className="flex justify-end">
+              <Button disabled={isInvitePending} type="submit" variant="outline">
+                {isInvitePending ? "招待中..." : "管理者を招待"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>テナントメンバー一覧</CardTitle>
@@ -404,6 +535,92 @@ export const TenantMembersManager = ({
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>管理者招待一覧</CardTitle>
+          <CardDescription>
+            送信済み招待の状態確認、再送、取り消しができます。承諾済みの招待は承諾後1週間のみ表示されます。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invitationActionState ? (
+            <FormMessage
+              className="mb-4"
+              variant={invitationActionState.ok ? "success" : "destructive"}
+            >
+              {invitationActionState.message}
+            </FormMessage>
+          ) : null}
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>メール</TableHead>
+                <TableHead>状態</TableHead>
+                <TableHead>作成日時</TableHead>
+                <TableHead>有効期限</TableHead>
+                <TableHead className="w-56">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invitations.length === 0 ? (
+                <TableRow>
+                  <TableCell className="text-muted-foreground" colSpan={5}>
+                    管理者招待はまだありません。
+                  </TableCell>
+                </TableRow>
+              ) : null}
+
+              {invitations.map((invitation) => {
+                const canOperate = invitation.status === "pending";
+                return (
+                  <TableRow key={invitation.id}>
+                    <TableCell>{invitation.email}</TableCell>
+                    <TableCell>
+                      <Badge tone={invitationStatusTone(invitation.status)}>
+                        {invitationStatusLabel(invitation.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{invitation.createdAt || "-"}</TableCell>
+                    <TableCell>{invitation.expiresAt || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          disabled={!canOperate || isResendPending || isCancelPending}
+                          onClick={() => handleResend(invitation.id)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          再送
+                        </Button>
+                        <ConfirmDialog
+                          actionText={isCancelPending ? "取り消し中..." : "取り消す"}
+                          actionVariant="destructive"
+                          description="この招待リンクは無効化され、受諾できなくなります。"
+                          onAction={() => handleCancel(invitation.id)}
+                          title="この招待を取り消しますか？"
+                          trigger={
+                            <Button
+                              disabled={!canOperate || isCancelPending || isResendPending}
+                              size="sm"
+                              type="button"
+                              variant="destructive"
+                            >
+                              取り消し
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

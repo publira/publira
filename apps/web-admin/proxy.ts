@@ -8,7 +8,7 @@ import {
 } from "./lib/admin-auth-shared";
 import { resolveTenantPublicId } from "./lib/tenant";
 
-const PUBLIC_PATHS = new Set(["/login", "/logout", "/healthz"]);
+const PUBLIC_PATHS = new Set(["/accept-invite", "/login", "/logout", "/healthz"]);
 
 const serviceUnavailableResponse = () =>
   new NextResponse("Service Unavailable", {

@@ -1104,6 +1104,498 @@ func (x *RemoveTenantMemberResponse) GetUserPublicId() string {
 	return ""
 }
 
+type TenantAdminInvitation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ExpiresAt     string                 `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	AcceptedAt    string                 `protobuf:"bytes,6,opt,name=accepted_at,json=acceptedAt,proto3" json:"accepted_at,omitempty"`
+	CanceledAt    string                 `protobuf:"bytes,7,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantAdminInvitation) Reset() {
+	*x = TenantAdminInvitation{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantAdminInvitation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantAdminInvitation) ProtoMessage() {}
+
+func (x *TenantAdminInvitation) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantAdminInvitation.ProtoReflect.Descriptor instead.
+func (*TenantAdminInvitation) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *TenantAdminInvitation) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TenantAdminInvitation) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *TenantAdminInvitation) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *TenantAdminInvitation) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *TenantAdminInvitation) GetExpiresAt() string {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return ""
+}
+
+func (x *TenantAdminInvitation) GetAcceptedAt() string {
+	if x != nil {
+		return x.AcceptedAt
+	}
+	return ""
+}
+
+func (x *TenantAdminInvitation) GetCanceledAt() string {
+	if x != nil {
+		return x.CanceledAt
+	}
+	return ""
+}
+
+type ListTenantAdminInvitationsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	Limit          int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset         int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ListTenantAdminInvitationsRequest) Reset() {
+	*x = ListTenantAdminInvitationsRequest{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTenantAdminInvitationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTenantAdminInvitationsRequest) ProtoMessage() {}
+
+func (x *ListTenantAdminInvitationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTenantAdminInvitationsRequest.ProtoReflect.Descriptor instead.
+func (*ListTenantAdminInvitationsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListTenantAdminInvitationsRequest) GetTenantPublicId() string {
+	if x != nil {
+		return x.TenantPublicId
+	}
+	return ""
+}
+
+func (x *ListTenantAdminInvitationsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListTenantAdminInvitationsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type ListTenantAdminInvitationsResponse struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Invitations   []*TenantAdminInvitation `protobuf:"bytes,1,rep,name=invitations,proto3" json:"invitations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTenantAdminInvitationsResponse) Reset() {
+	*x = ListTenantAdminInvitationsResponse{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTenantAdminInvitationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTenantAdminInvitationsResponse) ProtoMessage() {}
+
+func (x *ListTenantAdminInvitationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTenantAdminInvitationsResponse.ProtoReflect.Descriptor instead.
+func (*ListTenantAdminInvitationsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ListTenantAdminInvitationsResponse) GetInvitations() []*TenantAdminInvitation {
+	if x != nil {
+		return x.Invitations
+	}
+	return nil
+}
+
+type CreateTenantAdminInvitationRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	Email          string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreateTenantAdminInvitationRequest) Reset() {
+	*x = CreateTenantAdminInvitationRequest{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTenantAdminInvitationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTenantAdminInvitationRequest) ProtoMessage() {}
+
+func (x *CreateTenantAdminInvitationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTenantAdminInvitationRequest.ProtoReflect.Descriptor instead.
+func (*CreateTenantAdminInvitationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *CreateTenantAdminInvitationRequest) GetTenantPublicId() string {
+	if x != nil {
+		return x.TenantPublicId
+	}
+	return ""
+}
+
+func (x *CreateTenantAdminInvitationRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+type CreateTenantAdminInvitationResponse struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Invitation             *TenantAdminInvitation `protobuf:"bytes,1,opt,name=invitation,proto3" json:"invitation,omitempty"`
+	RoleGrantedImmediately bool                   `protobuf:"varint,2,opt,name=role_granted_immediately,json=roleGrantedImmediately,proto3" json:"role_granted_immediately,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *CreateTenantAdminInvitationResponse) Reset() {
+	*x = CreateTenantAdminInvitationResponse{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTenantAdminInvitationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTenantAdminInvitationResponse) ProtoMessage() {}
+
+func (x *CreateTenantAdminInvitationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTenantAdminInvitationResponse.ProtoReflect.Descriptor instead.
+func (*CreateTenantAdminInvitationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CreateTenantAdminInvitationResponse) GetInvitation() *TenantAdminInvitation {
+	if x != nil {
+		return x.Invitation
+	}
+	return nil
+}
+
+func (x *CreateTenantAdminInvitationResponse) GetRoleGrantedImmediately() bool {
+	if x != nil {
+		return x.RoleGrantedImmediately
+	}
+	return false
+}
+
+type ResendTenantAdminInvitationRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	InvitationId   string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ResendTenantAdminInvitationRequest) Reset() {
+	*x = ResendTenantAdminInvitationRequest{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResendTenantAdminInvitationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResendTenantAdminInvitationRequest) ProtoMessage() {}
+
+func (x *ResendTenantAdminInvitationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResendTenantAdminInvitationRequest.ProtoReflect.Descriptor instead.
+func (*ResendTenantAdminInvitationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ResendTenantAdminInvitationRequest) GetTenantPublicId() string {
+	if x != nil {
+		return x.TenantPublicId
+	}
+	return ""
+}
+
+func (x *ResendTenantAdminInvitationRequest) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+type ResendTenantAdminInvitationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invitation    *TenantAdminInvitation `protobuf:"bytes,1,opt,name=invitation,proto3" json:"invitation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResendTenantAdminInvitationResponse) Reset() {
+	*x = ResendTenantAdminInvitationResponse{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResendTenantAdminInvitationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResendTenantAdminInvitationResponse) ProtoMessage() {}
+
+func (x *ResendTenantAdminInvitationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResendTenantAdminInvitationResponse.ProtoReflect.Descriptor instead.
+func (*ResendTenantAdminInvitationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ResendTenantAdminInvitationResponse) GetInvitation() *TenantAdminInvitation {
+	if x != nil {
+		return x.Invitation
+	}
+	return nil
+}
+
+type CancelTenantAdminInvitationRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	InvitationId   string                 `protobuf:"bytes,2,opt,name=invitation_id,json=invitationId,proto3" json:"invitation_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CancelTenantAdminInvitationRequest) Reset() {
+	*x = CancelTenantAdminInvitationRequest{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelTenantAdminInvitationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelTenantAdminInvitationRequest) ProtoMessage() {}
+
+func (x *CancelTenantAdminInvitationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelTenantAdminInvitationRequest.ProtoReflect.Descriptor instead.
+func (*CancelTenantAdminInvitationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *CancelTenantAdminInvitationRequest) GetTenantPublicId() string {
+	if x != nil {
+		return x.TenantPublicId
+	}
+	return ""
+}
+
+func (x *CancelTenantAdminInvitationRequest) GetInvitationId() string {
+	if x != nil {
+		return x.InvitationId
+	}
+	return ""
+}
+
+type CancelTenantAdminInvitationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invitation    *TenantAdminInvitation `protobuf:"bytes,1,opt,name=invitation,proto3" json:"invitation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelTenantAdminInvitationResponse) Reset() {
+	*x = CancelTenantAdminInvitationResponse{}
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelTenantAdminInvitationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelTenantAdminInvitationResponse) ProtoMessage() {}
+
+func (x *CancelTenantAdminInvitationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelTenantAdminInvitationResponse.ProtoReflect.Descriptor instead.
+func (*CancelTenantAdminInvitationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *CancelTenantAdminInvitationResponse) GetInvitation() *TenantAdminInvitation {
+	if x != nil {
+		return x.Invitation
+	}
+	return nil
+}
+
 type UpdateTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -1116,7 +1608,7 @@ type UpdateTenantRequest struct {
 
 func (x *UpdateTenantRequest) Reset() {
 	*x = UpdateTenantRequest{}
-	mi := &file_publira_platform_v1_tenant_proto_msgTypes[20]
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1128,7 +1620,7 @@ func (x *UpdateTenantRequest) String() string {
 func (*UpdateTenantRequest) ProtoMessage() {}
 
 func (x *UpdateTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_tenant_proto_msgTypes[20]
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1141,7 +1633,7 @@ func (x *UpdateTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTenantRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{20}
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *UpdateTenantRequest) GetPublicId() string {
@@ -1181,7 +1673,7 @@ type UpdateTenantResponse struct {
 
 func (x *UpdateTenantResponse) Reset() {
 	*x = UpdateTenantResponse{}
-	mi := &file_publira_platform_v1_tenant_proto_msgTypes[21]
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1193,7 +1685,7 @@ func (x *UpdateTenantResponse) String() string {
 func (*UpdateTenantResponse) ProtoMessage() {}
 
 func (x *UpdateTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_tenant_proto_msgTypes[21]
+	mi := &file_publira_platform_v1_tenant_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1206,7 +1698,7 @@ func (x *UpdateTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTenantResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{21}
+	return file_publira_platform_v1_tenant_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UpdateTenantResponse) GetTenant() *Tenant {
@@ -1287,14 +1779,54 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\"B\n" +
 	"\x1aRemoveTenantMemberResponse\x12$\n" +
-	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\"\x87\x01\n" +
+	"\x0euser_public_id\x18\x01 \x01(\tR\fuserPublicId\"\xd5\x01\n" +
+	"\x15TenantAdminInvitation\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\tR\texpiresAt\x12\x1f\n" +
+	"\vaccepted_at\x18\x06 \x01(\tR\n" +
+	"acceptedAt\x12\x1f\n" +
+	"\vcanceled_at\x18\a \x01(\tR\n" +
+	"canceledAt\"{\n" +
+	"!ListTenantAdminInvitationsRequest\x12(\n" +
+	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"r\n" +
+	"\"ListTenantAdminInvitationsResponse\x12L\n" +
+	"\vinvitations\x18\x01 \x03(\v2*.publira.platform.v1.TenantAdminInvitationR\vinvitations\"d\n" +
+	"\"CreateTenantAdminInvitationRequest\x12(\n" +
+	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\"\xab\x01\n" +
+	"#CreateTenantAdminInvitationResponse\x12J\n" +
+	"\n" +
+	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
+	"invitation\x128\n" +
+	"\x18role_granted_immediately\x18\x02 \x01(\bR\x16roleGrantedImmediately\"s\n" +
+	"\"ResendTenantAdminInvitationRequest\x12(\n" +
+	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12#\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\"q\n" +
+	"#ResendTenantAdminInvitationResponse\x12J\n" +
+	"\n" +
+	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
+	"invitation\"s\n" +
+	"\"CancelTenantAdminInvitationRequest\x12(\n" +
+	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12#\n" +
+	"\rinvitation_id\x18\x02 \x01(\tR\finvitationId\"q\n" +
+	"#CancelTenantAdminInvitationResponse\x12J\n" +
+	"\n" +
+	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
+	"invitation\"\x87\x01\n" +
 	"\x13UpdateTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x04 \x01(\tR\x06domain\x12!\n" +
 	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomainJ\x04\b\x03\x10\x04\"K\n" +
 	"\x14UpdateTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xdd\b\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xae\r\n" +
 	"\x15PlatformTenantService\x12b\n" +
 	"\vListTenants\x12'.publira.platform.v1.ListTenantsRequest\x1a(.publira.platform.v1.ListTenantsResponse\"\x00\x12\\\n" +
 	"\tGetTenant\x12%.publira.platform.v1.GetTenantRequest\x1a&.publira.platform.v1.GetTenantResponse\"\x00\x12e\n" +
@@ -1305,7 +1837,11 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x11ListTenantMembers\x12-.publira.platform.v1.ListTenantMembersRequest\x1a..publira.platform.v1.ListTenantMembersResponse\"\x00\x12n\n" +
 	"\x0fAddTenantMember\x12+.publira.platform.v1.AddTenantMemberRequest\x1a,.publira.platform.v1.AddTenantMemberResponse\"\x00\x12\x83\x01\n" +
 	"\x16UpdateTenantMemberRole\x122.publira.platform.v1.UpdateTenantMemberRoleRequest\x1a3.publira.platform.v1.UpdateTenantMemberRoleResponse\"\x00\x12w\n" +
-	"\x12RemoveTenantMember\x12..publira.platform.v1.RemoveTenantMemberRequest\x1a/.publira.platform.v1.RemoveTenantMemberResponse\"\x00BNZLgithub.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
+	"\x12RemoveTenantMember\x12..publira.platform.v1.RemoveTenantMemberRequest\x1a/.publira.platform.v1.RemoveTenantMemberResponse\"\x00\x12\x8f\x01\n" +
+	"\x1aListTenantAdminInvitations\x126.publira.platform.v1.ListTenantAdminInvitationsRequest\x1a7.publira.platform.v1.ListTenantAdminInvitationsResponse\"\x00\x12\x92\x01\n" +
+	"\x1bCreateTenantAdminInvitation\x127.publira.platform.v1.CreateTenantAdminInvitationRequest\x1a8.publira.platform.v1.CreateTenantAdminInvitationResponse\"\x00\x12\x92\x01\n" +
+	"\x1bResendTenantAdminInvitation\x127.publira.platform.v1.ResendTenantAdminInvitationRequest\x1a8.publira.platform.v1.ResendTenantAdminInvitationResponse\"\x00\x12\x92\x01\n" +
+	"\x1bCancelTenantAdminInvitation\x127.publira.platform.v1.CancelTenantAdminInvitationRequest\x1a8.publira.platform.v1.CancelTenantAdminInvitationResponse\"\x00BNZLgithub.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
 
 var (
 	file_publira_platform_v1_tenant_proto_rawDescOnce sync.Once
@@ -1319,30 +1855,39 @@ func file_publira_platform_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_tenant_proto_rawDescData
 }
 
-var file_publira_platform_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_publira_platform_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_publira_platform_v1_tenant_proto_goTypes = []any{
-	(*Tenant)(nil),                         // 0: publira.platform.v1.Tenant
-	(*ListTenantsRequest)(nil),             // 1: publira.platform.v1.ListTenantsRequest
-	(*ListTenantsResponse)(nil),            // 2: publira.platform.v1.ListTenantsResponse
-	(*GetTenantRequest)(nil),               // 3: publira.platform.v1.GetTenantRequest
-	(*GetTenantResponse)(nil),              // 4: publira.platform.v1.GetTenantResponse
-	(*CreateTenantRequest)(nil),            // 5: publira.platform.v1.CreateTenantRequest
-	(*CreateTenantResponse)(nil),           // 6: publira.platform.v1.CreateTenantResponse
-	(*SuspendTenantRequest)(nil),           // 7: publira.platform.v1.SuspendTenantRequest
-	(*SuspendTenantResponse)(nil),          // 8: publira.platform.v1.SuspendTenantResponse
-	(*ResumeTenantRequest)(nil),            // 9: publira.platform.v1.ResumeTenantRequest
-	(*ResumeTenantResponse)(nil),           // 10: publira.platform.v1.ResumeTenantResponse
-	(*TenantMember)(nil),                   // 11: publira.platform.v1.TenantMember
-	(*ListTenantMembersRequest)(nil),       // 12: publira.platform.v1.ListTenantMembersRequest
-	(*ListTenantMembersResponse)(nil),      // 13: publira.platform.v1.ListTenantMembersResponse
-	(*AddTenantMemberRequest)(nil),         // 14: publira.platform.v1.AddTenantMemberRequest
-	(*AddTenantMemberResponse)(nil),        // 15: publira.platform.v1.AddTenantMemberResponse
-	(*UpdateTenantMemberRoleRequest)(nil),  // 16: publira.platform.v1.UpdateTenantMemberRoleRequest
-	(*UpdateTenantMemberRoleResponse)(nil), // 17: publira.platform.v1.UpdateTenantMemberRoleResponse
-	(*RemoveTenantMemberRequest)(nil),      // 18: publira.platform.v1.RemoveTenantMemberRequest
-	(*RemoveTenantMemberResponse)(nil),     // 19: publira.platform.v1.RemoveTenantMemberResponse
-	(*UpdateTenantRequest)(nil),            // 20: publira.platform.v1.UpdateTenantRequest
-	(*UpdateTenantResponse)(nil),           // 21: publira.platform.v1.UpdateTenantResponse
+	(*Tenant)(nil),                              // 0: publira.platform.v1.Tenant
+	(*ListTenantsRequest)(nil),                  // 1: publira.platform.v1.ListTenantsRequest
+	(*ListTenantsResponse)(nil),                 // 2: publira.platform.v1.ListTenantsResponse
+	(*GetTenantRequest)(nil),                    // 3: publira.platform.v1.GetTenantRequest
+	(*GetTenantResponse)(nil),                   // 4: publira.platform.v1.GetTenantResponse
+	(*CreateTenantRequest)(nil),                 // 5: publira.platform.v1.CreateTenantRequest
+	(*CreateTenantResponse)(nil),                // 6: publira.platform.v1.CreateTenantResponse
+	(*SuspendTenantRequest)(nil),                // 7: publira.platform.v1.SuspendTenantRequest
+	(*SuspendTenantResponse)(nil),               // 8: publira.platform.v1.SuspendTenantResponse
+	(*ResumeTenantRequest)(nil),                 // 9: publira.platform.v1.ResumeTenantRequest
+	(*ResumeTenantResponse)(nil),                // 10: publira.platform.v1.ResumeTenantResponse
+	(*TenantMember)(nil),                        // 11: publira.platform.v1.TenantMember
+	(*ListTenantMembersRequest)(nil),            // 12: publira.platform.v1.ListTenantMembersRequest
+	(*ListTenantMembersResponse)(nil),           // 13: publira.platform.v1.ListTenantMembersResponse
+	(*AddTenantMemberRequest)(nil),              // 14: publira.platform.v1.AddTenantMemberRequest
+	(*AddTenantMemberResponse)(nil),             // 15: publira.platform.v1.AddTenantMemberResponse
+	(*UpdateTenantMemberRoleRequest)(nil),       // 16: publira.platform.v1.UpdateTenantMemberRoleRequest
+	(*UpdateTenantMemberRoleResponse)(nil),      // 17: publira.platform.v1.UpdateTenantMemberRoleResponse
+	(*RemoveTenantMemberRequest)(nil),           // 18: publira.platform.v1.RemoveTenantMemberRequest
+	(*RemoveTenantMemberResponse)(nil),          // 19: publira.platform.v1.RemoveTenantMemberResponse
+	(*TenantAdminInvitation)(nil),               // 20: publira.platform.v1.TenantAdminInvitation
+	(*ListTenantAdminInvitationsRequest)(nil),   // 21: publira.platform.v1.ListTenantAdminInvitationsRequest
+	(*ListTenantAdminInvitationsResponse)(nil),  // 22: publira.platform.v1.ListTenantAdminInvitationsResponse
+	(*CreateTenantAdminInvitationRequest)(nil),  // 23: publira.platform.v1.CreateTenantAdminInvitationRequest
+	(*CreateTenantAdminInvitationResponse)(nil), // 24: publira.platform.v1.CreateTenantAdminInvitationResponse
+	(*ResendTenantAdminInvitationRequest)(nil),  // 25: publira.platform.v1.ResendTenantAdminInvitationRequest
+	(*ResendTenantAdminInvitationResponse)(nil), // 26: publira.platform.v1.ResendTenantAdminInvitationResponse
+	(*CancelTenantAdminInvitationRequest)(nil),  // 27: publira.platform.v1.CancelTenantAdminInvitationRequest
+	(*CancelTenantAdminInvitationResponse)(nil), // 28: publira.platform.v1.CancelTenantAdminInvitationResponse
+	(*UpdateTenantRequest)(nil),                 // 29: publira.platform.v1.UpdateTenantRequest
+	(*UpdateTenantResponse)(nil),                // 30: publira.platform.v1.UpdateTenantResponse
 }
 var file_publira_platform_v1_tenant_proto_depIdxs = []int32{
 	0,  // 0: publira.platform.v1.ListTenantsResponse.tenants:type_name -> publira.platform.v1.Tenant
@@ -1353,32 +1898,44 @@ var file_publira_platform_v1_tenant_proto_depIdxs = []int32{
 	11, // 5: publira.platform.v1.ListTenantMembersResponse.members:type_name -> publira.platform.v1.TenantMember
 	11, // 6: publira.platform.v1.AddTenantMemberResponse.member:type_name -> publira.platform.v1.TenantMember
 	11, // 7: publira.platform.v1.UpdateTenantMemberRoleResponse.member:type_name -> publira.platform.v1.TenantMember
-	0,  // 8: publira.platform.v1.UpdateTenantResponse.tenant:type_name -> publira.platform.v1.Tenant
-	1,  // 9: publira.platform.v1.PlatformTenantService.ListTenants:input_type -> publira.platform.v1.ListTenantsRequest
-	3,  // 10: publira.platform.v1.PlatformTenantService.GetTenant:input_type -> publira.platform.v1.GetTenantRequest
-	5,  // 11: publira.platform.v1.PlatformTenantService.CreateTenant:input_type -> publira.platform.v1.CreateTenantRequest
-	20, // 12: publira.platform.v1.PlatformTenantService.UpdateTenant:input_type -> publira.platform.v1.UpdateTenantRequest
-	7,  // 13: publira.platform.v1.PlatformTenantService.SuspendTenant:input_type -> publira.platform.v1.SuspendTenantRequest
-	9,  // 14: publira.platform.v1.PlatformTenantService.ResumeTenant:input_type -> publira.platform.v1.ResumeTenantRequest
-	12, // 15: publira.platform.v1.PlatformTenantService.ListTenantMembers:input_type -> publira.platform.v1.ListTenantMembersRequest
-	14, // 16: publira.platform.v1.PlatformTenantService.AddTenantMember:input_type -> publira.platform.v1.AddTenantMemberRequest
-	16, // 17: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:input_type -> publira.platform.v1.UpdateTenantMemberRoleRequest
-	18, // 18: publira.platform.v1.PlatformTenantService.RemoveTenantMember:input_type -> publira.platform.v1.RemoveTenantMemberRequest
-	2,  // 19: publira.platform.v1.PlatformTenantService.ListTenants:output_type -> publira.platform.v1.ListTenantsResponse
-	4,  // 20: publira.platform.v1.PlatformTenantService.GetTenant:output_type -> publira.platform.v1.GetTenantResponse
-	6,  // 21: publira.platform.v1.PlatformTenantService.CreateTenant:output_type -> publira.platform.v1.CreateTenantResponse
-	21, // 22: publira.platform.v1.PlatformTenantService.UpdateTenant:output_type -> publira.platform.v1.UpdateTenantResponse
-	8,  // 23: publira.platform.v1.PlatformTenantService.SuspendTenant:output_type -> publira.platform.v1.SuspendTenantResponse
-	10, // 24: publira.platform.v1.PlatformTenantService.ResumeTenant:output_type -> publira.platform.v1.ResumeTenantResponse
-	13, // 25: publira.platform.v1.PlatformTenantService.ListTenantMembers:output_type -> publira.platform.v1.ListTenantMembersResponse
-	15, // 26: publira.platform.v1.PlatformTenantService.AddTenantMember:output_type -> publira.platform.v1.AddTenantMemberResponse
-	17, // 27: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:output_type -> publira.platform.v1.UpdateTenantMemberRoleResponse
-	19, // 28: publira.platform.v1.PlatformTenantService.RemoveTenantMember:output_type -> publira.platform.v1.RemoveTenantMemberResponse
-	19, // [19:29] is the sub-list for method output_type
-	9,  // [9:19] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	20, // 8: publira.platform.v1.ListTenantAdminInvitationsResponse.invitations:type_name -> publira.platform.v1.TenantAdminInvitation
+	20, // 9: publira.platform.v1.CreateTenantAdminInvitationResponse.invitation:type_name -> publira.platform.v1.TenantAdminInvitation
+	20, // 10: publira.platform.v1.ResendTenantAdminInvitationResponse.invitation:type_name -> publira.platform.v1.TenantAdminInvitation
+	20, // 11: publira.platform.v1.CancelTenantAdminInvitationResponse.invitation:type_name -> publira.platform.v1.TenantAdminInvitation
+	0,  // 12: publira.platform.v1.UpdateTenantResponse.tenant:type_name -> publira.platform.v1.Tenant
+	1,  // 13: publira.platform.v1.PlatformTenantService.ListTenants:input_type -> publira.platform.v1.ListTenantsRequest
+	3,  // 14: publira.platform.v1.PlatformTenantService.GetTenant:input_type -> publira.platform.v1.GetTenantRequest
+	5,  // 15: publira.platform.v1.PlatformTenantService.CreateTenant:input_type -> publira.platform.v1.CreateTenantRequest
+	29, // 16: publira.platform.v1.PlatformTenantService.UpdateTenant:input_type -> publira.platform.v1.UpdateTenantRequest
+	7,  // 17: publira.platform.v1.PlatformTenantService.SuspendTenant:input_type -> publira.platform.v1.SuspendTenantRequest
+	9,  // 18: publira.platform.v1.PlatformTenantService.ResumeTenant:input_type -> publira.platform.v1.ResumeTenantRequest
+	12, // 19: publira.platform.v1.PlatformTenantService.ListTenantMembers:input_type -> publira.platform.v1.ListTenantMembersRequest
+	14, // 20: publira.platform.v1.PlatformTenantService.AddTenantMember:input_type -> publira.platform.v1.AddTenantMemberRequest
+	16, // 21: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:input_type -> publira.platform.v1.UpdateTenantMemberRoleRequest
+	18, // 22: publira.platform.v1.PlatformTenantService.RemoveTenantMember:input_type -> publira.platform.v1.RemoveTenantMemberRequest
+	21, // 23: publira.platform.v1.PlatformTenantService.ListTenantAdminInvitations:input_type -> publira.platform.v1.ListTenantAdminInvitationsRequest
+	23, // 24: publira.platform.v1.PlatformTenantService.CreateTenantAdminInvitation:input_type -> publira.platform.v1.CreateTenantAdminInvitationRequest
+	25, // 25: publira.platform.v1.PlatformTenantService.ResendTenantAdminInvitation:input_type -> publira.platform.v1.ResendTenantAdminInvitationRequest
+	27, // 26: publira.platform.v1.PlatformTenantService.CancelTenantAdminInvitation:input_type -> publira.platform.v1.CancelTenantAdminInvitationRequest
+	2,  // 27: publira.platform.v1.PlatformTenantService.ListTenants:output_type -> publira.platform.v1.ListTenantsResponse
+	4,  // 28: publira.platform.v1.PlatformTenantService.GetTenant:output_type -> publira.platform.v1.GetTenantResponse
+	6,  // 29: publira.platform.v1.PlatformTenantService.CreateTenant:output_type -> publira.platform.v1.CreateTenantResponse
+	30, // 30: publira.platform.v1.PlatformTenantService.UpdateTenant:output_type -> publira.platform.v1.UpdateTenantResponse
+	8,  // 31: publira.platform.v1.PlatformTenantService.SuspendTenant:output_type -> publira.platform.v1.SuspendTenantResponse
+	10, // 32: publira.platform.v1.PlatformTenantService.ResumeTenant:output_type -> publira.platform.v1.ResumeTenantResponse
+	13, // 33: publira.platform.v1.PlatformTenantService.ListTenantMembers:output_type -> publira.platform.v1.ListTenantMembersResponse
+	15, // 34: publira.platform.v1.PlatformTenantService.AddTenantMember:output_type -> publira.platform.v1.AddTenantMemberResponse
+	17, // 35: publira.platform.v1.PlatformTenantService.UpdateTenantMemberRole:output_type -> publira.platform.v1.UpdateTenantMemberRoleResponse
+	19, // 36: publira.platform.v1.PlatformTenantService.RemoveTenantMember:output_type -> publira.platform.v1.RemoveTenantMemberResponse
+	22, // 37: publira.platform.v1.PlatformTenantService.ListTenantAdminInvitations:output_type -> publira.platform.v1.ListTenantAdminInvitationsResponse
+	24, // 38: publira.platform.v1.PlatformTenantService.CreateTenantAdminInvitation:output_type -> publira.platform.v1.CreateTenantAdminInvitationResponse
+	26, // 39: publira.platform.v1.PlatformTenantService.ResendTenantAdminInvitation:output_type -> publira.platform.v1.ResendTenantAdminInvitationResponse
+	28, // 40: publira.platform.v1.PlatformTenantService.CancelTenantAdminInvitation:output_type -> publira.platform.v1.CancelTenantAdminInvitationResponse
+	27, // [27:41] is the sub-list for method output_type
+	13, // [13:27] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_tenant_proto_init() }
@@ -1392,7 +1949,7 @@ func file_publira_platform_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_tenant_proto_rawDesc), len(file_publira_platform_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

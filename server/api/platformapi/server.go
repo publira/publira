@@ -27,6 +27,7 @@ type platformServer struct {
 	recorder  *auditlog.Recorder
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
+	mailer    internalsmtp.Sender
 }
 
 type platformActor struct {
@@ -44,7 +45,11 @@ func platformActorFromContext(ctx context.Context) (platformActor, bool) {
 
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
 func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
-	server := &platformServer{queries: queries, db: db, recorder: auditlog.New(queries, logger), encryptor: encryptor, tester: tester}
+	var mailer internalsmtp.Sender
+	if sender, ok := tester.(internalsmtp.Sender); ok {
+		mailer = sender
+	}
+	server := &platformServer{queries: queries, db: db, recorder: auditlog.New(queries, logger), encryptor: encryptor, tester: tester, mailer: mailer}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

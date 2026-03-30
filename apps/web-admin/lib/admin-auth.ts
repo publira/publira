@@ -22,6 +22,24 @@ export interface AdminCurrentUser {
   role: string;
 }
 
+export interface TenantAdminInvitationState {
+  accountExists: boolean;
+  email: string;
+  expiresAt: string;
+  status: string;
+}
+
+export type AcceptTenantAdminInvitationResult =
+  | {
+      ok: true;
+      accountCreated: boolean;
+      accepted: boolean;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
 export const isTenantAdminRole = (role: string | null | undefined): boolean => {
   const normalizedRole = role?.trim().toLowerCase();
   return normalizedRole === "admin" || normalizedRole === "tenant_admin";
@@ -143,3 +161,79 @@ export const sessionCookieOptions = {
 };
 
 export { ADMIN_SESSION_COOKIE_NAME, sanitizeRedirectPath };
+
+export const getTenantAdminInvitationState = async (
+  tenantPublicId: string,
+  token: string
+): Promise<TenantAdminInvitationState | null> => {
+  const normalizedToken = token.trim();
+  if (!tenantPublicId.trim() || !normalizedToken) {
+    return null;
+  }
+
+  try {
+    const response = await apiClient.auth.getTenantAdminInvitationState({
+      tenant: { tenantPublicId },
+      token: normalizedToken,
+    });
+
+    return {
+      accountExists: response.accountExists,
+      email: response.email,
+      expiresAt: response.expiresAt,
+      status: response.status,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const acceptTenantAdminInvitation = async (
+  tenantPublicId: string,
+  token: string,
+  name?: string,
+  password?: string
+): Promise<AcceptTenantAdminInvitationResult> => {
+  const normalizedToken = token.trim();
+  if (!tenantPublicId.trim() || !normalizedToken) {
+    return {
+      message: "招待トークンが無効です。",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.auth.acceptTenantAdminInvitation({
+      name: name?.trim() ?? "",
+      password: password?.trim() ?? "",
+      tenant: { tenantPublicId },
+      token: normalizedToken,
+    });
+
+    return {
+      accepted: response.accepted,
+      accountCreated: response.accountCreated,
+      ok: true,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("expired")) {
+        return { message: "招待リンクの有効期限が切れています。", ok: false };
+      }
+      if (message.includes("canceled")) {
+        return { message: "この招待は取り消されています。", ok: false };
+      }
+      if (message.includes("not_found")) {
+        return { message: "招待が見つかりません。", ok: false };
+      }
+      if (message.includes("invalid_argument") || message.includes("required")) {
+        return { message: "入力内容に誤りがあります。", ok: false };
+      }
+    }
+    return {
+      message: "招待の承諾に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+};

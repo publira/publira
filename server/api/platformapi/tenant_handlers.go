@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/mail"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -168,6 +169,11 @@ func (s *platformServer) CreateTenant(
 	defer tx.Rollback() //nolint:errcheck
 
 	txq := dbmodels.New(tx)
+	type pendingTenantAdminInvite struct {
+		email string
+		token string
+	}
+	pendingInvites := make([]pendingTenantAdminInvite, 0, len(initialAdminEmails))
 
 	tenantID, err := uuid.NewV7()
 	if err != nil {
@@ -198,33 +204,26 @@ func (s *platformServer) CreateTenant(
 				return nil, connect.NewError(connect.CodeInternal, err)
 			}
 
-			temporaryPassword, err := createOperatorPassword()
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
+			token, tokenErr := generateInvitationToken()
+			if tokenErr != nil {
+				return nil, connect.NewError(connect.CodeInternal, tokenErr)
 			}
-			passwordHash, err := auth.HashPassword(temporaryPassword)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
+			invitationID, invitationIDErr := uuid.NewV7()
+			if invitationIDErr != nil {
+				return nil, connect.NewError(connect.CodeInternal, invitationIDErr)
 			}
-			userID, err := uuid.NewV7()
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
-			}
-
-			user, err = txq.CreateUser(ctx, dbmodels.CreateUserParams{
-				ID:           userID,
-				TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
-				PublicID:     generatePublicID(),
-				Email:        email,
-				PasswordHash: passwordHash,
-				Name:         email,
+			_, createInvitationErr := txq.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
+				ID:        invitationID,
+				TenantID:  tenant.ID,
+				Email:     email,
+				TokenHash: auth.HashToken(token),
+				ExpiresAt: time.Now().Add(tenantAdminInvitationTTL),
 			})
-			if err != nil {
-				if isUniqueViolation(err) {
-					return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("initial_admin_emails already exists"))
-				}
-				return nil, connect.NewError(connect.CodeInternal, err)
+			if createInvitationErr != nil {
+				return nil, connect.NewError(connect.CodeInternal, createInvitationErr)
 			}
+			pendingInvites = append(pendingInvites, pendingTenantAdminInvite{email: email, token: token})
+			continue
 		}
 
 		roles, err := txq.ListTenantUserRoles(ctx, user.ID)
@@ -250,6 +249,23 @@ func (s *platformServer) CreateTenant(
 
 	if err := tx.Commit(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	for _, invite := range pendingInvites {
+		if err := s.sendTenantAdminInvitationEmail(ctx, tenant, invite.email, invite.token); err != nil {
+			return nil, err
+		}
+		if actor, ok := platformActorFromContext(ctx); ok {
+			s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
+				ActorPlatformUserID: actor.UserID,
+				ActorRole:           actor.Role,
+				Action:              "tenant_admin_invited",
+				TargetType:          "tenant_admin_invitation",
+				TargetID:            invite.email,
+				Outcome:             auditlog.OutcomeSuccess,
+				ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
+			})
+		}
 	}
 
 	// Record audit log

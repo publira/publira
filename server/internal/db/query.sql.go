@@ -15,6 +15,37 @@ import (
 	"github.com/lib/pq"
 )
 
+const cancelTenantAdminInvitation = `-- name: CancelTenantAdminInvitation :one
+UPDATE tenant_admin_invitations
+SET canceled_at = COALESCE(canceled_at, NOW()),
+    updated_at = NOW()
+WHERE tenant_id = $1
+    AND id = $2
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+`
+
+type CancelTenantAdminInvitationParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+func (q *Queries) CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, cancelTenantAdminInvitation, arg.TenantID, arg.ID)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const countActiveTenants = `-- name: CountActiveTenants :one
 SELECT COUNT(*)::int
 FROM tenants
@@ -554,6 +585,49 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+	)
+	return i, err
+}
+
+const createTenantAdminInvitation = `-- name: CreateTenantAdminInvitation :one
+INSERT INTO tenant_admin_invitations (
+        id,
+        tenant_id,
+        email,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+`
+
+type CreateTenantAdminInvitationParams struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Email     string    `json:"email"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, createTenantAdminInvitation,
+		arg.ID,
+		arg.TenantID,
+		arg.Email,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -1467,6 +1541,96 @@ func (q *Queries) GetSessionByTokenHashForTenant(ctx context.Context, arg GetSes
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getTenantAdminInvitationByHashForTenant = `-- name: GetTenantAdminInvitationByHashForTenant :one
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND token_hash = $2
+LIMIT 1
+`
+
+type GetTenantAdminInvitationByHashForTenantParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	TokenHash string    `json:"token_hash"`
+}
+
+func (q *Queries) GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, getTenantAdminInvitationByHashForTenant, arg.TenantID, arg.TokenHash)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getTenantAdminInvitationByIDForTenant = `-- name: GetTenantAdminInvitationByIDForTenant :one
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND id = $2
+LIMIT 1
+`
+
+type GetTenantAdminInvitationByIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+func (q *Queries) GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, getTenantAdminInvitationByIDForTenant, arg.TenantID, arg.ID)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getTenantAdminInvitationByTenantAndEmail = `-- name: GetTenantAdminInvitationByTenantAndEmail :one
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND email = $2
+LIMIT 1
+`
+
+type GetTenantAdminInvitationByTenantAndEmailParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Email    string    `json:"email"`
+}
+
+func (q *Queries) GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, getTenantAdminInvitationByTenantAndEmail, arg.TenantID, arg.Email)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -2784,6 +2948,57 @@ func (q *Queries) ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds [
 	return items, nil
 }
 
+const listTenantAdminInvitations = `-- name: ListTenantAdminInvitations :many
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND (
+        accepted_at IS NULL
+        OR accepted_at >= NOW() - INTERVAL '7 days'
+    )
+ORDER BY created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListTenantAdminInvitationsParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Offset   int32     `json:"offset"`
+	Limit    int32     `json:"limit"`
+}
+
+func (q *Queries) ListTenantAdminInvitations(ctx context.Context, arg ListTenantAdminInvitationsParams) ([]TenantAdminInvitation, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantAdminInvitations, arg.TenantID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TenantAdminInvitation
+	for rows.Next() {
+		var i TenantAdminInvitation
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Email,
+			&i.TokenHash,
+			&i.ExpiresAt,
+			&i.AcceptedAt,
+			&i.CanceledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenantUserRoles = `-- name: ListTenantUserRoles :many
 SELECT role
 FROM tenant_user_roles
@@ -2964,6 +3179,37 @@ WHERE episode_id = $1
 func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, markEpisodePublished, episodeID)
 	return err
+}
+
+const markTenantAdminInvitationAccepted = `-- name: MarkTenantAdminInvitationAccepted :one
+UPDATE tenant_admin_invitations
+SET accepted_at = COALESCE(accepted_at, NOW()),
+    updated_at = NOW()
+WHERE tenant_id = $1
+    AND id = $2
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+`
+
+type MarkTenantAdminInvitationAcceptedParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+func (q *Queries) MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, markTenantAdminInvitationAccepted, arg.TenantID, arg.ID)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const markUserEmailChangeCompleted = `-- name: MarkUserEmailChangeCompleted :exec
@@ -3244,6 +3490,46 @@ type UpdateSeriesPublicationParams struct {
 func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error {
 	_, err := q.db.ExecContext(ctx, updateSeriesPublication, arg.ID, arg.IsPublished)
 	return err
+}
+
+const updateTenantAdminInvitationForResend = `-- name: UpdateTenantAdminInvitationForResend :one
+UPDATE tenant_admin_invitations
+SET token_hash = $3,
+    expires_at = $4,
+    canceled_at = NULL,
+    updated_at = NOW()
+WHERE tenant_id = $1
+    AND email = $2
+RETURNING id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+`
+
+type UpdateTenantAdminInvitationForResendParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Email     string    `json:"email"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error) {
+	row := q.db.QueryRowContext(ctx, updateTenantAdminInvitationForResend,
+		arg.TenantID,
+		arg.Email,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i TenantAdminInvitation
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Email,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CanceledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateTenantConfig = `-- name: UpdateTenantConfig :one

@@ -1,14 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  acceptTenantAdminInvitation,
   getAdminCurrentUser,
+  getTenantAdminInvitationState,
   isAdminSessionValid,
   isTenantAdminRole,
 } from "./admin-auth";
 
-const { mockGetMe, mockGetSessionId } = vi.hoisted(() => ({
+const {
+  mockAcceptTenantAdminInvitation,
+  mockGetMe,
+  mockGetSessionId,
+  mockGetTenantAdminInvitationState,
+} = vi.hoisted(() => ({
+  mockAcceptTenantAdminInvitation: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetSessionId: vi.fn(),
+  mockGetTenantAdminInvitationState: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -18,9 +27,11 @@ vi.mock("./session", () => ({
 vi.mock("@publira/api-client/admin/client", () => ({
   createAdminApiClient: () => ({
     auth: {
+      acceptTenantAdminInvitation: mockAcceptTenantAdminInvitation,
       createSession: vi.fn(),
       deleteSession: vi.fn(),
       getMe: mockGetMe,
+      getTenantAdminInvitationState: mockGetTenantAdminInvitationState,
     },
   }),
 }));
@@ -138,5 +149,53 @@ describe("isTenantAdminRole", () => {
 
   it("大文字混在と空白を正規化して判定する", () => {
     expect(isTenantAdminRole("  TENANT_ADMIN ")).toBe(true);
+  });
+});
+
+describe("tenant admin invitation", () => {
+  it("招待状態を取得できる", async () => {
+    mockGetTenantAdminInvitationState.mockResolvedValueOnce({
+      accountExists: true,
+      email: "admin@example.com",
+      expiresAt: "2026-03-31T00:00:00Z",
+      status: "pending",
+    });
+
+    await expect(
+      getTenantAdminInvitationState("tenant_001", "token_001")
+    ).resolves.toEqual({
+      accountExists: true,
+      email: "admin@example.com",
+      expiresAt: "2026-03-31T00:00:00Z",
+      status: "pending",
+    });
+  });
+
+  it("招待承諾が成功する", async () => {
+    mockAcceptTenantAdminInvitation.mockResolvedValueOnce({
+      accepted: true,
+      accountCreated: true,
+    });
+
+    await expect(
+      acceptTenantAdminInvitation("tenant_001", "token_001", "山田", "password")
+    ).resolves.toEqual({
+      accepted: true,
+      accountCreated: true,
+      ok: true,
+    });
+  });
+
+  it("期限切れエラーを変換する", async () => {
+    mockAcceptTenantAdminInvitation.mockRejectedValueOnce(
+      new Error("failed_precondition: invitation expired")
+    );
+
+    await expect(
+      acceptTenantAdminInvitation("tenant_001", "token_001")
+    ).resolves.toEqual({
+      message: "招待リンクの有効期限が切れています。",
+      ok: false,
+    });
   });
 });
