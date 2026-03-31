@@ -1,9 +1,5 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 import {
   PUBLIC_SESSION_COOKIE_NAME,
@@ -11,9 +7,8 @@ import {
   sessionCookieOptions,
 } from "../../../lib/auth";
 
-const clearSessionCookie = async () => {
-  const cookieStore = await cookies();
-  cookieStore.set({
+const clearSessionCookie = (response: NextResponse) => {
+  response.cookies.set({
     ...sessionCookieOptions,
     expires: new Date(0),
     name: PUBLIC_SESSION_COOKIE_NAME,
@@ -21,18 +16,14 @@ const clearSessionCookie = async () => {
   });
 };
 
-export const generateStaticParams = () =>
-  createPlaceholderStaticParams("tenant_public_id");
-
 export const POST = async (
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ tenant_public_id: string }> }
 ) => {
   const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
 
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value ?? "";
+  const sessionId =
+    request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value ?? "";
 
   try {
     await logoutPublic(sessionId, tenant_public_id);
@@ -40,17 +31,11 @@ export const POST = async (
     // Always clear local session cookie, even when upstream revoke fails.
   }
 
-  await clearSessionCookie();
-  redirect("/login");
+  const response = NextResponse.redirect(new URL("/login", request.url));
+
+  clearSessionCookie(response);
+
+  return response;
 };
 
-export const GET = async (
-  request: Request,
-  { params }: { params: Promise<{ tenant_public_id: string }> }
-) => {
-  const { tenant_public_id } = await params;
-  guardPlaceholder(tenant_public_id);
-
-  await clearSessionCookie();
-  redirect("/login");
-};
+export const GET = POST;
