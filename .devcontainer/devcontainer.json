@@ -4,6 +4,9 @@
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2.16.1": {
+      "version": "29.3.1"
+    },
     "ghcr.io/devcontainers/features/node:1.7.1": {
       "version": "24.14.0",
       "pnpmVersion": "10.32.1"

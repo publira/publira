@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
       fullUrl: true,
     },
   },
+  output: "standalone",
 };
 
 export default withMicrofrontends(nextConfig, { appName: "web-auth" });
