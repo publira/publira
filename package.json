@@ -6,11 +6,13 @@
   "author": "",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
     "check": "ultracite check",
-    "fix": "ultracite fix"
+    "dev": "turbo run dev",
+    "fix": "ultracite fix",
+    "preflight": "pnpm typegen && pnpm check && pnpm test",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "typegen": "turbo run typegen"
   },
   "devDependencies": {
     "oxfmt": "0.41.0",

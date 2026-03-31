@@ -14,6 +14,7 @@
     "dev": "next dev --port 3002",
     "start": "next start",
     "test": "vitest --run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
     "typegen": "next typegen"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "@publira/brand": "workspace:*",
     "@publira/layouts": "workspace:*",
     "@publira/public-web-shared": "workspace:*",
+    "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
     "lru-cache": "catalog:",
     "next": "catalog:",

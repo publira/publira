@@ -14,6 +14,7 @@
     "dev": "next dev --port 4100",
     "start": "next start",
     "test": "vitest --run",
+    "typecheck": "tsc --noEmit",
     "typegen": "next typegen"
   },
   "dependencies": {

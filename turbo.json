@@ -1,18 +1,11 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "./node_modules/turbo/schema.json",
   "globalDependencies": ["**/.env.*local"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
-    "typecheck": {
-      "dependsOn": ["^typecheck"]
-    },
-    "test": {},
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
@@ -20,6 +13,18 @@
     },
     "generate:api": {
       "outputs": ["packages/api-client/src/gen/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "test": {
+      "inputs": ["**/*.test.{ts,tsx}"]
+    },
+    "typegen": {
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
     }
   }
 }
