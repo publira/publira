@@ -1,3 +1,25 @@
 @import "@publira/ui-components/styles.css";
 
 @source "./dist";
+
+@layer base {
+  :root {
+    @apply scheme-light;
+  }
+
+  html {
+    @apply bg-background;
+  }
+
+  body {
+    @apply min-h-screen text-foreground;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  ::selection {
+    @apply bg-primary/22;
+  }
+}

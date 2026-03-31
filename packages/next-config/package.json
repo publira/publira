@@ -14,9 +14,11 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsdown",
-    "test": "vitest --run --passWithNoTests"
+    "test": "vitest --run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

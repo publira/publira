@@ -49,11 +49,8 @@ tasks:
 
   run:
     desc: Run a specific server command by name
-    dir: "{{ .USER_WORKING_DIR }}/server"
     cmds:
       - go run ./cmd/{{.NAME}}
-    sources:
-      - "{{.GO_SOURCES}}"
     requires:
       vars: [NAME]
 

@@ -7,10 +7,5 @@
     "./base.json": "./base.json",
     "./next.json": "./next.json"
   },
-  "scripts": {
-    "test": "vitest --run --passWithNoTests"
-  },
-  "devDependencies": {
-    "vitest": "catalog:"
-  }
+  "scripts": {}
 }

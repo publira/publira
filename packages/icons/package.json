@@ -38,7 +38,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsdown",
-    "test": "vitest --run --passWithNoTests"
+    "test": "vitest --run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "lucide-react": "0.577.0"

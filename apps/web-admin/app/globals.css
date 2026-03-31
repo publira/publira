@@ -2,24 +2,3 @@
 @import "@publira/brand/theme.css";
 @import "@publira/ui-components/styles.css";
 @import "@publira/layouts/styles.css";
-
-:root {
-  color-scheme: light;
-}
-
-html {
-  background: var(--color-background);
-}
-
-body {
-  min-height: 100dvh;
-  color: var(--color-foreground);
-}
-
-* {
-  border-color: var(--color-border);
-}
-
-::selection {
-  background: color-mix(in srgb, var(--color-primary) 22%, white);
-}
