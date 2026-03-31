@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1.7
+
+# API server template for server/cmd/* entrypoints.
+#
+# Build example:
+# docker build \
+#   -f infra/docker/templates/Dockerfile.api \
+#   --build-arg CMD_NAME=api-server \
+#   --build-arg BINARY_NAME=api-server \
+#   -t publira/api-server:local \
+#   .
+
+FROM debian:bookworm-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget golang && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+
+COPY server/go.mod server/go.sum ./server/
+RUN cd server && go mod download
+
+COPY server ./server
+
+ARG CMD_NAME
+ARG BINARY_NAME
+
+RUN cd server && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+  go build -trimpath -ldflags='-s -w' -o /out/${BINARY_NAME} ./cmd/${CMD_NAME}
+
+FROM gcr.io/distroless/static:nonroot
+
+ARG BINARY_NAME
+
+ENV APP_PORT=8000
+ENV HEALTHCHECK_PORT=8000
+
+WORKDIR /app
+
+COPY --from=builder /out/${BINARY_NAME} /app/${BINARY_NAME}
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["/usr/bin/wget", "-q", "-O", "-", "http://127.0.0.1:${HEALTHCHECK_PORT}/healthz"]
+
+USER nonroot
+
+ENTRYPOINT ["/app/${BINARY_NAME}"]

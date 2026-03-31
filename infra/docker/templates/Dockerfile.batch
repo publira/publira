@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1.7
+
+# Batch template for server/cmd/* one-shot jobs.
+#
+# Build example:
+# docker build \
+#   -f infra/docker/templates/Dockerfile.batch \
+#   --build-arg CMD_NAME=publish-episodes \
+#   --build-arg BINARY_NAME=publish-episodes \
+#   -t publira/publish-episodes:local \
+#   .
+
+FROM debian:bookworm-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates golang && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+
+COPY server/go.mod server/go.sum ./server/
+RUN cd server && go mod download
+
+COPY server ./server
+
+ARG CMD_NAME
+ARG BINARY_NAME
+
+RUN cd server && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+  go build -trimpath -ldflags='-s -w' -o /out/${BINARY_NAME} ./cmd/${CMD_NAME}
+
+FROM gcr.io/distroless/static:nonroot
+
+ARG BINARY_NAME
+
+WORKDIR /app
+
+COPY --from=builder /out/${BINARY_NAME} /app/${BINARY_NAME}
+
+USER nonroot
+
+ENTRYPOINT ["/app/${BINARY_NAME}"]
