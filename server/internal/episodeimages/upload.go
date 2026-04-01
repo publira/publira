@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/archiveimages"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/epubimages"
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
@@ -50,11 +51,13 @@ type UploadRequest struct {
 	EpisodePublicID string
 	Images          []*publiraadminv1.EpisodeImageUpload
 	ArchiveData     []byte
+	ArchiveFilename string
+	ArchiveType     string
 	Headers         http.Header
 }
 
 func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattypesv1.EpisodeImage, error) {
-	imageInputs, err := collectInputs(req.Images, req.ArchiveData, req.SeriesPublicID)
+	imageInputs, err := collectInputs(req.Images, req.ArchiveData, req.ArchiveFilename, req.ArchiveType, req.SeriesPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +70,7 @@ func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattype
 	return s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
 }
 
-func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []byte, seriesPublicID string) ([]archiveimages.Input, error) {
+func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []byte, archiveFilename string, archiveType string, seriesPublicID string) ([]archiveimages.Input, error) {
 	hasArchive := len(archiveData) > 0
 	if hasArchive && len(images) > 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("images and archive_data cannot be used together"))
@@ -80,7 +83,15 @@ func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []by
 	}
 
 	if hasArchive {
-		archiveInputs, err := archiveimages.ExtractImageInputs(archiveData, maxArchiveEntries)
+		var (
+			archiveInputs []archiveimages.Input
+			err           error
+		)
+		if shouldExtractFromEPUB(archiveFilename, archiveType) {
+			archiveInputs, err = epubimages.ExtractImageInputs(archiveData, maxArchiveEntries)
+		} else {
+			archiveInputs, err = archiveimages.ExtractImageInputs(archiveData, maxArchiveEntries)
+		}
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
@@ -96,6 +107,15 @@ func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []by
 		})
 	}
 	return inputs, nil
+}
+
+func shouldExtractFromEPUB(archiveFilename string, archiveContentType string) bool {
+	filename := strings.ToLower(strings.TrimSpace(archiveFilename))
+	if strings.HasSuffix(filename, ".epub") {
+		return true
+	}
+	contentType := strings.ToLower(strings.TrimSpace(archiveContentType))
+	return strings.Contains(contentType, "application/epub+zip")
 }
 
 func (s Service) resolveEpisode(ctx context.Context, tenantID uuid.UUID, seriesPublicID string, episodePublicID string) (uuid.UUID, string, error) {
