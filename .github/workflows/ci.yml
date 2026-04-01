@@ -92,6 +92,9 @@ jobs:
       - name: Validate / sqlc Generated Diff
         run: sqlc diff
 
+      - name: Build / Packages
+        run: pnpm build --filter "./packages/*"
+
       - name: Validate / Lint and Format
         run: pnpm check
 
