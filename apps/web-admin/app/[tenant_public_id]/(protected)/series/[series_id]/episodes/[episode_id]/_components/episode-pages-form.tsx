@@ -37,6 +37,7 @@ export const EpisodePagesForm = ({
   action,
 }: EpisodePagesFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
+  const [uploadMode, setUploadMode] = useState<"pages" | "archive">("pages");
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -74,8 +75,12 @@ export const EpisodePagesForm = ({
       if (!inputRef.current || files.length === 0) {
         return;
       }
+
+      const droppedFiles =
+        uploadMode === "archive" ? [files[0]].filter(Boolean) : [...files];
+
       const dataTransfer = new DataTransfer();
-      for (const file of files) {
+      for (const file of droppedFiles) {
         dataTransfer.items.add(file);
       }
       inputRef.current.files = dataTransfer.files;
@@ -88,6 +93,22 @@ export const EpisodePagesForm = ({
       updateFiles(event.currentTarget.files);
     }
   );
+
+  const handleSelectPages = useEffectEvent(() => {
+    setUploadMode("pages");
+    setSelectedFileNames([]);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  });
+
+  const handleSelectArchive = useEffectEvent(() => {
+    setUploadMode("archive");
+    setSelectedFileNames([]);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  });
 
   return (
     <Card>
@@ -106,10 +127,44 @@ export const EpisodePagesForm = ({
             type="hidden"
             value={episodePublicId}
           />
+          <input name="upload_mode" type="hidden" value={uploadMode} />
+
+          <Field>
+            <FieldLabel>入稿対象</FieldLabel>
+            <FieldContent>
+              <p className="text-sm text-muted-foreground">
+                Series: {seriesPublicId} / Episode: {episodePublicId}
+              </p>
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel>アップロード方法</FieldLabel>
+            <FieldContent>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={isPending}
+                  onClick={handleSelectPages}
+                  type="button"
+                  variant={uploadMode === "pages" ? "default" : "outline"}
+                >
+                  ページ画像を複数選択
+                </Button>
+                <Button
+                  disabled={isPending}
+                  onClick={handleSelectArchive}
+                  type="button"
+                  variant={uploadMode === "archive" ? "default" : "outline"}
+                >
+                  ZIP で入稿
+                </Button>
+              </div>
+            </FieldContent>
+          </Field>
 
           <Field>
             <FieldLabel htmlFor="episode_pages" required>
-              ページ画像
+              {uploadMode === "archive" ? "ZIP ファイル" : "ページ画像"}
             </FieldLabel>
             <FieldContent>
               <div
@@ -124,13 +179,19 @@ export const EpisodePagesForm = ({
                 onDrop={handleDrop}
               >
                 <p className="mb-3 text-sm text-muted-foreground">
-                  ここに画像をドロップするか、ファイルを選択してください。
+                  {uploadMode === "archive"
+                    ? "ここに ZIP をドロップするか、ファイルを選択してください。"
+                    : "ここに画像をドロップするか、ファイルを選択してください。"}
                 </p>
                 <Input
-                  accept="image/*"
+                  accept={
+                    uploadMode === "archive"
+                      ? ".zip,application/zip"
+                      : "image/*"
+                  }
                   id="episode_pages"
-                  multiple
-                  name="pages"
+                  multiple={uploadMode === "pages"}
+                  name={uploadMode === "archive" ? "archive" : "pages"}
                   onChange={handleChange}
                   ref={inputRef}
                   required
@@ -138,13 +199,23 @@ export const EpisodePagesForm = ({
                 />
               </div>
               <FieldDescription>
-                追加時の表示順は既存の末尾に続けて自動採番されます。
+                {uploadMode === "archive"
+                  ? "ZIP 内の画像を展開して登録します。壊れた ZIP や不正パスを含む ZIP は拒否されます。"
+                  : "追加時の表示順は既存の末尾に続けて自動採番されます。"}
               </FieldDescription>
               {selectedFileNames.length > 0 ? (
                 <div className="grid gap-1 text-xs text-muted-foreground">
                   {selectedFileNames.map((fileName) => (
                     <p key={fileName}>{fileName}</p>
                   ))}
+                </div>
+              ) : null}
+              {isPending ? (
+                <div className="grid gap-2">
+                  <progress aria-label="アップロード進捗" className="w-full" />
+                  <p className="text-xs text-muted-foreground">
+                    ファイルを処理しています。完了までしばらくお待ちください。
+                  </p>
                 </div>
               ) : null}
             </FieldContent>
@@ -158,7 +229,15 @@ export const EpisodePagesForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <Button disabled={isPending} type="submit">
-              {isPending ? "追加中..." : "ページ画像を追加"}
+              {(() => {
+                if (isPending) {
+                  return "追加中...";
+                }
+                if (uploadMode === "archive") {
+                  return "ZIP を入稿";
+                }
+                return "ページ画像を追加";
+              })()}
             </Button>
           </div>
         </form>

@@ -262,7 +262,8 @@ export const updateEpisodePublishSchedule = async (input: {
 export const uploadEpisodePages = async (input: {
   tenantPublicId: string;
   episodePublicId: string;
-  pages: File[];
+  pages?: File[];
+  archive?: File;
 }): Promise<UploadEpisodePagesResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -272,7 +273,7 @@ export const uploadEpisodePages = async (input: {
     };
   }
 
-  if (input.pages.length === 0) {
+  if (!input.archive && (!input.pages || input.pages.length === 0)) {
     return {
       message: "追加するページ画像を選択してください。",
       ok: false,
@@ -280,29 +281,68 @@ export const uploadEpisodePages = async (input: {
   }
 
   try {
-    const images = await Promise.all(
-      input.pages.map(async (page, index) => ({
-        contentType: page.type || "application/octet-stream",
-        data: new Uint8Array(await page.arrayBuffer()),
-        displayOrder: index,
-        filename: page.name,
-      }))
-    );
+    const response = input.archive
+      ? await (async () => {
+          const archive = input.archive as File;
+          const request = {
+            archiveContentType: archive.type || "application/octet-stream",
+            archiveData: new Uint8Array(await archive.arrayBuffer()),
+            archiveFilename: archive.name,
+            episodePublicId: input.episodePublicId,
+            tenant: { tenantPublicId: input.tenantPublicId },
+          } as Parameters<typeof apiClient.series.uploadEpisodeImages>[0];
 
-    const response = await apiClient.series.uploadEpisodeImages(
-      {
-        episodePublicId: input.episodePublicId,
-        images,
-        tenant: { tenantPublicId: input.tenantPublicId },
-      },
-      withSessionHeaders(sessionId)
-    );
+          return apiClient.series.uploadEpisodeImages(
+            request,
+            withSessionHeaders(sessionId)
+          );
+        })()
+      : await apiClient.series.uploadEpisodeImages(
+          {
+            episodePublicId: input.episodePublicId,
+            images: await Promise.all(
+              (input.pages ?? []).map(async (page, index) => ({
+                contentType: page.type || "application/octet-stream",
+                data: new Uint8Array(await page.arrayBuffer()),
+                displayOrder: index,
+                filename: page.name,
+              }))
+            ),
+            tenant: { tenantPublicId: input.tenantPublicId },
+          },
+          withSessionHeaders(sessionId)
+        );
 
     return {
       ok: true,
       uploadedCount: response.images.length,
     };
   } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+
+      if (message.includes("zip") && message.includes("broken")) {
+        return {
+          message:
+            "ZIP が壊れています。正常な ZIP ファイルを再作成してください。",
+          ok: false,
+        };
+      }
+
+      if (
+        message.includes("zip") &&
+        (message.includes("path") ||
+          message.includes("traversal") ||
+          message.includes("outside"))
+      ) {
+        return {
+          message:
+            "ZIP 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。",
+          ok: false,
+        };
+      }
+    }
+
     return {
       message: mapErrorToMessage(error, genericUploadErrorMessage),
       ok: false,
