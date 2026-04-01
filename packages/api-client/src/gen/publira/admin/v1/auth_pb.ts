@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/auth.proto.
  */
 export const file_publira_admin_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL2F1dGgucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEieAokQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJ5CiVBZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJrCiRBZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiJwolQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXNwb25zZSJjChxBZG1pbkF1dGhTZXJ2aWNlR2V0TWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIkUKHUFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXIiOwooQWRtaW5BdXRoU2VydmljZUdldFRlbmFudEJ5RG9tYWluUmVxdWVzdBIPCgdkb21haW5zGAEgAygJIkUKKUFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAkiZwogQWRtaW5BdXRoU2VydmljZUdldFRlbmFudFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiXwoWQWRtaW5BdXRoU2VydmljZVRlbmFudBIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZkb21haW4YAyABKAkSFAoMYWRtaW5fZG9tYWluGAQgASgJIl0KIUFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRSZXNwb25zZRI4CgZ0ZW5hbnQYASABKAsyKC5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VUZW5hbnQibQomQWRtaW5BdXRoU2VydmljZUdldFRlbmFudENvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkicQonQWRtaW5BdXRoU2VydmljZUdldFRlbmFudENvbmZpZ1Jlc3BvbnNlEhYKDmNvcHlyaWdodF90ZXh0GAEgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YAiABKAkSFAoMc2l0ZV90YWdsaW5lGAMgASgJInYKNEFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJIoIBCjVBZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QWRtaW5JbnZpdGF0aW9uU3RhdGVSZXNwb25zZRINCgVlbWFpbBgBIAEoCRIOCgZzdGF0dXMYAiABKAkSEgoKZXhwaXJlc19hdBgDIAEoCRIWCg5hY2NvdW50X2V4aXN0cxgEIAEoCCKUAQoyQWRtaW5BdXRoU2VydmljZUFjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEgwKBG5hbWUYAyABKAkSEAoIcGFzc3dvcmQYBCABKAkiYAozQWRtaW5BdXRoU2VydmljZUFjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvblJlc3BvbnNlEhAKCGFjY2VwdGVkGAEgASgIEhcKD2FjY291bnRfY3JlYXRlZBgCIAEoCCK4AQopQWRtaW5BdXRoU2VydmljZVVwZGF0ZVRlbmFudENvbmZpZ1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkSFgoOY29weXJpZ2h0X3RleHQYAyABKAkSGAoQc2l0ZV9kZXNjcmlwdGlvbhgEIAEoCRIUCgxzaXRlX3RhZ2xpbmUYBSABKAkidAoqQWRtaW5BdXRoU2VydmljZVVwZGF0ZVRlbmFudENvbmZpZ1Jlc3BvbnNlEhYKDmNvcHlyaWdodF90ZXh0GAEgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YAiABKAkSFAoMc2l0ZV90YWdsaW5lGAMgASgJMpQKChBBZG1pbkF1dGhTZXJ2aWNlEoIBCg1DcmVhdGVTZXNzaW9uEjYucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlcXVlc3QaNy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VDcmVhdGVTZXNzaW9uUmVzcG9uc2UiABKCAQoNRGVsZXRlU2Vzc2lvbhI2LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXF1ZXN0GjcucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlc3BvbnNlIgASagoFR2V0TWUSLi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRNZVJlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlIgASjgEKEUdldFRlbmFudEJ5RG9tYWluEjoucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QnlEb21haW5SZXF1ZXN0GjsucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QnlEb21haW5SZXNwb25zZSIAEnYKCUdldFRlbmFudBIyLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldFRlbmFudFJlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRSZXNwb25zZSIAEogBCg9HZXRUZW5hbnRDb25maWcSOC5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRDb25maWdSZXF1ZXN0GjkucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50Q29uZmlnUmVzcG9uc2UiABKyAQodR2V0VGVuYW50QWRtaW5JbnZpdGF0aW9uU3RhdGUSRi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlcXVlc3QaRy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlc3BvbnNlIgASrAEKG0FjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvbhJELnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUFjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QaRS5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VBY2NlcHRUZW5hbnRBZG1pbkludml0YXRpb25SZXNwb25zZSIAEpEBChJVcGRhdGVUZW5hbnRDb25maWcSOy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VVcGRhdGVUZW5hbnRDb25maWdSZXF1ZXN0GjwucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlVXBkYXRlVGVuYW50Q29uZmlnUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL2F1dGgucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEieAokQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCRIQCghwYXNzd29yZBgDIAEoCSJ5CiVBZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXISKgoHc2Vzc2lvbhgCIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuU2Vzc2lvbiJrCiRBZG1pbkF1dGhTZXJ2aWNlRGVsZXRlU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnNlc3Npb25faWQYAiABKAkiJwolQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXNwb25zZSJtCitBZG1pbkF1dGhTZXJ2aWNlUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVlbWFpbBgCIAEoCSJBCixBZG1pbkF1dGhTZXJ2aWNlUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXNwb25zZRIRCglyZXF1ZXN0ZWQYASABKAgigwEKK0FkbWluQXV0aFNlcnZpY2VDb25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXRva2VuGAIgASgJEhQKDG5ld19wYXNzd29yZBgDIAEoCSJBCixBZG1pbkF1dGhTZXJ2aWNlQ29uZmlybVBhc3N3b3JkUmVzZXRSZXNwb25zZRIRCgljb25maXJtZWQYASABKAgiYwocQWRtaW5BdXRoU2VydmljZUdldE1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKc2Vzc2lvbl9pZBgCIAEoCSJFCh1BZG1pbkF1dGhTZXJ2aWNlR2V0TWVSZXNwb25zZRIkCgR1c2VyGAEgASgLMhYucHVibGlyYS50eXBlcy52MS5Vc2VyIjsKKEFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRCeURvbWFpblJlcXVlc3QSDwoHZG9tYWlucxgBIAMoCSJFCilBZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QnlEb21haW5SZXNwb25zZRIYChB0ZW5hbnRfcHVibGljX2lkGAEgASgJImcKIEFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJIl8KFkFkbWluQXV0aFNlcnZpY2VUZW5hbnQSEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGZG9tYWluGAMgASgJEhQKDGFkbWluX2RvbWFpbhgEIAEoCSJdCiFBZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50UmVzcG9uc2USOAoGdGVuYW50GAEgASgLMigucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlVGVuYW50Im0KJkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJInEKJ0FkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRDb25maWdSZXNwb25zZRIWCg5jb3B5cmlnaHRfdGV4dBgBIAEoCRIYChBzaXRlX2Rlc2NyaXB0aW9uGAIgASgJEhQKDHNpdGVfdGFnbGluZRgDIAEoCSJ2CjRBZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QWRtaW5JbnZpdGF0aW9uU3RhdGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCSKCAQo1QWRtaW5BdXRoU2VydmljZUdldFRlbmFudEFkbWluSW52aXRhdGlvblN0YXRlUmVzcG9uc2USDQoFZW1haWwYASABKAkSDgoGc3RhdHVzGAIgASgJEhIKCmV4cGlyZXNfYXQYAyABKAkSFgoOYWNjb3VudF9leGlzdHMYBCABKAgilAEKMkFkbWluQXV0aFNlcnZpY2VBY2NlcHRUZW5hbnRBZG1pbkludml0YXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0b2tlbhgCIAEoCRIMCgRuYW1lGAMgASgJEhAKCHBhc3N3b3JkGAQgASgJImAKM0FkbWluQXV0aFNlcnZpY2VBY2NlcHRUZW5hbnRBZG1pbkludml0YXRpb25SZXNwb25zZRIQCghhY2NlcHRlZBgBIAEoCBIXCg9hY2NvdW50X2NyZWF0ZWQYAiABKAgiuAEKKUFkbWluQXV0aFNlcnZpY2VVcGRhdGVUZW5hbnRDb25maWdSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzZXNzaW9uX2lkGAIgASgJEhYKDmNvcHlyaWdodF90ZXh0GAMgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBCABKAkSFAoMc2l0ZV90YWdsaW5lGAUgASgJInQKKkFkbWluQXV0aFNlcnZpY2VVcGRhdGVUZW5hbnRDb25maWdSZXNwb25zZRIWCg5jb3B5cmlnaHRfdGV4dBgBIAEoCRIYChBzaXRlX2Rlc2NyaXB0aW9uGAIgASgJEhQKDHNpdGVfdGFnbGluZRgDIAEoCTLIDAoQQWRtaW5BdXRoU2VydmljZRKCAQoNQ3JlYXRlU2Vzc2lvbhI2LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUNyZWF0ZVNlc3Npb25SZXF1ZXN0GjcucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlQ3JlYXRlU2Vzc2lvblJlc3BvbnNlIgASggEKDURlbGV0ZVNlc3Npb24SNi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VEZWxldGVTZXNzaW9uUmVxdWVzdBo3LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZURlbGV0ZVNlc3Npb25SZXNwb25zZSIAEpcBChRSZXF1ZXN0UGFzc3dvcmRSZXNldBI9LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZVJlcXVlc3RQYXNzd29yZFJlc2V0UmVxdWVzdBo+LnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZVJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2UiABKXAQoUQ29uZmlybVBhc3N3b3JkUmVzZXQSPS5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VDb25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QaPi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VDb25maXJtUGFzc3dvcmRSZXNldFJlc3BvbnNlIgASagoFR2V0TWUSLi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRNZVJlcXVlc3QaLy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRNZVJlc3BvbnNlIgASjgEKEUdldFRlbmFudEJ5RG9tYWluEjoucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QnlEb21haW5SZXF1ZXN0GjsucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50QnlEb21haW5SZXNwb25zZSIAEnYKCUdldFRlbmFudBIyLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUdldFRlbmFudFJlcXVlc3QaMy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRSZXNwb25zZSIAEogBCg9HZXRUZW5hbnRDb25maWcSOC5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRDb25maWdSZXF1ZXN0GjkucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlR2V0VGVuYW50Q29uZmlnUmVzcG9uc2UiABKyAQodR2V0VGVuYW50QWRtaW5JbnZpdGF0aW9uU3RhdGUSRi5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlcXVlc3QaRy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VHZXRUZW5hbnRBZG1pbkludml0YXRpb25TdGF0ZVJlc3BvbnNlIgASrAEKG0FjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvbhJELnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BdXRoU2VydmljZUFjY2VwdFRlbmFudEFkbWluSW52aXRhdGlvblJlcXVlc3QaRS5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VBY2NlcHRUZW5hbnRBZG1pbkludml0YXRpb25SZXNwb25zZSIAEpEBChJVcGRhdGVUZW5hbnRDb25maWcSOy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQXV0aFNlcnZpY2VVcGRhdGVUZW5hbnRDb25maWdSZXF1ZXN0GjwucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1dGhTZXJ2aWNlVXBkYXRlVGVuYW50Q29uZmlnUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceCreateSessionRequest
@@ -99,6 +99,89 @@ export const AdminAuthServiceDeleteSessionResponseSchema: GenMessage<AdminAuthSe
   messageDesc(file_publira_admin_v1_auth, 3);
 
 /**
+ * @generated from message publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest
+ */
+export type AdminAuthServiceRequestPasswordResetRequest = Message<"publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest.
+ * Use `create(AdminAuthServiceRequestPasswordResetRequestSchema)` to create a new message.
+ */
+export const AdminAuthServiceRequestPasswordResetRequestSchema: GenMessage<AdminAuthServiceRequestPasswordResetRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 4);
+
+/**
+ * @generated from message publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse
+ */
+export type AdminAuthServiceRequestPasswordResetResponse = Message<"publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse"> & {
+  /**
+   * @generated from field: bool requested = 1;
+   */
+  requested: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse.
+ * Use `create(AdminAuthServiceRequestPasswordResetResponseSchema)` to create a new message.
+ */
+export const AdminAuthServiceRequestPasswordResetResponseSchema: GenMessage<AdminAuthServiceRequestPasswordResetResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 5);
+
+/**
+ * @generated from message publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest
+ */
+export type AdminAuthServiceConfirmPasswordResetRequest = Message<"publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+
+  /**
+   * @generated from field: string new_password = 3;
+   */
+  newPassword: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest.
+ * Use `create(AdminAuthServiceConfirmPasswordResetRequestSchema)` to create a new message.
+ */
+export const AdminAuthServiceConfirmPasswordResetRequestSchema: GenMessage<AdminAuthServiceConfirmPasswordResetRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 6);
+
+/**
+ * @generated from message publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse
+ */
+export type AdminAuthServiceConfirmPasswordResetResponse = Message<"publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse"> & {
+  /**
+   * @generated from field: bool confirmed = 1;
+   */
+  confirmed: boolean;
+};
+
+/**
+ * Describes the message publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse.
+ * Use `create(AdminAuthServiceConfirmPasswordResetResponseSchema)` to create a new message.
+ */
+export const AdminAuthServiceConfirmPasswordResetResponseSchema: GenMessage<AdminAuthServiceConfirmPasswordResetResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_auth, 7);
+
+/**
  * @generated from message publira.admin.v1.AdminAuthServiceGetMeRequest
  */
 export type AdminAuthServiceGetMeRequest = Message<"publira.admin.v1.AdminAuthServiceGetMeRequest"> & {
@@ -118,7 +201,7 @@ export type AdminAuthServiceGetMeRequest = Message<"publira.admin.v1.AdminAuthSe
  * Use `create(AdminAuthServiceGetMeRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceGetMeRequestSchema: GenMessage<AdminAuthServiceGetMeRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 4);
+  messageDesc(file_publira_admin_v1_auth, 8);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetMeResponse
@@ -135,7 +218,7 @@ export type AdminAuthServiceGetMeResponse = Message<"publira.admin.v1.AdminAuthS
  * Use `create(AdminAuthServiceGetMeResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceGetMeResponseSchema: GenMessage<AdminAuthServiceGetMeResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 5);
+  messageDesc(file_publira_admin_v1_auth, 9);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
@@ -152,7 +235,7 @@ export type AdminAuthServiceGetTenantByDomainRequest = Message<"publira.admin.v1
  * Use `create(AdminAuthServiceGetTenantByDomainRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantByDomainRequestSchema: GenMessage<AdminAuthServiceGetTenantByDomainRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 6);
+  messageDesc(file_publira_admin_v1_auth, 10);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
@@ -169,7 +252,7 @@ export type AdminAuthServiceGetTenantByDomainResponse = Message<"publira.admin.v
  * Use `create(AdminAuthServiceGetTenantByDomainResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantByDomainResponseSchema: GenMessage<AdminAuthServiceGetTenantByDomainResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 7);
+  messageDesc(file_publira_admin_v1_auth, 11);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantRequest
@@ -191,7 +274,7 @@ export type AdminAuthServiceGetTenantRequest = Message<"publira.admin.v1.AdminAu
  * Use `create(AdminAuthServiceGetTenantRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantRequestSchema: GenMessage<AdminAuthServiceGetTenantRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 8);
+  messageDesc(file_publira_admin_v1_auth, 12);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceTenant
@@ -223,7 +306,7 @@ export type AdminAuthServiceTenant = Message<"publira.admin.v1.AdminAuthServiceT
  * Use `create(AdminAuthServiceTenantSchema)` to create a new message.
  */
 export const AdminAuthServiceTenantSchema: GenMessage<AdminAuthServiceTenant> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 9);
+  messageDesc(file_publira_admin_v1_auth, 13);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantResponse
@@ -240,7 +323,7 @@ export type AdminAuthServiceGetTenantResponse = Message<"publira.admin.v1.AdminA
  * Use `create(AdminAuthServiceGetTenantResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantResponseSchema: GenMessage<AdminAuthServiceGetTenantResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 10);
+  messageDesc(file_publira_admin_v1_auth, 14);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
@@ -262,7 +345,7 @@ export type AdminAuthServiceGetTenantConfigRequest = Message<"publira.admin.v1.A
  * Use `create(AdminAuthServiceGetTenantConfigRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantConfigRequestSchema: GenMessage<AdminAuthServiceGetTenantConfigRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 11);
+  messageDesc(file_publira_admin_v1_auth, 15);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
@@ -289,7 +372,7 @@ export type AdminAuthServiceGetTenantConfigResponse = Message<"publira.admin.v1.
  * Use `create(AdminAuthServiceGetTenantConfigResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantConfigResponseSchema: GenMessage<AdminAuthServiceGetTenantConfigResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 12);
+  messageDesc(file_publira_admin_v1_auth, 16);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
@@ -311,7 +394,7 @@ export type AdminAuthServiceGetTenantAdminInvitationStateRequest = Message<"publ
  * Use `create(AdminAuthServiceGetTenantAdminInvitationStateRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantAdminInvitationStateRequestSchema: GenMessage<AdminAuthServiceGetTenantAdminInvitationStateRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 13);
+  messageDesc(file_publira_admin_v1_auth, 17);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
@@ -343,7 +426,7 @@ export type AdminAuthServiceGetTenantAdminInvitationStateResponse = Message<"pub
  * Use `create(AdminAuthServiceGetTenantAdminInvitationStateResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceGetTenantAdminInvitationStateResponseSchema: GenMessage<AdminAuthServiceGetTenantAdminInvitationStateResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 14);
+  messageDesc(file_publira_admin_v1_auth, 18);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
@@ -375,7 +458,7 @@ export type AdminAuthServiceAcceptTenantAdminInvitationRequest = Message<"publir
  * Use `create(AdminAuthServiceAcceptTenantAdminInvitationRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceAcceptTenantAdminInvitationRequestSchema: GenMessage<AdminAuthServiceAcceptTenantAdminInvitationRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 15);
+  messageDesc(file_publira_admin_v1_auth, 19);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
@@ -397,7 +480,7 @@ export type AdminAuthServiceAcceptTenantAdminInvitationResponse = Message<"publi
  * Use `create(AdminAuthServiceAcceptTenantAdminInvitationResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceAcceptTenantAdminInvitationResponseSchema: GenMessage<AdminAuthServiceAcceptTenantAdminInvitationResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 16);
+  messageDesc(file_publira_admin_v1_auth, 20);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
@@ -434,7 +517,7 @@ export type AdminAuthServiceUpdateTenantConfigRequest = Message<"publira.admin.v
  * Use `create(AdminAuthServiceUpdateTenantConfigRequestSchema)` to create a new message.
  */
 export const AdminAuthServiceUpdateTenantConfigRequestSchema: GenMessage<AdminAuthServiceUpdateTenantConfigRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 17);
+  messageDesc(file_publira_admin_v1_auth, 21);
 
 /**
  * @generated from message publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
@@ -461,7 +544,7 @@ export type AdminAuthServiceUpdateTenantConfigResponse = Message<"publira.admin.
  * Use `create(AdminAuthServiceUpdateTenantConfigResponseSchema)` to create a new message.
  */
 export const AdminAuthServiceUpdateTenantConfigResponseSchema: GenMessage<AdminAuthServiceUpdateTenantConfigResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_auth, 18);
+  messageDesc(file_publira_admin_v1_auth, 22);
 
 /**
  * @generated from service publira.admin.v1.AdminAuthService
@@ -482,6 +565,22 @@ export const AdminAuthService: GenService<{
     methodKind: "unary";
     input: typeof AdminAuthServiceDeleteSessionRequestSchema;
     output: typeof AdminAuthServiceDeleteSessionResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminAuthService.RequestPasswordReset
+   */
+  requestPasswordReset: {
+    methodKind: "unary";
+    input: typeof AdminAuthServiceRequestPasswordResetRequestSchema;
+    output: typeof AdminAuthServiceRequestPasswordResetResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminAuthService.ConfirmPasswordReset
+   */
+  confirmPasswordReset: {
+    methodKind: "unary";
+    input: typeof AdminAuthServiceConfirmPasswordResetRequestSchema;
+    output: typeof AdminAuthServiceConfirmPasswordResetResponseSchema;
   },
   /**
    * @generated from rpc publira.admin.v1.AdminAuthService.GetMe

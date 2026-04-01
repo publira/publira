@@ -35,6 +35,7 @@ type adminServer struct {
 	recorder  *auditlog.Recorder
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
+	mailer    internalsmtp.Sender
 }
 
 func invalidSessionError() error {
@@ -116,6 +117,7 @@ func (s *adminServer) authenticateSession(
 // NewHandler は管理 API 専用の HTTP ハンドラを返します。
 // AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
+	mailer, _ := tester.(internalsmtp.Sender)
 	server := &adminServer{
 		db:        db,
 		queries:   queries,
@@ -123,6 +125,7 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		recorder:  auditlog.New(queries, logger),
 		encryptor: encryptor,
 		tester:    tester,
+		mailer:    mailer,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
