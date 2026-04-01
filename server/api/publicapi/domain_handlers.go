@@ -26,7 +26,7 @@ func (s *apiServer) GetTenantByDomain(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domains are required"))
 	}
 
-	tenant, err := s.queries.GetTenantByDomains(ctx, domains)
+	tenant, err := s.queriesFor(ctx).GetTenantByDomains(ctx, domains)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))

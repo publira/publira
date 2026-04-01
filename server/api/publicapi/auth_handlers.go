@@ -51,7 +51,7 @@ func (s *apiServer) issueUserSession(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
+	createdSession, err := s.queriesFor(ctx).CreateSession(ctx, dbmodels.CreateSessionParams{
 		ID:        sessionID,
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
@@ -79,7 +79,7 @@ func (s *apiServer) issueUserSession(
 }
 
 func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
-	roles, err := s.queries.ListTenantUserRoles(ctx, userID)
+	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, userID)
 	if err != nil {
 		return "", connect.NewError(connect.CodeInternal, err)
 	}
@@ -123,7 +123,7 @@ func (s *apiServer) currentUserFromSession(
 	if err != nil {
 		return dbmodels.Tenant{}, dbmodels.User{}, "", err
 	}
-	user, err := s.queries.GetUserByID(ctx, authCtx.Session.UserID)
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, authCtx.Session.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, dbmodels.User{}, "", invalidSessionError()
@@ -146,7 +146,7 @@ func (s *apiServer) CreateSession(
 		auth.AuditEvent(req.Header(), "login", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Msg.Email})
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Msg.Email})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "invalid_credentials")
@@ -218,7 +218,7 @@ func platformEmailSettingsFromRow(config dbmodels.PlatformSmtpConfig, password s
 }
 
 func (s *apiServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
-	tenantConfig, err := s.queries.GetTenantSMTPConfigByTenantID(ctx, tenantID)
+	tenantConfig, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
 	}
@@ -234,7 +234,7 @@ func (s *apiServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID u
 		return settings, nil
 	}
 
-	platformConfig, err := s.queries.GetPlatformSMTPConfig(ctx)
+	platformConfig, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
@@ -438,7 +438,7 @@ func (s *apiServer) CreateUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
 
-	_, err = s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    email,
 	})
@@ -462,7 +462,7 @@ func (s *apiServer) CreateUser(
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	user, err := s.queries.CreateUser(ctx, dbmodels.CreateUserParams{
+	user, err := s.queriesFor(ctx).CreateUser(ctx, dbmodels.CreateUserParams{
 		ID:           userID,
 		TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		PublicID:     generatePublicID(),
@@ -479,7 +479,7 @@ func (s *apiServer) CreateUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, err = s.queries.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"})
+	user, err = s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "set_inactive_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -496,7 +496,7 @@ func (s *apiServer) CreateUser(
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queries.CreateUserEmailVerificationToken(ctx, dbmodels.CreateUserEmailVerificationTokenParams{
+	_, err = s.queriesFor(ctx).CreateUserEmailVerificationToken(ctx, dbmodels.CreateUserEmailVerificationTokenParams{
 		ID:        verificationID,
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
@@ -509,7 +509,7 @@ func (s *apiServer) CreateUser(
 	}
 
 	if err := s.sendVerificationEmail(ctx, tenant, user, verificationToken); err != nil {
-		_ = s.queries.DeleteUserByID(ctx, user.ID)
+		_ = s.queriesFor(ctx).DeleteUserByID(ctx, user.ID)
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "verification_email_send_failed")
 		return nil, err
 	}
@@ -535,7 +535,7 @@ func (s *apiServer) VerifyUserEmail(
 	if token == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
 	}
-	verificationToken, err := s.queries.GetUserEmailVerificationTokenByHashForTenant(ctx, dbmodels.GetUserEmailVerificationTokenByHashForTenantParams{
+	verificationToken, err := s.queriesFor(ctx).GetUserEmailVerificationTokenByHashForTenant(ctx, dbmodels.GetUserEmailVerificationTokenByHashForTenantParams{
 		TenantID:  tenant.ID,
 		TokenHash: auth.HashToken(token),
 	})
@@ -551,23 +551,23 @@ func (s *apiServer) VerifyUserEmail(
 	if verificationToken.ExpiresAt.Before(time.Now()) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("verification token expired"))
 	}
-	user, err := s.queries.GetUserByID(ctx, verificationToken.UserID)
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, verificationToken.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queries.MarkUserEmailVerificationTokenUsed(ctx, verificationToken.ID); err != nil {
+	if err := s.queriesFor(ctx).MarkUserEmailVerificationTokenUsed(ctx, verificationToken.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if _, err := s.queries.UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+	if _, err := s.queriesFor(ctx).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
 		ID:              user.ID,
 		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
 	}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if _, err := s.queries.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
+	if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
@@ -611,7 +611,7 @@ func (s *apiServer) RequestEmailChange(
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid current password"))
 	}
 
-	_, err = s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    newEmail,
 	})
@@ -624,7 +624,7 @@ func (s *apiServer) RequestEmailChange(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	if err := s.queries.DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -646,7 +646,7 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queries.CreateUserEmailChangeToken(ctx, dbmodels.CreateUserEmailChangeTokenParams{
+	_, err = s.queriesFor(ctx).CreateUserEmailChangeToken(ctx, dbmodels.CreateUserEmailChangeTokenParams{
 		ID:                    tokenID,
 		TenantID:              tenant.ID,
 		UserID:                user.ID,
@@ -662,12 +662,12 @@ func (s *apiServer) RequestEmailChange(
 	}
 
 	if err := s.sendEmailChangeVerificationEmail(ctx, tenant, user.Email, "current_email", user.Email, newEmail, currentEmailToken); err != nil {
-		_ = s.queries.DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
+		_ = s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_send_failed")
 		return nil, err
 	}
 	if err := s.sendEmailChangeVerificationEmail(ctx, tenant, newEmail, "new_email", user.Email, newEmail, newEmailToken); err != nil {
-		_ = s.queries.DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
+		_ = s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "new_email_send_failed")
 		return nil, err
 	}
@@ -692,7 +692,7 @@ func (s *apiServer) ConfirmEmailChange(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
 	}
 
-	changeToken, err := s.queries.GetUserEmailChangeTokenByHashForTenant(ctx, dbmodels.GetUserEmailChangeTokenByHashForTenantParams{
+	changeToken, err := s.queriesFor(ctx).GetUserEmailChangeTokenByHashForTenant(ctx, dbmodels.GetUserEmailChangeTokenByHashForTenantParams{
 		TenantID:              tenant.ID,
 		CurrentEmailTokenHash: auth.HashToken(token),
 	})
@@ -713,7 +713,7 @@ func (s *apiServer) ConfirmEmailChange(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token expired"))
 	}
 
-	user, err := s.queries.GetUserByID(ctx, changeToken.UserID)
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, changeToken.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "user_not_found")
@@ -729,12 +729,12 @@ func (s *apiServer) ConfirmEmailChange(
 
 	matchedTarget := changeToken.MatchedTarget
 	if matchedTarget == "current_email" {
-		if err := s.queries.MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
+		if err := s.queriesFor(ctx).MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	} else {
-		if err := s.queries.MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
+		if err := s.queriesFor(ctx).MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
@@ -755,7 +755,7 @@ func (s *apiServer) ConfirmEmailChange(
 		}), nil
 	}
 
-	if _, err := s.queries.UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
+	if _, err := s.queriesFor(ctx).UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
 		ID:    user.ID,
 		Email: changeToken.NewEmail,
 	}); err != nil {
@@ -766,7 +766,7 @@ func (s *apiServer) ConfirmEmailChange(
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queries.MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
+	if err := s.queriesFor(ctx).MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -799,7 +799,7 @@ func (s *apiServer) RequestPasswordReset(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
 	}
 
-	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    email,
 	})
@@ -812,7 +812,7 @@ func (s *apiServer) RequestPasswordReset(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	if err := s.queries.DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -828,7 +828,7 @@ func (s *apiServer) RequestPasswordReset(
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queries.CreateUserPasswordResetToken(ctx, dbmodels.CreateUserPasswordResetTokenParams{
+	_, err = s.queriesFor(ctx).CreateUserPasswordResetToken(ctx, dbmodels.CreateUserPasswordResetTokenParams{
 		ID:        tokenID,
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
@@ -841,7 +841,7 @@ func (s *apiServer) RequestPasswordReset(
 	}
 
 	if err := s.sendPasswordResetEmail(ctx, tenant, user.Email, resetToken); err != nil {
-		_ = s.queries.DeleteUserPasswordResetTokensByUserID(ctx, user.ID)
+		_ = s.queriesFor(ctx).DeleteUserPasswordResetTokensByUserID(ctx, user.ID)
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "reset_email_send_failed")
 		return nil, err
 	}
@@ -867,7 +867,7 @@ func (s *apiServer) ConfirmPasswordReset(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
 	}
 
-	resetToken, err := s.queries.GetUserPasswordResetTokenByHashForTenant(ctx, dbmodels.GetUserPasswordResetTokenByHashForTenantParams{
+	resetToken, err := s.queriesFor(ctx).GetUserPasswordResetTokenByHashForTenant(ctx, dbmodels.GetUserPasswordResetTokenByHashForTenantParams{
 		TenantID:  tenant.ID,
 		TokenHash: auth.HashToken(token),
 	})
@@ -888,7 +888,7 @@ func (s *apiServer) ConfirmPasswordReset(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token expired"))
 	}
 
-	user, err := s.queries.GetUserByID(ctx, resetToken.UserID)
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, resetToken.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_not_found")
@@ -904,18 +904,18 @@ func (s *apiServer) ConfirmPasswordReset(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	if _, err := s.queries.UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
+	if _, err := s.queriesFor(ctx).UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
 		ID:           user.ID,
 		PasswordHash: passwordHash,
 	}); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queries.TerminateUserSessions(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).TerminateUserSessions(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "session_terminate_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queries.MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
+	if err := s.queriesFor(ctx).MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "token_complete_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -954,7 +954,7 @@ func (s *apiServer) DeleteSession(
 		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "already_revoked")
 		return response, nil
 	}
-	if err := s.queries.RevokeSession(ctx, lookup.Session.ID); err != nil {
+	if err := s.queriesFor(ctx).RevokeSession(ctx, lookup.Session.ID); err != nil {
 		auth.AuditEvent(req.Header(), "logout", "failure", tenant.PublicID, "", "session_revoke_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -991,7 +991,7 @@ func (s *apiServer) UpdateMe(
 		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "name_too_long")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name must be 100 characters or fewer"))
 	}
-	updated, err := s.queries.UpdateUserNameByID(ctx, dbmodels.UpdateUserNameByIDParams{
+	updated, err := s.queriesFor(ctx).UpdateUserNameByID(ctx, dbmodels.UpdateUserNameByIDParams{
 		ID:   user.ID,
 		Name: name,
 	})
@@ -1021,11 +1021,11 @@ func (s *apiServer) DeleteMe(
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid password"))
 	}
-	if err := s.queries.TerminateUserSessions(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).TerminateUserSessions(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "session_terminate_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queries.DeleteUserByID(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -1043,7 +1043,7 @@ func (s *apiServer) GetNotificationSettings(
 	if err != nil {
 		return nil, err
 	}
-	settings, err := s.queries.GetUserNotificationSettings(ctx, user.ID)
+	settings, err := s.queriesFor(ctx).GetUserNotificationSettings(ctx, user.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: true}), nil
@@ -1061,7 +1061,7 @@ func (s *apiServer) UpdateNotificationSettings(
 	if err != nil {
 		return nil, err
 	}
-	updated, err := s.queries.UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
+	updated, err := s.queriesFor(ctx).UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
 		UserID:                    user.ID,
 		EmailNotificationsEnabled: req.Msg.EmailNotificationsEnabled,
 	})

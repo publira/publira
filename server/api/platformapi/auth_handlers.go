@@ -33,7 +33,7 @@ func platformRoleRequiredError() error {
 }
 
 func (s *platformServer) platformRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error) {
-	roles, err := s.queries.ListPlatformUserRoles(ctx, platformUserID)
+	roles, err := s.queriesFor(ctx).ListPlatformUserRoles(ctx, platformUserID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -59,7 +59,7 @@ func (s *platformServer) authenticatePlatformSession(
 	if lookup.State != auth.SessionStateActive {
 		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", invalidSessionError()
 	}
-	platformUser, err := s.queries.GetPlatformUserByID(ctx, lookup.Session.PlatformUserID)
+	platformUser, err := s.queriesFor(ctx).GetPlatformUserByID(ctx, lookup.Session.PlatformUserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", invalidSessionError()
@@ -87,7 +87,7 @@ func (s *platformServer) CreateSession(
 		auth.AuditEvent(req.Header(), "platform_login", "failure", "", "", "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
-	platformUser, err := s.queries.GetPlatformUserByEmail(ctx, email)
+	platformUser, err := s.queriesFor(ctx).GetPlatformUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			auth.AuditEvent(req.Header(), "platform_login", "failure", "", "", "invalid_credentials")
@@ -117,7 +117,7 @@ func (s *platformServer) CreateSession(
 		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "session_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdSession, err := s.queries.CreatePlatformSession(ctx, dbmodels.CreatePlatformSessionParams{
+	createdSession, err := s.queriesFor(ctx).CreatePlatformSession(ctx, dbmodels.CreatePlatformSessionParams{
 		ID:             sessionID,
 		PlatformUserID: platformUser.ID,
 		TokenHash:      auth.HashToken(sessionToken),
@@ -163,7 +163,7 @@ func (s *platformServer) DeleteSession(
 		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "already_revoked")
 		return response, nil
 	}
-	if err := s.queries.RevokePlatformSession(ctx, lookup.Session.ID); err != nil {
+	if err := s.queriesFor(ctx).RevokePlatformSession(ctx, lookup.Session.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_logout", "failure", "", "", "session_revoke_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

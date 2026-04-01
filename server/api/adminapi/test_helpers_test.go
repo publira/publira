@@ -45,7 +45,7 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(NewHandler(dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil))
 	t.Cleanup(server.Close)
 	return server, mock
 }

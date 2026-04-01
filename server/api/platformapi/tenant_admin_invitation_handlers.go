@@ -107,7 +107,7 @@ func platformEmailSettingsFromConfig(config dbmodels.PlatformSmtpConfig, passwor
 }
 
 func (s *platformServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
-	tenantConfig, err := s.queries.GetTenantSMTPConfigByTenantID(ctx, tenantID)
+	tenantConfig, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
 	}
@@ -123,7 +123,7 @@ func (s *platformServer) resolveSMTPSettingsForTenant(ctx context.Context, tenan
 		return settings, nil
 	}
 
-	platformConfig, err := s.queries.GetPlatformSMTPConfig(ctx)
+	platformConfig, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
@@ -218,7 +218,7 @@ func (s *platformServer) ListTenantAdminInvitations(
 		offset = 0
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -226,7 +226,7 @@ func (s *platformServer) ListTenantAdminInvitations(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	rows, err := s.queries.ListTenantAdminInvitations(ctx, dbmodels.ListTenantAdminInvitationsParams{
+	rows, err := s.queriesFor(ctx).ListTenantAdminInvitations(ctx, dbmodels.ListTenantAdminInvitationsParams{
 		TenantID: tenant.ID,
 		Limit:    limit,
 		Offset:   offset,
@@ -260,7 +260,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email"))
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -268,7 +268,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, userErr := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	user, userErr := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    email,
 	})
@@ -314,13 +314,13 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	}
 	expiresAt := time.Now().Add(tenantAdminInvitationTTL)
 
-	existing, err := s.queries.GetTenantAdminInvitationByTenantAndEmail(ctx, dbmodels.GetTenantAdminInvitationByTenantAndEmailParams{
+	existing, err := s.queriesFor(ctx).GetTenantAdminInvitationByTenantAndEmail(ctx, dbmodels.GetTenantAdminInvitationByTenantAndEmailParams{
 		TenantID: tenant.ID,
 		Email:    email,
 	})
 	var invitation dbmodels.TenantAdminInvitation
 	if err == nil {
-		invitation, err = s.queries.UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
+		invitation, err = s.queriesFor(ctx).UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
 			TenantID:  tenant.ID,
 			Email:     existing.Email,
 			TokenHash: auth.HashToken(token),
@@ -334,7 +334,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		if newIDErr != nil {
 			return nil, connect.NewError(connect.CodeInternal, newIDErr)
 		}
-		invitation, err = s.queries.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
+		invitation, err = s.queriesFor(ctx).CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
 			ID:        invitationID,
 			TenantID:  tenant.ID,
 			Email:     email,
@@ -379,7 +379,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id and invitation_id are required"))
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -391,7 +391,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid invitation_id"))
 	}
-	invitation, err := s.queries.GetTenantAdminInvitationByIDForTenant(ctx, dbmodels.GetTenantAdminInvitationByIDForTenantParams{
+	invitation, err := s.queriesFor(ctx).GetTenantAdminInvitationByIDForTenant(ctx, dbmodels.GetTenantAdminInvitationByIDForTenantParams{
 		TenantID: tenant.ID,
 		ID:       parsedID,
 	})
@@ -412,7 +412,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	updated, err := s.queries.UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
+	updated, err := s.queriesFor(ctx).UpdateTenantAdminInvitationForResend(ctx, dbmodels.UpdateTenantAdminInvitationForResendParams{
 		TenantID:  tenant.ID,
 		Email:     invitation.Email,
 		TokenHash: auth.HashToken(token),
@@ -453,7 +453,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id and invitation_id are required"))
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -464,7 +464,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid invitation_id"))
 	}
-	invitation, err := s.queries.GetTenantAdminInvitationByIDForTenant(ctx, dbmodels.GetTenantAdminInvitationByIDForTenantParams{
+	invitation, err := s.queriesFor(ctx).GetTenantAdminInvitationByIDForTenant(ctx, dbmodels.GetTenantAdminInvitationByIDForTenantParams{
 		TenantID: tenant.ID,
 		ID:       parsedID,
 	})
@@ -478,7 +478,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation already accepted"))
 	}
 
-	updated, err := s.queries.CancelTenantAdminInvitation(ctx, dbmodels.CancelTenantAdminInvitationParams{
+	updated, err := s.queriesFor(ctx).CancelTenantAdminInvitation(ctx, dbmodels.CancelTenantAdminInvitationParams{
 		TenantID: tenant.ID,
 		ID:       invitation.ID,
 	})

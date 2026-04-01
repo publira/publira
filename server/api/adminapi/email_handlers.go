@@ -167,7 +167,7 @@ func (s *adminServer) GetTenantEmailSettings(
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	config, err := s.queries.GetTenantSMTPConfigByTenantID(ctx, tenant.ID)
+	config, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenant.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publiraadminv1.GetTenantEmailSettingsResponse{
@@ -225,7 +225,7 @@ func (s *adminServer) UpdateTenantEmailSettings(
 	}
 
 	normalized := emailsettings.Normalize(settings)
-	updated, err := s.queries.UpsertTenantSMTPConfig(ctx, dbmodels.UpsertTenantSMTPConfigParams{
+	updated, err := s.queriesFor(ctx).UpsertTenantSMTPConfig(ctx, dbmodels.UpsertTenantSMTPConfigParams{
 		TenantID:            tenant.ID,
 		SmtpOverrideEnabled: req.Msg.SmtpOverrideEnabled,
 		Host:                nullableString(normalized.Host),
@@ -316,7 +316,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 }
 
 func (s *adminServer) loadTenantSMTPConfigByID(ctx context.Context, tenantID uuid.UUID) (dbmodels.TenantSmtpConfig, bool, error) {
-	config, err := s.queries.GetTenantSMTPConfigByTenantID(ctx, tenantID)
+	config, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.TenantSmtpConfig{}, false, nil
@@ -327,7 +327,7 @@ func (s *adminServer) loadTenantSMTPConfigByID(ctx context.Context, tenantID uui
 }
 
 func (s *adminServer) loadPlatformSMTPConfigByID(ctx context.Context) (dbmodels.PlatformSmtpConfig, bool, error) {
-	config, err := s.queries.GetPlatformSMTPConfig(ctx)
+	config, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.PlatformSmtpConfig{}, false, nil

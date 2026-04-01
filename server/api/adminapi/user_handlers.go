@@ -32,7 +32,7 @@ func (s *adminServer) ListTenantUsers(
 
 	keyword := strings.ToLower(strings.TrimSpace(req.Msg.Query))
 
-	rows, err := s.queries.ListTenantUsers(ctx, dbmodels.ListTenantUsersParams{
+	rows, err := s.queriesFor(ctx).ListTenantUsers(ctx, dbmodels.ListTenantUsersParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Offset:   0,
 		Limit:    maxTenantUserListLimit,

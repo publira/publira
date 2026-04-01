@@ -130,7 +130,7 @@ func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *test
 	t.Cleanup(func() { _ = db.Close() })
 	encryptor := newAdminTestEncryptor(t)
 	tester := &adminSMTPTesterStub{}
-	ts := httptest.NewServer(NewHandler(dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester))
+	ts := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester))
 	t.Cleanup(ts.Close)
 
 	now := time.Now()
