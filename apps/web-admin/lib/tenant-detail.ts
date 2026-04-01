@@ -1,6 +1,20 @@
 import { apiClient, withSessionHeaders } from "./api";
 import { getSessionId } from "./session";
 
+const isExpectedNullableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unauthenticated") ||
+    message.includes("permission_denied") ||
+    message.includes("not_found") ||
+    message.includes("not found")
+  );
+};
+
 export interface TenantDetail {
   publicId: string;
   name: string;
@@ -40,7 +54,10 @@ export const getTenantForSession = async (
       name,
       publicId,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
