@@ -25,7 +25,7 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 
 func newAdminRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(NewHandler(nil, nil, slog.Default(), nil, nil))
+	return httptest.NewServer(NewHandler(nil, nil, nil, slog.Default(), nil, nil))
 }
 
 func assertRouteRegistered(t *testing.T, ts *httptest.Server, path string, wantRegistered bool) {

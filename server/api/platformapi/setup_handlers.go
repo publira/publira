@@ -33,7 +33,7 @@ func (s *platformServer) CheckSetupStatus(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CheckSetupStatusRequest],
 ) (*connect.Response[publirasplatformv1.CheckSetupStatusResponse], error) {
-	count, err := s.queries.CountPlatformUsers(ctx)
+	count, err := s.queriesFor(ctx).CountPlatformUsers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -60,7 +60,7 @@ func (s *platformServer) CreateInitialUser(
 	}
 
 	// Fast-path: セットアップ済み確認
-	count, err := s.queries.CountPlatformUsers(ctx)
+	count, err := s.queriesFor(ctx).CountPlatformUsers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

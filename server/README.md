@@ -100,6 +100,35 @@ task server:build
 
 これにより、公開系と管理系を別プロセス・別経路で運用できます。
 
+## DB ユーザー構成
+
+各 API サーバーは専用の PostgreSQL ログインユーザーで接続し、最小権限を実現します。
+
+| サーバー     | DB ユーザー        | 環境変数                  | ローカルデフォルト                                                         |
+| ------------ | ------------------ | ------------------------- | -------------------------------------------------------------------------- |
+| platform-api | `publira_platform` | `PUBLIRA_PLATFORM_DB_URL` | `postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable` |
+| admin-api    | `publira_admin`    | `PUBLIRA_ADMIN_DB_URL`    | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable`       |
+| api (public) | `publira_public`   | `PUBLIRA_PUBLIC_DB_URL`   | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable`     |
+
+`publira_platform` は BYPASSRLS 属性を持ち、全テナントのデータに横断アクセスします。  
+`publira_admin` / `publira_public` は RLS が有効で、テナント ID でスコープされます。
+
+### ローカル開発
+
+`task db:setup` 実行時に `db/seeds/baseline/000_rls_bypass_role.sql` が適用され、3 ユーザーが作成されます。
+
+### 本番環境
+
+seed を実行後、各ユーザーのパスワードを安全な値に変更してください:
+
+```sql
+ALTER ROLE publira_platform PASSWORD '<secure_password>';
+ALTER ROLE publira_admin    PASSWORD '<secure_password>';
+ALTER ROLE publira_public   PASSWORD '<secure_password>';
+```
+
+次に各サーバーの環境変数 (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) にそれぞれのパスワードを含む URL を設定してください。
+
 ## 初期データメモ
 
 - AuthService を使うには、最低限 `tenants` と `users` のデータが必要です。

@@ -20,7 +20,7 @@ import (
 )
 
 func (s *adminServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
-	roles, err := s.queries.ListTenantUserRoles(ctx, userID)
+	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, userID)
 	if err != nil {
 		return "", connect.NewError(connect.CodeInternal, err)
 	}
@@ -49,7 +49,7 @@ func (s *adminServer) CreateSession(
 		auth.AuditEvent(req.Header(), "admin_login", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Msg.Email})
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true}, Email: req.Msg.Email})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, "", "invalid_credentials")
@@ -77,7 +77,7 @@ func (s *adminServer) CreateSession(
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "session_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdSession, err := s.queries.CreateSession(ctx, dbmodels.CreateSessionParams{
+	createdSession, err := s.queriesFor(ctx).CreateSession(ctx, dbmodels.CreateSessionParams{
 		ID:        sessionID,
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
@@ -128,7 +128,7 @@ func (s *adminServer) DeleteSession(
 		auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "already_revoked")
 		return response, nil
 	}
-	if err := s.queries.RevokeSession(ctx, lookup.Session.ID); err != nil {
+	if err := s.queriesFor(ctx).RevokeSession(ctx, lookup.Session.ID); err != nil {
 		auth.AuditEvent(req.Header(), "admin_logout", "failure", tenant.PublicID, "", "session_revoke_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -187,7 +187,7 @@ func (s *adminServer) GetTenantByDomain(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("domains are required"))
 	}
 
-	tenant, err := s.queries.GetAdminTenantByDomains(ctx, domains)
+	tenant, err := s.queriesFor(ctx).GetAdminTenantByDomains(ctx, domains)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -209,7 +209,7 @@ func (s *adminServer) GetTenantConfig(
 		return nil, err
 	}
 
-	config, err := s.queries.GetTenantConfigByTenantID(ctx, tenant.ID)
+	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantConfigResponse{}), nil
@@ -244,7 +244,7 @@ func (s *adminServer) UpdateTenantConfig(
 	siteDescription := sql.NullString{String: req.Msg.SiteDescription, Valid: strings.TrimSpace(req.Msg.SiteDescription) != ""}
 	siteTagline := sql.NullString{String: req.Msg.SiteTagline, Valid: strings.TrimSpace(req.Msg.SiteTagline) != ""}
 
-	config, err := s.queries.UpdateTenantConfig(ctx, dbmodels.UpdateTenantConfigParams{
+	config, err := s.queriesFor(ctx).UpdateTenantConfig(ctx, dbmodels.UpdateTenantConfigParams{
 		TenantID:        tenant.ID,
 		CopyrightText:   copyrightText,
 		SiteDescription: siteDescription,
@@ -255,7 +255,7 @@ func (s *adminServer) UpdateTenantConfig(
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
-		config, err = s.queries.CreateTenantConfig(ctx, dbmodels.CreateTenantConfigParams{
+		config, err = s.queriesFor(ctx).CreateTenantConfig(ctx, dbmodels.CreateTenantConfigParams{
 			TenantID:        tenant.ID,
 			CopyrightText:   copyrightText,
 			SiteDescription: siteDescription,

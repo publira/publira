@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
@@ -43,13 +45,33 @@ func platformActorFromContext(ctx context.Context) (platformActor, bool) {
 	return actor, ok
 }
 
+func (s *platformServer) queriesFor(_ context.Context) Querier {
+	return s.queries
+}
+
+func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (string, error) {
+	return rpcmiddleware.ResolveTenantPublicIDValue(strings.TrimSpace(reqTenantPublicID), headers)
+}
+
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
+// DB 接続は publira_platform ユーザーで行い、BYPASSRLS 属性により RLS を透過します。
 func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
 	var mailer internalsmtp.Sender
 	if sender, ok := tester.(internalsmtp.Sender); ok {
 		mailer = sender
 	}
 	server := &platformServer{queries: queries, db: db, recorder: auditlog.New(queries, logger), encryptor: encryptor, tester: tester, mailer: mailer}
+	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())
+			if err != nil {
+				return nil, err
+			}
+			ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserID: user.ID, Role: role, Email: user.Email})
+			return next(ctx, req)
+		}
+	})
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -61,30 +83,12 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 	})
 	tenantPath, tenantHandler := publirasplatformv1connect.NewPlatformTenantServiceHandler(
 		server,
-		connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())
-				if err != nil {
-					return nil, err
-				}
-				ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserID: user.ID, Role: role, Email: user.Email})
-				return next(ctx, req)
-			}
-		})),
+		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(tenantPath, tenantHandler)
 	emailPath, emailHandler := publirasplatformv1connect.NewPlatformEmailSettingsServiceHandler(
 		server,
-		connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())
-				if err != nil {
-					return nil, err
-				}
-				ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserID: user.ID, Role: role, Email: user.Email})
-				return next(ctx, req)
-			}
-		})),
+		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(emailPath, emailHandler)
 	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(server)

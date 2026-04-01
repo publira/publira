@@ -28,6 +28,7 @@ import (
 const (
 	defaultPublicServerURL     = ":8000"
 	defaultPublicGrpcServerURL = ":8100"
+	defaultPublicDBURL         = "postgres://publira_public:publicpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
@@ -37,7 +38,7 @@ func main() {
 		logger.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	db, err := openDB(cfg.DB.URL)
+	db, err := openDB(resolvePublicDBURL())
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
@@ -68,7 +69,7 @@ func main() {
 		grpcAddr = defaultPublicGrpcServerURL
 	}
 
-	handler := publicapi.NewHandler(dbmodels.New(db), storageProvider, encryptor, internalsmtp.NewClient())
+	handler := publicapi.NewHandler(db, dbmodels.New(db), storageProvider, encryptor, internalsmtp.NewClient())
 
 	// Start Connect server on public port
 	logger.Info("starting public api server (Connect)", "addr", addr)
@@ -125,6 +126,13 @@ func openDB(url string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func resolvePublicDBURL() string {
+	if url := strings.TrimSpace(os.Getenv("PUBLIRA_PUBLIC_DB_URL")); url != "" {
+		return url
+	}
+	return defaultPublicDBURL
 }
 
 func newStorageProvider(ctx context.Context, cfg config.Storage) (storage.Provider, error) {

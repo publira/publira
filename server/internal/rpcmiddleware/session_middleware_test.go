@@ -139,3 +139,36 @@ func TestBuildAdminSessionContext_EmptyTenantPublicIDReturnsInvalidArgument(t *t
 		t.Error("authenticate should not be called when tenant_public_id is empty")
 	}
 }
+
+func TestBuildAdminSessionContext_TenantPublicIDFromHeader(t *testing.T) {
+	want := rpcmiddleware.SessionContext{
+		Tenant:  dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
+		Session: dbmodels.Session{ID: uuid.Must(uuid.NewV7())},
+	}
+	authenticate := func(_ context.Context, tenantCtx *publirattypesv1.TenantContext, _ string, headers http.Header) (rpcmiddleware.SessionContext, error) {
+		if tenantCtx == nil || tenantCtx.TenantPublicId != "tenant-1" {
+			t.Fatalf("tenant context = %+v, want tenant-1", tenantCtx)
+		}
+		if headers.Get(rpcmiddleware.TenantPublicIDHeaderName) != "tenant-1" {
+			t.Fatalf("missing tenant header")
+		}
+		return want, nil
+	}
+
+	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: nil})
+	req.Header().Set(rpcmiddleware.TenantPublicIDHeaderName, "tenant-1")
+
+	ctx, err := builder(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	gotTenantCtx, ok := rpcmiddleware.TenantContextFromContext(ctx)
+	if !ok {
+		t.Fatal("TenantContext not found in context")
+	}
+	if gotTenantCtx.TenantPublicID != "tenant-1" {
+		t.Fatalf("TenantContext.TenantPublicID = %q, want tenant-1", gotTenantCtx.TenantPublicID)
+	}
+}

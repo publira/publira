@@ -18,22 +18,22 @@ func (s *adminServer) GetDashboard(
 		return nil, err
 	}
 
-	publishedSeriesCount, err := s.queries.CountPublishedSeriesForTenant(ctx, tenant.ID)
+	publishedSeriesCount, err := s.queriesFor(ctx).CountPublishedSeriesForTenant(ctx, tenant.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	draftEpisodeCount, err := s.queries.CountDraftEpisodesForTenant(ctx, tenant.ID)
+	draftEpisodeCount, err := s.queriesFor(ctx).CountDraftEpisodesForTenant(ctx, tenant.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	scheduledEpisodeCount, err := s.queries.CountScheduledEpisodesForTenant(ctx, tenant.ID)
+	scheduledEpisodeCount, err := s.queriesFor(ctx).CountScheduledEpisodesForTenant(ctx, tenant.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	recentEpisodes, err := s.queries.ListRecentEpisodesForDashboard(ctx, dbmodels.ListRecentEpisodesForDashboardParams{
+	recentEpisodes, err := s.queriesFor(ctx).ListRecentEpisodesForDashboard(ctx, dbmodels.ListRecentEpisodesForDashboardParams{
 		TenantID: tenant.ID,
 		Limit:    10,
 	})

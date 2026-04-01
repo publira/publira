@@ -213,7 +213,7 @@ INSERT INTO episodes (
         order_index
     )
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, series_id, public_id, title, order_index, created_at
+RETURNING id, series_id, public_id, title, order_index, created_at, tenant_id
 `
 
 type CreateEpisodeBaseParams struct {
@@ -241,6 +241,7 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		&i.Title,
 		&i.OrderIndex,
 		&i.CreatedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
@@ -667,7 +668,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 const createTenantUserRole = `-- name: CreateTenantUserRole :one
 INSERT INTO tenant_user_roles (id, user_id, role)
 VALUES ($1, $2, $3)
-RETURNING id, user_id, role, created_at
+RETURNING id, user_id, role, created_at, tenant_id
 `
 
 type CreateTenantUserRoleParams struct {
@@ -684,6 +685,7 @@ func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUser
 		&i.UserID,
 		&i.Role,
 		&i.CreatedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
@@ -3826,7 +3828,7 @@ SET price = EXCLUDED.price,
     status = EXCLUDED.status,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at
-RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at
+RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at, tenant_id
 `
 
 type UpsertEpisodeListingParams struct {
@@ -3855,6 +3857,7 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
@@ -3873,7 +3876,7 @@ VALUES (
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at
+RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id
 `
 
 type UpsertSeriesListingParams struct {
@@ -3891,6 +3894,7 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 		&i.ReadingPeriodHours,
 		&i.IsPublished,
 		&i.PublishedAt,
+		&i.TenantID,
 	)
 	return i, err
 }

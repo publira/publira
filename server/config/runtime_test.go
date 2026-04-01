@@ -34,7 +34,7 @@ func setenv(t *testing.T, key, value string) {
 }
 
 func TestNew_DefaultDB(t *testing.T) {
-	setenv(t, "DB_URL", "")
+	setenv(t, "PUBLIRA_DB_URL", "")
 	cfg, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -45,7 +45,7 @@ func TestNew_DefaultDB(t *testing.T) {
 }
 
 func TestNew_CustomDBURL(t *testing.T) {
-	setenv(t, "DB_URL", "  postgres://example/db  ")
+	setenv(t, "PUBLIRA_DB_URL", "  postgres://example/db  ")
 	cfg, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -54,7 +54,6 @@ func TestNew_CustomDBURL(t *testing.T) {
 		t.Fatalf("DB.URL = %q, want %q", cfg.DB.URL, "postgres://example/db")
 	}
 }
-
 func TestNew_DefaultLocalStorage(t *testing.T) {
 	setenv(t, "STORAGE_BACKEND", "")
 	cfg, err := New()

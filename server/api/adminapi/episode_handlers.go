@@ -54,7 +54,7 @@ func (s *adminServer) ListEpisodes(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
 	}
 
-	rows, err := s.queries.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+	rows, err := s.queriesFor(ctx).ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: req.Msg.SeriesPublicId,
 	})
@@ -85,7 +85,7 @@ func (s *adminServer) ReorderEpisodes(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids are required"))
 	}
 
-	rows, err := s.queries.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+	rows, err := s.queriesFor(ctx).ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: req.Msg.SeriesPublicId,
 	})
@@ -115,7 +115,7 @@ func (s *adminServer) ReorderEpisodes(
 	}
 
 	for index, episodePublicID := range req.Msg.EpisodePublicIds {
-		if err := s.queries.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx, dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams{
+		if err := s.queriesFor(ctx).UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx, dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams{
 			TenantID:   tenant.ID,
 			PublicID:   req.Msg.SeriesPublicId,
 			PublicID_2: episodePublicID,
@@ -125,7 +125,7 @@ func (s *adminServer) ReorderEpisodes(
 		}
 	}
 
-	updatedRows, err := s.queries.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+	updatedRows, err := s.queriesFor(ctx).ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: req.Msg.SeriesPublicId,
 	})
@@ -169,7 +169,7 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, err
 	}
-	series, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.SeriesPublicId})
+	series, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.SeriesPublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
@@ -180,7 +180,7 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	base, err := s.queries.CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: generatePublicID(), Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
+	base, err := s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: generatePublicID(), Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -188,7 +188,7 @@ func (s *adminServer) CreateEpisode(
 	if scheduledAt.Valid {
 		status = "scheduled"
 	}
-	listing, err := s.queries.UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
+	listing, err := s.queriesFor(ctx).UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
 		EpisodeID:          base.ID,
 		Price:              req.Msg.Price,
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
@@ -259,14 +259,14 @@ func (s *adminServer) ListEpisodeImages(
 	if episodePublicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
 	}
-	episode, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	rows, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, episode.ID)
+	rows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -294,14 +294,14 @@ func (s *adminServer) ReorderEpisodeImages(
 	if len(req.Msg.ImageIds) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids are required"))
 	}
-	episode, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
+	episode, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: episodePublicID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	rows, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, episode.ID)
+	rows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -332,7 +332,7 @@ func (s *adminServer) ReorderEpisodeImages(
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids contains invalid uuid"))
 		}
-		if err := s.queries.UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx, dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisodeParams{
+		if err := s.queriesFor(ctx).UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx, dbmodels.UpdateEpisodeImageDisplayOrderByIDForEpisodeParams{
 			ID:           parsedImageID,
 			EpisodeID:    episode.ID,
 			DisplayOrder: int32(index + 1),
@@ -341,7 +341,7 @@ func (s *adminServer) ReorderEpisodeImages(
 		}
 	}
 
-	updatedRows, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, episode.ID)
+	updatedRows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -369,11 +369,11 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	if err != nil {
 		return nil, err
 	}
-	err = s.queries.UpdateEpisodePublishScheduleByPublicIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId, ScheduledAt: scheduledAt})
+	err = s.queriesFor(ctx).UpdateEpisodePublishScheduleByPublicIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId, ScheduledAt: scheduledAt})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	ep, err := s.queries.GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId})
+	ep, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))

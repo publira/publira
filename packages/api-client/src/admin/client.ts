@@ -13,13 +13,16 @@ import { AdminLabelService } from "../gen/publira/admin/v1/label_pb.js";
 import { AdminSeriesService } from "../gen/publira/admin/v1/series_pb.js";
 import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
 import { AdminUserService } from "../gen/publira/admin/v1/user_pb.js";
+import { createTenantHeaderInterceptor } from "../tenant-header.js";
+import type { TenantHeaderOptions } from "../tenant-header.js";
 
 export type TransportType = "connect" | "grpc";
 
 export type AdminApiClientOptions = {
   baseUrl: string;
   transport?: TransportType;
-} & Omit<ConnectTransportOptions, "baseUrl">;
+} & Omit<ConnectTransportOptions, "baseUrl"> &
+  TenantHeaderOptions;
 
 export interface AdminApiClient {
   audit: Client<typeof AdminAuditLogService>;
@@ -36,17 +39,32 @@ export interface AdminApiClient {
 export const createAdminApiClient = (
   options: AdminApiClientOptions
 ): AdminApiClient => {
-  const { baseUrl, transport = "connect", ...transportOptions } = options;
+  const {
+    baseUrl,
+    transport = "connect",
+    tenantPublicId,
+    ...transportOptions
+  } = options;
+
+  const tenantHeaderInterceptor = createTenantHeaderInterceptor({
+    tenantPublicId,
+  });
+  const interceptors = [
+    ...(tenantHeaderInterceptor ? [tenantHeaderInterceptor] : []),
+    ...(transportOptions.interceptors ?? []),
+  ];
 
   const transportInstance =
     transport === "grpc"
       ? createGrpcTransport({
           baseUrl,
           ...transportOptions,
+          interceptors,
         })
       : createConnectTransport({
           baseUrl,
           ...transportOptions,
+          interceptors,
         });
 
   return {

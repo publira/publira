@@ -87,7 +87,7 @@ func (s *platformServer) ListOperators(
 	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
 		return nil, err
 	}
-	rows, err := s.queries.ListPlatformOperators(ctx)
+	rows, err := s.queriesFor(ctx).ListPlatformOperators(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

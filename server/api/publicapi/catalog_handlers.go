@@ -49,7 +49,7 @@ func (s *apiServer) ListPublishedSeries(
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := s.queries.ListActiveSeries(ctx, dbmodels.ListActiveSeriesParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	rows, err := s.queriesFor(ctx).ListActiveSeries(ctx, dbmodels.ListActiveSeriesParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -87,7 +87,7 @@ func (s *apiServer) GetSeriesDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queries.GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.Msg.PublicId, TenantID: tenant.ID})
+	row, err := s.queriesFor(ctx).GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.Msg.PublicId, TenantID: tenant.ID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
@@ -160,14 +160,14 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queries.GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeByPublicIDForTenant(ctx, dbmodels.GetPublishedEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	images, err := s.queries.ListEpisodeImagesByEpisodeID(ctx, row.ID)
+	images, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

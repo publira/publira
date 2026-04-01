@@ -123,8 +123,8 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testCreateTenantUserRoleQuery)).
 		WithArgs(sqlmock.AnyArg(), targetUserID, "tenant_admin").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
+			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
 	mock.ExpectCommit()
 
 	resp, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
@@ -167,8 +167,8 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testCreateTenantUserRoleQuery)).
 		WithArgs(sqlmock.AnyArg(), targetUserID, "tenant_admin").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
+			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
 	mock.ExpectCommit()
 
 	resp, err := server.AddTenantMember(context.Background(), connect.NewRequest(&publirasplatformv1.AddTenantMemberRequest{
@@ -298,8 +298,8 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(testCreateTenantUserRoleQuery)).
 		WithArgs(sqlmock.AnyArg(), targetUserID, "tenant_editor").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_editor", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
+			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_editor", now, tenantID))
 	mock.ExpectCommit()
 
 	resp, err := server.UpdateTenantMemberRole(context.Background(), connect.NewRequest(&publirasplatformv1.UpdateTenantMemberRoleRequest{

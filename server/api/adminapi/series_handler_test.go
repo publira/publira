@@ -119,8 +119,8 @@ func TestCreateSeriesSuccess(t *testing.T) {
 
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "Synopsis", nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id"}).
+			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
 		WithArgs(seriesID, true).
@@ -197,8 +197,8 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "New synopsis", nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id"}).
+			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
 		WithArgs(seriesID, true).
@@ -257,8 +257,8 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "Synopsis", nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id"}).
+			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
 		WithArgs(seriesID, true).
@@ -326,8 +326,8 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(seriesID, sql.NullString{String: "New synopsis", Valid: true}, sql.NullInt32{}).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at"}).
-			AddRow(seriesID, "New synopsis", nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id"}).
+			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
 		WithArgs(seriesID, true).

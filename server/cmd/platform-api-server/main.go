@@ -23,6 +23,7 @@ import (
 const (
 	defaultPlatformServerURL     = ":8002"
 	defaultPlatformGrpcServerURL = ":8102"
+	defaultPlatformDBURL         = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := openDB(cfg.DB.URL)
+	db, err := openDB(resolvePlatformDBURL())
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
@@ -117,4 +118,11 @@ func openDB(url string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func resolvePlatformDBURL() string {
+	if url := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_DB_URL")); url != "" {
+		return url
+	}
+	return defaultPlatformDBURL
 }

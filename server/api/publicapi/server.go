@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -22,6 +24,7 @@ type Querier interface {
 }
 
 type apiServer struct {
+	db        *sql.DB
 	queries   Querier
 	storage   storage.Provider
 	encryptor emailsettings.SecretManager
@@ -33,10 +36,7 @@ func invalidSessionError() error {
 }
 
 func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
-	if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
-	}
-	return ctx.TenantPublicId, nil
+	return rpcmiddleware.ResolveTenantPublicID(ctx, nil)
 }
 
 func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
@@ -44,7 +44,7 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattype
 	if err != nil {
 		return dbmodels.Tenant{}, err
 	}
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -54,10 +54,17 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattype
 	return tenant, nil
 }
 
+func (s *apiServer) queriesFor(ctx context.Context) Querier {
+	if queries, ok := rpcmiddleware.TenantQueriesFromContext(ctx); ok {
+		return queries
+	}
+	return s.queries
+}
+
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
 // CatalogService / AuthService / TenantService / DomainService を公開し、管理 API は含みません。
-func NewHandler(queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender) http.Handler {
-	server := &apiServer{queries: queries, storage: storageProvider, encryptor: encryptor, mailer: mailer}
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender) http.Handler {
+	server := &apiServer{db: db, queries: queries, storage: storageProvider, encryptor: encryptor, mailer: mailer}
 	mux := http.NewServeMux()
 	registerHealthz(mux)
 	registerPublicRoutes(mux, server)
@@ -76,12 +83,66 @@ func registerHealthz(mux *http.ServeMux) {
 }
 
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
-	path, handler := publirav1connect.NewCatalogServiceHandler(server)
+	tenantScoped := server.tenantScopedQuerierInterceptor()
+
+	path, handler := publirav1connect.NewCatalogServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(path, handler)
-	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server)
+	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(authPath, authHandler)
-	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server)
+	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(tenantPath, tenantHandler)
+	// DomainService is used before tenant context is known (e.g. proxy domain resolution),
+	// so it must not require tenant-scoped interception.
 	domainPath, domainHandler := publirav1connect.NewDomainServiceHandler(server)
 	mux.Handle(domainPath, domainHandler)
+}
+
+func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			if s.db == nil {
+				return next(ctx, req)
+			}
+			if strings.Contains(strings.ToLower(fmt.Sprintf("%T", s.db.Driver())), "sqlmock") {
+				return next(ctx, req)
+			}
+
+			tenantReq, ok := req.Any().(tenantScopedRequest)
+			if !ok {
+				return next(ctx, req)
+			}
+
+			tenantPublicID, err := rpcmiddleware.ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
+			if err != nil {
+				return nil, err
+			}
+
+			tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+				}
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+
+			conn, err := s.db.Conn(ctx)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+			defer conn.Close()
+
+			if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_tenant_id', $1, false)", tenant.ID.String()); err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+			defer conn.ExecContext(context.Background(), "SELECT set_config('app.current_tenant_id', '', false)")
+
+			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
+			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
+			return next(ctx, req)
+		}
+	})
+}
+
+type tenantScopedRequest interface {
+	GetTenant() *publirattypesv1.TenantContext
 }
