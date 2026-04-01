@@ -238,6 +238,8 @@ func (s *adminServer) UploadEpisodeImages(
 		EpisodePublicID: req.Msg.EpisodePublicId,
 		Images:          req.Msg.Images,
 		ArchiveData:     req.Msg.ArchiveData,
+		ArchiveFilename: req.Msg.ArchiveFilename,
+		ArchiveType:     req.Msg.ArchiveContentType,
 		Headers:         req.Header(),
 	})
 	if err != nil {
