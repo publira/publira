@@ -1258,6 +1258,238 @@ func (x *AdminAuthServiceUpdateTenantConfigResponse) GetSiteTagline() string {
 	return ""
 }
 
+type AdminAuthServiceRequestEmailChangeRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SessionId       string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	CurrentEmail    string                 `protobuf:"bytes,3,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
+	NewEmail        string                 `protobuf:"bytes,4,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
+	CurrentPassword string                 `protobuf:"bytes,5,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) Reset() {
+	*x = AdminAuthServiceRequestEmailChangeRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceRequestEmailChangeRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceRequestEmailChangeRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceRequestEmailChangeRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetCurrentEmail() string {
+	if x != nil {
+		return x.CurrentEmail
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetNewEmail() string {
+	if x != nil {
+		return x.NewEmail
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
+	}
+	return ""
+}
+
+type AdminAuthServiceRequestEmailChangeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requested     bool                   `protobuf:"varint,1,opt,name=requested,proto3" json:"requested,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) Reset() {
+	*x = AdminAuthServiceRequestEmailChangeResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceRequestEmailChangeResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceRequestEmailChangeResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceRequestEmailChangeResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) GetRequested() bool {
+	if x != nil {
+		return x.Requested
+	}
+	return false
+}
+
+type AdminAuthServiceConfirmEmailChangeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) Reset() {
+	*x = AdminAuthServiceConfirmEmailChangeRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceConfirmEmailChangeRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceConfirmEmailChangeRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceConfirmEmailChangeRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type AdminAuthServiceConfirmEmailChangeResponse struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Confirmed              bool                   `protobuf:"varint,1,opt,name=confirmed,proto3" json:"confirmed,omitempty"`
+	Changed                bool                   `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	PendingConfirmationFor string                 `protobuf:"bytes,3,opt,name=pending_confirmation_for,json=pendingConfirmationFor,proto3" json:"pending_confirmation_for,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) Reset() {
+	*x = AdminAuthServiceConfirmEmailChangeResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceConfirmEmailChangeResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceConfirmEmailChangeResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceConfirmEmailChangeResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) GetConfirmed() bool {
+	if x != nil {
+		return x.Confirmed
+	}
+	return false
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) GetPendingConfirmationFor() string {
+	if x != nil {
+		return x.PendingConfirmationFor
+	}
+	return ""
+}
+
 var File_publira_admin_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_auth_proto_rawDesc = "" +
@@ -1342,7 +1574,23 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"*AdminAuthServiceUpdateTenantConfigResponse\x12%\n" +
 	"\x0ecopyright_text\x18\x01 \x01(\tR\rcopyrightText\x12)\n" +
 	"\x10site_description\x18\x02 \x01(\tR\x0fsiteDescription\x12!\n" +
-	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline2\xc8\f\n" +
+	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\"\xf0\x01\n" +
+	")AdminAuthServiceRequestEmailChangeRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12#\n" +
+	"\rcurrent_email\x18\x03 \x01(\tR\fcurrentEmail\x12\x1b\n" +
+	"\tnew_email\x18\x04 \x01(\tR\bnewEmail\x12)\n" +
+	"\x10current_password\x18\x05 \x01(\tR\x0fcurrentPassword\"J\n" +
+	"*AdminAuthServiceRequestEmailChangeResponse\x12\x1c\n" +
+	"\trequested\x18\x01 \x01(\bR\trequested\"z\n" +
+	")AdminAuthServiceConfirmEmailChangeRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\x9e\x01\n" +
+	"*AdminAuthServiceConfirmEmailChangeResponse\x12\x1c\n" +
+	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\x12\x18\n" +
+	"\achanged\x18\x02 \x01(\bR\achanged\x128\n" +
+	"\x18pending_confirmation_for\x18\x03 \x01(\tR\x16pendingConfirmationFor2\xf0\x0e\n" +
 	"\x10AdminAuthService\x12\x82\x01\n" +
 	"\rCreateSession\x126.publira.admin.v1.AdminAuthServiceCreateSessionRequest\x1a7.publira.admin.v1.AdminAuthServiceCreateSessionResponse\"\x00\x12\x82\x01\n" +
 	"\rDeleteSession\x126.publira.admin.v1.AdminAuthServiceDeleteSessionRequest\x1a7.publira.admin.v1.AdminAuthServiceDeleteSessionResponse\"\x00\x12\x97\x01\n" +
@@ -1354,7 +1602,9 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\x0fGetTenantConfig\x128.publira.admin.v1.AdminAuthServiceGetTenantConfigRequest\x1a9.publira.admin.v1.AdminAuthServiceGetTenantConfigResponse\"\x00\x12\xb2\x01\n" +
 	"\x1dGetTenantAdminInvitationState\x12F.publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest\x1aG.publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse\"\x00\x12\xac\x01\n" +
 	"\x1bAcceptTenantAdminInvitation\x12D.publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest\x1aE.publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse\"\x00\x12\x91\x01\n" +
-	"\x12UpdateTenantConfig\x12;.publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest\x1a<.publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x12UpdateTenantConfig\x12;.publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest\x1a<.publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse\"\x00\x12\x91\x01\n" +
+	"\x12RequestEmailChange\x12;.publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest\x1a<.publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse\"\x00\x12\x91\x01\n" +
+	"\x12ConfirmEmailChange\x12;.publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest\x1a<.publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_auth_proto_rawDescOnce sync.Once
@@ -1368,7 +1618,7 @@ func file_publira_admin_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_auth_proto_rawDescData
 }
 
-var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_publira_admin_v1_auth_proto_goTypes = []any{
 	(*AdminAuthServiceCreateSessionRequest)(nil),                  // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest
 	(*AdminAuthServiceCreateSessionResponse)(nil),                 // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse
@@ -1393,52 +1643,62 @@ var file_publira_admin_v1_auth_proto_goTypes = []any{
 	(*AdminAuthServiceAcceptTenantAdminInvitationResponse)(nil),   // 20: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
 	(*AdminAuthServiceUpdateTenantConfigRequest)(nil),             // 21: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
 	(*AdminAuthServiceUpdateTenantConfigResponse)(nil),            // 22: publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
-	(*v1.TenantContext)(nil),                                      // 23: publira.types.v1.TenantContext
-	(*v1.User)(nil),                                               // 24: publira.types.v1.User
-	(*v1.Session)(nil),                                            // 25: publira.types.v1.Session
+	(*AdminAuthServiceRequestEmailChangeRequest)(nil),             // 23: publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest
+	(*AdminAuthServiceRequestEmailChangeResponse)(nil),            // 24: publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse
+	(*AdminAuthServiceConfirmEmailChangeRequest)(nil),             // 25: publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest
+	(*AdminAuthServiceConfirmEmailChangeResponse)(nil),            // 26: publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse
+	(*v1.TenantContext)(nil),                                      // 27: publira.types.v1.TenantContext
+	(*v1.User)(nil),                                               // 28: publira.types.v1.User
+	(*v1.Session)(nil),                                            // 29: publira.types.v1.Session
 }
 var file_publira_admin_v1_auth_proto_depIdxs = []int32{
-	23, // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	24, // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse.user:type_name -> publira.types.v1.User
-	25, // 2: publira.admin.v1.AdminAuthServiceCreateSessionResponse.session:type_name -> publira.types.v1.Session
-	23, // 3: publira.admin.v1.AdminAuthServiceDeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	23, // 4: publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	23, // 5: publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	23, // 6: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	24, // 7: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
-	23, // 8: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse.user:type_name -> publira.types.v1.User
+	29, // 2: publira.admin.v1.AdminAuthServiceCreateSessionResponse.session:type_name -> publira.types.v1.Session
+	27, // 3: publira.admin.v1.AdminAuthServiceDeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 4: publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 5: publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 6: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 7: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
+	27, // 8: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
 	13, // 9: publira.admin.v1.AdminAuthServiceGetTenantResponse.tenant:type_name -> publira.admin.v1.AdminAuthServiceTenant
-	23, // 10: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
-	23, // 11: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest.tenant:type_name -> publira.types.v1.TenantContext
-	23, // 12: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	23, // 13: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 14: publira.admin.v1.AdminAuthService.CreateSession:input_type -> publira.admin.v1.AdminAuthServiceCreateSessionRequest
-	2,  // 15: publira.admin.v1.AdminAuthService.DeleteSession:input_type -> publira.admin.v1.AdminAuthServiceDeleteSessionRequest
-	4,  // 16: publira.admin.v1.AdminAuthService.RequestPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest
-	6,  // 17: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest
-	8,  // 18: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
-	10, // 19: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
-	12, // 20: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
-	15, // 21: publira.admin.v1.AdminAuthService.GetTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
-	17, // 22: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:input_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
-	19, // 23: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:input_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
-	21, // 24: publira.admin.v1.AdminAuthService.UpdateTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
-	1,  // 25: publira.admin.v1.AdminAuthService.CreateSession:output_type -> publira.admin.v1.AdminAuthServiceCreateSessionResponse
-	3,  // 26: publira.admin.v1.AdminAuthService.DeleteSession:output_type -> publira.admin.v1.AdminAuthServiceDeleteSessionResponse
-	5,  // 27: publira.admin.v1.AdminAuthService.RequestPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse
-	7,  // 28: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse
-	9,  // 29: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
-	11, // 30: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
-	14, // 31: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
-	16, // 32: publira.admin.v1.AdminAuthService.GetTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
-	18, // 33: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:output_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
-	20, // 34: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:output_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
-	22, // 35: publira.admin.v1.AdminAuthService.UpdateTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
-	25, // [25:36] is the sub-list for method output_type
-	14, // [14:25] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	27, // 10: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 11: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 12: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 13: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 14: publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 15: publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 16: publira.admin.v1.AdminAuthService.CreateSession:input_type -> publira.admin.v1.AdminAuthServiceCreateSessionRequest
+	2,  // 17: publira.admin.v1.AdminAuthService.DeleteSession:input_type -> publira.admin.v1.AdminAuthServiceDeleteSessionRequest
+	4,  // 18: publira.admin.v1.AdminAuthService.RequestPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest
+	6,  // 19: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest
+	8,  // 20: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
+	10, // 21: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
+	12, // 22: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
+	15, // 23: publira.admin.v1.AdminAuthService.GetTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
+	17, // 24: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:input_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
+	19, // 25: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:input_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
+	21, // 26: publira.admin.v1.AdminAuthService.UpdateTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
+	23, // 27: publira.admin.v1.AdminAuthService.RequestEmailChange:input_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest
+	25, // 28: publira.admin.v1.AdminAuthService.ConfirmEmailChange:input_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest
+	1,  // 29: publira.admin.v1.AdminAuthService.CreateSession:output_type -> publira.admin.v1.AdminAuthServiceCreateSessionResponse
+	3,  // 30: publira.admin.v1.AdminAuthService.DeleteSession:output_type -> publira.admin.v1.AdminAuthServiceDeleteSessionResponse
+	5,  // 31: publira.admin.v1.AdminAuthService.RequestPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse
+	7,  // 32: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse
+	9,  // 33: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
+	11, // 34: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
+	14, // 35: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
+	16, // 36: publira.admin.v1.AdminAuthService.GetTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
+	18, // 37: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:output_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
+	20, // 38: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:output_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
+	22, // 39: publira.admin.v1.AdminAuthService.UpdateTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
+	24, // 40: publira.admin.v1.AdminAuthService.RequestEmailChange:output_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse
+	26, // 41: publira.admin.v1.AdminAuthService.ConfirmEmailChange:output_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse
+	29, // [29:42] is the sub-list for method output_type
+	16, // [16:29] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_auth_proto_init() }
@@ -1452,7 +1712,7 @@ func file_publira_admin_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_auth_proto_rawDesc), len(file_publira_admin_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

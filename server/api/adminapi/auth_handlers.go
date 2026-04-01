@@ -14,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
@@ -23,6 +24,12 @@ import (
 )
 
 const passwordResetTokenTTL = 24 * time.Hour
+const emailChangeTokenTTL = 24 * time.Hour
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
 
 func adminPasswordResetConfirmationURL(tenant dbmodels.Tenant, token string) (string, error) {
 	domain := strings.TrimSpace(tenant.Domain)
@@ -551,4 +558,295 @@ func (s *adminServer) UpdateTenantConfig(
 	}
 
 	return connect.NewResponse(response), nil
+}
+
+func adminEmailChangeConfirmationURL(tenant dbmodels.Tenant, token string) (string, error) {
+	domain := strings.TrimSpace(tenant.Domain)
+	if tenant.AdminDomain.Valid && strings.TrimSpace(tenant.AdminDomain.String) != "" {
+		domain = strings.TrimSpace(tenant.AdminDomain.String)
+	}
+	domain = strings.TrimPrefix(domain, "https://")
+	domain = strings.TrimPrefix(domain, "http://")
+	domain = strings.TrimSuffix(domain, "/")
+	if domain == "" {
+		return "", errors.New("tenant domain is not configured")
+	}
+	return "https://" + domain + "/confirm-email?token=" + url.QueryEscape(token), nil
+}
+
+func (s *adminServer) sendAdminEmailChangeVerificationEmail(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	recipientEmail string,
+	recipientKind string,
+	currentEmail string,
+	newEmail string,
+	token string,
+) error {
+	if s.mailer == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
+	if err != nil {
+		return err
+	}
+	confirmURL, err := adminEmailChangeConfirmationURL(tenant, token)
+	if err != nil {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	subjectPrefix := strings.TrimSpace(tenant.Name)
+	if subjectPrefix == "" {
+		subjectPrefix = "Publira"
+	}
+	subject := subjectPrefix + " 管理画面メールアドレス変更確認"
+	body := "管理画面アカウントのメールアドレス変更リクエストを受け付けました。\r\n"
+	if recipientKind == "current_email" {
+		body += "現在のメールアドレス側の確認が必要です。\r\n"
+	} else {
+		body += "新しいメールアドレス側の確認が必要です。\r\n"
+	}
+	body += "以下のリンクを開いて確認を完了してください。\r\n\r\n" +
+		confirmURL + "\r\n\r\n" +
+		"このリンクの有効期限は24時間です。\r\n" +
+		"心当たりがない場合、このメールは破棄してください。\r\n\r\n" +
+		"現在のメールアドレス: " + currentEmail + "\r\n" +
+		"新しいメールアドレス: " + newEmail + "\r\n"
+	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
+}
+
+func (s *adminServer) sendAdminEmailChangedNotice(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	oldEmail string,
+	newEmail string,
+) error {
+	if s.mailer == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
+	if err != nil {
+		return err
+	}
+	subjectPrefix := strings.TrimSpace(tenant.Name)
+	if subjectPrefix == "" {
+		subjectPrefix = "Publira"
+	}
+	subject := subjectPrefix + " 管理画面メールアドレス変更完了"
+	body := "管理画面アカウントのメールアドレスが変更されました。\r\n\r\n" +
+		"変更前: " + oldEmail + "\r\n" +
+		"変更後: " + newEmail + "\r\n\r\n" +
+		"この変更に心当たりがない場合は、すぐにパスワード変更などの対応を行ってください。\r\n"
+	if err := s.mailer.SendEmail(ctx, settings, oldEmail, subject, body); err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
+}
+
+func (s *adminServer) RequestEmailChange(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AdminAuthServiceRequestEmailChangeRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceRequestEmailChangeResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+
+	newEmail := strings.TrimSpace(req.Msg.NewEmail)
+	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
+	currentPassword := strings.TrimSpace(req.Msg.CurrentPassword)
+	if currentEmail == "" || newEmail == "" || currentPassword == "" {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and current_password are required"))
+	}
+	if _, err := mail.ParseAddress(currentEmail); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_current_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid current email address"))
+	}
+	if _, err := mail.ParseAddress(newEmail); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	if !strings.EqualFold(currentEmail, user.Email) {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+	}
+	if strings.EqualFold(newEmail, user.Email) {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "same_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
+	}
+	if !auth.VerifyPassword(currentPassword, user.PasswordHash) {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid current password"))
+	}
+
+	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+		Email:    newEmail,
+	})
+	if err == nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	currentEmailToken := hex.EncodeToString(rawToken)
+	rawToken = make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	newEmailToken := hex.EncodeToString(rawToken)
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	_, err = s.queriesFor(ctx).CreateUserEmailChangeToken(ctx, dbmodels.CreateUserEmailChangeTokenParams{
+		ID:                    tokenID,
+		TenantID:              tenant.ID,
+		UserID:                user.ID,
+		CurrentEmail:          user.Email,
+		NewEmail:              newEmail,
+		CurrentEmailTokenHash: auth.HashToken(currentEmailToken),
+		NewEmailTokenHash:     auth.HashToken(newEmailToken),
+		ExpiresAt:             time.Now().Add(emailChangeTokenTTL),
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.sendAdminEmailChangeVerificationEmail(ctx, tenant, user.Email, "current_email", user.Email, newEmail, currentEmailToken); err != nil {
+		_ = s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "current_email_send_failed")
+		return nil, err
+	}
+	if err := s.sendAdminEmailChangeVerificationEmail(ctx, tenant, newEmail, "new_email", user.Email, newEmail, newEmailToken); err != nil {
+		_ = s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID)
+		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "new_email_send_failed")
+		return nil, err
+	}
+
+	auth.AuditEvent(req.Header(), "admin_email_change_request", "success", tenant.PublicID, user.PublicID, "confirmation_emails_sent")
+	return connect.NewResponse(&publiraadminv1.AdminAuthServiceRequestEmailChangeResponse{Requested: true}), nil
+}
+
+func (s *adminServer) ConfirmEmailChange(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.AdminAuthServiceConfirmEmailChangeRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceConfirmEmailChangeResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", "", "", "tenant_not_found")
+		return nil, err
+	}
+
+	token := strings.TrimSpace(req.Msg.Token)
+	if token == "" {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "invalid_token")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+	}
+
+	changeToken, err := s.queriesFor(ctx).GetUserEmailChangeTokenByHashForTenant(ctx, dbmodels.GetUserEmailChangeTokenByHashForTenantParams{
+		TenantID:              tenant.ID,
+		CurrentEmailTokenHash: auth.HashToken(token),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "token_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("email change token not found"))
+		}
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if changeToken.CompletedAt.Valid {
+		return connect.NewResponse(&publiraadminv1.AdminAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+	}
+	if changeToken.ExpiresAt.Before(time.Now()) {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "token_expired")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token expired"))
+	}
+
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, changeToken.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "user_not_found")
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !strings.EqualFold(user.Email, changeToken.CurrentEmail) {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "stale_request")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change request is no longer valid"))
+	}
+
+	matchedTarget := changeToken.MatchedTarget
+	if matchedTarget == "current_email" {
+		if err := s.queriesFor(ctx).MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
+			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	} else {
+		if err := s.queriesFor(ctx).MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
+			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	currentEmailConfirmed := changeToken.CurrentEmailConfirmedAt.Valid || matchedTarget == "current_email"
+	newEmailConfirmed := changeToken.NewEmailConfirmedAt.Valid || matchedTarget == "new_email"
+	if !currentEmailConfirmed || !newEmailConfirmed {
+		pendingTarget := "current_email"
+		if !newEmailConfirmed {
+			pendingTarget = "new_email"
+		}
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "success", tenant.PublicID, user.PublicID, "waiting_for_"+pendingTarget)
+		return connect.NewResponse(&publiraadminv1.AdminAuthServiceConfirmEmailChangeResponse{
+			Confirmed:              true,
+			Changed:                false,
+			PendingConfirmationFor: pendingTarget,
+		}), nil
+	}
+
+	if _, err := s.queriesFor(ctx).UpdateUserEmailByID(ctx, dbmodels.UpdateUserEmailByIDParams{
+		ID:    user.ID,
+		Email: changeToken.NewEmail,
+	}); err != nil {
+		if isUniqueViolation(err) {
+			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+		}
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queriesFor(ctx).MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.sendAdminEmailChangedNotice(ctx, tenant, changeToken.CurrentEmail, changeToken.NewEmail); err != nil {
+		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_failed")
+		return nil, err
+	}
+
+	auth.AuditEvent(req.Header(), "admin_email_change_confirm", "success", tenant.PublicID, user.PublicID, "email_changed")
+	return connect.NewResponse(&publiraadminv1.AdminAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
 }
