@@ -95,6 +95,9 @@ jobs:
       - name: Validate / Lint and Format
         run: pnpm check
 
+      - name: Validate / Typecheck
+        run: pnpm typecheck
+
   test:
     name: Test
     runs-on: ubuntu-24.04

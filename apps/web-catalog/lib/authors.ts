@@ -270,6 +270,5 @@ export const getPublishedAuthorDetail = async (
   };
 };
 
-export const normalizeAuthorsPage = (
-  pageParam: string | string[] | undefined
-) => toPositiveInt(pageParam, 1);
+export const normalizeAuthorsPage = (pageParam?: string | string[]) =>
+  toPositiveInt(pageParam, 1);
