@@ -65,6 +65,12 @@ const (
 	// AdminAuthServiceUpdateTenantConfigProcedure is the fully-qualified name of the AdminAuthService's
 	// UpdateTenantConfig RPC.
 	AdminAuthServiceUpdateTenantConfigProcedure = "/publira.admin.v1.AdminAuthService/UpdateTenantConfig"
+	// AdminAuthServiceRequestEmailChangeProcedure is the fully-qualified name of the AdminAuthService's
+	// RequestEmailChange RPC.
+	AdminAuthServiceRequestEmailChangeProcedure = "/publira.admin.v1.AdminAuthService/RequestEmailChange"
+	// AdminAuthServiceConfirmEmailChangeProcedure is the fully-qualified name of the AdminAuthService's
+	// ConfirmEmailChange RPC.
+	AdminAuthServiceConfirmEmailChangeProcedure = "/publira.admin.v1.AdminAuthService/ConfirmEmailChange"
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
@@ -80,6 +86,8 @@ type AdminAuthServiceClient interface {
 	GetTenantAdminInvitationState(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantAdminInvitationStateResponse], error)
 	AcceptTenantAdminInvitation(context.Context, *connect.Request[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest]) (*connect.Response[v1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error)
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -159,6 +167,18 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminAuthServiceMethods.ByName("UpdateTenantConfig")),
 			connect.WithClientOptions(opts...),
 		),
+		requestEmailChange: connect.NewClient[v1.AdminAuthServiceRequestEmailChangeRequest, v1.AdminAuthServiceRequestEmailChangeResponse](
+			httpClient,
+			baseURL+AdminAuthServiceRequestEmailChangeProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("RequestEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmEmailChange: connect.NewClient[v1.AdminAuthServiceConfirmEmailChangeRequest, v1.AdminAuthServiceConfirmEmailChangeResponse](
+			httpClient,
+			baseURL+AdminAuthServiceConfirmEmailChangeProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -175,6 +195,8 @@ type adminAuthServiceClient struct {
 	getTenantAdminInvitationState *connect.Client[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest, v1.AdminAuthServiceGetTenantAdminInvitationStateResponse]
 	acceptTenantAdminInvitation   *connect.Client[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest, v1.AdminAuthServiceAcceptTenantAdminInvitationResponse]
 	updateTenantConfig            *connect.Client[v1.AdminAuthServiceUpdateTenantConfigRequest, v1.AdminAuthServiceUpdateTenantConfigResponse]
+	requestEmailChange            *connect.Client[v1.AdminAuthServiceRequestEmailChangeRequest, v1.AdminAuthServiceRequestEmailChangeResponse]
+	confirmEmailChange            *connect.Client[v1.AdminAuthServiceConfirmEmailChangeRequest, v1.AdminAuthServiceConfirmEmailChangeResponse]
 }
 
 // CreateSession calls publira.admin.v1.AdminAuthService.CreateSession.
@@ -233,6 +255,16 @@ func (c *adminAuthServiceClient) UpdateTenantConfig(ctx context.Context, req *co
 	return c.updateTenantConfig.CallUnary(ctx, req)
 }
 
+// RequestEmailChange calls publira.admin.v1.AdminAuthService.RequestEmailChange.
+func (c *adminAuthServiceClient) RequestEmailChange(ctx context.Context, req *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error) {
+	return c.requestEmailChange.CallUnary(ctx, req)
+}
+
+// ConfirmEmailChange calls publira.admin.v1.AdminAuthService.ConfirmEmailChange.
+func (c *adminAuthServiceClient) ConfirmEmailChange(ctx context.Context, req *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error) {
+	return c.confirmEmailChange.CallUnary(ctx, req)
+}
+
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
@@ -246,6 +278,8 @@ type AdminAuthServiceHandler interface {
 	GetTenantAdminInvitationState(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantAdminInvitationStateResponse], error)
 	AcceptTenantAdminInvitation(context.Context, *connect.Request[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest]) (*connect.Response[v1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error)
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)
 }
 
 // NewAdminAuthServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -321,6 +355,18 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminAuthServiceMethods.ByName("UpdateTenantConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminAuthServiceRequestEmailChangeHandler := connect.NewUnaryHandler(
+		AdminAuthServiceRequestEmailChangeProcedure,
+		svc.RequestEmailChange,
+		connect.WithSchema(adminAuthServiceMethods.ByName("RequestEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceConfirmEmailChangeHandler := connect.NewUnaryHandler(
+		AdminAuthServiceConfirmEmailChangeProcedure,
+		svc.ConfirmEmailChange,
+		connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminAuthServiceCreateSessionProcedure:
@@ -345,6 +391,10 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 			adminAuthServiceAcceptTenantAdminInvitationHandler.ServeHTTP(w, r)
 		case AdminAuthServiceUpdateTenantConfigProcedure:
 			adminAuthServiceUpdateTenantConfigHandler.ServeHTTP(w, r)
+		case AdminAuthServiceRequestEmailChangeProcedure:
+			adminAuthServiceRequestEmailChangeHandler.ServeHTTP(w, r)
+		case AdminAuthServiceConfirmEmailChangeProcedure:
+			adminAuthServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -396,4 +446,12 @@ func (UnimplementedAdminAuthServiceHandler) AcceptTenantAdminInvitation(context.
 
 func (UnimplementedAdminAuthServiceHandler) UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.UpdateTenantConfig is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.RequestEmailChange is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.ConfirmEmailChange is not implemented"))
 }
