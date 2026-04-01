@@ -8,13 +8,16 @@ import { AuthService } from "../gen/publira/v1/auth_pb.js";
 import { CatalogService } from "../gen/publira/v1/catalog_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
 import { TenantService } from "../gen/publira/v1/tenant_pb.js";
+import { createTenantHeaderInterceptor } from "../tenant-header.js";
+import type { TenantHeaderOptions } from "../tenant-header.js";
 
 export type TransportType = "connect" | "grpc";
 
 export type PublicApiClientOptions = {
   baseUrl: string;
   transport?: TransportType;
-} & Omit<ConnectTransportOptions, "baseUrl">;
+} & Omit<ConnectTransportOptions, "baseUrl"> &
+  TenantHeaderOptions;
 
 export interface PublicApiClient {
   auth: Client<typeof AuthService>;
@@ -26,17 +29,32 @@ export interface PublicApiClient {
 export const createPublicApiClient = (
   options: PublicApiClientOptions
 ): PublicApiClient => {
-  const { baseUrl, transport = "connect", ...transportOptions } = options;
+  const {
+    baseUrl,
+    transport = "connect",
+    tenantPublicId,
+    ...transportOptions
+  } = options;
+
+  const tenantHeaderInterceptor = createTenantHeaderInterceptor({
+    tenantPublicId,
+  });
+  const interceptors = [
+    ...(tenantHeaderInterceptor ? [tenantHeaderInterceptor] : []),
+    ...(transportOptions.interceptors ?? []),
+  ];
 
   const transportInstance =
     transport === "grpc"
       ? createGrpcTransport({
           baseUrl,
           ...transportOptions,
+          interceptors,
         })
       : createConnectTransport({
           baseUrl,
           ...transportOptions,
+          interceptors,
         });
 
   return {

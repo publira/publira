@@ -434,9 +434,9 @@ func (s *platformServer) ListTenantMembers(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListTenantMembersRequest],
 ) (*connect.Response[publirasplatformv1.ListTenantMembersResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 
 	limit := req.Msg.Limit
@@ -481,9 +481,9 @@ func (s *platformServer) AddTenantMember(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.AddTenantMemberRequest],
 ) (*connect.Response[publirasplatformv1.AddTenantMemberResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
 	email := strings.TrimSpace(strings.ToLower(req.Msg.Email))
@@ -589,9 +589,9 @@ func (s *platformServer) UpdateTenantMemberRole(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UpdateTenantMemberRoleRequest],
 ) (*connect.Response[publirasplatformv1.UpdateTenantMemberRoleResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
 	if userPublicID == "" {
@@ -670,9 +670,9 @@ func (s *platformServer) RemoveTenantMember(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.RemoveTenantMemberRequest],
 ) (*connect.Response[publirasplatformv1.RemoveTenantMemberResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
 	if userPublicID == "" {

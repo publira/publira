@@ -201,9 +201,9 @@ func (s *platformServer) ListTenantAdminInvitations(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest],
 ) (*connect.Response[publirasplatformv1.ListTenantAdminInvitationsResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 
 	limit := req.Msg.Limit
@@ -248,9 +248,9 @@ func (s *platformServer) CreateTenantAdminInvitation(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CreateTenantAdminInvitationRequest],
 ) (*connect.Response[publirasplatformv1.CreateTenantAdminInvitationResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	email := strings.TrimSpace(strings.ToLower(req.Msg.Email))
 	if email == "" {

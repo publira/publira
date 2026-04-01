@@ -14,6 +14,7 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 
 	assertRouteRegistered(t, ts, "/publira.v1.CatalogService/ListPublishedSeries", true)
 	assertRouteRegistered(t, ts, "/publira.v1.AuthService/GetMe", true)
+	assertRouteRegistered(t, ts, "/publira.v1.DomainService/GetTenantByDomain", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminSeriesService/ListSeries", false)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminCreatorService/ListCreators", false)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminLabelService/ListLabels", false)

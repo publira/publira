@@ -36,10 +36,7 @@ func invalidSessionError() error {
 }
 
 func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
-	if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
-	}
-	return ctx.TenantPublicId, nil
+	return rpcmiddleware.ResolveTenantPublicID(ctx, nil)
 }
 
 func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
@@ -94,7 +91,9 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	mux.Handle(authPath, authHandler)
 	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(tenantPath, tenantHandler)
-	domainPath, domainHandler := publirav1connect.NewDomainServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	// DomainService is used before tenant context is known (e.g. proxy domain resolution),
+	// so it must not require tenant-scoped interception.
+	domainPath, domainHandler := publirav1connect.NewDomainServiceHandler(server)
 	mux.Handle(domainPath, domainHandler)
 }
 
@@ -113,7 +112,7 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				return next(ctx, req)
 			}
 
-			tenantPublicID, err := tenantPublicIDFromContext(tenantReq.GetTenant())
+			tenantPublicID, err := rpcmiddleware.ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
 			if err != nil {
 				return nil, err
 			}
@@ -137,6 +136,7 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			}
 			defer conn.ExecContext(context.Background(), "SELECT set_config('app.current_tenant_id', '', false)")
 
+			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
 			return next(ctx, req)
 		}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
@@ -22,12 +24,12 @@ type Querier interface {
 }
 
 type platformServer struct {
-	queries  Querier
-	db       *sql.DB
-	recorder *auditlog.Recorder
+	queries   Querier
+	db        *sql.DB
+	recorder  *auditlog.Recorder
 	encryptor emailsettings.SecretManager
-	tester   internalsmtp.Tester
-	mailer   internalsmtp.Sender
+	tester    internalsmtp.Tester
+	mailer    internalsmtp.Sender
 }
 
 type platformActor struct {
@@ -45,6 +47,10 @@ func platformActorFromContext(ctx context.Context) (platformActor, bool) {
 
 func (s *platformServer) queriesFor(_ context.Context) Querier {
 	return s.queries
+}
+
+func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (string, error) {
+	return rpcmiddleware.ResolveTenantPublicIDValue(strings.TrimSpace(reqTenantPublicID), headers)
 }
 
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。

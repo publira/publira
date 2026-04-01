@@ -42,10 +42,7 @@ func invalidSessionError() error {
 }
 
 func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
-	if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
-	}
-	return ctx.TenantPublicId, nil
+	return rpcmiddleware.ResolveTenantPublicID(ctx, nil)
 }
 
 func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
@@ -226,7 +223,7 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				return next(ctx, req)
 			}
 
-			tenantPublicID, err := tenantPublicIDFromContext(tenantReq.GetTenant())
+			tenantPublicID, err := rpcmiddleware.ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
 			if err != nil {
 				return nil, err
 			}
@@ -250,6 +247,7 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			}
 			defer conn.ExecContext(context.Background(), "SELECT set_config('app.current_tenant_id', '', false)")
 
+			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
 			return next(ctx, req)
 		}

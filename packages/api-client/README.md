@@ -13,6 +13,7 @@ import { createPublicApiClient } from "@publira/api-client/public/client";
 
 const client = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_API_BASE_URL ?? "http://localhost:8080",
+  tenantPublicId: "TENANT001",
 });
 
 await client.catalog.getSeriesDetail({
@@ -28,6 +29,7 @@ import { createAdminApiClient } from "@publira/api-client/admin/client";
 
 const client = createAdminApiClient({
   baseUrl: process.env.PUBLIRA_ADMIN_API_BASE_URL ?? "http://localhost:8081",
+  tenantPublicId: () => currentTenantPublicId,
 });
 
 await client.auth.getMe({
@@ -42,6 +44,14 @@ await client.auth.getMe({
 import type { CreateSessionRequest } from "@publira/api-client/public/auth";
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";
 ```
+
+## テナントヘッダー
+
+`tenantPublicId` を指定すると、すべての API リクエストに
+`X-Publira-Tenant-Public-Id` ヘッダーが自動で付与されます。
+
+- 固定値: `tenantPublicId: "TENANT001"`
+- 動的値: `tenantPublicId: () => selectedTenantPublicId`
 
 ## 運用ルール
 
