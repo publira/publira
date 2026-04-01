@@ -24,6 +24,25 @@ message AdminAuthServiceDeleteSessionRequest {
 
 message AdminAuthServiceDeleteSessionResponse {}
 
+message AdminAuthServiceRequestPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message AdminAuthServiceRequestPasswordResetResponse {
+  bool requested = 1;
+}
+
+message AdminAuthServiceConfirmPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  string new_password = 3;
+}
+
+message AdminAuthServiceConfirmPasswordResetResponse {
+  bool confirmed = 1;
+}
+
 message AdminAuthServiceGetMeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string session_id = 2;
@@ -109,6 +128,8 @@ message AdminAuthServiceUpdateTenantConfigResponse {
 service AdminAuthService {
   rpc CreateSession(AdminAuthServiceCreateSessionRequest) returns (AdminAuthServiceCreateSessionResponse) {}
   rpc DeleteSession(AdminAuthServiceDeleteSessionRequest) returns (AdminAuthServiceDeleteSessionResponse) {}
+  rpc RequestPasswordReset(AdminAuthServiceRequestPasswordResetRequest) returns (AdminAuthServiceRequestPasswordResetResponse) {}
+  rpc ConfirmPasswordReset(AdminAuthServiceConfirmPasswordResetRequest) returns (AdminAuthServiceConfirmPasswordResetResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
   rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
   rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}
