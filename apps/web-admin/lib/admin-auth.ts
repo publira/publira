@@ -40,6 +40,27 @@ export type AcceptTenantAdminInvitationResult =
       message: string;
     };
 
+export type AdminPasswordResetRequestResult =
+  | {
+      ok: true;
+      requested: boolean;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+export type AdminPasswordResetConfirmResult =
+  | {
+      ok: true;
+      confirmed: boolean;
+    }
+  | {
+      ok: false;
+      message: string;
+      reason: "expired" | "invalid" | "system";
+    };
+
 export const isTenantAdminRole = (role: string | null | undefined): boolean => {
   const normalizedRole = role?.trim().toLowerCase();
   return normalizedRole === "admin" || normalizedRole === "tenant_admin";
@@ -48,6 +69,10 @@ export const isTenantAdminRole = (role: string | null | undefined): boolean => {
 const loginFailedMessage = "メールアドレスまたはパスワードが正しくありません。";
 const genericErrorMessage =
   "ログイン処理に失敗しました。時間をおいて再試行してください。";
+const genericPasswordResetRequestErrorMessage =
+  "再設定メールの送信に失敗しました。時間をおいて再試行してください。";
+const genericPasswordResetConfirmErrorMessage =
+  "パスワード再設定に失敗しました。時間をおいて再試行してください。";
 
 const toErrorMessage = (error: unknown): string => {
   if (!(error instanceof Error)) {
@@ -257,6 +282,123 @@ export const acceptTenantAdminInvitation = async (
     return {
       message: "招待の承諾に失敗しました。時間をおいて再試行してください。",
       ok: false,
+    };
+  }
+};
+
+export const requestAdminPasswordReset = async (
+  tenantPublicId: string,
+  email: string
+): Promise<AdminPasswordResetRequestResult> => {
+  const normalizedEmail = email.trim();
+  if (!tenantPublicId.trim() || !normalizedEmail) {
+    return {
+      message: "メールアドレスを入力してください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.auth.requestPasswordReset({
+      email: normalizedEmail,
+      tenant: { tenantPublicId },
+    });
+
+    return {
+      ok: true,
+      requested: response.requested,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("invalid_argument") ||
+        message.includes("invalid email") ||
+        message.includes("required")
+      ) {
+        return {
+          message: "メールアドレスを確認してください。",
+          ok: false,
+        };
+      }
+    }
+
+    return {
+      message: genericPasswordResetRequestErrorMessage,
+      ok: false,
+    };
+  }
+};
+
+export const confirmAdminPasswordReset = async (
+  tenantPublicId: string,
+  token: string,
+  newPassword: string
+): Promise<AdminPasswordResetConfirmResult> => {
+  const normalizedToken = token.trim();
+  const normalizedPassword = newPassword.trim();
+
+  if (!tenantPublicId.trim() || !normalizedToken) {
+    return {
+      message:
+        "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+      ok: false,
+      reason: "invalid",
+    };
+  }
+
+  if (!normalizedPassword) {
+    return {
+      message: "新しいパスワードを入力してください。",
+      ok: false,
+      reason: "system",
+    };
+  }
+
+  try {
+    const response = await apiClient.auth.confirmPasswordReset({
+      newPassword: normalizedPassword,
+      tenant: { tenantPublicId },
+      token: normalizedToken,
+    });
+
+    return {
+      confirmed: response.confirmed,
+      ok: true,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("failed_precondition") ||
+        message.includes("expired")
+      ) {
+        return {
+          message:
+            "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+          ok: false,
+          reason: "expired",
+        };
+      }
+      if (
+        message.includes("not_found") ||
+        message.includes("invalid_argument") ||
+        message.includes("required") ||
+        message.includes("user not found")
+      ) {
+        return {
+          message:
+            "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+          ok: false,
+          reason: "invalid",
+        };
+      }
+    }
+
+    return {
+      message: genericPasswordResetConfirmErrorMessage,
+      ok: false,
+      reason: "system",
     };
   }
 };
