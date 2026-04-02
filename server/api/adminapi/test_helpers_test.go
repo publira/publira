@@ -26,6 +26,8 @@ const (
 	getPlatformSMTPConfigQuery                           = "-- name: GetPlatformSMTPConfig :one\n"
 	getTenantSMTPConfigByTenantIDQuery                   = "-- name: GetTenantSMTPConfigByTenantID :one\n"
 	upsertTenantSMTPConfigQuery                          = "-- name: UpsertTenantSMTPConfig :one\n"
+	getTenantThemeByTenantIDQuery                        = "-- name: GetTenantThemeByTenantID :one\n"
+	upsertTenantThemeQuery                               = "-- name: UpsertTenantTheme :one\n"
 	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\n"
 	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\n"
 	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\n"
