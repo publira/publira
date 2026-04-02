@@ -1731,19 +1731,107 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 }
 
 const getTenantThemeByTenantID = `-- name: GetTenantThemeByTenantID :one
-SELECT tenant_id, primary_color, secondary_color, accent_color, logo_url, updated_at
-FROM tenant_themes
-WHERE tenant_id = $1
+SELECT
+    t.id AS tenant_id,
+    COALESCE(tt.background_color, '#f6f2e9') AS background_color,
+    COALESCE(tt.foreground_color, '#1e2b38') AS foreground_color,
+    COALESCE(tt.surface_color, '#fbf8f2') AS surface_color,
+    COALESCE(tt.surface_foreground_color, '#1e2b38') AS surface_foreground_color,
+    COALESCE(tt.card_color, '#fffdf8') AS card_color,
+    COALESCE(tt.card_foreground_color, '#1e2b38') AS card_foreground_color,
+    COALESCE(tt.popover_color, '#fffdf8') AS popover_color,
+    COALESCE(tt.popover_foreground_color, '#1e2b38') AS popover_foreground_color,
+    COALESCE(tt.primary_color, '#0f7c82') AS primary_color,
+    COALESCE(tt.primary_foreground_color, '#f4fbfb') AS primary_foreground_color,
+    COALESCE(tt.secondary_color, '#d96f4a') AS secondary_color,
+    COALESCE(tt.secondary_foreground_color, '#fff6f1') AS secondary_foreground_color,
+    COALESCE(tt.accent_color, '#7aae90') AS accent_color,
+    COALESCE(tt.accent_foreground_color, '#0f2a1f') AS accent_foreground_color,
+    COALESCE(tt.muted_color, '#e9e1d3') AS muted_color,
+    COALESCE(tt.muted_foreground_color, '#5c6773') AS muted_foreground_color,
+    COALESCE(tt.border_color, '#d7ccba') AS border_color,
+    COALESCE(tt.input_color, '#e3d8c7') AS input_color,
+    COALESCE(tt.ring_color, '#2d8d93') AS ring_color,
+    COALESCE(tt.success_color, '#2f8f5b') AS success_color,
+    COALESCE(tt.success_foreground_color, '#f3fcf7') AS success_foreground_color,
+    COALESCE(tt.warning_color, '#c4872a') AS warning_color,
+    COALESCE(tt.warning_foreground_color, '#fff8ea') AS warning_foreground_color,
+    COALESCE(tt.destructive_color, '#b54444') AS destructive_color,
+    COALESCE(tt.destructive_foreground_color, '#fff4f4') AS destructive_foreground_color,
+    COALESCE(tt.info_color, '#3c78c2') AS info_color,
+    COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,
+    tt.logo_url,
+    COALESCE(tt.updated_at, NOW()) AS updated_at
+FROM tenants t
+LEFT JOIN tenant_themes tt ON tt.tenant_id = t.id
+WHERE t.id = $1
 `
 
-func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantTheme, error) {
-	row := q.db.QueryRowContext(ctx, getTenantThemeByTenantID, tenantID)
-	var i TenantTheme
+type GetTenantThemeByTenantIDRow struct {
+	TenantID                   uuid.UUID      `json:"tenant_id"`
+	BackgroundColor            string         `json:"background_color"`
+	ForegroundColor            string         `json:"foreground_color"`
+	SurfaceColor               string         `json:"surface_color"`
+	SurfaceForegroundColor     string         `json:"surface_foreground_color"`
+	CardColor                  string         `json:"card_color"`
+	CardForegroundColor        string         `json:"card_foreground_color"`
+	PopoverColor               string         `json:"popover_color"`
+	PopoverForegroundColor     string         `json:"popover_foreground_color"`
+	PrimaryColor               string         `json:"primary_color"`
+	PrimaryForegroundColor     string         `json:"primary_foreground_color"`
+	SecondaryColor             string         `json:"secondary_color"`
+	SecondaryForegroundColor   string         `json:"secondary_foreground_color"`
+	AccentColor                string         `json:"accent_color"`
+	AccentForegroundColor      string         `json:"accent_foreground_color"`
+	MutedColor                 string         `json:"muted_color"`
+	MutedForegroundColor       string         `json:"muted_foreground_color"`
+	BorderColor                string         `json:"border_color"`
+	InputColor                 string         `json:"input_color"`
+	RingColor                  string         `json:"ring_color"`
+	SuccessColor               string         `json:"success_color"`
+	SuccessForegroundColor     string         `json:"success_foreground_color"`
+	WarningColor               string         `json:"warning_color"`
+	WarningForegroundColor     string         `json:"warning_foreground_color"`
+	DestructiveColor           string         `json:"destructive_color"`
+	DestructiveForegroundColor string         `json:"destructive_foreground_color"`
+	InfoColor                  string         `json:"info_color"`
+	InfoForegroundColor        string         `json:"info_foreground_color"`
+	LogoUrl                    sql.NullString `json:"logo_url"`
+	UpdatedAt                  time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getTenantThemeByTenantID, id)
+	var i GetTenantThemeByTenantIDRow
 	err := row.Scan(
 		&i.TenantID,
+		&i.BackgroundColor,
+		&i.ForegroundColor,
+		&i.SurfaceColor,
+		&i.SurfaceForegroundColor,
+		&i.CardColor,
+		&i.CardForegroundColor,
+		&i.PopoverColor,
+		&i.PopoverForegroundColor,
 		&i.PrimaryColor,
+		&i.PrimaryForegroundColor,
 		&i.SecondaryColor,
+		&i.SecondaryForegroundColor,
 		&i.AccentColor,
+		&i.AccentForegroundColor,
+		&i.MutedColor,
+		&i.MutedForegroundColor,
+		&i.BorderColor,
+		&i.InputColor,
+		&i.RingColor,
+		&i.SuccessColor,
+		&i.SuccessForegroundColor,
+		&i.WarningColor,
+		&i.WarningForegroundColor,
+		&i.DestructiveColor,
+		&i.DestructiveForegroundColor,
+		&i.InfoColor,
+		&i.InfoForegroundColor,
 		&i.LogoUrl,
 		&i.UpdatedAt,
 	)
@@ -3902,36 +3990,163 @@ func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListi
 const upsertTenantTheme = `-- name: UpsertTenantTheme :one
 INSERT INTO tenant_themes (
         tenant_id,
+        background_color,
+        foreground_color,
+        surface_color,
+        surface_foreground_color,
+        card_color,
+        card_foreground_color,
+        popover_color,
+        popover_foreground_color,
         primary_color,
+        primary_foreground_color,
         secondary_color,
+        secondary_foreground_color,
         accent_color,
+        accent_foreground_color,
+        muted_color,
+        muted_foreground_color,
+        border_color,
+        input_color,
+        ring_color,
+        success_color,
+        success_foreground_color,
+        warning_color,
+        warning_foreground_color,
+        destructive_color,
+        destructive_foreground_color,
+        info_color,
+        info_foreground_color,
         logo_url,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (tenant_id) DO
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15,
+        $16,
+        $17,
+        $18,
+        $19,
+        $20,
+        $21,
+        $22,
+        $23,
+        $24,
+        $25,
+        $26,
+        $27,
+        $28,
+        $29,
+        NOW()
+    ) ON CONFLICT (tenant_id) DO
 UPDATE
-SET primary_color = EXCLUDED.primary_color,
+SET background_color = EXCLUDED.background_color,
+    foreground_color = EXCLUDED.foreground_color,
+    surface_color = EXCLUDED.surface_color,
+    surface_foreground_color = EXCLUDED.surface_foreground_color,
+    card_color = EXCLUDED.card_color,
+    card_foreground_color = EXCLUDED.card_foreground_color,
+    popover_color = EXCLUDED.popover_color,
+    popover_foreground_color = EXCLUDED.popover_foreground_color,
+    primary_color = EXCLUDED.primary_color,
+    primary_foreground_color = EXCLUDED.primary_foreground_color,
     secondary_color = EXCLUDED.secondary_color,
+    secondary_foreground_color = EXCLUDED.secondary_foreground_color,
     accent_color = EXCLUDED.accent_color,
+    accent_foreground_color = EXCLUDED.accent_foreground_color,
+    muted_color = EXCLUDED.muted_color,
+    muted_foreground_color = EXCLUDED.muted_foreground_color,
+    border_color = EXCLUDED.border_color,
+    input_color = EXCLUDED.input_color,
+    ring_color = EXCLUDED.ring_color,
+    success_color = EXCLUDED.success_color,
+    success_foreground_color = EXCLUDED.success_foreground_color,
+    warning_color = EXCLUDED.warning_color,
+    warning_foreground_color = EXCLUDED.warning_foreground_color,
+    destructive_color = EXCLUDED.destructive_color,
+    destructive_foreground_color = EXCLUDED.destructive_foreground_color,
+    info_color = EXCLUDED.info_color,
+    info_foreground_color = EXCLUDED.info_foreground_color,
     logo_url = EXCLUDED.logo_url,
     updated_at = NOW()
-RETURNING tenant_id, primary_color, secondary_color, accent_color, logo_url, updated_at
+RETURNING tenant_id, primary_color, secondary_color, accent_color, logo_url, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color
 `
 
 type UpsertTenantThemeParams struct {
-	TenantID       uuid.UUID      `json:"tenant_id"`
-	PrimaryColor   string         `json:"primary_color"`
-	SecondaryColor string         `json:"secondary_color"`
-	AccentColor    string         `json:"accent_color"`
-	LogoUrl        sql.NullString `json:"logo_url"`
+	TenantID                   uuid.UUID      `json:"tenant_id"`
+	BackgroundColor            string         `json:"background_color"`
+	ForegroundColor            string         `json:"foreground_color"`
+	SurfaceColor               string         `json:"surface_color"`
+	SurfaceForegroundColor     string         `json:"surface_foreground_color"`
+	CardColor                  string         `json:"card_color"`
+	CardForegroundColor        string         `json:"card_foreground_color"`
+	PopoverColor               string         `json:"popover_color"`
+	PopoverForegroundColor     string         `json:"popover_foreground_color"`
+	PrimaryColor               string         `json:"primary_color"`
+	PrimaryForegroundColor     string         `json:"primary_foreground_color"`
+	SecondaryColor             string         `json:"secondary_color"`
+	SecondaryForegroundColor   string         `json:"secondary_foreground_color"`
+	AccentColor                string         `json:"accent_color"`
+	AccentForegroundColor      string         `json:"accent_foreground_color"`
+	MutedColor                 string         `json:"muted_color"`
+	MutedForegroundColor       string         `json:"muted_foreground_color"`
+	BorderColor                string         `json:"border_color"`
+	InputColor                 string         `json:"input_color"`
+	RingColor                  string         `json:"ring_color"`
+	SuccessColor               string         `json:"success_color"`
+	SuccessForegroundColor     string         `json:"success_foreground_color"`
+	WarningColor               string         `json:"warning_color"`
+	WarningForegroundColor     string         `json:"warning_foreground_color"`
+	DestructiveColor           string         `json:"destructive_color"`
+	DestructiveForegroundColor string         `json:"destructive_foreground_color"`
+	InfoColor                  string         `json:"info_color"`
+	InfoForegroundColor        string         `json:"info_foreground_color"`
+	LogoUrl                    sql.NullString `json:"logo_url"`
 }
 
 func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error) {
 	row := q.db.QueryRowContext(ctx, upsertTenantTheme,
 		arg.TenantID,
+		arg.BackgroundColor,
+		arg.ForegroundColor,
+		arg.SurfaceColor,
+		arg.SurfaceForegroundColor,
+		arg.CardColor,
+		arg.CardForegroundColor,
+		arg.PopoverColor,
+		arg.PopoverForegroundColor,
 		arg.PrimaryColor,
+		arg.PrimaryForegroundColor,
 		arg.SecondaryColor,
+		arg.SecondaryForegroundColor,
 		arg.AccentColor,
+		arg.AccentForegroundColor,
+		arg.MutedColor,
+		arg.MutedForegroundColor,
+		arg.BorderColor,
+		arg.InputColor,
+		arg.RingColor,
+		arg.SuccessColor,
+		arg.SuccessForegroundColor,
+		arg.WarningColor,
+		arg.WarningForegroundColor,
+		arg.DestructiveColor,
+		arg.DestructiveForegroundColor,
+		arg.InfoColor,
+		arg.InfoForegroundColor,
 		arg.LogoUrl,
 	)
 	var i TenantTheme
@@ -3942,6 +4157,30 @@ func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemePa
 		&i.AccentColor,
 		&i.LogoUrl,
 		&i.UpdatedAt,
+		&i.BackgroundColor,
+		&i.ForegroundColor,
+		&i.SurfaceColor,
+		&i.SurfaceForegroundColor,
+		&i.CardColor,
+		&i.CardForegroundColor,
+		&i.PopoverColor,
+		&i.PopoverForegroundColor,
+		&i.PrimaryForegroundColor,
+		&i.SecondaryForegroundColor,
+		&i.AccentForegroundColor,
+		&i.MutedColor,
+		&i.MutedForegroundColor,
+		&i.BorderColor,
+		&i.InputColor,
+		&i.RingColor,
+		&i.SuccessColor,
+		&i.SuccessForegroundColor,
+		&i.WarningColor,
+		&i.WarningForegroundColor,
+		&i.DestructiveColor,
+		&i.DestructiveForegroundColor,
+		&i.InfoColor,
+		&i.InfoForegroundColor,
 	)
 	return i, err
 }

@@ -80,7 +80,7 @@ type Querier interface {
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
-	GetTenantThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantTheme, error)
+	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// public_idでテナントユーザーを取得
