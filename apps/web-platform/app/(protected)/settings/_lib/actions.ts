@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requestPlatformEmailChange } from "../../../../lib/email-change";
 import {
   sendPlatformSmtpTestEmail,
   updatePlatformEmailSettings,
@@ -22,6 +23,11 @@ export type PlatformEmailSettingsFormState =
 export type PlatformSmtpTestFormState =
   | { message: string; ok: false }
   | { message: string; ok: true; recipientEmail: string }
+  | null;
+
+export type PlatformEmailChangeActionState =
+  | { message: string; ok: false }
+  | { message: string; ok: true }
   | null;
 
 interface ParsedSmtpFormData {
@@ -137,5 +143,34 @@ export const sendPlatformSmtpTestEmailAction = async (
     message: `接続テストメールを送信しました（送信先: ${result.recipientEmail}）。`,
     ok: true,
     recipientEmail: result.recipientEmail,
+  };
+};
+
+export const requestPlatformEmailChangeAction = async (
+  _prevState: PlatformEmailChangeActionState,
+  formData: FormData
+): Promise<PlatformEmailChangeActionState> => {
+  const currentEmail = String(formData.get("current_email") ?? "").trim();
+  const newEmail = String(formData.get("new_email") ?? "").trim();
+  const currentPassword = String(formData.get("current_password") ?? "");
+
+  if (!currentEmail || !newEmail || !currentPassword) {
+    return { message: "すべての項目を入力してください。", ok: false };
+  }
+
+  const result = await requestPlatformEmailChange(
+    currentEmail,
+    newEmail,
+    currentPassword
+  );
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  return {
+    message:
+      "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。",
+    ok: true,
   };
 };
