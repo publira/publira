@@ -4,7 +4,13 @@ import { NextResponse } from "next/server";
 import { PLATFORM_SESSION_COOKIE_NAME, buildLoginUrl } from "./lib/auth-shared";
 import { isSetupCompleted } from "./lib/setup";
 
-const PUBLIC_PATHS = new Set(["/login", "/logout", "/healthz", "/setup"]);
+const PUBLIC_PATHS = new Set([
+  "/confirm-email",
+  "/login",
+  "/logout",
+  "/healthz",
+  "/setup",
+]);
 
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;

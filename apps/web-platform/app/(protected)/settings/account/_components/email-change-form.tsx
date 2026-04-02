@@ -1,0 +1,139 @@
+"use client";
+
+import { Button } from "@publira/ui-components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@publira/ui-components/card";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@publira/ui-components/field";
+import { FormMessage } from "@publira/ui-components/form-message";
+import { Input } from "@publira/ui-components/input";
+import { useActionState, useCallback, useState } from "react";
+
+import type { PlatformEmailChangeActionState } from "../../_lib/actions";
+
+interface EmailChangeFormProps {
+  action: (
+    prevState: PlatformEmailChangeActionState,
+    formData: FormData
+  ) => Promise<PlatformEmailChangeActionState>;
+}
+
+export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
+  const [state, formAction, isPending] = useActionState(action, null);
+  const [currentEmail, setCurrentEmail] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+
+  const handleCurrentEmailChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setCurrentEmail(event.target.value);
+    },
+    []
+  );
+
+  const handleNewEmailChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setNewEmail(event.target.value);
+    },
+    []
+  );
+
+  const handleCurrentPasswordChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setCurrentPassword(event.target.value);
+    },
+    []
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>メールアドレス変更</CardTitle>
+        <CardDescription>
+          オペレーターアカウントのメールアドレスを変更します。変更には現在のメールアドレスと新しいメールアドレスの両方で確認が必要です。
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form action={formAction} className="grid gap-4">
+          <Field>
+            <FieldLabel htmlFor="current_email" required>
+              現在のメールアドレス
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="email"
+                id="current_email"
+                name="current_email"
+                onChange={handleCurrentEmailChange}
+                placeholder="current@example.com"
+                required
+                type="email"
+                value={currentEmail}
+              />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="new_email" required>
+              新しいメールアドレス
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="email"
+                id="new_email"
+                name="new_email"
+                onChange={handleNewEmailChange}
+                placeholder="new@example.com"
+                required
+                type="email"
+                value={newEmail}
+              />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="current_password" required>
+              現在のパスワード
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="current-password"
+                id="current_password"
+                name="current_password"
+                onChange={handleCurrentPasswordChange}
+                placeholder="••••••••"
+                required
+                type="password"
+                value={currentPassword}
+              />
+              <FieldDescription>
+                セキュリティ上の理由から、パスワードの入力が必要です。
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          {state ? (
+            <FormMessage variant={state.ok ? "success" : "destructive"}>
+              {state.message}
+            </FormMessage>
+          ) : null}
+
+          <div className="mt-2 flex justify-end gap-2">
+            <Button disabled={isPending} type="submit">
+              {isPending ? "送信中..." : "確認メールを送信"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
