@@ -16,7 +16,7 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useId, useState } from "react";
 
 import type { TenantThemeSettings } from "../../../../../lib/theme-settings";
 import type { ThemeSettingsActionState } from "../settings-types";
@@ -30,7 +30,45 @@ interface ThemeSettingsFormProps {
   tenantPublicId: string;
 }
 
-const colorInputClassName = "h-10 w-14 shrink-0 cursor-pointer p-1";
+interface ColorSwatchInputProps {
+  id: string;
+  name: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const ColorSwatchInput = ({ id, name, value, onChange }: ColorSwatchInputProps) => {
+  const pickerId = useId();
+  return (
+    <div className="relative flex max-w-48 items-center">
+      <label
+        className="absolute left-2 h-6 w-6 shrink-0 cursor-pointer overflow-hidden rounded-sm border"
+        htmlFor={pickerId}
+        style={{ backgroundColor: value }}
+      >
+        <input
+          className="sr-only"
+          id={pickerId}
+          onChange={onChange}
+          tabIndex={-1}
+          type="color"
+          value={value}
+        />
+      </label>
+      <Input
+        className="pl-10"
+        id={id}
+        name={name}
+        onChange={onChange}
+        pattern="#[0-9a-fA-F]{6}"
+        placeholder="#000000"
+        required
+        type="text"
+        value={value}
+      />
+    </div>
+  );
+};
 
 type ColorKey = keyof TenantThemeSettings;
 
@@ -141,25 +179,12 @@ export const ThemeSettingsForm = ({
                       {field.label}
                     </FieldLabel>
                     <FieldContent>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Input
-                          className={colorInputClassName}
-                          id={`${field.formName}_picker`}
-                          onChange={createHandler(field.key)}
-                          type="color"
-                          value={colors[field.key]}
-                        />
-                        <Input
-                          id={field.formName}
-                          name={field.formName}
-                          onChange={createHandler(field.key)}
-                          pattern="#[0-9a-fA-F]{6}"
-                          placeholder="#000000"
-                          required
-                          type="text"
-                          value={colors[field.key]}
-                        />
-                      </div>
+                      <ColorSwatchInput
+                        id={field.formName}
+                        name={field.formName}
+                        onChange={createHandler(field.key)}
+                        value={colors[field.key]}
+                      />
                       {field.description ? (
                         <FieldDescription>{field.description}</FieldDescription>
                       ) : null}
