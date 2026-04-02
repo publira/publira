@@ -220,7 +220,12 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(emailPath, emailHandler)
-	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(server)
+	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(
+		server,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+		),
+	)
 	mux.Handle(adminAuthPath, adminAuthHandler)
 	dashboardPath, dashboardHandler := publiraadminv1connect.NewAdminDashboardServiceHandler(
 		server,
