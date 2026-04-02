@@ -38,7 +38,7 @@ services:
       - "traefik.http.services.web-public.loadbalancer.server.port=3000"
 
       # web-catalog (port 3001)
-      - "traefik.http.routers.web-catalog.rule=PathRegexp(`^/(authors|series)(/.*)?$|^/web-catalog-assets(/.*)?$`)"
+      - "traefik.http.routers.web-catalog.rule=PathRegexp(`^/(authors|series)(/.*)?$|^/web-catalog-assets(/.*)?$|^/api/catalog/revalidate/?$`)"
       - "traefik.http.routers.web-catalog.entrypoints=web"
       - "traefik.http.routers.web-catalog.priority=10"
       - "traefik.http.routers.web-catalog.service=web-catalog"
@@ -73,7 +73,7 @@ services:
       - "traefik.http.services.web-platform.loadbalancer.server.port=4100"
 
       # api-server on /api -> app:8000 (strip /api before forwarding)
-      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`)"
+      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/revalidate/?$`) && !PathRegexp(`^/api/catalog/revalidate/?$`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.routers.api.priority=100"
       - "traefik.http.routers.api.middlewares=api-strip"

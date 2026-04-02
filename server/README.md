@@ -97,6 +97,8 @@ task server:build
 - 管理 API サーバー: `server/cmd/admin-api-server`
   - 管理サービス: `AdminSeriesService`, `AdminAuthService`
   - 既定ポート: `:8001` (`ADMIN_API_ADDR` で変更可能)
+  - 公開状態変更時の Next.js 再検証: `NEXT_REVALIDATE_TOKEN` を設定
+  - 送信先は内部 Traefik 経由（`Host` は tenant domain を使用）
 
 これにより、公開系と管理系を別プロセス・別経路で運用できます。
 

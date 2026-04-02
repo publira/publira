@@ -1,6 +1,13 @@
 import { apiClient } from "./api-client";
+import {
+  tenantCatalogAuthorsTag,
+  tenantCatalogSeriesDetailTag,
+  tenantCatalogSeriesListTag,
+  tenantCatalogSeriesTag,
+} from "./cache-tags";
 import { EpisodeNotFoundError } from "./errors";
 import { SeriesNotFoundError } from "./series-not-found-error";
+import { cacheTag } from "next/cache";
 
 export { EpisodeNotFoundError, SeriesNotFoundError };
 
@@ -68,6 +75,10 @@ export const listPublishedSeries = async (
 ): Promise<SeriesListItem[]> => {
   "use cache";
 
+  const normalizedTenantPublicId = tenantPublicId.trim();
+  cacheTag(tenantCatalogSeriesListTag(normalizedTenantPublicId));
+  cacheTag(tenantCatalogAuthorsTag(normalizedTenantPublicId));
+
   const response = await apiClient.catalog.listPublishedSeries({
     limit,
     offset,
@@ -97,6 +108,13 @@ export const getSeriesDetail = async (
   seriesPublicId: string
 ): Promise<{ series: SeriesDetail; episodes: EpisodeItem[] }> => {
   "use cache";
+
+  const normalizedTenantPublicId = tenantPublicId.trim();
+  const normalizedSeriesPublicId = seriesPublicId.trim();
+  cacheTag(tenantCatalogSeriesDetailTag(normalizedTenantPublicId));
+  cacheTag(
+    tenantCatalogSeriesTag(normalizedTenantPublicId, normalizedSeriesPublicId)
+  );
 
   const response = await apiClient.catalog.getSeriesDetail({
     publicId: seriesPublicId,
@@ -148,6 +166,13 @@ export const getEpisodeDetail = async (
   series: EpisodeSeriesSummary;
 }> => {
   "use cache";
+
+  const normalizedTenantPublicId = tenantPublicId.trim();
+  const normalizedSeriesPublicId = seriesPublicId.trim();
+  cacheTag(tenantCatalogSeriesDetailTag(normalizedTenantPublicId));
+  cacheTag(
+    tenantCatalogSeriesTag(normalizedTenantPublicId, normalizedSeriesPublicId)
+  );
 
   const response = await apiClient.catalog.getEpisodeDetail({
     publicId: episodePublicId,

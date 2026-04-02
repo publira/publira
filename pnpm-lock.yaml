@@ -229,6 +229,9 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.2
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
     devDependencies:
       '@publira/next-config':
         specifier: workspace:*
@@ -409,6 +412,9 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.2
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*

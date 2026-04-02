@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -129,6 +130,18 @@ func generatePublicID() string {
 	return strings.ToUpper(raw[:12])
 }
 
+func seriesRevalidateTags(tenantPublicID, seriesPublicID string) []string {
+	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
+	normalizedSeriesPublicID := strings.TrimSpace(seriesPublicID)
+	return []string{
+		fmt.Sprintf("tenant:%s:public:site", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:catalog:series:list", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:catalog:series:detail", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:catalog:series:%s", normalizedTenantPublicID, normalizedSeriesPublicID),
+		fmt.Sprintf("tenant:%s:catalog:authors", normalizedTenantPublicID),
+	}
+}
+
 func (s *adminServer) CreateSeries(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateSeriesRequest],
@@ -194,6 +207,11 @@ func (s *adminServer) CreateSeries(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
+	}
+	if req.Msg.IsPublished && s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, seriesRevalidateTags(tenant.PublicID, base.PublicID)); err != nil {
+			s.logger.Warn("failed to request next revalidate after series create", "tenant_public_id", tenant.PublicID, "series_public_id", base.PublicID, "error", err)
+		}
 	}
 	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: &publirattypesv1.Series{
 		PublicId: base.PublicID, Title: base.Title, Synopsis: req.Msg.Synopsis, ReadingPeriodHours: req.Msg.ReadingPeriodHours, Creators: creators,
@@ -274,6 +292,13 @@ func (s *adminServer) UpdateSeries(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
+	}
+	if s.reval != nil {
+		if current.IsPublished || req.Msg.IsPublished {
+			if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, seriesRevalidateTags(tenant.PublicID, current.PublicID)); err != nil {
+				s.logger.Warn("failed to request next revalidate after series update", "tenant_public_id", tenant.PublicID, "series_public_id", current.PublicID, "error", err)
+			}
+		}
 	}
 	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(updated)
 	series.Creators = creators

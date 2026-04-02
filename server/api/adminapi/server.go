@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
@@ -36,6 +38,8 @@ type adminServer struct {
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
 	mailer    internalsmtp.Sender
+	logger    *slog.Logger
+	reval     *revalidate.Client
 }
 
 func invalidSessionError() error {
@@ -118,6 +122,14 @@ func (s *adminServer) authenticateSession(
 // AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
 	mailer, _ := tester.(internalsmtp.Sender)
+	if logger == nil {
+		logger = slog.Default()
+	}
+	revalidateToken := strings.TrimSpace(os.Getenv("NEXT_REVALIDATE_TOKEN"))
+	revalidator := revalidate.NewClient(revalidateToken, logger)
+	if revalidator == nil {
+		logger.Info("next revalidate is disabled", "reason", "NEXT_REVALIDATE_TOKEN is empty")
+	}
 	server := &adminServer{
 		db:        db,
 		queries:   queries,
@@ -126,6 +138,8 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		encryptor: encryptor,
 		tester:    tester,
 		mailer:    mailer,
+		logger:    logger,
+		reval:     revalidator,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {

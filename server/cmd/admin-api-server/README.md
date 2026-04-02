@@ -35,3 +35,11 @@ cd server && make build
 - `S3_ENDPOINT` (`STORAGE_BACKEND=s3` 時, 任意)
 - `S3_FORCE_PATH_STYLE` (`STORAGE_BACKEND=s3` 時, 任意)
 - `S3_PUBLIC_BASE_URL` (`STORAGE_BACKEND=s3` 時, 任意)
+- `NEXT_REVALIDATE_TOKEN` (任意, `X-Revalidate-Token` ヘッダーで送る共有トークン)
+
+`NEXT_REVALIDATE_TOKEN` が設定されている場合のみ、公開状態更新時に Next.js へ再検証リクエストを送信します。
+このとき内部ネットワーク上の Traefik 宛に送信し、`Host`/`X-Forwarded-Host` はテナントの `domain` を設定します。
+固定パスは次のとおりです:
+
+- web-public: `/api/revalidate`
+- web-catalog: `/api/catalog/revalidate`
