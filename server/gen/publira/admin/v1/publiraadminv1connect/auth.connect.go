@@ -39,6 +39,12 @@ const (
 	// AdminAuthServiceDeleteSessionProcedure is the fully-qualified name of the AdminAuthService's
 	// DeleteSession RPC.
 	AdminAuthServiceDeleteSessionProcedure = "/publira.admin.v1.AdminAuthService/DeleteSession"
+	// AdminAuthServiceRequestPasswordResetProcedure is the fully-qualified name of the
+	// AdminAuthService's RequestPasswordReset RPC.
+	AdminAuthServiceRequestPasswordResetProcedure = "/publira.admin.v1.AdminAuthService/RequestPasswordReset"
+	// AdminAuthServiceConfirmPasswordResetProcedure is the fully-qualified name of the
+	// AdminAuthService's ConfirmPasswordReset RPC.
+	AdminAuthServiceConfirmPasswordResetProcedure = "/publira.admin.v1.AdminAuthService/ConfirmPasswordReset"
 	// AdminAuthServiceGetMeProcedure is the fully-qualified name of the AdminAuthService's GetMe RPC.
 	AdminAuthServiceGetMeProcedure = "/publira.admin.v1.AdminAuthService/GetMe"
 	// AdminAuthServiceGetTenantByDomainProcedure is the fully-qualified name of the AdminAuthService's
@@ -59,12 +65,20 @@ const (
 	// AdminAuthServiceUpdateTenantConfigProcedure is the fully-qualified name of the AdminAuthService's
 	// UpdateTenantConfig RPC.
 	AdminAuthServiceUpdateTenantConfigProcedure = "/publira.admin.v1.AdminAuthService/UpdateTenantConfig"
+	// AdminAuthServiceRequestEmailChangeProcedure is the fully-qualified name of the AdminAuthService's
+	// RequestEmailChange RPC.
+	AdminAuthServiceRequestEmailChangeProcedure = "/publira.admin.v1.AdminAuthService/RequestEmailChange"
+	// AdminAuthServiceConfirmEmailChangeProcedure is the fully-qualified name of the AdminAuthService's
+	// ConfirmEmailChange RPC.
+	AdminAuthServiceConfirmEmailChangeProcedure = "/publira.admin.v1.AdminAuthService/ConfirmEmailChange"
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceClient interface {
 	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
+	RequestPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceRequestPasswordResetResponse], error)
+	ConfirmPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
 	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
@@ -72,6 +86,8 @@ type AdminAuthServiceClient interface {
 	GetTenantAdminInvitationState(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantAdminInvitationStateResponse], error)
 	AcceptTenantAdminInvitation(context.Context, *connect.Request[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest]) (*connect.Response[v1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error)
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -95,6 +111,18 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+AdminAuthServiceDeleteSessionProcedure,
 			connect.WithSchema(adminAuthServiceMethods.ByName("DeleteSession")),
+			connect.WithClientOptions(opts...),
+		),
+		requestPasswordReset: connect.NewClient[v1.AdminAuthServiceRequestPasswordResetRequest, v1.AdminAuthServiceRequestPasswordResetResponse](
+			httpClient,
+			baseURL+AdminAuthServiceRequestPasswordResetProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("RequestPasswordReset")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmPasswordReset: connect.NewClient[v1.AdminAuthServiceConfirmPasswordResetRequest, v1.AdminAuthServiceConfirmPasswordResetResponse](
+			httpClient,
+			baseURL+AdminAuthServiceConfirmPasswordResetProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmPasswordReset")),
 			connect.WithClientOptions(opts...),
 		),
 		getMe: connect.NewClient[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse](
@@ -139,6 +167,18 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(adminAuthServiceMethods.ByName("UpdateTenantConfig")),
 			connect.WithClientOptions(opts...),
 		),
+		requestEmailChange: connect.NewClient[v1.AdminAuthServiceRequestEmailChangeRequest, v1.AdminAuthServiceRequestEmailChangeResponse](
+			httpClient,
+			baseURL+AdminAuthServiceRequestEmailChangeProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("RequestEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmEmailChange: connect.NewClient[v1.AdminAuthServiceConfirmEmailChangeRequest, v1.AdminAuthServiceConfirmEmailChangeResponse](
+			httpClient,
+			baseURL+AdminAuthServiceConfirmEmailChangeProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -146,6 +186,8 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 type adminAuthServiceClient struct {
 	createSession                 *connect.Client[v1.AdminAuthServiceCreateSessionRequest, v1.AdminAuthServiceCreateSessionResponse]
 	deleteSession                 *connect.Client[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse]
+	requestPasswordReset          *connect.Client[v1.AdminAuthServiceRequestPasswordResetRequest, v1.AdminAuthServiceRequestPasswordResetResponse]
+	confirmPasswordReset          *connect.Client[v1.AdminAuthServiceConfirmPasswordResetRequest, v1.AdminAuthServiceConfirmPasswordResetResponse]
 	getMe                         *connect.Client[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse]
 	getTenantByDomain             *connect.Client[v1.AdminAuthServiceGetTenantByDomainRequest, v1.AdminAuthServiceGetTenantByDomainResponse]
 	getTenant                     *connect.Client[v1.AdminAuthServiceGetTenantRequest, v1.AdminAuthServiceGetTenantResponse]
@@ -153,6 +195,8 @@ type adminAuthServiceClient struct {
 	getTenantAdminInvitationState *connect.Client[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest, v1.AdminAuthServiceGetTenantAdminInvitationStateResponse]
 	acceptTenantAdminInvitation   *connect.Client[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest, v1.AdminAuthServiceAcceptTenantAdminInvitationResponse]
 	updateTenantConfig            *connect.Client[v1.AdminAuthServiceUpdateTenantConfigRequest, v1.AdminAuthServiceUpdateTenantConfigResponse]
+	requestEmailChange            *connect.Client[v1.AdminAuthServiceRequestEmailChangeRequest, v1.AdminAuthServiceRequestEmailChangeResponse]
+	confirmEmailChange            *connect.Client[v1.AdminAuthServiceConfirmEmailChangeRequest, v1.AdminAuthServiceConfirmEmailChangeResponse]
 }
 
 // CreateSession calls publira.admin.v1.AdminAuthService.CreateSession.
@@ -163,6 +207,16 @@ func (c *adminAuthServiceClient) CreateSession(ctx context.Context, req *connect
 // DeleteSession calls publira.admin.v1.AdminAuthService.DeleteSession.
 func (c *adminAuthServiceClient) DeleteSession(ctx context.Context, req *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error) {
 	return c.deleteSession.CallUnary(ctx, req)
+}
+
+// RequestPasswordReset calls publira.admin.v1.AdminAuthService.RequestPasswordReset.
+func (c *adminAuthServiceClient) RequestPasswordReset(ctx context.Context, req *connect.Request[v1.AdminAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceRequestPasswordResetResponse], error) {
+	return c.requestPasswordReset.CallUnary(ctx, req)
+}
+
+// ConfirmPasswordReset calls publira.admin.v1.AdminAuthService.ConfirmPasswordReset.
+func (c *adminAuthServiceClient) ConfirmPasswordReset(ctx context.Context, req *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error) {
+	return c.confirmPasswordReset.CallUnary(ctx, req)
 }
 
 // GetMe calls publira.admin.v1.AdminAuthService.GetMe.
@@ -201,10 +255,22 @@ func (c *adminAuthServiceClient) UpdateTenantConfig(ctx context.Context, req *co
 	return c.updateTenantConfig.CallUnary(ctx, req)
 }
 
+// RequestEmailChange calls publira.admin.v1.AdminAuthService.RequestEmailChange.
+func (c *adminAuthServiceClient) RequestEmailChange(ctx context.Context, req *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error) {
+	return c.requestEmailChange.CallUnary(ctx, req)
+}
+
+// ConfirmEmailChange calls publira.admin.v1.AdminAuthService.ConfirmEmailChange.
+func (c *adminAuthServiceClient) ConfirmEmailChange(ctx context.Context, req *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error) {
+	return c.confirmEmailChange.CallUnary(ctx, req)
+}
+
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
 	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
+	RequestPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceRequestPasswordResetResponse], error)
+	ConfirmPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
 	GetTenantByDomain(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantByDomainRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantByDomainResponse], error)
 	GetTenant(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantResponse], error)
@@ -212,6 +278,8 @@ type AdminAuthServiceHandler interface {
 	GetTenantAdminInvitationState(context.Context, *connect.Request[v1.AdminAuthServiceGetTenantAdminInvitationStateRequest]) (*connect.Response[v1.AdminAuthServiceGetTenantAdminInvitationStateResponse], error)
 	AcceptTenantAdminInvitation(context.Context, *connect.Request[v1.AdminAuthServiceAcceptTenantAdminInvitationRequest]) (*connect.Response[v1.AdminAuthServiceAcceptTenantAdminInvitationResponse], error)
 	UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error)
 }
 
 // NewAdminAuthServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -231,6 +299,18 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 		AdminAuthServiceDeleteSessionProcedure,
 		svc.DeleteSession,
 		connect.WithSchema(adminAuthServiceMethods.ByName("DeleteSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceRequestPasswordResetHandler := connect.NewUnaryHandler(
+		AdminAuthServiceRequestPasswordResetProcedure,
+		svc.RequestPasswordReset,
+		connect.WithSchema(adminAuthServiceMethods.ByName("RequestPasswordReset")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceConfirmPasswordResetHandler := connect.NewUnaryHandler(
+		AdminAuthServiceConfirmPasswordResetProcedure,
+		svc.ConfirmPasswordReset,
+		connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmPasswordReset")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminAuthServiceGetMeHandler := connect.NewUnaryHandler(
@@ -275,12 +355,28 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 		connect.WithSchema(adminAuthServiceMethods.ByName("UpdateTenantConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminAuthServiceRequestEmailChangeHandler := connect.NewUnaryHandler(
+		AdminAuthServiceRequestEmailChangeProcedure,
+		svc.RequestEmailChange,
+		connect.WithSchema(adminAuthServiceMethods.ByName("RequestEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminAuthServiceConfirmEmailChangeHandler := connect.NewUnaryHandler(
+		AdminAuthServiceConfirmEmailChangeProcedure,
+		svc.ConfirmEmailChange,
+		connect.WithSchema(adminAuthServiceMethods.ByName("ConfirmEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.AdminAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminAuthServiceCreateSessionProcedure:
 			adminAuthServiceCreateSessionHandler.ServeHTTP(w, r)
 		case AdminAuthServiceDeleteSessionProcedure:
 			adminAuthServiceDeleteSessionHandler.ServeHTTP(w, r)
+		case AdminAuthServiceRequestPasswordResetProcedure:
+			adminAuthServiceRequestPasswordResetHandler.ServeHTTP(w, r)
+		case AdminAuthServiceConfirmPasswordResetProcedure:
+			adminAuthServiceConfirmPasswordResetHandler.ServeHTTP(w, r)
 		case AdminAuthServiceGetMeProcedure:
 			adminAuthServiceGetMeHandler.ServeHTTP(w, r)
 		case AdminAuthServiceGetTenantByDomainProcedure:
@@ -295,6 +391,10 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 			adminAuthServiceAcceptTenantAdminInvitationHandler.ServeHTTP(w, r)
 		case AdminAuthServiceUpdateTenantConfigProcedure:
 			adminAuthServiceUpdateTenantConfigHandler.ServeHTTP(w, r)
+		case AdminAuthServiceRequestEmailChangeProcedure:
+			adminAuthServiceRequestEmailChangeHandler.ServeHTTP(w, r)
+		case AdminAuthServiceConfirmEmailChangeProcedure:
+			adminAuthServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -310,6 +410,14 @@ func (UnimplementedAdminAuthServiceHandler) CreateSession(context.Context, *conn
 
 func (UnimplementedAdminAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.DeleteSession is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) RequestPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceRequestPasswordResetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.RequestPasswordReset is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) ConfirmPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.ConfirmPasswordReset is not implemented"))
 }
 
 func (UnimplementedAdminAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error) {
@@ -338,4 +446,12 @@ func (UnimplementedAdminAuthServiceHandler) AcceptTenantAdminInvitation(context.
 
 func (UnimplementedAdminAuthServiceHandler) UpdateTenantConfig(context.Context, *connect.Request[v1.AdminAuthServiceUpdateTenantConfigRequest]) (*connect.Response[v1.AdminAuthServiceUpdateTenantConfigResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.UpdateTenantConfig is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) RequestEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceRequestEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.RequestEmailChange is not implemented"))
+}
+
+func (UnimplementedAdminAuthServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[v1.AdminAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.AdminAuthServiceConfirmEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.ConfirmEmailChange is not implemented"))
 }

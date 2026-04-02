@@ -28,6 +28,7 @@ import (
 const (
 	defaultAdminServerURL     = ":8001"
 	defaultAdminGrpcServerURL = ":8101"
+	defaultAdminDBURL         = "postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
@@ -38,7 +39,7 @@ func main() {
 		logger.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	db, err := openDB(cfg.DB.URL)
+	db, err := openDB(resolveAdminDBURL())
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
@@ -69,7 +70,7 @@ func main() {
 		grpcAddr = defaultAdminGrpcServerURL
 	}
 
-	handler := adminapi.NewHandler(dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient())
+	handler := adminapi.NewHandler(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient())
 
 	// Start Connect server on public port
 	logger.Info("starting admin api server (Connect)", "addr", addr)
@@ -126,6 +127,13 @@ func openDB(url string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func resolveAdminDBURL() string {
+	if url := strings.TrimSpace(os.Getenv("PUBLIRA_ADMIN_DB_URL")); url != "" {
+		return url
+	}
+	return defaultAdminDBURL
 }
 
 func newStorageProvider(ctx context.Context, cfg config.Storage) (storage.Provider, error) {

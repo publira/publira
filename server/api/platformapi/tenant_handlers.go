@@ -90,7 +90,7 @@ func (s *platformServer) ListTenants(
 	filterPublicID := strings.TrimSpace(req.Msg.PublicId)
 	filterStatus := strings.TrimSpace(req.Msg.Status)
 
-	tenants, err := s.queries.ListTenants(ctx, dbmodels.ListTenantsParams{
+	tenants, err := s.queriesFor(ctx).ListTenants(ctx, dbmodels.ListTenantsParams{
 		Limit:          limit,
 		Offset:         offset,
 		FilterName:     sql.NullString{String: filterName, Valid: true},
@@ -119,7 +119,7 @@ func (s *platformServer) GetTenant(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, publicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, publicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -295,7 +295,7 @@ func (s *platformServer) SuspendTenant(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
 	}
 
-	tenant, err := s.queries.UpdateTenantStatus(ctx, dbmodels.UpdateTenantStatusParams{
+	tenant, err := s.queriesFor(ctx).UpdateTenantStatus(ctx, dbmodels.UpdateTenantStatusParams{
 		PublicID: publicID,
 		Status:   tenantStatusSuspended,
 	})
@@ -340,7 +340,7 @@ func (s *platformServer) UpdateTenant(
 	}
 	adminDomain := nullableTrimmedString(req.Msg.AdminDomain)
 
-	tenant, err := s.queries.UpdateTenantInfo(ctx, dbmodels.UpdateTenantInfoParams{
+	tenant, err := s.queriesFor(ctx).UpdateTenantInfo(ctx, dbmodels.UpdateTenantInfoParams{
 		PublicID:    publicID,
 		Name:        name,
 		Domain:      domain,
@@ -378,7 +378,7 @@ func (s *platformServer) ResumeTenant(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
 	}
 
-	tenant, err := s.queries.UpdateTenantStatus(ctx, dbmodels.UpdateTenantStatusParams{
+	tenant, err := s.queriesFor(ctx).UpdateTenantStatus(ctx, dbmodels.UpdateTenantStatusParams{
 		PublicID: publicID,
 		Status:   tenantStatusActive,
 	})
@@ -434,9 +434,9 @@ func (s *platformServer) ListTenantMembers(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListTenantMembersRequest],
 ) (*connect.Response[publirasplatformv1.ListTenantMembersResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 
 	limit := req.Msg.Limit
@@ -451,7 +451,7 @@ func (s *platformServer) ListTenantMembers(
 		offset = 0
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -459,7 +459,7 @@ func (s *platformServer) ListTenantMembers(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	rows, err := s.queries.ListTenantUsers(ctx, dbmodels.ListTenantUsersParams{
+	rows, err := s.queriesFor(ctx).ListTenantUsers(ctx, dbmodels.ListTenantUsersParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Limit:    limit,
 		Offset:   offset,
@@ -481,9 +481,9 @@ func (s *platformServer) AddTenantMember(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.AddTenantMemberRequest],
 ) (*connect.Response[publirasplatformv1.AddTenantMemberResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
 	email := strings.TrimSpace(strings.ToLower(req.Msg.Email))
@@ -503,7 +503,7 @@ func (s *platformServer) AddTenantMember(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid role"))
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -513,12 +513,12 @@ func (s *platformServer) AddTenantMember(
 
 	var user dbmodels.GetUserByPublicIDForTenantRow
 	if userPublicID != "" {
-		user, err = s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		user, err = s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			PublicID: userPublicID,
 		})
 	} else {
-		userByEmail, lookupErr := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+		userByEmail, lookupErr := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			Email:    email,
 		})
@@ -541,7 +541,7 @@ func (s *platformServer) AddTenantMember(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	roles, err := s.queries.ListTenantUserRoles(ctx, user.ID)
+	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -589,9 +589,9 @@ func (s *platformServer) UpdateTenantMemberRole(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UpdateTenantMemberRoleRequest],
 ) (*connect.Response[publirasplatformv1.UpdateTenantMemberRoleResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
 	if userPublicID == "" {
@@ -602,7 +602,7 @@ func (s *platformServer) UpdateTenantMemberRole(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid role"))
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -610,7 +610,7 @@ func (s *platformServer) UpdateTenantMemberRole(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, err := s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+	user, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		PublicID: userPublicID,
 	})
@@ -621,7 +621,7 @@ func (s *platformServer) UpdateTenantMemberRole(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	roles, err := s.queries.ListTenantUserRoles(ctx, user.ID)
+	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -670,16 +670,16 @@ func (s *platformServer) RemoveTenantMember(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.RemoveTenantMemberRequest],
 ) (*connect.Response[publirasplatformv1.RemoveTenantMemberResponse], error) {
-	tenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
-	if tenantPublicID == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
+	tenantPublicID, err := resolveTenantPublicID(req.Msg.TenantPublicId, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	userPublicID := strings.TrimSpace(req.Msg.UserPublicId)
 	if userPublicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_public_id is required"))
 	}
 
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -687,7 +687,7 @@ func (s *platformServer) RemoveTenantMember(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	user, err := s.queries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+	user, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		PublicID: userPublicID,
 	})
@@ -698,7 +698,7 @@ func (s *platformServer) RemoveTenantMember(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	if err := s.queries.DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

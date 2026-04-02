@@ -58,7 +58,7 @@ func normalizePublicIDs(values []string) []string {
 }
 
 func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID string) (dbmodels.GetUserByPublicIDRow, error) {
-	user, err := s.queries.GetUserByPublicID(ctx, userID)
+	user, err := s.queriesFor(ctx).GetUserByPublicID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
@@ -66,7 +66,7 @@ func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID str
 		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenantRoles, err := s.queries.ListTenantUserRoles(ctx, user.ID)
+	tenantRoles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
 		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeInternal, err)
 	}
@@ -119,7 +119,7 @@ func (s *platformServer) ListEndUsers(
 	filterStatus := strings.TrimSpace(req.Msg.Status)
 	publicIDs := normalizePublicIDs(req.Msg.PublicIds)
 
-	users, err := s.queries.ListEndUsers(ctx, dbmodels.ListEndUsersParams{
+	users, err := s.queriesFor(ctx).ListEndUsers(ctx, dbmodels.ListEndUsersParams{
 		Limit:         limit,
 		Offset:        offset,
 		CreatedAfter:  createdAfterFilter,
@@ -136,7 +136,7 @@ func (s *platformServer) ListEndUsers(
 	}
 
 	for _, u := range users {
-		tenant, err := s.queries.GetTenantByUserID(ctx, u.ID)
+		tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, u.ID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
@@ -166,7 +166,7 @@ func (s *platformServer) GetEndUser(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
 	}
 
-	user, err := s.queries.GetUserByPublicID(ctx, publicID)
+	user, err := s.queriesFor(ctx).GetUserByPublicID(ctx, publicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
@@ -174,7 +174,7 @@ func (s *platformServer) GetEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenant, err := s.queries.GetTenantByUserID(ctx, user.ID)
+	tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, user.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -218,7 +218,7 @@ func (s *platformServer) SuspendEndUser(
 	}
 
 	// ステータスを更新
-	updated, err := s.queries.UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
+	updated, err := s.queriesFor(ctx).UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
 		PublicID: publicID,
 		Status:   userStatusSuspended,
 	})
@@ -227,11 +227,11 @@ func (s *platformServer) SuspendEndUser(
 	}
 
 	// セッションを失効させる
-	if err := s.queries.TerminateUserSessions(ctx, updated.ID); err != nil {
+	if err := s.queriesFor(ctx).TerminateUserSessions(ctx, updated.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenant, err := s.queries.GetTenantByUserID(ctx, updated.ID)
+	tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, updated.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -285,7 +285,7 @@ func (s *platformServer) UnsuspendEndUser(
 	}
 
 	// ステータスを更新
-	updated, err := s.queries.UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
+	updated, err := s.queriesFor(ctx).UpdateUserStatus(ctx, dbmodels.UpdateUserStatusParams{
 		PublicID: publicID,
 		Status:   userStatusActive,
 	})
@@ -296,7 +296,7 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenant, err := s.queries.GetTenantByUserID(ctx, updated.ID)
+	tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, updated.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -351,7 +351,7 @@ func (s *platformServer) DeleteEndUser(
 	}
 
 	// ユーザーを物理削除
-	if err := s.queries.DeleteUserByID(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

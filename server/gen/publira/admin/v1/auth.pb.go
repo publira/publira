@@ -222,6 +222,206 @@ func (*AdminAuthServiceDeleteSessionResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{3}
 }
 
+type AdminAuthServiceRequestPasswordResetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceRequestPasswordResetRequest) Reset() {
+	*x = AdminAuthServiceRequestPasswordResetRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceRequestPasswordResetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceRequestPasswordResetRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceRequestPasswordResetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceRequestPasswordResetRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceRequestPasswordResetRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AdminAuthServiceRequestPasswordResetRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceRequestPasswordResetRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+type AdminAuthServiceRequestPasswordResetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requested     bool                   `protobuf:"varint,1,opt,name=requested,proto3" json:"requested,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceRequestPasswordResetResponse) Reset() {
+	*x = AdminAuthServiceRequestPasswordResetResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceRequestPasswordResetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceRequestPasswordResetResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceRequestPasswordResetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceRequestPasswordResetResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceRequestPasswordResetResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AdminAuthServiceRequestPasswordResetResponse) GetRequested() bool {
+	if x != nil {
+		return x.Requested
+	}
+	return false
+}
+
+type AdminAuthServiceConfirmPasswordResetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	NewPassword   string                 `protobuf:"bytes,3,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetRequest) Reset() {
+	*x = AdminAuthServiceConfirmPasswordResetRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceConfirmPasswordResetRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceConfirmPasswordResetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceConfirmPasswordResetRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceConfirmPasswordResetRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetRequest) GetNewPassword() string {
+	if x != nil {
+		return x.NewPassword
+	}
+	return ""
+}
+
+type AdminAuthServiceConfirmPasswordResetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Confirmed     bool                   `protobuf:"varint,1,opt,name=confirmed,proto3" json:"confirmed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetResponse) Reset() {
+	*x = AdminAuthServiceConfirmPasswordResetResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceConfirmPasswordResetResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceConfirmPasswordResetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceConfirmPasswordResetResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceConfirmPasswordResetResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AdminAuthServiceConfirmPasswordResetResponse) GetConfirmed() bool {
+	if x != nil {
+		return x.Confirmed
+	}
+	return false
+}
+
 type AdminAuthServiceGetMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -232,7 +432,7 @@ type AdminAuthServiceGetMeRequest struct {
 
 func (x *AdminAuthServiceGetMeRequest) Reset() {
 	*x = AdminAuthServiceGetMeRequest{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -244,7 +444,7 @@ func (x *AdminAuthServiceGetMeRequest) String() string {
 func (*AdminAuthServiceGetMeRequest) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetMeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -257,7 +457,7 @@ func (x *AdminAuthServiceGetMeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminAuthServiceGetMeRequest.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetMeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{4}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AdminAuthServiceGetMeRequest) GetTenant() *v1.TenantContext {
@@ -283,7 +483,7 @@ type AdminAuthServiceGetMeResponse struct {
 
 func (x *AdminAuthServiceGetMeResponse) Reset() {
 	*x = AdminAuthServiceGetMeResponse{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -295,7 +495,7 @@ func (x *AdminAuthServiceGetMeResponse) String() string {
 func (*AdminAuthServiceGetMeResponse) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetMeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -308,7 +508,7 @@ func (x *AdminAuthServiceGetMeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminAuthServiceGetMeResponse.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetMeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AdminAuthServiceGetMeResponse) GetUser() *v1.User {
@@ -327,7 +527,7 @@ type AdminAuthServiceGetTenantByDomainRequest struct {
 
 func (x *AdminAuthServiceGetTenantByDomainRequest) Reset() {
 	*x = AdminAuthServiceGetTenantByDomainRequest{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -339,7 +539,7 @@ func (x *AdminAuthServiceGetTenantByDomainRequest) String() string {
 func (*AdminAuthServiceGetTenantByDomainRequest) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantByDomainRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -352,7 +552,7 @@ func (x *AdminAuthServiceGetTenantByDomainRequest) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AdminAuthServiceGetTenantByDomainRequest.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantByDomainRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AdminAuthServiceGetTenantByDomainRequest) GetDomains() []string {
@@ -371,7 +571,7 @@ type AdminAuthServiceGetTenantByDomainResponse struct {
 
 func (x *AdminAuthServiceGetTenantByDomainResponse) Reset() {
 	*x = AdminAuthServiceGetTenantByDomainResponse{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -383,7 +583,7 @@ func (x *AdminAuthServiceGetTenantByDomainResponse) String() string {
 func (*AdminAuthServiceGetTenantByDomainResponse) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantByDomainResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[7]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,7 +596,7 @@ func (x *AdminAuthServiceGetTenantByDomainResponse) ProtoReflect() protoreflect.
 
 // Deprecated: Use AdminAuthServiceGetTenantByDomainResponse.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantByDomainResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{7}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AdminAuthServiceGetTenantByDomainResponse) GetTenantPublicId() string {
@@ -416,7 +616,7 @@ type AdminAuthServiceGetTenantRequest struct {
 
 func (x *AdminAuthServiceGetTenantRequest) Reset() {
 	*x = AdminAuthServiceGetTenantRequest{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -428,7 +628,7 @@ func (x *AdminAuthServiceGetTenantRequest) String() string {
 func (*AdminAuthServiceGetTenantRequest) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[8]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -441,7 +641,7 @@ func (x *AdminAuthServiceGetTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminAuthServiceGetTenantRequest.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AdminAuthServiceGetTenantRequest) GetTenant() *v1.TenantContext {
@@ -470,7 +670,7 @@ type AdminAuthServiceTenant struct {
 
 func (x *AdminAuthServiceTenant) Reset() {
 	*x = AdminAuthServiceTenant{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -482,7 +682,7 @@ func (x *AdminAuthServiceTenant) String() string {
 func (*AdminAuthServiceTenant) ProtoMessage() {}
 
 func (x *AdminAuthServiceTenant) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[9]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -495,7 +695,7 @@ func (x *AdminAuthServiceTenant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminAuthServiceTenant.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceTenant) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AdminAuthServiceTenant) GetPublicId() string {
@@ -535,7 +735,7 @@ type AdminAuthServiceGetTenantResponse struct {
 
 func (x *AdminAuthServiceGetTenantResponse) Reset() {
 	*x = AdminAuthServiceGetTenantResponse{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -547,7 +747,7 @@ func (x *AdminAuthServiceGetTenantResponse) String() string {
 func (*AdminAuthServiceGetTenantResponse) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -560,7 +760,7 @@ func (x *AdminAuthServiceGetTenantResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminAuthServiceGetTenantResponse.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{10}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AdminAuthServiceGetTenantResponse) GetTenant() *AdminAuthServiceTenant {
@@ -580,7 +780,7 @@ type AdminAuthServiceGetTenantConfigRequest struct {
 
 func (x *AdminAuthServiceGetTenantConfigRequest) Reset() {
 	*x = AdminAuthServiceGetTenantConfigRequest{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -592,7 +792,7 @@ func (x *AdminAuthServiceGetTenantConfigRequest) String() string {
 func (*AdminAuthServiceGetTenantConfigRequest) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -605,7 +805,7 @@ func (x *AdminAuthServiceGetTenantConfigRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AdminAuthServiceGetTenantConfigRequest.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantConfigRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{11}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AdminAuthServiceGetTenantConfigRequest) GetTenant() *v1.TenantContext {
@@ -633,7 +833,7 @@ type AdminAuthServiceGetTenantConfigResponse struct {
 
 func (x *AdminAuthServiceGetTenantConfigResponse) Reset() {
 	*x = AdminAuthServiceGetTenantConfigResponse{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +845,7 @@ func (x *AdminAuthServiceGetTenantConfigResponse) String() string {
 func (*AdminAuthServiceGetTenantConfigResponse) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[12]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +858,7 @@ func (x *AdminAuthServiceGetTenantConfigResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AdminAuthServiceGetTenantConfigResponse.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantConfigResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{12}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AdminAuthServiceGetTenantConfigResponse) GetCopyrightText() string {
@@ -692,7 +892,7 @@ type AdminAuthServiceGetTenantAdminInvitationStateRequest struct {
 
 func (x *AdminAuthServiceGetTenantAdminInvitationStateRequest) Reset() {
 	*x = AdminAuthServiceGetTenantAdminInvitationStateRequest{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -704,7 +904,7 @@ func (x *AdminAuthServiceGetTenantAdminInvitationStateRequest) String() string {
 func (*AdminAuthServiceGetTenantAdminInvitationStateRequest) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantAdminInvitationStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[13]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -717,7 +917,7 @@ func (x *AdminAuthServiceGetTenantAdminInvitationStateRequest) ProtoReflect() pr
 
 // Deprecated: Use AdminAuthServiceGetTenantAdminInvitationStateRequest.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantAdminInvitationStateRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{13}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *AdminAuthServiceGetTenantAdminInvitationStateRequest) GetTenant() *v1.TenantContext {
@@ -746,7 +946,7 @@ type AdminAuthServiceGetTenantAdminInvitationStateResponse struct {
 
 func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) Reset() {
 	*x = AdminAuthServiceGetTenantAdminInvitationStateResponse{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -758,7 +958,7 @@ func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) String() string 
 func (*AdminAuthServiceGetTenantAdminInvitationStateResponse) ProtoMessage() {}
 
 func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -771,7 +971,7 @@ func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) ProtoReflect() p
 
 // Deprecated: Use AdminAuthServiceGetTenantAdminInvitationStateResponse.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceGetTenantAdminInvitationStateResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{14}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AdminAuthServiceGetTenantAdminInvitationStateResponse) GetEmail() string {
@@ -814,7 +1014,7 @@ type AdminAuthServiceAcceptTenantAdminInvitationRequest struct {
 
 func (x *AdminAuthServiceAcceptTenantAdminInvitationRequest) Reset() {
 	*x = AdminAuthServiceAcceptTenantAdminInvitationRequest{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -826,7 +1026,7 @@ func (x *AdminAuthServiceAcceptTenantAdminInvitationRequest) String() string {
 func (*AdminAuthServiceAcceptTenantAdminInvitationRequest) ProtoMessage() {}
 
 func (x *AdminAuthServiceAcceptTenantAdminInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -839,7 +1039,7 @@ func (x *AdminAuthServiceAcceptTenantAdminInvitationRequest) ProtoReflect() prot
 
 // Deprecated: Use AdminAuthServiceAcceptTenantAdminInvitationRequest.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceAcceptTenantAdminInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{15}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AdminAuthServiceAcceptTenantAdminInvitationRequest) GetTenant() *v1.TenantContext {
@@ -880,7 +1080,7 @@ type AdminAuthServiceAcceptTenantAdminInvitationResponse struct {
 
 func (x *AdminAuthServiceAcceptTenantAdminInvitationResponse) Reset() {
 	*x = AdminAuthServiceAcceptTenantAdminInvitationResponse{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -892,7 +1092,7 @@ func (x *AdminAuthServiceAcceptTenantAdminInvitationResponse) String() string {
 func (*AdminAuthServiceAcceptTenantAdminInvitationResponse) ProtoMessage() {}
 
 func (x *AdminAuthServiceAcceptTenantAdminInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[16]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -905,7 +1105,7 @@ func (x *AdminAuthServiceAcceptTenantAdminInvitationResponse) ProtoReflect() pro
 
 // Deprecated: Use AdminAuthServiceAcceptTenantAdminInvitationResponse.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceAcceptTenantAdminInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{16}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AdminAuthServiceAcceptTenantAdminInvitationResponse) GetAccepted() bool {
@@ -935,7 +1135,7 @@ type AdminAuthServiceUpdateTenantConfigRequest struct {
 
 func (x *AdminAuthServiceUpdateTenantConfigRequest) Reset() {
 	*x = AdminAuthServiceUpdateTenantConfigRequest{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -947,7 +1147,7 @@ func (x *AdminAuthServiceUpdateTenantConfigRequest) String() string {
 func (*AdminAuthServiceUpdateTenantConfigRequest) ProtoMessage() {}
 
 func (x *AdminAuthServiceUpdateTenantConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[17]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -960,7 +1160,7 @@ func (x *AdminAuthServiceUpdateTenantConfigRequest) ProtoReflect() protoreflect.
 
 // Deprecated: Use AdminAuthServiceUpdateTenantConfigRequest.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceUpdateTenantConfigRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{17}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AdminAuthServiceUpdateTenantConfigRequest) GetTenant() *v1.TenantContext {
@@ -1009,7 +1209,7 @@ type AdminAuthServiceUpdateTenantConfigResponse struct {
 
 func (x *AdminAuthServiceUpdateTenantConfigResponse) Reset() {
 	*x = AdminAuthServiceUpdateTenantConfigResponse{}
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[18]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1021,7 +1221,7 @@ func (x *AdminAuthServiceUpdateTenantConfigResponse) String() string {
 func (*AdminAuthServiceUpdateTenantConfigResponse) ProtoMessage() {}
 
 func (x *AdminAuthServiceUpdateTenantConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_auth_proto_msgTypes[18]
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1034,7 +1234,7 @@ func (x *AdminAuthServiceUpdateTenantConfigResponse) ProtoReflect() protoreflect
 
 // Deprecated: Use AdminAuthServiceUpdateTenantConfigResponse.ProtoReflect.Descriptor instead.
 func (*AdminAuthServiceUpdateTenantConfigResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{18}
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AdminAuthServiceUpdateTenantConfigResponse) GetCopyrightText() string {
@@ -1058,6 +1258,238 @@ func (x *AdminAuthServiceUpdateTenantConfigResponse) GetSiteTagline() string {
 	return ""
 }
 
+type AdminAuthServiceRequestEmailChangeRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SessionId       string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	CurrentEmail    string                 `protobuf:"bytes,3,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
+	NewEmail        string                 `protobuf:"bytes,4,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
+	CurrentPassword string                 `protobuf:"bytes,5,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) Reset() {
+	*x = AdminAuthServiceRequestEmailChangeRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceRequestEmailChangeRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceRequestEmailChangeRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceRequestEmailChangeRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetCurrentEmail() string {
+	if x != nil {
+		return x.CurrentEmail
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetNewEmail() string {
+	if x != nil {
+		return x.NewEmail
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceRequestEmailChangeRequest) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
+	}
+	return ""
+}
+
+type AdminAuthServiceRequestEmailChangeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requested     bool                   `protobuf:"varint,1,opt,name=requested,proto3" json:"requested,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) Reset() {
+	*x = AdminAuthServiceRequestEmailChangeResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceRequestEmailChangeResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceRequestEmailChangeResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceRequestEmailChangeResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AdminAuthServiceRequestEmailChangeResponse) GetRequested() bool {
+	if x != nil {
+		return x.Requested
+	}
+	return false
+}
+
+type AdminAuthServiceConfirmEmailChangeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) Reset() {
+	*x = AdminAuthServiceConfirmEmailChangeRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceConfirmEmailChangeRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceConfirmEmailChangeRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceConfirmEmailChangeRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type AdminAuthServiceConfirmEmailChangeResponse struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Confirmed              bool                   `protobuf:"varint,1,opt,name=confirmed,proto3" json:"confirmed,omitempty"`
+	Changed                bool                   `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	PendingConfirmationFor string                 `protobuf:"bytes,3,opt,name=pending_confirmation_for,json=pendingConfirmationFor,proto3" json:"pending_confirmation_for,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) Reset() {
+	*x = AdminAuthServiceConfirmEmailChangeResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceConfirmEmailChangeResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceConfirmEmailChangeResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceConfirmEmailChangeResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) GetConfirmed() bool {
+	if x != nil {
+		return x.Confirmed
+	}
+	return false
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
+func (x *AdminAuthServiceConfirmEmailChangeResponse) GetPendingConfirmationFor() string {
+	if x != nil {
+		return x.PendingConfirmationFor
+	}
+	return ""
+}
+
 var File_publira_admin_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_auth_proto_rawDesc = "" +
@@ -1074,7 +1506,18 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\"'\n" +
-	"%AdminAuthServiceDeleteSessionResponse\"v\n" +
+	"%AdminAuthServiceDeleteSessionResponse\"|\n" +
+	"+AdminAuthServiceRequestPasswordResetRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\"L\n" +
+	",AdminAuthServiceRequestPasswordResetResponse\x12\x1c\n" +
+	"\trequested\x18\x01 \x01(\bR\trequested\"\x9f\x01\n" +
+	"+AdminAuthServiceConfirmPasswordResetRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
+	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\"L\n" +
+	",AdminAuthServiceConfirmPasswordResetResponse\x12\x1c\n" +
+	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\"v\n" +
 	"\x1cAdminAuthServiceGetMeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
@@ -1131,18 +1574,37 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"*AdminAuthServiceUpdateTenantConfigResponse\x12%\n" +
 	"\x0ecopyright_text\x18\x01 \x01(\tR\rcopyrightText\x12)\n" +
 	"\x10site_description\x18\x02 \x01(\tR\x0fsiteDescription\x12!\n" +
-	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline2\x94\n" +
+	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\"\xf0\x01\n" +
+	")AdminAuthServiceRequestEmailChangeRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12#\n" +
+	"\rcurrent_email\x18\x03 \x01(\tR\fcurrentEmail\x12\x1b\n" +
+	"\tnew_email\x18\x04 \x01(\tR\bnewEmail\x12)\n" +
+	"\x10current_password\x18\x05 \x01(\tR\x0fcurrentPassword\"J\n" +
+	"*AdminAuthServiceRequestEmailChangeResponse\x12\x1c\n" +
+	"\trequested\x18\x01 \x01(\bR\trequested\"z\n" +
+	")AdminAuthServiceConfirmEmailChangeRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\x9e\x01\n" +
+	"*AdminAuthServiceConfirmEmailChangeResponse\x12\x1c\n" +
+	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\x12\x18\n" +
+	"\achanged\x18\x02 \x01(\bR\achanged\x128\n" +
+	"\x18pending_confirmation_for\x18\x03 \x01(\tR\x16pendingConfirmationFor2\xf0\x0e\n" +
 	"\x10AdminAuthService\x12\x82\x01\n" +
 	"\rCreateSession\x126.publira.admin.v1.AdminAuthServiceCreateSessionRequest\x1a7.publira.admin.v1.AdminAuthServiceCreateSessionResponse\"\x00\x12\x82\x01\n" +
-	"\rDeleteSession\x126.publira.admin.v1.AdminAuthServiceDeleteSessionRequest\x1a7.publira.admin.v1.AdminAuthServiceDeleteSessionResponse\"\x00\x12j\n" +
+	"\rDeleteSession\x126.publira.admin.v1.AdminAuthServiceDeleteSessionRequest\x1a7.publira.admin.v1.AdminAuthServiceDeleteSessionResponse\"\x00\x12\x97\x01\n" +
+	"\x14RequestPasswordReset\x12=.publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest\x1a>.publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse\"\x00\x12\x97\x01\n" +
+	"\x14ConfirmPasswordReset\x12=.publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest\x1a>.publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse\"\x00\x12j\n" +
 	"\x05GetMe\x12..publira.admin.v1.AdminAuthServiceGetMeRequest\x1a/.publira.admin.v1.AdminAuthServiceGetMeResponse\"\x00\x12\x8e\x01\n" +
 	"\x11GetTenantByDomain\x12:.publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest\x1a;.publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse\"\x00\x12v\n" +
 	"\tGetTenant\x122.publira.admin.v1.AdminAuthServiceGetTenantRequest\x1a3.publira.admin.v1.AdminAuthServiceGetTenantResponse\"\x00\x12\x88\x01\n" +
 	"\x0fGetTenantConfig\x128.publira.admin.v1.AdminAuthServiceGetTenantConfigRequest\x1a9.publira.admin.v1.AdminAuthServiceGetTenantConfigResponse\"\x00\x12\xb2\x01\n" +
 	"\x1dGetTenantAdminInvitationState\x12F.publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest\x1aG.publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse\"\x00\x12\xac\x01\n" +
 	"\x1bAcceptTenantAdminInvitation\x12D.publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest\x1aE.publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse\"\x00\x12\x91\x01\n" +
-	"\x12UpdateTenantConfig\x12;.publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest\x1a<.publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x12UpdateTenantConfig\x12;.publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest\x1a<.publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse\"\x00\x12\x91\x01\n" +
+	"\x12RequestEmailChange\x12;.publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest\x1a<.publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse\"\x00\x12\x91\x01\n" +
+	"\x12ConfirmEmailChange\x12;.publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest\x1a<.publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_auth_proto_rawDescOnce sync.Once
@@ -1156,67 +1618,87 @@ func file_publira_admin_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_auth_proto_rawDescData
 }
 
-var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_publira_admin_v1_auth_proto_goTypes = []any{
 	(*AdminAuthServiceCreateSessionRequest)(nil),                  // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest
 	(*AdminAuthServiceCreateSessionResponse)(nil),                 // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse
 	(*AdminAuthServiceDeleteSessionRequest)(nil),                  // 2: publira.admin.v1.AdminAuthServiceDeleteSessionRequest
 	(*AdminAuthServiceDeleteSessionResponse)(nil),                 // 3: publira.admin.v1.AdminAuthServiceDeleteSessionResponse
-	(*AdminAuthServiceGetMeRequest)(nil),                          // 4: publira.admin.v1.AdminAuthServiceGetMeRequest
-	(*AdminAuthServiceGetMeResponse)(nil),                         // 5: publira.admin.v1.AdminAuthServiceGetMeResponse
-	(*AdminAuthServiceGetTenantByDomainRequest)(nil),              // 6: publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
-	(*AdminAuthServiceGetTenantByDomainResponse)(nil),             // 7: publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
-	(*AdminAuthServiceGetTenantRequest)(nil),                      // 8: publira.admin.v1.AdminAuthServiceGetTenantRequest
-	(*AdminAuthServiceTenant)(nil),                                // 9: publira.admin.v1.AdminAuthServiceTenant
-	(*AdminAuthServiceGetTenantResponse)(nil),                     // 10: publira.admin.v1.AdminAuthServiceGetTenantResponse
-	(*AdminAuthServiceGetTenantConfigRequest)(nil),                // 11: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
-	(*AdminAuthServiceGetTenantConfigResponse)(nil),               // 12: publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
-	(*AdminAuthServiceGetTenantAdminInvitationStateRequest)(nil),  // 13: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
-	(*AdminAuthServiceGetTenantAdminInvitationStateResponse)(nil), // 14: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
-	(*AdminAuthServiceAcceptTenantAdminInvitationRequest)(nil),    // 15: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
-	(*AdminAuthServiceAcceptTenantAdminInvitationResponse)(nil),   // 16: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
-	(*AdminAuthServiceUpdateTenantConfigRequest)(nil),             // 17: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
-	(*AdminAuthServiceUpdateTenantConfigResponse)(nil),            // 18: publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
-	(*v1.TenantContext)(nil),                                      // 19: publira.types.v1.TenantContext
-	(*v1.User)(nil),                                               // 20: publira.types.v1.User
-	(*v1.Session)(nil),                                            // 21: publira.types.v1.Session
+	(*AdminAuthServiceRequestPasswordResetRequest)(nil),           // 4: publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest
+	(*AdminAuthServiceRequestPasswordResetResponse)(nil),          // 5: publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse
+	(*AdminAuthServiceConfirmPasswordResetRequest)(nil),           // 6: publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest
+	(*AdminAuthServiceConfirmPasswordResetResponse)(nil),          // 7: publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse
+	(*AdminAuthServiceGetMeRequest)(nil),                          // 8: publira.admin.v1.AdminAuthServiceGetMeRequest
+	(*AdminAuthServiceGetMeResponse)(nil),                         // 9: publira.admin.v1.AdminAuthServiceGetMeResponse
+	(*AdminAuthServiceGetTenantByDomainRequest)(nil),              // 10: publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
+	(*AdminAuthServiceGetTenantByDomainResponse)(nil),             // 11: publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
+	(*AdminAuthServiceGetTenantRequest)(nil),                      // 12: publira.admin.v1.AdminAuthServiceGetTenantRequest
+	(*AdminAuthServiceTenant)(nil),                                // 13: publira.admin.v1.AdminAuthServiceTenant
+	(*AdminAuthServiceGetTenantResponse)(nil),                     // 14: publira.admin.v1.AdminAuthServiceGetTenantResponse
+	(*AdminAuthServiceGetTenantConfigRequest)(nil),                // 15: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
+	(*AdminAuthServiceGetTenantConfigResponse)(nil),               // 16: publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
+	(*AdminAuthServiceGetTenantAdminInvitationStateRequest)(nil),  // 17: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
+	(*AdminAuthServiceGetTenantAdminInvitationStateResponse)(nil), // 18: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
+	(*AdminAuthServiceAcceptTenantAdminInvitationRequest)(nil),    // 19: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
+	(*AdminAuthServiceAcceptTenantAdminInvitationResponse)(nil),   // 20: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
+	(*AdminAuthServiceUpdateTenantConfigRequest)(nil),             // 21: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
+	(*AdminAuthServiceUpdateTenantConfigResponse)(nil),            // 22: publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
+	(*AdminAuthServiceRequestEmailChangeRequest)(nil),             // 23: publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest
+	(*AdminAuthServiceRequestEmailChangeResponse)(nil),            // 24: publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse
+	(*AdminAuthServiceConfirmEmailChangeRequest)(nil),             // 25: publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest
+	(*AdminAuthServiceConfirmEmailChangeResponse)(nil),            // 26: publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse
+	(*v1.TenantContext)(nil),                                      // 27: publira.types.v1.TenantContext
+	(*v1.User)(nil),                                               // 28: publira.types.v1.User
+	(*v1.Session)(nil),                                            // 29: publira.types.v1.Session
 }
 var file_publira_admin_v1_auth_proto_depIdxs = []int32{
-	19, // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	20, // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse.user:type_name -> publira.types.v1.User
-	21, // 2: publira.admin.v1.AdminAuthServiceCreateSessionResponse.session:type_name -> publira.types.v1.Session
-	19, // 3: publira.admin.v1.AdminAuthServiceDeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 4: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	20, // 5: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
-	19, // 6: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 7: publira.admin.v1.AdminAuthServiceGetTenantResponse.tenant:type_name -> publira.admin.v1.AdminAuthServiceTenant
-	19, // 8: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 9: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 10: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 11: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 12: publira.admin.v1.AdminAuthService.CreateSession:input_type -> publira.admin.v1.AdminAuthServiceCreateSessionRequest
-	2,  // 13: publira.admin.v1.AdminAuthService.DeleteSession:input_type -> publira.admin.v1.AdminAuthServiceDeleteSessionRequest
-	4,  // 14: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
-	6,  // 15: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
-	8,  // 16: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
-	11, // 17: publira.admin.v1.AdminAuthService.GetTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
-	13, // 18: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:input_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
-	15, // 19: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:input_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
-	17, // 20: publira.admin.v1.AdminAuthService.UpdateTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
-	1,  // 21: publira.admin.v1.AdminAuthService.CreateSession:output_type -> publira.admin.v1.AdminAuthServiceCreateSessionResponse
-	3,  // 22: publira.admin.v1.AdminAuthService.DeleteSession:output_type -> publira.admin.v1.AdminAuthServiceDeleteSessionResponse
-	5,  // 23: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
-	7,  // 24: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
-	10, // 25: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
-	12, // 26: publira.admin.v1.AdminAuthService.GetTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
-	14, // 27: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:output_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
-	16, // 28: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:output_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
-	18, // 29: publira.admin.v1.AdminAuthService.UpdateTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	27, // 0: publira.admin.v1.AdminAuthServiceCreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 1: publira.admin.v1.AdminAuthServiceCreateSessionResponse.user:type_name -> publira.types.v1.User
+	29, // 2: publira.admin.v1.AdminAuthServiceCreateSessionResponse.session:type_name -> publira.types.v1.Session
+	27, // 3: publira.admin.v1.AdminAuthServiceDeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 4: publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 5: publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 6: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	28, // 7: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
+	27, // 8: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 9: publira.admin.v1.AdminAuthServiceGetTenantResponse.tenant:type_name -> publira.admin.v1.AdminAuthServiceTenant
+	27, // 10: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 11: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 12: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 13: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 14: publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 15: publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 16: publira.admin.v1.AdminAuthService.CreateSession:input_type -> publira.admin.v1.AdminAuthServiceCreateSessionRequest
+	2,  // 17: publira.admin.v1.AdminAuthService.DeleteSession:input_type -> publira.admin.v1.AdminAuthServiceDeleteSessionRequest
+	4,  // 18: publira.admin.v1.AdminAuthService.RequestPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest
+	6,  // 19: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest
+	8,  // 20: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
+	10, // 21: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
+	12, // 22: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
+	15, // 23: publira.admin.v1.AdminAuthService.GetTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
+	17, // 24: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:input_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
+	19, // 25: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:input_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
+	21, // 26: publira.admin.v1.AdminAuthService.UpdateTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
+	23, // 27: publira.admin.v1.AdminAuthService.RequestEmailChange:input_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest
+	25, // 28: publira.admin.v1.AdminAuthService.ConfirmEmailChange:input_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest
+	1,  // 29: publira.admin.v1.AdminAuthService.CreateSession:output_type -> publira.admin.v1.AdminAuthServiceCreateSessionResponse
+	3,  // 30: publira.admin.v1.AdminAuthService.DeleteSession:output_type -> publira.admin.v1.AdminAuthServiceDeleteSessionResponse
+	5,  // 31: publira.admin.v1.AdminAuthService.RequestPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse
+	7,  // 32: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse
+	9,  // 33: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
+	11, // 34: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
+	14, // 35: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
+	16, // 36: publira.admin.v1.AdminAuthService.GetTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
+	18, // 37: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:output_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
+	20, // 38: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:output_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
+	22, // 39: publira.admin.v1.AdminAuthService.UpdateTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
+	24, // 40: publira.admin.v1.AdminAuthService.RequestEmailChange:output_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse
+	26, // 41: publira.admin.v1.AdminAuthService.ConfirmEmailChange:output_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse
+	29, // [29:42] is the sub-list for method output_type
+	16, // [16:29] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_auth_proto_init() }
@@ -1230,7 +1712,7 @@ func file_publira_admin_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_auth_proto_rawDesc), len(file_publira_admin_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

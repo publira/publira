@@ -1,5 +1,20 @@
 import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
 
+const isExpectedNullableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unauthenticated") ||
+    message.includes("permission_denied") ||
+    message.includes("invalid_argument") ||
+    message.includes("not_found") ||
+    message.includes("not found")
+  );
+};
+
 export interface MeInfo {
   publicId: string;
   name: string;
@@ -70,7 +85,10 @@ export const getMe = async (
         publicId: response.user.publicId,
         role: response.user.role,
       };
-    } catch {
+    } catch (error) {
+      if (!isExpectedNullableError(error)) {
+        throw error;
+      }
       if (attempt === 1) {
         return null;
       }
@@ -109,8 +127,11 @@ export const updateMe = async (
       publicId: response.user.publicId,
       role: response.user.role,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 
@@ -161,8 +182,11 @@ export const getNotificationSettings = async (
     return {
       emailNotificationsEnabled: response.emailNotificationsEnabled,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 
@@ -189,7 +213,10 @@ export const updateNotificationSettings = async (
     return {
       emailNotificationsEnabled: response.emailNotificationsEnabled,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };

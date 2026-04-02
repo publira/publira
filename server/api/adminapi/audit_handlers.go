@@ -115,7 +115,7 @@ func (s *adminServer) ListAuditLogs(
 		params.CursorID = uuid.NullUUID{UUID: cursorID, Valid: true}
 	}
 
-	rows, err := s.queries.ListAuditLogsByTenant(ctx, params)
+	rows, err := s.queriesFor(ctx).ListAuditLogsByTenant(ctx, params)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

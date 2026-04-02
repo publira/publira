@@ -97,10 +97,17 @@ describe("getAdminCurrentUser", () => {
     );
   });
 
-  it("API がエラーをスローした場合に null を返す", async () => {
-    mockGetMe.mockRejectedValueOnce(new Error("Network error"));
+  it("想定内エラーは null を返す", async () => {
+    mockGetMe.mockRejectedValueOnce(new Error("permission_denied"));
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toBeNull();
+  });
+
+  it("想定外エラーは再throwする", async () => {
+    mockGetMe.mockRejectedValueOnce(new Error("Network error"));
+    await expect(getAdminCurrentUser("tenant_001")).rejects.toThrow(
+      "Network error"
+    );
   });
 
   it("name と role が空文字の場合も publicId があれば返す", async () => {
@@ -127,10 +134,17 @@ describe("isAdminSessionValid", () => {
     expect(result).toBe(true);
   });
 
-  it("API がエラーをスローした場合に false を返す", async () => {
-    mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
+  it("想定内エラーは false を返す", async () => {
+    mockGetMe.mockRejectedValueOnce(new Error("permission_denied"));
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
+  });
+
+  it("想定外エラーは再throwする", async () => {
+    mockGetMe.mockRejectedValueOnce(new Error("Unauthorized"));
+    await expect(isAdminSessionValid("tenant_001")).rejects.toThrow(
+      "Unauthorized"
+    );
   });
 });
 

@@ -72,7 +72,7 @@ func (s *platformServer) ListAuditLogs(
 		offset = 0
 	}
 
-	rows, err := s.queries.ListPlatformAuditLogs(ctx, dbmodels.ListPlatformAuditLogsParams{
+	rows, err := s.queriesFor(ctx).ListPlatformAuditLogs(ctx, dbmodels.ListPlatformAuditLogsParams{
 		FilterTenantPublicID:    nullStringFilter(req.Msg.TenantPublicId),
 		FilterActorUserPublicID: nullStringFilter(req.Msg.ActorUserPublicId),
 		FilterAction:            nullStringFilter(req.Msg.Action),

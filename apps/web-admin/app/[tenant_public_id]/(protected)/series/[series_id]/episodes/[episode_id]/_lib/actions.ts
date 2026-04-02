@@ -136,6 +136,49 @@ export const uploadEpisodePagesAction = async (
     return hiddenValidation;
   }
 
+  const uploadMode = String(formData.get("upload_mode") ?? "pages").trim();
+
+  if (uploadMode === "archive") {
+    const archive = formData.get("archive");
+    if (!(archive instanceof File) || archive.size <= 0) {
+      return {
+        message: "入稿する ZIP ファイルを選択してください。",
+        mode: "pages",
+        ok: false,
+      };
+    }
+
+    const normalizedName = archive.name.toLowerCase();
+    const isZipByMime = archive.type === "application/zip";
+    const isZipByExt = normalizedName.endsWith(".zip");
+
+    if (!isZipByMime && !isZipByExt) {
+      return {
+        message: "ZIP 形式（.zip）のファイルを選択してください。",
+        mode: "pages",
+        ok: false,
+      };
+    }
+
+    const result = await uploadEpisodePages({
+      archive,
+      episodePublicId: hidden.episodePublicId,
+      tenantPublicId: hidden.tenantPublicId,
+    });
+
+    if (!result.ok) {
+      return {
+        message: result.message,
+        mode: "pages",
+        ok: false,
+      };
+    }
+
+    redirect(
+      `/series/${hidden.seriesPublicId}/episodes/${hidden.episodePublicId}?pages_uploaded=1`
+    );
+  }
+
   const pages = formData
     .getAll("pages")
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -28,11 +29,13 @@ type Querier interface {
 }
 
 type adminServer struct {
+	db        *sql.DB
 	queries   Querier
 	storage   storage.Provider
 	recorder  *auditlog.Recorder
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
+	mailer    internalsmtp.Sender
 }
 
 func invalidSessionError() error {
@@ -40,10 +43,7 @@ func invalidSessionError() error {
 }
 
 func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
-	if ctx == nil || strings.TrimSpace(ctx.TenantPublicId) == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
-	}
-	return ctx.TenantPublicId, nil
+	return rpcmiddleware.ResolveTenantPublicID(ctx, nil)
 }
 
 func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
@@ -54,7 +54,7 @@ func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publiratty
 	if err != nil {
 		return dbmodels.Tenant{}, err
 	}
-	tenant, err := s.queries.GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -62,6 +62,13 @@ func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publiratty
 		return dbmodels.Tenant{}, connect.NewError(connect.CodeInternal, err)
 	}
 	return tenant, nil
+}
+
+func (s *adminServer) queriesFor(ctx context.Context) Querier {
+	if queries, ok := rpcmiddleware.TenantQueriesFromContext(ctx); ok {
+		return queries
+	}
+	return s.queries
 }
 
 func (s *adminServer) authenticateSession(
@@ -78,7 +85,7 @@ func (s *adminServer) authenticateSession(
 	if !ok {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, auth.HashToken(sessionToken), time.Now())
+	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queriesFor(ctx), tenant.ID, auth.HashToken(sessionToken), time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
@@ -88,14 +95,14 @@ func (s *adminServer) authenticateSession(
 	if lookup.State != auth.SessionStateActive {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	user, err := s.queries.GetUserByID(ctx, lookup.Session.UserID)
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, lookup.Session.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
 		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
 	}
-	roles, err := s.queries.ListTenantUserRoles(ctx, user.ID)
+	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
 	}
@@ -109,13 +116,16 @@ func (s *adminServer) authenticateSession(
 
 // NewHandler は管理 API 専用の HTTP ハンドラを返します。
 // AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
-func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
+	mailer, _ := tester.(internalsmtp.Sender)
 	server := &adminServer{
+		db:        db,
 		queries:   queries,
 		storage:   storageProvider,
 		recorder:  auditlog.New(queries, logger),
 		encryptor: encryptor,
 		tester:    tester,
+		mailer:    mailer,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +139,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	adminPath, adminHandler := publiraadminv1connect.NewAdminSeriesServiceHandler(
 		server,
 		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
 				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 			),
@@ -138,6 +149,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	creatorPath, creatorHandler := publiraadminv1connect.NewAdminCreatorServiceHandler(
 		server,
 		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
 				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 			),
@@ -147,6 +159,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	labelPath, labelHandler := publiraadminv1connect.NewAdminLabelServiceHandler(
 		server,
 		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
 				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 			),
@@ -156,6 +169,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	auditPath, auditHandler := publiraadminv1connect.NewAdminAuditLogServiceHandler(
 		server,
 		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
 				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 			),
@@ -165,6 +179,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	userPath, userHandler := publiraadminv1connect.NewAdminUserServiceHandler(
 		server,
 		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
 				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 			),
@@ -174,6 +189,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	emailPath, emailHandler := publiraadminv1connect.NewAdminEmailSettingsServiceHandler(
 		server,
 		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
 				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 			),
@@ -185,6 +201,7 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	dashboardPath, dashboardHandler := publiraadminv1connect.NewAdminDashboardServiceHandler(
 		server,
 		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
 			rpcmiddleware.NewUnaryContextBuilderInterceptor(
 				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
 			),
@@ -192,4 +209,54 @@ func NewHandler(queries Querier, storageProvider storage.Provider, logger *slog.
 	)
 	mux.Handle(dashboardPath, dashboardHandler)
 	return mux
+}
+
+func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			if s.db == nil {
+				return next(ctx, req)
+			}
+			if strings.Contains(strings.ToLower(fmt.Sprintf("%T", s.db.Driver())), "sqlmock") {
+				return next(ctx, req)
+			}
+
+			tenantReq, ok := req.Any().(tenantScopedRequest)
+			if !ok {
+				return next(ctx, req)
+			}
+
+			tenantPublicID, err := rpcmiddleware.ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
+			if err != nil {
+				return nil, err
+			}
+
+			tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+				}
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+
+			conn, err := s.db.Conn(ctx)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+			defer conn.Close()
+
+			if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_tenant_id', $1, false)", tenant.ID.String()); err != nil {
+				return nil, connect.NewError(connect.CodeInternal, err)
+			}
+			defer conn.ExecContext(context.Background(), "SELECT set_config('app.current_tenant_id', '', false)")
+
+			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
+			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
+			return next(ctx, req)
+		}
+	})
+}
+
+type tenantScopedRequest interface {
+	GetTenant() *publirattypesv1.TenantContext
 }

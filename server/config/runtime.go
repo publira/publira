@@ -17,6 +17,7 @@ type Config struct {
 }
 
 type DB struct {
+	// URL is the generic DB connection string (used by migration tools and worker jobs).
 	URL string
 }
 
@@ -53,7 +54,7 @@ func New() (*Config, error) {
 }
 
 func parseDB() DB {
-	dbURL := strings.TrimSpace(os.Getenv("DB_URL"))
+	dbURL := strings.TrimSpace(os.Getenv("PUBLIRA_DB_URL"))
 	if dbURL == "" {
 		dbURL = defaultDBURL
 	}

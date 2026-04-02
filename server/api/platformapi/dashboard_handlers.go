@@ -38,19 +38,19 @@ func (s *platformServer) GetDashboardSummary(
 		return nil, err
 	}
 
-	totalTenants, err := s.queries.CountAllTenants(ctx)
+	totalTenants, err := s.queriesFor(ctx).CountAllTenants(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	activeTenants, err := s.queries.CountActiveTenants(ctx)
+	activeTenants, err := s.queriesFor(ctx).CountActiveTenants(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	suspendedTenants, err := s.queries.CountSuspendedTenants(ctx)
+	suspendedTenants, err := s.queriesFor(ctx).CountSuspendedTenants(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	pendingEndUsers, err := s.queries.CountPendingEndUsers(ctx)
+	pendingEndUsers, err := s.queriesFor(ctx).CountPendingEndUsers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -63,7 +63,7 @@ func (s *platformServer) GetDashboardSummary(
 		limit = maxDashboardRecentEventsLimit
 	}
 
-	recentEvents, err := s.queries.ListRecentPlatformEvents(ctx, limit)
+	recentEvents, err := s.queriesFor(ctx).ListRecentPlatformEvents(ctx, limit)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

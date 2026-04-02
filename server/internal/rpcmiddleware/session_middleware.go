@@ -51,6 +51,11 @@ func withTenantContext(ctx context.Context, tenantCtx TenantContext) context.Con
 	return context.WithValue(ctx, tenantContextKey{}, tenantCtx)
 }
 
+// WithTenantContext stores resolved tenant identifiers in context.
+func WithTenantContext(ctx context.Context, tenantCtx TenantContext) context.Context {
+	return withTenantContext(ctx, tenantCtx)
+}
+
 // SessionContextFromContext retrieves the SessionContext injected by the session middleware.
 func SessionContextFromContext(ctx context.Context) (SessionContext, bool) {
 	sessionCtx, ok := ctx.Value(sessionContextKey{}).(SessionContext)
@@ -63,17 +68,6 @@ func TenantContextFromContext(ctx context.Context) (TenantContext, bool) {
 	return tenantCtx, ok
 }
 
-func tenantPublicIDFromRequest(tenantCtx *publirattypesv1.TenantContext) (string, error) {
-	if tenantCtx == nil {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
-	}
-	tenantPublicID := strings.TrimSpace(tenantCtx.TenantPublicId)
-	if tenantPublicID == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
-	}
-	return tenantPublicID, nil
-}
-
 // BuildAdminSessionContext returns a UnaryContextBuilder that extracts the tenant,
 // authenticates the session, and injects the resulting SessionContext into ctx.
 func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBuilder {
@@ -83,13 +77,20 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 			log.Printf("debug authz tenant resolution failed: tenant context accessor missing")
 			return nil, connect.NewError(connect.CodeInternal, errors.New("tenant context accessor is not implemented"))
 		}
-		tenantPublicID, err := tenantPublicIDFromRequest(tenantReq.GetTenant())
+		tenantPublicID, err := ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
 		if err != nil {
 			log.Printf("debug authz tenant resolution failed: %v", err)
 			return nil, err
 		}
 
-		sessionCtx, err := authenticate(ctx, tenantReq.GetTenant(), "", req.Header())
+		resolvedTenantRequest := tenantReq.GetTenant()
+		if resolvedTenantRequest == nil {
+			resolvedTenantRequest = &publirattypesv1.TenantContext{TenantPublicId: tenantPublicID}
+		} else if strings.TrimSpace(resolvedTenantRequest.TenantPublicId) == "" {
+			resolvedTenantRequest.TenantPublicId = tenantPublicID
+		}
+
+		sessionCtx, err := authenticate(ctx, resolvedTenantRequest, "", req.Header())
 		if err != nil {
 			log.Printf("debug authz session authentication failed: tenant_public_id=%s error=%v", tenantPublicID, err)
 			return nil, err

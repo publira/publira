@@ -18,7 +18,7 @@ func (s *apiServer) GetTenant(
 	}
 
 	// Fetch tenant config (optional)
-	config, err := s.queries.GetTenantConfigByTenantID(ctx, tenant.ID)
+	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
 	copyrightText := ""
 	siteDescription := ""
 	siteTagline := ""

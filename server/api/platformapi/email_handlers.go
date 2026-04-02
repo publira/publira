@@ -62,7 +62,7 @@ func nullableString(value string) sql.NullString {
 }
 
 func (s *platformServer) loadPlatformSMTPConfig(ctx context.Context) (dbmodels.PlatformSmtpConfig, bool, error) {
-	config, err := s.queries.GetPlatformSMTPConfig(ctx)
+	config, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.PlatformSmtpConfig{}, false, nil
@@ -116,7 +116,7 @@ func (s *platformServer) UpdatePlatformEmailSettings(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	updated, err := s.queries.UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
+	updated, err := s.queriesFor(ctx).UpsertPlatformSMTPConfig(ctx, dbmodels.UpsertPlatformSMTPConfigParams{
 		Host:              emailsettings.Normalize(settings).Host,
 		Port:              settings.Port,
 		Username:          emailsettings.Normalize(settings).Username,

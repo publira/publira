@@ -33,7 +33,7 @@ func (s *adminServer) ListCreators(
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := s.queries.ListCreatorsByTenant(ctx, dbmodels.ListCreatorsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	rows, err := s.queriesFor(ctx).ListCreatorsByTenant(ctx, dbmodels.ListCreatorsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -60,7 +60,7 @@ func (s *adminServer) ListLabels(
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := s.queries.ListLabelsByTenant(ctx, dbmodels.ListLabelsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	rows, err := s.queriesFor(ctx).ListLabelsByTenant(ctx, dbmodels.ListLabelsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -86,7 +86,7 @@ func (s *adminServer) CreateCreator(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	created, err := s.queries.CreateCreator(ctx, dbmodels.CreateCreatorParams{
+	created, err := s.queriesFor(ctx).CreateCreator(ctx, dbmodels.CreateCreatorParams{
 		ID:          creatorID,
 		TenantID:    tenant.ID,
 		PublicID:    generatePublicID(),
@@ -122,14 +122,14 @@ func (s *adminServer) UpdateCreator(
 	if strings.TrimSpace(req.Msg.Name) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
-	current, err := s.queries.GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	current, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queries.UpdateCreator(ctx, dbmodels.UpdateCreatorParams{
+	err = s.queriesFor(ctx).UpdateCreator(ctx, dbmodels.UpdateCreatorParams{
 		ID:          current.ID,
 		Name:        req.Msg.Name,
 		ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
@@ -137,7 +137,7 @@ func (s *adminServer) UpdateCreator(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	updated, err := s.queries.GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	updated, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
@@ -174,7 +174,7 @@ func (s *adminServer) CreateLabel(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	created, err := s.queries.CreateLabel(ctx, dbmodels.CreateLabelParams{
+	created, err := s.queriesFor(ctx).CreateLabel(ctx, dbmodels.CreateLabelParams{
 		ID:       labelID,
 		TenantID: tenant.ID,
 		PublicID: generatePublicID(),
@@ -209,18 +209,18 @@ func (s *adminServer) UpdateLabel(
 	if strings.TrimSpace(req.Msg.Name) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
-	current, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	current, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queries.UpdateLabel(ctx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name})
+	err = s.queriesFor(ctx).UpdateLabel(ctx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	updated, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	updated, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))

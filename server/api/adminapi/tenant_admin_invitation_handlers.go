@@ -42,7 +42,7 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
 	}
 
-	invitation, err := s.queries.GetTenantAdminInvitationByHashForTenant(ctx, dbmodels.GetTenantAdminInvitationByHashForTenantParams{
+	invitation, err := s.queriesFor(ctx).GetTenantAdminInvitationByHashForTenant(ctx, dbmodels.GetTenantAdminInvitationByHashForTenantParams{
 		TenantID:  tenant.ID,
 		TokenHash: auth.HashToken(token),
 	})
@@ -53,7 +53,7 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	_, userErr := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	_, userErr := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    invitation.Email,
 	})
@@ -82,7 +82,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
 	}
 
-	invitation, err := s.queries.GetTenantAdminInvitationByHashForTenant(ctx, dbmodels.GetTenantAdminInvitationByHashForTenantParams{
+	invitation, err := s.queriesFor(ctx).GetTenantAdminInvitationByHashForTenant(ctx, dbmodels.GetTenantAdminInvitationByHashForTenantParams{
 		TenantID:  tenant.ID,
 		TokenHash: auth.HashToken(token),
 	})
@@ -103,7 +103,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation expired"))
 	}
 
-	user, err := s.queries.GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
+	user, err := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 		Email:    invitation.Email,
 	})
@@ -126,7 +126,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		if idErr != nil {
 			return nil, connect.NewError(connect.CodeInternal, idErr)
 		}
-		user, err = s.queries.CreateUser(ctx, dbmodels.CreateUserParams{
+		user, err = s.queriesFor(ctx).CreateUser(ctx, dbmodels.CreateUserParams{
 			ID:           userID,
 			TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			PublicID:     generatePublicID(),
@@ -137,37 +137,37 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		if _, err := s.queries.UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+		if _, err := s.queriesFor(ctx).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
 			ID:              user.ID,
 			EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
 		}); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		if _, err := s.queries.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
+		if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		accountCreated = true
 	} else if user.Status != "active" {
-		if _, err := s.queries.UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
+		if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	}
 
-	if err := s.queries.DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
+	if err := s.queriesFor(ctx).DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	roleID, roleIDErr := uuid.NewV7()
 	if roleIDErr != nil {
 		return nil, connect.NewError(connect.CodeInternal, roleIDErr)
 	}
-	if _, err := s.queries.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
+	if _, err := s.queriesFor(ctx).CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
 		ID:     roleID,
 		UserID: user.ID,
 		Role:   auth.RoleTenantAdmin,
 	}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if _, err := s.queries.MarkTenantAdminInvitationAccepted(ctx, dbmodels.MarkTenantAdminInvitationAcceptedParams{
+	if _, err := s.queriesFor(ctx).MarkTenantAdminInvitationAccepted(ctx, dbmodels.MarkTenantAdminInvitationAcceptedParams{
 		TenantID: tenant.ID,
 		ID:       invitation.ID,
 	}); err != nil {

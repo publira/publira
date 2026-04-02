@@ -41,6 +41,7 @@ type Episode struct {
 	Title      string    `json:"title"`
 	OrderIndex int32     `json:"order_index"`
 	CreatedAt  time.Time `json:"created_at"`
+	TenantID   uuid.UUID `json:"tenant_id"`
 }
 
 type EpisodeImage struct {
@@ -65,6 +66,7 @@ type EpisodeListing struct {
 	Status             string        `json:"status"`
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
 }
 
 type Label struct {
@@ -134,6 +136,7 @@ type Purchase struct {
 	PriceAtPurchase int32        `json:"price_at_purchase"`
 	ExpiresAt       sql.NullTime `json:"expires_at"`
 	PurchasedAt     time.Time    `json:"purchased_at"`
+	TenantID        uuid.UUID    `json:"tenant_id"`
 }
 
 type Series struct {
@@ -153,6 +156,7 @@ type SeriesCreator struct {
 	CreatorID    uuid.UUID `json:"creator_id"`
 	Role         string    `json:"role"`
 	DisplayOrder int32     `json:"display_order"`
+	TenantID     uuid.UUID `json:"tenant_id"`
 }
 
 type SeriesListing struct {
@@ -161,6 +165,7 @@ type SeriesListing struct {
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
 	IsPublished        sql.NullBool   `json:"is_published"`
 	PublishedAt        sql.NullTime   `json:"published_at"`
+	TenantID           uuid.UUID      `json:"tenant_id"`
 }
 
 type Session struct {
@@ -234,6 +239,7 @@ type TenantUserRole struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
+	TenantID  uuid.UUID `json:"tenant_id"`
 }
 
 type User struct {

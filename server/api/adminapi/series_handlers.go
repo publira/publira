@@ -46,7 +46,7 @@ func (s *adminServer) resolveCreatorsByPublicIDs(
 	if len(normalized) == 0 {
 		return []dbmodels.Creator{}, nil
 	}
-	rows, err := s.queries.ListCreatorsByPublicIDsForTenant(ctx, dbmodels.ListCreatorsByPublicIDsForTenantParams{
+	rows, err := s.queriesFor(ctx).ListCreatorsByPublicIDsForTenant(ctx, dbmodels.ListCreatorsByPublicIDsForTenantParams{
 		TenantID:  tenantID,
 		PublicIds: normalized,
 	})
@@ -78,7 +78,7 @@ func (s *adminServer) syncSeriesCreators(
 	replace bool,
 ) ([]*publirattypesv1.Creator, error) {
 	if replace {
-		if err := s.queries.DeleteSeriesCreatorsBySeriesID(ctx, seriesID); err != nil {
+		if err := s.queriesFor(ctx).DeleteSeriesCreatorsBySeriesID(ctx, seriesID); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	}
@@ -88,7 +88,7 @@ func (s *adminServer) syncSeriesCreators(
 	}
 	items := make([]*publirattypesv1.Creator, 0, len(creators))
 	for index, creator := range creators {
-		err := s.queries.CreateSeriesCreator(ctx, dbmodels.CreateSeriesCreatorParams{
+		err := s.queriesFor(ctx).CreateSeriesCreator(ctx, dbmodels.CreateSeriesCreatorParams{
 			SeriesID:     seriesID,
 			CreatorID:    creator.ID,
 			Role:         "creator",
@@ -109,7 +109,7 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 	if len(seriesIDs) == 0 {
 		return map[uuid.UUID][]*publirattypesv1.Creator{}, nil
 	}
-	rows, err := s.queries.ListSeriesCreatorsBySeriesIDs(ctx, seriesIDs)
+	rows, err := s.queriesFor(ctx).ListSeriesCreatorsBySeriesIDs(ctx, seriesIDs)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -145,7 +145,7 @@ func (s *adminServer) CreateSeries(
 	}
 	labelID := uuid.NullUUID{}
 	if strings.TrimSpace(req.Msg.LabelPublicId) != "" {
-		label, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.LabelPublicId})
+		label, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.LabelPublicId})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
@@ -158,13 +158,13 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	base, err := s.queries.CreateSeriesBase(ctx, dbmodels.CreateSeriesBaseParams{
+	base, err := s.queriesFor(ctx).CreateSeriesBase(ctx, dbmodels.CreateSeriesBaseParams{
 		ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: generatePublicID(), Title: req.Msg.Title,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
+	_, err = s.queriesFor(ctx).UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
 		SeriesID:           base.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
@@ -172,7 +172,7 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queries.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+	err = s.queriesFor(ctx).UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          base.ID,
 		IsPublished: req.Msg.IsPublished,
 	})
@@ -214,7 +214,7 @@ func (s *adminServer) UpdateSeries(
 	if req.Msg.ReadingPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
 	}
-	current, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	current, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
@@ -227,7 +227,7 @@ func (s *adminServer) UpdateSeries(
 	}
 	labelID := uuid.NullUUID{}
 	if labelPublicID != "" {
-		label, err := s.queries.GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: labelPublicID})
+		label, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: labelPublicID})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
@@ -236,11 +236,11 @@ func (s *adminServer) UpdateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	err = s.queries.UpdateSeriesBase(ctx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
+	err = s.queriesFor(ctx).UpdateSeriesBase(ctx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queries.UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
+	_, err = s.queriesFor(ctx).UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
 		SeriesID:           current.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
@@ -248,7 +248,7 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queries.UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+	err = s.queriesFor(ctx).UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,
 		IsPublished: req.Msg.IsPublished,
 	})
@@ -259,7 +259,7 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
-	updated, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	updated, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -296,7 +296,7 @@ func (s *adminServer) ListSeries(
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := s.queries.ListSeriesByTenant(ctx, dbmodels.ListSeriesByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	rows, err := s.queriesFor(ctx).ListSeriesByTenant(ctx, dbmodels.ListSeriesByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -345,7 +345,7 @@ func (s *adminServer) GetSeries(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queries.GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	row, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))

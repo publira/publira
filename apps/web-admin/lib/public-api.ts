@@ -6,6 +6,15 @@ const publicApiClient = createPublicApiClient({
   transport: "grpc",
 });
 
+const isExpectedNullableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("not_found") || message.includes("not found");
+};
+
 export const getTenantName = async (
   tenantPublicId: string
 ): Promise<string | null> => {
@@ -23,7 +32,10 @@ export const getTenantName = async (
     });
 
     return response.tenantName?.trim() || null;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };

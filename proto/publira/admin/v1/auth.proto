@@ -24,6 +24,25 @@ message AdminAuthServiceDeleteSessionRequest {
 
 message AdminAuthServiceDeleteSessionResponse {}
 
+message AdminAuthServiceRequestPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string email = 2;
+}
+
+message AdminAuthServiceRequestPasswordResetResponse {
+  bool requested = 1;
+}
+
+message AdminAuthServiceConfirmPasswordResetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+  string new_password = 3;
+}
+
+message AdminAuthServiceConfirmPasswordResetResponse {
+  bool confirmed = 1;
+}
+
 message AdminAuthServiceGetMeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string session_id = 2;
@@ -106,9 +125,34 @@ message AdminAuthServiceUpdateTenantConfigResponse {
   string site_tagline = 3;
 }
 
+message AdminAuthServiceRequestEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  string current_email = 3;
+  string new_email = 4;
+  string current_password = 5;
+}
+
+message AdminAuthServiceRequestEmailChangeResponse {
+  bool requested = 1;
+}
+
+message AdminAuthServiceConfirmEmailChangeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string token = 2;
+}
+
+message AdminAuthServiceConfirmEmailChangeResponse {
+  bool confirmed = 1;
+  bool changed = 2;
+  string pending_confirmation_for = 3;
+}
+
 service AdminAuthService {
   rpc CreateSession(AdminAuthServiceCreateSessionRequest) returns (AdminAuthServiceCreateSessionResponse) {}
   rpc DeleteSession(AdminAuthServiceDeleteSessionRequest) returns (AdminAuthServiceDeleteSessionResponse) {}
+  rpc RequestPasswordReset(AdminAuthServiceRequestPasswordResetRequest) returns (AdminAuthServiceRequestPasswordResetResponse) {}
+  rpc ConfirmPasswordReset(AdminAuthServiceConfirmPasswordResetRequest) returns (AdminAuthServiceConfirmPasswordResetResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}
   rpc GetTenantByDomain(AdminAuthServiceGetTenantByDomainRequest) returns (AdminAuthServiceGetTenantByDomainResponse) {}
   rpc GetTenant(AdminAuthServiceGetTenantRequest) returns (AdminAuthServiceGetTenantResponse) {}
@@ -116,4 +160,6 @@ service AdminAuthService {
   rpc GetTenantAdminInvitationState(AdminAuthServiceGetTenantAdminInvitationStateRequest) returns (AdminAuthServiceGetTenantAdminInvitationStateResponse) {}
   rpc AcceptTenantAdminInvitation(AdminAuthServiceAcceptTenantAdminInvitationRequest) returns (AdminAuthServiceAcceptTenantAdminInvitationResponse) {}
   rpc UpdateTenantConfig(AdminAuthServiceUpdateTenantConfigRequest) returns (AdminAuthServiceUpdateTenantConfigResponse) {}
+  rpc RequestEmailChange(AdminAuthServiceRequestEmailChangeRequest) returns (AdminAuthServiceRequestEmailChangeResponse) {}
+  rpc ConfirmEmailChange(AdminAuthServiceConfirmEmailChangeRequest) returns (AdminAuthServiceConfirmEmailChangeResponse) {}
 }

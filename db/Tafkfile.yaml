@@ -40,9 +40,11 @@ tasks:
       - "{{.MIGRATE}} down 1"
 
   seed:
-    desc: Seed the database with initial data
+    desc: "Seed the database. ENV=prod for production seed, default: dev"
+    vars:
+      ENV: '{{default "dev" .ENV}}'
     cmds:
-      - psql {{.DB_URL}} -f seeds/seed.sql
+      - psql {{.DB_URL}} -f seeds/{{.ENV}}.sql
 
   setup:
     desc: Initialize database schema and seed data
