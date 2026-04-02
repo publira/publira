@@ -115,7 +115,7 @@ const parseTenantThemeFormData = (formData: FormData): TenantThemeSchemaInput =>
   ) as TenantThemeSchemaInput;
 
 const mapThemeFieldErrors = (
-  fieldErrors: z.typeToFlattenedError<TenantThemeSchemaInput>["fieldErrors"]
+  fieldErrors: z.ZodFlattenedError<TenantThemeSchemaInput>["fieldErrors"]
 ): ThemeSettingsFieldErrors =>
   Object.fromEntries(
     tenantThemeFormFieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
