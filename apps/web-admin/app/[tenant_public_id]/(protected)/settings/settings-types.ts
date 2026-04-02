@@ -81,3 +81,14 @@ export type TenantSmtpTestFormState =
       message: string;
     }
   | null;
+
+export type EmailChangeActionState =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;

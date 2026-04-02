@@ -10,6 +10,7 @@ import { resolveTenantPublicId } from "./lib/tenant";
 
 const PUBLIC_PATHS = new Set([
   "/accept-invite",
+  "/confirm-email",
   "/confirm-password",
   "/forgot-password",
   "/login",

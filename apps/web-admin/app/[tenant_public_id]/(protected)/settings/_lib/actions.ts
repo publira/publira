@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { requestAdminEmailChange } from "../../../../../lib/admin-auth";
 import {
   sendTenantSmtpTestEmail,
   updateTenantEmailSettings,
@@ -12,9 +13,11 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "../../../../../lib/email-settings-shared";
+import { getSessionId } from "../../../../../lib/session";
 import { updateTenantSiteSettings } from "../../../../../lib/site-settings";
 import { updateTenantThemeSettings } from "../../../../../lib/theme-settings";
 import type {
+  EmailChangeActionState,
   SiteSettingsActionState,
   ThemeSettingsActionState,
   ThemeSettingsFieldErrors,
@@ -304,5 +307,58 @@ export const sendTenantSmtpTestEmailAction = async (
     message: `接続テストメールを送信しました（送信先: ${result.recipientEmail}）。`,
     ok: true,
     recipientEmail: result.recipientEmail,
+  };
+};
+
+export const requestEmailChangeAction = async (
+  _prevState: EmailChangeActionState,
+  formData: FormData
+): Promise<EmailChangeActionState> => {
+  const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
+  const currentEmail = String(formData.get("current_email") ?? "").trim();
+  const newEmail = String(formData.get("new_email") ?? "").trim();
+  const currentPassword = String(formData.get("current_password") ?? "");
+
+  if (!tenantPublicId) {
+    return {
+      message: "テナント ID が見つかりません。",
+      ok: false,
+    };
+  }
+
+  if (!currentEmail || !newEmail || !currentPassword) {
+    return {
+      message: "すべての項目を入力してください。",
+      ok: false,
+    };
+  }
+
+  const sessionId = await getSessionId();
+  if (!sessionId) {
+    return {
+      message: "セッションが無効です。再度ログインしてください。",
+      ok: false,
+    };
+  }
+
+  const result = await requestAdminEmailChange(
+    tenantPublicId,
+    sessionId,
+    currentEmail,
+    newEmail,
+    currentPassword
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  return {
+    message:
+      "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。",
+    ok: true,
   };
 };
