@@ -122,6 +122,15 @@ type PlatformUser struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+type PlatformUserPasswordResetToken struct {
+	ID             uuid.UUID    `json:"id"`
+	PlatformUserID uuid.UUID    `json:"platform_user_id"`
+	TokenHash      string       `json:"token_hash"`
+	ExpiresAt      time.Time    `json:"expires_at"`
+	CompletedAt    sql.NullTime `json:"completed_at"`
+	CreatedAt      time.Time    `json:"created_at"`
+}
+
 type PlatformUserRole struct {
 	ID             uuid.UUID `json:"id"`
 	Role           string    `json:"role"`

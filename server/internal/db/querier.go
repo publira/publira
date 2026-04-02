@@ -31,6 +31,7 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreatePlatformSession(ctx context.Context, arg CreatePlatformSessionParams) (PlatformSession, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
+	CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error)
 	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
@@ -44,6 +45,7 @@ type Querier interface {
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
 	CreateUserEmailVerificationToken(ctx context.Context, arg CreateUserEmailVerificationTokenParams) (UserEmailVerificationToken, error)
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
+	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	// テナントユーザーのロールをすべて削除する
@@ -65,6 +67,7 @@ type Querier interface {
 	GetPlatformSessionByTokenHash(ctx context.Context, tokenHash string) (PlatformSession, error)
 	GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error)
 	GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error)
+	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
@@ -127,6 +130,7 @@ type Querier interface {
 	// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
+	MarkPlatformUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	MarkTenantAdminInvitationAccepted(ctx context.Context, arg MarkTenantAdminInvitationAcceptedParams) (TenantAdminInvitation, error)
 	MarkUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
@@ -144,6 +148,7 @@ type Querier interface {
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
+	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
 	// プラットフォームユーザーのステータスを更新
 	UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatformUserStatusParams) (PlatformUser, error)
 	UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error

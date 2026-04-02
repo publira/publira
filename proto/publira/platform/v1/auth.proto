@@ -20,6 +20,31 @@ message PlatformAuthServiceDeleteSessionRequest {}
 
 message PlatformAuthServiceDeleteSessionResponse {}
 
+message PlatformAuthServiceRequestPasswordResetRequest {
+  string email = 1;
+}
+
+message PlatformAuthServiceRequestPasswordResetResponse {
+  bool requested = 1;
+}
+
+message PlatformAuthServiceVerifyPasswordResetTokenRequest {
+  string token = 1;
+}
+
+message PlatformAuthServiceVerifyPasswordResetTokenResponse {
+  bool valid = 1;
+}
+
+message PlatformAuthServiceConfirmPasswordResetRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message PlatformAuthServiceConfirmPasswordResetResponse {
+  bool confirmed = 1;
+}
+
 message PlatformAuthServiceGetMeRequest {}
 
 message PlatformAuthServiceGetMeResponse {
@@ -29,5 +54,8 @@ message PlatformAuthServiceGetMeResponse {
 service PlatformAuthService {
   rpc CreateSession(PlatformAuthServiceCreateSessionRequest) returns (PlatformAuthServiceCreateSessionResponse) {}
   rpc DeleteSession(PlatformAuthServiceDeleteSessionRequest) returns (PlatformAuthServiceDeleteSessionResponse) {}
+  rpc RequestPasswordReset(PlatformAuthServiceRequestPasswordResetRequest) returns (PlatformAuthServiceRequestPasswordResetResponse) {}
+  rpc VerifyPasswordResetToken(PlatformAuthServiceVerifyPasswordResetTokenRequest) returns (PlatformAuthServiceVerifyPasswordResetTokenResponse) {}
+  rpc ConfirmPasswordReset(PlatformAuthServiceConfirmPasswordResetRequest) returns (PlatformAuthServiceConfirmPasswordResetResponse) {}
   rpc GetMe(PlatformAuthServiceGetMeRequest) returns (PlatformAuthServiceGetMeResponse) {}
 }

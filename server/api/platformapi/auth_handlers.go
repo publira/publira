@@ -7,6 +7,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"net/mail"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -17,11 +20,14 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailsettings"
 )
 
 const (
-	rolePlatformOperator   = auth.RolePlatformOperator
-	rolePlatformSuperAdmin = auth.RolePlatformSuperAdmin
+	rolePlatformOperator          = auth.RolePlatformOperator
+	rolePlatformSuperAdmin        = auth.RolePlatformSuperAdmin
+	platformPasswordResetTokenTTL = 24 * time.Hour
+	defaultPlatformAppURL         = "http://platform.localhost:3080"
 )
 
 func invalidSessionError() error {
@@ -75,6 +81,79 @@ func (s *platformServer) authenticatePlatformSession(
 		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", platformRoleRequiredError()
 	}
 	return lookup.Session, platformUser, resolvedRole, nil
+}
+
+func platformPasswordResetConfirmationURL(token string) (string, error) {
+	baseURL := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_APP_URL"))
+	if baseURL == "" {
+		baseURL = defaultPlatformAppURL
+	}
+
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return "", errors.New("platform app url is invalid")
+	}
+
+	confirmURL := parsed.ResolveReference(&url.URL{Path: "/confirm-password"})
+	query := confirmURL.Query()
+	query.Set("token", token)
+	confirmURL.RawQuery = query.Encode()
+	return confirmURL.String(), nil
+}
+
+func (s *platformServer) resolvePlatformSMTPSettings(ctx context.Context) (emailsettings.SMTPSettings, error) {
+	platformConfig, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
+		}
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
+	}
+
+	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
+	if decryptErr != nil {
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
+	}
+
+	settings := platformEmailSettingsFromConfig(platformConfig, password)
+	if validateErr := emailsettings.Validate(settings, true); validateErr != nil {
+		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, validateErr)
+	}
+	return settings, nil
+}
+
+func (s *platformServer) sendPlatformPasswordResetEmail(
+	ctx context.Context,
+	recipientEmail string,
+	token string,
+) error {
+	if s.mailer == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+
+	settings, err := s.resolvePlatformSMTPSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	confirmURL, err := platformPasswordResetConfirmationURL(token)
+	if err != nil {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
+	subject := "Publira Platform Console パスワード再設定"
+	body := "Platform Console アカウントのパスワード再設定リクエストを受け付けました。\r\n" +
+		"以下のリンクを開いて新しいパスワードを設定してください。\r\n\r\n" +
+		confirmURL + "\r\n\r\n" +
+		"このリンクの有効期限は24時間です。\r\n" +
+		"心当たりがない場合、このメールは破棄してください。\r\n"
+	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
 }
 
 func (s *platformServer) CreateSession(
@@ -169,6 +248,154 @@ func (s *platformServer) DeleteSession(
 	}
 	auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "session_revoked")
 	return response, nil
+}
+
+func (s *platformServer) RequestPasswordReset(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceRequestPasswordResetRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse], error) {
+	email := strings.TrimSpace(req.Msg.Email)
+	if email == "" {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+
+	platformUser, err := s.queriesFor(ctx).GetPlatformUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "platform_password_reset_request", "success", "", "", "requested")
+			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse{Requested: true}), nil
+		}
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.queriesFor(ctx).DeletePlatformUserPasswordResetTokensByUserID(ctx, platformUser.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_delete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	resetToken := hex.EncodeToString(rawToken)
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	_, err = s.queriesFor(ctx).CreatePlatformUserPasswordResetToken(ctx, dbmodels.CreatePlatformUserPasswordResetTokenParams{
+		ID:             tokenID,
+		PlatformUserID: platformUser.ID,
+		TokenHash:      auth.HashToken(resetToken),
+		ExpiresAt:      time.Now().Add(platformPasswordResetTokenTTL),
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_create_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.sendPlatformPasswordResetEmail(ctx, platformUser.Email, resetToken); err != nil {
+		_ = s.queriesFor(ctx).DeletePlatformUserPasswordResetTokensByUserID(ctx, platformUser.ID)
+		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "reset_email_send_failed")
+		return nil, err
+	}
+
+	auth.AuditEvent(req.Header(), "platform_password_reset_request", "success", "", platformUser.PublicID, "requested")
+	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse{Requested: true}), nil
+}
+
+func (s *platformServer) VerifyPasswordResetToken(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse], error) {
+	token := strings.TrimSpace(req.Msg.Token)
+	if token == "" {
+		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: false}), nil
+	}
+
+	resetToken, err := s.queriesFor(ctx).GetPlatformUserPasswordResetTokenByHash(ctx, auth.HashToken(token))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: false}), nil
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	valid := !resetToken.CompletedAt.Valid && resetToken.ExpiresAt.After(time.Now())
+	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: valid}), nil
+}
+
+func (s *platformServer) ConfirmPasswordReset(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse], error) {
+	token := strings.TrimSpace(req.Msg.Token)
+	newPassword := strings.TrimSpace(req.Msg.NewPassword)
+	if token == "" || newPassword == "" {
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
+	}
+
+	resetToken, err := s.queriesFor(ctx).GetPlatformUserPasswordResetTokenByHash(ctx, auth.HashToken(token))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "invalid_token")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
+		}
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "token_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if resetToken.CompletedAt.Valid {
+		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse{Confirmed: true}), nil
+	}
+	if !resetToken.ExpiresAt.After(time.Now()) {
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "expired_token")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
+	}
+
+	platformUser, err := s.queriesFor(ctx).GetPlatformUserByID(ctx, resetToken.PlatformUserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "user_not_found")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
+		}
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	passwordHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_hash_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if _, err := s.queriesFor(ctx).UpdatePlatformUserPasswordHashByID(ctx, dbmodels.UpdatePlatformUserPasswordHashByIDParams{
+		ID:           platformUser.ID,
+		PasswordHash: passwordHash,
+	}); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_update_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queriesFor(ctx).TerminatePlatformUserSessions(ctx, platformUser.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "session_terminate_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queriesFor(ctx).MarkPlatformUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "token_complete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "success", "", platformUser.PublicID, "confirmed")
+	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse{Confirmed: true}), nil
 }
 
 func (s *platformServer) GetMe(

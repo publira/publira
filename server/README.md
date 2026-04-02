@@ -65,6 +65,13 @@ task server:build
   - `S3_FORCE_PATH_STYLE` (任意, `true`/`false`)
   - `S3_PUBLIC_BASE_URL` (任意)
 
+## Platform Console URL
+
+- `PUBLIRA_PLATFORM_APP_URL`
+  - platform-auth のパスワード再設定メールに含める Platform Console のベース URL
+  - 例: `https://platform.example.com`
+  - 未設定時はローカル開発向けに `http://platform.localhost:3080` を使用
+
 ## 機密情報の暗号化設定 (AES-GCM)
 
 機密情報を保存時に AES-GCM で暗号化するための基盤を用意しています。
