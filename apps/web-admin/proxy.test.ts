@@ -37,4 +37,23 @@ describe("web-admin proxy", () => {
       "https://admin.example.com/login?next=%2Fseries%3Fdraft%3D1"
     );
   });
+
+  it.each(["/forgot-password", "/confirm-password?token=test-token"])(
+    "公開ルート %s は未認証でも到達できる",
+    async (path) => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      mockResolveTenantPublicId.mockResolvedValueOnce("tenant_001");
+
+      const response = await proxy(
+        new NextRequest(`https://admin.example.com${path}`)
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-middleware-rewrite")).toContain(
+        "/tenant_001"
+      );
+    }
+  );
 });

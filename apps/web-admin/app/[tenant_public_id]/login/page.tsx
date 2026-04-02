@@ -5,6 +5,7 @@ import { Input } from "@publira/ui-components/input";
 import { guardPlaceholder } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
@@ -26,6 +27,7 @@ interface LoginPageProps {
     error?: string;
     invited?: string;
     next?: string;
+    reset?: string;
   }>;
 }
 
@@ -94,6 +96,10 @@ const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
   const defaultEmail = sp.email?.trim() ?? "";
   const invitedDone = sp.invited?.trim() === "done";
   const nextPath = sanitizeRedirectPath(sp.next);
+  const passwordResetDone = sp.reset?.trim() === "done";
+  const forgotPasswordHref = defaultEmail
+    ? `/forgot-password?${new URLSearchParams({ email: defaultEmail }).toString()}`
+    : "/forgot-password";
 
   return (
     <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
@@ -140,9 +146,24 @@ const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
           </FormMessage>
         ) : null}
 
+        {passwordResetDone ? (
+          <FormMessage variant="success">
+            パスワードを再設定しました。新しいパスワードでログインしてください。
+          </FormMessage>
+        ) : null}
+
         {errorMessage ? (
           <FormMessage variant="destructive">{errorMessage}</FormMessage>
         ) : null}
+
+        <div className="text-right text-sm">
+          <Link
+            className="font-medium text-primary hover:underline"
+            href={forgotPasswordHref}
+          >
+            パスワードを忘れた場合
+          </Link>
+        </div>
 
         <Button className="mt-2 w-full" type="submit">
           ログイン

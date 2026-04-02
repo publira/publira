@@ -2,22 +2,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   acceptTenantAdminInvitation,
+  confirmAdminPasswordReset,
   getAdminCurrentUser,
   getTenantAdminInvitationState,
   isAdminSessionValid,
   isTenantAdminRole,
+  requestAdminPasswordReset,
 } from "./admin-auth";
 
 const {
   mockAcceptTenantAdminInvitation,
+  mockConfirmPasswordReset,
   mockGetMe,
   mockGetSessionId,
   mockGetTenantAdminInvitationState,
+  mockRequestPasswordReset,
 } = vi.hoisted(() => ({
   mockAcceptTenantAdminInvitation: vi.fn(),
+  mockConfirmPasswordReset: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockGetTenantAdminInvitationState: vi.fn(),
+  mockRequestPasswordReset: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -28,10 +34,12 @@ vi.mock("@publira/api-client/admin/client", () => ({
   createAdminApiClient: () => ({
     auth: {
       acceptTenantAdminInvitation: mockAcceptTenantAdminInvitation,
+      confirmPasswordReset: mockConfirmPasswordReset,
       createSession: vi.fn(),
       deleteSession: vi.fn(),
       getMe: mockGetMe,
       getTenantAdminInvitationState: mockGetTenantAdminInvitationState,
+      requestPasswordReset: mockRequestPasswordReset,
     },
   }),
 }));
@@ -210,6 +218,67 @@ describe("tenant admin invitation", () => {
     ).resolves.toEqual({
       message: "招待リンクの有効期限が切れています。",
       ok: false,
+    });
+  });
+});
+
+describe("admin password reset", () => {
+  it("再設定メール送信が成功する", async () => {
+    mockRequestPasswordReset.mockResolvedValueOnce({ requested: true });
+
+    await expect(
+      requestAdminPasswordReset("tenant_001", "admin@example.com")
+    ).resolves.toEqual({ ok: true, requested: true });
+  });
+
+  it("再設定メール送信の入力エラーを変換する", async () => {
+    mockRequestPasswordReset.mockRejectedValueOnce(
+      new Error("invalid_argument: invalid email address")
+    );
+
+    await expect(
+      requestAdminPasswordReset("tenant_001", "invalid")
+    ).resolves.toEqual({
+      message: "メールアドレスを確認してください。",
+      ok: false,
+    });
+  });
+
+  it("パスワード再設定が成功する", async () => {
+    mockConfirmPasswordReset.mockResolvedValueOnce({ confirmed: true });
+
+    await expect(
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123")
+    ).resolves.toEqual({ confirmed: true, ok: true });
+  });
+
+  it("期限切れトークンを期限切れ導線に変換する", async () => {
+    mockConfirmPasswordReset.mockRejectedValueOnce(
+      new Error("failed_precondition: password reset token expired")
+    );
+
+    await expect(
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123")
+    ).resolves.toEqual({
+      message:
+        "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+      ok: false,
+      reason: "expired",
+    });
+  });
+
+  it("不正トークンを無効導線に変換する", async () => {
+    mockConfirmPasswordReset.mockRejectedValueOnce(
+      new Error("not_found: password reset token not found")
+    );
+
+    await expect(
+      confirmAdminPasswordReset("tenant_001", "token_001", "password123")
+    ).resolves.toEqual({
+      message:
+        "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+      ok: false,
+      reason: "invalid",
     });
   });
 });
