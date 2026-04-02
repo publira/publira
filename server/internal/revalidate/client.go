@@ -1,0 +1,208 @@
+package revalidate
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
+	"time"
+)
+
+type Client struct {
+	token      string
+	httpClient *http.Client
+	logger     *slog.Logger
+}
+
+type requestPayload struct {
+	TenantPublicID string   `json:"tenantPublicId"`
+	Tags           []string `json:"tags"`
+}
+
+const internalRevalidateBaseURL = "http://traefik"
+
+func NewClient(token string, logger *slog.Logger) *Client {
+	normalizedToken := strings.TrimSpace(token)
+	if normalizedToken == "" {
+		return nil
+	}
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Client{
+		token: normalizedToken,
+		httpClient: &http.Client{
+			Timeout: 5 * time.Second,
+		},
+		logger: logger,
+	}
+}
+
+func (c *Client) RevalidateTags(ctx context.Context, tenantPublicID, tenantDomain string, tags []string) error {
+	if c == nil {
+		return nil
+	}
+	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
+	if normalizedTenantPublicID == "" {
+		return fmt.Errorf("tenantPublicId is required")
+	}
+	normalizedTenantDomain, err := normalizeTenantDomain(tenantDomain)
+	if err != nil {
+		return err
+	}
+
+	normalizedTags := normalizeTags(tags)
+	if len(normalizedTags) == 0 {
+		return nil
+	}
+
+	publicPrefix := fmt.Sprintf("tenant:%s:public:", normalizedTenantPublicID)
+	catalogPrefix := fmt.Sprintf("tenant:%s:catalog:", normalizedTenantPublicID)
+
+	targets := []struct {
+		path string
+		tags []string
+	}{
+		{
+			path: "/api/revalidate",
+			tags: filterByPrefix(normalizedTags, publicPrefix),
+		},
+		{
+			path: "/api/catalog/revalidate",
+			tags: filterByPrefix(normalizedTags, catalogPrefix),
+		},
+	}
+
+	var errs []string
+	for _, target := range targets {
+		if len(target.tags) == 0 {
+			continue
+		}
+
+		endpoint, err := buildEndpoint(internalRevalidateBaseURL, target.path)
+		if err != nil {
+			errs = append(errs, err.Error())
+			continue
+		}
+		if err := c.sendRequest(ctx, endpoint, normalizedTenantPublicID, normalizedTenantDomain, target.tags); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("revalidate request failed: %s", strings.Join(errs, "; "))
+	}
+
+	return nil
+}
+
+func buildEndpoint(baseURL, reqPath string) (string, error) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid revalidate base url %q: %w", baseURL, err)
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return "", fmt.Errorf("invalid revalidate base url %q", baseURL)
+	}
+	parsed.Path = path.Join(parsed.Path, reqPath)
+	parsed.RawPath = ""
+	return parsed.String(), nil
+}
+
+func (c *Client) sendRequest(ctx context.Context, endpoint, tenantPublicID, tenantDomain string, tags []string) error {
+	payload, err := json.Marshal(requestPayload{
+		TenantPublicID: tenantPublicID,
+		Tags:           tags,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal revalidate payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create revalidate request: %w", err)
+	}
+	req.Host = tenantDomain
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("x-revalidate-token", c.token)
+	req.Header.Set("x-forwarded-host", tenantDomain)
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send revalidate request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
+		return fmt.Errorf("revalidate endpoint returned status=%d body=%q", res.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	c.logger.Info(
+		"next revalidate requested",
+		"tenant_public_id", tenantPublicID,
+		"tenant_domain", tenantDomain,
+		"tags", tags,
+		"endpoint", endpoint,
+	)
+	return nil
+}
+
+func filterByPrefix(tags []string, prefix string) []string {
+	if len(tags) == 0 {
+		return nil
+	}
+	filtered := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if strings.HasPrefix(tag, prefix) {
+			filtered = append(filtered, tag)
+		}
+	}
+	return filtered
+}
+
+func normalizeTenantDomain(tenantDomain string) (string, error) {
+	normalized := strings.TrimSpace(tenantDomain)
+	if normalized == "" {
+		return "", fmt.Errorf("tenant domain is required")
+	}
+	if strings.Contains(normalized, "://") {
+		parsed, err := url.Parse(normalized)
+		if err != nil {
+			return "", fmt.Errorf("invalid tenant domain: %w", err)
+		}
+		normalized = strings.TrimSpace(parsed.Host)
+	}
+	normalized = strings.Trim(normalized, "/")
+	if normalized == "" {
+		return "", fmt.Errorf("tenant domain is required")
+	}
+	return normalized, nil
+}
+
+
+func normalizeTags(tags []string) []string {
+	if len(tags) == 0 {
+		return nil
+	}
+	uniq := make(map[string]struct{}, len(tags))
+	normalized := make([]string, 0, len(tags))
+	for _, raw := range tags {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := uniq[trimmed]; ok {
+			continue
+		}
+		uniq[trimmed] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+	return normalized
+}

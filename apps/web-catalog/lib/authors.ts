@@ -1,3 +1,4 @@
+import { applyCacheTag, tenantCatalogAuthorsTag } from "./cache-tags";
 import { listPublishedSeries } from "./catalog";
 
 const SERIES_FETCH_BATCH_SIZE = 50;
@@ -104,6 +105,9 @@ export const listPublishedAuthors = async (
   } = {}
 ): Promise<PublishedAuthorListResult> => {
   "use cache";
+
+  const normalizedTenantPublicId = tenantPublicId.trim();
+  applyCacheTag(tenantCatalogAuthorsTag(normalizedTenantPublicId));
 
   const targetEndIndex = page * pageSize + 1;
   const authorSeriesMap = new Map<

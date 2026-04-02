@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -40,6 +41,13 @@ func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (s
 		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New("scheduled_at must be in the future"))
 	}
 	return sql.NullTime{Time: normalized, Valid: true}, nil
+}
+
+func episodeScheduleRevalidateTags(tenantPublicID string) []string {
+	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
+	return []string{
+		fmt.Sprintf("tenant:%s:catalog:series:detail", normalizedTenantPublicID),
+	}
 }
 
 func (s *adminServer) ListEpisodes(
@@ -393,6 +401,11 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 			Outcome:     auditlog.OutcomeSuccess,
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
+	}
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, episodeScheduleRevalidateTags(tenant.PublicID)); err != nil {
+			s.logger.Warn("failed to request next revalidate after episode schedule update", "tenant_public_id", tenant.PublicID, "episode_public_id", req.Msg.EpisodePublicId, "error", err)
+		}
 	}
 	return connect.NewResponse(&publiraadminv1.UpdateEpisodePublishScheduleResponse{Episode: protomapper.EpisodeFromGetEpisodeByPublicIDForTenantRow(ep)}), nil
 }
