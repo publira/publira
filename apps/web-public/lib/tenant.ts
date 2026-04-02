@@ -1,7 +1,7 @@
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
-import { tenantPublicSiteTag } from "./cache-tags";
+import { applyCacheTag, tenantPublicSiteTag } from "./cache-tags";
 
 export interface TenantSiteInfo {
   copyrightText?: string;
@@ -43,7 +43,7 @@ export const getTenantSiteInfo = async (
     return null;
   }
 
-  cacheTag(tenantPublicSiteTag(normalizedTenantPublicId));
+  applyCacheTag(tenantPublicSiteTag(normalizedTenantPublicId));
 
   try {
     const response = await apiClient.tenant.getTenant({

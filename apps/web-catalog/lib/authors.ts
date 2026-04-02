@@ -1,6 +1,5 @@
+import { applyCacheTag, tenantCatalogAuthorsTag } from "./cache-tags";
 import { listPublishedSeries } from "./catalog";
-import { tenantCatalogAuthorsTag } from "./cache-tags";
-import { cacheTag } from "next/cache";
 
 const SERIES_FETCH_BATCH_SIZE = 50;
 const FALLBACK_AUTHOR_ID_PREFIX = "name_";
@@ -108,7 +107,7 @@ export const listPublishedAuthors = async (
   "use cache";
 
   const normalizedTenantPublicId = tenantPublicId.trim();
-  cacheTag(tenantCatalogAuthorsTag(normalizedTenantPublicId));
+  applyCacheTag(tenantCatalogAuthorsTag(normalizedTenantPublicId));
 
   const targetEndIndex = page * pageSize + 1;
   const authorSeriesMap = new Map<

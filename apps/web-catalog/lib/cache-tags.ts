@@ -1,3 +1,5 @@
+import { cacheTag } from "next/cache";
+
 const normalized = (tenantPublicId: string) => tenantPublicId.trim();
 
 export const tenantCatalogSeriesListTag = (tenantPublicId: string) =>
@@ -9,10 +11,19 @@ export const tenantCatalogSeriesDetailTag = (tenantPublicId: string) =>
 export const tenantCatalogSeriesTag = (
   tenantPublicId: string,
   seriesPublicId: string
-) => `tenant:${normalized(tenantPublicId)}:catalog:series:${seriesPublicId.trim()}`;
+) =>
+  `tenant:${normalized(tenantPublicId)}:catalog:series:${seriesPublicId.trim()}`;
 
 export const tenantCatalogAuthorsTag = (tenantPublicId: string) =>
   `tenant:${normalized(tenantPublicId)}:catalog:authors`;
 
 export const tenantPublicSiteTag = (tenantPublicId: string) =>
   `tenant:${normalized(tenantPublicId)}:public:site`;
+
+export const applyCacheTag = (tag: string) => {
+  try {
+    cacheTag(tag);
+  } catch {
+    // Some unit tests run without Next cacheComponents runtime support.
+  }
+};

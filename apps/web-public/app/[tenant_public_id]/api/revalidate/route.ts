@@ -69,10 +69,7 @@ export const POST = async (request: NextRequest, { params }: RouteContext) => {
 
   const tenantPublicId = parsed.data.tenantPublicId.trim();
   if (tenantPublicId !== tenantPublicIdFromPath) {
-    return NextResponse.json(
-      { error: "tenant mismatch" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "tenant mismatch" }, { status: 400 });
   }
 
   const allowedPrefix = `tenant:${tenantPublicId}:public:`;
