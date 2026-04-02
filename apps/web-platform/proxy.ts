@@ -6,9 +6,12 @@ import { isSetupCompleted } from "./lib/setup";
 
 const PUBLIC_PATHS = new Set([
   "/confirm-email",
+  "/confirm-password",
   "/login",
   "/logout",
   "/healthz",
+  "/reset-password",
+  "/reset-password/requested",
   "/setup",
 ]);
 
