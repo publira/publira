@@ -418,6 +418,57 @@ func (q *Queries) CreatePlatformUser(ctx context.Context, arg CreatePlatformUser
 	return i, err
 }
 
+const createPlatformUserEmailChangeToken = `-- name: CreatePlatformUserEmailChangeToken :one
+INSERT INTO platform_user_email_change_tokens (
+        id,
+        platform_user_id,
+        current_email,
+        new_email,
+        current_email_token_hash,
+        new_email_token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, platform_user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at
+`
+
+type CreatePlatformUserEmailChangeTokenParams struct {
+	ID                    uuid.UUID `json:"id"`
+	PlatformUserID        uuid.UUID `json:"platform_user_id"`
+	CurrentEmail          string    `json:"current_email"`
+	NewEmail              string    `json:"new_email"`
+	CurrentEmailTokenHash string    `json:"current_email_token_hash"`
+	NewEmailTokenHash     string    `json:"new_email_token_hash"`
+	ExpiresAt             time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error) {
+	row := q.db.QueryRowContext(ctx, createPlatformUserEmailChangeToken,
+		arg.ID,
+		arg.PlatformUserID,
+		arg.CurrentEmail,
+		arg.NewEmail,
+		arg.CurrentEmailTokenHash,
+		arg.NewEmailTokenHash,
+		arg.ExpiresAt,
+	)
+	var i PlatformUserEmailChangeToken
+	err := row.Scan(
+		&i.ID,
+		&i.PlatformUserID,
+		&i.CurrentEmail,
+		&i.NewEmail,
+		&i.CurrentEmailTokenHash,
+		&i.NewEmailTokenHash,
+		&i.CurrentEmailConfirmedAt,
+		&i.NewEmailConfirmedAt,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPlatformUserPasswordResetToken = `-- name: CreatePlatformUserPasswordResetToken :one
 INSERT INTO platform_user_password_reset_tokens (
         id,
@@ -903,6 +954,17 @@ func (q *Queries) CreateUserPasswordResetToken(ctx context.Context, arg CreateUs
 	return i, err
 }
 
+const deletePlatformUserEmailChangeTokensByUserID = `-- name: DeletePlatformUserEmailChangeTokensByUserID :exec
+DELETE FROM platform_user_email_change_tokens
+WHERE platform_user_id = $1
+    AND completed_at IS NULL
+`
+
+func (q *Queries) DeletePlatformUserEmailChangeTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deletePlatformUserEmailChangeTokensByUserID, platformUserID)
+	return err
+}
+
 const deletePlatformUserPasswordResetTokensByUserID = `-- name: DeletePlatformUserPasswordResetTokensByUserID :exec
 DELETE FROM platform_user_password_reset_tokens
 WHERE platform_user_id = $1
@@ -1319,6 +1381,53 @@ func (q *Queries) GetPlatformUserByID(ctx context.Context, id uuid.UUID) (Platfo
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPlatformUserEmailChangeTokenByHash = `-- name: GetPlatformUserEmailChangeTokenByHash :one
+SELECT id, platform_user_id, current_email, new_email, current_email_token_hash, new_email_token_hash, current_email_confirmed_at, new_email_confirmed_at, expires_at, completed_at, created_at,
+    CASE
+        WHEN current_email_token_hash = $1 THEN 'current_email'::text
+        ELSE 'new_email'::text
+    END AS matched_target
+FROM platform_user_email_change_tokens
+WHERE current_email_token_hash = $1
+    OR new_email_token_hash = $1
+LIMIT 1
+`
+
+type GetPlatformUserEmailChangeTokenByHashRow struct {
+	ID                      uuid.UUID    `json:"id"`
+	PlatformUserID          uuid.UUID    `json:"platform_user_id"`
+	CurrentEmail            string       `json:"current_email"`
+	NewEmail                string       `json:"new_email"`
+	CurrentEmailTokenHash   string       `json:"current_email_token_hash"`
+	NewEmailTokenHash       string       `json:"new_email_token_hash"`
+	CurrentEmailConfirmedAt sql.NullTime `json:"current_email_confirmed_at"`
+	NewEmailConfirmedAt     sql.NullTime `json:"new_email_confirmed_at"`
+	ExpiresAt               time.Time    `json:"expires_at"`
+	CompletedAt             sql.NullTime `json:"completed_at"`
+	CreatedAt               time.Time    `json:"created_at"`
+	MatchedTarget           string       `json:"matched_target"`
+}
+
+func (q *Queries) GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformUserEmailChangeTokenByHash, currentEmailTokenHash)
+	var i GetPlatformUserEmailChangeTokenByHashRow
+	err := row.Scan(
+		&i.ID,
+		&i.PlatformUserID,
+		&i.CurrentEmail,
+		&i.NewEmail,
+		&i.CurrentEmailTokenHash,
+		&i.NewEmailTokenHash,
+		&i.CurrentEmailConfirmedAt,
+		&i.NewEmailConfirmedAt,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.MatchedTarget,
 	)
 	return i, err
 }
@@ -3340,6 +3449,39 @@ func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID)
 	return err
 }
 
+const markPlatformUserEmailChangeCompleted = `-- name: MarkPlatformUserEmailChangeCompleted :exec
+UPDATE platform_user_email_change_tokens
+SET completed_at = COALESCE(completed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markPlatformUserEmailChangeCompleted, id)
+	return err
+}
+
+const markPlatformUserEmailChangeCurrentEmailConfirmed = `-- name: MarkPlatformUserEmailChangeCurrentEmailConfirmed :exec
+UPDATE platform_user_email_change_tokens
+SET current_email_confirmed_at = COALESCE(current_email_confirmed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markPlatformUserEmailChangeCurrentEmailConfirmed, id)
+	return err
+}
+
+const markPlatformUserEmailChangeNewEmailConfirmed = `-- name: MarkPlatformUserEmailChangeNewEmailConfirmed :exec
+UPDATE platform_user_email_change_tokens
+SET new_email_confirmed_at = COALESCE(new_email_confirmed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkPlatformUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markPlatformUserEmailChangeNewEmailConfirmed, id)
+	return err
+}
+
 const markPlatformUserPasswordResetTokenCompleted = `-- name: MarkPlatformUserPasswordResetTokenCompleted :exec
 UPDATE platform_user_password_reset_tokens
 SET completed_at = COALESCE(completed_at, NOW())
@@ -3592,6 +3734,33 @@ type UpdateLabelParams struct {
 func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
 	_, err := q.db.ExecContext(ctx, updateLabel, arg.ID, arg.Name)
 	return err
+}
+
+const updatePlatformUserEmailByID = `-- name: UpdatePlatformUserEmailByID :one
+UPDATE platform_users
+SET email = $2
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, status, created_at
+`
+
+type UpdatePlatformUserEmailByIDParams struct {
+	ID    uuid.UUID `json:"id"`
+	Email string    `json:"email"`
+}
+
+func (q *Queries) UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, updatePlatformUserEmailByID, arg.ID, arg.Email)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updatePlatformUserPasswordHashByID = `-- name: UpdatePlatformUserPasswordHashByID :one

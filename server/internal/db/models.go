@@ -122,6 +122,20 @@ type PlatformUser struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+type PlatformUserEmailChangeToken struct {
+	ID                      uuid.UUID    `json:"id"`
+	PlatformUserID          uuid.UUID    `json:"platform_user_id"`
+	CurrentEmail            string       `json:"current_email"`
+	NewEmail                string       `json:"new_email"`
+	CurrentEmailTokenHash   string       `json:"current_email_token_hash"`
+	NewEmailTokenHash       string       `json:"new_email_token_hash"`
+	CurrentEmailConfirmedAt sql.NullTime `json:"current_email_confirmed_at"`
+	NewEmailConfirmedAt     sql.NullTime `json:"new_email_confirmed_at"`
+	ExpiresAt               time.Time    `json:"expires_at"`
+	CompletedAt             sql.NullTime `json:"completed_at"`
+	CreatedAt               time.Time    `json:"created_at"`
+}
+
 type PlatformUserPasswordResetToken struct {
 	ID             uuid.UUID    `json:"id"`
 	PlatformUserID uuid.UUID    `json:"platform_user_id"`
