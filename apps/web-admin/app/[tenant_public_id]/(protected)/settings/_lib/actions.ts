@@ -1,5 +1,7 @@
 "use server";
 
+import { z } from "zod";
+
 import {
   sendTenantSmtpTestEmail,
   updateTenantEmailSettings,
@@ -11,8 +13,11 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "../../../../../lib/email-settings-shared";
 import { updateTenantSiteSettings } from "../../../../../lib/site-settings";
+import { updateTenantThemeSettings } from "../../../../../lib/theme-settings";
 import type {
   SiteSettingsActionState,
+  ThemeSettingsActionState,
+  ThemeSettingsFieldErrors,
   TenantEmailSettingsFormState,
   TenantSmtpTestFormState,
 } from "../settings-types";
@@ -32,6 +37,89 @@ interface ParsedTenantSmtpFormData {
   recipientType: number;
   recipientEmail: string;
 }
+
+const hexColorCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, "#RRGGBB 形式で入力してください。")
+  .transform((value) => value.toLowerCase());
+
+const tenantThemeSchema = z.object({
+  accentColor: hexColorCodeSchema,
+  accentForegroundColor: hexColorCodeSchema,
+  backgroundColor: hexColorCodeSchema,
+  borderColor: hexColorCodeSchema,
+  cardColor: hexColorCodeSchema,
+  cardForegroundColor: hexColorCodeSchema,
+  destructiveColor: hexColorCodeSchema,
+  destructiveForegroundColor: hexColorCodeSchema,
+  foregroundColor: hexColorCodeSchema,
+  infoColor: hexColorCodeSchema,
+  infoForegroundColor: hexColorCodeSchema,
+  inputColor: hexColorCodeSchema,
+  mutedColor: hexColorCodeSchema,
+  mutedForegroundColor: hexColorCodeSchema,
+  popoverColor: hexColorCodeSchema,
+  popoverForegroundColor: hexColorCodeSchema,
+  primaryColor: hexColorCodeSchema,
+  primaryForegroundColor: hexColorCodeSchema,
+  ringColor: hexColorCodeSchema,
+  secondaryColor: hexColorCodeSchema,
+  secondaryForegroundColor: hexColorCodeSchema,
+  successColor: hexColorCodeSchema,
+  successForegroundColor: hexColorCodeSchema,
+  surfaceColor: hexColorCodeSchema,
+  surfaceForegroundColor: hexColorCodeSchema,
+  warningColor: hexColorCodeSchema,
+  warningForegroundColor: hexColorCodeSchema,
+});
+
+const tenantThemeFormFieldMap = [
+  ["accentColor", "accent_color"],
+  ["accentForegroundColor", "accent_foreground_color"],
+  ["backgroundColor", "background_color"],
+  ["borderColor", "border_color"],
+  ["cardColor", "card_color"],
+  ["cardForegroundColor", "card_foreground_color"],
+  ["destructiveColor", "destructive_color"],
+  ["destructiveForegroundColor", "destructive_foreground_color"],
+  ["foregroundColor", "foreground_color"],
+  ["infoColor", "info_color"],
+  ["infoForegroundColor", "info_foreground_color"],
+  ["inputColor", "input_color"],
+  ["mutedColor", "muted_color"],
+  ["mutedForegroundColor", "muted_foreground_color"],
+  ["popoverColor", "popover_color"],
+  ["popoverForegroundColor", "popover_foreground_color"],
+  ["primaryColor", "primary_color"],
+  ["primaryForegroundColor", "primary_foreground_color"],
+  ["ringColor", "ring_color"],
+  ["secondaryColor", "secondary_color"],
+  ["secondaryForegroundColor", "secondary_foreground_color"],
+  ["successColor", "success_color"],
+  ["successForegroundColor", "success_foreground_color"],
+  ["surfaceColor", "surface_color"],
+  ["surfaceForegroundColor", "surface_foreground_color"],
+  ["warningColor", "warning_color"],
+  ["warningForegroundColor", "warning_foreground_color"],
+] as const;
+
+type TenantThemeSchemaInput = z.input<typeof tenantThemeSchema>;
+
+const parseTenantThemeFormData = (formData: FormData): TenantThemeSchemaInput =>
+  Object.fromEntries(
+    tenantThemeFormFieldMap.map(([field, formName]) => [
+      field,
+      String(formData.get(formName) ?? ""),
+    ])
+  ) as TenantThemeSchemaInput;
+
+const mapThemeFieldErrors = (
+  fieldErrors: z.ZodFlattenedError<TenantThemeSchemaInput>["fieldErrors"]
+): ThemeSettingsFieldErrors =>
+  Object.fromEntries(
+    tenantThemeFormFieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
+  ) as ThemeSettingsFieldErrors;
 
 const parseIntOrFallback = (value: string, fallback: number): number => {
   const parsed = Number.parseInt(value, 10);
@@ -117,6 +205,49 @@ export const updateSiteSettingsAction = async (
   return {
     message: "設定を保存しました。",
     ok: true,
+  };
+};
+
+export const updateTenantThemeSettingsAction = async (
+  _prevState: ThemeSettingsActionState,
+  formData: FormData
+): Promise<ThemeSettingsActionState> => {
+  const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
+  if (!tenantPublicId) {
+    return {
+      message: "テナント ID が見つかりません。",
+      ok: false,
+    };
+  }
+
+  const parsed = tenantThemeSchema.safeParse(
+    parseTenantThemeFormData(formData)
+  );
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: mapThemeFieldErrors(parsed.error.flatten().fieldErrors),
+      message: "入力内容を確認してください。",
+      ok: false,
+    };
+  }
+
+  const result = await updateTenantThemeSettings({
+    ...parsed.data,
+    tenantPublicId,
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  return {
+    message: "テーマを保存しました。",
+    ok: true,
+    theme: result.theme,
   };
 };
 

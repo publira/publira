@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/types/v1/types.proto.
  */
 export const file_publira_types_v1_types: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIikKDVRlbmFudENvbnRleHQSGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCSI1CgRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkiMQoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEhIKCmV4cGlyZXNfYXQYAiABKAkiTgoHQ3JlYXRvchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRyb2xlGAMgASgJEhQKDHByb2ZpbGVfdGV4dBgEIAEoCSIoCgVMYWJlbBIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCSKvAQoGU2VyaWVzEhEKCXB1YmxpY19pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIQCghzeW5vcHNpcxgDIAEoCRImCgVsYWJlbBgEIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwSKwoIY3JlYXRvcnMYBSADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3ISHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBiABKAUiqQEKB0VwaXNvZGUSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhMKC29yZGVyX2luZGV4GAMgASgFEg0KBXByaWNlGAQgASgFEhwKFHJlYWRpbmdfcGVyaW9kX2hvdXJzGAUgASgFEg4KBnN0YXR1cxgGIAEoCRIUCgxzY2hlZHVsZWRfYXQYByABKAkSFAoMcHVibGlzaGVkX2F0GAggASgJIpIBCgxFcGlzb2RlSW1hZ2USCgoCaWQYASABKAkSEQoJaW1hZ2VfdXJsGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRIXCg9maWxlX3NpemVfYnl0ZXMYBCABKAMSFQoNZGlzcGxheV9vcmRlchgFIAEoBRINCgV3aWR0aBgGIAEoBRIOCgZoZWlnaHQYByABKAUiZQoLVGVuYW50VGhlbWUSFQoNcHJpbWFyeV9jb2xvchgBIAEoCRIXCg9zZWNvbmRhcnlfY29sb3IYAiABKAkSFAoMYWNjZW50X2NvbG9yGAMgASgJEhAKCGxvZ29fdXJsGAQgASgJQkhaRmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS90eXBlcy92MTtwdWJsaXJhdHR5cGVzdjFiBnByb3RvMw");
+  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIikKDVRlbmFudENvbnRleHQSGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCSI1CgRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkiMQoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEhIKCmV4cGlyZXNfYXQYAiABKAkiTgoHQ3JlYXRvchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRyb2xlGAMgASgJEhQKDHByb2ZpbGVfdGV4dBgEIAEoCSIoCgVMYWJlbBIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCSKvAQoGU2VyaWVzEhEKCXB1YmxpY19pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIQCghzeW5vcHNpcxgDIAEoCRImCgVsYWJlbBgEIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwSKwoIY3JlYXRvcnMYBSADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3ISHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBiABKAUiqQEKB0VwaXNvZGUSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhMKC29yZGVyX2luZGV4GAMgASgFEg0KBXByaWNlGAQgASgFEhwKFHJlYWRpbmdfcGVyaW9kX2hvdXJzGAUgASgFEg4KBnN0YXR1cxgGIAEoCRIUCgxzY2hlZHVsZWRfYXQYByABKAkSFAoMcHVibGlzaGVkX2F0GAggASgJIpIBCgxFcGlzb2RlSW1hZ2USCgoCaWQYASABKAkSEQoJaW1hZ2VfdXJsGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRIXCg9maWxlX3NpemVfYnl0ZXMYBCABKAMSFQoNZGlzcGxheV9vcmRlchgFIAEoBRINCgV3aWR0aBgGIAEoBRIOCgZoZWlnaHQYByABKAUi/wUKC1RlbmFudFRoZW1lEhUKDXByaW1hcnlfY29sb3IYASABKAkSFwoPc2Vjb25kYXJ5X2NvbG9yGAIgASgJEhQKDGFjY2VudF9jb2xvchgDIAEoCRIQCghsb2dvX3VybBgEIAEoCRIYChBiYWNrZ3JvdW5kX2NvbG9yGAUgASgJEhgKEGZvcmVncm91bmRfY29sb3IYBiABKAkSFQoNc3VyZmFjZV9jb2xvchgHIAEoCRIgChhzdXJmYWNlX2ZvcmVncm91bmRfY29sb3IYCCABKAkSEgoKY2FyZF9jb2xvchgJIAEoCRIdChVjYXJkX2ZvcmVncm91bmRfY29sb3IYCiABKAkSFQoNcG9wb3Zlcl9jb2xvchgLIAEoCRIgChhwb3BvdmVyX2ZvcmVncm91bmRfY29sb3IYDCABKAkSIAoYcHJpbWFyeV9mb3JlZ3JvdW5kX2NvbG9yGA0gASgJEiIKGnNlY29uZGFyeV9mb3JlZ3JvdW5kX2NvbG9yGA4gASgJEh8KF2FjY2VudF9mb3JlZ3JvdW5kX2NvbG9yGA8gASgJEhMKC211dGVkX2NvbG9yGBAgASgJEh4KFm11dGVkX2ZvcmVncm91bmRfY29sb3IYESABKAkSFAoMYm9yZGVyX2NvbG9yGBIgASgJEhMKC2lucHV0X2NvbG9yGBMgASgJEhIKCnJpbmdfY29sb3IYFCABKAkSFQoNc3VjY2Vzc19jb2xvchgVIAEoCRIgChhzdWNjZXNzX2ZvcmVncm91bmRfY29sb3IYFiABKAkSFQoNd2FybmluZ19jb2xvchgXIAEoCRIgChh3YXJuaW5nX2ZvcmVncm91bmRfY29sb3IYGCABKAkSGQoRZGVzdHJ1Y3RpdmVfY29sb3IYGSABKAkSJAocZGVzdHJ1Y3RpdmVfZm9yZWdyb3VuZF9jb2xvchgaIAEoCRISCgppbmZvX2NvbG9yGBsgASgJEh0KFWluZm9fZm9yZWdyb3VuZF9jb2xvchgcIAEoCUJIWkZnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdHlwZXMvdjE7cHVibGlyYXR0eXBlc3YxYgZwcm90bzM");
 
 /**
  * @generated from message publira.types.v1.TenantContext
@@ -296,6 +296,126 @@ export type TenantTheme = Message<"publira.types.v1.TenantTheme"> & {
    * @generated from field: string logo_url = 4;
    */
   logoUrl: string;
+
+  /**
+   * @generated from field: string background_color = 5;
+   */
+  backgroundColor: string;
+
+  /**
+   * @generated from field: string foreground_color = 6;
+   */
+  foregroundColor: string;
+
+  /**
+   * @generated from field: string surface_color = 7;
+   */
+  surfaceColor: string;
+
+  /**
+   * @generated from field: string surface_foreground_color = 8;
+   */
+  surfaceForegroundColor: string;
+
+  /**
+   * @generated from field: string card_color = 9;
+   */
+  cardColor: string;
+
+  /**
+   * @generated from field: string card_foreground_color = 10;
+   */
+  cardForegroundColor: string;
+
+  /**
+   * @generated from field: string popover_color = 11;
+   */
+  popoverColor: string;
+
+  /**
+   * @generated from field: string popover_foreground_color = 12;
+   */
+  popoverForegroundColor: string;
+
+  /**
+   * @generated from field: string primary_foreground_color = 13;
+   */
+  primaryForegroundColor: string;
+
+  /**
+   * @generated from field: string secondary_foreground_color = 14;
+   */
+  secondaryForegroundColor: string;
+
+  /**
+   * @generated from field: string accent_foreground_color = 15;
+   */
+  accentForegroundColor: string;
+
+  /**
+   * @generated from field: string muted_color = 16;
+   */
+  mutedColor: string;
+
+  /**
+   * @generated from field: string muted_foreground_color = 17;
+   */
+  mutedForegroundColor: string;
+
+  /**
+   * @generated from field: string border_color = 18;
+   */
+  borderColor: string;
+
+  /**
+   * @generated from field: string input_color = 19;
+   */
+  inputColor: string;
+
+  /**
+   * @generated from field: string ring_color = 20;
+   */
+  ringColor: string;
+
+  /**
+   * @generated from field: string success_color = 21;
+   */
+  successColor: string;
+
+  /**
+   * @generated from field: string success_foreground_color = 22;
+   */
+  successForegroundColor: string;
+
+  /**
+   * @generated from field: string warning_color = 23;
+   */
+  warningColor: string;
+
+  /**
+   * @generated from field: string warning_foreground_color = 24;
+   */
+  warningForegroundColor: string;
+
+  /**
+   * @generated from field: string destructive_color = 25;
+   */
+  destructiveColor: string;
+
+  /**
+   * @generated from field: string destructive_foreground_color = 26;
+   */
+  destructiveForegroundColor: string;
+
+  /**
+   * @generated from field: string info_color = 27;
+   */
+  infoColor: string;
+
+  /**
+   * @generated from field: string info_foreground_color = 28;
+   */
+  infoForegroundColor: string;
 };
 
 /**

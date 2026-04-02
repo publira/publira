@@ -1,4 +1,5 @@
 import type { TenantSmtpSettings } from "../../../../lib/email-settings";
+import type { TenantThemeSettings } from "../../../../lib/theme-settings";
 
 export type SiteSettingsActionState =
   | {
@@ -8,6 +9,52 @@ export type SiteSettingsActionState =
   | {
       ok: false;
       message: string;
+    }
+  | null;
+
+export type ThemeSettingsFieldErrors = Partial<
+  Record<
+    | "primaryColor"
+    | "secondaryColor"
+    | "accentColor"
+    | "backgroundColor"
+    | "foregroundColor"
+    | "surfaceColor"
+    | "surfaceForegroundColor"
+    | "cardColor"
+    | "cardForegroundColor"
+    | "popoverColor"
+    | "popoverForegroundColor"
+    | "primaryForegroundColor"
+    | "secondaryForegroundColor"
+    | "accentForegroundColor"
+    | "mutedColor"
+    | "mutedForegroundColor"
+    | "borderColor"
+    | "inputColor"
+    | "ringColor"
+    | "successColor"
+    | "successForegroundColor"
+    | "warningColor"
+    | "warningForegroundColor"
+    | "destructiveColor"
+    | "destructiveForegroundColor"
+    | "infoColor"
+    | "infoForegroundColor",
+    string
+  >
+>;
+
+export type ThemeSettingsActionState =
+  | {
+      ok: true;
+      message: string;
+      theme: TenantThemeSettings;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: ThemeSettingsFieldErrors;
     }
   | null;
 
