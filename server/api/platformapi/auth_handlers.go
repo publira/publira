@@ -27,6 +27,7 @@ const (
 	rolePlatformOperator          = auth.RolePlatformOperator
 	rolePlatformSuperAdmin        = auth.RolePlatformSuperAdmin
 	platformPasswordResetTokenTTL = 24 * time.Hour
+	platformEmailChangeTokenTTL   = 24 * time.Hour
 	defaultPlatformAppURL         = "http://platform.localhost:3080"
 )
 
@@ -104,6 +105,27 @@ func platformPasswordResetConfirmationURL(token string) (string, error) {
 	return confirmURL.String(), nil
 }
 
+func platformEmailChangeConfirmationURL(token string) (string, error) {
+	baseURL := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_APP_URL"))
+	if baseURL == "" {
+		baseURL = defaultPlatformAppURL
+	}
+
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return "", errors.New("platform app url is invalid")
+	}
+
+	confirmURL := parsed.ResolveReference(&url.URL{Path: "/confirm-email"})
+	query := confirmURL.Query()
+	query.Set("token", token)
+	confirmURL.RawQuery = query.Encode()
+	return confirmURL.String(), nil
+}
+
 func (s *platformServer) resolvePlatformSMTPSettings(ctx context.Context) (emailsettings.SMTPSettings, error) {
 	platformConfig, err := s.queriesFor(ctx).GetPlatformSMTPConfig(ctx)
 	if err != nil {
@@ -151,6 +173,74 @@ func (s *platformServer) sendPlatformPasswordResetEmail(
 		"このリンクの有効期限は24時間です。\r\n" +
 		"心当たりがない場合、このメールは破棄してください。\r\n"
 	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
+}
+
+func (s *platformServer) sendPlatformEmailChangeVerificationEmail(
+	ctx context.Context,
+	recipientEmail string,
+	recipientKind string,
+	currentEmail string,
+	newEmail string,
+	token string,
+) error {
+	if s.mailer == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+
+	settings, err := s.resolvePlatformSMTPSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	confirmURL, err := platformEmailChangeConfirmationURL(token)
+	if err != nil {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
+	subject := "Publira Platform Console メールアドレス変更確認"
+	body := "Platform Console アカウントのメールアドレス変更リクエストを受け付けました。\r\n"
+	if recipientKind == "current_email" {
+		body += "現在のメールアドレス側の確認が必要です。\r\n"
+	} else {
+		body += "新しいメールアドレス側の確認が必要です。\r\n"
+	}
+	body += "以下のリンクを開いて確認を完了してください。\r\n\r\n" +
+		confirmURL + "\r\n\r\n" +
+		"このリンクの有効期限は24時間です。\r\n" +
+		"心当たりがない場合、このメールは破棄してください。\r\n\r\n" +
+		"現在のメールアドレス: " + currentEmail + "\r\n" +
+		"新しいメールアドレス: " + newEmail + "\r\n"
+
+	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
+}
+
+func (s *platformServer) sendPlatformEmailChangedNotice(
+	ctx context.Context,
+	oldEmail string,
+	newEmail string,
+) error {
+	if s.mailer == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+
+	settings, err := s.resolvePlatformSMTPSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	subject := "Publira Platform Console メールアドレス変更完了"
+	body := "Platform Console アカウントのメールアドレスが変更されました。\r\n\r\n" +
+		"変更前: " + oldEmail + "\r\n" +
+		"変更後: " + newEmail + "\r\n\r\n" +
+		"この変更に心当たりがない場合は、すぐにパスワード変更などの対応を行ってください。\r\n"
+
+	if err := s.mailer.SendEmail(ctx, settings, oldEmail, subject, body); err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}
 	return nil
@@ -396,6 +486,221 @@ func (s *platformServer) ConfirmPasswordReset(
 
 	auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "success", "", platformUser.PublicID, "confirmed")
 	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetResponse{Confirmed: true}), nil
+}
+
+func (s *platformServer) RequestEmailChange(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse], error) {
+	_, platformUser, _, err := s.authenticatePlatformSession(ctx, req.Msg.SessionId, req.Header())
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", "", "invalid_session")
+		return nil, err
+	}
+
+	newEmail := strings.TrimSpace(req.Msg.NewEmail)
+	currentEmail := strings.TrimSpace(req.Msg.CurrentEmail)
+	currentPassword := strings.TrimSpace(req.Msg.CurrentPassword)
+	if currentEmail == "" || newEmail == "" || currentPassword == "" {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_input")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_email, new_email and current_password are required"))
+	}
+	if _, err := mail.ParseAddress(currentEmail); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_current_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid current email address"))
+	}
+	if _, err := mail.ParseAddress(newEmail); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid email address"))
+	}
+	if !strings.EqualFold(currentEmail, platformUser.Email) {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_mismatch")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current email does not match"))
+	}
+	if strings.EqualFold(newEmail, platformUser.Email) {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "same_email")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new email must be different from current email"))
+	}
+	if !auth.VerifyPassword(currentPassword, platformUser.PasswordHash) {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_password")
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid current password"))
+	}
+
+	_, err = s.queriesFor(ctx).GetPlatformUserByEmail(ctx, newEmail)
+	if err == nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "email_already_exists")
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.queriesFor(ctx).DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_delete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	currentEmailToken := hex.EncodeToString(rawToken)
+	rawToken = make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	newEmailToken := hex.EncodeToString(rawToken)
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_id_generation_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	_, err = s.queriesFor(ctx).CreatePlatformUserEmailChangeToken(ctx, dbmodels.CreatePlatformUserEmailChangeTokenParams{
+		ID:                    tokenID,
+		PlatformUserID:        platformUser.ID,
+		CurrentEmail:          platformUser.Email,
+		NewEmail:              newEmail,
+		CurrentEmailTokenHash: auth.HashToken(currentEmailToken),
+		NewEmailTokenHash:     auth.HashToken(newEmailToken),
+		ExpiresAt:             time.Now().Add(platformEmailChangeTokenTTL),
+	})
+	if err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_create_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := s.sendPlatformEmailChangeVerificationEmail(ctx, platformUser.Email, "current_email", platformUser.Email, newEmail, currentEmailToken); err != nil {
+		_ = s.queriesFor(ctx).DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID)
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "current_email_send_failed")
+		return nil, err
+	}
+	if err := s.sendPlatformEmailChangeVerificationEmail(ctx, newEmail, "new_email", platformUser.Email, newEmail, newEmailToken); err != nil {
+		_ = s.queriesFor(ctx).DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID)
+		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "new_email_send_failed")
+		return nil, err
+	}
+
+	auth.AuditEvent(req.Header(), "platform_email_change_request", "success", "", platformUser.PublicID, "confirmation_emails_sent")
+	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse{Requested: true}), nil
+}
+
+func (s *platformServer) VerifyEmailChangeToken(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse], error) {
+	token := strings.TrimSpace(req.Msg.Token)
+	if token == "" {
+		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: false}), nil
+	}
+
+	changeToken, err := s.queriesFor(ctx).GetPlatformUserEmailChangeTokenByHash(ctx, auth.HashToken(token))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: false}), nil
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	valid := !changeToken.CompletedAt.Valid && changeToken.ExpiresAt.After(time.Now())
+	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: valid}), nil
+}
+
+func (s *platformServer) ConfirmEmailChange(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceConfirmEmailChangeRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse], error) {
+	token := strings.TrimSpace(req.Msg.Token)
+	if token == "" {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "invalid_token")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+	}
+
+	changeToken, err := s.queriesFor(ctx).GetPlatformUserEmailChangeTokenByHash(ctx, auth.HashToken(token))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "token_not_found")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
+		}
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "token_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if changeToken.CompletedAt.Valid {
+		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
+	}
+	if !changeToken.ExpiresAt.After(time.Now()) {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "expired_token")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
+	}
+
+	platformUser, err := s.queriesFor(ctx).GetPlatformUserByID(ctx, changeToken.PlatformUserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "user_not_found")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
+		}
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "user_lookup_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !strings.EqualFold(platformUser.Email, changeToken.CurrentEmail) {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "stale_request")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change request is no longer valid"))
+	}
+
+	matchedTarget := changeToken.MatchedTarget
+	if matchedTarget == "current_email" {
+		if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
+			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "current_email_confirm_failed")
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	} else {
+		if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
+			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "new_email_confirm_failed")
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	currentEmailConfirmed := changeToken.CurrentEmailConfirmedAt.Valid || matchedTarget == "current_email"
+	newEmailConfirmed := changeToken.NewEmailConfirmedAt.Valid || matchedTarget == "new_email"
+	if !currentEmailConfirmed || !newEmailConfirmed {
+		pendingTarget := "current_email"
+		if !newEmailConfirmed {
+			pendingTarget = "new_email"
+		}
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "success", "", platformUser.PublicID, "waiting_for_"+pendingTarget)
+		return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{
+			Confirmed:              true,
+			Changed:                false,
+			PendingConfirmationFor: pendingTarget,
+		}), nil
+	}
+
+	if _, err := s.queriesFor(ctx).UpdatePlatformUserEmailByID(ctx, dbmodels.UpdatePlatformUserEmailByIDParams{
+		ID:    platformUser.ID,
+		Email: changeToken.NewEmail,
+	}); err != nil {
+		if isUniqueViolation(err) {
+			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_already_exists")
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
+		}
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_update_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "request_complete_failed")
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if err := s.sendPlatformEmailChangedNotice(ctx, changeToken.CurrentEmail, changeToken.NewEmail); err != nil {
+		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "old_email_notice_failed")
+		return nil, err
+	}
+
+	auth.AuditEvent(req.Header(), "platform_email_change_confirm", "success", "", platformUser.PublicID, "email_changed")
+	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceConfirmEmailChangeResponse{Confirmed: true, Changed: true}), nil
 }
 
 func (s *platformServer) GetMe(

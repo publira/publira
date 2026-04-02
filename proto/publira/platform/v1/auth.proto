@@ -45,6 +45,35 @@ message PlatformAuthServiceConfirmPasswordResetResponse {
   bool confirmed = 1;
 }
 
+message PlatformAuthServiceRequestEmailChangeRequest {
+  string session_id = 1;
+  string current_email = 2;
+  string new_email = 3;
+  string current_password = 4;
+}
+
+message PlatformAuthServiceRequestEmailChangeResponse {
+  bool requested = 1;
+}
+
+message PlatformAuthServiceVerifyEmailChangeTokenRequest {
+  string token = 1;
+}
+
+message PlatformAuthServiceVerifyEmailChangeTokenResponse {
+  bool valid = 1;
+}
+
+message PlatformAuthServiceConfirmEmailChangeRequest {
+  string token = 1;
+}
+
+message PlatformAuthServiceConfirmEmailChangeResponse {
+  bool confirmed = 1;
+  bool changed = 2;
+  string pending_confirmation_for = 3;
+}
+
 message PlatformAuthServiceGetMeRequest {}
 
 message PlatformAuthServiceGetMeResponse {
@@ -57,5 +86,8 @@ service PlatformAuthService {
   rpc RequestPasswordReset(PlatformAuthServiceRequestPasswordResetRequest) returns (PlatformAuthServiceRequestPasswordResetResponse) {}
   rpc VerifyPasswordResetToken(PlatformAuthServiceVerifyPasswordResetTokenRequest) returns (PlatformAuthServiceVerifyPasswordResetTokenResponse) {}
   rpc ConfirmPasswordReset(PlatformAuthServiceConfirmPasswordResetRequest) returns (PlatformAuthServiceConfirmPasswordResetResponse) {}
+  rpc RequestEmailChange(PlatformAuthServiceRequestEmailChangeRequest) returns (PlatformAuthServiceRequestEmailChangeResponse) {}
+  rpc VerifyEmailChangeToken(PlatformAuthServiceVerifyEmailChangeTokenRequest) returns (PlatformAuthServiceVerifyEmailChangeTokenResponse) {}
+  rpc ConfirmEmailChange(PlatformAuthServiceConfirmEmailChangeRequest) returns (PlatformAuthServiceConfirmEmailChangeResponse) {}
   rpc GetMe(PlatformAuthServiceGetMeRequest) returns (PlatformAuthServiceGetMeResponse) {}
 }

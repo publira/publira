@@ -48,6 +48,15 @@ const (
 	// PlatformAuthServiceConfirmPasswordResetProcedure is the fully-qualified name of the
 	// PlatformAuthService's ConfirmPasswordReset RPC.
 	PlatformAuthServiceConfirmPasswordResetProcedure = "/publira.platform.v1.PlatformAuthService/ConfirmPasswordReset"
+	// PlatformAuthServiceRequestEmailChangeProcedure is the fully-qualified name of the
+	// PlatformAuthService's RequestEmailChange RPC.
+	PlatformAuthServiceRequestEmailChangeProcedure = "/publira.platform.v1.PlatformAuthService/RequestEmailChange"
+	// PlatformAuthServiceVerifyEmailChangeTokenProcedure is the fully-qualified name of the
+	// PlatformAuthService's VerifyEmailChangeToken RPC.
+	PlatformAuthServiceVerifyEmailChangeTokenProcedure = "/publira.platform.v1.PlatformAuthService/VerifyEmailChangeToken"
+	// PlatformAuthServiceConfirmEmailChangeProcedure is the fully-qualified name of the
+	// PlatformAuthService's ConfirmEmailChange RPC.
+	PlatformAuthServiceConfirmEmailChangeProcedure = "/publira.platform.v1.PlatformAuthService/ConfirmEmailChange"
 	// PlatformAuthServiceGetMeProcedure is the fully-qualified name of the PlatformAuthService's GetMe
 	// RPC.
 	PlatformAuthServiceGetMeProcedure = "/publira.platform.v1.PlatformAuthService/GetMe"
@@ -60,6 +69,9 @@ type PlatformAuthServiceClient interface {
 	RequestPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceRequestPasswordResetResponse], error)
 	VerifyPasswordResetToken(context.Context, *connect.Request[v1.PlatformAuthServiceVerifyPasswordResetTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyPasswordResetTokenResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmPasswordResetResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.PlatformAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceRequestEmailChangeResponse], error)
+	VerifyEmailChangeToken(context.Context, *connect.Request[v1.PlatformAuthServiceVerifyEmailChangeTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyEmailChangeTokenResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmEmailChangeResponse], error)
 	GetMe(context.Context, *connect.Request[v1.PlatformAuthServiceGetMeRequest]) (*connect.Response[v1.PlatformAuthServiceGetMeResponse], error)
 }
 
@@ -104,6 +116,24 @@ func NewPlatformAuthServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(platformAuthServiceMethods.ByName("ConfirmPasswordReset")),
 			connect.WithClientOptions(opts...),
 		),
+		requestEmailChange: connect.NewClient[v1.PlatformAuthServiceRequestEmailChangeRequest, v1.PlatformAuthServiceRequestEmailChangeResponse](
+			httpClient,
+			baseURL+PlatformAuthServiceRequestEmailChangeProcedure,
+			connect.WithSchema(platformAuthServiceMethods.ByName("RequestEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
+		verifyEmailChangeToken: connect.NewClient[v1.PlatformAuthServiceVerifyEmailChangeTokenRequest, v1.PlatformAuthServiceVerifyEmailChangeTokenResponse](
+			httpClient,
+			baseURL+PlatformAuthServiceVerifyEmailChangeTokenProcedure,
+			connect.WithSchema(platformAuthServiceMethods.ByName("VerifyEmailChangeToken")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmEmailChange: connect.NewClient[v1.PlatformAuthServiceConfirmEmailChangeRequest, v1.PlatformAuthServiceConfirmEmailChangeResponse](
+			httpClient,
+			baseURL+PlatformAuthServiceConfirmEmailChangeProcedure,
+			connect.WithSchema(platformAuthServiceMethods.ByName("ConfirmEmailChange")),
+			connect.WithClientOptions(opts...),
+		),
 		getMe: connect.NewClient[v1.PlatformAuthServiceGetMeRequest, v1.PlatformAuthServiceGetMeResponse](
 			httpClient,
 			baseURL+PlatformAuthServiceGetMeProcedure,
@@ -120,6 +150,9 @@ type platformAuthServiceClient struct {
 	requestPasswordReset     *connect.Client[v1.PlatformAuthServiceRequestPasswordResetRequest, v1.PlatformAuthServiceRequestPasswordResetResponse]
 	verifyPasswordResetToken *connect.Client[v1.PlatformAuthServiceVerifyPasswordResetTokenRequest, v1.PlatformAuthServiceVerifyPasswordResetTokenResponse]
 	confirmPasswordReset     *connect.Client[v1.PlatformAuthServiceConfirmPasswordResetRequest, v1.PlatformAuthServiceConfirmPasswordResetResponse]
+	requestEmailChange       *connect.Client[v1.PlatformAuthServiceRequestEmailChangeRequest, v1.PlatformAuthServiceRequestEmailChangeResponse]
+	verifyEmailChangeToken   *connect.Client[v1.PlatformAuthServiceVerifyEmailChangeTokenRequest, v1.PlatformAuthServiceVerifyEmailChangeTokenResponse]
+	confirmEmailChange       *connect.Client[v1.PlatformAuthServiceConfirmEmailChangeRequest, v1.PlatformAuthServiceConfirmEmailChangeResponse]
 	getMe                    *connect.Client[v1.PlatformAuthServiceGetMeRequest, v1.PlatformAuthServiceGetMeResponse]
 }
 
@@ -148,6 +181,21 @@ func (c *platformAuthServiceClient) ConfirmPasswordReset(ctx context.Context, re
 	return c.confirmPasswordReset.CallUnary(ctx, req)
 }
 
+// RequestEmailChange calls publira.platform.v1.PlatformAuthService.RequestEmailChange.
+func (c *platformAuthServiceClient) RequestEmailChange(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceRequestEmailChangeResponse], error) {
+	return c.requestEmailChange.CallUnary(ctx, req)
+}
+
+// VerifyEmailChangeToken calls publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken.
+func (c *platformAuthServiceClient) VerifyEmailChangeToken(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceVerifyEmailChangeTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyEmailChangeTokenResponse], error) {
+	return c.verifyEmailChangeToken.CallUnary(ctx, req)
+}
+
+// ConfirmEmailChange calls publira.platform.v1.PlatformAuthService.ConfirmEmailChange.
+func (c *platformAuthServiceClient) ConfirmEmailChange(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmEmailChangeResponse], error) {
+	return c.confirmEmailChange.CallUnary(ctx, req)
+}
+
 // GetMe calls publira.platform.v1.PlatformAuthService.GetMe.
 func (c *platformAuthServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceGetMeRequest]) (*connect.Response[v1.PlatformAuthServiceGetMeResponse], error) {
 	return c.getMe.CallUnary(ctx, req)
@@ -161,6 +209,9 @@ type PlatformAuthServiceHandler interface {
 	RequestPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceRequestPasswordResetResponse], error)
 	VerifyPasswordResetToken(context.Context, *connect.Request[v1.PlatformAuthServiceVerifyPasswordResetTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyPasswordResetTokenResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmPasswordResetResponse], error)
+	RequestEmailChange(context.Context, *connect.Request[v1.PlatformAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceRequestEmailChangeResponse], error)
+	VerifyEmailChangeToken(context.Context, *connect.Request[v1.PlatformAuthServiceVerifyEmailChangeTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyEmailChangeTokenResponse], error)
+	ConfirmEmailChange(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmEmailChangeResponse], error)
 	GetMe(context.Context, *connect.Request[v1.PlatformAuthServiceGetMeRequest]) (*connect.Response[v1.PlatformAuthServiceGetMeResponse], error)
 }
 
@@ -201,6 +252,24 @@ func NewPlatformAuthServiceHandler(svc PlatformAuthServiceHandler, opts ...conne
 		connect.WithSchema(platformAuthServiceMethods.ByName("ConfirmPasswordReset")),
 		connect.WithHandlerOptions(opts...),
 	)
+	platformAuthServiceRequestEmailChangeHandler := connect.NewUnaryHandler(
+		PlatformAuthServiceRequestEmailChangeProcedure,
+		svc.RequestEmailChange,
+		connect.WithSchema(platformAuthServiceMethods.ByName("RequestEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
+	platformAuthServiceVerifyEmailChangeTokenHandler := connect.NewUnaryHandler(
+		PlatformAuthServiceVerifyEmailChangeTokenProcedure,
+		svc.VerifyEmailChangeToken,
+		connect.WithSchema(platformAuthServiceMethods.ByName("VerifyEmailChangeToken")),
+		connect.WithHandlerOptions(opts...),
+	)
+	platformAuthServiceConfirmEmailChangeHandler := connect.NewUnaryHandler(
+		PlatformAuthServiceConfirmEmailChangeProcedure,
+		svc.ConfirmEmailChange,
+		connect.WithSchema(platformAuthServiceMethods.ByName("ConfirmEmailChange")),
+		connect.WithHandlerOptions(opts...),
+	)
 	platformAuthServiceGetMeHandler := connect.NewUnaryHandler(
 		PlatformAuthServiceGetMeProcedure,
 		svc.GetMe,
@@ -219,6 +288,12 @@ func NewPlatformAuthServiceHandler(svc PlatformAuthServiceHandler, opts ...conne
 			platformAuthServiceVerifyPasswordResetTokenHandler.ServeHTTP(w, r)
 		case PlatformAuthServiceConfirmPasswordResetProcedure:
 			platformAuthServiceConfirmPasswordResetHandler.ServeHTTP(w, r)
+		case PlatformAuthServiceRequestEmailChangeProcedure:
+			platformAuthServiceRequestEmailChangeHandler.ServeHTTP(w, r)
+		case PlatformAuthServiceVerifyEmailChangeTokenProcedure:
+			platformAuthServiceVerifyEmailChangeTokenHandler.ServeHTTP(w, r)
+		case PlatformAuthServiceConfirmEmailChangeProcedure:
+			platformAuthServiceConfirmEmailChangeHandler.ServeHTTP(w, r)
 		case PlatformAuthServiceGetMeProcedure:
 			platformAuthServiceGetMeHandler.ServeHTTP(w, r)
 		default:
@@ -248,6 +323,18 @@ func (UnimplementedPlatformAuthServiceHandler) VerifyPasswordResetToken(context.
 
 func (UnimplementedPlatformAuthServiceHandler) ConfirmPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmPasswordResetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.ConfirmPasswordReset is not implemented"))
+}
+
+func (UnimplementedPlatformAuthServiceHandler) RequestEmailChange(context.Context, *connect.Request[v1.PlatformAuthServiceRequestEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceRequestEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.RequestEmailChange is not implemented"))
+}
+
+func (UnimplementedPlatformAuthServiceHandler) VerifyEmailChangeToken(context.Context, *connect.Request[v1.PlatformAuthServiceVerifyEmailChangeTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyEmailChangeTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken is not implemented"))
+}
+
+func (UnimplementedPlatformAuthServiceHandler) ConfirmEmailChange(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmEmailChangeRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmEmailChangeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.ConfirmEmailChange is not implemented"))
 }
 
 func (UnimplementedPlatformAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.PlatformAuthServiceGetMeRequest]) (*connect.Response[v1.PlatformAuthServiceGetMeResponse], error) {
