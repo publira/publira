@@ -61,6 +61,22 @@ export type AdminPasswordResetConfirmResult =
       reason: "expired" | "invalid" | "system";
     };
 
+export type AdminEmailChangeRequestResult =
+  | {
+      ok: true;
+      requested: boolean;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+export interface AdminEmailChangeConfirmResult {
+  confirmed: boolean;
+  changed: boolean;
+  pendingConfirmationFor: string;
+}
+
 export const isTenantAdminRole = (role: string | null | undefined): boolean => {
   const normalizedRole = role?.trim().toLowerCase();
   return normalizedRole === "admin" || normalizedRole === "tenant_admin";
@@ -73,6 +89,8 @@ const genericPasswordResetRequestErrorMessage =
   "再設定メールの送信に失敗しました。時間をおいて再試行してください。";
 const genericPasswordResetConfirmErrorMessage =
   "パスワード再設定に失敗しました。時間をおいて再試行してください。";
+const genericEmailChangeRequestErrorMessage =
+  "メールアドレス変更リクエストに失敗しました。時間をおいて再試行してください。";
 
 const toErrorMessage = (error: unknown): string => {
   if (!(error instanceof Error)) {
@@ -400,5 +418,103 @@ export const confirmAdminPasswordReset = async (
       ok: false,
       reason: "system",
     };
+  }
+};
+
+export const requestAdminEmailChange = async (
+  tenantPublicId: string,
+  sessionId: string,
+  currentEmail: string,
+  newEmail: string,
+  currentPassword: string
+): Promise<AdminEmailChangeRequestResult> => {
+  const normalizedCurrentEmail = currentEmail.trim();
+  const normalizedNewEmail = newEmail.trim();
+
+  if (
+    !tenantPublicId.trim() ||
+    !sessionId.trim() ||
+    !normalizedCurrentEmail ||
+    !normalizedNewEmail ||
+    !currentPassword
+  ) {
+    return {
+      message: "すべての項目を入力してください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.auth.requestEmailChange({
+      currentEmail: normalizedCurrentEmail,
+      currentPassword,
+      newEmail: normalizedNewEmail,
+      sessionId,
+      tenant: { tenantPublicId },
+    });
+
+    return {
+      ok: true,
+      requested: response.requested,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("invalid credentials") ||
+        message.includes("unauthenticated")
+      ) {
+        return {
+          message: "パスワードが正しくありません。",
+          ok: false,
+        };
+      }
+      if (
+        message.includes("invalid_argument") ||
+        message.includes("invalid email") ||
+        message.includes("required")
+      ) {
+        return {
+          message: "入力内容を確認してください。",
+          ok: false,
+        };
+      }
+      if (message.includes("already_exists")) {
+        return {
+          message: "このメールアドレスは既に使用されています。",
+          ok: false,
+        };
+      }
+    }
+
+    return {
+      message: genericEmailChangeRequestErrorMessage,
+      ok: false,
+    };
+  }
+};
+
+export const confirmAdminEmailChange = async (
+  tenantPublicId: string,
+  token: string
+): Promise<AdminEmailChangeConfirmResult | null> => {
+  const normalizedToken = token.trim();
+  if (!tenantPublicId.trim() || !normalizedToken) {
+    return null;
+  }
+
+  try {
+    const response = await apiClient.auth.confirmEmailChange({
+      tenant: { tenantPublicId },
+      token: normalizedToken,
+    });
+
+    return {
+      changed: response.changed,
+      confirmed: response.confirmed,
+      pendingConfirmationFor: response.pendingConfirmationFor,
+    };
+  } catch {
+    return null;
   }
 };
