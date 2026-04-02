@@ -223,6 +223,16 @@ INSERT INTO user_password_reset_tokens (
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: CreatePlatformUserPasswordResetToken :one
+INSERT INTO platform_user_password_reset_tokens (
+        id,
+        platform_user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
 -- name: CreateTenantAdminInvitation :one
 INSERT INTO tenant_admin_invitations (
         id,
@@ -242,6 +252,11 @@ WHERE user_id = $1
 -- name: DeleteUserPasswordResetTokensByUserID :exec
 DELETE FROM user_password_reset_tokens
 WHERE user_id = $1
+    AND completed_at IS NULL;
+
+-- name: DeletePlatformUserPasswordResetTokensByUserID :exec
+DELETE FROM platform_user_password_reset_tokens
+WHERE platform_user_id = $1
     AND completed_at IS NULL;
 
 -- name: GetUserEmailVerificationTokenByHashForTenant :one
@@ -270,6 +285,12 @@ SELECT *
 FROM user_password_reset_tokens
 WHERE tenant_id = $1
     AND token_hash = $2
+LIMIT 1;
+
+-- name: GetPlatformUserPasswordResetTokenByHash :one
+SELECT *
+FROM platform_user_password_reset_tokens
+WHERE token_hash = $1
 LIMIT 1;
 
 -- name: GetTenantAdminInvitationByTenantAndEmail :one
@@ -316,6 +337,11 @@ WHERE id = $1;
 
 -- name: MarkUserPasswordResetTokenCompleted :exec
 UPDATE user_password_reset_tokens
+SET completed_at = COALESCE(completed_at, NOW())
+WHERE id = $1;
+
+-- name: MarkPlatformUserPasswordResetTokenCompleted :exec
+UPDATE platform_user_password_reset_tokens
 SET completed_at = COALESCE(completed_at, NOW())
 WHERE id = $1;
 
@@ -429,6 +455,12 @@ RETURNING *;
 UPDATE platform_users
 SET status = $2
 WHERE public_id = $1
+RETURNING *;
+
+-- name: UpdatePlatformUserPasswordHashByID :one
+UPDATE platform_users
+SET password_hash = $2
+WHERE id = $1
 RETURNING *;
 -- name: CreateUser :one
 INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)

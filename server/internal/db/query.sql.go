@@ -418,6 +418,43 @@ func (q *Queries) CreatePlatformUser(ctx context.Context, arg CreatePlatformUser
 	return i, err
 }
 
+const createPlatformUserPasswordResetToken = `-- name: CreatePlatformUserPasswordResetToken :one
+INSERT INTO platform_user_password_reset_tokens (
+        id,
+        platform_user_id,
+        token_hash,
+        expires_at
+    )
+VALUES ($1, $2, $3, $4)
+RETURNING id, platform_user_id, token_hash, expires_at, completed_at, created_at
+`
+
+type CreatePlatformUserPasswordResetTokenParams struct {
+	ID             uuid.UUID `json:"id"`
+	PlatformUserID uuid.UUID `json:"platform_user_id"`
+	TokenHash      string    `json:"token_hash"`
+	ExpiresAt      time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error) {
+	row := q.db.QueryRowContext(ctx, createPlatformUserPasswordResetToken,
+		arg.ID,
+		arg.PlatformUserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i PlatformUserPasswordResetToken
+	err := row.Scan(
+		&i.ID,
+		&i.PlatformUserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPlatformUserRole = `-- name: CreatePlatformUserRole :one
 INSERT INTO platform_user_roles (id, platform_user_id, role)
 VALUES ($1, $2, $3)
@@ -866,6 +903,17 @@ func (q *Queries) CreateUserPasswordResetToken(ctx context.Context, arg CreateUs
 	return i, err
 }
 
+const deletePlatformUserPasswordResetTokensByUserID = `-- name: DeletePlatformUserPasswordResetTokensByUserID :exec
+DELETE FROM platform_user_password_reset_tokens
+WHERE platform_user_id = $1
+    AND completed_at IS NULL
+`
+
+func (q *Queries) DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deletePlatformUserPasswordResetTokensByUserID, platformUserID)
+	return err
+}
+
 const deletePlatformUserRolesByPlatformUserID = `-- name: DeletePlatformUserRolesByPlatformUserID :exec
 DELETE FROM platform_user_roles
 WHERE platform_user_id = $1
@@ -1270,6 +1318,27 @@ func (q *Queries) GetPlatformUserByID(ctx context.Context, id uuid.UUID) (Platfo
 		&i.PasswordHash,
 		&i.Name,
 		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPlatformUserPasswordResetTokenByHash = `-- name: GetPlatformUserPasswordResetTokenByHash :one
+SELECT id, platform_user_id, token_hash, expires_at, completed_at, created_at
+FROM platform_user_password_reset_tokens
+WHERE token_hash = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformUserPasswordResetTokenByHash, tokenHash)
+	var i PlatformUserPasswordResetToken
+	err := row.Scan(
+		&i.ID,
+		&i.PlatformUserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CompletedAt,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -3271,6 +3340,17 @@ func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID)
 	return err
 }
 
+const markPlatformUserPasswordResetTokenCompleted = `-- name: MarkPlatformUserPasswordResetTokenCompleted :exec
+UPDATE platform_user_password_reset_tokens
+SET completed_at = COALESCE(completed_at, NOW())
+WHERE id = $1
+`
+
+func (q *Queries) MarkPlatformUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markPlatformUserPasswordResetTokenCompleted, id)
+	return err
+}
+
 const markTenantAdminInvitationAccepted = `-- name: MarkTenantAdminInvitationAccepted :one
 UPDATE tenant_admin_invitations
 SET accepted_at = COALESCE(accepted_at, NOW()),
@@ -3512,6 +3592,33 @@ type UpdateLabelParams struct {
 func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
 	_, err := q.db.ExecContext(ctx, updateLabel, arg.ID, arg.Name)
 	return err
+}
+
+const updatePlatformUserPasswordHashByID = `-- name: UpdatePlatformUserPasswordHashByID :one
+UPDATE platform_users
+SET password_hash = $2
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, status, created_at
+`
+
+type UpdatePlatformUserPasswordHashByIDParams struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"password_hash"`
+}
+
+func (q *Queries) UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, updatePlatformUserPasswordHashByID, arg.ID, arg.PasswordHash)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updatePlatformUserStatus = `-- name: UpdatePlatformUserStatus :one
