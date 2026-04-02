@@ -200,6 +200,16 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(userPath, userHandler)
+	tenantThemePath, tenantThemeHandler := publiraadminv1connect.NewTenantThemeServiceHandler(
+		server,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(tenantThemePath, tenantThemeHandler)
 	emailPath, emailHandler := publiraadminv1connect.NewAdminEmailSettingsServiceHandler(
 		server,
 		connect.WithInterceptors(
