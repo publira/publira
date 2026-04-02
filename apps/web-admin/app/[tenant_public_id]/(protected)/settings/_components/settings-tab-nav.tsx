@@ -2,7 +2,7 @@ import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
 
 interface SettingsTabNavProps {
-  current: "basic" | "email";
+  current: "basic" | "theme" | "email";
 }
 
 export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
@@ -12,6 +12,12 @@ export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
       variant={current === "basic" ? "default" : "outline"}
     >
       基本情報
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/theme" />}
+      variant={current === "theme" ? "default" : "outline"}
+    >
+      テーマ
     </LinkButton>
     <LinkButton
       render={<Link href="/settings/email" />}

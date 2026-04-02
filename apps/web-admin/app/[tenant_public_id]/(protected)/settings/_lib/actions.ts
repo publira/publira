@@ -1,5 +1,7 @@
 "use server";
 
+import { z } from "zod";
+
 import {
   sendTenantSmtpTestEmail,
   updateTenantEmailSettings,
@@ -11,8 +13,10 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "../../../../../lib/email-settings-shared";
 import { updateTenantSiteSettings } from "../../../../../lib/site-settings";
+import { updateTenantThemeSettings } from "../../../../../lib/theme-settings";
 import type {
   SiteSettingsActionState,
+  ThemeSettingsActionState,
   TenantEmailSettingsFormState,
   TenantSmtpTestFormState,
 } from "../settings-types";
@@ -32,6 +36,18 @@ interface ParsedTenantSmtpFormData {
   recipientType: number;
   recipientEmail: string;
 }
+
+const hexColorCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, "#RRGGBB 形式で入力してください。")
+  .transform((value) => value.toLowerCase());
+
+const tenantThemeSchema = z.object({
+  accentColor: hexColorCodeSchema,
+  primaryColor: hexColorCodeSchema,
+  secondaryColor: hexColorCodeSchema,
+});
 
 const parseIntOrFallback = (value: string, fallback: number): number => {
   const parsed = Number.parseInt(value, 10);
@@ -117,6 +133,58 @@ export const updateSiteSettingsAction = async (
   return {
     message: "設定を保存しました。",
     ok: true,
+  };
+};
+
+export const updateTenantThemeSettingsAction = async (
+  _prevState: ThemeSettingsActionState,
+  formData: FormData
+): Promise<ThemeSettingsActionState> => {
+  const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
+  if (!tenantPublicId) {
+    return {
+      message: "テナント ID が見つかりません。",
+      ok: false,
+    };
+  }
+
+  const parsed = tenantThemeSchema.safeParse({
+    accentColor: String(formData.get("accent_color") ?? ""),
+    primaryColor: String(formData.get("primary_color") ?? ""),
+    secondaryColor: String(formData.get("secondary_color") ?? ""),
+  });
+
+  if (!parsed.success) {
+    const flatten = parsed.error.flatten().fieldErrors;
+    return {
+      fieldErrors: {
+        accentColor: flatten.accentColor?.[0],
+        primaryColor: flatten.primaryColor?.[0],
+        secondaryColor: flatten.secondaryColor?.[0],
+      },
+      message: "入力内容を確認してください。",
+      ok: false,
+    };
+  }
+
+  const result = await updateTenantThemeSettings({
+    accentColor: parsed.data.accentColor,
+    primaryColor: parsed.data.primaryColor,
+    secondaryColor: parsed.data.secondaryColor,
+    tenantPublicId,
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  return {
+    message: "テーマを保存しました。",
+    ok: true,
+    theme: result.theme,
   };
 };
 
