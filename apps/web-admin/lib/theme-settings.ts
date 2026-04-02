@@ -40,33 +40,33 @@ export type TenantThemeSettingsResult =
   | { ok: false; message: string };
 
 const defaultTheme: TenantThemeSettings = {
-  primaryColor: "#0f7c82",
-  secondaryColor: "#d96f4a",
   accentColor: "#7aae90",
+  accentForegroundColor: "#0f2a1f",
   backgroundColor: "#f6f2e9",
-  foregroundColor: "#1e2b38",
-  surfaceColor: "#fbf8f2",
-  surfaceForegroundColor: "#1e2b38",
+  borderColor: "#d7ccba",
   cardColor: "#fffdf8",
   cardForegroundColor: "#1e2b38",
-  popoverColor: "#fffdf8",
-  popoverForegroundColor: "#1e2b38",
-  primaryForegroundColor: "#f4fbfb",
-  secondaryForegroundColor: "#fff6f1",
-  accentForegroundColor: "#0f2a1f",
-  mutedColor: "#e9e1d3",
-  mutedForegroundColor: "#5c6773",
-  borderColor: "#d7ccba",
-  inputColor: "#e3d8c7",
-  ringColor: "#2d8d93",
-  successColor: "#2f8f5b",
-  successForegroundColor: "#f3fcf7",
-  warningColor: "#c4872a",
-  warningForegroundColor: "#fff8ea",
   destructiveColor: "#b54444",
   destructiveForegroundColor: "#fff4f4",
+  foregroundColor: "#1e2b38",
   infoColor: "#3c78c2",
   infoForegroundColor: "#f3f8ff",
+  inputColor: "#e3d8c7",
+  mutedColor: "#e9e1d3",
+  mutedForegroundColor: "#5c6773",
+  popoverColor: "#fffdf8",
+  popoverForegroundColor: "#1e2b38",
+  primaryColor: "#0f7c82",
+  primaryForegroundColor: "#f4fbfb",
+  ringColor: "#2d8d93",
+  secondaryColor: "#d96f4a",
+  secondaryForegroundColor: "#fff6f1",
+  successColor: "#2f8f5b",
+  successForegroundColor: "#f3fcf7",
+  surfaceColor: "#fbf8f2",
+  surfaceForegroundColor: "#1e2b38",
+  warningColor: "#c4872a",
+  warningForegroundColor: "#fff8ea",
 };
 
 const genericLoadErrorMessage =
@@ -103,63 +103,17 @@ const parseErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
-const toTenantTheme = (theme?: {
-  primaryColor?: string;
-  secondaryColor?: string;
-  accentColor?: string;
-  backgroundColor?: string;
-  foregroundColor?: string;
-  surfaceColor?: string;
-  surfaceForegroundColor?: string;
-  cardColor?: string;
-  cardForegroundColor?: string;
-  popoverColor?: string;
-  popoverForegroundColor?: string;
-  primaryForegroundColor?: string;
-  secondaryForegroundColor?: string;
-  accentForegroundColor?: string;
-  mutedColor?: string;
-  mutedForegroundColor?: string;
-  borderColor?: string;
-  inputColor?: string;
-  ringColor?: string;
-  successColor?: string;
-  successForegroundColor?: string;
-  warningColor?: string;
-  warningForegroundColor?: string;
-  destructiveColor?: string;
-  destructiveForegroundColor?: string;
-  infoColor?: string;
-  infoForegroundColor?: string;
-}): TenantThemeSettings => ({
-  primaryColor: theme?.primaryColor || defaultTheme.primaryColor,
-  secondaryColor: theme?.secondaryColor || defaultTheme.secondaryColor,
-  accentColor: theme?.accentColor || defaultTheme.accentColor,
-  backgroundColor: theme?.backgroundColor || defaultTheme.backgroundColor,
-  foregroundColor: theme?.foregroundColor || defaultTheme.foregroundColor,
-  surfaceColor: theme?.surfaceColor || defaultTheme.surfaceColor,
-  surfaceForegroundColor: theme?.surfaceForegroundColor || defaultTheme.surfaceForegroundColor,
-  cardColor: theme?.cardColor || defaultTheme.cardColor,
-  cardForegroundColor: theme?.cardForegroundColor || defaultTheme.cardForegroundColor,
-  popoverColor: theme?.popoverColor || defaultTheme.popoverColor,
-  popoverForegroundColor: theme?.popoverForegroundColor || defaultTheme.popoverForegroundColor,
-  primaryForegroundColor: theme?.primaryForegroundColor || defaultTheme.primaryForegroundColor,
-  secondaryForegroundColor: theme?.secondaryForegroundColor || defaultTheme.secondaryForegroundColor,
-  accentForegroundColor: theme?.accentForegroundColor || defaultTheme.accentForegroundColor,
-  mutedColor: theme?.mutedColor || defaultTheme.mutedColor,
-  mutedForegroundColor: theme?.mutedForegroundColor || defaultTheme.mutedForegroundColor,
-  borderColor: theme?.borderColor || defaultTheme.borderColor,
-  inputColor: theme?.inputColor || defaultTheme.inputColor,
-  ringColor: theme?.ringColor || defaultTheme.ringColor,
-  successColor: theme?.successColor || defaultTheme.successColor,
-  successForegroundColor: theme?.successForegroundColor || defaultTheme.successForegroundColor,
-  warningColor: theme?.warningColor || defaultTheme.warningColor,
-  warningForegroundColor: theme?.warningForegroundColor || defaultTheme.warningForegroundColor,
-  destructiveColor: theme?.destructiveColor || defaultTheme.destructiveColor,
-  destructiveForegroundColor: theme?.destructiveForegroundColor || defaultTheme.destructiveForegroundColor,
-  infoColor: theme?.infoColor || defaultTheme.infoColor,
-  infoForegroundColor: theme?.infoForegroundColor || defaultTheme.infoForegroundColor,
-});
+const toTenantTheme = (
+  theme?: Partial<TenantThemeSettings>
+): TenantThemeSettings => {
+  const source: Partial<TenantThemeSettings> = theme ?? {};
+  return Object.fromEntries(
+    Object.entries(defaultTheme).map(([key, fallback]) => {
+      const sourceValue = source[key as keyof TenantThemeSettings];
+      return [key, sourceValue || fallback];
+    })
+  ) as TenantThemeSettings;
+};
 
 export const getTenantThemeSettings = async (
   tenantPublicId: string
@@ -203,33 +157,33 @@ export const updateTenantThemeSettings = async (
       {
         tenant: { tenantPublicId: normalizedTenantPublicId },
         theme: {
-          primaryColor: input.primaryColor,
-          secondaryColor: input.secondaryColor,
           accentColor: input.accentColor,
+          accentForegroundColor: input.accentForegroundColor,
           backgroundColor: input.backgroundColor,
-          foregroundColor: input.foregroundColor,
-          surfaceColor: input.surfaceColor,
-          surfaceForegroundColor: input.surfaceForegroundColor,
+          borderColor: input.borderColor,
           cardColor: input.cardColor,
           cardForegroundColor: input.cardForegroundColor,
-          popoverColor: input.popoverColor,
-          popoverForegroundColor: input.popoverForegroundColor,
-          primaryForegroundColor: input.primaryForegroundColor,
-          secondaryForegroundColor: input.secondaryForegroundColor,
-          accentForegroundColor: input.accentForegroundColor,
-          mutedColor: input.mutedColor,
-          mutedForegroundColor: input.mutedForegroundColor,
-          borderColor: input.borderColor,
-          inputColor: input.inputColor,
-          ringColor: input.ringColor,
-          successColor: input.successColor,
-          successForegroundColor: input.successForegroundColor,
-          warningColor: input.warningColor,
-          warningForegroundColor: input.warningForegroundColor,
           destructiveColor: input.destructiveColor,
           destructiveForegroundColor: input.destructiveForegroundColor,
+          foregroundColor: input.foregroundColor,
           infoColor: input.infoColor,
           infoForegroundColor: input.infoForegroundColor,
+          inputColor: input.inputColor,
+          mutedColor: input.mutedColor,
+          mutedForegroundColor: input.mutedForegroundColor,
+          popoverColor: input.popoverColor,
+          popoverForegroundColor: input.popoverForegroundColor,
+          primaryColor: input.primaryColor,
+          primaryForegroundColor: input.primaryForegroundColor,
+          ringColor: input.ringColor,
+          secondaryColor: input.secondaryColor,
+          secondaryForegroundColor: input.secondaryForegroundColor,
+          successColor: input.successColor,
+          successForegroundColor: input.successForegroundColor,
+          surfaceColor: input.surfaceColor,
+          surfaceForegroundColor: input.surfaceForegroundColor,
+          warningColor: input.warningColor,
+          warningForegroundColor: input.warningForegroundColor,
         },
       },
       withSessionHeaders(sessionId)

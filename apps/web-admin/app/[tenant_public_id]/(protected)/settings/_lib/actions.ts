@@ -17,6 +17,7 @@ import { updateTenantThemeSettings } from "../../../../../lib/theme-settings";
 import type {
   SiteSettingsActionState,
   ThemeSettingsActionState,
+  ThemeSettingsFieldErrors,
   TenantEmailSettingsFormState,
   TenantSmtpTestFormState,
 } from "../settings-types";
@@ -44,34 +45,81 @@ const hexColorCodeSchema = z
   .transform((value) => value.toLowerCase());
 
 const tenantThemeSchema = z.object({
-  primaryColor: hexColorCodeSchema,
-  secondaryColor: hexColorCodeSchema,
   accentColor: hexColorCodeSchema,
+  accentForegroundColor: hexColorCodeSchema,
   backgroundColor: hexColorCodeSchema,
-  foregroundColor: hexColorCodeSchema,
-  surfaceColor: hexColorCodeSchema,
-  surfaceForegroundColor: hexColorCodeSchema,
+  borderColor: hexColorCodeSchema,
   cardColor: hexColorCodeSchema,
   cardForegroundColor: hexColorCodeSchema,
-  popoverColor: hexColorCodeSchema,
-  popoverForegroundColor: hexColorCodeSchema,
-  primaryForegroundColor: hexColorCodeSchema,
-  secondaryForegroundColor: hexColorCodeSchema,
-  accentForegroundColor: hexColorCodeSchema,
-  mutedColor: hexColorCodeSchema,
-  mutedForegroundColor: hexColorCodeSchema,
-  borderColor: hexColorCodeSchema,
-  inputColor: hexColorCodeSchema,
-  ringColor: hexColorCodeSchema,
-  successColor: hexColorCodeSchema,
-  successForegroundColor: hexColorCodeSchema,
-  warningColor: hexColorCodeSchema,
-  warningForegroundColor: hexColorCodeSchema,
   destructiveColor: hexColorCodeSchema,
   destructiveForegroundColor: hexColorCodeSchema,
+  foregroundColor: hexColorCodeSchema,
   infoColor: hexColorCodeSchema,
   infoForegroundColor: hexColorCodeSchema,
+  inputColor: hexColorCodeSchema,
+  mutedColor: hexColorCodeSchema,
+  mutedForegroundColor: hexColorCodeSchema,
+  popoverColor: hexColorCodeSchema,
+  popoverForegroundColor: hexColorCodeSchema,
+  primaryColor: hexColorCodeSchema,
+  primaryForegroundColor: hexColorCodeSchema,
+  ringColor: hexColorCodeSchema,
+  secondaryColor: hexColorCodeSchema,
+  secondaryForegroundColor: hexColorCodeSchema,
+  successColor: hexColorCodeSchema,
+  successForegroundColor: hexColorCodeSchema,
+  surfaceColor: hexColorCodeSchema,
+  surfaceForegroundColor: hexColorCodeSchema,
+  warningColor: hexColorCodeSchema,
+  warningForegroundColor: hexColorCodeSchema,
 });
+
+const tenantThemeFormFieldMap = [
+  ["accentColor", "accent_color"],
+  ["accentForegroundColor", "accent_foreground_color"],
+  ["backgroundColor", "background_color"],
+  ["borderColor", "border_color"],
+  ["cardColor", "card_color"],
+  ["cardForegroundColor", "card_foreground_color"],
+  ["destructiveColor", "destructive_color"],
+  ["destructiveForegroundColor", "destructive_foreground_color"],
+  ["foregroundColor", "foreground_color"],
+  ["infoColor", "info_color"],
+  ["infoForegroundColor", "info_foreground_color"],
+  ["inputColor", "input_color"],
+  ["mutedColor", "muted_color"],
+  ["mutedForegroundColor", "muted_foreground_color"],
+  ["popoverColor", "popover_color"],
+  ["popoverForegroundColor", "popover_foreground_color"],
+  ["primaryColor", "primary_color"],
+  ["primaryForegroundColor", "primary_foreground_color"],
+  ["ringColor", "ring_color"],
+  ["secondaryColor", "secondary_color"],
+  ["secondaryForegroundColor", "secondary_foreground_color"],
+  ["successColor", "success_color"],
+  ["successForegroundColor", "success_foreground_color"],
+  ["surfaceColor", "surface_color"],
+  ["surfaceForegroundColor", "surface_foreground_color"],
+  ["warningColor", "warning_color"],
+  ["warningForegroundColor", "warning_foreground_color"],
+] as const;
+
+type TenantThemeSchemaInput = z.input<typeof tenantThemeSchema>;
+
+const parseTenantThemeFormData = (formData: FormData): TenantThemeSchemaInput =>
+  Object.fromEntries(
+    tenantThemeFormFieldMap.map(([field, formName]) => [
+      field,
+      String(formData.get(formName) ?? ""),
+    ])
+  ) as TenantThemeSchemaInput;
+
+const mapThemeFieldErrors = (
+  fieldErrors: z.typeToFlattenedError<TenantThemeSchemaInput>["fieldErrors"]
+): ThemeSettingsFieldErrors =>
+  Object.fromEntries(
+    tenantThemeFormFieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
+  ) as ThemeSettingsFieldErrors;
 
 const parseIntOrFallback = (value: string, fallback: number): number => {
   const parsed = Number.parseInt(value, 10);
@@ -172,68 +220,13 @@ export const updateTenantThemeSettingsAction = async (
     };
   }
 
-  const parsed = tenantThemeSchema.safeParse({
-    primaryColor: String(formData.get("primary_color") ?? ""),
-    secondaryColor: String(formData.get("secondary_color") ?? ""),
-    accentColor: String(formData.get("accent_color") ?? ""),
-    backgroundColor: String(formData.get("background_color") ?? ""),
-    foregroundColor: String(formData.get("foreground_color") ?? ""),
-    surfaceColor: String(formData.get("surface_color") ?? ""),
-    surfaceForegroundColor: String(formData.get("surface_foreground_color") ?? ""),
-    cardColor: String(formData.get("card_color") ?? ""),
-    cardForegroundColor: String(formData.get("card_foreground_color") ?? ""),
-    popoverColor: String(formData.get("popover_color") ?? ""),
-    popoverForegroundColor: String(formData.get("popover_foreground_color") ?? ""),
-    primaryForegroundColor: String(formData.get("primary_foreground_color") ?? ""),
-    secondaryForegroundColor: String(formData.get("secondary_foreground_color") ?? ""),
-    accentForegroundColor: String(formData.get("accent_foreground_color") ?? ""),
-    mutedColor: String(formData.get("muted_color") ?? ""),
-    mutedForegroundColor: String(formData.get("muted_foreground_color") ?? ""),
-    borderColor: String(formData.get("border_color") ?? ""),
-    inputColor: String(formData.get("input_color") ?? ""),
-    ringColor: String(formData.get("ring_color") ?? ""),
-    successColor: String(formData.get("success_color") ?? ""),
-    successForegroundColor: String(formData.get("success_foreground_color") ?? ""),
-    warningColor: String(formData.get("warning_color") ?? ""),
-    warningForegroundColor: String(formData.get("warning_foreground_color") ?? ""),
-    destructiveColor: String(formData.get("destructive_color") ?? ""),
-    destructiveForegroundColor: String(formData.get("destructive_foreground_color") ?? ""),
-    infoColor: String(formData.get("info_color") ?? ""),
-    infoForegroundColor: String(formData.get("info_foreground_color") ?? ""),
-  });
+  const parsed = tenantThemeSchema.safeParse(
+    parseTenantThemeFormData(formData)
+  );
 
   if (!parsed.success) {
-    const flatten = parsed.error.flatten().fieldErrors;
     return {
-      fieldErrors: {
-        primaryColor: flatten.primaryColor?.[0],
-        secondaryColor: flatten.secondaryColor?.[0],
-        accentColor: flatten.accentColor?.[0],
-        backgroundColor: flatten.backgroundColor?.[0],
-        foregroundColor: flatten.foregroundColor?.[0],
-        surfaceColor: flatten.surfaceColor?.[0],
-        surfaceForegroundColor: flatten.surfaceForegroundColor?.[0],
-        cardColor: flatten.cardColor?.[0],
-        cardForegroundColor: flatten.cardForegroundColor?.[0],
-        popoverColor: flatten.popoverColor?.[0],
-        popoverForegroundColor: flatten.popoverForegroundColor?.[0],
-        primaryForegroundColor: flatten.primaryForegroundColor?.[0],
-        secondaryForegroundColor: flatten.secondaryForegroundColor?.[0],
-        accentForegroundColor: flatten.accentForegroundColor?.[0],
-        mutedColor: flatten.mutedColor?.[0],
-        mutedForegroundColor: flatten.mutedForegroundColor?.[0],
-        borderColor: flatten.borderColor?.[0],
-        inputColor: flatten.inputColor?.[0],
-        ringColor: flatten.ringColor?.[0],
-        successColor: flatten.successColor?.[0],
-        successForegroundColor: flatten.successForegroundColor?.[0],
-        warningColor: flatten.warningColor?.[0],
-        warningForegroundColor: flatten.warningForegroundColor?.[0],
-        destructiveColor: flatten.destructiveColor?.[0],
-        destructiveForegroundColor: flatten.destructiveForegroundColor?.[0],
-        infoColor: flatten.infoColor?.[0],
-        infoForegroundColor: flatten.infoForegroundColor?.[0],
-      },
+      fieldErrors: mapThemeFieldErrors(parsed.error.flatten().fieldErrors),
       message: "入力内容を確認してください。",
       ok: false,
     };

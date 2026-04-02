@@ -21,33 +21,33 @@ vi.mock("@publira/api-client/admin/client", () => ({
 }));
 
 const fullTheme = {
-  primaryColor: "#0f7c82",
-  secondaryColor: "#d96f4a",
   accentColor: "#7aae90",
+  accentForegroundColor: "#0f2a1f",
   backgroundColor: "#f6f2e9",
-  foregroundColor: "#1e2b38",
-  surfaceColor: "#fbf8f2",
-  surfaceForegroundColor: "#1e2b38",
+  borderColor: "#d7ccba",
   cardColor: "#fffdf8",
   cardForegroundColor: "#1e2b38",
-  popoverColor: "#fffdf8",
-  popoverForegroundColor: "#1e2b38",
-  primaryForegroundColor: "#f4fbfb",
-  secondaryForegroundColor: "#fff6f1",
-  accentForegroundColor: "#0f2a1f",
-  mutedColor: "#e9e1d3",
-  mutedForegroundColor: "#5c6773",
-  borderColor: "#d7ccba",
-  inputColor: "#e3d8c7",
-  ringColor: "#2d8d93",
-  successColor: "#2f8f5b",
-  successForegroundColor: "#f3fcf7",
-  warningColor: "#c4872a",
-  warningForegroundColor: "#fff8ea",
   destructiveColor: "#b54444",
   destructiveForegroundColor: "#fff4f4",
+  foregroundColor: "#1e2b38",
   infoColor: "#3c78c2",
   infoForegroundColor: "#f3f8ff",
+  inputColor: "#e3d8c7",
+  mutedColor: "#e9e1d3",
+  mutedForegroundColor: "#5c6773",
+  popoverColor: "#fffdf8",
+  popoverForegroundColor: "#1e2b38",
+  primaryColor: "#0f7c82",
+  primaryForegroundColor: "#f4fbfb",
+  ringColor: "#2d8d93",
+  secondaryColor: "#d96f4a",
+  secondaryForegroundColor: "#fff6f1",
+  successColor: "#2f8f5b",
+  successForegroundColor: "#f3fcf7",
+  surfaceColor: "#fbf8f2",
+  surfaceForegroundColor: "#1e2b38",
+  warningColor: "#c4872a",
+  warningForegroundColor: "#fff8ea",
 };
 
 describe("theme-settings", () => {
@@ -119,4 +119,3 @@ describe("theme-settings", () => {
     expect(result).toEqual({ ok: true, theme: updatedTheme });
   });
 });
-
