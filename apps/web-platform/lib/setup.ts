@@ -1,13 +1,29 @@
 import { apiClient } from "./api-client";
 
+const isExpectedNullableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("not_found") ||
+    message.includes("not found") ||
+    message.includes("failed_precondition")
+  );
+};
+
 export const isSetupCompleted = async (): Promise<boolean | null> => {
   "use cache: private";
 
   try {
     const response = await apiClient.setup.checkSetupStatus({});
     return response.setupCompleted;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 

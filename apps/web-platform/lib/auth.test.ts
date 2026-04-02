@@ -70,10 +70,12 @@ describe("loginPlatform", () => {
     await expect(loginPlatform("a@b.com", "wrong")).resolves.toBeNull();
   });
 
-  it("ネットワークエラー時も null を返す", async () => {
+  it("想定外エラー時は再throwする", async () => {
     mockCreateSession.mockRejectedValueOnce(new Error("network error"));
 
-    await expect(loginPlatform("a@b.com", "x")).resolves.toBeNull();
+    await expect(loginPlatform("a@b.com", "x")).rejects.toThrow(
+      "network error"
+    );
   });
 });
 

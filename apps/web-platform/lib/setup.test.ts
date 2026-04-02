@@ -30,10 +30,18 @@ describe("isSetupCompleted", () => {
     await expect(isSetupCompleted()).resolves.toBe(false);
   });
 
-  it("API エラー時は null を返す", async () => {
-    mockCheckSetupStatus.mockRejectedValueOnce(new Error("network"));
+  it("想定内エラー時は null を返す", async () => {
+    mockCheckSetupStatus.mockRejectedValueOnce(
+      new Error("failed_precondition: setup not initialized")
+    );
 
     await expect(isSetupCompleted()).resolves.toBeNull();
+  });
+
+  it("想定外エラー時は再throwする", async () => {
+    mockCheckSetupStatus.mockRejectedValueOnce(new Error("network"));
+
+    await expect(isSetupCompleted()).rejects.toThrow("network");
   });
 });
 

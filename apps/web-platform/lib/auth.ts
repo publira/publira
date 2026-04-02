@@ -5,6 +5,21 @@ import {
 } from "./auth-shared";
 import { normalizePlatformRole } from "./roles";
 
+const isExpectedNullableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unauthenticated") ||
+    message.includes("permission_denied") ||
+    message.includes("invalid_argument") ||
+    message.includes("not_found") ||
+    message.includes("not found")
+  );
+};
+
 export interface PlatformCurrentOperator {
   name: string;
   publicId: string;
@@ -25,8 +40,11 @@ export const loginPlatform = async (
       return null;
     }
     return { expiresAt: new Date(expiresAt), sessionId };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 
@@ -60,8 +78,11 @@ export const getPlatformCurrentOperator =
         publicId: user.publicId,
         role: normalizePlatformRole(user.role),
       };
-    } catch {
-      return null;
+    } catch (error) {
+      if (isExpectedNullableError(error)) {
+        return null;
+      }
+      throw error;
     }
   };
 

@@ -17,6 +17,20 @@ const buildTenantSiteLabel = (tenantName: string): string => {
   return normalizedTenantName || "サイト";
 };
 
+const isExpectedNullableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("not_found") ||
+    message.includes("not found") ||
+    message.includes("unauthenticated") ||
+    message.includes("permission_denied")
+  );
+};
+
 export const getTenantSiteInfo = async (
   tenantPublicId: string
 ): Promise<TenantSiteInfo | null> => {
@@ -49,8 +63,11 @@ export const getTenantSiteInfo = async (
       siteLabel: buildTenantSiteLabel(name),
       siteTagline: response.siteTagline?.trim(),
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 

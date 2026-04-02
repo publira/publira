@@ -65,6 +65,20 @@ const toErrorMessage = (error: unknown): string => {
   return genericErrorMessage;
 };
 
+const isExpectedNullableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unauthenticated") ||
+    message.includes("permission_denied") ||
+    message.includes("not_found") ||
+    message.includes("not found")
+  );
+};
+
 export const loginAdmin = async (
   email: string,
   password: string,
@@ -141,8 +155,11 @@ export const getAdminCurrentUser = async (
       publicId,
       role: response.user?.role?.trim() ?? "",
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 
@@ -183,8 +200,11 @@ export const getTenantAdminInvitationState = async (
       expiresAt: response.expiresAt,
       status: response.status,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isExpectedNullableError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 
