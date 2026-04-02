@@ -44,9 +44,33 @@ const hexColorCodeSchema = z
   .transform((value) => value.toLowerCase());
 
 const tenantThemeSchema = z.object({
-  accentColor: hexColorCodeSchema,
   primaryColor: hexColorCodeSchema,
   secondaryColor: hexColorCodeSchema,
+  accentColor: hexColorCodeSchema,
+  backgroundColor: hexColorCodeSchema,
+  foregroundColor: hexColorCodeSchema,
+  surfaceColor: hexColorCodeSchema,
+  surfaceForegroundColor: hexColorCodeSchema,
+  cardColor: hexColorCodeSchema,
+  cardForegroundColor: hexColorCodeSchema,
+  popoverColor: hexColorCodeSchema,
+  popoverForegroundColor: hexColorCodeSchema,
+  primaryForegroundColor: hexColorCodeSchema,
+  secondaryForegroundColor: hexColorCodeSchema,
+  accentForegroundColor: hexColorCodeSchema,
+  mutedColor: hexColorCodeSchema,
+  mutedForegroundColor: hexColorCodeSchema,
+  borderColor: hexColorCodeSchema,
+  inputColor: hexColorCodeSchema,
+  ringColor: hexColorCodeSchema,
+  successColor: hexColorCodeSchema,
+  successForegroundColor: hexColorCodeSchema,
+  warningColor: hexColorCodeSchema,
+  warningForegroundColor: hexColorCodeSchema,
+  destructiveColor: hexColorCodeSchema,
+  destructiveForegroundColor: hexColorCodeSchema,
+  infoColor: hexColorCodeSchema,
+  infoForegroundColor: hexColorCodeSchema,
 });
 
 const parseIntOrFallback = (value: string, fallback: number): number => {
@@ -149,18 +173,66 @@ export const updateTenantThemeSettingsAction = async (
   }
 
   const parsed = tenantThemeSchema.safeParse({
-    accentColor: String(formData.get("accent_color") ?? ""),
     primaryColor: String(formData.get("primary_color") ?? ""),
     secondaryColor: String(formData.get("secondary_color") ?? ""),
+    accentColor: String(formData.get("accent_color") ?? ""),
+    backgroundColor: String(formData.get("background_color") ?? ""),
+    foregroundColor: String(formData.get("foreground_color") ?? ""),
+    surfaceColor: String(formData.get("surface_color") ?? ""),
+    surfaceForegroundColor: String(formData.get("surface_foreground_color") ?? ""),
+    cardColor: String(formData.get("card_color") ?? ""),
+    cardForegroundColor: String(formData.get("card_foreground_color") ?? ""),
+    popoverColor: String(formData.get("popover_color") ?? ""),
+    popoverForegroundColor: String(formData.get("popover_foreground_color") ?? ""),
+    primaryForegroundColor: String(formData.get("primary_foreground_color") ?? ""),
+    secondaryForegroundColor: String(formData.get("secondary_foreground_color") ?? ""),
+    accentForegroundColor: String(formData.get("accent_foreground_color") ?? ""),
+    mutedColor: String(formData.get("muted_color") ?? ""),
+    mutedForegroundColor: String(formData.get("muted_foreground_color") ?? ""),
+    borderColor: String(formData.get("border_color") ?? ""),
+    inputColor: String(formData.get("input_color") ?? ""),
+    ringColor: String(formData.get("ring_color") ?? ""),
+    successColor: String(formData.get("success_color") ?? ""),
+    successForegroundColor: String(formData.get("success_foreground_color") ?? ""),
+    warningColor: String(formData.get("warning_color") ?? ""),
+    warningForegroundColor: String(formData.get("warning_foreground_color") ?? ""),
+    destructiveColor: String(formData.get("destructive_color") ?? ""),
+    destructiveForegroundColor: String(formData.get("destructive_foreground_color") ?? ""),
+    infoColor: String(formData.get("info_color") ?? ""),
+    infoForegroundColor: String(formData.get("info_foreground_color") ?? ""),
   });
 
   if (!parsed.success) {
     const flatten = parsed.error.flatten().fieldErrors;
     return {
       fieldErrors: {
-        accentColor: flatten.accentColor?.[0],
         primaryColor: flatten.primaryColor?.[0],
         secondaryColor: flatten.secondaryColor?.[0],
+        accentColor: flatten.accentColor?.[0],
+        backgroundColor: flatten.backgroundColor?.[0],
+        foregroundColor: flatten.foregroundColor?.[0],
+        surfaceColor: flatten.surfaceColor?.[0],
+        surfaceForegroundColor: flatten.surfaceForegroundColor?.[0],
+        cardColor: flatten.cardColor?.[0],
+        cardForegroundColor: flatten.cardForegroundColor?.[0],
+        popoverColor: flatten.popoverColor?.[0],
+        popoverForegroundColor: flatten.popoverForegroundColor?.[0],
+        primaryForegroundColor: flatten.primaryForegroundColor?.[0],
+        secondaryForegroundColor: flatten.secondaryForegroundColor?.[0],
+        accentForegroundColor: flatten.accentForegroundColor?.[0],
+        mutedColor: flatten.mutedColor?.[0],
+        mutedForegroundColor: flatten.mutedForegroundColor?.[0],
+        borderColor: flatten.borderColor?.[0],
+        inputColor: flatten.inputColor?.[0],
+        ringColor: flatten.ringColor?.[0],
+        successColor: flatten.successColor?.[0],
+        successForegroundColor: flatten.successForegroundColor?.[0],
+        warningColor: flatten.warningColor?.[0],
+        warningForegroundColor: flatten.warningForegroundColor?.[0],
+        destructiveColor: flatten.destructiveColor?.[0],
+        destructiveForegroundColor: flatten.destructiveForegroundColor?.[0],
+        infoColor: flatten.infoColor?.[0],
+        infoForegroundColor: flatten.infoForegroundColor?.[0],
       },
       message: "入力内容を確認してください。",
       ok: false,
@@ -168,9 +240,7 @@ export const updateTenantThemeSettingsAction = async (
   }
 
   const result = await updateTenantThemeSettings({
-    accentColor: parsed.data.accentColor,
-    primaryColor: parsed.data.primaryColor,
-    secondaryColor: parsed.data.secondaryColor,
+    ...parsed.data,
     tenantPublicId,
   });
 

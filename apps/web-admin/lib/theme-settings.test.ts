@@ -20,6 +20,36 @@ vi.mock("@publira/api-client/admin/client", () => ({
   }),
 }));
 
+const fullTheme = {
+  primaryColor: "#0f7c82",
+  secondaryColor: "#d96f4a",
+  accentColor: "#7aae90",
+  backgroundColor: "#f6f2e9",
+  foregroundColor: "#1e2b38",
+  surfaceColor: "#fbf8f2",
+  surfaceForegroundColor: "#1e2b38",
+  cardColor: "#fffdf8",
+  cardForegroundColor: "#1e2b38",
+  popoverColor: "#fffdf8",
+  popoverForegroundColor: "#1e2b38",
+  primaryForegroundColor: "#f4fbfb",
+  secondaryForegroundColor: "#fff6f1",
+  accentForegroundColor: "#0f2a1f",
+  mutedColor: "#e9e1d3",
+  mutedForegroundColor: "#5c6773",
+  borderColor: "#d7ccba",
+  inputColor: "#e3d8c7",
+  ringColor: "#2d8d93",
+  successColor: "#2f8f5b",
+  successForegroundColor: "#f3fcf7",
+  warningColor: "#c4872a",
+  warningForegroundColor: "#fff8ea",
+  destructiveColor: "#b54444",
+  destructiveForegroundColor: "#fff4f4",
+  infoColor: "#3c78c2",
+  infoForegroundColor: "#f3f8ff",
+};
+
 describe("theme-settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,26 +58,13 @@ describe("theme-settings", () => {
   });
 
   it("テーマ取得に成功した場合は設定を返す", async () => {
-    mockGetTenantThemeApi.mockResolvedValueOnce({
-      theme: {
-        accentColor: "#2f8f5b",
-        primaryColor: "#2d8d93",
-        secondaryColor: "#c4872a",
-      },
-    });
+    mockGetTenantThemeApi.mockResolvedValueOnce({ theme: fullTheme });
 
     const { getTenantThemeSettings } = await import("./theme-settings");
 
     const result = await getTenantThemeSettings("TENANT001");
 
-    expect(result).toEqual({
-      ok: true,
-      theme: {
-        accentColor: "#2f8f5b",
-        primaryColor: "#2d8d93",
-        secondaryColor: "#c4872a",
-      },
-    });
+    expect(result).toEqual({ ok: true, theme: fullTheme });
 
     expect(mockGetTenantThemeApi).toHaveBeenCalledWith(
       { tenant: { tenantPublicId: "TENANT001" } },
@@ -77,9 +94,8 @@ describe("theme-settings", () => {
     const { updateTenantThemeSettings } = await import("./theme-settings");
 
     const result = await updateTenantThemeSettings({
-      accentColor: "#2f8f5b",
+      ...fullTheme,
       primaryColor: "#bad",
-      secondaryColor: "#c4872a",
       tenantPublicId: "TENANT001",
     });
 
@@ -90,30 +106,17 @@ describe("theme-settings", () => {
   });
 
   it("更新に成功した場合は保存されたテーマを返す", async () => {
-    mockUpsertTenantThemeApi.mockResolvedValueOnce({
-      theme: {
-        accentColor: "#4e7d64",
-        primaryColor: "#1f6570",
-        secondaryColor: "#a66e22",
-      },
-    });
+    const updatedTheme = { ...fullTheme, primaryColor: "#1f6570" };
+    mockUpsertTenantThemeApi.mockResolvedValueOnce({ theme: updatedTheme });
 
     const { updateTenantThemeSettings } = await import("./theme-settings");
 
     const result = await updateTenantThemeSettings({
-      accentColor: "#4e7d64",
-      primaryColor: "#1f6570",
-      secondaryColor: "#a66e22",
+      ...updatedTheme,
       tenantPublicId: "TENANT001",
     });
 
-    expect(result).toEqual({
-      ok: true,
-      theme: {
-        accentColor: "#4e7d64",
-        primaryColor: "#1f6570",
-        secondaryColor: "#a66e22",
-      },
-    });
+    expect(result).toEqual({ ok: true, theme: updatedTheme });
   });
 });
+

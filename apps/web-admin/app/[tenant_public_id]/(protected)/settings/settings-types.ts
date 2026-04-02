@@ -13,7 +13,36 @@ export type SiteSettingsActionState =
   | null;
 
 export type ThemeSettingsFieldErrors = Partial<
-  Record<"primaryColor" | "secondaryColor" | "accentColor", string>
+  Record<
+    | "primaryColor"
+    | "secondaryColor"
+    | "accentColor"
+    | "backgroundColor"
+    | "foregroundColor"
+    | "surfaceColor"
+    | "surfaceForegroundColor"
+    | "cardColor"
+    | "cardForegroundColor"
+    | "popoverColor"
+    | "popoverForegroundColor"
+    | "primaryForegroundColor"
+    | "secondaryForegroundColor"
+    | "accentForegroundColor"
+    | "mutedColor"
+    | "mutedForegroundColor"
+    | "borderColor"
+    | "inputColor"
+    | "ringColor"
+    | "successColor"
+    | "successForegroundColor"
+    | "warningColor"
+    | "warningForegroundColor"
+    | "destructiveColor"
+    | "destructiveForegroundColor"
+    | "infoColor"
+    | "infoForegroundColor",
+    string
+  >
 >;
 
 export type ThemeSettingsActionState =

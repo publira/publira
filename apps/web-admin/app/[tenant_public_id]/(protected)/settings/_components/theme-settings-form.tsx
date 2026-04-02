@@ -30,9 +30,70 @@ interface ThemeSettingsFormProps {
   tenantPublicId: string;
 }
 
-type ThemeColorField = "primaryColor" | "secondaryColor" | "accentColor";
-
 const colorInputClassName = "h-10 w-14 shrink-0 cursor-pointer p-1";
+
+type ColorKey = keyof TenantThemeSettings;
+
+interface ColorFieldConfig {
+  key: ColorKey;
+  formName: string;
+  label: string;
+  description?: string;
+}
+
+const colorGroups: { title: string; description: string; fields: ColorFieldConfig[] }[] = [
+  {
+    title: "ブランドカラー",
+    description: "ブランドを表す主要カラーです。",
+    fields: [
+      { key: "primaryColor", formName: "primary_color", label: "プライマリカラー", description: "主にボタンや強調要素で利用される基準カラーです。" },
+      { key: "primaryForegroundColor", formName: "primary_foreground_color", label: "プライマリ前景色", description: "プライマリカラー上のテキストや文字に使用する色です。" },
+      { key: "secondaryColor", formName: "secondary_color", label: "セカンダリカラー", description: "補助的なボタンや要素に使用するカラーです。" },
+      { key: "secondaryForegroundColor", formName: "secondary_foreground_color", label: "セカンダリ前景色", description: "セカンダリカラー上のテキストや文字に使用する色です。" },
+      { key: "accentColor", formName: "accent_color", label: "アクセントカラー", description: "通知や装飾のアクセントに利用するカラーです。" },
+      { key: "accentForegroundColor", formName: "accent_foreground_color", label: "アクセント前景色", description: "アクセントカラー上のテキストや文字に使用する色です。" },
+    ],
+  },
+  {
+    title: "背景・表面カラー",
+    description: "ページや各要素の背景色を設定します。",
+    fields: [
+      { key: "backgroundColor", formName: "background_color", label: "背景色", description: "ページ全体の背景色です。" },
+      { key: "foregroundColor", formName: "foreground_color", label: "前景色（テキスト）", description: "背景上のテキストや文字に使用する色です。" },
+      { key: "surfaceColor", formName: "surface_color", label: "サーフェス色", description: "コンテンツエリアの表面色です。" },
+      { key: "surfaceForegroundColor", formName: "surface_foreground_color", label: "サーフェス前景色", description: "サーフェス上のテキストに使用する色です。" },
+      { key: "cardColor", formName: "card_color", label: "カード色", description: "カードコンポーネントの背景色です。" },
+      { key: "cardForegroundColor", formName: "card_foreground_color", label: "カード前景色", description: "カード上のテキストに使用する色です。" },
+      { key: "popoverColor", formName: "popover_color", label: "ポップオーバー色", description: "ポップオーバーやドロップダウンの背景色です。" },
+      { key: "popoverForegroundColor", formName: "popover_foreground_color", label: "ポップオーバー前景色", description: "ポップオーバー上のテキストに使用する色です。" },
+      { key: "mutedColor", formName: "muted_color", label: "ミュート色", description: "控えめな背景や無効化された要素に使用する色です。" },
+      { key: "mutedForegroundColor", formName: "muted_foreground_color", label: "ミュート前景色", description: "ミュートエリアのテキストに使用する色です。" },
+    ],
+  },
+  {
+    title: "UI要素カラー",
+    description: "ボーダーや入力欄など UI 要素に使用する色を設定します。",
+    fields: [
+      { key: "borderColor", formName: "border_color", label: "ボーダー色", description: "テーブルや枠線のボーダー色です。" },
+      { key: "inputColor", formName: "input_color", label: "入力フィールド色", description: "フォーム入力要素の背景色です。" },
+      { key: "ringColor", formName: "ring_color", label: "フォーカスリング色", description: "フォーカス時に表示されるリングの色です。" },
+    ],
+  },
+  {
+    title: "ステータスカラー",
+    description: "成功・警告・エラー・情報など通知に使用する色を設定します。",
+    fields: [
+      { key: "successColor", formName: "success_color", label: "成功色", description: "成功メッセージや操作完了を示す色です。" },
+      { key: "successForegroundColor", formName: "success_foreground_color", label: "成功前景色", description: "成功表示上のテキストに使用する色です。" },
+      { key: "warningColor", formName: "warning_color", label: "警告色", description: "警告メッセージを示す色です。" },
+      { key: "warningForegroundColor", formName: "warning_foreground_color", label: "警告前景色", description: "警告表示上のテキストに使用する色です。" },
+      { key: "destructiveColor", formName: "destructive_color", label: "危険色", description: "削除やエラー操作を示す色です。" },
+      { key: "destructiveForegroundColor", formName: "destructive_foreground_color", label: "危険前景色", description: "危険表示上のテキストに使用する色です。" },
+      { key: "infoColor", formName: "info_color", label: "情報色", description: "情報メッセージを示す色です。" },
+      { key: "infoForegroundColor", formName: "info_foreground_color", label: "情報前景色", description: "情報表示上のテキストに使用する色です。" },
+    ],
+  },
+];
 
 export const ThemeSettingsForm = ({
   action,
@@ -40,46 +101,22 @@ export const ThemeSettingsForm = ({
   tenantPublicId,
 }: ThemeSettingsFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
-  const [primaryColor, setPrimaryColor] = useState(initialTheme.primaryColor);
-  const [secondaryColor, setSecondaryColor] = useState(
-    initialTheme.secondaryColor
-  );
-  const [accentColor, setAccentColor] = useState(initialTheme.accentColor);
+  const [colors, setColors] = useState<TenantThemeSettings>(initialTheme);
 
   useEffect(() => {
-    setPrimaryColor(initialTheme.primaryColor);
-    setSecondaryColor(initialTheme.secondaryColor);
-    setAccentColor(initialTheme.accentColor);
-  }, [
-    initialTheme.accentColor,
-    initialTheme.primaryColor,
-    initialTheme.secondaryColor,
-  ]);
+    setColors(initialTheme);
+  }, [initialTheme]);
 
   useEffect(() => {
-    if (!state?.ok) {
-      return;
+    if (state?.ok) {
+      setColors(state.theme);
     }
-
-    setPrimaryColor(state.theme.primaryColor);
-    setSecondaryColor(state.theme.secondaryColor);
-    setAccentColor(state.theme.accentColor);
   }, [state]);
 
-  const createColorTextHandler = useCallback(
-    (field: ThemeColorField) =>
-      (event: React.ChangeEvent<HTMLInputElement>) => {
-        const { value } = event.target;
-        if (field === "primaryColor") {
-          setPrimaryColor(value);
-        }
-        if (field === "secondaryColor") {
-          setSecondaryColor(value);
-        }
-        if (field === "accentColor") {
-          setAccentColor(value);
-        }
-      },
+  const createHandler = useCallback(
+    (key: ColorKey) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setColors((prev) => ({ ...prev, [key]: event.target.value }));
+    },
     []
   );
 
@@ -87,203 +124,70 @@ export const ThemeSettingsForm = ({
 
   return (
     <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>テーマカラー設定</CardTitle>
-          <CardDescription>
-            主要カラーを編集し、管理画面内でプレビューを確認しながら保存できます。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={formAction} className="grid gap-5 sm:max-w-3xl">
-            <input
-              name="tenant_public_id"
-              type="hidden"
-              value={tenantPublicId}
-            />
+      <form action={formAction} className="contents">
+        <input name="tenant_public_id" type="hidden" value={tenantPublicId} />
 
-            <Field>
-              <FieldLabel htmlFor="primary_color" required>
-                プライマリカラー
-              </FieldLabel>
-              <FieldContent>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    className={colorInputClassName}
-                    id="primary_color_picker"
-                    onChange={createColorTextHandler("primaryColor")}
-                    type="color"
-                    value={primaryColor}
-                  />
-                  <Input
-                    id="primary_color"
-                    name="primary_color"
-                    onChange={createColorTextHandler("primaryColor")}
-                    pattern="#[0-9a-fA-F]{6}"
-                    placeholder="#2d8d93"
-                    required
-                    type="text"
-                    value={primaryColor}
-                  />
-                </div>
-                <FieldDescription>
-                  主にボタンや強調要素で利用される基準カラーです。
-                </FieldDescription>
-                {fieldErrors?.primaryColor ? (
-                  <FormMessage variant="destructive">
-                    {fieldErrors.primaryColor}
-                  </FormMessage>
-                ) : null}
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="secondary_color" required>
-                セカンダリカラー
-              </FieldLabel>
-              <FieldContent>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    className={colorInputClassName}
-                    id="secondary_color_picker"
-                    onChange={createColorTextHandler("secondaryColor")}
-                    type="color"
-                    value={secondaryColor}
-                  />
-                  <Input
-                    id="secondary_color"
-                    name="secondary_color"
-                    onChange={createColorTextHandler("secondaryColor")}
-                    pattern="#[0-9a-fA-F]{6}"
-                    placeholder="#c4872a"
-                    required
-                    type="text"
-                    value={secondaryColor}
-                  />
-                </div>
-                <FieldDescription>
-                  補助的なボタンや要素に使用するカラーです。
-                </FieldDescription>
-                {fieldErrors?.secondaryColor ? (
-                  <FormMessage variant="destructive">
-                    {fieldErrors.secondaryColor}
-                  </FormMessage>
-                ) : null}
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="accent_color" required>
-                アクセントカラー
-              </FieldLabel>
-              <FieldContent>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    className={colorInputClassName}
-                    id="accent_color_picker"
-                    onChange={createColorTextHandler("accentColor")}
-                    type="color"
-                    value={accentColor}
-                  />
-                  <Input
-                    id="accent_color"
-                    name="accent_color"
-                    onChange={createColorTextHandler("accentColor")}
-                    pattern="#[0-9a-fA-F]{6}"
-                    placeholder="#2f8f5b"
-                    required
-                    type="text"
-                    value={accentColor}
-                  />
-                </div>
-                <FieldDescription>
-                  通知や装飾のアクセントに利用するカラーです。
-                </FieldDescription>
-                {fieldErrors?.accentColor ? (
-                  <FormMessage variant="destructive">
-                    {fieldErrors.accentColor}
-                  </FormMessage>
-                ) : null}
-              </FieldContent>
-            </Field>
-
-            {state ? (
-              <FormMessage variant={state.ok ? "success" : "destructive"}>
-                {state.message}
-              </FormMessage>
-            ) : null}
-
-            <div className="mt-1 flex justify-end">
-              <Button disabled={isPending} type="submit">
-                {isPending ? "保存中..." : "テーマを保存"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>リアルタイムプレビュー</CardTitle>
-          <CardDescription>
-            現在入力中のカラーで、主要 UI 要素の見え方を確認できます。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 rounded-lg border p-4">
-            <div className="flex flex-wrap gap-2">
-              <span
-                className="rounded-md px-3 py-1 text-sm font-medium text-white"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Primary
-              </span>
-              <span
-                className="rounded-md px-3 py-1 text-sm font-medium text-white"
-                style={{ backgroundColor: secondaryColor }}
-              >
-                Secondary
-              </span>
-              <span
-                className="rounded-md px-3 py-1 text-sm font-medium text-white"
-                style={{ backgroundColor: accentColor }}
-              >
-                Accent
-              </span>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">テーマサンプル</p>
-              <h3 className="mt-1 text-lg font-semibold">ブランドタイトル</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                このプレビューは保存前でも入力内容を即時反映します。
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  className="rounded-md px-4 py-2 text-sm font-medium text-white"
-                  style={{ backgroundColor: primaryColor }}
-                  type="button"
-                >
-                  主要アクション
-                </button>
-                <button
-                  className="rounded-md px-4 py-2 text-sm font-medium text-white"
-                  style={{ backgroundColor: secondaryColor }}
-                  type="button"
-                >
-                  補助アクション
-                </button>
-                <button
-                  className="rounded-md border px-4 py-2 text-sm font-medium"
-                  style={{ borderColor: accentColor, color: accentColor }}
-                  type="button"
-                >
-                  アクセント表示
-                </button>
+        {colorGroups.map((group) => (
+          <Card key={group.title}>
+            <CardHeader>
+              <CardTitle>{group.title}</CardTitle>
+              <CardDescription>{group.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-5 sm:max-w-3xl">
+                {group.fields.map((field) => (
+                  <Field key={field.key}>
+                    <FieldLabel htmlFor={field.formName} required>
+                      {field.label}
+                    </FieldLabel>
+                    <FieldContent>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Input
+                          className={colorInputClassName}
+                          id={`${field.formName}_picker`}
+                          onChange={createHandler(field.key)}
+                          type="color"
+                          value={colors[field.key]}
+                        />
+                        <Input
+                          id={field.formName}
+                          name={field.formName}
+                          onChange={createHandler(field.key)}
+                          pattern="#[0-9a-fA-F]{6}"
+                          placeholder="#000000"
+                          required
+                          type="text"
+                          value={colors[field.key]}
+                        />
+                      </div>
+                      {field.description ? (
+                        <FieldDescription>{field.description}</FieldDescription>
+                      ) : null}
+                      {fieldErrors?.[field.key] ? (
+                        <FormMessage variant="destructive">
+                          {fieldErrors[field.key]}
+                        </FormMessage>
+                      ) : null}
+                    </FieldContent>
+                  </Field>
+                ))}
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ))}
+
+        {state ? (
+          <FormMessage variant={state.ok ? "success" : "destructive"}>
+            {state.message}
+          </FormMessage>
+        ) : null}
+
+        <div className="flex justify-end">
+          <Button disabled={isPending} type="submit">
+            {isPending ? "保存中..." : "テーマを保存"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };
