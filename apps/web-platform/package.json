@@ -9,6 +9,10 @@
     "directory": "apps/web-platform"
   },
   "type": "module",
+  "imports": {
+    "#lib/*": "./lib/*",
+    "#components/*": "./components/*"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 4100",

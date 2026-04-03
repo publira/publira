@@ -7,7 +7,8 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { isSetupCompleted } from "../../lib/setup";
+import { isSetupCompleted } from "#lib/setup";
+
 import { setupAction } from "./_lib/actions";
 
 export const metadata: Metadata = {

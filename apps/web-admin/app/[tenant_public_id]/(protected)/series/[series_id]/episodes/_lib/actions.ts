@@ -2,11 +2,8 @@
 
 import { redirect } from "next/navigation";
 
-import {
-  createEpisode,
-  listEpisodes,
-  reorderEpisodes,
-} from "../../../../../../../lib/episode";
+import { createEpisode, listEpisodes, reorderEpisodes } from "#lib/episode";
+
 import type { EpisodeActionState } from "../episode-types";
 
 interface EpisodeCreateErrorState {

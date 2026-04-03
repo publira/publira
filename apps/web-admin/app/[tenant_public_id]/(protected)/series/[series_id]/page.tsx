@@ -8,11 +8,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../../components/admin-page";
-import { FlashToast } from "../../../../../components/flash-toast";
-import { listCreators } from "../../../../../lib/creator";
-import { listLabels } from "../../../../../lib/label";
-import { getSeries } from "../../../../../lib/series";
+import { AdminPage } from "#components/admin-page";
+import { FlashToast } from "#components/flash-toast";
+import { listCreators } from "#lib/creator";
+import { listLabels } from "#lib/label";
+import { getSeries } from "#lib/series";
+
 import { SeriesForm } from "../_components/series-form";
 import { updateSeriesAction } from "../_lib/actions";
 

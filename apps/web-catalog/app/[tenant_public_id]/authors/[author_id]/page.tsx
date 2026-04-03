@@ -6,8 +6,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getPublishedAuthorDetail } from "../../../../lib/authors";
-import { getTenantSiteLabel } from "../../../../lib/tenant";
+import { getPublishedAuthorDetail } from "#lib/authors";
+import { getTenantSiteLabel } from "#lib/tenant";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id", "author_id");

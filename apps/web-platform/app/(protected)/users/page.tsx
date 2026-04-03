@@ -22,20 +22,17 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../../components/platform-page";
-import {
-  getEndUserStatusLabel,
-  getEndUserStatusTone,
-} from "../../../lib/user-labels";
+import { PlatformPage } from "#components/platform-page";
+import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import {
   listPlatformEndUsers,
   listPlatformTenantFilterOptions,
-} from "../../../lib/users";
+} from "#lib/users";
 import type {
   ListPlatformEndUsersResult,
   PlatformEndUserSummary,
   PlatformTenantFilterOption,
-} from "../../../lib/users";
+} from "#lib/users";
 
 export const metadata: Metadata = {
   title: "ユーザー管理",

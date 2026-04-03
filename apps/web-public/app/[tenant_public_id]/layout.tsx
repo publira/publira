@@ -16,8 +16,8 @@ import {
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
-import { PUBLIC_SESSION_COOKIE_NAME } from "../../lib/auth";
-import { getTenantSiteInfo } from "../../lib/tenant";
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 const getHeaderActionsContent = async () => {
   const cookieStore = await cookies();

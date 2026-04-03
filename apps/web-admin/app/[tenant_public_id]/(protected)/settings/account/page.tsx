@@ -4,7 +4,8 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { AdminPage } from "../../../../../components/admin-page";
+import { AdminPage } from "#components/admin-page";
+
 import { EmailChangeForm } from "../_components/email-change-form";
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { requestEmailChangeAction } from "../_lib/actions";

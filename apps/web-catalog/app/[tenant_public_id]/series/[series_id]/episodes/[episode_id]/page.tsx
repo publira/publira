@@ -7,10 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  EpisodeNotFoundError,
-  getEpisodeDetail,
-} from "../../../../../../lib/catalog";
+import { EpisodeNotFoundError, getEpisodeDetail } from "#lib/catalog";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id", "series_id", "episode_id");

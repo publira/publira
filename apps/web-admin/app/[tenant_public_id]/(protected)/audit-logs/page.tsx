@@ -25,9 +25,10 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../components/admin-page";
-import { listAuditActorCandidates, listAuditLogs } from "../../../../lib/audit";
-import { buildQueryString } from "../../../../lib/query-string";
+import { AdminPage } from "#components/admin-page";
+import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
+import { buildQueryString } from "#lib/query-string";
+
 import { ActorFilterCombobox } from "./_components/actor-filter-combobox";
 import {
   AuditLogActionCell,

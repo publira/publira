@@ -5,7 +5,7 @@ import {
   PLATFORM_SESSION_COOKIE_NAME,
   logoutPlatform,
   sessionCookieOptions,
-} from "../../lib/auth";
+} from "#lib/auth";
 
 const clearSessionCookie = async () => {
   const cookieStore = await cookies();

@@ -8,9 +8,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../../components/admin-page";
-import { FlashToast } from "../../../../../components/flash-toast";
-import { getLabel } from "../../../../../lib/label";
+import { AdminPage } from "#components/admin-page";
+import { FlashToast } from "#components/flash-toast";
+import { getLabel } from "#lib/label";
+
 import { LabelForm } from "../_components/label-form";
 import { updateLabelAction } from "../_lib/actions";
 

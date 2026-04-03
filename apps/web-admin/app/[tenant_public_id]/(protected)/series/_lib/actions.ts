@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 
-import { createSeries, updateSeries } from "../../../../../lib/series";
+import { createSeries, updateSeries } from "#lib/series";
+
 import type { SeriesActionState } from "../series-types";
 
 const parseCommonFields = (formData: FormData) => {

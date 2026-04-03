@@ -14,14 +14,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { AdminDomainPreview } from "../../../../components/admin-domain-preview";
-import { PlatformPage } from "../../../../components/platform-page";
-import { TenantDomainCautions } from "../../../../components/tenant-domain-cautions";
-import {
-  getTenantStatusLabel,
-  getTenantStatusTone,
-} from "../../../../lib/tenant-labels";
-import { getPlatformTenant } from "../../../../lib/tenants";
+import { AdminDomainPreview } from "#components/admin-domain-preview";
+import { PlatformPage } from "#components/platform-page";
+import { TenantDomainCautions } from "#components/tenant-domain-cautions";
+import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
+import { getPlatformTenant } from "#lib/tenants";
+
 import { TenantSectionNav } from "./_components/tenant-section-nav";
 import { TenantUpdateForm } from "./_components/tenant-update-form";
 import {

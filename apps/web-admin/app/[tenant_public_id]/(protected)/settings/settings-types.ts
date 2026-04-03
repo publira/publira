@@ -1,5 +1,5 @@
-import type { TenantSmtpSettings } from "../../../../lib/email-settings";
-import type { TenantThemeSettings } from "../../../../lib/theme-settings";
+import type { TenantSmtpSettings } from "#lib/email-settings";
+import type { TenantThemeSettings } from "#lib/theme-settings";
 
 export type SiteSettingsActionState =
   | {

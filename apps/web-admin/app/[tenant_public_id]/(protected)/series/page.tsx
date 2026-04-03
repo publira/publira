@@ -5,8 +5,9 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../components/admin-page";
-import { listSeries } from "../../../../lib/series";
+import { AdminPage } from "#components/admin-page";
+import { listSeries } from "#lib/series";
+
 import { SeriesManager } from "./_components/series-manager";
 
 export const metadata: Metadata = {

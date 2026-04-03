@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { confirmPlatformEmailChange } from "../../lib/email-change";
+import { confirmPlatformEmailChange } from "#lib/email-change";
 
 export const metadata: Metadata = {
   title: "メールアドレス変更確認",

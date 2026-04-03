@@ -13,15 +13,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../../../components/platform-page";
-import { getPlatformCurrentOperator } from "../../../../lib/auth";
+import { PlatformPage } from "#components/platform-page";
+import { getPlatformCurrentOperator } from "#lib/auth";
 import {
   getOperatorRoleCardDescription,
   getOperatorRoleLabel,
   getOperatorStatusLabel,
-} from "../../../../lib/operator-labels";
-import { getPlatformOperator } from "../../../../lib/operators";
-import { isPlatformSuperAdmin } from "../../../../lib/roles";
+} from "#lib/operator-labels";
+import { getPlatformOperator } from "#lib/operators";
+import { isPlatformSuperAdmin } from "#lib/roles";
+
 import { DangerConfirmButton } from "./_components/danger-confirm-button";
 import { OperatorRoleForm } from "./_components/operator-role-form";
 import {

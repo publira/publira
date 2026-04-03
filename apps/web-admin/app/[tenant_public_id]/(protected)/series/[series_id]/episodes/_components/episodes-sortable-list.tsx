@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useRef, useTransition } from "react";
 
-import type { EpisodeItem } from "../../../../../../../lib/episode";
+import type { EpisodeItem } from "#lib/episode";
 
 interface EpisodesSortableListProps {
   tenantPublicId: string;

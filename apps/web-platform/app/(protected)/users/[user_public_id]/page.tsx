@@ -13,14 +13,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../../../components/platform-page";
-import { getPlatformCurrentOperator } from "../../../../lib/auth";
-import { canManageEndUsers } from "../../../../lib/roles";
-import {
-  getEndUserStatusLabel,
-  getEndUserStatusTone,
-} from "../../../../lib/user-labels";
-import { getPlatformEndUser } from "../../../../lib/users";
+import { PlatformPage } from "#components/platform-page";
+import { getPlatformCurrentOperator } from "#lib/auth";
+import { canManageEndUsers } from "#lib/roles";
+import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
+import { getPlatformEndUser } from "#lib/users";
+
 import { DangerConfirmButton } from "./_components/danger-confirm-button";
 import {
   deleteEndUserAction,

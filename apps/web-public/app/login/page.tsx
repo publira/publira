@@ -13,7 +13,7 @@ import {
   loginPublic,
   sanitizeRedirectPath,
   sessionCookieOptions,
-} from "../../lib/auth";
+} from "#lib/auth";
 
 export const metadata: Metadata = {
   title: "ログイン",

@@ -6,7 +6,7 @@ import {
   loginPlatform,
   sanitizeRedirectPath,
   sessionCookieOptions,
-} from "../../../lib/auth";
+} from "#lib/auth";
 
 const buildLoginErrorPath = (message: string, nextPath: string): string => {
   const params = new URLSearchParams({

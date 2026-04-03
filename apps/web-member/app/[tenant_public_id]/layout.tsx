@@ -16,8 +16,8 @@ import {
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
-import { PUBLIC_SESSION_COOKIE_NAME } from "../../lib/auth-shared";
-import { getTenantSiteInfo } from "../../lib/tenant";
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 const resolveTenantPublicId = async (
   params: Promise<{ tenant_public_id: string }>

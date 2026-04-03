@@ -1,10 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import {
-  getNotificationSettings,
-  updateNotificationSettings,
-} from "../../../../lib/auth";
+import { getNotificationSettings, updateNotificationSettings } from "#lib/auth";
 
 const buildSettingsPath = (status: "success" | "error", message: string) => {
   const params = new URLSearchParams({ message, status });

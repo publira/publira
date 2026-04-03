@@ -11,7 +11,7 @@ import { Suspense } from "react";
 import {
   acceptTenantAdminInvitation,
   getTenantAdminInvitationState,
-} from "../../../lib/admin-auth";
+} from "#lib/admin-auth";
 
 export const metadata: Metadata = {
   title: "管理者招待の承諾",

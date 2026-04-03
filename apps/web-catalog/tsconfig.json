@@ -1,5 +1,10 @@
 {
   "extends": "@publira/tsconfig/next.json",
+  "compilerOptions": {
+    "paths": {
+      "#lib/*": ["./lib/*"]
+    }
+  },
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",

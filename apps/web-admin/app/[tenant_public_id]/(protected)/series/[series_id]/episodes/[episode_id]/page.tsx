@@ -6,9 +6,10 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AdminPage } from "../../../../../../../components/admin-page";
-import { FlashToast } from "../../../../../../../components/flash-toast";
-import { listEpisodeImages } from "../../../../../../../lib/episode";
+import { AdminPage } from "#components/admin-page";
+import { FlashToast } from "#components/flash-toast";
+import { listEpisodeImages } from "#lib/episode";
+
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";

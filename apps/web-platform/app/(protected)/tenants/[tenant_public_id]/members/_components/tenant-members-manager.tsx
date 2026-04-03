@@ -42,11 +42,12 @@ import {
   getTenantRoleLabel,
   getTenantStatusLabel,
   getTenantStatusTone,
-} from "../../../../../../lib/tenant-labels";
+} from "#lib/tenant-labels";
 import type {
   PlatformTenantAdminInvitation,
   PlatformTenantMemberSummary,
-} from "../../../../../../lib/tenants";
+} from "#lib/tenants";
+
 import type {
   TenantInvitationFormState,
   TenantMemberFormState,

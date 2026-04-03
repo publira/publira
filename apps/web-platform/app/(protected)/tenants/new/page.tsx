@@ -12,10 +12,10 @@ import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminDomainPreview } from "../../../../components/admin-domain-preview";
-import { PlatformPage } from "../../../../components/platform-page";
-import { TenantDomainCautions } from "../../../../components/tenant-domain-cautions";
-import { createPlatformTenant } from "../../../../lib/tenants";
+import { AdminDomainPreview } from "#components/admin-domain-preview";
+import { PlatformPage } from "#components/platform-page";
+import { TenantDomainCautions } from "#components/tenant-domain-cautions";
+import { createPlatformTenant } from "#lib/tenants";
 
 export const metadata: Metadata = {
   title: "テナント作成",

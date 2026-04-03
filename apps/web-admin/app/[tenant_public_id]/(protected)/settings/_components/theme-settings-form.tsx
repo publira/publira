@@ -18,7 +18,8 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback, useEffect, useId, useState } from "react";
 
-import type { TenantThemeSettings } from "../../../../../lib/theme-settings";
+import type { TenantThemeSettings } from "#lib/theme-settings";
+
 import type { ThemeSettingsActionState } from "../settings-types";
 
 interface ThemeSettingsFormProps {

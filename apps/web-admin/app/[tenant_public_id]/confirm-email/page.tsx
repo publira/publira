@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { confirmAdminEmailChange } from "../../../lib/admin-auth";
+import { confirmAdminEmailChange } from "#lib/admin-auth";
 
 export const metadata: Metadata = {
   title: "メールアドレス変更確認",

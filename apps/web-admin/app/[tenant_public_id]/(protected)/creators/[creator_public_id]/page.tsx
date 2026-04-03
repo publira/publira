@@ -8,9 +8,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../../components/admin-page";
-import { FlashToast } from "../../../../../components/flash-toast";
-import { getCreator } from "../../../../../lib/creator";
+import { AdminPage } from "#components/admin-page";
+import { FlashToast } from "#components/flash-toast";
+import { getCreator } from "#lib/creator";
+
 import { CreatorForm } from "../_components/creator-form";
 import { updateCreatorAction } from "../_lib/actions";
 

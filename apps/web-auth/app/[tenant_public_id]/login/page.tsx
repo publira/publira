@@ -9,14 +9,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { TenantDocumentTitle } from "../../../components/tenant-document-title";
+import { TenantDocumentTitle } from "#components/tenant-document-title";
 import {
   PUBLIC_SESSION_COOKIE_NAME,
   loginPublic,
   sanitizeRedirectPath,
   sessionCookieOptions,
-} from "../../../lib/auth";
-import { getTenantSiteInfo } from "../../../lib/tenant";
+} from "#lib/auth";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 export const metadata: Metadata = {
   title: "ログイン",

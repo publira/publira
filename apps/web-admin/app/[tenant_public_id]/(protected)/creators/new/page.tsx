@@ -7,7 +7,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../../components/admin-page";
+import { AdminPage } from "#components/admin-page";
+
 import { CreatorForm } from "../_components/creator-form";
 import { createCreatorAction } from "../_lib/actions";
 

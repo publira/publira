@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
-import { PlatformPage } from "../../../../components/platform-page";
-import { getPlatformEmailSettings } from "../../../../lib/email-settings";
-import type { PlatformSmtpSettings } from "../../../../lib/email-settings";
+import { PlatformPage } from "#components/platform-page";
+import { getPlatformEmailSettings } from "#lib/email-settings";
+import type { PlatformSmtpSettings } from "#lib/email-settings";
+
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import {
   sendPlatformSmtpTestEmailAction,

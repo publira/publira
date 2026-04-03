@@ -19,12 +19,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../../components/platform-page";
+import { PlatformPage } from "#components/platform-page";
 import {
   getOperatorRoleLabel,
   getOperatorStatusLabel,
-} from "../../../lib/operator-labels";
-import { listPlatformOperators } from "../../../lib/operators";
+} from "#lib/operator-labels";
+import { listPlatformOperators } from "#lib/operators";
 
 export const metadata: Metadata = {
   title: "オペレーター管理",

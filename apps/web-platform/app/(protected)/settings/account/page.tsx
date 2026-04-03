@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { PlatformPage } from "../../../../components/platform-page";
+import { PlatformPage } from "#components/platform-page";
+
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { requestPlatformEmailChangeAction } from "../_lib/actions";
 import { EmailChangeForm } from "./_components/email-change-form";

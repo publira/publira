@@ -3,14 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getPlatformCurrentOperator } from "../../../../../lib/auth";
+import { getPlatformCurrentOperator } from "#lib/auth";
 import {
   deactivatePlatformOperator,
   suspendPlatformOperator,
   unsuspendPlatformOperator,
   updatePlatformOperatorRole,
-} from "../../../../../lib/operators";
-import { isPlatformSuperAdmin } from "../../../../../lib/roles";
+} from "#lib/operators";
+import { isPlatformSuperAdmin } from "#lib/roles";
+
 import type { OperatorRoleFormState } from "../_components/operator-role-form";
 
 export const updateOperatorRoleAction = async (

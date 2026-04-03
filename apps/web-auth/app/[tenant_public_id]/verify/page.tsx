@@ -4,9 +4,9 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { TenantDocumentTitle } from "../../../components/tenant-document-title";
-import { verifyPublicEmail } from "../../../lib/auth";
-import { getTenantSiteInfo } from "../../../lib/tenant";
+import { TenantDocumentTitle } from "#components/tenant-document-title";
+import { verifyPublicEmail } from "#lib/auth";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 export const metadata: Metadata = {
   title: "メール確認",

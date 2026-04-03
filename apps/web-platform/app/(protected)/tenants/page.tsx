@@ -22,12 +22,9 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../../components/platform-page";
-import {
-  getTenantStatusLabel,
-  getTenantStatusTone,
-} from "../../../lib/tenant-labels";
-import { listPlatformTenants } from "../../../lib/tenants";
+import { PlatformPage } from "#components/platform-page";
+import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
+import { listPlatformTenants } from "#lib/tenants";
 
 export const metadata: Metadata = {
   title: "テナント一覧",

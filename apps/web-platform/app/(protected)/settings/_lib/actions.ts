@@ -2,18 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requestPlatformEmailChange } from "../../../../lib/email-change";
+import { requestPlatformEmailChange } from "#lib/email-change";
 import {
   sendPlatformSmtpTestEmail,
   updatePlatformEmailSettings,
-} from "../../../../lib/email-settings";
-import type { PlatformSmtpSettings } from "../../../../lib/email-settings-shared";
+} from "#lib/email-settings";
+import type { PlatformSmtpSettings } from "#lib/email-settings-shared";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
-} from "../../../../lib/email-settings-shared";
+} from "#lib/email-settings-shared";
 
 export type PlatformEmailSettingsFormState =
   | { message: string; ok: false }

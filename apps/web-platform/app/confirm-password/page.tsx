@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { confirmPlatformPasswordReset } from "../../lib/password-reset";
+import { confirmPlatformPasswordReset } from "#lib/password-reset";
 
 export const metadata: Metadata = {
   title: "新しいパスワードの設定",

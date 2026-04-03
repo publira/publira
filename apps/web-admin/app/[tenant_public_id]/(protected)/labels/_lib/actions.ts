@@ -3,7 +3,8 @@
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createLabel, updateLabel } from "../../../../../lib/label";
+import { createLabel, updateLabel } from "#lib/label";
+
 import type { LabelActionState } from "../label-types";
 
 const parseCommonFields = (formData: FormData) => {

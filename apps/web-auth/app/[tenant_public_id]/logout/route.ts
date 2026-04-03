@@ -5,7 +5,7 @@ import {
   PUBLIC_SESSION_COOKIE_NAME,
   logoutPublic,
   sessionCookieOptions,
-} from "../../../lib/auth";
+} from "#lib/auth";
 
 const clearSessionCookie = (response: NextResponse) => {
   response.cookies.set({

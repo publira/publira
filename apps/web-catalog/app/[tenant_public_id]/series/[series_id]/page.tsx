@@ -5,7 +5,7 @@ import {
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { getSeriesDetail, SeriesNotFoundError } from "../../../../lib/catalog";
+import { getSeriesDetail, SeriesNotFoundError } from "#lib/catalog";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id", "series_id");

@@ -5,8 +5,9 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { AdminPage } from "../../../../../components/admin-page";
-import { getTenantThemeSettings } from "../../../../../lib/theme-settings";
+import { AdminPage } from "#components/admin-page";
+import { getTenantThemeSettings } from "#lib/theme-settings";
+
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { ThemeSettingsForm } from "../_components/theme-settings-form";
 import { updateTenantThemeSettingsAction } from "../_lib/actions";

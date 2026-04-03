@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useRef, useTransition } from "react";
 
-import type { EpisodeImageItem } from "../../../../../../../../lib/episode";
+import type { EpisodeImageItem } from "#lib/episode";
 
 interface EpisodeImagesSortableGridProps {
   tenantPublicId: string;

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { requestPublicEmailChange } from "../../../../lib/auth";
+import { requestPublicEmailChange } from "#lib/auth";
 
 const buildSettingsPath = (status: "success" | "error", message: string) => {
   const params = new URLSearchParams({ message, status });

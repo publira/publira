@@ -6,7 +6,8 @@ import {
   reorderEpisodeImages,
   updateEpisodePublishSchedule,
   uploadEpisodePages,
-} from "../../../../../../../../lib/episode";
+} from "#lib/episode";
+
 import type { EpisodeEditActionState } from "../episode-edit-types";
 
 interface EpisodeEditErrorState {

@@ -6,7 +6,8 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AdminPage } from "../../../../../../../components/admin-page";
+import { AdminPage } from "#components/admin-page";
+
 import { EpisodeForm } from "../_components/episode-form";
 import { createEpisodeAction } from "../_lib/actions";
 

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { getTenantSiteInfo } from "../../lib/tenant";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
   const normalizedCopyrightText = copyrightText?.trim() ?? "";

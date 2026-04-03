@@ -20,13 +20,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../components/platform-page";
-import { getAuditActionLabel } from "../../lib/audit-log-labels";
-import { getPlatformDashboardSummary } from "../../lib/dashboard";
+import { PlatformPage } from "#components/platform-page";
+import { getAuditActionLabel } from "#lib/audit-log-labels";
+import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type {
   PlatformDashboardRecentEvent,
   PlatformDashboardSummary,
-} from "../../lib/dashboard";
+} from "#lib/dashboard";
 
 export const metadata: Metadata = {
   title: "ダッシュボード",

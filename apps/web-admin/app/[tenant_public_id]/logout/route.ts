@@ -5,7 +5,7 @@ import {
   ADMIN_SESSION_COOKIE_NAME,
   logoutAdmin,
   sessionCookieOptions,
-} from "../../../lib/admin-auth";
+} from "#lib/admin-auth";
 
 interface RouteContext {
   params: Promise<{ tenant_public_id: string }>;

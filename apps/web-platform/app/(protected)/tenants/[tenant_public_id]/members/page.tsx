@@ -5,12 +5,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../../../../components/platform-page";
+import { PlatformPage } from "#components/platform-page";
 import {
   getPlatformTenant,
   listPlatformTenantAdminInvitations,
   listPlatformTenantMembers,
-} from "../../../../../lib/tenants";
+} from "#lib/tenants";
+
 import { TenantSectionNav } from "../_components/tenant-section-nav";
 import {
   addTenantMemberAction,

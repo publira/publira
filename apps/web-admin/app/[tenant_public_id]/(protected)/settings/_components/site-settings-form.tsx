@@ -19,7 +19,8 @@ import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useEffect, useState } from "react";
 
-import type { TenantSiteSettings } from "../../../../../lib/site-settings";
+import type { TenantSiteSettings } from "#lib/site-settings";
+
 import type { SiteSettingsActionState } from "../settings-types";
 
 interface SiteSettingsFormProps {
