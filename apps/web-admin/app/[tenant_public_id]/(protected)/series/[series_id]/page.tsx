@@ -14,8 +14,13 @@ import { listCreators } from "#lib/creator";
 import { listLabels } from "#lib/label";
 import { getSeries } from "#lib/series";
 
+import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
 import { SeriesForm } from "../_components/series-form";
-import { updateSeriesAction } from "../_lib/actions";
+import { SeriesTabNav } from "../_components/series-tab-nav";
+import {
+  updateSeriesAction,
+  updateSeriesEyeCatchAction,
+} from "../_lib/actions";
 
 export const metadata: Metadata = {
   title: "シリーズ編集",
@@ -40,20 +45,45 @@ interface EditSeriesPageProps {
     series_id: string;
     tenant_public_id: string;
   }>;
+  searchParams: Promise<{
+    tab?: string;
+  }>;
 }
 
 const EditSeriesFormData = async ({
+  activeTab,
   seriesId,
   tenantPublicId,
 }: {
+  activeTab: "basic" | "eye-catch";
   seriesId: string;
   tenantPublicId: string;
 }) => {
+  if (activeTab === "eye-catch") {
+    const result = await getSeries({ publicId: seriesId, tenantPublicId });
+    if (!result.ok) {
+      return (
+        <div className="grid gap-4">
+          <FormMessage variant="destructive">{result.message}</FormMessage>
+          <div>
+            <LinkButton render={<Link href="/series" />} variant="outline">
+              一覧へ戻る
+            </LinkButton>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <SeriesEyeCatchForm
+        action={updateSeriesEyeCatchAction}
+        initialSeries={result.series}
+        tenantPublicId={tenantPublicId}
+      />
+    );
+  }
+
   const [result, creatorsResult, labelsResult] = await Promise.all([
-    getSeries({
-      publicId: seriesId,
-      tenantPublicId,
-    }),
+    getSeries({ publicId: seriesId, tenantPublicId }),
     listCreators(tenantPublicId),
     listLabels(tenantPublicId),
   ]);
@@ -88,10 +118,24 @@ const EditSeriesFormData = async ({
   );
 };
 
-export default async function EditSeriesPage({ params }: EditSeriesPageProps) {
+export default async function EditSeriesPage({
+  params,
+  searchParams,
+}: EditSeriesPageProps) {
   const { series_id, tenant_public_id } = await params;
+  const { tab } = await searchParams;
   guardPlaceholder(tenant_public_id);
   guardPlaceholder(series_id);
+
+  const activeTab = tab === "eye-catch" ? "eye-catch" : "basic";
+  const pageTitle =
+    activeTab === "eye-catch"
+      ? "シリーズのアイキャッチを編集"
+      : "シリーズを編集";
+  const pageDescription =
+    activeTab === "eye-catch"
+      ? "アイキャッチ画像の差し替え・削除を行います。"
+      : "タイトル・概要・公開設定などを編集します。";
 
   return (
     <AdminPage
@@ -100,16 +144,20 @@ export default async function EditSeriesPage({ params }: EditSeriesPageProps) {
           一覧へ戻る
         </LinkButton>
       }
-      description="シリーズ情報を編集します。"
-      title="シリーズを編集"
+      description={pageDescription}
+      title={pageTitle}
     >
       <FlashToast title="シリーズを作成しました。" />
-      <Suspense fallback={<EditSeriesFormSkeleton />}>
-        <EditSeriesFormData
-          seriesId={series_id}
-          tenantPublicId={tenant_public_id}
-        />
-      </Suspense>
+      <div className="grid gap-6">
+        <SeriesTabNav current={activeTab} seriesId={series_id} />
+        <Suspense fallback={<EditSeriesFormSkeleton />}>
+          <EditSeriesFormData
+            activeTab={activeTab}
+            seriesId={series_id}
+            tenantPublicId={tenant_public_id}
+          />
+        </Suspense>
+      </div>
     </AdminPage>
   );
 }

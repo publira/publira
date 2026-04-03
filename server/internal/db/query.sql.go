@@ -656,7 +656,7 @@ INSERT INTO series (
         title
     )
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at
+RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id
 `
 
 type CreateSeriesBaseParams struct {
@@ -686,21 +686,24 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		&i.IsPublished,
 		&i.PublishedAt,
 		&i.UpdatedAt,
+		&i.EyeCatchImageID,
 	)
 	return i, err
 }
 
 const createSeriesCreator = `-- name: CreateSeriesCreator :exec
 INSERT INTO series_creators (
+    tenant_id,
         series_id,
         creator_id,
         role,
         display_order
     )
-VALUES ($1, $2, $3, $4)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateSeriesCreatorParams struct {
+	TenantID     uuid.UUID `json:"tenant_id"`
 	SeriesID     uuid.UUID `json:"series_id"`
 	CreatorID    uuid.UUID `json:"creator_id"`
 	Role         string    `json:"role"`
@@ -709,12 +712,107 @@ type CreateSeriesCreatorParams struct {
 
 func (q *Queries) CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error {
 	_, err := q.db.ExecContext(ctx, createSeriesCreator,
+		arg.TenantID,
 		arg.SeriesID,
 		arg.CreatorID,
 		arg.Role,
 		arg.DisplayOrder,
 	)
 	return err
+}
+
+const createSeriesImage = `-- name: CreateSeriesImage :one
+INSERT INTO series_images (
+        id,
+        tenant_id,
+        series_id,
+        updated_at
+    )
+VALUES ($1, $2, $3, NOW())
+RETURNING id, tenant_id, series_id, updated_at, created_at
+`
+
+type CreateSeriesImageParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
+func (q *Queries) CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error) {
+	row := q.db.QueryRowContext(ctx, createSeriesImage, arg.ID, arg.TenantID, arg.SeriesID)
+	var i SeriesImage
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.SeriesID,
+		&i.UpdatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createSeriesImageVariant = `-- name: CreateSeriesImageVariant :one
+INSERT INTO series_image_variants (
+        id,
+        tenant_id,
+        series_image_id,
+        variant_type,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, tenant_id, series_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at, variant_type
+`
+
+type CreateSeriesImageVariantParams struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	SeriesImageID   uuid.UUID `json:"series_image_id"`
+	VariantType     string    `json:"variant_type"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+}
+
+func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error) {
+	row := q.db.QueryRowContext(ctx, createSeriesImageVariant,
+		arg.ID,
+		arg.TenantID,
+		arg.SeriesImageID,
+		arg.VariantType,
+		arg.Label,
+		arg.StorageProvider,
+		arg.ObjectKey,
+		arg.ContentType,
+		arg.FileSizeBytes,
+		arg.Width,
+		arg.Height,
+	)
+	var i SeriesImageVariant
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.SeriesImageID,
+		&i.Label,
+		&i.StorageProvider,
+		&i.ObjectKey,
+		&i.ContentType,
+		&i.FileSizeBytes,
+		&i.Width,
+		&i.Height,
+		&i.CreatedAt,
+		&i.VariantType,
+	)
+	return i, err
 }
 
 const createSession = `-- name: CreateSession :one
@@ -1832,10 +1930,21 @@ SELECT s.id,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
-    s.published_at
+    s.published_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
 WHERE s.tenant_id = $1
     AND s.public_id = $2
 LIMIT 1
@@ -1847,15 +1956,18 @@ type GetSeriesByPublicIDForTenantParams struct {
 }
 
 type GetSeriesByPublicIDForTenantRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	PublicID           string         `json:"public_id"`
-	Title              string         `json:"title"`
-	LabelPublicID      sql.NullString `json:"label_public_id"`
-	LabelName          sql.NullString `json:"label_name"`
-	Synopsis           sql.NullString `json:"synopsis"`
-	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
-	IsPublished        bool           `json:"is_published"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
+	ID                         uuid.UUID      `json:"id"`
+	PublicID                   string         `json:"public_id"`
+	Title                      string         `json:"title"`
+	LabelPublicID              sql.NullString `json:"label_public_id"`
+	LabelName                  sql.NullString `json:"label_name"`
+	Synopsis                   sql.NullString `json:"synopsis"`
+	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	IsPublished                bool           `json:"is_published"`
+	PublishedAt                sql.NullTime   `json:"published_at"`
+	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
+	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
 }
 
 func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error) {
@@ -1871,6 +1983,9 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.ReadingPeriodHours,
 		&i.IsPublished,
 		&i.PublishedAt,
+		&i.EyeCatchImageID,
+		&i.EyeCatchImageUpdatedAt,
+		&i.EyeCatchImageFileSizeBytes,
 	)
 	return i, err
 }
@@ -1978,6 +2093,42 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.Creators,
 		&i.Episodes,
 	)
+	return i, err
+}
+
+const getSeriesImageVariantByTypeAndWidthForTenant = `-- name: GetSeriesImageVariantByTypeAndWidthForTenant :one
+SELECT siv.object_key,
+    siv.content_type
+FROM series_image_variants siv
+JOIN series_images si ON si.id = siv.series_image_id
+WHERE siv.series_image_id = $1
+    AND si.tenant_id = $2
+    AND siv.variant_type = $3
+    AND siv.width = $4
+LIMIT 1
+`
+
+type GetSeriesImageVariantByTypeAndWidthForTenantParams struct {
+	SeriesImageID uuid.UUID `json:"series_image_id"`
+	TenantID      uuid.UUID `json:"tenant_id"`
+	VariantType   string    `json:"variant_type"`
+	Width         int32     `json:"width"`
+}
+
+type GetSeriesImageVariantByTypeAndWidthForTenantRow struct {
+	ObjectKey   string `json:"object_key"`
+	ContentType string `json:"content_type"`
+}
+
+func (q *Queries) GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getSeriesImageVariantByTypeAndWidthForTenant,
+		arg.SeriesImageID,
+		arg.TenantID,
+		arg.VariantType,
+		arg.Width,
+	)
+	var i GetSeriesImageVariantByTypeAndWidthForTenantRow
+	err := row.Scan(&i.ObjectKey, &i.ContentType)
 	return i, err
 }
 
@@ -3542,10 +3693,21 @@ SELECT s.id,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
-    s.published_at
+    s.published_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
 WHERE s.tenant_id = $1
 ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3
@@ -3558,15 +3720,18 @@ type ListSeriesByTenantParams struct {
 }
 
 type ListSeriesByTenantRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	PublicID           string         `json:"public_id"`
-	Title              string         `json:"title"`
-	LabelPublicID      sql.NullString `json:"label_public_id"`
-	LabelName          sql.NullString `json:"label_name"`
-	Synopsis           sql.NullString `json:"synopsis"`
-	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
-	IsPublished        bool           `json:"is_published"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
+	ID                         uuid.UUID      `json:"id"`
+	PublicID                   string         `json:"public_id"`
+	Title                      string         `json:"title"`
+	LabelPublicID              sql.NullString `json:"label_public_id"`
+	LabelName                  sql.NullString `json:"label_name"`
+	Synopsis                   sql.NullString `json:"synopsis"`
+	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	IsPublished                bool           `json:"is_published"`
+	PublishedAt                sql.NullTime   `json:"published_at"`
+	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
+	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
 }
 
 func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error) {
@@ -3588,6 +3753,9 @@ func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenant
 			&i.ReadingPeriodHours,
 			&i.IsPublished,
 			&i.PublishedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+			&i.EyeCatchImageFileSizeBytes,
 		); err != nil {
 			return nil, err
 		}
@@ -3639,6 +3807,62 @@ func (q *Queries) ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds [
 			&i.Name,
 			&i.Role,
 			&i.DisplayOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSeriesImageVariantsByImageIDs = `-- name: ListSeriesImageVariantsByImageIDs :many
+SELECT series_image_id,
+    variant_type,
+    label,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+FROM series_image_variants
+WHERE series_image_id = ANY($1::uuid[])
+ORDER BY series_image_id,
+    variant_type,
+    width
+`
+
+type ListSeriesImageVariantsByImageIDsRow struct {
+	SeriesImageID uuid.UUID `json:"series_image_id"`
+	VariantType   string    `json:"variant_type"`
+	Label         string    `json:"label"`
+	ContentType   string    `json:"content_type"`
+	FileSizeBytes int64     `json:"file_size_bytes"`
+	Width         int32     `json:"width"`
+	Height        int32     `json:"height"`
+}
+
+func (q *Queries) ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSeriesImageVariantsByImageIDs, pq.Array(imageIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSeriesImageVariantsByImageIDsRow
+	for rows.Next() {
+		var i ListSeriesImageVariantsByImageIDsRow
+		if err := rows.Scan(
+			&i.SeriesImageID,
+			&i.VariantType,
+			&i.Label,
+			&i.ContentType,
+			&i.FileSizeBytes,
+			&i.Width,
+			&i.Height,
 		); err != nil {
 			return nil, err
 		}
@@ -4281,6 +4505,23 @@ func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBasePara
 	return err
 }
 
+const updateSeriesEyeCatchImageID = `-- name: UpdateSeriesEyeCatchImageID :exec
+UPDATE series
+SET eye_catch_image_id = $2,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateSeriesEyeCatchImageIDParams struct {
+	ID              uuid.UUID     `json:"id"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
+}
+
+func (q *Queries) UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSeriesEyeCatchImageIDParams) error {
+	_, err := q.db.ExecContext(ctx, updateSeriesEyeCatchImageID, arg.ID, arg.EyeCatchImageID)
+	return err
+}
+
 const updateSeriesPublication = `-- name: UpdateSeriesPublication :exec
 UPDATE series
 SET is_published = $2,
@@ -4672,6 +4913,7 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 
 const upsertSeriesListing = `-- name: UpsertSeriesListing :one
 INSERT INTO series_listings (
+        tenant_id,
         series_id,
         synopsis,
         reading_period_hours
@@ -4679,7 +4921,8 @@ INSERT INTO series_listings (
 VALUES (
         $1,
         $2,
-        $3
+        $3,
+        $4
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
@@ -4688,13 +4931,19 @@ RETURNING series_id, synopsis, reading_period_hours, is_published, published_at,
 `
 
 type UpsertSeriesListingParams struct {
+	TenantID           uuid.UUID      `json:"tenant_id"`
 	SeriesID           uuid.UUID      `json:"series_id"`
 	Synopsis           sql.NullString `json:"synopsis"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
 }
 
 func (q *Queries) UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error) {
-	row := q.db.QueryRowContext(ctx, upsertSeriesListing, arg.SeriesID, arg.Synopsis, arg.ReadingPeriodHours)
+	row := q.db.QueryRowContext(ctx, upsertSeriesListing,
+		arg.TenantID,
+		arg.SeriesID,
+		arg.Synopsis,
+		arg.ReadingPeriodHours,
+	)
 	var i SeriesListing
 	err := row.Scan(
 		&i.SeriesID,

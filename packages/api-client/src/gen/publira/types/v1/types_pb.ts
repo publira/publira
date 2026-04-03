@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/types/v1/types.proto.
  */
 export const file_publira_types_v1_types: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIikKDVRlbmFudENvbnRleHQSGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCSI1CgRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkiMQoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEhIKCmV4cGlyZXNfYXQYAiABKAkiqQEKB0NyZWF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCRIUCgxwcm9maWxlX3RleHQYBCABKAkSFgoOaWNvbl9pbWFnZV91cmwYBSABKAkSIgoaaWNvbl9pbWFnZV9maWxlX3NpemVfYnl0ZXMYBiABKAMSHQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAcgASgJIigKBUxhYmVsEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJIq8BCgZTZXJpZXMSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhAKCHN5bm9wc2lzGAMgASgJEiYKBWxhYmVsGAQgASgLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbBIrCghjcmVhdG9ycxgFIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBSKpAQoHRXBpc29kZRIRCglwdWJsaWNfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSEwoLb3JkZXJfaW5kZXgYAyABKAUSDQoFcHJpY2UYBCABKAUSHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBSABKAUSDgoGc3RhdHVzGAYgASgJEhQKDHNjaGVkdWxlZF9hdBgHIAEoCRIUCgxwdWJsaXNoZWRfYXQYCCABKAkikgEKDEVwaXNvZGVJbWFnZRIKCgJpZBgBIAEoCRIRCglpbWFnZV91cmwYAiABKAkSFAoMY29udGVudF90eXBlGAMgASgJEhcKD2ZpbGVfc2l6ZV9ieXRlcxgEIAEoAxIVCg1kaXNwbGF5X29yZGVyGAUgASgFEg0KBXdpZHRoGAYgASgFEg4KBmhlaWdodBgHIAEoBSL/BQoLVGVuYW50VGhlbWUSFQoNcHJpbWFyeV9jb2xvchgBIAEoCRIXCg9zZWNvbmRhcnlfY29sb3IYAiABKAkSFAoMYWNjZW50X2NvbG9yGAMgASgJEhAKCGxvZ29fdXJsGAQgASgJEhgKEGJhY2tncm91bmRfY29sb3IYBSABKAkSGAoQZm9yZWdyb3VuZF9jb2xvchgGIAEoCRIVCg1zdXJmYWNlX2NvbG9yGAcgASgJEiAKGHN1cmZhY2VfZm9yZWdyb3VuZF9jb2xvchgIIAEoCRISCgpjYXJkX2NvbG9yGAkgASgJEh0KFWNhcmRfZm9yZWdyb3VuZF9jb2xvchgKIAEoCRIVCg1wb3BvdmVyX2NvbG9yGAsgASgJEiAKGHBvcG92ZXJfZm9yZWdyb3VuZF9jb2xvchgMIAEoCRIgChhwcmltYXJ5X2ZvcmVncm91bmRfY29sb3IYDSABKAkSIgoac2Vjb25kYXJ5X2ZvcmVncm91bmRfY29sb3IYDiABKAkSHwoXYWNjZW50X2ZvcmVncm91bmRfY29sb3IYDyABKAkSEwoLbXV0ZWRfY29sb3IYECABKAkSHgoWbXV0ZWRfZm9yZWdyb3VuZF9jb2xvchgRIAEoCRIUCgxib3JkZXJfY29sb3IYEiABKAkSEwoLaW5wdXRfY29sb3IYEyABKAkSEgoKcmluZ19jb2xvchgUIAEoCRIVCg1zdWNjZXNzX2NvbG9yGBUgASgJEiAKGHN1Y2Nlc3NfZm9yZWdyb3VuZF9jb2xvchgWIAEoCRIVCg13YXJuaW5nX2NvbG9yGBcgASgJEiAKGHdhcm5pbmdfZm9yZWdyb3VuZF9jb2xvchgYIAEoCRIZChFkZXN0cnVjdGl2ZV9jb2xvchgZIAEoCRIkChxkZXN0cnVjdGl2ZV9mb3JlZ3JvdW5kX2NvbG9yGBogASgJEhIKCmluZm9fY29sb3IYGyABKAkSHQoVaW5mb19mb3JlZ3JvdW5kX2NvbG9yGBwgASgJQkhaRmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS90eXBlcy92MTtwdWJsaXJhdHR5cGVzdjFiBnByb3RvMw");
+  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIikKDVRlbmFudENvbnRleHQSGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCSI1CgRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkiMQoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEhIKCmV4cGlyZXNfYXQYAiABKAkiqQEKB0NyZWF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCRIUCgxwcm9maWxlX3RleHQYBCABKAkSFgoOaWNvbl9pbWFnZV91cmwYBSABKAkSIgoaaWNvbl9pbWFnZV9maWxlX3NpemVfYnl0ZXMYBiABKAMSHQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAcgASgJIigKBUxhYmVsEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJIpcBChVTZXJpZXNFeWVDYXRjaFZhcmlhbnQSDQoFbGFiZWwYASABKAkSFAoMdmFyaWFudF90eXBlGAcgASgJEgsKA3VybBgCIAEoCRIUCgxjb250ZW50X3R5cGUYAyABKAkSDQoFd2lkdGgYBCABKAUSDgoGaGVpZ2h0GAUgASgFEhcKD2ZpbGVfc2l6ZV9ieXRlcxgGIAEoAyKqAgoGU2VyaWVzEhEKCXB1YmxpY19pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIQCghzeW5vcHNpcxgDIAEoCRImCgVsYWJlbBgEIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwSKwoIY3JlYXRvcnMYBSADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3ISHAoUcmVhZGluZ19wZXJpb2RfaG91cnMYBiABKAUSIgoaZXllX2NhdGNoX2ltYWdlX3VwZGF0ZWRfYXQYCSABKAkSSQoYZXllX2NhdGNoX2ltYWdlX3ZhcmlhbnRzGAogAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeWVDYXRjaFZhcmlhbnRKBAgHEAhKBAgIEAkiqQEKB0VwaXNvZGUSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhMKC29yZGVyX2luZGV4GAMgASgFEg0KBXByaWNlGAQgASgFEhwKFHJlYWRpbmdfcGVyaW9kX2hvdXJzGAUgASgFEg4KBnN0YXR1cxgGIAEoCRIUCgxzY2hlZHVsZWRfYXQYByABKAkSFAoMcHVibGlzaGVkX2F0GAggASgJIpIBCgxFcGlzb2RlSW1hZ2USCgoCaWQYASABKAkSEQoJaW1hZ2VfdXJsGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRIXCg9maWxlX3NpemVfYnl0ZXMYBCABKAMSFQoNZGlzcGxheV9vcmRlchgFIAEoBRINCgV3aWR0aBgGIAEoBRIOCgZoZWlnaHQYByABKAUi/wUKC1RlbmFudFRoZW1lEhUKDXByaW1hcnlfY29sb3IYASABKAkSFwoPc2Vjb25kYXJ5X2NvbG9yGAIgASgJEhQKDGFjY2VudF9jb2xvchgDIAEoCRIQCghsb2dvX3VybBgEIAEoCRIYChBiYWNrZ3JvdW5kX2NvbG9yGAUgASgJEhgKEGZvcmVncm91bmRfY29sb3IYBiABKAkSFQoNc3VyZmFjZV9jb2xvchgHIAEoCRIgChhzdXJmYWNlX2ZvcmVncm91bmRfY29sb3IYCCABKAkSEgoKY2FyZF9jb2xvchgJIAEoCRIdChVjYXJkX2ZvcmVncm91bmRfY29sb3IYCiABKAkSFQoNcG9wb3Zlcl9jb2xvchgLIAEoCRIgChhwb3BvdmVyX2ZvcmVncm91bmRfY29sb3IYDCABKAkSIAoYcHJpbWFyeV9mb3JlZ3JvdW5kX2NvbG9yGA0gASgJEiIKGnNlY29uZGFyeV9mb3JlZ3JvdW5kX2NvbG9yGA4gASgJEh8KF2FjY2VudF9mb3JlZ3JvdW5kX2NvbG9yGA8gASgJEhMKC211dGVkX2NvbG9yGBAgASgJEh4KFm11dGVkX2ZvcmVncm91bmRfY29sb3IYESABKAkSFAoMYm9yZGVyX2NvbG9yGBIgASgJEhMKC2lucHV0X2NvbG9yGBMgASgJEhIKCnJpbmdfY29sb3IYFCABKAkSFQoNc3VjY2Vzc19jb2xvchgVIAEoCRIgChhzdWNjZXNzX2ZvcmVncm91bmRfY29sb3IYFiABKAkSFQoNd2FybmluZ19jb2xvchgXIAEoCRIgChh3YXJuaW5nX2ZvcmVncm91bmRfY29sb3IYGCABKAkSGQoRZGVzdHJ1Y3RpdmVfY29sb3IYGSABKAkSJAocZGVzdHJ1Y3RpdmVfZm9yZWdyb3VuZF9jb2xvchgaIAEoCRISCgppbmZvX2NvbG9yGBsgASgJEh0KFWluZm9fZm9yZWdyb3VuZF9jb2xvchgcIAEoCUJIWkZnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdHlwZXMvdjE7cHVibGlyYXR0eXBlc3YxYgZwcm90bzM");
 
 /**
  * @generated from message publira.types.v1.TenantContext
@@ -148,6 +148,57 @@ export const LabelSchema: GenMessage<Label> = /*@__PURE__*/
   messageDesc(file_publira_types_v1_types, 4);
 
 /**
+ * @generated from message publira.types.v1.SeriesEyeCatchVariant
+ */
+export type SeriesEyeCatchVariant = Message<"publira.types.v1.SeriesEyeCatchVariant"> & {
+  /**
+   * ラベル形式: "{ratio}_{width}w" (例: "portrait_1200w", "landscape_1600w")
+   *
+   * @generated from field: string label = 1;
+   */
+  label: string;
+
+  /**
+   * 用途種別: portrait / square / landscape / og
+   *
+   * @generated from field: string variant_type = 7;
+   */
+  variantType: string;
+
+  /**
+   * @generated from field: string url = 2;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string content_type = 3;
+   */
+  contentType: string;
+
+  /**
+   * @generated from field: int32 width = 4;
+   */
+  width: number;
+
+  /**
+   * @generated from field: int32 height = 5;
+   */
+  height: number;
+
+  /**
+   * @generated from field: int64 file_size_bytes = 6;
+   */
+  fileSizeBytes: bigint;
+};
+
+/**
+ * Describes the message publira.types.v1.SeriesEyeCatchVariant.
+ * Use `create(SeriesEyeCatchVariantSchema)` to create a new message.
+ */
+export const SeriesEyeCatchVariantSchema: GenMessage<SeriesEyeCatchVariant> = /*@__PURE__*/
+  messageDesc(file_publira_types_v1_types, 5);
+
+/**
  * @generated from message publira.types.v1.Series
  */
 export type Series = Message<"publira.types.v1.Series"> & {
@@ -180,6 +231,16 @@ export type Series = Message<"publira.types.v1.Series"> & {
    * @generated from field: int32 reading_period_hours = 6;
    */
   readingPeriodHours: number;
+
+  /**
+   * @generated from field: string eye_catch_image_updated_at = 9;
+   */
+  eyeCatchImageUpdatedAt: string;
+
+  /**
+   * @generated from field: repeated publira.types.v1.SeriesEyeCatchVariant eye_catch_image_variants = 10;
+   */
+  eyeCatchImageVariants: SeriesEyeCatchVariant[];
 };
 
 /**
@@ -187,7 +248,7 @@ export type Series = Message<"publira.types.v1.Series"> & {
  * Use `create(SeriesSchema)` to create a new message.
  */
 export const SeriesSchema: GenMessage<Series> = /*@__PURE__*/
-  messageDesc(file_publira_types_v1_types, 5);
+  messageDesc(file_publira_types_v1_types, 6);
 
 /**
  * @generated from message publira.types.v1.Episode
@@ -239,7 +300,7 @@ export type Episode = Message<"publira.types.v1.Episode"> & {
  * Use `create(EpisodeSchema)` to create a new message.
  */
 export const EpisodeSchema: GenMessage<Episode> = /*@__PURE__*/
-  messageDesc(file_publira_types_v1_types, 6);
+  messageDesc(file_publira_types_v1_types, 7);
 
 /**
  * @generated from message publira.types.v1.EpisodeImage
@@ -286,7 +347,7 @@ export type EpisodeImage = Message<"publira.types.v1.EpisodeImage"> & {
  * Use `create(EpisodeImageSchema)` to create a new message.
  */
 export const EpisodeImageSchema: GenMessage<EpisodeImage> = /*@__PURE__*/
-  messageDesc(file_publira_types_v1_types, 7);
+  messageDesc(file_publira_types_v1_types, 8);
 
 /**
  * @generated from message publira.types.v1.TenantTheme
@@ -438,5 +499,5 @@ export type TenantTheme = Message<"publira.types.v1.TenantTheme"> & {
  * Use `create(TenantThemeSchema)` to create a new message.
  */
 export const TenantThemeSchema: GenMessage<TenantTheme> = /*@__PURE__*/
-  messageDesc(file_publira_types_v1_types, 8);
+  messageDesc(file_publira_types_v1_types, 9);
 

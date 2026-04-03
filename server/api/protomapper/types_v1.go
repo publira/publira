@@ -25,6 +25,9 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	if row.ReadingPeriodHours.Valid {
 		series.ReadingPeriodHours = row.ReadingPeriodHours.Int32
 	}
+	if row.EyeCatchImageUpdatedAt.Valid {
+		series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
 	return series
 }
 

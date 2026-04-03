@@ -51,3 +51,9 @@ GRANT CONNECT ON DATABASE publira TO publira_platform, publira_admin, publira_pu
 GRANT USAGE ON SCHEMA public TO publira_platform, publira_admin, publira_public;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO publira_platform, publira_admin, publira_public;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO publira_platform, publira_admin, publira_public;
+
+-- Ensure tables/sequences created by subsequent migrations automatically inherit app grants.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO publira_platform, publira_admin, publira_public;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT USAGE, SELECT ON SEQUENCES TO publira_platform, publira_admin, publira_public;

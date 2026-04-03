@@ -192,15 +192,16 @@ type Purchase struct {
 }
 
 type Series struct {
-	ID          uuid.UUID     `json:"id"`
-	TenantID    uuid.UUID     `json:"tenant_id"`
-	LabelID     uuid.NullUUID `json:"label_id"`
-	PublicID    string        `json:"public_id"`
-	Title       string        `json:"title"`
-	CreatedAt   time.Time     `json:"created_at"`
-	IsPublished bool          `json:"is_published"`
-	PublishedAt sql.NullTime  `json:"published_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
+	ID              uuid.UUID     `json:"id"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	LabelID         uuid.NullUUID `json:"label_id"`
+	PublicID        string        `json:"public_id"`
+	Title           string        `json:"title"`
+	CreatedAt       time.Time     `json:"created_at"`
+	IsPublished     bool          `json:"is_published"`
+	PublishedAt     sql.NullTime  `json:"published_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
 }
 
 type SeriesCreator struct {
@@ -209,6 +210,29 @@ type SeriesCreator struct {
 	Role         string    `json:"role"`
 	DisplayOrder int32     `json:"display_order"`
 	TenantID     uuid.UUID `json:"tenant_id"`
+}
+
+type SeriesImage struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type SeriesImageVariant struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	SeriesImageID   uuid.UUID `json:"series_image_id"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+	CreatedAt       time.Time `json:"created_at"`
+	VariantType     string    `json:"variant_type"`
 }
 
 type SeriesListing struct {
