@@ -156,7 +156,10 @@ export const EpisodesSortableList = ({
             </p>
             {episode.status === "scheduled" && episode.scheduledAt ? (
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                公開予約: {new Date(episode.scheduledAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
+                公開予約:{" "}
+                {new Date(episode.scheduledAt).toLocaleString("ja-JP", {
+                  timeZone: "Asia/Tokyo",
+                })}
               </p>
             ) : null}
           </div>
