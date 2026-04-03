@@ -132,6 +132,94 @@ const mapEpisodeImage = (image: {
   width: image.width,
 });
 
+const mapEpisodeUploadErrorMessage = (error: unknown): string => {
+  if (!(error instanceof Error)) {
+    return mapErrorToMessage(error, genericUploadErrorMessage);
+  }
+
+  const message = error.message.toLowerCase();
+
+  if (message.includes("valid epub file")) {
+    return "ePub の解析に失敗しました。壊れていない ePub（.epub）を選択してください。";
+  }
+
+  if (
+    message.includes("spine references unknown asset") ||
+    message.includes("contains no spine") ||
+    message.includes("contains no spine image assets")
+  ) {
+    return "ePub の本文参照に不整合があります。spine と manifest の参照を確認してください。";
+  }
+
+  if (
+    message.includes("manifest contains invalid path") ||
+    message.includes("invalid path") ||
+    message.includes("traversal") ||
+    message.includes("outside")
+  ) {
+    return "ePub 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。";
+  }
+
+  if (message.includes("zip") && message.includes("broken")) {
+    return "ZIP が壊れています。正常な ZIP ファイルを再作成してください。";
+  }
+
+  if (
+    message.includes("zip") &&
+    (message.includes("path") ||
+      message.includes("traversal") ||
+      message.includes("outside"))
+  ) {
+    return "ZIP 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。";
+  }
+
+  return mapErrorToMessage(error, genericUploadErrorMessage);
+};
+
+const uploadArchive = async (input: {
+  archive: File;
+  episodePublicId: string;
+  seriesPublicId?: string;
+  tenantPublicId: string;
+  sessionId: string;
+}) => {
+  const request = {
+    archiveContentType: input.archive.type || "application/octet-stream",
+    archiveData: new Uint8Array(await input.archive.arrayBuffer()),
+    archiveFilename: input.archive.name,
+    episodePublicId: input.episodePublicId,
+    seriesPublicId: input.seriesPublicId ?? "",
+    tenant: { tenantPublicId: input.tenantPublicId },
+  } as Parameters<typeof apiClient.series.uploadEpisodeImages>[0];
+
+  return apiClient.series.uploadEpisodeImages(
+    request,
+    withSessionHeaders(input.sessionId)
+  );
+};
+
+const uploadPages = async (input: {
+  pages: File[];
+  episodePublicId: string;
+  tenantPublicId: string;
+  sessionId: string;
+}) =>
+  apiClient.series.uploadEpisodeImages(
+    {
+      episodePublicId: input.episodePublicId,
+      images: await Promise.all(
+        input.pages.map(async (page, index) => ({
+          contentType: page.type || "application/octet-stream",
+          data: new Uint8Array(await page.arrayBuffer()),
+          displayOrder: index,
+          filename: page.name,
+        }))
+      ),
+      tenant: { tenantPublicId: input.tenantPublicId },
+    },
+    withSessionHeaders(input.sessionId)
+  );
+
 export const createEpisode = async (input: {
   tenantPublicId: string;
   seriesPublicId: string;
@@ -262,6 +350,7 @@ export const updateEpisodePublishSchedule = async (input: {
 export const uploadEpisodePages = async (input: {
   tenantPublicId: string;
   episodePublicId: string;
+  seriesPublicId?: string;
   pages?: File[];
   archive?: File;
 }): Promise<UploadEpisodePagesResult> => {
@@ -282,69 +371,27 @@ export const uploadEpisodePages = async (input: {
 
   try {
     const response = input.archive
-      ? await (async () => {
-          const archive = input.archive as File;
-          const request = {
-            archiveContentType: archive.type || "application/octet-stream",
-            archiveData: new Uint8Array(await archive.arrayBuffer()),
-            archiveFilename: archive.name,
-            episodePublicId: input.episodePublicId,
-            tenant: { tenantPublicId: input.tenantPublicId },
-          } as Parameters<typeof apiClient.series.uploadEpisodeImages>[0];
-
-          return apiClient.series.uploadEpisodeImages(
-            request,
-            withSessionHeaders(sessionId)
-          );
-        })()
-      : await apiClient.series.uploadEpisodeImages(
-          {
-            episodePublicId: input.episodePublicId,
-            images: await Promise.all(
-              (input.pages ?? []).map(async (page, index) => ({
-                contentType: page.type || "application/octet-stream",
-                data: new Uint8Array(await page.arrayBuffer()),
-                displayOrder: index,
-                filename: page.name,
-              }))
-            ),
-            tenant: { tenantPublicId: input.tenantPublicId },
-          },
-          withSessionHeaders(sessionId)
-        );
+      ? await uploadArchive({
+          archive: input.archive,
+          episodePublicId: input.episodePublicId,
+          seriesPublicId: input.seriesPublicId,
+          sessionId,
+          tenantPublicId: input.tenantPublicId,
+        })
+      : await uploadPages({
+          episodePublicId: input.episodePublicId,
+          pages: input.pages ?? [],
+          sessionId,
+          tenantPublicId: input.tenantPublicId,
+        });
 
     return {
       ok: true,
       uploadedCount: response.images.length,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-
-      if (message.includes("zip") && message.includes("broken")) {
-        return {
-          message:
-            "ZIP が壊れています。正常な ZIP ファイルを再作成してください。",
-          ok: false,
-        };
-      }
-
-      if (
-        message.includes("zip") &&
-        (message.includes("path") ||
-          message.includes("traversal") ||
-          message.includes("outside"))
-      ) {
-        return {
-          message:
-            "ZIP 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。",
-          ok: false,
-        };
-      }
-    }
-
     return {
-      message: mapErrorToMessage(error, genericUploadErrorMessage),
+      message: mapEpisodeUploadErrorMessage(error),
       ok: false,
     };
   }
