@@ -225,6 +225,7 @@ type SeriesImageVariant struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	SeriesImageID   uuid.UUID `json:"series_image_id"`
 	Label           string    `json:"label"`
+	VariantType     string    `json:"variant_type"`
 	StorageProvider string    `json:"storage_provider"`
 	ObjectKey       string    `json:"object_key"`
 	ContentType     string    `json:"content_type"`
@@ -232,7 +233,6 @@ type SeriesImageVariant struct {
 	Width           int32     `json:"width"`
 	Height          int32     `json:"height"`
 	CreatedAt       time.Time `json:"created_at"`
-	VariantType     string    `json:"variant_type"`
 }
 
 type SeriesListing struct {

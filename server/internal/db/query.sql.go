@@ -766,7 +766,7 @@ INSERT INTO series_image_variants (
         height
     )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, tenant_id, series_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at, variant_type
+RETURNING id, tenant_id, series_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at
 `
 
 type CreateSeriesImageVariantParams struct {
@@ -803,6 +803,7 @@ func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeries
 		&i.TenantID,
 		&i.SeriesImageID,
 		&i.Label,
+		&i.VariantType,
 		&i.StorageProvider,
 		&i.ObjectKey,
 		&i.ContentType,
@@ -810,7 +811,6 @@ func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeries
 		&i.Width,
 		&i.Height,
 		&i.CreatedAt,
-		&i.VariantType,
 	)
 	return i, err
 }
