@@ -1208,6 +1208,116 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 	return i, err
 }
 
+const getEpisodeImageAccessByIDForSession = `-- name: GetEpisodeImageAccessByIDForSession :one
+SELECT ei.id,
+    ei.object_key,
+    ei.content_type,
+    (
+        s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    ) AS is_published,
+    (
+        el.price = 0
+        OR EXISTS (
+            SELECT 1
+            FROM purchases p
+            WHERE p.tenant_id = s.tenant_id
+                AND p.user_id = $3
+                AND p.episode_id = e.id
+                AND (
+                    p.expires_at IS NULL
+                    OR p.expires_at > NOW()
+                )
+        )
+    ) AS has_access
+FROM episode_images ei
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE ei.id = $1
+    AND s.tenant_id = $2
+LIMIT 1
+`
+
+type GetEpisodeImageAccessByIDForSessionParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+type GetEpisodeImageAccessByIDForSessionRow struct {
+	ID          uuid.UUID    `json:"id"`
+	ObjectKey   string       `json:"object_key"`
+	ContentType string       `json:"content_type"`
+	IsPublished sql.NullBool `json:"is_published"`
+	HasAccess   sql.NullBool `json:"has_access"`
+}
+
+func (q *Queries) GetEpisodeImageAccessByIDForSession(ctx context.Context, arg GetEpisodeImageAccessByIDForSessionParams) (GetEpisodeImageAccessByIDForSessionRow, error) {
+	row := q.db.QueryRowContext(ctx, getEpisodeImageAccessByIDForSession, arg.ID, arg.TenantID, arg.UserID)
+	var i GetEpisodeImageAccessByIDForSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.ObjectKey,
+		&i.ContentType,
+		&i.IsPublished,
+		&i.HasAccess,
+	)
+	return i, err
+}
+
+const getEpisodeImagePublicAccessByIDForTenant = `-- name: GetEpisodeImagePublicAccessByIDForTenant :one
+SELECT ei.id,
+    ei.object_key,
+    ei.content_type,
+    (
+        s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    ) AS is_published,
+    (el.price = 0) AS has_public_access
+FROM episode_images ei
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE ei.id = $1
+    AND s.tenant_id = $2
+LIMIT 1
+`
+
+type GetEpisodeImagePublicAccessByIDForTenantParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetEpisodeImagePublicAccessByIDForTenantRow struct {
+	ID              uuid.UUID    `json:"id"`
+	ObjectKey       string       `json:"object_key"`
+	ContentType     string       `json:"content_type"`
+	IsPublished     sql.NullBool `json:"is_published"`
+	HasPublicAccess bool         `json:"has_public_access"`
+}
+
+func (q *Queries) GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getEpisodeImagePublicAccessByIDForTenant, arg.ID, arg.TenantID)
+	var i GetEpisodeImagePublicAccessByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.ObjectKey,
+		&i.ContentType,
+		&i.IsPublished,
+		&i.HasPublicAccess,
+	)
+	return i, err
+}
+
 const getLabelByPublicIDForTenant = `-- name: GetLabelByPublicIDForTenant :one
 SELECT id, tenant_id, public_id, name, created_at
 FROM labels

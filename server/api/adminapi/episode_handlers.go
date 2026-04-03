@@ -240,7 +240,7 @@ func (s *adminServer) UploadEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	items, err := episodeimages.Service{Queries: s.queries, Storage: s.storage, Recorder: s.recorder}.Upload(ctx, episodeimages.UploadRequest{
+	items, err := episodeimages.Service{Queries: s.queriesFor(ctx), Storage: s.storage, Recorder: s.recorder}.Upload(ctx, episodeimages.UploadRequest{
 		Tenant:          tenant,
 		SeriesPublicID:  req.Msg.SeriesPublicId,
 		EpisodePublicID: req.Msg.EpisodePublicId,

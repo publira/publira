@@ -33,15 +33,25 @@ tasks:
     deps:
       - task: dev-api
       - task: dev-admin-api
+      - task: dev-admin-image-server
+      - task: dev-image-server
       - task: dev-platform-api
 
   dev-admin-api:
     desc: Run the admin API server in development mode
     cmds: [{ task: run, vars: { NAME: admin-api-server } }]
 
+  dev-admin-image-server:
+    desc: Run the admin image server in development mode
+    cmds: [{ task: run, vars: { NAME: admin-image-server } }]
+
   dev-api:
     desc: Run the public API server in development mode
     cmds: [{ task: run, vars: { NAME: api-server } }]
+
+  dev-image-server:
+    desc: Run the image server in development mode
+    cmds: [{ task: run, vars: { NAME: image-server } }]
 
   dev-platform-api:
     desc: Run the platform API server in development mode
