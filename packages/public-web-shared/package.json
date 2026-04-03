@@ -26,7 +26,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsdown",
-    "test": "vitest --run --passWithNoTests",
+    "test": "vitest --run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
