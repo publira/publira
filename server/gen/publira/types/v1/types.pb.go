@@ -270,11 +270,13 @@ func (x *Creator) GetIconImageUpdatedAt() string {
 }
 
 type Label struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState   `protogen:"open.v1"`
+	PublicId               string                   `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name                   string                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,3,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
+	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,4,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Label) Reset() {
@@ -319,6 +321,20 @@ func (x *Label) GetName() string {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *Label) GetEyeCatchImageUpdatedAt() string {
+	if x != nil {
+		return x.EyeCatchImageUpdatedAt
+	}
+	return ""
+}
+
+func (x *Label) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
+	if x != nil {
+		return x.EyeCatchImageVariants
+	}
+	return nil
 }
 
 type SeriesEyeCatchVariant struct {
@@ -990,10 +1006,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\fprofile_text\x18\x04 \x01(\tR\vprofileText\x12$\n" +
 	"\x0eicon_image_url\x18\x05 \x01(\tR\ficonImageUrl\x12:\n" +
 	"\x1aicon_image_file_size_bytes\x18\x06 \x01(\x03R\x16iconImageFileSizeBytes\x121\n" +
-	"\x15icon_image_updated_at\x18\a \x01(\tR\x12iconImageUpdatedAt\"8\n" +
+	"\x15icon_image_updated_at\x18\a \x01(\tR\x12iconImageUpdatedAt\"\xd6\x01\n" +
 	"\x05Label\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xdb\x01\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12:\n" +
+	"\x1aeye_catch_image_updated_at\x18\x03 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
+	"\x18eye_catch_image_variants\x18\x04 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xdb\x01\n" +
 	"\x15SeriesEyeCatchVariant\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12!\n" +
 	"\fvariant_type\x18\a \x01(\tR\vvariantType\x12\x10\n" +
@@ -1092,14 +1110,15 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*TenantTheme)(nil),           // 9: publira.types.v1.TenantTheme
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	4, // 0: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	3, // 1: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	5, // 2: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	4, // 1: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	3, // 2: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	5, // 3: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }

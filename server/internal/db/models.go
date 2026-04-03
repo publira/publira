@@ -99,11 +99,35 @@ type EpisodeListing struct {
 }
 
 type Label struct {
+	ID              uuid.UUID     `json:"id"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
+}
+
+type LabelImage struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
-	PublicID  string    `json:"public_id"`
-	Name      string    `json:"name"`
+	LabelID   uuid.UUID `json:"label_id"`
+	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type LabelImageVariant struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	LabelImageID    uuid.UUID `json:"label_image_id"`
+	Label           string    `json:"label"`
+	VariantType     string    `json:"variant_type"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type PlatformAuditLog struct {

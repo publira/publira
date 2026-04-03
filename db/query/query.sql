@@ -872,10 +872,17 @@ FROM tenants
 WHERE public_id = $1
 LIMIT 1;
 -- name: GetLabelByPublicIDForTenant :one
-SELECT *
-FROM labels
-WHERE tenant_id = $1
-    AND public_id = $2
+SELECT l.id,
+    l.tenant_id,
+    l.public_id,
+    l.name,
+    l.created_at,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.public_id = $2
 LIMIT 1;
 -- name: CreateSeriesBase :one
 INSERT INTO series (
@@ -1452,28 +1459,86 @@ JOIN LATERAL (
 WHERE ci.id = $1
     AND ci.tenant_id = $2
 LIMIT 1;
+
+-- name: CreateLabelImage :one
+INSERT INTO label_images (
+        id,
+        tenant_id,
+        label_id,
+        updated_at
+    )
+VALUES ($1, $2, $3, NOW())
+RETURNING *;
+
+-- name: CreateLabelImageVariant :one
+INSERT INTO label_image_variants (
+        id,
+        tenant_id,
+        label_image_id,
+        variant_type,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING *;
+
+-- name: GetLabelImageVariantByTypeAndWidthForTenant :one
+SELECT liv.object_key,
+    liv.content_type
+FROM label_image_variants liv
+JOIN label_images li ON li.id = liv.label_image_id
+WHERE liv.label_image_id = $1
+    AND li.tenant_id = $2
+    AND liv.variant_type = $3
+    AND liv.width = $4
+LIMIT 1;
+
+-- name: ListLabelImageVariantsByImageIDs :many
+SELECT label_image_id,
+    variant_type,
+    label,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+FROM label_image_variants
+WHERE label_image_id = ANY(@image_ids::uuid[])
+ORDER BY label_image_id,
+    variant_type,
+    width;
+
 -- name: ListLabelsByTenant :many
-SELECT id,
-    tenant_id,
-    public_id,
-    name,
-    created_at
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
 FROM labels
-WHERE tenant_id = $1
-ORDER BY created_at DESC
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = $1
+ORDER BY labels.created_at DESC
 LIMIT $2 OFFSET $3;
 -- name: CreateLabel :one
 INSERT INTO labels (
         id,
         tenant_id,
         public_id,
-        name
+        name,
+        eye_catch_image_id
     )
-VALUES ($1, $2, $3, $4)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 -- name: UpdateLabel :exec
 UPDATE labels
-SET name = $2
+SET name = $2,
+    eye_catch_image_id = $3
 WHERE id = $1;
 
 -- name: DeleteTenantUserRolesByUserID :exec

@@ -127,11 +127,13 @@ func (x *ListLabelsResponse) GetLabels() []*v1.Label {
 }
 
 type CreateLabelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name                     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	EyeCatchImageData        []byte                 `protobuf:"bytes,3,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
+	EyeCatchImageContentType string                 `protobuf:"bytes,4,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *CreateLabelRequest) Reset() {
@@ -174,6 +176,20 @@ func (x *CreateLabelRequest) GetTenant() *v1.TenantContext {
 func (x *CreateLabelRequest) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateLabelRequest) GetEyeCatchImageData() []byte {
+	if x != nil {
+		return x.EyeCatchImageData
+	}
+	return nil
+}
+
+func (x *CreateLabelRequest) GetEyeCatchImageContentType() string {
+	if x != nil {
+		return x.EyeCatchImageContentType
 	}
 	return ""
 }
@@ -223,12 +239,15 @@ func (x *CreateLabelResponse) GetLabel() *v1.Label {
 }
 
 type UpdateLabelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId                 string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name                     string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	EyeCatchImageData        []byte                 `protobuf:"bytes,4,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
+	EyeCatchImageContentType string                 `protobuf:"bytes,5,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
+	ClearEyeCatchImage       bool                   `protobuf:"varint,6,opt,name=clear_eye_catch_image,json=clearEyeCatchImage,proto3" json:"clear_eye_catch_image,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *UpdateLabelRequest) Reset() {
@@ -280,6 +299,27 @@ func (x *UpdateLabelRequest) GetName() string {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *UpdateLabelRequest) GetEyeCatchImageData() []byte {
+	if x != nil {
+		return x.EyeCatchImageData
+	}
+	return nil
+}
+
+func (x *UpdateLabelRequest) GetEyeCatchImageContentType() string {
+	if x != nil {
+		return x.EyeCatchImageContentType
+	}
+	return ""
+}
+
+func (x *UpdateLabelRequest) GetClearEyeCatchImage() bool {
+	if x != nil {
+		return x.ClearEyeCatchImage
+	}
+	return false
 }
 
 type UpdateLabelResponse struct {
@@ -336,16 +376,21 @@ const file_publira_admin_v1_label_proto_rawDesc = "" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\"E\n" +
 	"\x12ListLabelsResponse\x12/\n" +
-	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\"a\n" +
+	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\"\xd2\x01\n" +
 	"\x12CreateLabelRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"D\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
+	"\x14eye_catch_image_data\x18\x03 \x01(\fR\x11eyeCatchImageData\x12>\n" +
+	"\x1ceye_catch_image_content_type\x18\x04 \x01(\tR\x18eyeCatchImageContentType\"D\n" +
 	"\x13CreateLabelResponse\x12-\n" +
-	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"~\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xa2\x02\n" +
 	"\x12UpdateLabelRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"D\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12/\n" +
+	"\x14eye_catch_image_data\x18\x04 \x01(\fR\x11eyeCatchImageData\x12>\n" +
+	"\x1ceye_catch_image_content_type\x18\x05 \x01(\tR\x18eyeCatchImageContentType\x121\n" +
+	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\"D\n" +
 	"\x13UpdateLabelResponse\x12-\n" +
 	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label2\xaa\x02\n" +
 	"\x11AdminLabelService\x12Y\n" +

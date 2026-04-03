@@ -183,8 +183,8 @@ func TestListLabelsSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery("FROM labels").
 		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ListLabelsRequest{
@@ -228,9 +228,13 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
 				mock.ExpectQuery("INSERT INTO labels").
-					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly").
-					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
-						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
+					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Weekly", uuid.NullUUID{}).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id"}).
+						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil))
+				mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "LABEL001").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+						AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
 				expectAdminAuditLogInsert(mock)
 			},
 		},
@@ -288,15 +292,15 @@ func TestUpdateLabelSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "LABEL001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
-			AddRow(labelID, tenantID, "LABEL001", "Before", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "Before", now, nil, nil))
 	mock.ExpectExec("UPDATE labels").
-		WithArgs(labelID, "After").
+		WithArgs(labelID, "After", uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "LABEL001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
-			AddRow(labelID, tenantID, "LABEL001", "After", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "After", now, nil, nil))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
@@ -316,6 +320,35 @@ func TestUpdateLabelSuccess(t *testing.T) {
 	}
 	if resp.Msg.Label.Name != "After" {
 		t.Fatalf("label name = %q, want After", resp.Msg.Label.Name)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUpdateLabelRejectsClearAndImageTogether(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := "session-token"
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
+		Tenant:                   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		PublicId:                 "LABEL001",
+		Name:                     "After",
+		ClearEyeCatchImage:       true,
+		EyeCatchImageData:        oneByOnePNG,
+		EyeCatchImageContentType: "image/png",
+	})
+	req.Header().Set("X-Publira-Session-Id", sessionToken)
+
+	_, err := client.UpdateLabel(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateLabel code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
 	assertExpectations(t, mock)
 }

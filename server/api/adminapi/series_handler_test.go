@@ -109,8 +109,8 @@ func TestCreateSeriesSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "LABEL001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
 
 	mock.ExpectQuery("INSERT INTO series").
 		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(), "New Series").
