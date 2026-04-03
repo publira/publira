@@ -247,35 +247,16 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 }
 
 const createEpisodeImage = `-- name: CreateEpisodeImage :one
-INSERT INTO episode_images (
-        id,
-        tenant_id,
-        episode_id,
-        storage_provider,
-        object_key,
-        image_url,
-        content_type,
-        file_size_bytes,
-    display_order,
-    width,
-    height
-    )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, tenant_id, episode_id, storage_provider, object_key, image_url, content_type, file_size_bytes, display_order, width, height, created_at
+INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
+VALUES ($1, $2, $3, $4)
+RETURNING id, tenant_id, episode_id, display_order, created_at
 `
 
 type CreateEpisodeImageParams struct {
-	ID              uuid.UUID `json:"id"`
-	TenantID        uuid.UUID `json:"tenant_id"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	StorageProvider string    `json:"storage_provider"`
-	ObjectKey       string    `json:"object_key"`
-	ImageUrl        string    `json:"image_url"`
-	ContentType     string    `json:"content_type"`
-	FileSizeBytes   int64     `json:"file_size_bytes"`
-	DisplayOrder    int32     `json:"display_order"`
-	Width           int32     `json:"width"`
-	Height          int32     `json:"height"`
+	ID           uuid.UUID `json:"id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	EpisodeID    uuid.UUID `json:"episode_id"`
+	DisplayOrder int32     `json:"display_order"`
 }
 
 func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error) {
@@ -283,26 +264,68 @@ func (q *Queries) CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImage
 		arg.ID,
 		arg.TenantID,
 		arg.EpisodeID,
-		arg.StorageProvider,
-		arg.ObjectKey,
-		arg.ImageUrl,
-		arg.ContentType,
-		arg.FileSizeBytes,
 		arg.DisplayOrder,
-		arg.Width,
-		arg.Height,
 	)
 	var i EpisodeImage
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
 		&i.EpisodeID,
+		&i.DisplayOrder,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createEpisodeImageVariant = `-- name: CreateEpisodeImageVariant :one
+INSERT INTO episode_image_variants (
+    id,
+    episode_image_id,
+    label,
+    storage_provider,
+    object_key,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, episode_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at
+`
+
+type CreateEpisodeImageVariantParams struct {
+	ID              uuid.UUID `json:"id"`
+	EpisodeImageID  uuid.UUID `json:"episode_image_id"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+}
+
+func (q *Queries) CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error) {
+	row := q.db.QueryRowContext(ctx, createEpisodeImageVariant,
+		arg.ID,
+		arg.EpisodeImageID,
+		arg.Label,
+		arg.StorageProvider,
+		arg.ObjectKey,
+		arg.ContentType,
+		arg.FileSizeBytes,
+		arg.Width,
+		arg.Height,
+	)
+	var i EpisodeImageVariant
+	err := row.Scan(
+		&i.ID,
+		&i.EpisodeImageID,
+		&i.Label,
 		&i.StorageProvider,
 		&i.ObjectKey,
-		&i.ImageUrl,
 		&i.ContentType,
 		&i.FileSizeBytes,
-		&i.DisplayOrder,
 		&i.Width,
 		&i.Height,
 		&i.CreatedAt,
@@ -1210,8 +1233,8 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 
 const getEpisodeImageAccessByIDForSession = `-- name: GetEpisodeImageAccessByIDForSession :one
 SELECT ei.id,
-    ei.object_key,
-    ei.content_type,
+    eiv.object_key,
+    eiv.content_type,
     (
         s.is_published = true
         AND s.published_at IS NOT NULL
@@ -1235,6 +1258,13 @@ SELECT ei.id,
         )
     ) AS has_access
 FROM episode_images ei
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -1272,8 +1302,8 @@ func (q *Queries) GetEpisodeImageAccessByIDForSession(ctx context.Context, arg G
 
 const getEpisodeImagePublicAccessByIDForTenant = `-- name: GetEpisodeImagePublicAccessByIDForTenant :one
 SELECT ei.id,
-    ei.object_key,
-    ei.content_type,
+    eiv.object_key,
+    eiv.content_type,
     (
         s.is_published = true
         AND s.published_at IS NOT NULL
@@ -1284,6 +1314,13 @@ SELECT ei.id,
     ) AS is_published,
     (el.price = 0) AS has_public_access
 FROM episode_images ei
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -2654,35 +2691,60 @@ func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]L
 }
 
 const listEpisodeImagesByEpisodeID = `-- name: ListEpisodeImagesByEpisodeID :many
-SELECT id, tenant_id, episode_id, storage_provider, object_key, image_url, content_type, file_size_bytes, display_order, width, height, created_at
-FROM episode_images
-WHERE episode_id = $1
-ORDER BY display_order ASC,
-    created_at ASC
+SELECT
+    ei.id,
+    ei.tenant_id,
+    ei.episode_id,
+    ei.display_order,
+    ei.created_at,
+    eiv.content_type,
+    eiv.file_size_bytes,
+    eiv.width,
+    eiv.height
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT content_type, file_size_bytes, width, height
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
+WHERE ei.episode_id = $1
+ORDER BY ei.display_order ASC,
+    ei.created_at ASC
 `
 
-func (q *Queries) ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]EpisodeImage, error) {
+type ListEpisodeImagesByEpisodeIDRow struct {
+	ID            uuid.UUID `json:"id"`
+	TenantID      uuid.UUID `json:"tenant_id"`
+	EpisodeID     uuid.UUID `json:"episode_id"`
+	DisplayOrder  int32     `json:"display_order"`
+	CreatedAt     time.Time `json:"created_at"`
+	ContentType   string    `json:"content_type"`
+	FileSizeBytes int64     `json:"file_size_bytes"`
+	Width         int32     `json:"width"`
+	Height        int32     `json:"height"`
+}
+
+func (q *Queries) ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEpisodeImagesByEpisodeID, episodeID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []EpisodeImage
+	var items []ListEpisodeImagesByEpisodeIDRow
 	for rows.Next() {
-		var i EpisodeImage
+		var i ListEpisodeImagesByEpisodeIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
 			&i.EpisodeID,
-			&i.StorageProvider,
-			&i.ObjectKey,
-			&i.ImageUrl,
+			&i.DisplayOrder,
+			&i.CreatedAt,
 			&i.ContentType,
 			&i.FileSizeBytes,
-			&i.DisplayOrder,
 			&i.Width,
 			&i.Height,
-			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2698,10 +2760,26 @@ func (q *Queries) ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uu
 }
 
 const listEpisodeImagesByEpisodePublicIDForTenant = `-- name: ListEpisodeImagesByEpisodePublicIDForTenant :many
-SELECT ei.id, ei.tenant_id, ei.episode_id, ei.storage_provider, ei.object_key, ei.image_url, ei.content_type, ei.file_size_bytes, ei.display_order, ei.width, ei.height, ei.created_at
+SELECT
+    ei.id,
+    ei.tenant_id,
+    ei.episode_id,
+    ei.display_order,
+    ei.created_at,
+    eiv.content_type,
+    eiv.file_size_bytes,
+    eiv.width,
+    eiv.height
 FROM episode_images ei
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
+JOIN LATERAL (
+    SELECT content_type, file_size_bytes, width, height
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
 WHERE s.tenant_id = $1
     AND e.public_id = $2
 ORDER BY ei.display_order ASC,
@@ -2713,28 +2791,37 @@ type ListEpisodeImagesByEpisodePublicIDForTenantParams struct {
 	PublicID string    `json:"public_id"`
 }
 
-func (q *Queries) ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]EpisodeImage, error) {
+type ListEpisodeImagesByEpisodePublicIDForTenantRow struct {
+	ID            uuid.UUID `json:"id"`
+	TenantID      uuid.UUID `json:"tenant_id"`
+	EpisodeID     uuid.UUID `json:"episode_id"`
+	DisplayOrder  int32     `json:"display_order"`
+	CreatedAt     time.Time `json:"created_at"`
+	ContentType   string    `json:"content_type"`
+	FileSizeBytes int64     `json:"file_size_bytes"`
+	Width         int32     `json:"width"`
+	Height        int32     `json:"height"`
+}
+
+func (q *Queries) ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEpisodeImagesByEpisodePublicIDForTenant, arg.TenantID, arg.PublicID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []EpisodeImage
+	var items []ListEpisodeImagesByEpisodePublicIDForTenantRow
 	for rows.Next() {
-		var i EpisodeImage
+		var i ListEpisodeImagesByEpisodePublicIDForTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
 			&i.EpisodeID,
-			&i.StorageProvider,
-			&i.ObjectKey,
-			&i.ImageUrl,
+			&i.DisplayOrder,
+			&i.CreatedAt,
 			&i.ContentType,
 			&i.FileSizeBytes,
-			&i.DisplayOrder,
 			&i.Width,
 			&i.Height,
-			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

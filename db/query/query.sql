@@ -1041,33 +1041,67 @@ WHERE s.tenant_id = $1
     AND el.published_at <= NOW()
 LIMIT 1;
 -- name: CreateEpisodeImage :one
-INSERT INTO episode_images (
-        id,
-        tenant_id,
-        episode_id,
-        storage_provider,
-        object_key,
-        image_url,
-        content_type,
-        file_size_bytes,
-    display_order,
+INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+-- name: CreateEpisodeImageVariant :one
+INSERT INTO episode_image_variants (
+    id,
+    episode_image_id,
+    label,
+    storage_provider,
+    object_key,
+    content_type,
+    file_size_bytes,
     width,
     height
-    )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 -- name: ListEpisodeImagesByEpisodeID :many
-SELECT *
-FROM episode_images
-WHERE episode_id = $1
-ORDER BY display_order ASC,
-    created_at ASC;
+SELECT
+    ei.id,
+    ei.tenant_id,
+    ei.episode_id,
+    ei.display_order,
+    ei.created_at,
+    eiv.content_type,
+    eiv.file_size_bytes,
+    eiv.width,
+    eiv.height
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT content_type, file_size_bytes, width, height
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
+WHERE ei.episode_id = $1
+ORDER BY ei.display_order ASC,
+    ei.created_at ASC;
 
 -- name: ListEpisodeImagesByEpisodePublicIDForTenant :many
-SELECT ei.*
+SELECT
+    ei.id,
+    ei.tenant_id,
+    ei.episode_id,
+    ei.display_order,
+    ei.created_at,
+    eiv.content_type,
+    eiv.file_size_bytes,
+    eiv.width,
+    eiv.height
 FROM episode_images ei
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
+JOIN LATERAL (
+    SELECT content_type, file_size_bytes, width, height
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
 WHERE s.tenant_id = $1
     AND e.public_id = $2
 ORDER BY ei.display_order ASC,
@@ -1075,8 +1109,8 @@ ORDER BY ei.display_order ASC,
 
 -- name: GetEpisodeImageAccessByIDForSession :one
 SELECT ei.id,
-    ei.object_key,
-    ei.content_type,
+    eiv.object_key,
+    eiv.content_type,
     (
         s.is_published = true
         AND s.published_at IS NOT NULL
@@ -1100,6 +1134,13 @@ SELECT ei.id,
         )
     ) AS has_access
 FROM episode_images ei
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
@@ -1109,8 +1150,8 @@ LIMIT 1;
 
 -- name: GetEpisodeImagePublicAccessByIDForTenant :one
 SELECT ei.id,
-    ei.object_key,
-    ei.content_type,
+    eiv.object_key,
+    eiv.content_type,
     (
         s.is_published = true
         AND s.published_at IS NOT NULL
@@ -1121,6 +1162,13 @@ SELECT ei.id,
     ) AS is_published,
     (el.price = 0) AS has_public_access
 FROM episode_images ei
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
     JOIN episodes e ON e.id = ei.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
