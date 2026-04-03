@@ -85,7 +85,7 @@ func EpisodeFromListEpisodesBySeriesForTenantRow(row dbmodels.ListEpisodesBySeri
 	return episode
 }
 
-func EpisodeImageFromEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.EpisodeImage {
+func EpisodeImageFromEpisodeImage(row dbmodels.ListEpisodeImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
 	return &publirattypesv1.EpisodeImage{
 		Id:            row.ID.String(),
 		ImageUrl:      fmt.Sprintf("/images/episodes/%s", row.ID.String()),
@@ -94,6 +94,18 @@ func EpisodeImageFromEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.Ep
 		DisplayOrder:  row.DisplayOrder,
 		Width:         row.Width,
 		Height:        row.Height,
+	}
+}
+
+func EpisodeImageFromImageAndVariant(image dbmodels.EpisodeImage, variant dbmodels.EpisodeImageVariant) *publirattypesv1.EpisodeImage {
+	return &publirattypesv1.EpisodeImage{
+		Id:            image.ID.String(),
+		ImageUrl:      fmt.Sprintf("/images/episodes/%s", image.ID.String()),
+		ContentType:   variant.ContentType,
+		FileSizeBytes: variant.FileSizeBytes,
+		DisplayOrder:  image.DisplayOrder,
+		Width:         variant.Width,
+		Height:        variant.Height,
 	}
 }
 

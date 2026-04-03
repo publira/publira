@@ -296,8 +296,8 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
 			if tc.wantCode == 0 {
-				rows := sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-					AddRow(uuid.Must(uuid.NewV7()), tenantID, tc.episodeID, "local", "episodes/001.png", "https://cdn.example/episodes/001.png", "image/png", int64(1024), int32(1), int32(1200), int32(1800), now)
+				rows := sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
+					AddRow(uuid.Must(uuid.NewV7()), tenantID, tc.episodeID, int32(1), now, "image/png", int64(1024), int32(1200), int32(1800))
 				mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
 					WithArgs(tc.episodeID).
 					WillReturnRows(rows)

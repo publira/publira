@@ -34,6 +34,7 @@ const (
 
 type Querier interface {
 	CreateEpisodeImage(ctx context.Context, arg dbmodels.CreateEpisodeImageParams) (dbmodels.EpisodeImage, error)
+	CreateEpisodeImageVariant(ctx context.Context, arg dbmodels.CreateEpisodeImageVariantParams) (dbmodels.EpisodeImageVariant, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeByPublicIDForTenantParams) (dbmodels.GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg dbmodels.GetEpisodeByPublicIDForTenantAndSeriesParams) (dbmodels.GetEpisodeByPublicIDForTenantAndSeriesRow, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
@@ -177,14 +178,29 @@ func (s Service) storeImages(
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("images[%d]: %w", index, buildErr))
 		}
 
+		displayOrder++
+		episodeImageID, idErr := uuid.NewV7()
+		if idErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, idErr)
+		}
+		createdImage, createErr := s.Queries.CreateEpisodeImage(ctx, dbmodels.CreateEpisodeImageParams{
+			ID:           episodeImageID,
+			TenantID:     tenant.ID,
+			EpisodeID:    episodeID,
+			DisplayOrder: displayOrder,
+		})
+		if createErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, createErr)
+		}
+
 		objectPrefix := objectPrefix(imageInput.Filename)
 		baseObjectID := uuid.NewString()
+		var lastVariant dbmodels.EpisodeImageVariant
 		for _, variant := range variants {
-			displayOrder++
 			objectKey := fmt.Sprintf("tenants/%s/episodes/%s/%s-%s-%s%s", tenant.PublicID, episodePublicID, objectPrefix, baseObjectID, variant.Label, variant.Extension)
 
 			variantCtx, cancel := context.WithTimeout(ctx, imageProcessingTimeout)
-			created, persistErr := func() (dbmodels.EpisodeImage, error) {
+			createdVariant, persistErr := func() (dbmodels.EpisodeImageVariant, error) {
 				var lastErr error
 				for attempt := 1; attempt <= imagePersistenceRetryMax; attempt++ {
 					uploaded, uploadErr := s.Storage.Upload(variantCtx, storage.UploadRequest{
@@ -195,54 +211,53 @@ func (s Service) storeImages(
 					if uploadErr != nil {
 						lastErr = uploadErr
 					} else {
-						episodeImageID, idErr := uuid.NewV7()
-						if idErr != nil {
-							return dbmodels.EpisodeImage{}, idErr
+						variantID, variantIDErr := uuid.NewV7()
+						if variantIDErr != nil {
+							return dbmodels.EpisodeImageVariant{}, variantIDErr
 						}
-						createdRow, createErr := s.Queries.CreateEpisodeImage(variantCtx, dbmodels.CreateEpisodeImageParams{
-							ID:              episodeImageID,
-							TenantID:        tenant.ID,
-							EpisodeID:       episodeID,
+						createdRow, createRowErr := s.Queries.CreateEpisodeImageVariant(variantCtx, dbmodels.CreateEpisodeImageVariantParams{
+							ID:              variantID,
+							EpisodeImageID:  createdImage.ID,
+							Label:           variant.Label,
 							StorageProvider: uploaded.Provider,
 							ObjectKey:       uploaded.ObjectKey,
-							ImageUrl:        uploaded.URL,
 							ContentType:     variant.ContentType,
 							FileSizeBytes:   uploaded.SizeBytes,
-							DisplayOrder:    displayOrder,
 							Width:           int32(variant.Width),
 							Height:          int32(variant.Height),
 						})
-						if createErr == nil {
+						if createRowErr == nil {
 							return createdRow, nil
 						}
-						lastErr = createErr
+						lastErr = createRowErr
 					}
 					if attempt < imagePersistenceRetryMax {
 						if err := sleepWithContext(variantCtx, time.Duration(attempt)*imagePersistenceRetryBackoff); err != nil {
-							return dbmodels.EpisodeImage{}, err
+							return dbmodels.EpisodeImageVariant{}, err
 						}
 					}
 				}
-				return dbmodels.EpisodeImage{}, fmt.Errorf("variant persistence failed after %d attempts: %w", imagePersistenceRetryMax, lastErr)
+				return dbmodels.EpisodeImageVariant{}, fmt.Errorf("variant persistence failed after %d attempts: %w", imagePersistenceRetryMax, lastErr)
 			}()
 			cancel()
 			if persistErr != nil {
 				return nil, connect.NewError(connect.CodeInternal, persistErr)
 			}
+			lastVariant = createdVariant
+		}
 
-			items = append(items, protomapper.EpisodeImageFromEpisodeImage(created))
-			if hasSession && s.Recorder != nil {
-				s.Recorder.RecordTenant(ctx, auditlog.TenantEntry{
-					TenantID:    tenant.ID,
-					ActorUserID: sessionCtx.User.ID,
-					ActorRole:   sessionCtx.Role,
-					Action:      "episode_image_uploaded",
-					TargetType:  "episode",
-					TargetID:    episodePublicID,
-					Outcome:     auditlog.OutcomeSuccess,
-					ClientIP:    clientIP,
-				})
-			}
+		items = append(items, protomapper.EpisodeImageFromImageAndVariant(createdImage, lastVariant))
+		if hasSession && s.Recorder != nil {
+			s.Recorder.RecordTenant(ctx, auditlog.TenantEntry{
+				TenantID:    tenant.ID,
+				ActorUserID: sessionCtx.User.ID,
+				ActorRole:   sessionCtx.Role,
+				Action:      "episode_image_uploaded",
+				TargetType:  "episode",
+				TargetID:    episodePublicID,
+				Outcome:     auditlog.OutcomeSuccess,
+				ClientIP:    clientIP,
+			})
 		}
 	}
 

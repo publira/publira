@@ -45,15 +45,21 @@ type Episode struct {
 }
 
 type EpisodeImage struct {
+	ID           uuid.UUID `json:"id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	EpisodeID    uuid.UUID `json:"episode_id"`
+	DisplayOrder int32     `json:"display_order"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type EpisodeImageVariant struct {
 	ID              uuid.UUID `json:"id"`
-	TenantID        uuid.UUID `json:"tenant_id"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodeImageID  uuid.UUID `json:"episode_image_id"`
+	Label           string    `json:"label"`
 	StorageProvider string    `json:"storage_provider"`
 	ObjectKey       string    `json:"object_key"`
-	ImageUrl        string    `json:"image_url"`
 	ContentType     string    `json:"content_type"`
 	FileSizeBytes   int64     `json:"file_size_bytes"`
-	DisplayOrder    int32     `json:"display_order"`
 	Width           int32     `json:"width"`
 	Height          int32     `json:"height"`
 	CreatedAt       time.Time `json:"created_at"`
