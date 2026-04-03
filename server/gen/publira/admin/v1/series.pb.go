@@ -23,16 +23,18 @@ const (
 )
 
 type CreateSeriesRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Title              string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis           string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	LabelPublicId      string                 `protobuf:"bytes,4,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
-	IsPublished        bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	CreatorPublicIds   []string               `protobuf:"bytes,7,rep,name=creator_public_ids,json=creatorPublicIds,proto3" json:"creator_public_ids,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Title                    string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Synopsis                 string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
+	LabelPublicId            string                 `protobuf:"bytes,4,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
+	IsPublished              bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
+	ReadingPeriodHours       int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	CreatorPublicIds         []string               `protobuf:"bytes,7,rep,name=creator_public_ids,json=creatorPublicIds,proto3" json:"creator_public_ids,omitempty"`
+	EyeCatchImageData        []byte                 `protobuf:"bytes,8,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
+	EyeCatchImageContentType string                 `protobuf:"bytes,9,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *CreateSeriesRequest) Reset() {
@@ -114,6 +116,20 @@ func (x *CreateSeriesRequest) GetCreatorPublicIds() []string {
 	return nil
 }
 
+func (x *CreateSeriesRequest) GetEyeCatchImageData() []byte {
+	if x != nil {
+		return x.EyeCatchImageData
+	}
+	return nil
+}
+
+func (x *CreateSeriesRequest) GetEyeCatchImageContentType() string {
+	if x != nil {
+		return x.EyeCatchImageContentType
+	}
+	return ""
+}
+
 type CreateSeriesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
@@ -159,17 +175,20 @@ func (x *CreateSeriesResponse) GetSeries() *v1.Series {
 }
 
 type UpdateSeriesRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId           string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Title              string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis           string                 `protobuf:"bytes,4,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	IsPublished        bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
-	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	CreatorPublicIds   []string               `protobuf:"bytes,7,rep,name=creator_public_ids,json=creatorPublicIds,proto3" json:"creator_public_ids,omitempty"`
-	LabelPublicId      string                 `protobuf:"bytes,8,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId                 string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Title                    string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Synopsis                 string                 `protobuf:"bytes,4,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
+	IsPublished              bool                   `protobuf:"varint,5,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
+	ReadingPeriodHours       int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	CreatorPublicIds         []string               `protobuf:"bytes,7,rep,name=creator_public_ids,json=creatorPublicIds,proto3" json:"creator_public_ids,omitempty"`
+	LabelPublicId            string                 `protobuf:"bytes,8,opt,name=label_public_id,json=labelPublicId,proto3" json:"label_public_id,omitempty"`
+	EyeCatchImageData        []byte                 `protobuf:"bytes,9,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
+	EyeCatchImageContentType string                 `protobuf:"bytes,10,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
+	ClearEyeCatchImage       bool                   `protobuf:"varint,11,opt,name=clear_eye_catch_image,json=clearEyeCatchImage,proto3" json:"clear_eye_catch_image,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *UpdateSeriesRequest) Reset() {
@@ -256,6 +275,27 @@ func (x *UpdateSeriesRequest) GetLabelPublicId() string {
 		return x.LabelPublicId
 	}
 	return ""
+}
+
+func (x *UpdateSeriesRequest) GetEyeCatchImageData() []byte {
+	if x != nil {
+		return x.EyeCatchImageData
+	}
+	return nil
+}
+
+func (x *UpdateSeriesRequest) GetEyeCatchImageContentType() string {
+	if x != nil {
+		return x.EyeCatchImageContentType
+	}
+	return ""
+}
+
+func (x *UpdateSeriesRequest) GetClearEyeCatchImage() bool {
+	if x != nil {
+		return x.ClearEyeCatchImage
+	}
+	return false
 }
 
 type UpdateSeriesResponse struct {
@@ -1358,7 +1398,7 @@ var File_publira_admin_v1_series_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
-	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xab\x02\n" +
+	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x9c\x03\n" +
 	"\x13CreateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -1366,9 +1406,11 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x0flabel_public_id\x18\x04 \x01(\tR\rlabelPublicId\x12!\n" +
 	"\fis_published\x18\x05 \x01(\bR\visPublished\x120\n" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12,\n" +
-	"\x12creator_public_ids\x18\a \x03(\tR\x10creatorPublicIds\"H\n" +
+	"\x12creator_public_ids\x18\a \x03(\tR\x10creatorPublicIds\x12/\n" +
+	"\x14eye_catch_image_data\x18\b \x01(\fR\x11eyeCatchImageData\x12>\n" +
+	"\x1ceye_catch_image_content_type\x18\t \x01(\tR\x18eyeCatchImageContentType\"H\n" +
 	"\x14CreateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xc8\x02\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xec\x03\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -1377,7 +1419,11 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\fis_published\x18\x05 \x01(\bR\visPublished\x120\n" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12,\n" +
 	"\x12creator_public_ids\x18\a \x03(\tR\x10creatorPublicIds\x12&\n" +
-	"\x0flabel_public_id\x18\b \x01(\tR\rlabelPublicId\"H\n" +
+	"\x0flabel_public_id\x18\b \x01(\tR\rlabelPublicId\x12/\n" +
+	"\x14eye_catch_image_data\x18\t \x01(\fR\x11eyeCatchImageData\x12>\n" +
+	"\x1ceye_catch_image_content_type\x18\n" +
+	" \x01(\tR\x18eyeCatchImageContentType\x121\n" +
+	"\x15clear_eye_catch_image\x18\v \x01(\bR\x12clearEyeCatchImage\"H\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"z\n" +
 	"\x11ListSeriesRequest\x127\n" +

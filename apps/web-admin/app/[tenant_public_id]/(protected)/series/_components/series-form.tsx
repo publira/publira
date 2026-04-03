@@ -1,13 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@publira/ui-components/card";
+import { Card, CardContent } from "@publira/ui-components/card";
 import { Combobox, MultiCombobox } from "@publira/ui-components/combobox";
 import type {
   ComboboxItem,
@@ -22,6 +16,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
+import Image from "next/image";
 import {
   useActionState,
   useCallback,
@@ -65,7 +60,6 @@ const getSubmitLabel = (
   if (isPending) {
     return "送信中...";
   }
-
   return mode === "update" ? "シリーズを更新" : "シリーズを作成";
 };
 
@@ -186,6 +180,132 @@ const LabelField = ({
   </Field>
 );
 
+interface EyeCatchImageFieldProps {
+  clearEyeCatchImage: boolean;
+  initialSeries?: SeriesListItem;
+  onImageFileChange: ChangeEventHandler<HTMLInputElement>;
+  previewImageUrl: string;
+}
+
+const EyeCatchImageField = ({
+  clearEyeCatchImage,
+  initialSeries,
+  onImageFileChange,
+  previewImageUrl,
+}: EyeCatchImageFieldProps) => {
+  const _variants = initialSeries?.eyeCatchImageVariants ?? [];
+  const hasPreviewImage = previewImageUrl.length > 0;
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="series_eye_catch_image">アイキャッチ画像</FieldLabel>
+      <FieldContent>
+        <div className="grid gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
+          <div className="rounded-xl border border-border/60 bg-background p-3">
+            <p className="mb-2 text-sm font-medium">アップロード前プレビュー</p>
+            <div className="relative aspect-[3/4] max-w-52 overflow-hidden rounded-lg border border-border/60 bg-muted/50">
+              {hasPreviewImage ? (
+                <Image
+                  alt="アップロード画像プレビュー"
+                  className="h-full w-full object-cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 240px"
+                  src={previewImageUrl}
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                  新しい画像を選択するとここに表示されます。
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Input
+          accept="image/jpeg,image/png,image/webp"
+          id="series_eye_catch_image"
+          name="eye_catch_image"
+          onChange={onImageFileChange}
+          type="file"
+        />
+        <input
+          name="clear_eye_catch_image"
+          type="hidden"
+          value={clearEyeCatchImage ? "1" : "0"}
+        />
+        <FieldDescription>
+          JPEG/PNG/WebP、10MB以下、2400x3200px以上の画像を選択してください。
+          保存時に用途別バリアント (3:4 / 1:1 / 16:9 / OG)
+          と端末向けサイズが生成されます。
+        </FieldDescription>
+      </FieldContent>
+    </Field>
+  );
+};
+
+const useSeriesFormState = ({
+  initialSeries,
+}: Pick<SeriesFormProps, "initialSeries">) => {
+  const [selectedCreatorPublicIds, setSelectedCreatorPublicIds] = useState<
+    string[]
+  >([]);
+  const [selectedLabelPublicId, setSelectedLabelPublicId] = useState("");
+  const [uploadedEyeCatchPreviewUrl, setUploadedEyeCatchPreviewUrl] =
+    useState("");
+
+  useEffect(() => {
+    setSelectedCreatorPublicIds(initialSeries?.creatorPublicIds ?? []);
+  }, [initialSeries?.creatorPublicIds]);
+
+  useEffect(() => {
+    setSelectedLabelPublicId(initialSeries?.labelPublicId ?? "");
+  }, [initialSeries?.labelPublicId]);
+
+  useEffect(
+    () => () => {
+      if (uploadedEyeCatchPreviewUrl) {
+        URL.revokeObjectURL(uploadedEyeCatchPreviewUrl);
+      }
+    },
+    [uploadedEyeCatchPreviewUrl]
+  );
+
+  const handleLabelFallbackInputChange = useCallback<
+    ChangeEventHandler<HTMLInputElement>
+  >((event) => {
+    setSelectedLabelPublicId(event.currentTarget.value);
+  }, []);
+
+  const handleEyeCatchImageFileChange = useCallback<
+    ChangeEventHandler<HTMLInputElement>
+  >((event) => {
+    const file = event.currentTarget.files?.[0];
+
+    setUploadedEyeCatchPreviewUrl((currentValue) => {
+      if (currentValue) {
+        URL.revokeObjectURL(currentValue);
+      }
+      return file ? URL.createObjectURL(file) : "";
+    });
+  }, []);
+
+  let eyeCatchPreviewUrl = "";
+  if (uploadedEyeCatchPreviewUrl) {
+    eyeCatchPreviewUrl = uploadedEyeCatchPreviewUrl;
+  }
+
+  return {
+    eyeCatchPreviewUrl,
+    handleEyeCatchImageFileChange,
+    handleLabelFallbackInputChange,
+    selectedCreatorPublicIds,
+    selectedLabelPublicId,
+    setSelectedCreatorPublicIds,
+    setSelectedLabelPublicId,
+  };
+};
+
 export const SeriesForm = ({
   mode,
   tenantPublicId,
@@ -218,24 +338,15 @@ export const SeriesForm = ({
         .toSorted((a, b) => a.label.localeCompare(b.label, "ja")),
     [labels]
   );
-  const [selectedCreatorPublicIds, setSelectedCreatorPublicIds] = useState<
-    string[]
-  >([]);
-  const [selectedLabelPublicId, setSelectedLabelPublicId] = useState("");
-
-  useEffect(() => {
-    setSelectedCreatorPublicIds(initialSeries?.creatorPublicIds ?? []);
-  }, [initialSeries?.creatorPublicIds, mode]);
-
-  useEffect(() => {
-    setSelectedLabelPublicId(initialSeries?.labelPublicId ?? "");
-  }, [initialSeries?.labelPublicId, mode]);
-
-  const handleLabelFallbackInputChange = useCallback<
-    ChangeEventHandler<HTMLInputElement>
-  >((event) => {
-    setSelectedLabelPublicId(event.currentTarget.value);
-  }, []);
+  const {
+    eyeCatchPreviewUrl,
+    handleEyeCatchImageFileChange,
+    handleLabelFallbackInputChange,
+    selectedCreatorPublicIds,
+    selectedLabelPublicId,
+    setSelectedCreatorPublicIds,
+    setSelectedLabelPublicId,
+  } = useSeriesFormState({ initialSeries });
 
   const useLabelFallbackInput =
     Boolean(labelsErrorMessage) || labelItems.length === 0;
@@ -245,15 +356,7 @@ export const SeriesForm = ({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{isUpdate ? "シリーズ情報" : "新規シリーズ"}</CardTitle>
-        <CardDescription>
-          {isUpdate
-            ? "タイトル・概要・公開設定などを編集します。"
-            : "シリーズの基本情報を入力してください。"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <form action={formAction} className="grid gap-4">
           <input name="tenant_public_id" type="hidden" value={tenantPublicId} />
           <input
@@ -262,84 +365,96 @@ export const SeriesForm = ({
             value={initialSeries?.publicId ?? ""}
           />
 
-          <Field>
-            <FieldLabel htmlFor="series_title" required>
-              タイトル
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={initialSeries?.title ?? ""}
-                id="series_title"
-                name="title"
-                placeholder="例: 海風と活版印刷"
-                required
-                type="text"
-              />
-            </FieldContent>
-          </Field>
+          <div className="grid gap-4">
+            <Field>
+              <FieldLabel htmlFor="series_title" required>
+                タイトル
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={initialSeries?.title ?? ""}
+                  id="series_title"
+                  name="title"
+                  placeholder="例: 海風と活版印刷"
+                  required
+                  type="text"
+                />
+              </FieldContent>
+            </Field>
 
-          <Field>
-            <FieldLabel htmlFor="series_reading_period_hours" required>
-              閲覧可能期間
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                defaultValue={
-                  initialSeries?.readingPeriodHours ?? defaultReadingPeriodHours
-                }
-                id="series_reading_period_hours"
-                min={0}
-                name="reading_period_hours"
-                required
-                type="number"
-              />
-              <FieldDescription>
-                単位は時間です。0 を指定すると無制限で閲覧できます。
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel htmlFor="series_reading_period_hours" required>
+                閲覧可能期間
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={
+                    initialSeries?.readingPeriodHours ??
+                    defaultReadingPeriodHours
+                  }
+                  id="series_reading_period_hours"
+                  min={0}
+                  name="reading_period_hours"
+                  required
+                  type="number"
+                />
+                <FieldDescription>
+                  単位は時間です。0 を指定すると無制限で閲覧できます。
+                </FieldDescription>
+              </FieldContent>
+            </Field>
 
-          <Field>
-            <FieldLabel htmlFor="series_synopsis" required>
-              概要
-            </FieldLabel>
-            <FieldContent>
-              <Textarea
-                defaultValue={initialSeries?.synopsis ?? ""}
-                id="series_synopsis"
-                name="synopsis"
-                placeholder="シリーズの紹介文を入力"
-                required
-                rows={5}
-              />
-            </FieldContent>
-          </Field>
+            <Field>
+              <FieldLabel htmlFor="series_synopsis" required>
+                概要
+              </FieldLabel>
+              <FieldContent>
+                <Textarea
+                  defaultValue={initialSeries?.synopsis ?? ""}
+                  id="series_synopsis"
+                  name="synopsis"
+                  placeholder="シリーズの紹介文を入力"
+                  required
+                  rows={5}
+                />
+              </FieldContent>
+            </Field>
 
-          <CreatorField
-            creatorItems={creatorItems}
-            creatorsErrorMessage={creatorsErrorMessage}
-            onChange={setSelectedCreatorPublicIds}
-            selectedCreatorPublicIds={selectedCreatorPublicIds}
-          />
-
-          <LabelField
-            labelItems={labelItems}
-            labelsErrorMessage={labelsErrorMessage}
-            onComboboxChange={setSelectedLabelPublicId}
-            onFallbackChange={handleLabelFallbackInputChange}
-            selectedLabelPublicId={selectedLabelPublicId}
-            useLabelFallbackInput={useLabelFallbackInput}
-          />
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              className="h-4 w-4 rounded border-input"
-              defaultChecked={initialSeries?.isPublished ?? false}
-              name="is_published"
-              type="checkbox"
+            <CreatorField
+              creatorItems={creatorItems}
+              creatorsErrorMessage={creatorsErrorMessage}
+              onChange={setSelectedCreatorPublicIds}
+              selectedCreatorPublicIds={selectedCreatorPublicIds}
             />
-            公開する
-          </label>
+
+            <LabelField
+              labelItems={labelItems}
+              labelsErrorMessage={labelsErrorMessage}
+              onComboboxChange={setSelectedLabelPublicId}
+              onFallbackChange={handleLabelFallbackInputChange}
+              selectedLabelPublicId={selectedLabelPublicId}
+              useLabelFallbackInput={useLabelFallbackInput}
+            />
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                className="h-4 w-4 rounded border-input"
+                defaultChecked={initialSeries?.isPublished ?? false}
+                name="is_published"
+                type="checkbox"
+              />
+              公開する
+            </label>
+          </div>
+
+          {!isUpdate && (
+            <EyeCatchImageField
+              clearEyeCatchImage={false}
+              initialSeries={initialSeries}
+              onImageFileChange={handleEyeCatchImageFileChange}
+              previewImageUrl={eyeCatchPreviewUrl}
+            />
+          )}
 
           {state ? (
             <FormMessage variant={state.ok ? "success" : "destructive"}>
@@ -347,7 +462,7 @@ export const SeriesForm = ({
             </FormMessage>
           ) : null}
 
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="flex justify-end">
             <Button disabled={isPending} type="submit">
               {submitLabel}
             </Button>

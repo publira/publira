@@ -73,7 +73,6 @@ export default async function NewSeriesPage({
           一覧へ戻る
         </LinkButton>
       }
-      description="新しいシリーズを作成します。"
       title="シリーズを新規作成"
     >
       <Suspense fallback={<NewSeriesFormSkeleton />}>

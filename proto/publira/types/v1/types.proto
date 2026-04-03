@@ -36,6 +36,18 @@ message Label {
   string name = 2;
 }
 
+message SeriesEyeCatchVariant {
+  // ラベル形式: "{ratio}_{width}w" (例: "portrait_1200w", "landscape_1600w")
+  string label = 1;
+  // 用途種別: portrait / square / landscape / og
+  string variant_type = 7;
+  string url = 2;
+  string content_type = 3;
+  int32 width = 4;
+  int32 height = 5;
+  int64 file_size_bytes = 6;
+}
+
 message Series {
   string public_id = 1;
   string title = 2;
@@ -43,6 +55,10 @@ message Series {
   Label label = 4;
   repeated Creator creators = 5;
   int32 reading_period_hours = 6;
+  // field 7, 8 は削除済み (旧 eye_catch_image_url / eye_catch_image_file_size_bytes)
+  reserved 7, 8;
+  string eye_catch_image_updated_at = 9;
+  repeated SeriesEyeCatchVariant eye_catch_image_variants = 10;
 }
 
 message Episode {

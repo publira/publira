@@ -1,3 +1,13 @@
+export interface SeriesEyeCatchVariantItem {
+  variantType: string;
+  label: string;
+  url: string;
+  contentType: string;
+  width: number;
+  height: number;
+  fileSizeBytes: number;
+}
+
 export interface SeriesListItem {
   publicId: string;
   title: string;
@@ -8,6 +18,8 @@ export interface SeriesListItem {
   creatorNames: string[];
   creatorPublicIds: string[];
   isPublished: boolean;
+  eyeCatchImageVariants: SeriesEyeCatchVariantItem[];
+  eyeCatchImageUpdatedAt: string;
 }
 
 export type SeriesMutationMode = "create" | "update";

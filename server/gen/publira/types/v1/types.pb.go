@@ -321,21 +321,117 @@ func (x *Label) GetName() string {
 	return ""
 }
 
+type SeriesEyeCatchVariant struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ラベル形式: "{ratio}_{width}w" (例: "portrait_1200w", "landscape_1600w")
+	Label string `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	// 用途種別: portrait / square / landscape / og
+	VariantType   string `protobuf:"bytes,7,opt,name=variant_type,json=variantType,proto3" json:"variant_type,omitempty"`
+	Url           string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	ContentType   string `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Width         int32  `protobuf:"varint,4,opt,name=width,proto3" json:"width,omitempty"`
+	Height        int32  `protobuf:"varint,5,opt,name=height,proto3" json:"height,omitempty"`
+	FileSizeBytes int64  `protobuf:"varint,6,opt,name=file_size_bytes,json=fileSizeBytes,proto3" json:"file_size_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SeriesEyeCatchVariant) Reset() {
+	*x = SeriesEyeCatchVariant{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SeriesEyeCatchVariant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SeriesEyeCatchVariant) ProtoMessage() {}
+
+func (x *SeriesEyeCatchVariant) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SeriesEyeCatchVariant.ProtoReflect.Descriptor instead.
+func (*SeriesEyeCatchVariant) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *SeriesEyeCatchVariant) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *SeriesEyeCatchVariant) GetVariantType() string {
+	if x != nil {
+		return x.VariantType
+	}
+	return ""
+}
+
+func (x *SeriesEyeCatchVariant) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *SeriesEyeCatchVariant) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *SeriesEyeCatchVariant) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *SeriesEyeCatchVariant) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *SeriesEyeCatchVariant) GetFileSizeBytes() int64 {
+	if x != nil {
+		return x.FileSizeBytes
+	}
+	return 0
+}
+
 type Series struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Title              string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Synopsis           string                 `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
-	Label              *Label                 `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
-	Creators           []*Creator             `protobuf:"bytes,5,rep,name=creators,proto3" json:"creators,omitempty"`
-	ReadingPeriodHours int32                  `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                  protoimpl.MessageState   `protogen:"open.v1"`
+	PublicId               string                   `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Title                  string                   `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Synopsis               string                   `protobuf:"bytes,3,opt,name=synopsis,proto3" json:"synopsis,omitempty"`
+	Label                  *Label                   `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
+	Creators               []*Creator               `protobuf:"bytes,5,rep,name=creators,proto3" json:"creators,omitempty"`
+	ReadingPeriodHours     int32                    `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,9,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
+	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,10,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
 	*x = Series{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[5]
+	mi := &file_publira_types_v1_types_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -347,7 +443,7 @@ func (x *Series) String() string {
 func (*Series) ProtoMessage() {}
 
 func (x *Series) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[5]
+	mi := &file_publira_types_v1_types_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -360,7 +456,7 @@ func (x *Series) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Series.ProtoReflect.Descriptor instead.
 func (*Series) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{5}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Series) GetPublicId() string {
@@ -405,6 +501,20 @@ func (x *Series) GetReadingPeriodHours() int32 {
 	return 0
 }
 
+func (x *Series) GetEyeCatchImageUpdatedAt() string {
+	if x != nil {
+		return x.EyeCatchImageUpdatedAt
+	}
+	return ""
+}
+
+func (x *Series) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
+	if x != nil {
+		return x.EyeCatchImageVariants
+	}
+	return nil
+}
+
 type Episode struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -421,7 +531,7 @@ type Episode struct {
 
 func (x *Episode) Reset() {
 	*x = Episode{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[6]
+	mi := &file_publira_types_v1_types_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -433,7 +543,7 @@ func (x *Episode) String() string {
 func (*Episode) ProtoMessage() {}
 
 func (x *Episode) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[6]
+	mi := &file_publira_types_v1_types_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -446,7 +556,7 @@ func (x *Episode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Episode.ProtoReflect.Descriptor instead.
 func (*Episode) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{6}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Episode) GetPublicId() string {
@@ -520,7 +630,7 @@ type EpisodeImage struct {
 
 func (x *EpisodeImage) Reset() {
 	*x = EpisodeImage{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[7]
+	mi := &file_publira_types_v1_types_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -532,7 +642,7 @@ func (x *EpisodeImage) String() string {
 func (*EpisodeImage) ProtoMessage() {}
 
 func (x *EpisodeImage) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[7]
+	mi := &file_publira_types_v1_types_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -545,7 +655,7 @@ func (x *EpisodeImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpisodeImage.ProtoReflect.Descriptor instead.
 func (*EpisodeImage) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *EpisodeImage) GetId() string {
@@ -633,7 +743,7 @@ type TenantTheme struct {
 
 func (x *TenantTheme) Reset() {
 	*x = TenantTheme{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[8]
+	mi := &file_publira_types_v1_types_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +755,7 @@ func (x *TenantTheme) String() string {
 func (*TenantTheme) ProtoMessage() {}
 
 func (x *TenantTheme) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[8]
+	mi := &file_publira_types_v1_types_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +768,7 @@ func (x *TenantTheme) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantTheme.ProtoReflect.Descriptor instead.
 func (*TenantTheme) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TenantTheme) GetPrimaryColor() string {
@@ -883,14 +993,25 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x15icon_image_updated_at\x18\a \x01(\tR\x12iconImageUpdatedAt\"8\n" +
 	"\x05Label\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xef\x01\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xdb\x01\n" +
+	"\x15SeriesEyeCatchVariant\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12!\n" +
+	"\fvariant_type\x18\a \x01(\tR\vvariantType\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12!\n" +
+	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12\x14\n" +
+	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x05 \x01(\x05R\x06height\x12&\n" +
+	"\x0ffile_size_bytes\x18\x06 \x01(\x03R\rfileSizeBytes\"\x99\x03\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
 	"\bsynopsis\x18\x03 \x01(\tR\bsynopsis\x12-\n" +
 	"\x05label\x18\x04 \x01(\v2\x17.publira.types.v1.LabelR\x05label\x125\n" +
 	"\bcreators\x18\x05 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x120\n" +
-	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\"\x83\x02\n" +
+	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12:\n" +
+	"\x1aeye_catch_image_updated_at\x18\t \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
+	"\x18eye_catch_image_variants\x18\n" +
+	" \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariantsJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -957,26 +1078,28 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_publira_types_v1_types_proto_goTypes = []any{
-	(*TenantContext)(nil), // 0: publira.types.v1.TenantContext
-	(*User)(nil),          // 1: publira.types.v1.User
-	(*Session)(nil),       // 2: publira.types.v1.Session
-	(*Creator)(nil),       // 3: publira.types.v1.Creator
-	(*Label)(nil),         // 4: publira.types.v1.Label
-	(*Series)(nil),        // 5: publira.types.v1.Series
-	(*Episode)(nil),       // 6: publira.types.v1.Episode
-	(*EpisodeImage)(nil),  // 7: publira.types.v1.EpisodeImage
-	(*TenantTheme)(nil),   // 8: publira.types.v1.TenantTheme
+	(*TenantContext)(nil),         // 0: publira.types.v1.TenantContext
+	(*User)(nil),                  // 1: publira.types.v1.User
+	(*Session)(nil),               // 2: publira.types.v1.Session
+	(*Creator)(nil),               // 3: publira.types.v1.Creator
+	(*Label)(nil),                 // 4: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 5: publira.types.v1.SeriesEyeCatchVariant
+	(*Series)(nil),                // 6: publira.types.v1.Series
+	(*Episode)(nil),               // 7: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 8: publira.types.v1.EpisodeImage
+	(*TenantTheme)(nil),           // 9: publira.types.v1.TenantTheme
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	4, // 0: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
 	3, // 1: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	5, // 2: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -990,7 +1113,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

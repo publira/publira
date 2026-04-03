@@ -5,18 +5,162 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	_ "golang.org/x/image/webp"
 
 	"github.com/publira/publira/server/api/protomapper"
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/storage"
 )
+
+type normalizedEyeCatchImage struct {
+	ContentType string
+	Data        []byte
+}
+
+func normalizeSeriesEyeCatchImage(data []byte, contentType string) (*normalizedEyeCatchImage, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
+	if len(data) > imageproc.EyeCatchMaxBytes {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("eye_catch_image_data exceeds 10MB"))
+	}
+
+	normalizedContentType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	if normalizedContentType == "" {
+		normalizedContentType = strings.ToLower(strings.TrimSpace(http.DetectContentType(data)))
+	}
+	if normalizedContentType != "image/jpeg" && normalizedContentType != "image/png" && normalizedContentType != "image/webp" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("eye_catch_image_content_type must be image/jpeg, image/png, or image/webp"))
+	}
+
+	return &normalizedEyeCatchImage{
+		ContentType: normalizedContentType,
+		Data:        data,
+	}, nil
+}
+
+func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, seriesID uuid.UUID, seriesPublicID string, img *normalizedEyeCatchImage) (uuid.NullUUID, error) {
+	if img == nil {
+		return uuid.NullUUID{}, nil
+	}
+	if s.storage == nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+	}
+
+	seriesImageID, err := uuid.NewV7()
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+	}
+
+	createdImage, err := s.queriesFor(ctx).CreateSeriesImage(ctx, dbmodels.CreateSeriesImageParams{
+		ID:       seriesImageID,
+		TenantID: tenant.ID,
+		SeriesID: seriesID,
+	})
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+	}
+
+	variants, err := imageproc.BuildEyeCatchVariants(img.Data, img.ContentType)
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	for _, variant := range variants {
+		objectKey := fmt.Sprintf(
+			"tenants/%s/series/%s/%s-%s%s",
+			tenant.PublicID,
+			seriesPublicID,
+			createdImage.ID.String(),
+			variant.Label,
+			variant.Extension,
+		)
+		uploaded, uploadErr := s.storage.Upload(ctx, storage.UploadRequest{
+			ObjectKey:   objectKey,
+			ContentType: variant.ContentType,
+			Data:        variant.Data,
+		})
+		if uploadErr != nil {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, uploadErr)
+		}
+
+		seriesImageVariantID, variantIDErr := uuid.NewV7()
+		if variantIDErr != nil {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr)
+		}
+
+		_, createVariantErr := s.queriesFor(ctx).CreateSeriesImageVariant(ctx, dbmodels.CreateSeriesImageVariantParams{
+			ID:              seriesImageVariantID,
+			TenantID:        tenant.ID,
+			SeriesImageID:   createdImage.ID,
+			VariantType:     variant.VariantType,
+			Label:           variant.Label,
+			StorageProvider: uploaded.Provider,
+			ObjectKey:       uploaded.ObjectKey,
+			ContentType:     variant.ContentType,
+			FileSizeBytes:   uploaded.SizeBytes,
+			Width:           int32(variant.Width),
+			Height:          int32(variant.Height),
+		})
+		if createVariantErr != nil {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, createVariantErr)
+		}
+	}
+
+	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
+}
+
+func mapSeriesEyeCatchVariants(seriesImageID uuid.UUID, rows []dbmodels.ListSeriesImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
+	items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
+			Label:         row.Label,
+			VariantType:   row.VariantType,
+			Url:           fmt.Sprintf("/images/series/%s/%s/%d", seriesImageID.String(), row.VariantType, row.Width),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+	}
+	return items
+}
+
+func (s *adminServer) seriesEyeCatchVariantsByImageIDs(
+	ctx context.Context,
+	imageIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
+	if len(imageIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
+	}
+
+	rows, err := s.queriesFor(ctx).ListSeriesImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	byImageID := make(map[uuid.UUID][]dbmodels.ListSeriesImageVariantsByImageIDsRow, len(imageIDs))
+	for _, row := range rows {
+		byImageID[row.SeriesImageID] = append(byImageID[row.SeriesImageID], row)
+	}
+
+	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
+	for imageID, variants := range byImageID {
+		mapped[imageID] = mapSeriesEyeCatchVariants(imageID, variants)
+	}
+
+	return mapped, nil
+}
 
 func normalizePublicIDs(publicIDs []string) ([]string, error) {
 	normalized := make([]string, 0, len(publicIDs))
@@ -90,6 +234,7 @@ func (s *adminServer) syncSeriesCreators(
 	items := make([]*publirattypesv1.Creator, 0, len(creators))
 	for index, creator := range creators {
 		err := s.queriesFor(ctx).CreateSeriesCreator(ctx, dbmodels.CreateSeriesCreatorParams{
+			TenantID:     tenantID,
 			SeriesID:     seriesID,
 			CreatorID:    creator.ID,
 			Role:         "creator",
@@ -156,6 +301,10 @@ func (s *adminServer) CreateSeries(
 	if req.Msg.ReadingPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
 	}
+	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	if err != nil {
+		return nil, err
+	}
 	labelID := uuid.NullUUID{}
 	if strings.TrimSpace(req.Msg.LabelPublicId) != "" {
 		label, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.LabelPublicId})
@@ -178,6 +327,7 @@ func (s *adminServer) CreateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queriesFor(ctx).UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
+		TenantID:           tenant.ID,
 		SeriesID:           base.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
@@ -191,6 +341,18 @@ func (s *adminServer) CreateSeries(
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	eyeCatchImageID, err := s.createSeriesEyeCatchImage(ctx, tenant, base.ID, base.PublicID, eyeCatchImage)
+	if err != nil {
+		return nil, err
+	}
+	if eyeCatchImageID.Valid {
+		if err := s.queriesFor(ctx).UpdateSeriesEyeCatchImageID(ctx, dbmodels.UpdateSeriesEyeCatchImageIDParams{
+			ID:              base.ID,
+			EyeCatchImageID: eyeCatchImageID,
+		}); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
 	}
 	creators, err := s.syncSeriesCreators(ctx, tenant.ID, base.ID, req.Msg.CreatorPublicIds, false)
 	if err != nil {
@@ -213,9 +375,20 @@ func (s *adminServer) CreateSeries(
 			s.logger.Warn("failed to request next revalidate after series create", "tenant_public_id", tenant.PublicID, "series_public_id", base.PublicID, "error", err)
 		}
 	}
-	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: &publirattypesv1.Series{
-		PublicId: base.PublicID, Title: base.Title, Synopsis: req.Msg.Synopsis, ReadingPeriodHours: req.Msg.ReadingPeriodHours, Creators: creators,
-	}}), nil
+	created, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: base.PublicID})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(created)
+	if created.EyeCatchImageID.Valid {
+		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{created.EyeCatchImageID.UUID})
+		if variantErr != nil {
+			return nil, variantErr
+		}
+		series.EyeCatchImageVariants = variantsByImageID[created.EyeCatchImageID.UUID]
+	}
+	series.Creators = creators
+	return connect.NewResponse(&publiraadminv1.CreateSeriesResponse{Series: series}), nil
 }
 
 func (s *adminServer) UpdateSeries(
@@ -231,6 +404,13 @@ func (s *adminServer) UpdateSeries(
 	}
 	if req.Msg.ReadingPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
+	}
+	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"))
+	}
+	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	if err != nil {
+		return nil, err
 	}
 	current, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
@@ -259,6 +439,7 @@ func (s *adminServer) UpdateSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	_, err = s.queriesFor(ctx).UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
+		TenantID:           tenant.ID,
 		SeriesID:           current.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
@@ -272,6 +453,24 @@ func (s *adminServer) UpdateSeries(
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	eyeCatchImageID := current.EyeCatchImageID
+	if req.Msg.ClearEyeCatchImage {
+		eyeCatchImageID = uuid.NullUUID{}
+	} else if eyeCatchImage != nil {
+		newEyeCatchImageID, uploadErr := s.createSeriesEyeCatchImage(ctx, tenant, current.ID, current.PublicID, eyeCatchImage)
+		if uploadErr != nil {
+			return nil, uploadErr
+		}
+		eyeCatchImageID = newEyeCatchImageID
+	}
+	if eyeCatchImageID != current.EyeCatchImageID {
+		if err := s.queriesFor(ctx).UpdateSeriesEyeCatchImageID(ctx, dbmodels.UpdateSeriesEyeCatchImageIDParams{
+			ID:              current.ID,
+			EyeCatchImageID: eyeCatchImageID,
+		}); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
 	}
 	creators, err := s.syncSeriesCreators(ctx, tenant.ID, current.ID, req.Msg.CreatorPublicIds, true)
 	if err != nil {
@@ -301,6 +500,13 @@ func (s *adminServer) UpdateSeries(
 		}
 	}
 	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(updated)
+	if updated.EyeCatchImageID.Valid {
+		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{updated.EyeCatchImageID.UUID})
+		if variantErr != nil {
+			return nil, variantErr
+		}
+		series.EyeCatchImageVariants = variantsByImageID[updated.EyeCatchImageID.UUID]
+	}
 	series.Creators = creators
 	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: series}), nil
 }
@@ -327,7 +533,9 @@ func (s *adminServer) ListSeries(
 	}
 	items := make([]*publirattypesv1.Series, 0, len(rows))
 	seriesIDs := make([]uuid.UUID, 0, len(rows))
+	seriesImageIDs := make([]uuid.UUID, 0, len(rows))
 	itemByID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
+	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	for _, row := range rows {
 		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
 		if row.LabelPublicID.Valid {
@@ -338,6 +546,13 @@ func (s *adminServer) ListSeries(
 		}
 		if row.ReadingPeriodHours.Valid {
 			item.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+		}
+		if row.EyeCatchImageID.Valid {
+			seriesImageIDs = append(seriesImageIDs, row.EyeCatchImageID.UUID)
+			itemByImageID[row.EyeCatchImageID.UUID] = item
+		}
+		if row.EyeCatchImageUpdatedAt.Valid {
+			item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
 		}
 		seriesIDs = append(seriesIDs, row.ID)
 		itemByID[row.ID] = item
@@ -350,6 +565,15 @@ func (s *adminServer) ListSeries(
 	for seriesID, creators := range creatorsBySeriesID {
 		if item, ok := itemByID[seriesID]; ok {
 			item.Creators = creators
+		}
+	}
+	eyeCatchVariantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, seriesImageIDs)
+	if err != nil {
+		return nil, err
+	}
+	for imageID, variants := range eyeCatchVariantsByImageID {
+		if item, ok := itemByImageID[imageID]; ok {
+			item.EyeCatchImageVariants = variants
 		}
 	}
 	defaultReadingPeriodHours := int32(0)
@@ -382,6 +606,13 @@ func (s *adminServer) GetSeries(
 		return nil, err
 	}
 	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(row)
+	if row.EyeCatchImageID.Valid {
+		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		if variantErr != nil {
+			return nil, variantErr
+		}
+		series.EyeCatchImageVariants = variantsByImageID[row.EyeCatchImageID.UUID]
+	}
 	series.Creators = creatorsBySeriesID[row.ID]
 	return connect.NewResponse(&publiraadminv1.GetSeriesResponse{Series: series}), nil
 }

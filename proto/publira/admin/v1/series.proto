@@ -14,6 +14,8 @@ message CreateSeriesRequest {
   bool is_published = 5;
   int32 reading_period_hours = 6;
   repeated string creator_public_ids = 7;
+  bytes eye_catch_image_data = 8;
+  string eye_catch_image_content_type = 9;
 }
 
 message CreateSeriesResponse {
@@ -29,6 +31,9 @@ message UpdateSeriesRequest {
   int32 reading_period_hours = 6;
   repeated string creator_public_ids = 7;
   string label_public_id = 8;
+  bytes eye_catch_image_data = 9;
+  string eye_catch_image_content_type = 10;
+  bool clear_eye_catch_image = 11;
 }
 
 message UpdateSeriesResponse {

@@ -30,6 +30,8 @@ var variantTargetWidths = []int{480, 960, 1440}
 
 // Variant は派生画像の情報を保持します。
 type Variant struct {
+	// VariantType は用途種別です (portrait/square/landscape/og)。
+	VariantType string
 	// Label は "w480" のように幅を示すラベルです (object key 生成に利用します)。
 	Label string
 	// ContentType は "image/jpeg" や "image/png" などの MIME タイプです。
@@ -210,4 +212,147 @@ func encode(src image.Image, width, height int, contentType string) ([]byte, err
 		}
 	}
 	return buf.Bytes(), nil
+}
+
+// EyeCatchMinWidth / EyeCatchMinHeight は入稿マスター画像の最小サイズです (3:4 基準)。
+const (
+	EyeCatchMinWidth  = 2400
+	EyeCatchMinHeight = 3200
+	EyeCatchMaxBytes  = 10 << 20
+)
+
+// eyeCatchAspectSpec はアイキャッチ派生サイズ生成の仕様です。
+type eyeCatchAspectSpec struct {
+	ratio      string // "portrait" / "square" / "landscape" / "og"
+	aspectW    int    // アスペクト幅
+	aspectH    int    // アスペクト高さ
+	widthSteps []int  // 生成する幅 (px)
+}
+
+// eyeCatchAspectSpecs はイシュー仕様に基づく派生サイズ定義です。
+var eyeCatchAspectSpecs = []eyeCatchAspectSpec{
+	{"portrait", 3, 4, []int{600, 900, 1200}},
+	{"square", 1, 1, []int{600, 900, 1200}},
+	{"landscape", 16, 9, []int{800, 1200, 1600}},
+	{"og", 1200, 630, []int{600, 900, 1200}},
+}
+
+// centerCropToAspect は src を指定アスペクト比にセンタークロップして返します。
+func centerCropToAspect(src image.Image, aspectW, aspectH int) image.Image {
+	bounds := src.Bounds()
+	srcW := bounds.Dx()
+	srcH := bounds.Dy()
+
+	targetRatio := float64(aspectW) / float64(aspectH)
+	srcRatio := float64(srcW) / float64(srcH)
+
+	var cropW, cropH int
+	if srcRatio > targetRatio {
+		cropH = srcH
+		cropW = int(math.Round(float64(srcH) * targetRatio))
+	} else {
+		cropW = srcW
+		cropH = int(math.Round(float64(srcW) / targetRatio))
+	}
+	if cropW > srcW {
+		cropW = srcW
+	}
+	if cropH > srcH {
+		cropH = srcH
+	}
+
+	offsetX := (srcW - cropW) / 2
+	offsetY := (srcH - cropH) / 2
+
+	rect := image.Rect(
+		bounds.Min.X+offsetX,
+		bounds.Min.Y+offsetY,
+		bounds.Min.X+offsetX+cropW,
+		bounds.Min.Y+offsetY+cropH,
+	)
+
+	type subImager interface {
+		SubImage(r image.Rectangle) image.Image
+	}
+	if si, ok := src.(subImager); ok {
+		return si.SubImage(rect)
+	}
+
+	dst := image.NewRGBA(image.Rect(0, 0, cropW, cropH))
+	for y := 0; y < cropH; y++ {
+		for x := 0; x < cropW; x++ {
+			dst.Set(x, y, src.At(rect.Min.X+x, rect.Min.Y+y))
+		}
+	}
+	return dst
+}
+
+// BuildEyeCatchVariants はマスター画像からアイキャッチ用全バリアントを生成します。
+//
+// 入力バリデーション:
+//   - 10MB 以内、image/* content_type
+//   - 最小サイズ 2400x3200px (3:4 基準)
+//
+// 出力: portrait / square / landscape / og の各アスペクト比 × 複数幅のバリアント。
+// ラベル形式は "{ratio}_{width}w" (例: "portrait_1200w")。
+func BuildEyeCatchVariants(raw []byte, contentType string) ([]Variant, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("image data is required")
+	}
+	if len(raw) > EyeCatchMaxBytes {
+		return nil, fmt.Errorf("image size exceeds %d bytes", EyeCatchMaxBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return nil, errors.New("content_type must be image/*")
+	}
+
+	src, srcFormat, err := image.Decode(bytes.NewReader(raw))
+	if err != nil {
+		return nil, errors.New("image is not decodable")
+	}
+	bounds := src.Bounds()
+	srcW := bounds.Dx()
+	srcH := bounds.Dy()
+	if srcW < EyeCatchMinWidth || srcH < EyeCatchMinHeight {
+		return nil, fmt.Errorf("eye_catch image must be at least %dx%d", EyeCatchMinWidth, EyeCatchMinHeight)
+	}
+
+	outContentType, outExt := outputFormat(srcFormat)
+
+	variants := make([]Variant, 0, 12)
+	for _, spec := range eyeCatchAspectSpecs {
+		cropped := centerCropToAspect(src, spec.aspectW, spec.aspectH)
+		cropBounds := cropped.Bounds()
+		cropW := cropBounds.Dx()
+		cropH := cropBounds.Dy()
+
+		for _, targetW := range spec.widthSteps {
+			w := targetW
+			if w > cropW {
+				w = cropW
+			}
+			h := scaledHeight(cropW, cropH, w)
+			label := fmt.Sprintf("%s_%dw", spec.ratio, w)
+
+			encoded, encErr := encode(cropped, w, h, outContentType)
+			if encErr != nil {
+				return nil, fmt.Errorf("encode %s: %w", label, encErr)
+			}
+			variants = append(variants, Variant{
+				VariantType: spec.ratio,
+				Label:       label,
+				ContentType: outContentType,
+				Extension:   outExt,
+				Width:       w,
+				Height:      h,
+				Data:        encoded,
+			})
+		}
+	}
+	return variants, nil
 }

@@ -11,6 +11,16 @@ export interface SeriesItem {
   creatorNames: string[];
   creatorPublicIds: string[];
   isPublished: boolean;
+  eyeCatchImageVariants: {
+    variantType: string;
+    label: string;
+    url: string;
+    contentType: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }[];
+  eyeCatchImageUpdatedAt: string;
 }
 
 export type ListSeriesResult =
@@ -58,7 +68,17 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
     message.includes("required") ||
     message.includes("invalid")
   ) {
-    return "入力内容に誤りがあります。";
+    if (
+      message.includes("eye_catch") ||
+      message.includes("image") ||
+      message.includes("content_type") ||
+      message.includes("10mb") ||
+      message.includes("at least")
+    ) {
+      return "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・推奨サイズを満たす画像を選び、もう一度お試しください。";
+    }
+
+    return "入力内容を確認してください。タイトル・ラベル・作者などの必須項目を見直して、もう一度お試しください。";
   }
 
   if (
@@ -66,6 +86,10 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
     message.includes("already exists")
   ) {
     return "重複するデータがあるため保存できません。";
+  }
+
+  if (message.includes("not_found")) {
+    return "対象のシリーズが見つかりませんでした。ページを再読み込みして、もう一度お試しください。";
   }
 
   return fallbackMessage;
@@ -78,6 +102,16 @@ const mapSeries = (series: {
   readingPeriodHours?: number;
   label?: { publicId: string; name: string };
   creators: { publicId: string; name: string }[];
+  eyeCatchImageVariants?: {
+    variantType?: string;
+    label?: string;
+    url?: string;
+    contentType?: string;
+    width?: number;
+    height?: number;
+    fileSizeBytes?: bigint | number;
+  }[];
+  eyeCatchImageUpdatedAt?: string;
 }): SeriesItem => ({
   creatorNames: (series.creators ?? [])
     .map((creator) => creator.name.trim())
@@ -85,6 +119,19 @@ const mapSeries = (series: {
   creatorPublicIds: (series.creators ?? [])
     .map((creator) => creator.publicId.trim())
     .filter((publicId) => publicId.length > 0),
+  eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt ?? "",
+  eyeCatchImageVariants: (series.eyeCatchImageVariants ?? [])
+    .map((variant) => ({
+      contentType: variant.contentType ?? "",
+      fileSizeBytes:
+        variant.fileSizeBytes === undefined ? 0 : Number(variant.fileSizeBytes),
+      height: variant.height ?? 0,
+      label: variant.label ?? "",
+      url: variant.url ?? "",
+      variantType: variant.variantType ?? "",
+      width: variant.width ?? 0,
+    }))
+    .filter((variant) => variant.label.length > 0 && variant.url.length > 0),
   isPublished: false,
   labelName: series.label?.name?.trim() ?? "",
   labelPublicId: series.label?.publicId?.trim() ?? "",
@@ -127,9 +174,15 @@ export const listSeries = async (
         .toSorted((a, b) => a.title.localeCompare(b.title, "ja")),
     };
   } catch (error) {
+    console.error("[web-admin] listSeries failed", {
+      error,
+      tenantPublicId,
+    });
+
+    const message = mapErrorToMessage(error, genericListErrorMessage);
     return {
       defaultReadingPeriodHours: 0,
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message,
       ok: false,
       series: [],
     };
@@ -171,8 +224,15 @@ export const getSeries = async (input: {
       series: mapSeries(response.series),
     };
   } catch (error) {
+    console.error("[web-admin] getSeries failed", {
+      error,
+      publicId: input.publicId,
+      tenantPublicId: input.tenantPublicId,
+    });
+
+    const message = mapErrorToMessage(error, genericListErrorMessage);
     return {
-      message: mapErrorToMessage(error, genericListErrorMessage),
+      message,
       ok: false,
     };
   }
@@ -186,6 +246,8 @@ export const createSeries = async (input: {
   labelPublicId: string;
   creatorPublicIds: string[];
   isPublished: boolean;
+  eyeCatchImageContentType?: string;
+  eyeCatchImageData?: Uint8Array;
 }): Promise<CreateSeriesResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -199,6 +261,8 @@ export const createSeries = async (input: {
     const response = await apiClient.series.createSeries(
       {
         creatorPublicIds: input.creatorPublicIds,
+        eyeCatchImageContentType: input.eyeCatchImageContentType,
+        eyeCatchImageData: input.eyeCatchImageData,
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         readingPeriodHours: input.readingPeriodHours,
@@ -224,8 +288,14 @@ export const createSeries = async (input: {
       },
     };
   } catch (error) {
+    console.error("[web-admin] createSeries failed", {
+      error,
+      input,
+    });
+
+    const message = mapErrorToMessage(error, genericMutationErrorMessage);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message,
       ok: false,
     };
   }
@@ -240,6 +310,9 @@ export const updateSeries = async (input: {
   labelPublicId: string;
   creatorPublicIds: string[];
   isPublished: boolean;
+  clearEyeCatchImage?: boolean;
+  eyeCatchImageContentType?: string;
+  eyeCatchImageData?: Uint8Array;
 }): Promise<UpdateSeriesResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -252,7 +325,10 @@ export const updateSeries = async (input: {
   try {
     const response = await apiClient.series.updateSeries(
       {
+        clearEyeCatchImage: input.clearEyeCatchImage,
         creatorPublicIds: input.creatorPublicIds,
+        eyeCatchImageContentType: input.eyeCatchImageContentType,
+        eyeCatchImageData: input.eyeCatchImageData,
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         publicId: input.publicId,
@@ -279,8 +355,14 @@ export const updateSeries = async (input: {
       },
     };
   } catch (error) {
+    console.error("[web-admin] updateSeries failed", {
+      error,
+      input,
+    });
+
+    const message = mapErrorToMessage(error, genericMutationErrorMessage);
     return {
-      message: mapErrorToMessage(error, genericMutationErrorMessage),
+      message,
       ok: false,
     };
   }

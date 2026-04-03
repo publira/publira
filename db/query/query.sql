@@ -895,6 +895,7 @@ SET title = $2,
 WHERE id = $1;
 -- name: UpsertSeriesListing :one
 INSERT INTO series_listings (
+        tenant_id,
         series_id,
         synopsis,
         reading_period_hours
@@ -902,7 +903,8 @@ INSERT INTO series_listings (
 VALUES (
         $1,
         $2,
-        $3
+        $3,
+        $4
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET synopsis = EXCLUDED.synopsis,
@@ -926,10 +928,21 @@ SELECT s.id,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
-    s.published_at
+    s.published_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
 WHERE s.tenant_id = $1
 ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3;
@@ -942,13 +955,82 @@ SELECT s.id,
     sl.synopsis,
     sl.reading_period_hours,
     s.is_published,
-    s.published_at
+    s.published_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
 FROM series s
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
 WHERE s.tenant_id = $1
     AND s.public_id = $2
 LIMIT 1;
+-- name: CreateSeriesImage :one
+INSERT INTO series_images (
+        id,
+        tenant_id,
+        series_id,
+        updated_at
+    )
+VALUES ($1, $2, $3, NOW())
+RETURNING *;
+
+-- name: CreateSeriesImageVariant :one
+INSERT INTO series_image_variants (
+        id,
+        tenant_id,
+        series_image_id,
+        variant_type,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING *;
+
+-- name: GetSeriesImageVariantByTypeAndWidthForTenant :one
+SELECT siv.object_key,
+    siv.content_type
+FROM series_image_variants siv
+JOIN series_images si ON si.id = siv.series_image_id
+WHERE siv.series_image_id = $1
+    AND si.tenant_id = $2
+    AND siv.variant_type = $3
+    AND siv.width = $4
+LIMIT 1;
+
+-- name: ListSeriesImageVariantsByImageIDs :many
+SELECT series_image_id,
+    variant_type,
+    label,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+FROM series_image_variants
+WHERE series_image_id = ANY(@image_ids::uuid[])
+ORDER BY series_image_id,
+    variant_type,
+    width;
+
+-- name: UpdateSeriesEyeCatchImageID :exec
+UPDATE series
+SET eye_catch_image_id = $2,
+    updated_at = NOW()
+WHERE id = $1;
+
 -- name: ListSeriesCreatorsBySeriesIDs :many
 SELECT sc.series_id,
     c.public_id,
@@ -973,12 +1055,13 @@ WHERE tenant_id = $1
     AND public_id = ANY(sqlc.arg('public_ids')::varchar[]);
 -- name: CreateSeriesCreator :exec
 INSERT INTO series_creators (
+    tenant_id,
         series_id,
         creator_id,
         role,
         display_order
     )
-VALUES ($1, $2, $3, $4);
+VALUES ($1, $2, $3, $4, $5);
 -- name: DeleteSeriesCreatorsBySeriesID :exec
 DELETE FROM series_creators
 WHERE series_id = $1;
