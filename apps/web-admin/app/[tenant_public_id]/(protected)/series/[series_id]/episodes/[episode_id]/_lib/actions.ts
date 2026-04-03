@@ -138,23 +138,33 @@ export const uploadEpisodePagesAction = async (
 
   const uploadMode = String(formData.get("upload_mode") ?? "pages").trim();
 
-  if (uploadMode === "archive") {
+  if (uploadMode === "zip" || uploadMode === "epub") {
     const archive = formData.get("archive");
     if (!(archive instanceof File) || archive.size <= 0) {
       return {
-        message: "入稿する ZIP ファイルを選択してください。",
+        message:
+          uploadMode === "zip"
+            ? "入稿する ZIP ファイルを選択してください。"
+            : "入稿する ePub ファイルを選択してください。",
         mode: "pages",
         ok: false,
       };
     }
 
     const normalizedName = archive.name.toLowerCase();
-    const isZipByMime = archive.type === "application/zip";
-    const isZipByExt = normalizedName.endsWith(".zip");
+    const mime = archive.type.toLowerCase();
+    const isValidArchive =
+      uploadMode === "zip"
+        ? mime === "application/zip" || normalizedName.endsWith(".zip")
+        : mime.includes("application/epub+zip") ||
+          normalizedName.endsWith(".epub");
 
-    if (!isZipByMime && !isZipByExt) {
+    if (!isValidArchive) {
       return {
-        message: "ZIP 形式（.zip）のファイルを選択してください。",
+        message:
+          uploadMode === "zip"
+            ? "ZIP 形式（.zip）のファイルを選択してください。"
+            : "ePub 形式（.epub）のファイルを選択してください。",
         mode: "pages",
         ok: false,
       };
@@ -163,6 +173,7 @@ export const uploadEpisodePagesAction = async (
     const result = await uploadEpisodePages({
       archive,
       episodePublicId: hidden.episodePublicId,
+      seriesPublicId: hidden.seriesPublicId,
       tenantPublicId: hidden.tenantPublicId,
     });
 

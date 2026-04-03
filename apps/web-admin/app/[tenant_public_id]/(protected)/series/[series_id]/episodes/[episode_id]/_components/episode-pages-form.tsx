@@ -37,7 +37,9 @@ export const EpisodePagesForm = ({
   action,
 }: EpisodePagesFormProps) => {
   const [state, formAction, isPending] = useActionState(action, null);
-  const [uploadMode, setUploadMode] = useState<"pages" | "archive">("pages");
+  const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(
+    "pages"
+  );
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,7 +79,7 @@ export const EpisodePagesForm = ({
       }
 
       const droppedFiles =
-        uploadMode === "archive" ? [files[0]].filter(Boolean) : [...files];
+        uploadMode === "pages" ? [...files] : [files[0]].filter(Boolean);
 
       const dataTransfer = new DataTransfer();
       for (const file of droppedFiles) {
@@ -102,13 +104,42 @@ export const EpisodePagesForm = ({
     }
   });
 
-  const handleSelectArchive = useEffectEvent(() => {
-    setUploadMode("archive");
+  const handleSelectZip = useEffectEvent(() => {
+    setUploadMode("zip");
     setSelectedFileNames([]);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
   });
+
+  const handleSelectEpub = useEffectEvent(() => {
+    setUploadMode("epub");
+    setSelectedFileNames([]);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  });
+
+  let fileLabel = "ページ画像";
+  let dropMessage = "ここに画像をドロップするか、ファイルを選択してください。";
+  let acceptValue = "image/*";
+  let fieldDescription = "追加時の表示順は既存の末尾に続けて自動採番されます。";
+
+  if (uploadMode === "zip") {
+    fileLabel = "ZIP ファイル";
+    dropMessage = "ここに ZIP をドロップするか、ファイルを選択してください。";
+    acceptValue = ".zip,application/zip";
+    fieldDescription =
+      "ZIP 内の画像を展開して登録します。壊れた ZIP や不正パスを含む ZIP は拒否されます。";
+  }
+
+  if (uploadMode === "epub") {
+    fileLabel = "ePub ファイル";
+    dropMessage = "ここに ePub をドロップするか、ファイルを選択してください。";
+    acceptValue = ".epub,application/epub+zip";
+    fieldDescription =
+      "ePub（.epub）から本文画像を抽出して登録します。壊れた ePub や参照不整合・不正パスを含むファイルは拒否されます。";
+  }
 
   return (
     <Card>
@@ -152,11 +183,19 @@ export const EpisodePagesForm = ({
                 </Button>
                 <Button
                   disabled={isPending}
-                  onClick={handleSelectArchive}
+                  onClick={handleSelectZip}
                   type="button"
-                  variant={uploadMode === "archive" ? "default" : "outline"}
+                  variant={uploadMode === "zip" ? "default" : "outline"}
                 >
                   ZIP で入稿
+                </Button>
+                <Button
+                  disabled={isPending}
+                  onClick={handleSelectEpub}
+                  type="button"
+                  variant={uploadMode === "epub" ? "default" : "outline"}
+                >
+                  ePub で入稿
                 </Button>
               </div>
             </FieldContent>
@@ -164,7 +203,7 @@ export const EpisodePagesForm = ({
 
           <Field>
             <FieldLabel htmlFor="episode_pages" required>
-              {uploadMode === "archive" ? "ZIP ファイル" : "ページ画像"}
+              {fileLabel}
             </FieldLabel>
             <FieldContent>
               <div
@@ -179,30 +218,20 @@ export const EpisodePagesForm = ({
                 onDrop={handleDrop}
               >
                 <p className="mb-3 text-sm text-muted-foreground">
-                  {uploadMode === "archive"
-                    ? "ここに ZIP をドロップするか、ファイルを選択してください。"
-                    : "ここに画像をドロップするか、ファイルを選択してください。"}
+                  {dropMessage}
                 </p>
                 <Input
-                  accept={
-                    uploadMode === "archive"
-                      ? ".zip,application/zip"
-                      : "image/*"
-                  }
+                  accept={acceptValue}
                   id="episode_pages"
                   multiple={uploadMode === "pages"}
-                  name={uploadMode === "archive" ? "archive" : "pages"}
+                  name={uploadMode === "pages" ? "pages" : "archive"}
                   onChange={handleChange}
                   ref={inputRef}
                   required
                   type="file"
                 />
               </div>
-              <FieldDescription>
-                {uploadMode === "archive"
-                  ? "ZIP 内の画像を展開して登録します。壊れた ZIP や不正パスを含む ZIP は拒否されます。"
-                  : "追加時の表示順は既存の末尾に続けて自動採番されます。"}
-              </FieldDescription>
+              <FieldDescription>{fieldDescription}</FieldDescription>
               {selectedFileNames.length > 0 ? (
                 <div className="grid gap-1 text-xs text-muted-foreground">
                   {selectedFileNames.map((fileName) => (
@@ -233,8 +262,11 @@ export const EpisodePagesForm = ({
                 if (isPending) {
                   return "追加中...";
                 }
-                if (uploadMode === "archive") {
+                if (uploadMode === "zip") {
                   return "ZIP を入稿";
+                }
+                if (uploadMode === "epub") {
+                  return "ePub を入稿";
                 }
                 return "ページ画像を追加";
               })()}
