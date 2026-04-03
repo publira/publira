@@ -26,6 +26,30 @@ interface LabelFormProps {
   initialLabel?: LabelListItem;
 }
 
+const getSubmitLabel = (isUpdate: boolean, isPending: boolean): string => {
+  if (isPending) {
+    return "送信中...";
+  }
+  if (isUpdate) {
+    return "レーベルを更新";
+  }
+  return "レーベルを作成";
+};
+
+const getCardTitle = (isUpdate: boolean): string => {
+  if (isUpdate) {
+    return "レーベル情報";
+  }
+  return "新規レーベル";
+};
+
+const getCardDescription = (isUpdate: boolean): string => {
+  if (isUpdate) {
+    return "レーベル名を編集します。";
+  }
+  return "新しいレーベル名を入力してください。";
+};
+
 export const LabelForm = ({
   mode,
   tenantPublicId,
@@ -54,23 +78,15 @@ export const LabelForm = ({
   );
 
   const isUpdate = mode === "update";
-  let submitLabel = "レーベルを作成";
-  if (isUpdate) {
-    submitLabel = "レーベルを更新";
-  }
-  if (isPending) {
-    submitLabel = "送信中...";
-  }
+  const submitLabel = getSubmitLabel(isUpdate, isPending);
+  const cardTitle = getCardTitle(isUpdate);
+  const cardDescription = getCardDescription(isUpdate);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isUpdate ? "レーベル情報" : "新規レーベル"}</CardTitle>
-        <CardDescription>
-          {isUpdate
-            ? "レーベル名を編集します。"
-            : "新しいレーベル名を入力してください。"}
-        </CardDescription>
+        <CardTitle>{cardTitle}</CardTitle>
+        <CardDescription>{cardDescription}</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4">
@@ -97,6 +113,25 @@ export const LabelForm = ({
               />
             </FieldContent>
           </Field>
+
+          {isUpdate ? null : (
+            <Field>
+              <FieldLabel htmlFor="label_eye_catch_image">
+                レーベルアイキャッチ画像
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  accept="image/jpeg,image/png,image/webp"
+                  id="label_eye_catch_image"
+                  name="eye_catch_image"
+                  type="file"
+                />
+                <p className="text-sm text-muted-foreground">
+                  3:4 基準で 2400x3200px 以上、10MB 以下の画像を推奨します。
+                </p>
+              </FieldContent>
+            </Field>
+          )}
 
           {state ? (
             <FormMessage variant={state.ok ? "success" : "destructive"}>

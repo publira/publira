@@ -19,6 +19,8 @@ message ListLabelsResponse {
 message CreateLabelRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
+  bytes eye_catch_image_data = 3;
+  string eye_catch_image_content_type = 4;
 }
 
 message CreateLabelResponse {
@@ -29,6 +31,9 @@ message UpdateLabelRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
   string name = 3;
+  bytes eye_catch_image_data = 4;
+  string eye_catch_image_content_type = 5;
+  bool clear_eye_catch_image = 6;
 }
 
 message UpdateLabelResponse {

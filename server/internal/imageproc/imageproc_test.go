@@ -171,3 +171,48 @@ func TestBuildVariants_ContentTypeAutoDetect(t *testing.T) {
 		t.Fatal("expected at least one variant")
 	}
 }
+
+func TestBuildEyeCatchVariants_GeneratesExpectedVariants(t *testing.T) {
+	raw := makeJPEG(t, 2400, 3200)
+	variants, err := imageproc.BuildEyeCatchVariants(raw, "image/jpeg")
+	if err != nil {
+		t.Fatalf("BuildEyeCatchVariants: %v", err)
+	}
+	if len(variants) != 12 {
+		t.Fatalf("got %d variants, want 12", len(variants))
+	}
+
+	hasPortrait1200 := false
+	hasSquare1200 := false
+	hasLandscape1600 := false
+	hasOG1200 := false
+	for _, variant := range variants {
+		switch variant.Label {
+		case "portrait_1200w":
+			hasPortrait1200 = variant.Width == 1200 && variant.Height == 1600
+		case "square_1200w":
+			hasSquare1200 = variant.Width == 1200 && variant.Height == 1200
+		case "landscape_1600w":
+			hasLandscape1600 = variant.Width == 1600 && variant.Height == 900
+		case "og_1200w":
+			hasOG1200 = variant.Width == 1200 && variant.Height == 630
+		}
+	}
+	if !hasPortrait1200 || !hasSquare1200 || !hasLandscape1600 || !hasOG1200 {
+		t.Fatalf(
+			"missing expected variants: portrait=%v square=%v landscape=%v og=%v",
+			hasPortrait1200,
+			hasSquare1200,
+			hasLandscape1600,
+			hasOG1200,
+		)
+	}
+}
+
+func TestBuildEyeCatchVariants_RejectsTooSmallImage(t *testing.T) {
+	raw := makeJPEG(t, 1200, 1600)
+	_, err := imageproc.BuildEyeCatchVariants(raw, "image/jpeg")
+	if err == nil {
+		t.Fatal("want error for too small image, got nil")
+	}
+}

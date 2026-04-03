@@ -161,3 +161,19 @@ func Label(publicID, name string) *publirattypesv1.Label {
 		Name:     name,
 	}
 }
+
+func LabelWithImage(
+	publicID string,
+	name string,
+	eyeCatchImageUpdatedAt sql.NullTime,
+	eyeCatchImageVariants []*publirattypesv1.SeriesEyeCatchVariant,
+) *publirattypesv1.Label {
+	label := Label(publicID, name)
+	if eyeCatchImageUpdatedAt.Valid {
+		label.EyeCatchImageUpdatedAt = eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if len(eyeCatchImageVariants) > 0 {
+		label.EyeCatchImageVariants = eyeCatchImageVariants
+	}
+	return label
+}

@@ -22,6 +22,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -167,6 +168,123 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
 }
 
+func normalizeLabelEyeCatchImage(data []byte, contentType string) (*normalizedEyeCatchImage, error) {
+	return normalizeSeriesEyeCatchImage(data, contentType)
+}
+
+func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, labelID uuid.UUID, labelPublicID string, image *normalizedEyeCatchImage) (uuid.NullUUID, error) {
+	if image == nil {
+		return uuid.NullUUID{}, nil
+	}
+	if s.storage == nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+	}
+
+	labelImageID, err := uuid.NewV7()
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+	}
+
+	createdImage, err := s.queriesFor(ctx).CreateLabelImage(ctx, dbmodels.CreateLabelImageParams{
+		ID:       labelImageID,
+		TenantID: tenant.ID,
+		LabelID:  labelID,
+	})
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+	}
+
+	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	for _, variant := range variants {
+		objectKey := fmt.Sprintf(
+			"tenants/%s/labels/%s/%s-%s%s",
+			tenant.PublicID,
+			labelPublicID,
+			createdImage.ID.String(),
+			variant.Label,
+			variant.Extension,
+		)
+		uploaded, uploadErr := s.storage.Upload(ctx, storage.UploadRequest{
+			ObjectKey:   objectKey,
+			ContentType: variant.ContentType,
+			Data:        variant.Data,
+		})
+		if uploadErr != nil {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, uploadErr)
+		}
+
+		labelImageVariantID, variantIDErr := uuid.NewV7()
+		if variantIDErr != nil {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr)
+		}
+
+		_, createVariantErr := s.queriesFor(ctx).CreateLabelImageVariant(ctx, dbmodels.CreateLabelImageVariantParams{
+			ID:              labelImageVariantID,
+			TenantID:        tenant.ID,
+			LabelImageID:    createdImage.ID,
+			VariantType:     variant.VariantType,
+			Label:           variant.Label,
+			StorageProvider: uploaded.Provider,
+			ObjectKey:       uploaded.ObjectKey,
+			ContentType:     variant.ContentType,
+			FileSizeBytes:   uploaded.SizeBytes,
+			Width:           int32(variant.Width),
+			Height:          int32(variant.Height),
+		})
+		if createVariantErr != nil {
+			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, createVariantErr)
+		}
+	}
+
+	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
+}
+
+func mapLabelEyeCatchVariants(labelImageID uuid.UUID, rows []dbmodels.ListLabelImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
+	items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
+			Label:         row.Label,
+			VariantType:   row.VariantType,
+			Url:           fmt.Sprintf("/images/labels/%s/%s/%d", labelImageID.String(), row.VariantType, row.Width),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+	}
+	return items
+}
+
+func (s *adminServer) labelEyeCatchVariantsByImageIDs(
+	ctx context.Context,
+	imageIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
+	if len(imageIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
+	}
+
+	rows, err := s.queriesFor(ctx).ListLabelImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	byImageID := make(map[uuid.UUID][]dbmodels.ListLabelImageVariantsByImageIDsRow, len(imageIDs))
+	for _, row := range rows {
+		byImageID[row.LabelImageID] = append(byImageID[row.LabelImageID], row)
+	}
+
+	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
+	for imageID, variants := range byImageID {
+		mapped[imageID] = mapLabelEyeCatchVariants(imageID, variants)
+	}
+
+	return mapped, nil
+}
+
 func (s *adminServer) ListCreators(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListCreatorsRequest],
@@ -222,8 +340,24 @@ func (s *adminServer) ListLabels(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	items := make([]*publirattypesv1.Label, 0, len(rows))
+	imageIDs := make([]uuid.UUID, 0, len(rows))
+	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Label, len(rows))
 	for _, row := range rows {
-		items = append(items, protomapper.Label(row.PublicID, row.Name))
+		item := protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, nil)
+		items = append(items, item)
+		if row.EyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
+			itemByImageID[row.EyeCatchImageID.UUID] = item
+		}
+	}
+	variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, err
+	}
+	for imageID, variants := range variantsByImageID {
+		if item, ok := itemByImageID[imageID]; ok {
+			item.EyeCatchImageVariants = variants
+		}
 	}
 	return connect.NewResponse(&publiraadminv1.ListLabelsResponse{Labels: items}), nil
 }
@@ -389,18 +523,48 @@ func (s *adminServer) CreateLabel(
 	if strings.TrimSpace(req.Msg.Name) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
+	eyeCatchImage, err := normalizeLabelEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	if err != nil {
+		return nil, err
+	}
 	labelID, err := uuid.NewV7()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	created, err := s.queriesFor(ctx).CreateLabel(ctx, dbmodels.CreateLabelParams{
-		ID:       labelID,
-		TenantID: tenant.ID,
-		PublicID: generatePublicID(),
-		Name:     req.Msg.Name,
+	createdBase, err := s.queriesFor(ctx).CreateLabel(ctx, dbmodels.CreateLabelParams{
+		ID:              labelID,
+		TenantID:        tenant.ID,
+		PublicID:        generatePublicID(),
+		Name:            req.Msg.Name,
+		EyeCatchImageID: uuid.NullUUID{},
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	eyeCatchImageID, err := s.createLabelEyeCatchImage(ctx, tenant, createdBase.ID, createdBase.PublicID, eyeCatchImage)
+	if err != nil {
+		return nil, err
+	}
+	if eyeCatchImageID.Valid {
+		if err := s.queriesFor(ctx).UpdateLabel(ctx, dbmodels.UpdateLabelParams{
+			ID:              createdBase.ID,
+			Name:            createdBase.Name,
+			EyeCatchImageID: eyeCatchImageID,
+		}); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+	created, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: createdBase.PublicID})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	var variants []*publirattypesv1.SeriesEyeCatchVariant
+	if created.EyeCatchImageID.Valid {
+		variantsByImageID, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{created.EyeCatchImageID.UUID})
+		if variantErr != nil {
+			return nil, variantErr
+		}
+		variants = variantsByImageID[created.EyeCatchImageID.UUID]
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
@@ -414,7 +578,7 @@ func (s *adminServer) CreateLabel(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: protomapper.Label(created.PublicID, created.Name)}), nil
+	return connect.NewResponse(&publiraadminv1.CreateLabelResponse{Label: protomapper.LabelWithImage(created.PublicID, created.Name, created.EyeCatchImageUpdatedAt, variants)}), nil
 }
 
 func (s *adminServer) UpdateLabel(
@@ -428,6 +592,13 @@ func (s *adminServer) UpdateLabel(
 	if strings.TrimSpace(req.Msg.Name) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
+	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"))
+	}
+	eyeCatchImage, err := normalizeLabelEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
+	if err != nil {
+		return nil, err
+	}
 	current, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -435,7 +606,17 @@ func (s *adminServer) UpdateLabel(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queriesFor(ctx).UpdateLabel(ctx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name})
+	eyeCatchImageID := current.EyeCatchImageID
+	if req.Msg.ClearEyeCatchImage {
+		eyeCatchImageID = uuid.NullUUID{}
+	} else if eyeCatchImage != nil {
+		newEyeCatchImageID, uploadErr := s.createLabelEyeCatchImage(ctx, tenant, current.ID, current.PublicID, eyeCatchImage)
+		if uploadErr != nil {
+			return nil, uploadErr
+		}
+		eyeCatchImageID = newEyeCatchImageID
+	}
+	err = s.queriesFor(ctx).UpdateLabel(ctx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name, EyeCatchImageID: eyeCatchImageID})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -445,6 +626,14 @@ func (s *adminServer) UpdateLabel(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	var variants []*publirattypesv1.SeriesEyeCatchVariant
+	if updated.EyeCatchImageID.Valid {
+		variantsByImageID, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{updated.EyeCatchImageID.UUID})
+		if variantErr != nil {
+			return nil, variantErr
+		}
+		variants = variantsByImageID[updated.EyeCatchImageID.UUID]
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
@@ -458,5 +647,5 @@ func (s *adminServer) UpdateLabel(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: protomapper.Label(updated.PublicID, updated.Name)}), nil
+	return connect.NewResponse(&publiraadminv1.UpdateLabelResponse{Label: protomapper.LabelWithImage(updated.PublicID, updated.Name, updated.EyeCatchImageUpdatedAt, variants)}), nil
 }

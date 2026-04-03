@@ -15,22 +15,22 @@ import type { ChangeEventHandler } from "react";
 
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
 
-import type { SeriesActionState, SeriesListItem } from "../series-types";
+import type { LabelActionState, LabelListItem } from "../label-types";
 
-interface SeriesEyeCatchFormProps {
-  initialSeries: SeriesListItem;
-  tenantPublicId: string;
+interface LabelEyeCatchFormProps {
   action: (
-    prevState: SeriesActionState,
+    prevState: LabelActionState,
     formData: FormData
-  ) => Promise<SeriesActionState>;
+  ) => Promise<LabelActionState>;
+  initialLabel: LabelListItem;
+  tenantPublicId: string;
 }
 
-export const SeriesEyeCatchForm = ({
-  initialSeries,
-  tenantPublicId,
+export const LabelEyeCatchForm = ({
   action,
-}: SeriesEyeCatchFormProps) => {
+  initialLabel,
+  tenantPublicId,
+}: LabelEyeCatchFormProps) => {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);
@@ -40,15 +40,15 @@ export const SeriesEyeCatchForm = ({
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const effectiveSeries = state?.ok ? state.series : initialSeries;
-  const variants = effectiveSeries.eyeCatchImageVariants ?? [];
+  const effectiveLabel = state?.ok ? state.label : initialLabel;
+  const variants = effectiveLabel.eyeCatchImageVariants ?? [];
   const hasVariants = variants.length > 0;
 
   useEffect(() => {
     setClearEyeCatchImage(false);
     setLocalPreviewUrl("");
     setSelectedVariantType(null);
-  }, [initialSeries.publicId]);
+  }, [initialLabel.publicId]);
 
   useEffect(
     () => () => {
@@ -94,43 +94,17 @@ export const SeriesEyeCatchForm = ({
       <CardContent className="pt-6">
         <form action={formAction} className="grid gap-4">
           <input name="tenant_public_id" type="hidden" value={tenantPublicId} />
-          <input
-            name="public_id"
-            type="hidden"
-            value={initialSeries.publicId}
-          />
-          <input name="title" type="hidden" value={initialSeries.title} />
-          <input name="synopsis" type="hidden" value={initialSeries.synopsis} />
-          <input
-            name="reading_period_hours"
-            type="hidden"
-            value={String(initialSeries.readingPeriodHours)}
-          />
-          <input
-            name="label_public_id"
-            type="hidden"
-            value={initialSeries.labelPublicId}
-          />
+          <input name="public_id" type="hidden" value={initialLabel.publicId} />
+          <input name="name" type="hidden" value={initialLabel.name} />
           <input
             name="current_eye_catch_image_updated_at"
             type="hidden"
-            value={effectiveSeries.eyeCatchImageUpdatedAt}
+            value={effectiveLabel.eyeCatchImageUpdatedAt}
           />
-          {initialSeries.creatorPublicIds.map((publicId) => (
-            <input
-              key={publicId}
-              name="creator_public_ids"
-              type="hidden"
-              value={publicId}
-            />
-          ))}
-          {initialSeries.isPublished ? (
-            <input name="is_published" type="hidden" value="on" />
-          ) : null}
 
           <EyeCatchImageField
             clearEyeCatchImage={clearEyeCatchImage}
-            fileInputId="series_eye_catch_image"
+            fileInputId="label_eye_catch_image"
             fileInputRef={fileInputRef}
             hasVariants={hasVariants}
             localPreviewUrl={localPreviewUrl}

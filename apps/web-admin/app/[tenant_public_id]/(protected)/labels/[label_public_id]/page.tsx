@@ -12,13 +12,18 @@ import { AdminPage } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getLabel } from "#lib/label";
 
+import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
 import { LabelForm } from "../_components/label-form";
+import { LabelTabNav } from "../_components/label-tab-nav";
 import { updateLabelAction } from "../_lib/actions";
 
 interface EditLabelPageProps {
   params: Promise<{
     label_public_id: string;
     tenant_public_id: string;
+  }>;
+  searchParams: Promise<{
+    tab?: string;
   }>;
 }
 
@@ -39,9 +44,11 @@ const EditLabelFormSkeleton = () => (
 );
 
 const EditLabelFormData = async ({
+  activeTab,
   labelPublicId,
   tenantPublicId,
 }: {
+  activeTab: "basic" | "eye-catch";
   labelPublicId: string;
   tenantPublicId: string;
 }) => {
@@ -63,6 +70,16 @@ const EditLabelFormData = async ({
     );
   }
 
+  if (activeTab === "eye-catch") {
+    return (
+      <LabelEyeCatchForm
+        action={updateLabelAction}
+        initialLabel={result.label}
+        tenantPublicId={tenantPublicId}
+      />
+    );
+  }
+
   return (
     <LabelForm
       action={updateLabelAction}
@@ -73,10 +90,22 @@ const EditLabelFormData = async ({
   );
 };
 
-export default async function EditLabelPage({ params }: EditLabelPageProps) {
+export default async function EditLabelPage({
+  params,
+  searchParams,
+}: EditLabelPageProps) {
   const { label_public_id, tenant_public_id } = await params;
+  const { tab } = await searchParams;
   guardPlaceholder(tenant_public_id);
   guardPlaceholder(label_public_id);
+
+  const activeTab = tab === "eye-catch" ? "eye-catch" : "basic";
+  const pageTitle =
+    activeTab === "eye-catch" ? "レーベルのアイキャッチを編集" : "レーベル編集";
+  const pageDescription =
+    activeTab === "eye-catch"
+      ? "アイキャッチ画像の差し替え・削除を行います。"
+      : "レーベル情報を編集します。";
 
   return (
     <AdminPage
@@ -85,16 +114,20 @@ export default async function EditLabelPage({ params }: EditLabelPageProps) {
           一覧へ戻る
         </LinkButton>
       }
-      description="レーベル情報を編集します。"
-      title="レーベル編集"
+      description={pageDescription}
+      title={pageTitle}
     >
       <FlashToast title="レーベルを作成しました。" />
-      <Suspense fallback={<EditLabelFormSkeleton />}>
-        <EditLabelFormData
-          labelPublicId={label_public_id}
-          tenantPublicId={tenant_public_id}
-        />
-      </Suspense>
+      <div className="grid gap-6">
+        <LabelTabNav current={activeTab} labelId={label_public_id} />
+        <Suspense fallback={<EditLabelFormSkeleton />}>
+          <EditLabelFormData
+            activeTab={activeTab}
+            labelPublicId={label_public_id}
+            tenantPublicId={tenant_public_id}
+          />
+        </Suspense>
+      </div>
     </AdminPage>
   );
 }

@@ -34,6 +34,8 @@ message Creator {
 message Label {
   string public_id = 1;
   string name = 2;
+  string eye_catch_image_updated_at = 3;
+  repeated SeriesEyeCatchVariant eye_catch_image_variants = 4;
 }
 
 message SeriesEyeCatchVariant {

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/label.proto.
  */
 export const file_publira_admin_v1_label: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2xhYmVsLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImMKEUxpc3RMYWJlbHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRIOCgZvZmZzZXQYAyABKAUiPQoSTGlzdExhYmVsc1Jlc3BvbnNlEicKBmxhYmVscxgBIAMoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwiUwoSQ3JlYXRlTGFiZWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAIgASgJIj0KE0NyZWF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsImYKElVwZGF0ZUxhYmVsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkiPQoTVXBkYXRlTGFiZWxSZXNwb25zZRImCgVsYWJlbBgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwyqgIKEUFkbWluTGFiZWxTZXJ2aWNlElkKCkxpc3RMYWJlbHMSIy5wdWJsaXJhLmFkbWluLnYxLkxpc3RMYWJlbHNSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5MaXN0TGFiZWxzUmVzcG9uc2UiABJcCgtDcmVhdGVMYWJlbBIkLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlTGFiZWxSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5DcmVhdGVMYWJlbFJlc3BvbnNlIgASXAoLVXBkYXRlTGFiZWwSJC5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUxhYmVsUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlTGFiZWxSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2xhYmVsLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImMKEUxpc3RMYWJlbHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRIOCgZvZmZzZXQYAyABKAUiPQoSTGlzdExhYmVsc1Jlc3BvbnNlEicKBmxhYmVscxgBIAMoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwilwEKEkNyZWF0ZUxhYmVsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgDIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAQgASgJIj0KE0NyZWF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsIskBChJVcGRhdGVMYWJlbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIMCgRuYW1lGAMgASgJEhwKFGV5ZV9jYXRjaF9pbWFnZV9kYXRhGAQgASgMEiQKHGV5ZV9jYXRjaF9pbWFnZV9jb250ZW50X3R5cGUYBSABKAkSHQoVY2xlYXJfZXllX2NhdGNoX2ltYWdlGAYgASgIIj0KE1VwZGF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsMqoCChFBZG1pbkxhYmVsU2VydmljZRJZCgpMaXN0TGFiZWxzEiMucHVibGlyYS5hZG1pbi52MS5MaXN0TGFiZWxzUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuTGlzdExhYmVsc1Jlc3BvbnNlIgASXAoLQ3JlYXRlTGFiZWwSJC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUxhYmVsUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlTGFiZWxSZXNwb25zZSIAElwKC1VwZGF0ZUxhYmVsEiQucHVibGlyYS5hZG1pbi52MS5VcGRhdGVMYWJlbFJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUxhYmVsUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.ListLabelsRequest
@@ -71,6 +71,16 @@ export type CreateLabelRequest = Message<"publira.admin.v1.CreateLabelRequest"> 
    * @generated from field: string name = 2;
    */
   name: string;
+
+  /**
+   * @generated from field: bytes eye_catch_image_data = 3;
+   */
+  eyeCatchImageData: Uint8Array;
+
+  /**
+   * @generated from field: string eye_catch_image_content_type = 4;
+   */
+  eyeCatchImageContentType: string;
 };
 
 /**
@@ -115,6 +125,21 @@ export type UpdateLabelRequest = Message<"publira.admin.v1.UpdateLabelRequest"> 
    * @generated from field: string name = 3;
    */
   name: string;
+
+  /**
+   * @generated from field: bytes eye_catch_image_data = 4;
+   */
+  eyeCatchImageData: Uint8Array;
+
+  /**
+   * @generated from field: string eye_catch_image_content_type = 5;
+   */
+  eyeCatchImageContentType: string;
+
+  /**
+   * @generated from field: bool clear_eye_catch_image = 6;
+   */
+  clearEyeCatchImage: boolean;
 };
 
 /**

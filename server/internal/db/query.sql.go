@@ -432,17 +432,19 @@ INSERT INTO labels (
         id,
         tenant_id,
         public_id,
-        name
+        name,
+        eye_catch_image_id
     )
-VALUES ($1, $2, $3, $4)
-RETURNING id, tenant_id, public_id, name, created_at
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, public_id, name, created_at, eye_catch_image_id
 `
 
 type CreateLabelParams struct {
-	ID       uuid.UUID `json:"id"`
-	TenantID uuid.UUID `json:"tenant_id"`
-	PublicID string    `json:"public_id"`
-	Name     string    `json:"name"`
+	ID              uuid.UUID     `json:"id"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
 }
 
 func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error) {
@@ -451,6 +453,7 @@ func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label
 		arg.TenantID,
 		arg.PublicID,
 		arg.Name,
+		arg.EyeCatchImageID,
 	)
 	var i Label
 	err := row.Scan(
@@ -458,6 +461,101 @@ func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label
 		&i.TenantID,
 		&i.PublicID,
 		&i.Name,
+		&i.CreatedAt,
+		&i.EyeCatchImageID,
+	)
+	return i, err
+}
+
+const createLabelImage = `-- name: CreateLabelImage :one
+INSERT INTO label_images (
+        id,
+        tenant_id,
+        label_id,
+        updated_at
+    )
+VALUES ($1, $2, $3, NOW())
+RETURNING id, tenant_id, label_id, updated_at, created_at
+`
+
+type CreateLabelImageParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	LabelID  uuid.UUID `json:"label_id"`
+}
+
+func (q *Queries) CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error) {
+	row := q.db.QueryRowContext(ctx, createLabelImage, arg.ID, arg.TenantID, arg.LabelID)
+	var i LabelImage
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.LabelID,
+		&i.UpdatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createLabelImageVariant = `-- name: CreateLabelImageVariant :one
+INSERT INTO label_image_variants (
+        id,
+        tenant_id,
+        label_image_id,
+        variant_type,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, tenant_id, label_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at
+`
+
+type CreateLabelImageVariantParams struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	LabelImageID    uuid.UUID `json:"label_image_id"`
+	VariantType     string    `json:"variant_type"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+}
+
+func (q *Queries) CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error) {
+	row := q.db.QueryRowContext(ctx, createLabelImageVariant,
+		arg.ID,
+		arg.TenantID,
+		arg.LabelImageID,
+		arg.VariantType,
+		arg.Label,
+		arg.StorageProvider,
+		arg.ObjectKey,
+		arg.ContentType,
+		arg.FileSizeBytes,
+		arg.Width,
+		arg.Height,
+	)
+	var i LabelImageVariant
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.LabelImageID,
+		&i.Label,
+		&i.VariantType,
+		&i.StorageProvider,
+		&i.ObjectKey,
+		&i.ContentType,
+		&i.FileSizeBytes,
+		&i.Width,
+		&i.Height,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -1613,10 +1711,17 @@ func (q *Queries) GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, 
 }
 
 const getLabelByPublicIDForTenant = `-- name: GetLabelByPublicIDForTenant :one
-SELECT id, tenant_id, public_id, name, created_at
-FROM labels
-WHERE tenant_id = $1
-    AND public_id = $2
+SELECT l.id,
+    l.tenant_id,
+    l.public_id,
+    l.name,
+    l.created_at,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels l
+LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.public_id = $2
 LIMIT 1
 `
 
@@ -1625,16 +1730,64 @@ type GetLabelByPublicIDForTenantParams struct {
 	PublicID string    `json:"public_id"`
 }
 
-func (q *Queries) GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error) {
+type GetLabelByPublicIDForTenantRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	TenantID               uuid.UUID     `json:"tenant_id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+func (q *Queries) GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, getLabelByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i Label
+	var i GetLabelByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
 		&i.PublicID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.EyeCatchImageID,
+		&i.EyeCatchImageUpdatedAt,
 	)
+	return i, err
+}
+
+const getLabelImageVariantByTypeAndWidthForTenant = `-- name: GetLabelImageVariantByTypeAndWidthForTenant :one
+SELECT liv.object_key,
+    liv.content_type
+FROM label_image_variants liv
+JOIN label_images li ON li.id = liv.label_image_id
+WHERE liv.label_image_id = $1
+    AND li.tenant_id = $2
+    AND liv.variant_type = $3
+    AND liv.width = $4
+LIMIT 1
+`
+
+type GetLabelImageVariantByTypeAndWidthForTenantParams struct {
+	LabelImageID uuid.UUID `json:"label_image_id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	VariantType  string    `json:"variant_type"`
+	Width        int32     `json:"width"`
+}
+
+type GetLabelImageVariantByTypeAndWidthForTenantRow struct {
+	ObjectKey   string `json:"object_key"`
+	ContentType string `json:"content_type"`
+}
+
+func (q *Queries) GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getLabelImageVariantByTypeAndWidthForTenant,
+		arg.LabelImageID,
+		arg.TenantID,
+		arg.VariantType,
+		arg.Width,
+	)
+	var i GetLabelImageVariantByTypeAndWidthForTenantRow
+	err := row.Scan(&i.ObjectKey, &i.ContentType)
 	return i, err
 }
 
@@ -3327,15 +3480,74 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	return items, nil
 }
 
+const listLabelImageVariantsByImageIDs = `-- name: ListLabelImageVariantsByImageIDs :many
+SELECT label_image_id,
+    variant_type,
+    label,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+FROM label_image_variants
+WHERE label_image_id = ANY($1::uuid[])
+ORDER BY label_image_id,
+    variant_type,
+    width
+`
+
+type ListLabelImageVariantsByImageIDsRow struct {
+	LabelImageID  uuid.UUID `json:"label_image_id"`
+	VariantType   string    `json:"variant_type"`
+	Label         string    `json:"label"`
+	ContentType   string    `json:"content_type"`
+	FileSizeBytes int64     `json:"file_size_bytes"`
+	Width         int32     `json:"width"`
+	Height        int32     `json:"height"`
+}
+
+func (q *Queries) ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLabelImageVariantsByImageIDs, pq.Array(imageIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLabelImageVariantsByImageIDsRow
+	for rows.Next() {
+		var i ListLabelImageVariantsByImageIDsRow
+		if err := rows.Scan(
+			&i.LabelImageID,
+			&i.VariantType,
+			&i.Label,
+			&i.ContentType,
+			&i.FileSizeBytes,
+			&i.Width,
+			&i.Height,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLabelsByTenant = `-- name: ListLabelsByTenant :many
-SELECT id,
-    tenant_id,
-    public_id,
-    name,
-    created_at
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
 FROM labels
-WHERE tenant_id = $1
-ORDER BY created_at DESC
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = $1
+ORDER BY labels.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -3345,21 +3557,33 @@ type ListLabelsByTenantParams struct {
 	Offset   int32     `json:"offset"`
 }
 
-func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]Label, error) {
+type ListLabelsByTenantRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	TenantID               uuid.UUID     `json:"tenant_id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listLabelsByTenant, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Label
+	var items []ListLabelsByTenantRow
 	for rows.Next() {
-		var i Label
+		var i ListLabelsByTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
 			&i.PublicID,
 			&i.Name,
 			&i.CreatedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -4390,17 +4614,19 @@ func (q *Queries) UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Co
 
 const updateLabel = `-- name: UpdateLabel :exec
 UPDATE labels
-SET name = $2
+SET name = $2,
+    eye_catch_image_id = $3
 WHERE id = $1
 `
 
 type UpdateLabelParams struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+	ID              uuid.UUID     `json:"id"`
+	Name            string        `json:"name"`
+	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
 }
 
 func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
-	_, err := q.db.ExecContext(ctx, updateLabel, arg.ID, arg.Name)
+	_, err := q.db.ExecContext(ctx, updateLabel, arg.ID, arg.Name, arg.EyeCatchImageID)
 	return err
 }
 
