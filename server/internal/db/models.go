@@ -32,6 +32,29 @@ type Creator struct {
 	Name        string         `json:"name"`
 	ProfileText sql.NullString `json:"profile_text"`
 	CreatedAt   time.Time      `json:"created_at"`
+	IconImageID uuid.NullUUID  `json:"icon_image_id"`
+}
+
+type CreatorImage struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CreatorImageVariant struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	CreatorImageID  uuid.UUID `json:"creator_image_id"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type Episode struct {

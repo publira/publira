@@ -20,6 +20,8 @@ message CreateCreatorRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
   string profile_text = 3;
+  bytes icon_image_data = 4;
+  string icon_image_content_type = 5;
 }
 
 message CreateCreatorResponse {
@@ -31,6 +33,9 @@ message UpdateCreatorRequest {
   string public_id = 2;
   string name = 3;
   string profile_text = 4;
+  bytes icon_image_data = 5;
+  string icon_image_content_type = 6;
+  bool clear_icon_image = 7;
 }
 
 message UpdateCreatorResponse {

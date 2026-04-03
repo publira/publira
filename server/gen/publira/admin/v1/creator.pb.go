@@ -127,12 +127,14 @@ func (x *ListCreatorsResponse) GetCreators() []*v1.Creator {
 }
 
 type CreateCreatorRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ProfileText   string                 `protobuf:"bytes,3,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Tenant               *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name                 string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ProfileText          string                 `protobuf:"bytes,3,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
+	IconImageData        []byte                 `protobuf:"bytes,4,opt,name=icon_image_data,json=iconImageData,proto3" json:"icon_image_data,omitempty"`
+	IconImageContentType string                 `protobuf:"bytes,5,opt,name=icon_image_content_type,json=iconImageContentType,proto3" json:"icon_image_content_type,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *CreateCreatorRequest) Reset() {
@@ -186,6 +188,20 @@ func (x *CreateCreatorRequest) GetProfileText() string {
 	return ""
 }
 
+func (x *CreateCreatorRequest) GetIconImageData() []byte {
+	if x != nil {
+		return x.IconImageData
+	}
+	return nil
+}
+
+func (x *CreateCreatorRequest) GetIconImageContentType() string {
+	if x != nil {
+		return x.IconImageContentType
+	}
+	return ""
+}
+
 type CreateCreatorResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Creator       *v1.Creator            `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
@@ -231,13 +247,16 @@ func (x *CreateCreatorResponse) GetCreator() *v1.Creator {
 }
 
 type UpdateCreatorRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	ProfileText   string                 `protobuf:"bytes,4,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Tenant               *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId             string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name                 string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	ProfileText          string                 `protobuf:"bytes,4,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
+	IconImageData        []byte                 `protobuf:"bytes,5,opt,name=icon_image_data,json=iconImageData,proto3" json:"icon_image_data,omitempty"`
+	IconImageContentType string                 `protobuf:"bytes,6,opt,name=icon_image_content_type,json=iconImageContentType,proto3" json:"icon_image_content_type,omitempty"`
+	ClearIconImage       bool                   `protobuf:"varint,7,opt,name=clear_icon_image,json=clearIconImage,proto3" json:"clear_icon_image,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *UpdateCreatorRequest) Reset() {
@@ -298,6 +317,27 @@ func (x *UpdateCreatorRequest) GetProfileText() string {
 	return ""
 }
 
+func (x *UpdateCreatorRequest) GetIconImageData() []byte {
+	if x != nil {
+		return x.IconImageData
+	}
+	return nil
+}
+
+func (x *UpdateCreatorRequest) GetIconImageContentType() string {
+	if x != nil {
+		return x.IconImageContentType
+	}
+	return ""
+}
+
+func (x *UpdateCreatorRequest) GetClearIconImage() bool {
+	if x != nil {
+		return x.ClearIconImage
+	}
+	return false
+}
+
 type UpdateCreatorResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Creator       *v1.Creator            `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
@@ -352,18 +392,23 @@ const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\"M\n" +
 	"\x14ListCreatorsResponse\x125\n" +
-	"\bcreators\x18\x01 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\"\x86\x01\n" +
+	"\bcreators\x18\x01 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\"\xe5\x01\n" +
 	"\x14CreateCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
-	"\fprofile_text\x18\x03 \x01(\tR\vprofileText\"L\n" +
+	"\fprofile_text\x18\x03 \x01(\tR\vprofileText\x12&\n" +
+	"\x0ficon_image_data\x18\x04 \x01(\fR\riconImageData\x125\n" +
+	"\x17icon_image_content_type\x18\x05 \x01(\tR\x14iconImageContentType\"L\n" +
 	"\x15CreateCreatorResponse\x123\n" +
-	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xa3\x01\n" +
+	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator\"\xac\x02\n" +
 	"\x14UpdateCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12!\n" +
-	"\fprofile_text\x18\x04 \x01(\tR\vprofileText\"L\n" +
+	"\fprofile_text\x18\x04 \x01(\tR\vprofileText\x12&\n" +
+	"\x0ficon_image_data\x18\x05 \x01(\fR\riconImageData\x125\n" +
+	"\x17icon_image_content_type\x18\x06 \x01(\tR\x14iconImageContentType\x12(\n" +
+	"\x10clear_icon_image\x18\a \x01(\bR\x0eclearIconImage\"L\n" +
 	"\x15UpdateCreatorResponse\x123\n" +
 	"\acreator\x18\x01 \x01(\v2\x19.publira.types.v1.CreatorR\acreator2\xbe\x02\n" +
 	"\x13AdminCreatorService\x12_\n" +

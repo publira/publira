@@ -26,6 +26,9 @@ message Creator {
   string name = 2;
   string role = 3;
   string profile_text = 4;
+  string icon_image_url = 5;
+  int64 icon_image_file_size_bytes = 6;
+  string icon_image_updated_at = 7;
 }
 
 message Label {

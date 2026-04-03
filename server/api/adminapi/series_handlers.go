@@ -39,13 +39,13 @@ func (s *adminServer) resolveCreatorsByPublicIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	creatorPublicIDs []string,
-) ([]dbmodels.Creator, error) {
+) ([]dbmodels.ListCreatorsByPublicIDsForTenantRow, error) {
 	normalized, err := normalizePublicIDs(creatorPublicIDs)
 	if err != nil {
 		return nil, err
 	}
 	if len(normalized) == 0 {
-		return []dbmodels.Creator{}, nil
+		return []dbmodels.ListCreatorsByPublicIDsForTenantRow{}, nil
 	}
 	rows, err := s.queriesFor(ctx).ListCreatorsByPublicIDsForTenant(ctx, dbmodels.ListCreatorsByPublicIDsForTenantParams{
 		TenantID:  tenantID,
@@ -57,11 +57,11 @@ func (s *adminServer) resolveCreatorsByPublicIDs(
 	if len(rows) != len(normalized) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
 	}
-	byPublicID := make(map[string]dbmodels.Creator, len(rows))
+	byPublicID := make(map[string]dbmodels.ListCreatorsByPublicIDsForTenantRow, len(rows))
 	for _, row := range rows {
 		byPublicID[row.PublicID] = row
 	}
-	ordered := make([]dbmodels.Creator, 0, len(normalized))
+	ordered := make([]dbmodels.ListCreatorsByPublicIDsForTenantRow, 0, len(normalized))
 	for _, publicID := range normalized {
 		creator, ok := byPublicID[publicID]
 		if !ok {

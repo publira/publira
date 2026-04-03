@@ -11,8 +11,14 @@ const parseCommonFields = (formData: FormData) => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const profileText = String(formData.get("profile_text") ?? "").trim();
+  const clearIconImage = String(formData.get("clear_icon_image") ?? "") === "1";
+
+  const iconImageFile = formData.get("icon_image");
+  const iconImage = iconImageFile instanceof File ? iconImageFile : null;
 
   return {
+    clearIconImage,
+    iconImage,
     name,
     profileText,
     tenantPublicId,
@@ -52,7 +58,13 @@ export const createCreatorAction = async (
     return commonValidation;
   }
 
+  const iconImageData = input.iconImage
+    ? new Uint8Array(await input.iconImage.arrayBuffer())
+    : undefined;
+
   const result = await createCreator({
+    iconImageContentType: input.iconImage?.type,
+    iconImageData,
     name: input.name,
     profileText: input.profileText,
     tenantPublicId: input.tenantPublicId,
@@ -90,7 +102,14 @@ export const updateCreatorAction = async (
     };
   }
 
+  const iconImageData = input.iconImage
+    ? new Uint8Array(await input.iconImage.arrayBuffer())
+    : undefined;
+
   const result = await updateCreator({
+    clearIconImage: input.clearIconImage,
+    iconImageContentType: input.iconImage?.type,
+    iconImageData,
     name: input.name,
     profileText: input.profileText,
     publicId,

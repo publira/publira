@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -76,6 +77,7 @@ export const CreatorManager = ({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-24">画像</TableHead>
                 <TableHead>名前</TableHead>
                 <TableHead>プロフィール</TableHead>
                 <TableHead className="w-56">操作</TableHead>
@@ -84,6 +86,22 @@ export const CreatorManager = ({
             <TableBody>
               {sortedCreators.map((creator) => (
                 <TableRow key={creator.publicId}>
+                  <TableCell>
+                    {creator.iconImageUrl ? (
+                      <Image
+                        alt={`${creator.name} のアイコン`}
+                        className="size-10 rounded-full border object-cover"
+                        height={40}
+                        src={creator.iconImageUrl}
+                        unoptimized
+                        width={40}
+                      />
+                    ) : (
+                      <span className="text-muted-foreground text-xs">
+                        未設定
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{creator.name}</TableCell>
                   <TableCell>{excerpt(creator.profileText)}</TableCell>
                   <TableCell>

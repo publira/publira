@@ -25,6 +25,8 @@ type Querier interface {
 	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
+	CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error)
+	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
@@ -59,7 +61,8 @@ type Querier interface {
 	DeleteUserPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error
 	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
-	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (Creator, error)
+	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
+	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
 	GetEpisodeImageAccessByIDForSession(ctx context.Context, arg GetEpisodeImageAccessByIDForSessionParams) (GetEpisodeImageAccessByIDForSessionRow, error)
@@ -109,8 +112,8 @@ type Querier interface {
 	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
 	// テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
 	ListAuditLogsByTenant(ctx context.Context, arg ListAuditLogsByTenantParams) ([]ListAuditLogsByTenantRow, error)
-	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]Creator, error)
-	ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]Creator, error)
+	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)
+	ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]ListCreatorsByTenantRow, error)
 	// エンドユーザー（tenant_user_roles未保持）の一覧取得
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)

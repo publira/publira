@@ -7,6 +7,9 @@ export interface CreatorItem {
   publicId: string;
   name: string;
   profileText: string;
+  iconImageUrl: string;
+  iconImageFileSizeBytes: number;
+  iconImageUpdatedAt: string;
 }
 
 export type ListCreatorsResult =
@@ -66,7 +69,16 @@ const mapCreator = (creator: {
   publicId: string;
   name: string;
   profileText: string;
+  iconImageUrl?: string;
+  iconImageFileSizeBytes?: bigint | number;
+  iconImageUpdatedAt?: string;
 }): CreatorItem => ({
+  iconImageFileSizeBytes:
+    creator.iconImageFileSizeBytes === undefined
+      ? 0
+      : Number(creator.iconImageFileSizeBytes),
+  iconImageUpdatedAt: creator.iconImageUpdatedAt ?? "",
+  iconImageUrl: creator.iconImageUrl ?? "",
   name: creator.name,
   profileText: creator.profileText,
   publicId: creator.publicId,
@@ -116,6 +128,8 @@ export const createCreator = async (input: {
   tenantPublicId: string;
   name: string;
   profileText: string;
+  iconImageContentType?: string;
+  iconImageData?: Uint8Array;
 }): Promise<CreateCreatorResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -128,6 +142,8 @@ export const createCreator = async (input: {
   try {
     const response = await apiClient.creator.createCreator(
       {
+        iconImageContentType: input.iconImageContentType,
+        iconImageData: input.iconImageData,
         name: input.name,
         profileText: input.profileText,
         tenant: { tenantPublicId: input.tenantPublicId },
@@ -159,6 +175,9 @@ export const updateCreator = async (input: {
   publicId: string;
   name: string;
   profileText: string;
+  clearIconImage?: boolean;
+  iconImageContentType?: string;
+  iconImageData?: Uint8Array;
 }): Promise<UpdateCreatorResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -171,6 +190,9 @@ export const updateCreator = async (input: {
   try {
     const response = await apiClient.creator.updateCreator(
       {
+        clearIconImage: input.clearIconImage,
+        iconImageContentType: input.iconImageContentType,
+        iconImageData: input.iconImageData,
         name: input.name,
         profileText: input.profileText,
         publicId: input.publicId,
