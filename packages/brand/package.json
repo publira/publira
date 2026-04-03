@@ -5,6 +5,5 @@
   "type": "module",
   "exports": {
     "./theme.css": "./theme.css"
-  },
-  "scripts": {}
+  }
 }

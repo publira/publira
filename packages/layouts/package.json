@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsdown",
-    "test": "vitest --run --passWithNoTests",
+    "test": "vitest --run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -38,8 +38,11 @@
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
     "next": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
