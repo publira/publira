@@ -154,6 +154,11 @@ export const EpisodesSortableList = ({
             <p className="text-xs text-muted-foreground">
               status: {episode.status} / price: {episode.price}
             </p>
+            {episode.status === "scheduled" && episode.scheduledAt ? (
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                公開予約: {new Date(episode.scheduledAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">

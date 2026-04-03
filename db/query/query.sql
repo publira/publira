@@ -728,6 +728,15 @@ FROM episode_listings el
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
     AND el.scheduled_at <= NOW();
+-- name: ListEpisodesReadyToPublishWithTenantInfo :many
+SELECT el.episode_id,
+    t.public_id AS tenant_public_id,
+    t.domain AS tenant_domain
+FROM episode_listings el
+JOIN tenants t ON t.id = el.tenant_id
+WHERE el.status = 'scheduled'
+    AND el.scheduled_at IS NOT NULL
+    AND el.scheduled_at <= NOW();
 -- name: MarkEpisodePublished :exec
 UPDATE episode_listings
 SET status = 'published',

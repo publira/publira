@@ -2739,6 +2739,46 @@ func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, 
 	return items, nil
 }
 
+const listEpisodesReadyToPublishWithTenantInfo = `-- name: ListEpisodesReadyToPublishWithTenantInfo :many
+SELECT el.episode_id,
+    t.public_id AS tenant_public_id,
+    t.domain AS tenant_domain
+FROM episode_listings el
+JOIN tenants t ON t.id = el.tenant_id
+WHERE el.status = 'scheduled'
+    AND el.scheduled_at IS NOT NULL
+    AND el.scheduled_at <= NOW()
+`
+
+type ListEpisodesReadyToPublishWithTenantInfoRow struct {
+	EpisodeID      uuid.UUID `json:"episode_id"`
+	TenantPublicID string    `json:"tenant_public_id"`
+	TenantDomain   string    `json:"tenant_domain"`
+}
+
+func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesReadyToPublishWithTenantInfo)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesReadyToPublishWithTenantInfoRow
+	for rows.Next() {
+		var i ListEpisodesReadyToPublishWithTenantInfoRow
+		if err := rows.Scan(&i.EpisodeID, &i.TenantPublicID, &i.TenantDomain); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLabelsByTenant = `-- name: ListLabelsByTenant :many
 SELECT id,
     tenant_id,
