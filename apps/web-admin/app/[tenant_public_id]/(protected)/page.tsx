@@ -22,8 +22,8 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../components/admin-page";
-import { getDashboard } from "../../../lib/dashboard";
+import { AdminPage } from "#components/admin-page";
+import { getDashboard } from "#lib/dashboard";
 
 export const metadata: Metadata = {
   title: "ダッシュボード",

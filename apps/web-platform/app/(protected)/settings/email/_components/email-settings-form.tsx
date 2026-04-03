@@ -33,8 +33,9 @@ import {
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
-} from "../../../../../lib/email-settings-shared";
-import type { PlatformSmtpSettings } from "../../../../../lib/email-settings-shared";
+} from "#lib/email-settings-shared";
+import type { PlatformSmtpSettings } from "#lib/email-settings-shared";
+
 import type {
   PlatformEmailSettingsFormState,
   PlatformSmtpTestFormState,

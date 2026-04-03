@@ -8,9 +8,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { TenantDocumentTitle } from "../../../components/tenant-document-title";
-import { requestPublicPasswordReset } from "../../../lib/auth";
-import { getTenantSiteInfo } from "../../../lib/tenant";
+import { TenantDocumentTitle } from "#components/tenant-document-title";
+import { requestPublicPasswordReset } from "#lib/auth";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 export const metadata: Metadata = {
   title: "パスワード再設定",

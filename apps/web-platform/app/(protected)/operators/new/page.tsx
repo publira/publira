@@ -14,8 +14,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { PlatformPage } from "../../../../components/platform-page";
-import { createPlatformOperator } from "../../../../lib/operators";
+import { PlatformPage } from "#components/platform-page";
+import { createPlatformOperator } from "#lib/operators";
 
 export const metadata: Metadata = {
   title: "オペレーターを追加",

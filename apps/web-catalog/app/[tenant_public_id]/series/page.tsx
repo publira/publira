@@ -7,8 +7,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { listPublishedSeries } from "../../../lib/catalog";
-import { getTenantSiteLabel } from "../../../lib/tenant";
+import { listPublishedSeries } from "#lib/catalog";
+import { getTenantSiteLabel } from "#lib/tenant";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");

@@ -4,7 +4,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { getTenantName } from "../../lib/public-api";
+import { getTenantName } from "#lib/public-api";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_public_id");

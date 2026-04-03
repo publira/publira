@@ -6,11 +6,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  listPublishedAuthors,
-  normalizeAuthorsPage,
-} from "../../../lib/authors";
-import { getTenantSiteLabel } from "../../../lib/tenant";
+import { listPublishedAuthors, normalizeAuthorsPage } from "#lib/authors";
+import { getTenantSiteLabel } from "#lib/tenant";
 
 const AUTHORS_PAGE_SIZE = 12;
 

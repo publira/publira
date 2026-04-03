@@ -14,7 +14,7 @@ import {
   loginAdmin,
   sanitizeRedirectPath,
   sessionCookieOptions,
-} from "../../../lib/admin-auth";
+} from "#lib/admin-auth";
 
 export const metadata: Metadata = {
   title: "ログイン",

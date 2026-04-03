@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { getMe, getNotificationSettings } from "../../../lib/auth";
+import { getMe, getNotificationSettings } from "#lib/auth";
 
 const EmptyState = ({
   description,

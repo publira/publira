@@ -3,7 +3,8 @@
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createCreator, updateCreator } from "../../../../../lib/creator";
+import { createCreator, updateCreator } from "#lib/creator";
+
 import type { CreatorActionState } from "../creator-types";
 
 const parseCommonFields = (formData: FormData) => {

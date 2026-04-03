@@ -5,7 +5,8 @@ import {
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { getTenantSiteLabel } from "../../../lib/tenant";
+import { getTenantSiteLabel } from "#lib/tenant";
+
 import { SettingsTabs } from "./settings-tabs";
 
 export const generateStaticParams = () =>

@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
 
-vi.mock("../../../../../../../../lib/episode", () => ({
+vi.mock("#lib/episode", () => ({
   reorderEpisodeImages: mockReorderEpisodeImages,
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   uploadEpisodePages: mockUploadEpisodePages,

@@ -5,12 +5,12 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getCatalogTopData } from "../../lib/catalog-top";
+import { getCatalogTopData } from "#lib/catalog-top";
 import type {
   CatalogTopEpisodeItem,
   CatalogTopUpdatedSeriesItem,
-} from "../../lib/catalog-top";
-import { getTenantSiteLabel } from "../../lib/tenant";
+} from "#lib/catalog-top";
+import { getTenantSiteLabel } from "#lib/tenant";
 
 type EpisodeLinkSource = CatalogTopEpisodeItem & {
   episodePublicId?: string;

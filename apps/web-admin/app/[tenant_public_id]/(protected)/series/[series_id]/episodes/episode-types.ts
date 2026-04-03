@@ -1,4 +1,4 @@
-import type { EpisodeItem } from "../../../../../../lib/episode";
+import type { EpisodeItem } from "#lib/episode";
 
 export type EpisodeMutationMode = "create";
 

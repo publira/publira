@@ -5,8 +5,9 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../components/admin-page";
-import { listLabels } from "../../../../lib/label";
+import { AdminPage } from "#components/admin-page";
+import { listLabels } from "#lib/label";
+
 import { LabelManager } from "./_components/label-manager";
 
 interface LabelPageProps {

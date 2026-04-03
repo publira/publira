@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { createInitialUser } from "../../../lib/setup";
+import { createInitialUser } from "#lib/setup";
 
 export const setupAction = async (formData: FormData): Promise<void> => {
   "use server";

@@ -23,18 +23,15 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "../../../components/platform-page";
-import {
-  auditActionOptions,
-  getAuditActionLabel,
-} from "../../../lib/audit-log-labels";
-import { listPlatformAuditLogs } from "../../../lib/audit-logs";
+import { PlatformPage } from "#components/platform-page";
+import { auditActionOptions, getAuditActionLabel } from "#lib/audit-log-labels";
+import { listPlatformAuditLogs } from "#lib/audit-logs";
 import type {
   ListPlatformAuditLogsResult,
   PlatformAuditLogSummary,
-} from "../../../lib/audit-logs";
-import { getOperatorRoleLabel } from "../../../lib/operator-labels";
-import { getTenantRoleLabel } from "../../../lib/tenant-labels";
+} from "#lib/audit-logs";
+import { getOperatorRoleLabel } from "#lib/operator-labels";
+import { getTenantRoleLabel } from "#lib/tenant-labels";
 
 export const metadata: Metadata = {
   title: "監査ログ",

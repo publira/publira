@@ -12,7 +12,8 @@ import {
   suspendPlatformTenant,
   updatePlatformTenant,
   updatePlatformTenantMemberRole,
-} from "../../../../../lib/tenants";
+} from "#lib/tenants";
+
 import type { TenantUpdateFormState } from "../_components/tenant-update-form";
 
 export type TenantMemberFormState = { ok: boolean; message: string } | null;

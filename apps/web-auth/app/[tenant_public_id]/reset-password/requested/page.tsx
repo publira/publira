@@ -4,8 +4,8 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { TenantDocumentTitle } from "../../../../components/tenant-document-title";
-import { getTenantSiteInfo } from "../../../../lib/tenant";
+import { TenantDocumentTitle } from "#components/tenant-document-title";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 export const metadata: Metadata = {
   title: "再設定メール送信",

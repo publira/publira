@@ -8,7 +8,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { confirmAdminPasswordReset } from "../../../lib/admin-auth";
+import { confirmAdminPasswordReset } from "#lib/admin-auth";
 
 export const metadata: Metadata = {
   title: "新しいパスワードの設定",

@@ -4,14 +4,12 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { AdminPage } from "../../../../../components/admin-page";
-import {
-  getAdminCurrentUser,
-  isTenantAdminRole,
-} from "../../../../../lib/admin-auth";
-import { getTenantEmailSettings } from "../../../../../lib/email-settings";
-import type { TenantSmtpSettings } from "../../../../../lib/email-settings";
-import { getTenantForSession } from "../../../../../lib/tenant-detail";
+import { AdminPage } from "#components/admin-page";
+import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
+import { getTenantEmailSettings } from "#lib/email-settings";
+import type { TenantSmtpSettings } from "#lib/email-settings";
+import { getTenantForSession } from "#lib/tenant-detail";
+
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { TenantEmailSettingsForm } from "../_components/tenant-email-settings-form";
 import {

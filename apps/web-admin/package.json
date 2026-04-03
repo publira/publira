@@ -9,6 +9,10 @@
     "directory": "apps/web-admin"
   },
   "type": "module",
+  "imports": {
+    "#lib/*": "./lib/*",
+    "#components/*": "./components/*"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 4000",

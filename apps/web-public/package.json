@@ -9,6 +9,9 @@
     "directory": "apps/web-public"
   },
   "type": "module",
+  "imports": {
+    "#lib/*": "./lib/*"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 3000",

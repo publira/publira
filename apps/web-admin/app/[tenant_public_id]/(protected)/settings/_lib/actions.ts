@@ -2,20 +2,21 @@
 
 import { z } from "zod";
 
-import { requestAdminEmailChange } from "../../../../../lib/admin-auth";
+import { requestAdminEmailChange } from "#lib/admin-auth";
 import {
   sendTenantSmtpTestEmail,
   updateTenantEmailSettings,
-} from "../../../../../lib/email-settings";
+} from "#lib/email-settings";
 import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
-} from "../../../../../lib/email-settings-shared";
-import { getSessionId } from "../../../../../lib/session";
-import { updateTenantSiteSettings } from "../../../../../lib/site-settings";
-import { updateTenantThemeSettings } from "../../../../../lib/theme-settings";
+} from "#lib/email-settings-shared";
+import { getSessionId } from "#lib/session";
+import { updateTenantSiteSettings } from "#lib/site-settings";
+import { updateTenantThemeSettings } from "#lib/theme-settings";
+
 import type {
   EmailChangeActionState,
   SiteSettingsActionState,

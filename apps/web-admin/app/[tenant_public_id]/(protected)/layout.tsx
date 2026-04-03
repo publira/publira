@@ -10,9 +10,9 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import { AdminLayout } from "../../../components/admin-layout";
-import { AdminToastProvider } from "../../../components/admin-toast-provider";
-import { getTenantForSession } from "../../../lib/tenant-detail";
+import { AdminLayout } from "#components/admin-layout";
+import { AdminToastProvider } from "#components/admin-toast-provider";
+import { getTenantForSession } from "#lib/tenant-detail";
 
 const AdminLayoutSkeleton = () => (
   <ConsoleLayout>

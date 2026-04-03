@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { requestPlatformPasswordReset } from "../../lib/password-reset";
+import { requestPlatformPasswordReset } from "#lib/password-reset";
 
 export const metadata: Metadata = {
   title: "パスワード再設定",

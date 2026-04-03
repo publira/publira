@@ -7,10 +7,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "../../../../../components/admin-page";
-import { listCreators } from "../../../../../lib/creator";
-import { listLabels } from "../../../../../lib/label";
-import { listSeries } from "../../../../../lib/series";
+import { AdminPage } from "#components/admin-page";
+import { listCreators } from "#lib/creator";
+import { listLabels } from "#lib/label";
+import { listSeries } from "#lib/series";
+
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
 

@@ -16,7 +16,7 @@ import {
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
-import { getTenantSiteInfo } from "../../lib/tenant";
+import { getTenantSiteInfo } from "#lib/tenant";
 
 const PUBLIC_SESSION_COOKIE_NAME = "publira_public_session";
 

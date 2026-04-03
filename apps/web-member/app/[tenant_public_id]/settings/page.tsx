@@ -2,8 +2,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { deleteMe, getMe, updateMe } from "../../../lib/auth";
-import { PUBLIC_SESSION_COOKIE_NAME } from "../../../lib/auth-shared";
+import { deleteMe, getMe, updateMe } from "#lib/auth";
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+
 import { DeleteAccountModal } from "./delete-account-modal";
 
 const buildSettingsPath = (status: "success" | "error", message: string) => {
