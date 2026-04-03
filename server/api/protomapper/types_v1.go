@@ -1,8 +1,11 @@
 package protomapper
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
@@ -122,6 +125,31 @@ func Creator(publicID, name, profileText string) *publirattypesv1.Creator {
 		Name:        name,
 		ProfileText: profileText,
 	}
+}
+
+func CreatorFromRow(
+	publicID string,
+	name string,
+	profileText string,
+	iconImageID uuid.NullUUID,
+	iconImageFileSizeBytes int64,
+	iconImageUpdatedAt sql.NullTime,
+) *publirattypesv1.Creator {
+	creator := &publirattypesv1.Creator{
+		PublicId:    publicID,
+		Name:        name,
+		ProfileText: profileText,
+	}
+	if iconImageID.Valid {
+		creator.IconImageFileSizeBytes = iconImageFileSizeBytes
+	}
+	if iconImageUpdatedAt.Valid {
+		creator.IconImageUpdatedAt = iconImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if iconImageID.Valid {
+		creator.IconImageUrl = fmt.Sprintf("/images/creators/%s", iconImageID.UUID.String())
+	}
+	return creator
 }
 
 func Label(publicID, name string) *publirattypesv1.Label {

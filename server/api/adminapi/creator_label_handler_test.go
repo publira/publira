@@ -28,8 +28,8 @@ func TestListCreatorsSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery("FROM creators").
 		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now, nil, nil, int64(0), int32(0), int32(0)))
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ListCreatorsRequest{
@@ -74,9 +74,13 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
 				mock.ExpectQuery("INSERT INTO creators").
-					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{String: "profile", Valid: true}).
-					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
-						AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now))
+					WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), "Creator One", sql.NullString{String: "profile", Valid: true}, uuid.NullUUID{}).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id"}).
+						AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now, nil))
+				mock.ExpectQuery("FROM creators").
+					WithArgs(tenantID, "CREATOR001").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+						AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now, nil, nil, int64(0), int32(0), int32(0)))
 				expectAdminAuditLogInsert(mock)
 			},
 		},
@@ -134,15 +138,15 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery("FROM creators").
 		WithArgs(tenantID, "CREATOR001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
-			AddRow(creatorID, tenantID, "CREATOR001", "Before", "old", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+			AddRow(creatorID, tenantID, "CREATOR001", "Before", "old", now, nil, nil, int64(0), int32(0), int32(0)))
 	mock.ExpectExec("UPDATE creators").
-		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}).
+		WithArgs(creatorID, "After", sql.NullString{String: "new", Valid: true}, uuid.NullUUID{}).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery("FROM creators").
 		WithArgs(tenantID, "CREATOR001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at"}).
-			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+			AddRow(creatorID, tenantID, "CREATOR001", "After", "new", now, nil, nil, int64(0), int32(0), int32(0)))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)

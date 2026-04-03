@@ -1263,15 +1263,28 @@ WHERE u.tenant_id = $1
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 -- name: ListCreatorsByTenant :many
-SELECT id,
-    tenant_id,
-    public_id,
-    name,
-    profile_text,
-    created_at
-FROM creators
-WHERE tenant_id = $1
-ORDER BY created_at DESC
+SELECT c.id,
+    c.tenant_id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.created_at,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    COALESCE(civ.width, 0)::int4 AS icon_image_width,
+    COALESCE(civ.height, 0)::int4 AS icon_image_height
+FROM creators c
+LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+LEFT JOIN LATERAL (
+    SELECT file_size_bytes, width, height
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE c.tenant_id = $1
+ORDER BY c.created_at DESC
 LIMIT $2 OFFSET $3;
 -- name: CreateCreator :one
 INSERT INTO creators (
@@ -1279,26 +1292,83 @@ INSERT INTO creators (
         tenant_id,
         public_id,
         name,
-        profile_text
+        profile_text,
+        icon_image_id
     )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
+
+-- name: CreateCreatorImage :one
+INSERT INTO creator_images (
+        id,
+        tenant_id,
+        creator_id,
+        updated_at
+    )
+VALUES ($1, $2, $3, NOW())
+RETURNING *;
+
+-- name: CreateCreatorImageVariant :one
+INSERT INTO creator_image_variants (
+        id,
+        tenant_id,
+        creator_image_id,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING *;
+
 -- name: GetCreatorByPublicIDForTenant :one
-SELECT id,
-    tenant_id,
-    public_id,
-    name,
-    profile_text,
-    created_at
-FROM creators
-WHERE tenant_id = $1
-    AND public_id = $2
+SELECT c.id,
+    c.tenant_id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.created_at,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    COALESCE(civ.width, 0)::int4 AS icon_image_width,
+    COALESCE(civ.height, 0)::int4 AS icon_image_height
+FROM creators c
+LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+LEFT JOIN LATERAL (
+    SELECT file_size_bytes, width, height
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE c.tenant_id = $1
+    AND c.public_id = $2
 LIMIT 1;
 -- name: UpdateCreator :exec
 UPDATE creators
 SET name = $2,
-    profile_text = $3
+    profile_text = $3,
+    icon_image_id = $4
 WHERE id = $1;
+
+-- name: GetCreatorImageByIDForTenant :one
+SELECT civ.object_key,
+    civ.content_type
+FROM creator_images ci
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE ci.id = $1
+    AND ci.tenant_id = $2
+LIMIT 1;
 -- name: ListLabelsByTenant :many
 SELECT id,
     tenant_id,

@@ -170,10 +170,11 @@ INSERT INTO creators (
         tenant_id,
         public_id,
         name,
-        profile_text
+        profile_text,
+        icon_image_id
     )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, public_id, name, profile_text, created_at
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, tenant_id, public_id, name, profile_text, created_at, icon_image_id
 `
 
 type CreateCreatorParams struct {
@@ -182,6 +183,7 @@ type CreateCreatorParams struct {
 	PublicID    string         `json:"public_id"`
 	Name        string         `json:"name"`
 	ProfileText sql.NullString `json:"profile_text"`
+	IconImageID uuid.NullUUID  `json:"icon_image_id"`
 }
 
 func (q *Queries) CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error) {
@@ -191,6 +193,7 @@ func (q *Queries) CreateCreator(ctx context.Context, arg CreateCreatorParams) (C
 		arg.PublicID,
 		arg.Name,
 		arg.ProfileText,
+		arg.IconImageID,
 	)
 	var i Creator
 	err := row.Scan(
@@ -199,6 +202,97 @@ func (q *Queries) CreateCreator(ctx context.Context, arg CreateCreatorParams) (C
 		&i.PublicID,
 		&i.Name,
 		&i.ProfileText,
+		&i.CreatedAt,
+		&i.IconImageID,
+	)
+	return i, err
+}
+
+const createCreatorImage = `-- name: CreateCreatorImage :one
+INSERT INTO creator_images (
+        id,
+        tenant_id,
+        creator_id,
+        updated_at
+    )
+VALUES ($1, $2, $3, NOW())
+RETURNING id, tenant_id, creator_id, updated_at, created_at
+`
+
+type CreateCreatorImageParams struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+}
+
+func (q *Queries) CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error) {
+	row := q.db.QueryRowContext(ctx, createCreatorImage, arg.ID, arg.TenantID, arg.CreatorID)
+	var i CreatorImage
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.CreatorID,
+		&i.UpdatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createCreatorImageVariant = `-- name: CreateCreatorImageVariant :one
+INSERT INTO creator_image_variants (
+        id,
+        tenant_id,
+        creator_image_id,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, tenant_id, creator_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at
+`
+
+type CreateCreatorImageVariantParams struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	CreatorImageID  uuid.UUID `json:"creator_image_id"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+}
+
+func (q *Queries) CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error) {
+	row := q.db.QueryRowContext(ctx, createCreatorImageVariant,
+		arg.ID,
+		arg.TenantID,
+		arg.CreatorImageID,
+		arg.Label,
+		arg.StorageProvider,
+		arg.ObjectKey,
+		arg.ContentType,
+		arg.FileSizeBytes,
+		arg.Width,
+		arg.Height,
+	)
+	var i CreatorImageVariant
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.CreatorImageID,
+		&i.Label,
+		&i.StorageProvider,
+		&i.ObjectKey,
+		&i.ContentType,
+		&i.FileSizeBytes,
+		&i.Width,
+		&i.Height,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -1094,15 +1188,28 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 }
 
 const getCreatorByPublicIDForTenant = `-- name: GetCreatorByPublicIDForTenant :one
-SELECT id,
-    tenant_id,
-    public_id,
-    name,
-    profile_text,
-    created_at
-FROM creators
-WHERE tenant_id = $1
-    AND public_id = $2
+SELECT c.id,
+    c.tenant_id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.created_at,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    COALESCE(civ.width, 0)::int4 AS icon_image_width,
+    COALESCE(civ.height, 0)::int4 AS icon_image_height
+FROM creators c
+LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+LEFT JOIN LATERAL (
+    SELECT file_size_bytes, width, height
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE c.tenant_id = $1
+    AND c.public_id = $2
 LIMIT 1
 `
 
@@ -1111,9 +1218,23 @@ type GetCreatorByPublicIDForTenantParams struct {
 	PublicID string    `json:"public_id"`
 }
 
-func (q *Queries) GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (Creator, error) {
+type GetCreatorByPublicIDForTenantRow struct {
+	ID                     uuid.UUID      `json:"id"`
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	ProfileText            sql.NullString `json:"profile_text"`
+	CreatedAt              time.Time      `json:"created_at"`
+	IconImageID            uuid.NullUUID  `json:"icon_image_id"`
+	IconImageUpdatedAt     sql.NullTime   `json:"icon_image_updated_at"`
+	IconImageFileSizeBytes int64          `json:"icon_image_file_size_bytes"`
+	IconImageWidth         int32          `json:"icon_image_width"`
+	IconImageHeight        int32          `json:"icon_image_height"`
+}
+
+func (q *Queries) GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, getCreatorByPublicIDForTenant, arg.TenantID, arg.PublicID)
-	var i Creator
+	var i GetCreatorByPublicIDForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
@@ -1121,7 +1242,45 @@ func (q *Queries) GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCrea
 		&i.Name,
 		&i.ProfileText,
 		&i.CreatedAt,
+		&i.IconImageID,
+		&i.IconImageUpdatedAt,
+		&i.IconImageFileSizeBytes,
+		&i.IconImageWidth,
+		&i.IconImageHeight,
 	)
+	return i, err
+}
+
+const getCreatorImageByIDForTenant = `-- name: GetCreatorImageByIDForTenant :one
+SELECT civ.object_key,
+    civ.content_type
+FROM creator_images ci
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE ci.id = $1
+    AND ci.tenant_id = $2
+LIMIT 1
+`
+
+type GetCreatorImageByIDForTenantParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetCreatorImageByIDForTenantRow struct {
+	ObjectKey   string `json:"object_key"`
+	ContentType string `json:"content_type"`
+}
+
+func (q *Queries) GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getCreatorImageByIDForTenant, arg.ID, arg.TenantID)
+	var i GetCreatorImageByIDForTenantRow
+	err := row.Scan(&i.ObjectKey, &i.ContentType)
 	return i, err
 }
 
@@ -2530,15 +2689,24 @@ type ListCreatorsByPublicIDsForTenantParams struct {
 	PublicIds []string  `json:"public_ids"`
 }
 
-func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]Creator, error) {
+type ListCreatorsByPublicIDsForTenantRow struct {
+	ID          uuid.UUID      `json:"id"`
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	PublicID    string         `json:"public_id"`
+	Name        string         `json:"name"`
+	ProfileText sql.NullString `json:"profile_text"`
+	CreatedAt   time.Time      `json:"created_at"`
+}
+
+func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listCreatorsByPublicIDsForTenant, arg.TenantID, pq.Array(arg.PublicIds))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Creator
+	var items []ListCreatorsByPublicIDsForTenantRow
 	for rows.Next() {
-		var i Creator
+		var i ListCreatorsByPublicIDsForTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -2561,15 +2729,28 @@ func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg List
 }
 
 const listCreatorsByTenant = `-- name: ListCreatorsByTenant :many
-SELECT id,
-    tenant_id,
-    public_id,
-    name,
-    profile_text,
-    created_at
-FROM creators
-WHERE tenant_id = $1
-ORDER BY created_at DESC
+SELECT c.id,
+    c.tenant_id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.created_at,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    COALESCE(civ.width, 0)::int4 AS icon_image_width,
+    COALESCE(civ.height, 0)::int4 AS icon_image_height
+FROM creators c
+LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+LEFT JOIN LATERAL (
+    SELECT file_size_bytes, width, height
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE c.tenant_id = $1
+ORDER BY c.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -2579,15 +2760,29 @@ type ListCreatorsByTenantParams struct {
 	Offset   int32     `json:"offset"`
 }
 
-func (q *Queries) ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]Creator, error) {
+type ListCreatorsByTenantRow struct {
+	ID                     uuid.UUID      `json:"id"`
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	ProfileText            sql.NullString `json:"profile_text"`
+	CreatedAt              time.Time      `json:"created_at"`
+	IconImageID            uuid.NullUUID  `json:"icon_image_id"`
+	IconImageUpdatedAt     sql.NullTime   `json:"icon_image_updated_at"`
+	IconImageFileSizeBytes int64          `json:"icon_image_file_size_bytes"`
+	IconImageWidth         int32          `json:"icon_image_width"`
+	IconImageHeight        int32          `json:"icon_image_height"`
+}
+
+func (q *Queries) ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]ListCreatorsByTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listCreatorsByTenant, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Creator
+	var items []ListCreatorsByTenantRow
 	for rows.Next() {
-		var i Creator
+		var i ListCreatorsByTenantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -2595,6 +2790,11 @@ func (q *Queries) ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTe
 			&i.Name,
 			&i.ProfileText,
 			&i.CreatedAt,
+			&i.IconImageID,
+			&i.IconImageUpdatedAt,
+			&i.IconImageFileSizeBytes,
+			&i.IconImageWidth,
+			&i.IconImageHeight,
 		); err != nil {
 			return nil, err
 		}
@@ -3868,7 +4068,8 @@ func (q *Queries) TerminateUserSessions(ctx context.Context, userID uuid.UUID) e
 const updateCreator = `-- name: UpdateCreator :exec
 UPDATE creators
 SET name = $2,
-    profile_text = $3
+    profile_text = $3,
+    icon_image_id = $4
 WHERE id = $1
 `
 
@@ -3876,10 +4077,16 @@ type UpdateCreatorParams struct {
 	ID          uuid.UUID      `json:"id"`
 	Name        string         `json:"name"`
 	ProfileText sql.NullString `json:"profile_text"`
+	IconImageID uuid.NullUUID  `json:"icon_image_id"`
 }
 
 func (q *Queries) UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error {
-	_, err := q.db.ExecContext(ctx, updateCreator, arg.ID, arg.Name, arg.ProfileText)
+	_, err := q.db.ExecContext(ctx, updateCreator,
+		arg.ID,
+		arg.Name,
+		arg.ProfileText,
+		arg.IconImageID,
+	)
 	return err
 }
 

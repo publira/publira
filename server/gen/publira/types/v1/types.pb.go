@@ -178,13 +178,16 @@ func (x *Session) GetExpiresAt() string {
 }
 
 type Creator struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
-	ProfileText   string                 `protobuf:"bytes,4,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	PublicId               string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name                   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Role                   string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	ProfileText            string                 `protobuf:"bytes,4,opt,name=profile_text,json=profileText,proto3" json:"profile_text,omitempty"`
+	IconImageUrl           string                 `protobuf:"bytes,5,opt,name=icon_image_url,json=iconImageUrl,proto3" json:"icon_image_url,omitempty"`
+	IconImageFileSizeBytes int64                  `protobuf:"varint,6,opt,name=icon_image_file_size_bytes,json=iconImageFileSizeBytes,proto3" json:"icon_image_file_size_bytes,omitempty"`
+	IconImageUpdatedAt     string                 `protobuf:"bytes,7,opt,name=icon_image_updated_at,json=iconImageUpdatedAt,proto3" json:"icon_image_updated_at,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Creator) Reset() {
@@ -241,6 +244,27 @@ func (x *Creator) GetRole() string {
 func (x *Creator) GetProfileText() string {
 	if x != nil {
 		return x.ProfileText
+	}
+	return ""
+}
+
+func (x *Creator) GetIconImageUrl() string {
+	if x != nil {
+		return x.IconImageUrl
+	}
+	return ""
+}
+
+func (x *Creator) GetIconImageFileSizeBytes() int64 {
+	if x != nil {
+		return x.IconImageFileSizeBytes
+	}
+	return 0
+}
+
+func (x *Creator) GetIconImageUpdatedAt() string {
+	if x != nil {
+		return x.IconImageUpdatedAt
 	}
 	return ""
 }
@@ -848,12 +872,15 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\tR\texpiresAt\"q\n" +
+	"expires_at\x18\x02 \x01(\tR\texpiresAt\"\x86\x02\n" +
 	"\aCreator\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12!\n" +
-	"\fprofile_text\x18\x04 \x01(\tR\vprofileText\"8\n" +
+	"\fprofile_text\x18\x04 \x01(\tR\vprofileText\x12$\n" +
+	"\x0eicon_image_url\x18\x05 \x01(\tR\ficonImageUrl\x12:\n" +
+	"\x1aicon_image_file_size_bytes\x18\x06 \x01(\x03R\x16iconImageFileSizeBytes\x121\n" +
+	"\x15icon_image_updated_at\x18\a \x01(\tR\x12iconImageUpdatedAt\"8\n" +
 	"\x05Label\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"\xef\x01\n" +
