@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/types/v1/types.proto.
  */
 export const file_publira_types_v1_types: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIikKDVRlbmFudENvbnRleHQSGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCSI1CgRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkiMQoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEhIKCmV4cGlyZXNfYXQYAiABKAkiqQEKB0NyZWF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCRIUCgxwcm9maWxlX3RleHQYBCABKAkSFgoOaWNvbl9pbWFnZV91cmwYBSABKAkSIgoaaWNvbl9pbWFnZV9maWxlX3NpemVfYnl0ZXMYBiABKAMSHQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAcgASgJIpcBCgVMYWJlbBIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIiChpleWVfY2F0Y2hfaW1hZ2VfdXBkYXRlZF9hdBgDIAEoCRJJChhleWVfY2F0Y2hfaW1hZ2VfdmFyaWFudHMYBCADKAsyJy5wdWJsaXJhLnR5cGVzLnYxLlNlcmllc0V5ZUNhdGNoVmFyaWFudCKXAQoVU2VyaWVzRXllQ2F0Y2hWYXJpYW50Eg0KBWxhYmVsGAEgASgJEhQKDHZhcmlhbnRfdHlwZRgHIAEoCRILCgN1cmwYAiABKAkSFAoMY29udGVudF90eXBlGAMgASgJEg0KBXdpZHRoGAQgASgFEg4KBmhlaWdodBgFIAEoBRIXCg9maWxlX3NpemVfYnl0ZXMYBiABKAMiqgIKBlNlcmllcxIRCglwdWJsaWNfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSEAoIc3lub3BzaXMYAyABKAkSJgoFbGFiZWwYBCABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsEisKCGNyZWF0b3JzGAUgAygLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yEhwKFHJlYWRpbmdfcGVyaW9kX2hvdXJzGAYgASgFEiIKGmV5ZV9jYXRjaF9pbWFnZV91cGRhdGVkX2F0GAkgASgJEkkKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50cxgKIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50SgQIBxAISgQICBAJIqkBCgdFcGlzb2RlEhEKCXB1YmxpY19pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRITCgtvcmRlcl9pbmRleBgDIAEoBRINCgVwcmljZRgEIAEoBRIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgFIAEoBRIOCgZzdGF0dXMYBiABKAkSFAoMc2NoZWR1bGVkX2F0GAcgASgJEhQKDHB1Ymxpc2hlZF9hdBgIIAEoCSKSAQoMRXBpc29kZUltYWdlEgoKAmlkGAEgASgJEhEKCWltYWdlX3VybBgCIAEoCRIUCgxjb250ZW50X3R5cGUYAyABKAkSFwoPZmlsZV9zaXplX2J5dGVzGAQgASgDEhUKDWRpc3BsYXlfb3JkZXIYBSABKAUSDQoFd2lkdGgYBiABKAUSDgoGaGVpZ2h0GAcgASgFIv8FCgtUZW5hbnRUaGVtZRIVCg1wcmltYXJ5X2NvbG9yGAEgASgJEhcKD3NlY29uZGFyeV9jb2xvchgCIAEoCRIUCgxhY2NlbnRfY29sb3IYAyABKAkSEAoIbG9nb191cmwYBCABKAkSGAoQYmFja2dyb3VuZF9jb2xvchgFIAEoCRIYChBmb3JlZ3JvdW5kX2NvbG9yGAYgASgJEhUKDXN1cmZhY2VfY29sb3IYByABKAkSIAoYc3VyZmFjZV9mb3JlZ3JvdW5kX2NvbG9yGAggASgJEhIKCmNhcmRfY29sb3IYCSABKAkSHQoVY2FyZF9mb3JlZ3JvdW5kX2NvbG9yGAogASgJEhUKDXBvcG92ZXJfY29sb3IYCyABKAkSIAoYcG9wb3Zlcl9mb3JlZ3JvdW5kX2NvbG9yGAwgASgJEiAKGHByaW1hcnlfZm9yZWdyb3VuZF9jb2xvchgNIAEoCRIiChpzZWNvbmRhcnlfZm9yZWdyb3VuZF9jb2xvchgOIAEoCRIfChdhY2NlbnRfZm9yZWdyb3VuZF9jb2xvchgPIAEoCRITCgttdXRlZF9jb2xvchgQIAEoCRIeChZtdXRlZF9mb3JlZ3JvdW5kX2NvbG9yGBEgASgJEhQKDGJvcmRlcl9jb2xvchgSIAEoCRITCgtpbnB1dF9jb2xvchgTIAEoCRISCgpyaW5nX2NvbG9yGBQgASgJEhUKDXN1Y2Nlc3NfY29sb3IYFSABKAkSIAoYc3VjY2Vzc19mb3JlZ3JvdW5kX2NvbG9yGBYgASgJEhUKDXdhcm5pbmdfY29sb3IYFyABKAkSIAoYd2FybmluZ19mb3JlZ3JvdW5kX2NvbG9yGBggASgJEhkKEWRlc3RydWN0aXZlX2NvbG9yGBkgASgJEiQKHGRlc3RydWN0aXZlX2ZvcmVncm91bmRfY29sb3IYGiABKAkSEgoKaW5mb19jb2xvchgbIAEoCRIdChVpbmZvX2ZvcmVncm91bmRfY29sb3IYHCABKAlCSFpGZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3R5cGVzL3YxO3B1YmxpcmF0dHlwZXN2MWIGcHJvdG8z");
+  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIikKDVRlbmFudENvbnRleHQSGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCSI1CgRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkiMQoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEhIKCmV4cGlyZXNfYXQYAiABKAkiqQEKB0NyZWF0b3ISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCRIUCgxwcm9maWxlX3RleHQYBCABKAkSFgoOaWNvbl9pbWFnZV91cmwYBSABKAkSIgoaaWNvbl9pbWFnZV9maWxlX3NpemVfYnl0ZXMYBiABKAMSHQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAcgASgJIpcBCgVMYWJlbBIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIiChpleWVfY2F0Y2hfaW1hZ2VfdXBkYXRlZF9hdBgDIAEoCRJJChhleWVfY2F0Y2hfaW1hZ2VfdmFyaWFudHMYBCADKAsyJy5wdWJsaXJhLnR5cGVzLnYxLlNlcmllc0V5ZUNhdGNoVmFyaWFudCKXAQoVU2VyaWVzRXllQ2F0Y2hWYXJpYW50Eg0KBWxhYmVsGAEgASgJEhQKDHZhcmlhbnRfdHlwZRgHIAEoCRILCgN1cmwYAiABKAkSFAoMY29udGVudF90eXBlGAMgASgJEg0KBXdpZHRoGAQgASgFEg4KBmhlaWdodBgFIAEoBRIXCg9maWxlX3NpemVfYnl0ZXMYBiABKAMiqgIKBlNlcmllcxIRCglwdWJsaWNfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSEAoIc3lub3BzaXMYAyABKAkSJgoFbGFiZWwYBCABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsEisKCGNyZWF0b3JzGAUgAygLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yEhwKFHJlYWRpbmdfcGVyaW9kX2hvdXJzGAYgASgFEiIKGmV5ZV9jYXRjaF9pbWFnZV91cGRhdGVkX2F0GAkgASgJEkkKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50cxgKIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50SgQIBxAISgQICBAJIqkBCgdFcGlzb2RlEhEKCXB1YmxpY19pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRITCgtvcmRlcl9pbmRleBgDIAEoBRINCgVwcmljZRgEIAEoBRIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgFIAEoBRIOCgZzdGF0dXMYBiABKAkSFAoMc2NoZWR1bGVkX2F0GAcgASgJEhQKDHB1Ymxpc2hlZF9hdBgIIAEoCSKSAQoMRXBpc29kZUltYWdlEgoKAmlkGAEgASgJEhEKCWltYWdlX3VybBgCIAEoCRIUCgxjb250ZW50X3R5cGUYAyABKAkSFwoPZmlsZV9zaXplX2J5dGVzGAQgASgDEhUKDWRpc3BsYXlfb3JkZXIYBSABKAUSDQoFd2lkdGgYBiABKAUSDgoGaGVpZ2h0GAcgASgFIv8FCgtUZW5hbnRUaGVtZRIVCg1wcmltYXJ5X2NvbG9yGAEgASgJEhcKD3NlY29uZGFyeV9jb2xvchgCIAEoCRIUCgxhY2NlbnRfY29sb3IYAyABKAkSEAoIbG9nb191cmwYBCABKAkSGAoQYmFja2dyb3VuZF9jb2xvchgFIAEoCRIYChBmb3JlZ3JvdW5kX2NvbG9yGAYgASgJEhUKDXN1cmZhY2VfY29sb3IYByABKAkSIAoYc3VyZmFjZV9mb3JlZ3JvdW5kX2NvbG9yGAggASgJEhIKCmNhcmRfY29sb3IYCSABKAkSHQoVY2FyZF9mb3JlZ3JvdW5kX2NvbG9yGAogASgJEhUKDXBvcG92ZXJfY29sb3IYCyABKAkSIAoYcG9wb3Zlcl9mb3JlZ3JvdW5kX2NvbG9yGAwgASgJEiAKGHByaW1hcnlfZm9yZWdyb3VuZF9jb2xvchgNIAEoCRIiChpzZWNvbmRhcnlfZm9yZWdyb3VuZF9jb2xvchgOIAEoCRIfChdhY2NlbnRfZm9yZWdyb3VuZF9jb2xvchgPIAEoCRITCgttdXRlZF9jb2xvchgQIAEoCRIeChZtdXRlZF9mb3JlZ3JvdW5kX2NvbG9yGBEgASgJEhQKDGJvcmRlcl9jb2xvchgSIAEoCRITCgtpbnB1dF9jb2xvchgTIAEoCRISCgpyaW5nX2NvbG9yGBQgASgJEhUKDXN1Y2Nlc3NfY29sb3IYFSABKAkSIAoYc3VjY2Vzc19mb3JlZ3JvdW5kX2NvbG9yGBYgASgJEhUKDXdhcm5pbmdfY29sb3IYFyABKAkSIAoYd2FybmluZ19mb3JlZ3JvdW5kX2NvbG9yGBggASgJEhkKEWRlc3RydWN0aXZlX2NvbG9yGBkgASgJEiQKHGRlc3RydWN0aXZlX2ZvcmVncm91bmRfY29sb3IYGiABKAkSEgoKaW5mb19jb2xvchgbIAEoCRIdChVpbmZvX2ZvcmVncm91bmRfY29sb3IYHCABKAkidQoEUGFnZRIKCgJpZBgBIAEoCRIMCgRzbHVnGAIgASgJEg0KBXRpdGxlGAMgASgJEhwKFHB1Ymxpc2hlZF92ZXJzaW9uX2lkGAQgASgJEhIKCmNyZWF0ZWRfYXQYBSABKAkSEgoKdXBkYXRlZF9hdBgGIAEoCSLCAQoLUGFnZVZlcnNpb24SCgoCaWQYASABKAkSDwoHcGFnZV9pZBgCIAEoCRIWCg52ZXJzaW9uX251bWJlchgDIAEoBRIYChBjb250ZW50X21hcmtkb3duGAQgASgJEhYKDmF1dGhvcl91c2VyX2lkGAUgASgJEg4KBnN0YXR1cxgGIAEoCRISCgpwdWJsaXNoX2F0GAcgASgJEhIKCmNyZWF0ZWRfYXQYCCABKAkSFAoMcHVibGlzaGVkX2F0GAkgASgJQkhaRmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS90eXBlcy92MTtwdWJsaXJhdHR5cGVzdjFiBnByb3RvMw");
 
 /**
  * @generated from message publira.types.v1.TenantContext
@@ -510,4 +510,103 @@ export type TenantTheme = Message<"publira.types.v1.TenantTheme"> & {
  */
 export const TenantThemeSchema: GenMessage<TenantTheme> = /*@__PURE__*/
   messageDesc(file_publira_types_v1_types, 9);
+
+/**
+ * @generated from message publira.types.v1.Page
+ */
+export type Page = Message<"publira.types.v1.Page"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string slug = 2;
+   */
+  slug: string;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string published_version_id = 4;
+   */
+  publishedVersionId: string;
+
+  /**
+   * @generated from field: string created_at = 5;
+   */
+  createdAt: string;
+
+  /**
+   * @generated from field: string updated_at = 6;
+   */
+  updatedAt: string;
+};
+
+/**
+ * Describes the message publira.types.v1.Page.
+ * Use `create(PageSchema)` to create a new message.
+ */
+export const PageSchema: GenMessage<Page> = /*@__PURE__*/
+  messageDesc(file_publira_types_v1_types, 10);
+
+/**
+ * @generated from message publira.types.v1.PageVersion
+ */
+export type PageVersion = Message<"publira.types.v1.PageVersion"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string page_id = 2;
+   */
+  pageId: string;
+
+  /**
+   * @generated from field: int32 version_number = 3;
+   */
+  versionNumber: number;
+
+  /**
+   * @generated from field: string content_markdown = 4;
+   */
+  contentMarkdown: string;
+
+  /**
+   * @generated from field: string author_user_id = 5;
+   */
+  authorUserId: string;
+
+  /**
+   * @generated from field: string status = 6;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string publish_at = 7;
+   */
+  publishAt: string;
+
+  /**
+   * @generated from field: string created_at = 8;
+   */
+  createdAt: string;
+
+  /**
+   * @generated from field: string published_at = 9;
+   */
+  publishedAt: string;
+};
+
+/**
+ * Describes the message publira.types.v1.PageVersion.
+ * Use `create(PageVersionSchema)` to create a new message.
+ */
+export const PageVersionSchema: GenMessage<PageVersion> = /*@__PURE__*/
+  messageDesc(file_publira_types_v1_types, 11);
 

@@ -34,6 +34,10 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error)
 	CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error)
+	// ページを新規作成する
+	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
+	// ページバージョンを新規作成する
+	CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error)
 	CreatePlatformSession(ctx context.Context, arg CreatePlatformSessionParams) (PlatformSession, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
 	CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error)
@@ -75,6 +79,12 @@ type Querier interface {
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
+	// ページの最大バージョン番号を取得する（次バージョン番号算出用）
+	GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error)
+	// テナントのページをIDで取得する
+	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
+	// ページバージョンをIDで取得する
+	GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
 	GetPlatformSessionByTokenHash(ctx context.Context, tokenHash string) (PlatformSession, error)
@@ -129,6 +139,10 @@ type Querier interface {
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
 	ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error)
+	// ページのバージョン一覧を新しい順に取得する
+	ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error)
+	// テナントのページ一覧を取得する（作成日昇順）
+	ListPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
 	// 管理操作監査ログ一覧取得（フィルタ対応）
 	ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error)
 	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
@@ -158,8 +172,12 @@ type Querier interface {
 	MarkUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkUserEmailVerificationTokenUsed(ctx context.Context, id uuid.UUID) error
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
+	// ページバージョンを公開状態にする
+	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
 	RevokePlatformSession(ctx context.Context, id uuid.UUID) error
 	RevokeSession(ctx context.Context, id uuid.UUID) error
+	// ページの公開バージョンIDを更新する
+	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
 	// プラットフォームユーザーの全セッションを失効させる
 	TerminatePlatformUserSessions(ctx context.Context, platformUserID uuid.UUID) error
 	// ユーザーの全セッションを失効させる
@@ -169,6 +187,8 @@ type Querier interface {
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
+	// ページのタイトルを更新する
+	UpdatePageTitle(ctx context.Context, arg UpdatePageTitleParams) (Page, error)
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)
 	// プラットフォームユーザーのステータスを更新

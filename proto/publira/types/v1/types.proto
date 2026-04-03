@@ -114,3 +114,24 @@ message TenantTheme {
   string info_color = 27;
   string info_foreground_color = 28;
 }
+
+message Page {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string published_version_id = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+message PageVersion {
+  string id = 1;
+  string page_id = 2;
+  int32 version_number = 3;
+  string content_markdown = 4;
+  string author_user_id = 5;
+  string status = 6;
+  string publish_at = 7;
+  string created_at = 8;
+  string published_at = 9;
+}

@@ -983,6 +983,198 @@ func (x *TenantTheme) GetInfoForegroundColor() string {
 	return ""
 }
 
+type Page struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Slug               string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	Title              string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	PublishedVersionId string                 `protobuf:"bytes,4,opt,name=published_version_id,json=publishedVersionId,proto3" json:"published_version_id,omitempty"`
+	CreatedAt          string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt          string                 `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *Page) Reset() {
+	*x = Page{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Page) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Page) ProtoMessage() {}
+
+func (x *Page) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Page.ProtoReflect.Descriptor instead.
+func (*Page) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Page) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Page) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *Page) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Page) GetPublishedVersionId() string {
+	if x != nil {
+		return x.PublishedVersionId
+	}
+	return ""
+}
+
+func (x *Page) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *Page) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type PageVersion struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PageId          string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	VersionNumber   int32                  `protobuf:"varint,3,opt,name=version_number,json=versionNumber,proto3" json:"version_number,omitempty"`
+	ContentMarkdown string                 `protobuf:"bytes,4,opt,name=content_markdown,json=contentMarkdown,proto3" json:"content_markdown,omitempty"`
+	AuthorUserId    string                 `protobuf:"bytes,5,opt,name=author_user_id,json=authorUserId,proto3" json:"author_user_id,omitempty"`
+	Status          string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	PublishAt       string                 `protobuf:"bytes,7,opt,name=publish_at,json=publishAt,proto3" json:"publish_at,omitempty"`
+	CreatedAt       string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	PublishedAt     string                 `protobuf:"bytes,9,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PageVersion) Reset() {
+	*x = PageVersion{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PageVersion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PageVersion) ProtoMessage() {}
+
+func (x *PageVersion) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PageVersion.ProtoReflect.Descriptor instead.
+func (*PageVersion) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *PageVersion) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PageVersion) GetPageId() string {
+	if x != nil {
+		return x.PageId
+	}
+	return ""
+}
+
+func (x *PageVersion) GetVersionNumber() int32 {
+	if x != nil {
+		return x.VersionNumber
+	}
+	return 0
+}
+
+func (x *PageVersion) GetContentMarkdown() string {
+	if x != nil {
+		return x.ContentMarkdown
+	}
+	return ""
+}
+
+func (x *PageVersion) GetAuthorUserId() string {
+	if x != nil {
+		return x.AuthorUserId
+	}
+	return ""
+}
+
+func (x *PageVersion) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *PageVersion) GetPublishAt() string {
+	if x != nil {
+		return x.PublishAt
+	}
+	return ""
+}
+
+func (x *PageVersion) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *PageVersion) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
+}
+
 var File_publira_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_publira_types_v1_types_proto_rawDesc = "" +
@@ -1082,7 +1274,28 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1cdestructive_foreground_color\x18\x1a \x01(\tR\x1adestructiveForegroundColor\x12\x1d\n" +
 	"\n" +
 	"info_color\x18\x1b \x01(\tR\tinfoColor\x122\n" +
-	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColorBHZFgithub.com/publira/publira/server/gen/publira/types/v1;publirattypesv1b\x06proto3"
+	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColor\"\xb0\x01\n" +
+	"\x04Page\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x120\n" +
+	"\x14published_version_id\x18\x04 \x01(\tR\x12publishedVersionId\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\tR\tupdatedAt\"\xa7\x02\n" +
+	"\vPageVersion\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12%\n" +
+	"\x0eversion_number\x18\x03 \x01(\x05R\rversionNumber\x12)\n" +
+	"\x10content_markdown\x18\x04 \x01(\tR\x0fcontentMarkdown\x12$\n" +
+	"\x0eauthor_user_id\x18\x05 \x01(\tR\fauthorUserId\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"publish_at\x18\a \x01(\tR\tpublishAt\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
+	"\fpublished_at\x18\t \x01(\tR\vpublishedAtBHZFgithub.com/publira/publira/server/gen/publira/types/v1;publirattypesv1b\x06proto3"
 
 var (
 	file_publira_types_v1_types_proto_rawDescOnce sync.Once
@@ -1096,7 +1309,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(*TenantContext)(nil),         // 0: publira.types.v1.TenantContext
 	(*User)(nil),                  // 1: publira.types.v1.User
@@ -1108,6 +1321,8 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*Episode)(nil),               // 7: publira.types.v1.Episode
 	(*EpisodeImage)(nil),          // 8: publira.types.v1.EpisodeImage
 	(*TenantTheme)(nil),           // 9: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 10: publira.types.v1.Page
+	(*PageVersion)(nil),           // 11: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	5, // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
@@ -1132,7 +1347,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
