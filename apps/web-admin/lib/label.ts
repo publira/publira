@@ -6,6 +6,16 @@ import { getSessionId } from "./session";
 export interface LabelItem {
   publicId: string;
   name: string;
+  eyeCatchImageUpdatedAt: string;
+  eyeCatchImageVariants: {
+    variantType: string;
+    label: string;
+    url: string;
+    contentType: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }[];
 }
 
 export type ListLabelsResult =
@@ -48,6 +58,16 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
     message.includes("required") ||
     message.includes("invalid")
   ) {
+    if (
+      message.includes("eye_catch") ||
+      message.includes("image") ||
+      message.includes("content_type") ||
+      message.includes("10mb") ||
+      message.includes("at least")
+    ) {
+      return "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。";
+    }
+
     return "入力内容に誤りがあります。";
   }
 
@@ -61,7 +81,33 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
   return fallbackMessage;
 };
 
-const mapLabel = (label: { publicId: string; name: string }): LabelItem => ({
+const mapLabel = (label: {
+  publicId: string;
+  name: string;
+  eyeCatchImageUpdatedAt?: string;
+  eyeCatchImageVariants?: {
+    variantType?: string;
+    label?: string;
+    url?: string;
+    contentType?: string;
+    width?: number;
+    height?: number;
+    fileSizeBytes?: bigint | number;
+  }[];
+}): LabelItem => ({
+  eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt ?? "",
+  eyeCatchImageVariants: (label.eyeCatchImageVariants ?? [])
+    .map((variant) => ({
+      contentType: variant.contentType ?? "",
+      fileSizeBytes:
+        variant.fileSizeBytes === undefined ? 0 : Number(variant.fileSizeBytes),
+      height: variant.height ?? 0,
+      label: variant.label ?? "",
+      url: variant.url ?? "",
+      variantType: variant.variantType ?? "",
+      width: variant.width ?? 0,
+    }))
+    .filter((variant) => variant.label.length > 0 && variant.url.length > 0),
   name: label.name,
   publicId: label.publicId,
 });
@@ -109,6 +155,8 @@ export const listLabels = async (
 export const createLabel = async (input: {
   tenantPublicId: string;
   name: string;
+  eyeCatchImageContentType?: string;
+  eyeCatchImageData?: Uint8Array;
 }): Promise<CreateLabelResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -121,6 +169,8 @@ export const createLabel = async (input: {
   try {
     const response = await apiClient.label.createLabel(
       {
+        eyeCatchImageContentType: input.eyeCatchImageContentType,
+        eyeCatchImageData: input.eyeCatchImageData,
         name: input.name,
         tenant: { tenantPublicId: input.tenantPublicId },
       },
@@ -150,6 +200,9 @@ export const updateLabel = async (input: {
   tenantPublicId: string;
   publicId: string;
   name: string;
+  clearEyeCatchImage?: boolean;
+  eyeCatchImageContentType?: string;
+  eyeCatchImageData?: Uint8Array;
 }): Promise<UpdateLabelResult> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
@@ -162,6 +215,9 @@ export const updateLabel = async (input: {
   try {
     const response = await apiClient.label.updateLabel(
       {
+        clearEyeCatchImage: input.clearEyeCatchImage,
+        eyeCatchImageContentType: input.eyeCatchImageContentType,
+        eyeCatchImageData: input.eyeCatchImageData,
         name: input.name,
         publicId: input.publicId,
         tenant: { tenantPublicId: input.tenantPublicId },

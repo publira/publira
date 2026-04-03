@@ -4,14 +4,14 @@ import { cn } from "@publira/utils";
 import Image from "next/image";
 import { useCallback } from "react";
 
-import type { SeriesEyeCatchVariantItem } from "../series-types";
+import type { EyeCatchVariantItem } from "./types";
 
 interface EyeCatchVariantSelectorProps {
   localPreviewUrl: string;
   onImageClick: () => void;
   onSelectVariantType: (typeKey: string) => void;
   selectedVariantType: string | null;
-  variants: SeriesEyeCatchVariantItem[];
+  variants: EyeCatchVariantItem[];
 }
 
 export const EyeCatchVariantSelector = ({
@@ -22,8 +22,8 @@ export const EyeCatchVariantSelector = ({
   variants,
 }: EyeCatchVariantSelectorProps) => {
   const handleButtonClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const { typeKey } = e.currentTarget.dataset;
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const { typeKey } = event.currentTarget.dataset;
       if (typeKey) {
         onSelectVariantType(typeKey);
       }
@@ -31,7 +31,7 @@ export const EyeCatchVariantSelector = ({
     },
     [onImageClick, onSelectVariantType]
   );
-  // 各アスペクト比ごとにバリアントをグループ化
+
   const variantsByType = new Map<string, typeof variants>();
   for (const variant of variants) {
     if (!variantsByType.has(variant.variantType)) {
@@ -40,7 +40,6 @@ export const EyeCatchVariantSelector = ({
     variantsByType.get(variant.variantType)?.push(variant);
   }
 
-  // 各グループのバリアントを幅でソート（降順）
   for (const variantList of variantsByType.values()) {
     variantList.sort((a, b) => b.width - a.width);
   }
@@ -62,7 +61,6 @@ export const EyeCatchVariantSelector = ({
     <div className="grid gap-3 sm:grid-cols-2">
       {displayGroups.map(([typeKey, typeVariants]) => {
         const isSelected = selectedVariantType === typeKey;
-
         const fallbackVariant = typeVariants.at(-1);
         if (!fallbackVariant) {
           return null;
@@ -73,8 +71,7 @@ export const EyeCatchVariantSelector = ({
         return (
           <button
             className={cn(
-              "grid gap-2 rounded-lg border p-2",
-              "cursor-pointer transition-all",
+              "grid cursor-pointer gap-2 rounded-lg border p-2 transition-all",
               isSelected
                 ? "border-blue-500 bg-blue-50"
                 : "border-border/60 hover:border-blue-300"
@@ -107,10 +104,10 @@ export const EyeCatchVariantSelector = ({
                 />
               ) : (
                 <picture>
-                  {sourcesToRender.map((variant, idx) => {
+                  {sourcesToRender.map((variant, index) => {
                     const nextSize =
-                      idx > 0
-                        ? sourcesToRender[idx - 1].width
+                      index > 0
+                        ? sourcesToRender[index - 1].width
                         : fallbackVariant.width;
                     return (
                       <source

@@ -1,12 +1,6 @@
-export interface SeriesEyeCatchVariantItem {
-  variantType: string;
-  label: string;
-  url: string;
-  contentType: string;
-  width: number;
-  height: number;
-  fileSizeBytes: number;
-}
+import type { EyeCatchVariantItem } from "#components/eye-catch/types";
+
+export type SeriesEyeCatchVariantItem = EyeCatchVariantItem;
 
 export interface SeriesListItem {
   publicId: string;

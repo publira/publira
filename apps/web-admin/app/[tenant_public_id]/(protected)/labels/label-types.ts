@@ -1,7 +1,13 @@
+import type { EyeCatchVariantItem } from "#components/eye-catch/types";
+
 export interface LabelListItem {
   publicId: string;
   name: string;
+  eyeCatchImageUpdatedAt: string;
+  eyeCatchImageVariants: LabelEyeCatchVariantItem[];
 }
+
+export type LabelEyeCatchVariantItem = EyeCatchVariantItem;
 
 export type LabelMutationMode = "create" | "update";
 
