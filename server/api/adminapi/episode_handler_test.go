@@ -346,23 +346,29 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 
 	variantSizes := []struct {
+		label  string
 		width  int32
 		height int32
 	}{
-		{width: 480, height: 270},
-		{width: 960, height: 540},
-		{width: 1440, height: 810},
-		{width: 1600, height: 900},
+		{label: "w480", width: 480, height: 270},
+		{label: "w960", width: 960, height: 540},
+		{label: "w1440", width: 1440, height: 810},
+		{label: "w1600", width: 1600, height: 900},
 	}
 
-	for i, variant := range variantSizes {
-		displayOrder := int32(i + 1)
-		mock.ExpectQuery("INSERT INTO episode_images").
-			WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", sqlmock.AnyArg(), displayOrder, variant.width, variant.height).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-				AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj", "local://obj", "image/jpeg", int64(2048), displayOrder, variant.width, variant.height, now))
-		expectAdminAuditLogInsert(mock)
+	createdImageID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery("INSERT INTO episode_images").
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
+			AddRow(createdImageID, tenantID, episodeID, int32(1), now))
+
+	for _, variant := range variantSizes {
+		mock.ExpectQuery("INSERT INTO episode_image_variants").
+			WithArgs(sqlmock.AnyArg(), createdImageID, variant.label, "local", sqlmock.AnyArg(), "image/jpeg", sqlmock.AnyArg(), variant.width, variant.height).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at"}).
+				AddRow(uuid.Must(uuid.NewV7()), createdImageID, variant.label, "local", "obj", "image/jpeg", int64(2048), variant.width, variant.height, now))
 	}
+	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
@@ -378,22 +384,11 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UploadEpisodeImages: %v", err)
 	}
-	if len(resp.Msg.Images) != 4 {
-		t.Fatalf("images count = %d, want 4", len(resp.Msg.Images))
+	if len(resp.Msg.Images) != 1 {
+		t.Fatalf("images count = %d, want 1", len(resp.Msg.Images))
 	}
-
-	got := make(map[int32]int32, len(resp.Msg.Images))
-	for _, img := range resp.Msg.Images {
-		got[img.Width] = img.Height
-	}
-	for _, variant := range variantSizes {
-		height, ok := got[variant.width]
-		if !ok {
-			t.Fatalf("missing variant width=%d", variant.width)
-		}
-		if height != variant.height {
-			t.Fatalf("variant width=%d height=%d, want %d", variant.width, height, variant.height)
-		}
+	if resp.Msg.Images[0].Width != 1600 || resp.Msg.Images[0].Height != 900 {
+		t.Fatalf("image size = %dx%d, want 1600x900", resp.Msg.Images[0].Width, resp.Msg.Images[0].Height)
 	}
 
 	assertExpectations(t, mock)
@@ -418,16 +413,26 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 		WithArgs(episodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"max_display_order"}).AddRow(int32(0)))
 
+	image1ID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery("INSERT INTO episode_images").
-		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/png", int64(67), int32(1), int32(1), int32(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-1", "local://obj-1", "image/png", int64(67), int32(1), int32(1), int32(1), now))
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
+			AddRow(image1ID, tenantID, episodeID, int32(1), now))
+	mock.ExpectQuery("INSERT INTO episode_image_variants").
+		WithArgs(sqlmock.AnyArg(), image1ID, "w1", "local", sqlmock.AnyArg(), "image/png", int64(67), int32(1), int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), image1ID, "w1", "local", "obj-1", "image/png", int64(67), int32(1), int32(1), now))
 	expectAdminAuditLogInsert(mock)
 
+	image2ID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery("INSERT INTO episode_images").
-		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, "local", sqlmock.AnyArg(), sqlmock.AnyArg(), "image/jpeg", int64(163), int32(2), int32(1), int32(1)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "storage_provider", "object_key", "image_url", "content_type", "file_size_bytes", "display_order", "width", "height", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, "local", "obj-2", "local://obj-2", "image/jpeg", int64(163), int32(2), int32(1), int32(1), now))
+		WithArgs(sqlmock.AnyArg(), tenantID, episodeID, int32(2)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at"}).
+			AddRow(image2ID, tenantID, episodeID, int32(2), now))
+	mock.ExpectQuery("INSERT INTO episode_image_variants").
+		WithArgs(sqlmock.AnyArg(), image2ID, "w1", "local", sqlmock.AnyArg(), "image/jpeg", int64(163), int32(1), int32(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_image_id", "label", "storage_provider", "object_key", "content_type", "file_size_bytes", "width", "height", "created_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), image2ID, "w1", "local", "obj-2", "image/jpeg", int64(163), int32(1), int32(1), now))
 	expectAdminAuditLogInsert(mock)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
