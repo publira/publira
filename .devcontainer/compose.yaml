@@ -81,6 +81,20 @@ services:
       - "traefik.http.middlewares.api-strip.stripprefix.prefixes=/api"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
 
+      # public image-server on /images -> app:8200
+      - "traefik.http.routers.image-server.rule=PathPrefix(`/images`)"
+      - "traefik.http.routers.image-server.entrypoints=web"
+      - "traefik.http.routers.image-server.priority=110"
+      - "traefik.http.routers.image-server.service=image-server"
+      - "traefik.http.services.image-server.loadbalancer.server.port=8200"
+
+      # admin image-server on admin.* + /images -> app:8201
+      - "traefik.http.routers.admin-image-server.rule=HostRegexp(`^admin\\d*\\..*$`) && PathPrefix(`/images`)"
+      - "traefik.http.routers.admin-image-server.entrypoints=web"
+      - "traefik.http.routers.admin-image-server.priority=130"
+      - "traefik.http.routers.admin-image-server.service=admin-image-server"
+      - "traefik.http.services.admin-image-server.loadbalancer.server.port=8201"
+
   db:
     image: postgres:18.3-alpine3.23@sha256:4da1a4828be12604092fa55311276f08f9224a74a62dcb4708bd7439e2a03911
     restart: unless-stopped

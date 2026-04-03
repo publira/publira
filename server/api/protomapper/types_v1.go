@@ -1,6 +1,7 @@
 package protomapper
 
 import (
+	"fmt"
 	"time"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
@@ -87,7 +88,7 @@ func EpisodeFromListEpisodesBySeriesForTenantRow(row dbmodels.ListEpisodesBySeri
 func EpisodeImageFromEpisodeImage(row dbmodels.EpisodeImage) *publirattypesv1.EpisodeImage {
 	return &publirattypesv1.EpisodeImage{
 		Id:            row.ID.String(),
-		ImageUrl:      row.ImageUrl,
+		ImageUrl:      fmt.Sprintf("/images/episodes/%s", row.ID.String()),
 		ContentType:   row.ContentType,
 		FileSizeBytes: row.FileSizeBytes,
 		DisplayOrder:  row.DisplayOrder,

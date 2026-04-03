@@ -61,6 +61,8 @@ type Querier interface {
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (Creator, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
+	GetEpisodeImageAccessByIDForSession(ctx context.Context, arg GetEpisodeImageAccessByIDForSessionParams) (GetEpisodeImageAccessByIDForSessionRow, error)
+	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (Label, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)

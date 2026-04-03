@@ -1073,6 +1073,61 @@ WHERE s.tenant_id = $1
 ORDER BY ei.display_order ASC,
     ei.created_at ASC;
 
+-- name: GetEpisodeImageAccessByIDForSession :one
+SELECT ei.id,
+    ei.object_key,
+    ei.content_type,
+    (
+        s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    ) AS is_published,
+    (
+        el.price = 0
+        OR EXISTS (
+            SELECT 1
+            FROM purchases p
+            WHERE p.tenant_id = s.tenant_id
+                AND p.user_id = $3
+                AND p.episode_id = e.id
+                AND (
+                    p.expires_at IS NULL
+                    OR p.expires_at > NOW()
+                )
+        )
+    ) AS has_access
+FROM episode_images ei
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE ei.id = $1
+    AND s.tenant_id = $2
+LIMIT 1;
+
+-- name: GetEpisodeImagePublicAccessByIDForTenant :one
+SELECT ei.id,
+    ei.object_key,
+    ei.content_type,
+    (
+        s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+        AND el.status = 'published'
+        AND el.published_at IS NOT NULL
+        AND el.published_at <= NOW()
+    ) AS is_published,
+    (el.price = 0) AS has_public_access
+FROM episode_images ei
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE ei.id = $1
+    AND s.tenant_id = $2
+LIMIT 1;
+
 -- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one
 SELECT COALESCE(MAX(display_order), 0)::int4 AS max_display_order
 FROM episode_images
