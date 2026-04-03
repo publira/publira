@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message CreatePageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string slug = 2;
+  string title = 3;
+}
+
+message CreatePageResponse {
+  publira.types.v1.Page page = 1;
+}
+
+message UpdatePageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+  string title = 3;
+}
+
+message UpdatePageResponse {
+  publira.types.v1.Page page = 1;
+}
+
+message ListPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListPagesResponse {
+  repeated publira.types.v1.Page pages = 1;
+}
+
+message GetPageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+}
+
+message GetPageResponse {
+  publira.types.v1.Page page = 1;
+}
+
+message CreateVersionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+  string content_markdown = 3;
+}
+
+message CreateVersionResponse {
+  publira.types.v1.PageVersion version = 1;
+}
+
+message ListVersionsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+}
+
+message ListVersionsResponse {
+  repeated publira.types.v1.PageVersion versions = 1;
+}
+
+message PublishVersionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+  string version_id = 3;
+}
+
+message PublishVersionResponse {
+  publira.types.v1.PageVersion version = 1;
+}
+
+message RollbackToVersionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string page_id = 2;
+  string version_id = 3;
+}
+
+message RollbackToVersionResponse {
+  publira.types.v1.PageVersion version = 1;
+}
+
+service AdminPagesService {
+  rpc CreatePage(CreatePageRequest) returns (CreatePageResponse) {}
+  rpc UpdatePage(UpdatePageRequest) returns (UpdatePageResponse) {}
+  rpc ListPages(ListPagesRequest) returns (ListPagesResponse) {}
+  rpc GetPage(GetPageRequest) returns (GetPageResponse) {}
+  rpc CreateVersion(CreateVersionRequest) returns (CreateVersionResponse) {}
+  rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse) {}
+  rpc PublishVersion(PublishVersionRequest) returns (PublishVersionResponse) {}
+  rpc RollbackToVersion(RollbackToVersionRequest) returns (RollbackToVersionResponse) {}
+}
