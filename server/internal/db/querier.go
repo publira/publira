@@ -34,6 +34,8 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error)
 	CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error)
+	// 通知を作成
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	// ページを新規作成する
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
 	// ページバージョンを新規作成する
@@ -141,6 +143,8 @@ type Querier interface {
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
 	ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error)
+	// テナント管理画面向け通知一覧を取得
+	ListNotificationsForTenant(ctx context.Context, arg ListNotificationsForTenantParams) ([]ListNotificationsForTenantRow, error)
 	// 通知一覧を取得（既読状態付き）
 	ListNotificationsForUser(ctx context.Context, arg ListNotificationsForUserParams) ([]ListNotificationsForUserRow, error)
 	// ページのバージョン一覧を新しい順に取得する

@@ -1653,6 +1653,41 @@ SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
     updated_at = NOW()
 RETURNING *;
 
+-- name: CreateNotification :one
+-- 通知を作成
+INSERT INTO notifications (
+    id,
+    tenant_id,
+    target_user_id,
+    notification_type,
+    title,
+    body,
+    link_url,
+    metadata
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: ListNotificationsForTenant :many
+-- テナント管理画面向け通知一覧を取得
+SELECT
+    n.id,
+    n.tenant_id,
+    n.target_user_id,
+    n.notification_type,
+    n.title,
+    n.body,
+    n.link_url,
+    n.metadata,
+    n.created_at,
+    u.public_id AS target_user_public_id,
+    u.name AS target_user_name
+FROM notifications n
+    LEFT JOIN users u ON u.id = n.target_user_id
+WHERE n.tenant_id = $1
+ORDER BY n.created_at DESC
+LIMIT $2 OFFSET $3;
+
 -- name: ListNotificationsForUser :many
 -- 通知一覧を取得（既読状態付き）
 SELECT

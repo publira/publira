@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+enum NotificationAudienceType {
+  NOTIFICATION_AUDIENCE_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_AUDIENCE_TYPE_ALL_USERS = 1;
+  NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS = 2;
+}
+
+message AdminNotification {
+  string id = 1;
+  string title = 2;
+  string body = 3;
+  string link_url = 4;
+  NotificationAudienceType audience_type = 5;
+  string target_user_public_id = 6;
+  string target_user_name = 7;
+  string created_at = 8;
+}
+
+message ListNotificationsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListNotificationsResponse {
+  repeated AdminNotification notifications = 1;
+}
+
+message CreateNotificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string title = 2;
+  string body = 3;
+  string link_url = 4;
+  NotificationAudienceType audience_type = 5;
+  repeated string target_user_public_ids = 6;
+}
+
+message CreateNotificationResponse {
+  repeated AdminNotification notifications = 1;
+}
+
+service AdminNotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {}
+  rpc CreateNotification(CreateNotificationRequest) returns (CreateNotificationResponse) {}
+}

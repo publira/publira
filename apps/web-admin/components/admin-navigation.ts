@@ -28,6 +28,12 @@ export const navigation: NavSection[] = [
         icon: CollectionIcon,
         label: "シリーズ",
       },
+      {
+        description: "お知らせ作成と配信の管理",
+        href: "/notifications",
+        icon: CollectionIcon,
+        label: "通知",
+      },
     ],
     title: "運用",
   },

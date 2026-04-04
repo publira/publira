@@ -561,6 +561,59 @@ func (q *Queries) CreateLabelImageVariant(ctx context.Context, arg CreateLabelIm
 	return i, err
 }
 
+const createNotification = `-- name: CreateNotification :one
+INSERT INTO notifications (
+    id,
+    tenant_id,
+    target_user_id,
+    notification_type,
+    title,
+    body,
+    link_url,
+    metadata
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, tenant_id, target_user_id, notification_type, title, body, link_url, metadata, created_at
+`
+
+type CreateNotificationParams struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	TargetUserID     uuid.NullUUID   `json:"target_user_id"`
+	NotificationType string          `json:"notification_type"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
+	LinkUrl          sql.NullString  `json:"link_url"`
+	Metadata         json.RawMessage `json:"metadata"`
+}
+
+// 通知を作成
+func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error) {
+	row := q.db.QueryRowContext(ctx, createNotification,
+		arg.ID,
+		arg.TenantID,
+		arg.TargetUserID,
+		arg.NotificationType,
+		arg.Title,
+		arg.Body,
+		arg.LinkUrl,
+		arg.Metadata,
+	)
+	var i Notification
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.TargetUserID,
+		&i.NotificationType,
+		&i.Title,
+		&i.Body,
+		&i.LinkUrl,
+		&i.Metadata,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPlatformSession = `-- name: CreatePlatformSession :one
 INSERT INTO platform_sessions (
         id,
@@ -3584,6 +3637,82 @@ func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenant
 			&i.CreatedAt,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNotificationsForTenant = `-- name: ListNotificationsForTenant :many
+SELECT
+    n.id,
+    n.tenant_id,
+    n.target_user_id,
+    n.notification_type,
+    n.title,
+    n.body,
+    n.link_url,
+    n.metadata,
+    n.created_at,
+    u.public_id AS target_user_public_id,
+    u.name AS target_user_name
+FROM notifications n
+    LEFT JOIN users u ON u.id = n.target_user_id
+WHERE n.tenant_id = $1
+ORDER BY n.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListNotificationsForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+type ListNotificationsForTenantRow struct {
+	ID                 uuid.UUID       `json:"id"`
+	TenantID           uuid.UUID       `json:"tenant_id"`
+	TargetUserID       uuid.NullUUID   `json:"target_user_id"`
+	NotificationType   string          `json:"notification_type"`
+	Title              string          `json:"title"`
+	Body               string          `json:"body"`
+	LinkUrl            sql.NullString  `json:"link_url"`
+	Metadata           json.RawMessage `json:"metadata"`
+	CreatedAt          time.Time       `json:"created_at"`
+	TargetUserPublicID sql.NullString  `json:"target_user_public_id"`
+	TargetUserName     sql.NullString  `json:"target_user_name"`
+}
+
+// テナント管理画面向け通知一覧を取得
+func (q *Queries) ListNotificationsForTenant(ctx context.Context, arg ListNotificationsForTenantParams) ([]ListNotificationsForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, listNotificationsForTenant, arg.TenantID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNotificationsForTenantRow
+	for rows.Next() {
+		var i ListNotificationsForTenantRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.TargetUserID,
+			&i.NotificationType,
+			&i.Title,
+			&i.Body,
+			&i.LinkUrl,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.TargetUserPublicID,
+			&i.TargetUserName,
 		); err != nil {
 			return nil, err
 		}
