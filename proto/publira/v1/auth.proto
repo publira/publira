@@ -133,6 +133,47 @@ message UpdateNotificationSettingsResponse {
   bool email_notifications_enabled = 1;
 }
 
+message NotificationItem {
+  string id = 1;
+  string notification_type = 2;
+  string title = 3;
+  string body = 4;
+  string link_url = 5;
+  bool is_read = 6;
+  string read_at = 7;
+  string created_at = 8;
+}
+
+message ListNotificationsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListNotificationsResponse {
+  repeated NotificationItem notifications = 1;
+}
+
+message MarkNotificationAsReadRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+  string notification_id = 3;
+}
+
+message MarkNotificationAsReadResponse {
+  bool marked = 1;
+}
+
+message MarkAllNotificationsAsReadRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string session_id = 2;
+}
+
+message MarkAllNotificationsAsReadResponse {
+  int32 marked_count = 1;
+}
+
 service AuthService {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
@@ -147,4 +188,7 @@ service AuthService {
   rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}
   rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
   rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {}
+  rpc MarkNotificationAsRead(MarkNotificationAsReadRequest) returns (MarkNotificationAsReadResponse) {}
+  rpc MarkAllNotificationsAsRead(MarkAllNotificationsAsReadRequest) returns (MarkAllNotificationsAsReadResponse) {}
 }

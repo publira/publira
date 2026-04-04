@@ -68,6 +68,15 @@ const (
 	// AuthServiceUpdateNotificationSettingsProcedure is the fully-qualified name of the AuthService's
 	// UpdateNotificationSettings RPC.
 	AuthServiceUpdateNotificationSettingsProcedure = "/publira.v1.AuthService/UpdateNotificationSettings"
+	// AuthServiceListNotificationsProcedure is the fully-qualified name of the AuthService's
+	// ListNotifications RPC.
+	AuthServiceListNotificationsProcedure = "/publira.v1.AuthService/ListNotifications"
+	// AuthServiceMarkNotificationAsReadProcedure is the fully-qualified name of the AuthService's
+	// MarkNotificationAsRead RPC.
+	AuthServiceMarkNotificationAsReadProcedure = "/publira.v1.AuthService/MarkNotificationAsRead"
+	// AuthServiceMarkAllNotificationsAsReadProcedure is the fully-qualified name of the AuthService's
+	// MarkAllNotificationsAsRead RPC.
+	AuthServiceMarkAllNotificationsAsReadProcedure = "/publira.v1.AuthService/MarkAllNotificationsAsRead"
 )
 
 // AuthServiceClient is a client for the publira.v1.AuthService service.
@@ -85,6 +94,9 @@ type AuthServiceClient interface {
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
+	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error)
+	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
+	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the publira.v1.AuthService service. By default, it
@@ -176,6 +188,24 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		listNotifications: connect.NewClient[v1.ListNotificationsRequest, v1.ListNotificationsResponse](
+			httpClient,
+			baseURL+AuthServiceListNotificationsProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ListNotifications")),
+			connect.WithClientOptions(opts...),
+		),
+		markNotificationAsRead: connect.NewClient[v1.MarkNotificationAsReadRequest, v1.MarkNotificationAsReadResponse](
+			httpClient,
+			baseURL+AuthServiceMarkNotificationAsReadProcedure,
+			connect.WithSchema(authServiceMethods.ByName("MarkNotificationAsRead")),
+			connect.WithClientOptions(opts...),
+		),
+		markAllNotificationsAsRead: connect.NewClient[v1.MarkAllNotificationsAsReadRequest, v1.MarkAllNotificationsAsReadResponse](
+			httpClient,
+			baseURL+AuthServiceMarkAllNotificationsAsReadProcedure,
+			connect.WithSchema(authServiceMethods.ByName("MarkAllNotificationsAsRead")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -194,6 +224,9 @@ type authServiceClient struct {
 	deleteMe                   *connect.Client[v1.DeleteMeRequest, v1.DeleteMeResponse]
 	getNotificationSettings    *connect.Client[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse]
 	updateNotificationSettings *connect.Client[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse]
+	listNotifications          *connect.Client[v1.ListNotificationsRequest, v1.ListNotificationsResponse]
+	markNotificationAsRead     *connect.Client[v1.MarkNotificationAsReadRequest, v1.MarkNotificationAsReadResponse]
+	markAllNotificationsAsRead *connect.Client[v1.MarkAllNotificationsAsReadRequest, v1.MarkAllNotificationsAsReadResponse]
 }
 
 // CreateSession calls publira.v1.AuthService.CreateSession.
@@ -261,6 +294,21 @@ func (c *authServiceClient) UpdateNotificationSettings(ctx context.Context, req 
 	return c.updateNotificationSettings.CallUnary(ctx, req)
 }
 
+// ListNotifications calls publira.v1.AuthService.ListNotifications.
+func (c *authServiceClient) ListNotifications(ctx context.Context, req *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error) {
+	return c.listNotifications.CallUnary(ctx, req)
+}
+
+// MarkNotificationAsRead calls publira.v1.AuthService.MarkNotificationAsRead.
+func (c *authServiceClient) MarkNotificationAsRead(ctx context.Context, req *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error) {
+	return c.markNotificationAsRead.CallUnary(ctx, req)
+}
+
+// MarkAllNotificationsAsRead calls publira.v1.AuthService.MarkAllNotificationsAsRead.
+func (c *authServiceClient) MarkAllNotificationsAsRead(ctx context.Context, req *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error) {
+	return c.markAllNotificationsAsRead.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
 type AuthServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
@@ -276,6 +324,9 @@ type AuthServiceHandler interface {
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
+	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error)
+	MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error)
+	MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -363,6 +414,24 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceListNotificationsHandler := connect.NewUnaryHandler(
+		AuthServiceListNotificationsProcedure,
+		svc.ListNotifications,
+		connect.WithSchema(authServiceMethods.ByName("ListNotifications")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceMarkNotificationAsReadHandler := connect.NewUnaryHandler(
+		AuthServiceMarkNotificationAsReadProcedure,
+		svc.MarkNotificationAsRead,
+		connect.WithSchema(authServiceMethods.ByName("MarkNotificationAsRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceMarkAllNotificationsAsReadHandler := connect.NewUnaryHandler(
+		AuthServiceMarkAllNotificationsAsReadProcedure,
+		svc.MarkAllNotificationsAsRead,
+		connect.WithSchema(authServiceMethods.ByName("MarkAllNotificationsAsRead")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceCreateSessionProcedure:
@@ -391,6 +460,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceGetNotificationSettingsHandler.ServeHTTP(w, r)
 		case AuthServiceUpdateNotificationSettingsProcedure:
 			authServiceUpdateNotificationSettingsHandler.ServeHTTP(w, r)
+		case AuthServiceListNotificationsProcedure:
+			authServiceListNotificationsHandler.ServeHTTP(w, r)
+		case AuthServiceMarkNotificationAsReadProcedure:
+			authServiceMarkNotificationAsReadHandler.ServeHTTP(w, r)
+		case AuthServiceMarkAllNotificationsAsReadProcedure:
+			authServiceMarkAllNotificationsAsReadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -450,4 +525,16 @@ func (UnimplementedAuthServiceHandler) GetNotificationSettings(context.Context, 
 
 func (UnimplementedAuthServiceHandler) UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateNotificationSettings is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.ListNotificationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ListNotifications is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) MarkNotificationAsRead(context.Context, *connect.Request[v1.MarkNotificationAsReadRequest]) (*connect.Response[v1.MarkNotificationAsReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.MarkNotificationAsRead is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) MarkAllNotificationsAsRead(context.Context, *connect.Request[v1.MarkAllNotificationsAsReadRequest]) (*connect.Response[v1.MarkAllNotificationsAsReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.MarkAllNotificationsAsRead is not implemented"))
 }

@@ -1070,3 +1070,105 @@ func (s *apiServer) UpdateNotificationSettings(
 	}
 	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
 }
+
+func (s *apiServer) ListNotifications(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListNotificationsRequest],
+) (*connect.Response[publirav1.ListNotificationsResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	limit := req.Msg.Limit
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	offset := req.Msg.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	rows, err := s.queriesFor(ctx).ListNotificationsForUser(ctx, dbmodels.ListNotificationsForUserParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		Limit:    limit,
+		Offset:   offset,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	items := make([]*publirav1.NotificationItem, 0, len(rows))
+	for _, row := range rows {
+		isRead := false
+		if value, ok := row.IsRead.(bool); ok {
+			isRead = value
+		}
+		readAt := ""
+		if row.ReadAt.Valid {
+			readAt = row.ReadAt.Time.UTC().Format(time.RFC3339)
+		}
+		items = append(items, &publirav1.NotificationItem{
+			Id:               row.ID.String(),
+			NotificationType: row.NotificationType,
+			Title:            row.Title,
+			Body:             row.Body,
+			LinkUrl:          row.LinkUrl.String,
+			IsRead:           isRead,
+			ReadAt:           readAt,
+			CreatedAt:        row.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	return connect.NewResponse(&publirav1.ListNotificationsResponse{Notifications: items}), nil
+}
+
+func (s *apiServer) MarkNotificationAsRead(
+	ctx context.Context,
+	req *connect.Request[publirav1.MarkNotificationAsReadRequest],
+) (*connect.Response[publirav1.MarkNotificationAsReadResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	notificationID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.NotificationId))
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("notification_id is invalid"))
+	}
+
+	_, err = s.queriesFor(ctx).MarkNotificationAsRead(ctx, dbmodels.MarkNotificationAsReadParams{
+		ID:       notificationID,
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("notification not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publirav1.MarkNotificationAsReadResponse{Marked: true}), nil
+}
+
+func (s *apiServer) MarkAllNotificationsAsRead(
+	ctx context.Context,
+	req *connect.Request[publirav1.MarkAllNotificationsAsReadRequest],
+) (*connect.Response[publirav1.MarkAllNotificationsAsReadResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	marked, err := s.queriesFor(ctx).MarkAllNotificationsAsRead(ctx, dbmodels.MarkAllNotificationsAsReadParams{
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publirav1.MarkAllNotificationsAsReadResponse{MarkedCount: int32(marked)}), nil
+}
