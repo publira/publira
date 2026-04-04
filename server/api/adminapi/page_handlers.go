@@ -58,16 +58,17 @@ func pageVersionFromModel(v dbmodels.PageVersion) *publirattypesv1.PageVersion {
 
 func validateSlug(slug string) (string, error) {
 	normalized := strings.TrimSpace(slug)
-	if normalized == "" {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	if normalized == "" || normalized == "/" {
+		return "", nil
 	}
+	normalized = strings.TrimPrefix(normalized, "/")
 	if len(normalized) > slugMaxLen {
 		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug must not exceed %d characters", slugMaxLen))
 	}
 	if !slugPattern.MatchString(normalized) {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("slug must contain only lowercase letters, digits, and hyphens, and must start with a letter or digit"))
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("slug must be empty or contain only lowercase letters, digits, and hyphens, and may optionally start with /"))
 	}
-	return normalized, nil
+	return "/" + normalized, nil
 }
 
 func validatePageTitle(title string) (string, error) {

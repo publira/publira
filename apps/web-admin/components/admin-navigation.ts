@@ -29,6 +29,12 @@ export const navigation: NavSection[] = [
         label: "シリーズ",
       },
       {
+        description: "個別ページの作成・編集・公開管理",
+        href: "/pages",
+        icon: CollectionIcon,
+        label: "ページ",
+      },
+      {
         description: "お知らせ作成と配信の管理",
         href: "/notifications",
         icon: CollectionIcon,
