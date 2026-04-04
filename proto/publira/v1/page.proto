@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+message ListPublishedPagesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListPublishedPagesResponse {
+  repeated publira.types.v1.Page pages = 1;
+}
+
+message GetPublishedPageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string slug = 2;
+}
+
+message GetPublishedPageResponse {
+  publira.types.v1.Page page = 1;
+  publira.types.v1.PageVersion version = 2;
+}
+
+service PublicPagesService {
+  rpc ListPublishedPages(ListPublishedPagesRequest) returns (ListPublishedPagesResponse) {}
+  rpc GetPublishedPage(GetPublishedPageRequest) returns (GetPublishedPageResponse) {}
+}

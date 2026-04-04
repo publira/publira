@@ -27,6 +27,10 @@
       "types": "./dist/public/catalog.d.mts",
       "default": "./dist/public/catalog.mjs"
     },
+    "./public/page": {
+      "types": "./dist/public/page.d.mts",
+      "default": "./dist/public/page.mjs"
+    },
     "./public/types": {
       "types": "./dist/public/types.d.mts",
       "default": "./dist/public/types.mjs"

@@ -93,6 +93,8 @@ type Querier interface {
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
+	// テナントの公開中ページをslugで取得する
+	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
@@ -150,6 +152,8 @@ type Querier interface {
 	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
+	// テナントの公開中ページ一覧を取得する
+	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
 	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)

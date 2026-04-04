@@ -8,6 +8,7 @@ export default defineConfig({
     "src/public/client.ts",
     "src/public/auth.ts",
     "src/public/catalog.ts",
+    "src/public/page.ts",
     "src/public/types.ts",
     "src/admin/index.ts",
     "src/admin/client.ts",
