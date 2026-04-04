@@ -12,13 +12,13 @@ import { AdminPage } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getPage, listPageVersions } from "#lib/page";
 
+import { PageWorkspace } from "../_components/page-workspace";
 import {
   createDraftVersionAction,
   publishVersionAction,
   rollbackVersionAction,
   updatePageAction,
 } from "../_lib/actions";
-import { PageWorkspace } from "../_components/page-workspace";
 
 interface EditPagePageProps {
   params: Promise<{
@@ -73,7 +73,9 @@ const PageWorkspaceData = async ({
   if (!versionsResult.ok && versionsResult.versions.length === 0) {
     return (
       <div className="grid gap-4">
-        <FormMessage variant="destructive">{versionsResult.message}</FormMessage>
+        <FormMessage variant="destructive">
+          {versionsResult.message}
+        </FormMessage>
         <div>
           <LinkButton render={<Link href="/pages" />} variant="outline">
             一覧へ戻る
@@ -112,10 +114,19 @@ export default async function EditPagePage({ params }: EditPagePageProps) {
       title="ページ編集"
     >
       <FlashToast title="ページを作成しました。" />
-      <FlashToast keyName="title_updated" title="ページタイトルを更新しました。" />
-      <FlashToast keyName="draft_saved" title="下書きバージョンを保存しました。" />
+      <FlashToast
+        keyName="title_updated"
+        title="ページタイトルを更新しました。"
+      />
+      <FlashToast
+        keyName="draft_saved"
+        title="下書きバージョンを保存しました。"
+      />
       <FlashToast keyName="published" title="ページを公開しました。" />
-      <FlashToast keyName="rolled_back" title="指定バージョンからロールバックしました。" />
+      <FlashToast
+        keyName="rolled_back"
+        title="指定バージョンからロールバックしました。"
+      />
 
       <Suspense fallback={<PageWorkspaceSkeleton />}>
         <PageWorkspaceData pageId={page_id} tenantPublicId={tenant_public_id} />

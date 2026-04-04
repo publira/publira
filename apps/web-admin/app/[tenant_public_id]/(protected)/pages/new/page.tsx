@@ -34,7 +34,11 @@ const PageFormSkeleton = () => (
 );
 
 const NewPageFormData = ({ tenantPublicId }: { tenantPublicId: string }) => (
-  <PageForm action={createPageAction} mode="create" tenantPublicId={tenantPublicId} />
+  <PageForm
+    action={createPageAction}
+    mode="create"
+    tenantPublicId={tenantPublicId}
+  />
 );
 
 export default async function NewPagePage({ params }: NewPagePageProps) {

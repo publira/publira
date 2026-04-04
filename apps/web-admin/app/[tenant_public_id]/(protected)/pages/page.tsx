@@ -32,7 +32,11 @@ const PageManagerSkeleton = () => (
   </div>
 );
 
-const PageManagerData = async ({ tenantPublicId }: { tenantPublicId: string }) => {
+const PageManagerData = async ({
+  tenantPublicId,
+}: {
+  tenantPublicId: string;
+}) => {
   const result = await listPages(tenantPublicId);
 
   return (

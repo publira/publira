@@ -39,13 +39,11 @@ export const formatPagePath = (slug: string): string => {
   return normalized || "/";
 };
 
-export type PageFormState =
-  | {
-      ok: false;
-      message: string;
-      mode: PageMutationMode;
-    }
-  | null;
+export type PageFormState = {
+  ok: false;
+  message: string;
+  mode: PageMutationMode;
+} | null;
 
 export type PageListItem = PageItem;
 export type PageVersionListItem = PageVersionItem;

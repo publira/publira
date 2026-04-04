@@ -36,8 +36,6 @@ describe("getDefaultComparisonVersionId", () => {
   it("公開版が先頭なら 2 件目を返す", () => {
     const versions = [{ id: "published" }, { id: "older" }];
 
-    expect(getDefaultComparisonVersionId("published", versions)).toBe(
-      "older"
-    );
+    expect(getDefaultComparisonVersionId("published", versions)).toBe("older");
   });
 });

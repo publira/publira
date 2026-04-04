@@ -17,7 +17,8 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
 
 import { formatPagePath, normalizePageSlugInput } from "../page-types";
 import type { PageFormState, PageListItem } from "../page-types";
@@ -50,6 +51,34 @@ export const PageForm = ({
   }, [initialPage?.slug, initialPage?.title, mode]);
 
   const isUpdate = mode === "update";
+  const handleSlugBlur = useCallback(() => {
+    setSlug((current) => normalizePageSlugInput(current));
+  }, []);
+  const handleSlugChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setSlug(event.target.value);
+    },
+    []
+  );
+  const handleTitleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setTitle(event.target.value);
+    },
+    []
+  );
+  const handleContentMarkdownChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setContentMarkdown(event.target.value);
+    },
+    []
+  );
+
+  let submitLabel = "ページを作成";
+  if (isPending) {
+    submitLabel = "送信中...";
+  } else if (isUpdate) {
+    submitLabel = "タイトルを更新";
+  }
 
   return (
     <Card>
@@ -67,22 +96,22 @@ export const PageForm = ({
           <input name="page_id" type="hidden" value={initialPage?.id ?? ""} />
 
           <Field>
-            <FieldLabel htmlFor="page_slug">
-              slug
-            </FieldLabel>
+            <FieldLabel htmlFor="page_slug">slug</FieldLabel>
             <FieldContent>
               <Input
                 disabled={isUpdate}
                 id="page_slug"
                 name="slug"
-                onBlur={() => setSlug((current) => normalizePageSlugInput(current))}
-                onChange={(event) => setSlug(event.target.value)}
+                onBlur={handleSlugBlur}
+                onChange={handleSlugChange}
                 placeholder="/privacy"
                 type="text"
                 value={slug}
               />
               <FieldDescription>
-                公開 URL は {formatPagePath(slug)} になります。空欄は /、それ以外は / で始まる半角小文字・数字・ハイフンを利用できます。
+                公開 URL は {formatPagePath(slug)} になります。空欄は
+                /、それ以外は /
+                で始まる半角小文字・数字・ハイフンを利用できます。
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -95,7 +124,7 @@ export const PageForm = ({
               <Input
                 id="page_title"
                 name="title"
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={handleTitleChange}
                 placeholder="プライバシーポリシー"
                 required
                 type="text"
@@ -104,14 +133,14 @@ export const PageForm = ({
             </FieldContent>
           </Field>
 
-          {!isUpdate ? (
+          {isUpdate ? null : (
             <Field>
               <FieldLabel htmlFor="page_content_markdown">本文</FieldLabel>
               <FieldContent>
                 <Textarea
                   id="page_content_markdown"
                   name="content_markdown"
-                  onChange={(event) => setContentMarkdown(event.target.value)}
+                  onChange={handleContentMarkdownChange}
                   placeholder="# プライバシーポリシー"
                   rows={16}
                   value={contentMarkdown}
@@ -121,7 +150,7 @@ export const PageForm = ({
                 </FieldDescription>
               </FieldContent>
             </Field>
-          ) : null}
+          )}
 
           {state ? (
             <FormMessage variant="destructive">{state.message}</FormMessage>
@@ -129,11 +158,7 @@ export const PageForm = ({
 
           <div className="flex justify-end">
             <Button disabled={isPending} type="submit">
-              {isPending
-                ? "送信中..."
-                : isUpdate
-                  ? "タイトルを更新"
-                  : "ページを作成"}
+              {submitLabel}
             </Button>
           </div>
         </form>

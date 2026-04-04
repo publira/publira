@@ -26,15 +26,19 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
 
-import { formatPageDateTime, formatPagePath } from "../page-types";
-import type { PageListItem, PageVersionListItem } from "../page-types";
-import type { PageFormState } from "../page-types";
 import {
   buildVersionDiff,
   getDefaultComparisonVersionId,
 } from "../_lib/version-diff";
+import { formatPageDateTime, formatPagePath } from "../page-types";
+import type {
+  PageFormState,
+  PageListItem,
+  PageVersionListItem,
+} from "../page-types";
 import { MarkdownPreview } from "./markdown-preview";
 
 interface PageWorkspaceProps {
@@ -64,6 +68,29 @@ const getVersionStatus = (
     return { label: "過去公開", tone: "warning" };
   }
   return { label: "下書き", tone: "muted" };
+};
+
+const getDiffLineDisplay = (line: {
+  type: "added" | "removed" | "unchanged";
+}) => {
+  if (line.type === "added") {
+    return {
+      className: "bg-emerald-500/10 text-emerald-700",
+      prefix: "+",
+    };
+  }
+
+  if (line.type === "removed") {
+    return {
+      className: "bg-rose-500/10 text-rose-700",
+      prefix: "-",
+    };
+  }
+
+  return {
+    className: "text-muted-foreground",
+    prefix: " ",
+  };
 };
 
 export const PageWorkspace = ({
@@ -110,6 +137,20 @@ export const PageWorkspace = ({
           compareVersion.contentMarkdown
         )
       : null;
+  const diffLineEntries = diffResult
+    ? (() => {
+        const counts = new Map<string, number>();
+        return diffResult.lines.map((line) => {
+          const fingerprint = `${line.type}:${line.value}`;
+          const count = counts.get(fingerprint) ?? 0;
+          counts.set(fingerprint, count + 1);
+          return {
+            key: `${fingerprint}:${count}`,
+            line,
+          };
+        });
+      })()
+    : [];
 
   const versionOptions = initialVersions.map((version) => {
     const status = getVersionStatus(initialPage, version);
@@ -122,18 +163,72 @@ export const PageWorkspace = ({
     (option) => option.value !== selectedVersionId
   );
 
+  const handleTitleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setTitle(event.target.value);
+    },
+    []
+  );
+  const handleDraftContentChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setDraftContent(event.target.value);
+    },
+    []
+  );
+  const handleLoadVersionClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const { versionId } = event.currentTarget.dataset;
+      if (!versionId) {
+        return;
+      }
+
+      const version = initialVersions.find((entry) => entry.id === versionId);
+      if (!version) {
+        return;
+      }
+
+      setDraftContent(version.contentMarkdown);
+      setSelectedVersionId(version.id);
+    },
+    [initialVersions]
+  );
+  const handleSelectedVersionChange = useCallback(
+    (nextValue: string | null) => {
+      if (!nextValue) {
+        return;
+      }
+
+      setSelectedVersionId(nextValue);
+      if (compareVersionId === nextValue) {
+        const fallbackCompareId = availableCompareOptions.find(
+          (option) => option.value !== nextValue
+        )?.value;
+        setCompareVersionId(fallbackCompareId ?? "");
+      }
+    },
+    [availableCompareOptions, compareVersionId]
+  );
+  const handleCompareVersionChange = useCallback((nextValue: string | null) => {
+    setCompareVersionId(nextValue ?? "");
+  }, []);
+
   return (
     <div className="grid gap-6">
       <Card>
         <CardHeader>
           <CardTitle>基本情報</CardTitle>
           <CardDescription>
-            公開 URL とタイトルを管理します。slug は公開導線に影響するため読み取り専用です。
+            公開 URL とタイトルを管理します。slug
+            は公開導線に影響するため読み取り専用です。
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={titleFormAction} className="grid gap-4">
-            <input name="tenant_public_id" type="hidden" value={tenantPublicId} />
+            <input
+              name="tenant_public_id"
+              type="hidden"
+              value={tenantPublicId}
+            />
             <input name="page_id" type="hidden" value={initialPage.id} />
             <input name="slug" type="hidden" value={initialPage.slug} />
 
@@ -159,7 +254,7 @@ export const PageWorkspace = ({
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs"
                     id="page_title_edit"
                     name="title"
-                    onChange={(event) => setTitle(event.target.value)}
+                    onChange={handleTitleChange}
                     required
                     type="text"
                     value={title}
@@ -178,7 +273,9 @@ export const PageWorkspace = ({
             </div>
 
             {titleState ? (
-              <FormMessage variant="destructive">{titleState.message}</FormMessage>
+              <FormMessage variant="destructive">
+                {titleState.message}
+              </FormMessage>
             ) : null}
 
             <div className="flex justify-end">
@@ -200,7 +297,11 @@ export const PageWorkspace = ({
           </CardHeader>
           <CardContent>
             <form action={draftFormAction} className="grid gap-4">
-              <input name="tenant_public_id" type="hidden" value={tenantPublicId} />
+              <input
+                name="tenant_public_id"
+                type="hidden"
+                value={tenantPublicId}
+              />
               <input name="page_id" type="hidden" value={initialPage.id} />
               <input name="title" type="hidden" value={initialPage.title} />
 
@@ -210,18 +311,21 @@ export const PageWorkspace = ({
                   <Textarea
                     id="page_content_markdown"
                     name="content_markdown"
-                    onChange={(event) => setDraftContent(event.target.value)}
+                    onChange={handleDraftContentChange}
                     rows={24}
                     value={draftContent}
                   />
                   <FieldDescription>
-                    見出し、リスト、引用、コードブロックを含む Markdown を入力できます。
+                    見出し、リスト、引用、コードブロックを含む Markdown
+                    を入力できます。
                   </FieldDescription>
                 </FieldContent>
               </Field>
 
               {draftState ? (
-                <FormMessage variant="destructive">{draftState.message}</FormMessage>
+                <FormMessage variant="destructive">
+                  {draftState.message}
+                </FormMessage>
               ) : null}
 
               <div className="flex justify-end">
@@ -255,7 +359,9 @@ export const PageWorkspace = ({
         </CardHeader>
         <CardContent>
           {initialVersions.length === 0 ? (
-            <FormMessage>まだバージョンがありません。まず下書きを保存してください。</FormMessage>
+            <FormMessage>
+              まだバージョンがありません。まず下書きを保存してください。
+            </FormMessage>
           ) : (
             <Table>
               <TableHeader>
@@ -279,15 +385,17 @@ export const PageWorkspace = ({
                       <TableCell>
                         <Badge tone={status.tone}>{status.label}</Badge>
                       </TableCell>
-                      <TableCell>{formatPageDateTime(version.createdAt)}</TableCell>
-                      <TableCell>{formatPageDateTime(version.publishedAt)}</TableCell>
+                      <TableCell>
+                        {formatPageDateTime(version.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        {formatPageDateTime(version.publishedAt)}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
                           <Button
-                            onClick={() => {
-                              setDraftContent(version.contentMarkdown);
-                              setSelectedVersionId(version.id);
-                            }}
+                            data-version-id={version.id}
+                            onClick={handleLoadVersionClick}
                             type="button"
                             variant="outline"
                           >
@@ -300,10 +408,20 @@ export const PageWorkspace = ({
                               type="hidden"
                               value={tenantPublicId}
                             />
-                            <input name="page_id" type="hidden" value={initialPage.id} />
-                            <input name="version_id" type="hidden" value={version.id} />
+                            <input
+                              name="page_id"
+                              type="hidden"
+                              value={initialPage.id}
+                            />
+                            <input
+                              name="version_id"
+                              type="hidden"
+                              value={version.id}
+                            />
                             <Button
-                              disabled={initialPage.publishedVersionId === version.id}
+                              disabled={
+                                initialPage.publishedVersionId === version.id
+                              }
                               type="submit"
                               variant="outline"
                             >
@@ -317,8 +435,16 @@ export const PageWorkspace = ({
                               type="hidden"
                               value={tenantPublicId}
                             />
-                            <input name="page_id" type="hidden" value={initialPage.id} />
-                            <input name="version_id" type="hidden" value={version.id} />
+                            <input
+                              name="page_id"
+                              type="hidden"
+                              value={initialPage.id}
+                            />
+                            <input
+                              name="version_id"
+                              type="hidden"
+                              value={version.id}
+                            />
                             <Button type="submit" variant="outline">
                               この版へロールバック
                             </Button>
@@ -344,7 +470,8 @@ export const PageWorkspace = ({
         <CardContent className="grid gap-4">
           {initialVersions.length <= 1 ? (
             <FormMessage>
-              差分の表示には 2 件以上のバージョンが必要です。下書きを保存すると履歴が増えます。
+              差分の表示には 2
+              件以上のバージョンが必要です。下書きを保存すると履歴が増えます。
             </FormMessage>
           ) : (
             <>
@@ -355,18 +482,7 @@ export const PageWorkspace = ({
                     <Select
                       id="page_diff_current"
                       items={versionOptions}
-                      onValueChange={(nextValue) => {
-                        if (!nextValue) {
-                          return;
-                        }
-                        setSelectedVersionId(nextValue);
-                        if (compareVersionId === nextValue) {
-                          const fallbackCompareId = availableCompareOptions.find(
-                            (option) => option.value !== nextValue
-                          )?.value;
-                          setCompareVersionId(fallbackCompareId ?? "");
-                        }
-                      }}
+                      onValueChange={handleSelectedVersionChange}
                       value={selectedVersionId}
                     />
                   </FieldContent>
@@ -378,9 +494,7 @@ export const PageWorkspace = ({
                     <Select
                       id="page_diff_previous"
                       items={availableCompareOptions}
-                      onValueChange={(nextValue) => {
-                        setCompareVersionId(nextValue ?? "");
-                      }}
+                      onValueChange={handleCompareVersionChange}
                       value={compareVersionId}
                     />
                   </FieldContent>
@@ -391,32 +505,25 @@ export const PageWorkspace = ({
                 <>
                   <div className="flex flex-wrap gap-2">
                     <Badge tone="info">追加 {diffResult.summary.added}</Badge>
-                    <Badge tone="warning">削除 {diffResult.summary.removed}</Badge>
-                    <Badge tone="muted">共通 {diffResult.summary.unchanged}</Badge>
+                    <Badge tone="warning">
+                      削除 {diffResult.summary.removed}
+                    </Badge>
+                    <Badge tone="muted">
+                      共通 {diffResult.summary.unchanged}
+                    </Badge>
                   </div>
 
                   <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
                     <div className="max-h-105 overflow-auto font-mono text-xs leading-6">
-                      {diffResult.lines.map((line, index) => {
-                        const prefix =
-                          line.type === "added"
-                            ? "+"
-                            : line.type === "removed"
-                              ? "-"
-                              : " ";
-                        const className =
-                          line.type === "added"
-                            ? "bg-emerald-500/10 text-emerald-700"
-                            : line.type === "removed"
-                              ? "bg-rose-500/10 text-rose-700"
-                              : "text-muted-foreground";
+                      {diffLineEntries.map(({ key, line }) => {
+                        const display = getDiffLineDisplay(line);
 
                         return (
                           <div
-                            className={`grid grid-cols-[24px_minmax(0,1fr)] gap-3 px-4 py-1 ${className}`}
-                            key={`${line.type}-${index}`}
+                            className={`grid grid-cols-[24px_minmax(0,1fr)] gap-3 px-4 py-1 ${display.className}`}
+                            key={key}
                           >
-                            <span>{prefix}</span>
+                            <span>{display.prefix}</span>
                             <span className="whitespace-pre-wrap wrap-break-word">
                               {line.value || " "}
                             </span>

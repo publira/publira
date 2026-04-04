@@ -27,7 +27,7 @@ export const getDefaultComparisonVersionId = (
     const publishedIndex = versions.findIndex(
       (version) => version.id === publishedVersionId
     );
-    if (publishedIndex >= 0) {
+    if (publishedIndex !== -1) {
       return versions[publishedIndex === 0 ? 1 : publishedIndex].id;
     }
   }
@@ -45,16 +45,19 @@ export const buildVersionDiff = (
     Array.from<number>({ length: nextLines.length + 1 }).fill(0)
   );
 
-  for (let previousIndex = previousLines.length - 1; previousIndex >= 0; previousIndex -= 1) {
+  for (
+    let previousIndex = previousLines.length - 1;
+    previousIndex >= 0;
+    previousIndex -= 1
+  ) {
     for (let nextIndex = nextLines.length - 1; nextIndex >= 0; nextIndex -= 1) {
-      if (previousLines[previousIndex] === nextLines[nextIndex]) {
-        matrix[previousIndex][nextIndex] = matrix[previousIndex + 1][nextIndex + 1] + 1;
-      } else {
-        matrix[previousIndex][nextIndex] = Math.max(
-          matrix[previousIndex + 1][nextIndex],
-          matrix[previousIndex][nextIndex + 1]
-        );
-      }
+      matrix[previousIndex][nextIndex] =
+        previousLines[previousIndex] === nextLines[nextIndex]
+          ? matrix[previousIndex + 1][nextIndex + 1] + 1
+          : Math.max(
+              matrix[previousIndex + 1][nextIndex],
+              matrix[previousIndex][nextIndex + 1]
+            );
     }
   }
 
@@ -70,7 +73,10 @@ export const buildVersionDiff = (
       continue;
     }
 
-    if (matrix[previousIndex + 1][nextIndex] >= matrix[previousIndex][nextIndex + 1]) {
+    if (
+      matrix[previousIndex + 1][nextIndex] >=
+      matrix[previousIndex][nextIndex + 1]
+    ) {
       lines.push({ type: "removed", value: previousLines[previousIndex] });
       previousIndex += 1;
       continue;
