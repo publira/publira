@@ -169,6 +169,7 @@ type PageVersion struct {
 	PublishAt       sql.NullTime  `json:"publish_at"`
 	CreatedAt       time.Time     `json:"created_at"`
 	PublishedAt     sql.NullTime  `json:"published_at"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
 }
 
 type PlatformAuditLog struct {

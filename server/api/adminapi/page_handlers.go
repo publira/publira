@@ -286,6 +286,7 @@ func (s *adminServer) CreateVersion(
 		ContentMarkdown: req.Msg.ContentMarkdown,
 	}
 	params.AuthorUserID = uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true}
+		params.TenantID = tenant.ID
 	version, err := s.queriesFor(ctx).CreatePageVersion(ctx, params)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

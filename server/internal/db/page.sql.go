@@ -7,6 +7,8 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -46,14 +48,15 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, e
 }
 
 const createPageVersion = `-- name: CreatePageVersion :one
-INSERT INTO page_versions (id, page_id, version_number, content_markdown, author_user_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at
+INSERT INTO page_versions (id, page_id, tenant_id, version_number, content_markdown, author_user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id
 `
 
 type CreatePageVersionParams struct {
 	ID              uuid.UUID     `json:"id"`
 	PageID          uuid.UUID     `json:"page_id"`
+	TenantID        uuid.UUID     `json:"tenant_id"`
 	VersionNumber   int32         `json:"version_number"`
 	ContentMarkdown string        `json:"content_markdown"`
 	AuthorUserID    uuid.NullUUID `json:"author_user_id"`
@@ -64,6 +67,7 @@ func (q *Queries) CreatePageVersion(ctx context.Context, arg CreatePageVersionPa
 	row := q.db.QueryRowContext(ctx, createPageVersion,
 		arg.ID,
 		arg.PageID,
+		arg.TenantID,
 		arg.VersionNumber,
 		arg.ContentMarkdown,
 		arg.AuthorUserID,
@@ -79,6 +83,7 @@ func (q *Queries) CreatePageVersion(ctx context.Context, arg CreatePageVersionPa
 		&i.PublishAt,
 		&i.CreatedAt,
 		&i.PublishedAt,
+		&i.TenantID,
 	)
 	return i, err
 }
@@ -124,7 +129,7 @@ func (q *Queries) GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTe
 }
 
 const getPageVersionByIDForPage = `-- name: GetPageVersionByIDForPage :one
-SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at FROM page_versions
+SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id FROM page_versions
 WHERE id = $1 AND page_id = $2
 `
 
@@ -147,12 +152,89 @@ func (q *Queries) GetPageVersionByIDForPage(ctx context.Context, arg GetPageVers
 		&i.PublishAt,
 		&i.CreatedAt,
 		&i.PublishedAt,
+		&i.TenantID,
+	)
+	return i, err
+}
+
+const getPublishedPageBySlugForTenant = `-- name: GetPublishedPageBySlugForTenant :one
+SELECT p.id,
+	p.tenant_id,
+	p.slug,
+	p.title,
+	p.published_version_id,
+	p.created_at,
+	p.updated_at,
+	pv.id AS version_id,
+	pv.page_id,
+	pv.version_number,
+	pv.content_markdown,
+	pv.author_user_id,
+	pv.status,
+	pv.publish_at,
+	pv.created_at AS version_created_at,
+	pv.published_at
+FROM pages p
+	JOIN page_versions pv ON pv.id = p.published_version_id
+WHERE p.tenant_id = $1
+	AND p.slug = $2
+	AND pv.status = 'published'
+	AND pv.published_at IS NOT NULL
+	AND pv.published_at <= NOW()
+LIMIT 1
+`
+
+type GetPublishedPageBySlugForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Slug     string    `json:"slug"`
+}
+
+type GetPublishedPageBySlugForTenantRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	Slug               string        `json:"slug"`
+	Title              string        `json:"title"`
+	PublishedVersionID uuid.NullUUID `json:"published_version_id"`
+	CreatedAt          time.Time     `json:"created_at"`
+	UpdatedAt          time.Time     `json:"updated_at"`
+	VersionID          uuid.UUID     `json:"version_id"`
+	PageID             uuid.UUID     `json:"page_id"`
+	VersionNumber      int32         `json:"version_number"`
+	ContentMarkdown    string        `json:"content_markdown"`
+	AuthorUserID       uuid.NullUUID `json:"author_user_id"`
+	Status             string        `json:"status"`
+	PublishAt          sql.NullTime  `json:"publish_at"`
+	VersionCreatedAt   time.Time     `json:"version_created_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+}
+
+// テナントの公開中ページをslugで取得する
+func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedPageBySlugForTenant, arg.TenantID, arg.Slug)
+	var i GetPublishedPageBySlugForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Slug,
+		&i.Title,
+		&i.PublishedVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VersionID,
+		&i.PageID,
+		&i.VersionNumber,
+		&i.ContentMarkdown,
+		&i.AuthorUserID,
+		&i.Status,
+		&i.PublishAt,
+		&i.VersionCreatedAt,
+		&i.PublishedAt,
 	)
 	return i, err
 }
 
 const listPageVersionsByPageID = `-- name: ListPageVersionsByPageID :many
-SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at FROM page_versions
+SELECT id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id FROM page_versions
 WHERE page_id = $1
 ORDER BY version_number DESC
 `
@@ -177,6 +259,7 @@ func (q *Queries) ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID
 			&i.PublishAt,
 			&i.CreatedAt,
 			&i.PublishedAt,
+			&i.TenantID,
 		); err != nil {
 			return nil, err
 		}
@@ -229,11 +312,54 @@ func (q *Queries) ListPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([
 	return items, nil
 }
 
+const listPublishedPagesForTenant = `-- name: ListPublishedPagesForTenant :many
+SELECT p.id, p.tenant_id, p.slug, p.title, p.published_version_id, p.created_at, p.updated_at
+FROM pages p
+	JOIN page_versions pv ON pv.id = p.published_version_id
+WHERE p.tenant_id = $1
+	AND pv.status = 'published'
+	AND pv.published_at IS NOT NULL
+	AND pv.published_at <= NOW()
+ORDER BY p.created_at ASC
+`
+
+// テナントの公開中ページ一覧を取得する
+func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedPagesForTenant, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Page
+	for rows.Next() {
+		var i Page
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Slug,
+			&i.Title,
+			&i.PublishedVersionID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const publishPageVersion = `-- name: PublishPageVersion :one
 UPDATE page_versions
 SET status = 'published', published_at = NOW()
 WHERE id = $1 AND page_id = $2
-RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at
+RETURNING id, page_id, version_number, content_markdown, author_user_id, status, publish_at, created_at, published_at, tenant_id
 `
 
 type PublishPageVersionParams struct {
@@ -255,6 +381,7 @@ func (q *Queries) PublishPageVersion(ctx context.Context, arg PublishPageVersion
 		&i.PublishAt,
 		&i.CreatedAt,
 		&i.PublishedAt,
+		&i.TenantID,
 	)
 	return i, err
 }

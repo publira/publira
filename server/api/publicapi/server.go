@@ -87,6 +87,8 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 
 	path, handler := publirav1connect.NewCatalogServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(path, handler)
+	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	mux.Handle(pagesPath, pagesHandler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(authPath, authHandler)
 	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server, connect.WithInterceptors(tenantScoped))
