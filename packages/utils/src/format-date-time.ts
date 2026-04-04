@@ -2,6 +2,8 @@ interface FormatDateTimeOptions {
   fallback?: string;
 }
 
+const DISPLAY_TIME_ZONE = "Asia/Tokyo";
+
 export const formatDateTime = (
   value: string,
   options?: FormatDateTimeOptions
@@ -20,5 +22,6 @@ export const formatDateTime = (
   return new Intl.DateTimeFormat("ja-JP", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: DISPLAY_TIME_ZONE,
   }).format(date);
 };
