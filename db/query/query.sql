@@ -1652,6 +1652,46 @@ ON CONFLICT (user_id) DO UPDATE
 SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
     updated_at = NOW()
 RETURNING *;
+
+-- name: ListNotificationsForUser :many
+-- 通知一覧を取得（既読状態付き）
+SELECT
+    n.*,
+    (nr.notification_id IS NOT NULL) AS is_read,
+    nr.read_at
+FROM notifications n
+    LEFT JOIN notification_reads nr ON nr.notification_id = n.id
+    AND nr.user_id = $2
+WHERE n.tenant_id = $1
+    AND (n.target_user_id IS NULL OR n.target_user_id = $2)
+ORDER BY n.created_at DESC
+LIMIT $3 OFFSET $4;
+
+-- name: MarkNotificationAsRead :one
+-- 指定した通知を既読にする（未読時は新規作成、既読済みなら時刻更新）
+INSERT INTO notification_reads (notification_id, user_id, read_at)
+SELECT n.id, $3, NOW()
+FROM notifications n
+WHERE n.id = $1
+    AND n.tenant_id = $2
+    AND (n.target_user_id IS NULL OR n.target_user_id = $3)
+ON CONFLICT (notification_id, user_id) DO UPDATE
+SET read_at = EXCLUDED.read_at
+RETURNING *;
+
+-- name: MarkAllNotificationsAsRead :execrows
+-- 指定ユーザーの未読通知を一括既読化
+INSERT INTO notification_reads (notification_id, user_id, read_at)
+SELECT n.id, $2, NOW()
+FROM notifications n
+WHERE n.tenant_id = $1
+    AND (n.target_user_id IS NULL OR n.target_user_id = $2)
+    AND NOT EXISTS (
+        SELECT 1
+        FROM notification_reads nr
+        WHERE nr.notification_id = n.id
+            AND nr.user_id = $2
+    );
 -- name: CountPublishedSeriesForTenant :one
 -- テナントの公開中シリーズ数を取得する（ダッシュボード用）
 SELECT COUNT(*)::int AS published_series_count

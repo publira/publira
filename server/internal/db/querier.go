@@ -139,6 +139,8 @@ type Querier interface {
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
 	ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error)
+	// 通知一覧を取得（既読状態付き）
+	ListNotificationsForUser(ctx context.Context, arg ListNotificationsForUserParams) ([]ListNotificationsForUserRow, error)
 	// ページのバージョン一覧を新しい順に取得する
 	ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error)
 	// テナントのページ一覧を取得する（作成日昇順）
@@ -161,7 +163,11 @@ type Querier interface {
 	ListTenantUsers(ctx context.Context, arg ListTenantUsersParams) ([]ListTenantUsersRow, error)
 	// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
+	// 指定ユーザーの未読通知を一括既読化
+	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
+	// 指定した通知を既読にする（未読時は新規作成、既読済みなら時刻更新）
+	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
 	MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error

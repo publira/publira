@@ -3598,6 +3598,82 @@ func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenant
 	return items, nil
 }
 
+const listNotificationsForUser = `-- name: ListNotificationsForUser :many
+SELECT
+    n.id, n.tenant_id, n.target_user_id, n.notification_type, n.title, n.body, n.link_url, n.metadata, n.created_at,
+    (nr.notification_id IS NOT NULL) AS is_read,
+    nr.read_at
+FROM notifications n
+    LEFT JOIN notification_reads nr ON nr.notification_id = n.id
+    AND nr.user_id = $2
+WHERE n.tenant_id = $1
+    AND (n.target_user_id IS NULL OR n.target_user_id = $2)
+ORDER BY n.created_at DESC
+LIMIT $3 OFFSET $4
+`
+
+type ListNotificationsForUserParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+type ListNotificationsForUserRow struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	TargetUserID     uuid.NullUUID   `json:"target_user_id"`
+	NotificationType string          `json:"notification_type"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
+	LinkUrl          sql.NullString  `json:"link_url"`
+	Metadata         json.RawMessage `json:"metadata"`
+	CreatedAt        time.Time       `json:"created_at"`
+	IsRead           interface{}     `json:"is_read"`
+	ReadAt           sql.NullTime    `json:"read_at"`
+}
+
+// 通知一覧を取得（既読状態付き）
+func (q *Queries) ListNotificationsForUser(ctx context.Context, arg ListNotificationsForUserParams) ([]ListNotificationsForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, listNotificationsForUser,
+		arg.TenantID,
+		arg.UserID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNotificationsForUserRow
+	for rows.Next() {
+		var i ListNotificationsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.TargetUserID,
+			&i.NotificationType,
+			&i.Title,
+			&i.Body,
+			&i.LinkUrl,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.IsRead,
+			&i.ReadAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlatformOperators = `-- name: ListPlatformOperators :many
 SELECT pu.public_id,
     pu.email,
@@ -4322,6 +4398,34 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 	return items, nil
 }
 
+const markAllNotificationsAsRead = `-- name: MarkAllNotificationsAsRead :execrows
+INSERT INTO notification_reads (notification_id, user_id, read_at)
+SELECT n.id, $2, NOW()
+FROM notifications n
+WHERE n.tenant_id = $1
+    AND (n.target_user_id IS NULL OR n.target_user_id = $2)
+    AND NOT EXISTS (
+        SELECT 1
+        FROM notification_reads nr
+        WHERE nr.notification_id = n.id
+            AND nr.user_id = $2
+    )
+`
+
+type MarkAllNotificationsAsReadParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// 指定ユーザーの未読通知を一括既読化
+func (q *Queries) MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markAllNotificationsAsRead, arg.TenantID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const markEpisodePublished = `-- name: MarkEpisodePublished :exec
 UPDATE episode_listings
 SET status = 'published',
@@ -4332,6 +4436,32 @@ WHERE episode_id = $1
 func (q *Queries) MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, markEpisodePublished, episodeID)
 	return err
+}
+
+const markNotificationAsRead = `-- name: MarkNotificationAsRead :one
+INSERT INTO notification_reads (notification_id, user_id, read_at)
+SELECT n.id, $3, NOW()
+FROM notifications n
+WHERE n.id = $1
+    AND n.tenant_id = $2
+    AND (n.target_user_id IS NULL OR n.target_user_id = $3)
+ON CONFLICT (notification_id, user_id) DO UPDATE
+SET read_at = EXCLUDED.read_at
+RETURNING notification_id, user_id, read_at
+`
+
+type MarkNotificationAsReadParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// 指定した通知を既読にする（未読時は新規作成、既読済みなら時刻更新）
+func (q *Queries) MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error) {
+	row := q.db.QueryRowContext(ctx, markNotificationAsRead, arg.ID, arg.TenantID, arg.UserID)
+	var i NotificationRead
+	err := row.Scan(&i.NotificationID, &i.UserID, &i.ReadAt)
+	return i, err
 }
 
 const markPlatformUserEmailChangeCompleted = `-- name: MarkPlatformUserEmailChangeCompleted :exec

@@ -6,6 +6,7 @@ package dbmodels
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -128,6 +129,24 @@ type LabelImageVariant struct {
 	Width           int32     `json:"width"`
 	Height          int32     `json:"height"`
 	CreatedAt       time.Time `json:"created_at"`
+}
+
+type Notification struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	TargetUserID     uuid.NullUUID   `json:"target_user_id"`
+	NotificationType string          `json:"notification_type"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
+	LinkUrl          sql.NullString  `json:"link_url"`
+	Metadata         json.RawMessage `json:"metadata"`
+	CreatedAt        time.Time       `json:"created_at"`
+}
+
+type NotificationRead struct {
+	NotificationID uuid.UUID `json:"notification_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	ReadAt         time.Time `json:"read_at"`
 }
 
 type Page struct {
