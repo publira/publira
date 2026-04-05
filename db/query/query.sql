@@ -956,10 +956,10 @@ SET synopsis = EXCLUDED.synopsis,
 RETURNING *;
 -- name: UpdateSeriesPublication :exec
 UPDATE series
-SET is_published = $2,
-    published_at = CASE
-        WHEN $2 THEN COALESCE(published_at, NOW())
-        ELSE NULL
+SET published_at = $2::timestamptz,
+    is_published = CASE
+        WHEN $2::timestamptz IS NULL THEN false
+        ELSE true
     END,
     updated_at = NOW()
 WHERE id = $1;

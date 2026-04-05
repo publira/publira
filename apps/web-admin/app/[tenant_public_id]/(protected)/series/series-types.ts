@@ -7,6 +7,7 @@ export interface SeriesListItem {
   title: string;
   synopsis: string;
   readingPeriodHours: number;
+  publishedAt: string;
   labelPublicId: string;
   labelName: string;
   creatorNames: string[];

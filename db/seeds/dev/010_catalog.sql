@@ -89,12 +89,12 @@ SELECT
     UPPER(SUBSTRING(REPLACE(ss.id::text, '-', '') FROM 1 FOR 12)),
     FORMAT('Seed Series %s', LPAD(ss.n::text, 3, '0')),
     true,
-    NOW()
-    - make_interval(
-        days => 30 + (GET_BYTE(DECODE(MD5(ss.id::text), 'hex'), 0) % 120),
-        hours => GET_BYTE(DECODE(MD5(ss.id::text), 'hex'), 1) % 24,
-        mins => GET_BYTE(DECODE(MD5(ss.id::text), 'hex'), 2) % 60
-    )
+    (
+        date_trunc('day', NOW() AT TIME ZONE 'Asia/Tokyo')
+        + make_interval(
+            days => (GET_BYTE(DECODE(MD5(ss.id::text), 'hex'), 0) % 101) - 50
+        )
+    ) AT TIME ZONE 'Asia/Tokyo'
 FROM series_seed ss
 JOIN label_pool lp ON lp.label_no = ss.label_no
 CROSS JOIN tenant_scope ts
@@ -242,3 +242,9 @@ SET price = EXCLUDED.price,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
+
+UPDATE series
+SET is_published = (published_at IS NOT NULL),
+        updated_at = NOW()
+WHERE title LIKE 'Seed Series %'
+    AND is_published IS DISTINCT FROM (published_at IS NOT NULL);

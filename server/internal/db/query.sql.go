@@ -5058,22 +5058,22 @@ func (q *Queries) UpdateSeriesEyeCatchImageID(ctx context.Context, arg UpdateSer
 
 const updateSeriesPublication = `-- name: UpdateSeriesPublication :exec
 UPDATE series
-SET is_published = $2,
-    published_at = CASE
-        WHEN $2 THEN COALESCE(published_at, NOW())
-        ELSE NULL
+SET published_at = $2::timestamptz,
+    is_published = CASE
+	WHEN $2::timestamptz IS NULL THEN false
+        ELSE true
     END,
     updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateSeriesPublicationParams struct {
-	ID          uuid.UUID `json:"id"`
-	IsPublished bool      `json:"is_published"`
+	ID          uuid.UUID    `json:"id"`
+	PublishedAt sql.NullTime `json:"published_at"`
 }
 
 func (q *Queries) UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error {
-	_, err := q.db.ExecContext(ctx, updateSeriesPublication, arg.ID, arg.IsPublished)
+	_, err := q.db.ExecContext(ctx, updateSeriesPublication, arg.ID, arg.PublishedAt)
 	return err
 }
 

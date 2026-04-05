@@ -112,6 +112,11 @@ export const SeriesEyeCatchForm = ({
             value={initialSeries.labelPublicId}
           />
           <input
+            name="published_at"
+            type="hidden"
+            value={initialSeries.publishedAt}
+          />
+          <input
             name="current_eye_catch_image_updated_at"
             type="hidden"
             value={effectiveSeries.eyeCatchImageUpdatedAt}

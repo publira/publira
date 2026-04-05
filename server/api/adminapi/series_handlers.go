@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -21,6 +22,18 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
+
+func parsePublishedAtOrZero(value string) (sql.NullTime, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return sql.NullTime{}, nil
+	}
+	t, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, errors.New("published_at must be RFC3339"))
+	}
+	return sql.NullTime{Time: t.UTC(), Valid: true}, nil
+}
 
 type normalizedEyeCatchImage struct {
 	ContentType string
@@ -305,6 +318,13 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, err
 	}
+	publishedAt, err := parsePublishedAtOrZero(req.Msg.PublishedAt)
+	if err != nil {
+		return nil, err
+	}
+	if !publishedAt.Valid && req.Msg.IsPublished {
+		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
+	}
 	labelID := uuid.NullUUID{}
 	if strings.TrimSpace(req.Msg.LabelPublicId) != "" {
 		label, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.LabelPublicId})
@@ -337,7 +357,7 @@ func (s *adminServer) CreateSeries(
 	}
 	err = s.queriesFor(ctx).UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          base.ID,
-		IsPublished: req.Msg.IsPublished,
+		PublishedAt: publishedAt,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -370,7 +390,7 @@ func (s *adminServer) CreateSeries(
 			ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 		})
 	}
-	if req.Msg.IsPublished && s.reval != nil {
+	if publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC()) && s.reval != nil {
 		if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, seriesRevalidateTags(tenant.PublicID, base.PublicID)); err != nil {
 			s.logger.Warn("failed to request next revalidate after series create", "tenant_public_id", tenant.PublicID, "series_public_id", base.PublicID, "error", err)
 		}
@@ -412,6 +432,13 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
+	publishedAt, err := parsePublishedAtOrZero(req.Msg.PublishedAt)
+	if err != nil {
+		return nil, err
+	}
+	if !publishedAt.Valid && req.Msg.IsPublished {
+		publishedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
+	}
 	current, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -449,7 +476,7 @@ func (s *adminServer) UpdateSeries(
 	}
 	err = s.queriesFor(ctx).UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,
-		IsPublished: req.Msg.IsPublished,
+		PublishedAt: publishedAt,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -493,7 +520,7 @@ func (s *adminServer) UpdateSeries(
 		})
 	}
 	if s.reval != nil {
-		if current.IsPublished || req.Msg.IsPublished {
+		if current.IsPublished || (publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC())) {
 			if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, seriesRevalidateTags(tenant.PublicID, current.PublicID)); err != nil {
 				s.logger.Warn("failed to request next revalidate after series update", "tenant_public_id", tenant.PublicID, "series_public_id", current.PublicID, "error", err)
 			}
@@ -537,7 +564,7 @@ func (s *adminServer) ListSeries(
 	itemByID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	for _, row := range rows {
-		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
+		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title, IsPublished: row.IsPublished}
 		if row.LabelPublicID.Valid {
 			item.Label = protomapper.Label(row.LabelPublicID.String, row.LabelName.String)
 		}
@@ -553,6 +580,9 @@ func (s *adminServer) ListSeries(
 		}
 		if row.EyeCatchImageUpdatedAt.Valid {
 			item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
+		}
+		if row.PublishedAt.Valid {
+			item.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
 		}
 		seriesIDs = append(seriesIDs, row.ID)
 		itemByID[row.ID] = item

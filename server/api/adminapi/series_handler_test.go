@@ -69,6 +69,9 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	if resp.Msg.Series[0].PublicId != "SERIES001" {
 		t.Fatalf("series public_id = %q, want SERIES001", resp.Msg.Series[0].PublicId)
 	}
+	if !resp.Msg.Series[0].IsPublished {
+		t.Fatalf("series is_published = %v, want true", resp.Msg.Series[0].IsPublished)
+	}
 	assertExpectations(t, mock)
 }
 
@@ -123,7 +126,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
-		WithArgs(seriesID, true).
+		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
@@ -205,7 +208,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
-		WithArgs(seriesID, true).
+		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM series_creators").
 		WithArgs(seriesID).
@@ -237,6 +240,9 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	if resp.Msg.Series.Title != "After" {
 		t.Fatalf("series title = %q, want After", resp.Msg.Series.Title)
 	}
+	if !resp.Msg.Series.IsPublished {
+		t.Fatalf("series is_published = %v, want true", resp.Msg.Series.IsPublished)
+	}
 	assertExpectations(t, mock)
 }
 
@@ -265,7 +271,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 			AddRow(seriesID, "Synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
-		WithArgs(seriesID, true).
+		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectQuery("FROM creators").
@@ -338,7 +344,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 			AddRow(seriesID, "New synopsis", nil, nil, nil, tenantID))
 
 	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
-		WithArgs(seriesID, true).
+		WithArgs(seriesID, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectExec("DELETE FROM series_creators").

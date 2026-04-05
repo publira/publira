@@ -148,6 +148,7 @@ export default async function EditSeriesPage({
       title={pageTitle}
     >
       <FlashToast title="シリーズを作成しました。" />
+      <FlashToast keyName="updated" title="シリーズを更新しました。" />
       <div className="grid gap-6">
         <SeriesTabNav current={activeTab} seriesId={series_id} />
         <Suspense fallback={<EditSeriesFormSkeleton />}>

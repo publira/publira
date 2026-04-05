@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDateTime } from "@publira/utils";
 import { useMemo } from "react";
 
 import type { SeriesListItem } from "../series-types";
@@ -50,6 +51,19 @@ export const SeriesManager = ({
   const sortedSeries = useMemo(
     () =>
       initialSeries.toSorted((a, b) => {
+        if (a.publishedAt && b.publishedAt) {
+          const publishedAtDiff =
+            new Date(b.publishedAt).getTime() -
+            new Date(a.publishedAt).getTime();
+          if (publishedAtDiff !== 0) {
+            return publishedAtDiff;
+          }
+        }
+
+        if (a.publishedAt !== b.publishedAt) {
+          return a.publishedAt ? -1 : 1;
+        }
+
         if (a.isPublished !== b.isPublished) {
           return a.isPublished ? -1 : 1;
         }
@@ -90,6 +104,7 @@ export const SeriesManager = ({
               <TableRow>
                 <TableHead>タイトル</TableHead>
                 <TableHead>レーベル</TableHead>
+                <TableHead className="w-44">公開日</TableHead>
                 <TableHead className="w-40">閲覧可能期間</TableHead>
                 <TableHead>概要</TableHead>
                 <TableHead className="w-32">状態</TableHead>
@@ -101,6 +116,9 @@ export const SeriesManager = ({
                 <TableRow key={series.publicId}>
                   <TableCell className="font-medium">{series.title}</TableCell>
                   <TableCell>{series.labelName || "-"}</TableCell>
+                  <TableCell>
+                    {formatDateTime(series.publishedAt, { fallback: "-" })}
+                  </TableCell>
                   <TableCell>{series.readingPeriodHours}</TableCell>
                   <TableCell>{excerpt(series.synopsis)}</TableCell>
                   <TableCell>

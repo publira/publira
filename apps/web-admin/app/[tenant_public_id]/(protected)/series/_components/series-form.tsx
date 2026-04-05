@@ -63,6 +63,19 @@ const getSubmitLabel = (
   return mode === "update" ? "シリーズを更新" : "シリーズを作成";
 };
 
+const padTwoDigits = (num: number) => String(num).padStart(2, "0");
+
+const toDateTimeLocalValue = (value: string): string => {
+  if (!value.trim()) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return `${date.getFullYear()}-${padTwoDigits(date.getMonth() + 1)}-${padTwoDigits(date.getDate())}T${padTwoDigits(date.getHours())}:${padTwoDigits(date.getMinutes())}`;
+};
+
 interface CreatorFieldProps {
   creatorItems: MultiComboboxItem[];
   creatorsErrorMessage?: string;
@@ -436,15 +449,22 @@ export const SeriesForm = ({
               useLabelFallbackInput={useLabelFallbackInput}
             />
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                className="h-4 w-4 rounded border-input"
-                defaultChecked={initialSeries?.isPublished ?? false}
-                name="is_published"
-                type="checkbox"
-              />
-              公開する
-            </label>
+            <Field>
+              <FieldLabel htmlFor="series_published_at">公開日時</FieldLabel>
+              <FieldContent>
+                <Input
+                  defaultValue={toDateTimeLocalValue(
+                    initialSeries?.publishedAt ?? ""
+                  )}
+                  id="series_published_at"
+                  name="published_at"
+                  type="datetime-local"
+                />
+                <FieldDescription>
+                  空欄の場合は非公開です。日時を設定するとその時刻以降に公開されます。
+                </FieldDescription>
+              </FieldContent>
+            </Field>
           </div>
 
           {!isUpdate && (
