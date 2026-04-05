@@ -3,6 +3,7 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -119,21 +120,35 @@ const AuthorsListData = async ({
             href={`/authors/${author.id}`}
             className="group overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm transition hover:shadow-md"
           >
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-primary">
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            {author.iconImageUrl ? (
+              <div className="mb-4 h-12 w-12 overflow-hidden rounded-full border border-border/60 bg-muted/20">
+                <Image
+                  alt={`${author.name} のアイコン`}
+                  className="h-full w-full object-cover"
+                  decoding="async"
+                  height={48}
+                  src={author.iconImageUrl}
+                  unoptimized
+                  width={48}
                 />
-              </svg>
-            </div>
+              </div>
+            ) : (
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-primary">
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+            )}
             <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
               {author.name}
             </h2>

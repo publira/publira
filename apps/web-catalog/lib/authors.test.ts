@@ -25,11 +25,13 @@ describe("authors", () => {
         creatorNames: ["山田 太郎", "鈴木 花子", "山田 太郎"],
         creators: [
           {
+            iconImageUrl: "/images/creators/creator-yamada",
             name: "山田 太郎",
             profileText: "",
             publicId: "CREATOR_YAMADA",
           },
           {
+            iconImageUrl: "",
             name: "鈴木 花子",
             profileText: "",
             publicId: "CREATOR_SUZUKI",
@@ -43,7 +45,12 @@ describe("authors", () => {
       {
         creatorNames: ["山田 太郎"],
         creators: [
-          { name: "山田 太郎", profileText: "", publicId: "CREATOR_YAMADA" },
+          {
+            iconImageUrl: "/images/creators/creator-yamada",
+            name: "山田 太郎",
+            profileText: "",
+            publicId: "CREATOR_YAMADA",
+          },
         ],
         labelName: "",
         publicId: "SERIES_2",
@@ -60,8 +67,12 @@ describe("authors", () => {
     expect(mockListPublishedSeries).toHaveBeenCalledWith("TENANT_1", 50, 0);
     expect(result.authors).toHaveLength(2);
     expect(result.authors[0]?.id).toBe("CREATOR_YAMADA");
+    expect(result.authors[0]?.iconImageUrl).toBe(
+      "/images/creators/creator-yamada"
+    );
     expect(result.authors[0]?.name).toBe("山田 太郎");
     expect(result.authors[0]?.seriesCount).toBe(2);
+    expect(result.authors[1]?.iconImageUrl).toBe("");
     expect(result.authors[1]?.name).toBe("鈴木 花子");
     expect(result.authors[1]?.seriesCount).toBe(1);
     expect(result.hasNextPage).toBe(false);
@@ -71,7 +82,14 @@ describe("authors", () => {
     mockListPublishedSeries.mockResolvedValueOnce([
       {
         creatorNames: ["著者A"],
-        creators: [{ name: "著者A", profileText: "", publicId: "CREATOR_A" }],
+        creators: [
+          {
+            iconImageUrl: "",
+            name: "著者A",
+            profileText: "",
+            publicId: "CREATOR_A",
+          },
+        ],
         labelName: "",
         publicId: "SERIES_1",
         synopsis: "",
@@ -79,7 +97,14 @@ describe("authors", () => {
       },
       {
         creatorNames: ["著者B"],
-        creators: [{ name: "著者B", profileText: "", publicId: "CREATOR_B" }],
+        creators: [
+          {
+            iconImageUrl: "",
+            name: "著者B",
+            profileText: "",
+            publicId: "CREATOR_B",
+          },
+        ],
         labelName: "",
         publicId: "SERIES_2",
         synopsis: "",
@@ -87,7 +112,14 @@ describe("authors", () => {
       },
       {
         creatorNames: ["著者C"],
-        creators: [{ name: "著者C", profileText: "", publicId: "CREATOR_C" }],
+        creators: [
+          {
+            iconImageUrl: "",
+            name: "著者C",
+            profileText: "",
+            publicId: "CREATOR_C",
+          },
+        ],
         labelName: "",
         publicId: "SERIES_3",
         synopsis: "",
@@ -112,11 +144,17 @@ describe("authors", () => {
         creatorNames: ["著者A", "著者B"],
         creators: [
           {
+            iconImageUrl: "/images/creators/creator-a",
             name: "著者A",
             profileText: "著者Aのプロフィール",
             publicId: "CREATOR_A",
           },
-          { name: "著者B", profileText: "", publicId: "CREATOR_B" },
+          {
+            iconImageUrl: "",
+            name: "著者B",
+            profileText: "",
+            publicId: "CREATOR_B",
+          },
         ],
         labelName: "",
         publicId: "SERIES_1",
@@ -127,6 +165,7 @@ describe("authors", () => {
         creatorNames: ["著者A"],
         creators: [
           {
+            iconImageUrl: "/images/creators/creator-a",
             name: "著者A",
             profileText: "別シリーズのプロフィール",
             publicId: "CREATOR_A",
@@ -141,6 +180,7 @@ describe("authors", () => {
 
     const detail = await getPublishedAuthorDetail("TENANT_1", authorId);
 
+    expect(detail?.iconImageUrl).toBe("/images/creators/creator-a");
     expect(detail?.name).toBe("著者A");
     expect(detail?.profileText).toBe("著者Aのプロフィール");
     expect(detail?.series).toEqual([

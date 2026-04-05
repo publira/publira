@@ -26,7 +26,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantID, int32(20), int32(0)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}).
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -40,6 +40,9 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	}
 	if resp.Msg.Series[0].PublicId != "SERIESPUB" {
 		t.Fatalf("series public_id = %q, want SERIESPUB", resp.Msg.Series[0].PublicId)
+	}
+	if len(resp.Msg.Series[0].Creators) != 1 || resp.Msg.Series[0].Creators[0].IconImageUrl == "" {
+		t.Fatalf("series creators = %+v, want creator icon_image_url", resp.Msg.Series[0].Creators)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -165,7 +168,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 				"Public Synopsis",
 				true,
 				now,
-				[]byte(`[{"name":"Author A","role":"writer"}]`),
+				[]byte(`[{"name":"Author A","role":"writer","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
 				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z"}]`),
 			))
 
@@ -189,6 +192,9 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	}
 	if len(resp.Msg.Series.Creators) != 1 || resp.Msg.Series.Creators[0].Name != "Author A" {
 		t.Fatalf("series creators = %+v, want one creator Author A", resp.Msg.Series.Creators)
+	}
+	if resp.Msg.Series.Creators[0].IconImageUrl == "" {
+		t.Fatalf("creator icon_image_url is empty")
 	}
 	if len(resp.Msg.Episodes) != 1 || resp.Msg.Episodes[0].PublicId != "EP001" {
 		t.Fatalf("episodes = %+v, want one published episode EP001", resp.Msg.Episodes)

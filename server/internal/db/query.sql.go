@@ -2218,7 +2218,16 @@ SELECT s.id,
                     'role',
                     sc.role,
                     'profile_text',
-                    c.profile_text
+                    c.profile_text,
+                    'icon_image_url',
+                    CASE
+                        WHEN c.icon_image_id IS NOT NULL THEN '/images/creators/' || c.icon_image_id::text
+                        ELSE ''
+                    END,
+                    'icon_image_file_size_bytes',
+                    0,
+                    'icon_image_updated_at',
+                    COALESCE(ci.updated_at::TEXT, '')
             )
             ORDER BY sc.display_order ASC
         ) FILTER (
@@ -2264,6 +2273,7 @@ FROM series s
     LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
+    LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
 WHERE s.public_id = $1
     AND s.tenant_id = $2
 GROUP BY s.id,
@@ -2970,7 +2980,16 @@ SELECT s.id,
                 'role',
                 sc.role,
                 'profile_text',
-                c.profile_text
+                c.profile_text,
+                'icon_image_url',
+                CASE
+                    WHEN c.icon_image_id IS NOT NULL THEN '/images/creators/' || c.icon_image_id::text
+                    ELSE ''
+                END,
+                'icon_image_file_size_bytes',
+                0,
+                'icon_image_updated_at',
+                COALESCE(ci.updated_at::TEXT, '')
             )
             ORDER BY sc.display_order ASC
         ) FILTER (
@@ -2995,6 +3014,7 @@ FROM series s
     LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
+    LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
 WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
