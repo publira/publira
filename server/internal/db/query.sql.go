@@ -5060,7 +5060,7 @@ const updateSeriesPublication = `-- name: UpdateSeriesPublication :exec
 UPDATE series
 SET published_at = $2::timestamptz,
     is_published = CASE
-	WHEN $2::timestamptz IS NULL THEN false
+        WHEN $2::timestamptz IS NULL THEN false
         ELSE true
     END,
     updated_at = NOW()

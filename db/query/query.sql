@@ -956,9 +956,9 @@ SET synopsis = EXCLUDED.synopsis,
 RETURNING *;
 -- name: UpdateSeriesPublication :exec
 UPDATE series
-SET published_at = $2::timestamptz,
+SET published_at = sqlc.narg(published_at)::timestamptz,
     is_published = CASE
-        WHEN $2::timestamptz IS NULL THEN false
+        WHEN sqlc.narg(published_at)::timestamptz IS NULL THEN false
         ELSE true
     END,
     updated_at = NOW()
