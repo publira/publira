@@ -2200,7 +2200,10 @@ const getSeriesDetail = `-- name: GetSeriesDetail :one
 SELECT s.id,
     s.public_id,
     s.title,
+    l.public_id AS label_public_id,
     l.name AS label_name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at,
     sl.synopsis,
     s.is_published,
     s.published_at,
@@ -2258,6 +2261,7 @@ SELECT s.id,
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.public_id = $1
@@ -2274,15 +2278,18 @@ type GetSeriesDetailParams struct {
 }
 
 type GetSeriesDetailRow struct {
-	ID          uuid.UUID       `json:"id"`
-	PublicID    string          `json:"public_id"`
-	Title       string          `json:"title"`
-	LabelName   sql.NullString  `json:"label_name"`
-	Synopsis    sql.NullString  `json:"synopsis"`
-	IsPublished bool            `json:"is_published"`
-	PublishedAt sql.NullTime    `json:"published_at"`
-	Creators    json.RawMessage `json:"creators"`
-	Episodes    json.RawMessage `json:"episodes"`
+	ID                     uuid.UUID       `json:"id"`
+	PublicID               string          `json:"public_id"`
+	Title                  string          `json:"title"`
+	LabelPublicID          sql.NullString  `json:"label_public_id"`
+	LabelName              sql.NullString  `json:"label_name"`
+	EyeCatchImageID        uuid.NullUUID   `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime    `json:"eye_catch_image_updated_at"`
+	Synopsis               sql.NullString  `json:"synopsis"`
+	IsPublished            bool            `json:"is_published"`
+	PublishedAt            sql.NullTime    `json:"published_at"`
+	Creators               json.RawMessage `json:"creators"`
+	Episodes               json.RawMessage `json:"episodes"`
 }
 
 func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error) {
@@ -2292,7 +2299,10 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.ID,
 		&i.PublicID,
 		&i.Title,
+		&i.LabelPublicID,
 		&i.LabelName,
+		&i.EyeCatchImageID,
+		&i.EyeCatchImageUpdatedAt,
 		&i.Synopsis,
 		&i.IsPublished,
 		&i.PublishedAt,
@@ -2967,9 +2977,22 @@ SELECT s.id,
             WHERE c.id IS NOT NULL
         ),
         '[]'
-    )::jsonb AS creators
+    )::jsonb AS creators,
+    CASE
+        WHEN l.public_id IS NOT NULL THEN json_build_object(
+            'public_id',
+            l.public_id,
+            'name',
+            l.name,
+            'eye_catch_image_updated_at',
+            li.updated_at::TEXT
+        )
+        ELSE '{}'::json
+    END::jsonb AS label_info
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN labels l ON s.label_id = l.id
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.tenant_id = $1
@@ -2978,7 +3001,10 @@ WHERE s.tenant_id = $1
     AND s.published_at <= NOW()
 GROUP BY s.id,
     sl.series_id,
-    sl.synopsis
+    sl.synopsis,
+    l.public_id,
+    l.name,
+    li.updated_at
 ORDER BY s.published_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -2996,6 +3022,7 @@ type ListActiveSeriesRow struct {
 	Synopsis    sql.NullString  `json:"synopsis"`
 	PublishedAt sql.NullTime    `json:"published_at"`
 	Creators    json.RawMessage `json:"creators"`
+	LabelInfo   json.RawMessage `json:"label_info"`
 }
 
 // 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
@@ -3015,6 +3042,7 @@ func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesPara
 			&i.Synopsis,
 			&i.PublishedAt,
 			&i.Creators,
+			&i.LabelInfo,
 		); err != nil {
 			return nil, err
 		}
