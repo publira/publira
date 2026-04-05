@@ -38,7 +38,7 @@ services:
       - "traefik.http.services.web-public.loadbalancer.server.port=3000"
 
       # web-catalog (port 3001)
-      - "traefik.http.routers.web-catalog.rule=PathRegexp(`^/$|^/(authors|series)(/.*)?$|^/web-catalog-assets(/.*)?$|^/api/catalog/revalidate/?$`)"
+      - "traefik.http.routers.web-catalog.rule=PathRegexp(`^/$|^/(authors|series|labels)(/.*)?$|^/web-catalog-assets(/.*)?$|^/api/catalog/revalidate/?$`)"
       - "traefik.http.routers.web-catalog.entrypoints=web"
       - "traefik.http.routers.web-catalog.priority=10"
       - "traefik.http.routers.web-catalog.service=web-catalog"
