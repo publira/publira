@@ -18,10 +18,13 @@ import (
 )
 
 type creatorJSON struct {
-	PublicID    string `json:"public_id"`
-	Name        string `json:"name"`
-	Role        string `json:"role"`
-	ProfileText string `json:"profile_text"`
+	PublicID               string `json:"public_id"`
+	Name                   string `json:"name"`
+	Role                   string `json:"role"`
+	ProfileText            string `json:"profile_text"`
+	IconImageURL           string `json:"icon_image_url"`
+	IconImageFileSizeBytes int64  `json:"icon_image_file_size_bytes"`
+	IconImageUpdatedAt     string `json:"icon_image_updated_at"`
 }
 
 type episodeJSON struct {
@@ -121,10 +124,13 @@ func (s *apiServer) ListPublishedSeries(
 		item.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 		for _, creator := range creators {
 			item.Creators = append(item.Creators, &publirattypesv1.Creator{
-				PublicId:    creator.PublicID,
-				Name:        creator.Name,
-				Role:        creator.Role,
-				ProfileText: creator.ProfileText,
+				PublicId:               creator.PublicID,
+				Name:                   creator.Name,
+				Role:                   creator.Role,
+				ProfileText:            creator.ProfileText,
+				IconImageUrl:           creator.IconImageURL,
+				IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
+				IconImageUpdatedAt:     creator.IconImageUpdatedAt,
 			})
 		}
 
@@ -220,10 +226,13 @@ func (s *apiServer) GetSeriesDetail(
 	res.Msg.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
 		res.Msg.Series.Creators = append(res.Msg.Series.Creators, &publirattypesv1.Creator{
-			PublicId:    creator.PublicID,
-			Name:        creator.Name,
-			Role:        creator.Role,
-			ProfileText: creator.ProfileText,
+			PublicId:               creator.PublicID,
+			Name:                   creator.Name,
+			Role:                   creator.Role,
+			ProfileText:            creator.ProfileText,
+			IconImageUrl:           creator.IconImageURL,
+			IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
+			IconImageUpdatedAt:     creator.IconImageUpdatedAt,
 		})
 	}
 	for _, episode := range episodes {

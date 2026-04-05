@@ -3,6 +3,7 @@ import {
   guardPlaceholders,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -80,9 +81,23 @@ export default async function Page({
     <main className="mx-auto max-w-5xl px-6 py-12">
       <section className="mb-10 rounded-3xl border border-border/70 bg-card/90 p-8 shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary/15 font-serif text-3xl font-semibold text-primary">
-            {authorInitials}
-          </div>
+          {author.iconImageUrl ? (
+            <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border border-border/60 bg-muted/20">
+              <Image
+                alt={`${author.name} のアイコン`}
+                className="h-full w-full object-cover"
+                decoding="async"
+                height={96}
+                src={author.iconImageUrl}
+                unoptimized
+                width={96}
+              />
+            </div>
+          ) : (
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary/15 font-serif text-3xl font-semibold text-primary">
+              {authorInitials}
+            </div>
+          )}
 
           <div className="min-w-0 flex-1">
             <p className="mb-3 text-xs uppercase tracking-[0.24em] text-muted-foreground">

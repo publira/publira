@@ -7,12 +7,14 @@ const FALLBACK_AUTHOR_ID_PREFIX = "name_";
 export interface PublishedAuthorListItem {
   id: string;
   name: string;
+  iconImageUrl: string;
   seriesCount: number;
 }
 
 export interface PublishedAuthorDetail {
   id: string;
   name: string;
+  iconImageUrl: string;
   profileText: string;
   series: {
     publicId: string;
@@ -76,19 +78,24 @@ const toPositiveInt = (
 const addAuthorContribution = (
   authorSeriesMap: Map<
     string,
-    { name: string; seriesMap: Map<string, string> }
+    { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
   >,
   authorId: string,
   authorName: string,
+  iconImageUrl: string,
   seriesPublicId: string,
   seriesTitle: string
 ) => {
   const existing = authorSeriesMap.get(authorId);
   if (existing) {
+    if (existing.iconImageUrl.length === 0 && iconImageUrl.length > 0) {
+      existing.iconImageUrl = iconImageUrl;
+    }
     existing.seriesMap.set(seriesPublicId, seriesTitle);
     return;
   }
   authorSeriesMap.set(authorId, {
+    iconImageUrl,
     name: authorName,
     seriesMap: new Map([[seriesPublicId, seriesTitle]]),
   });
@@ -112,7 +119,7 @@ export const listPublishedAuthors = async (
   const targetEndIndex = page * pageSize + 1;
   const authorSeriesMap = new Map<
     string,
-    { name: string; seriesMap: Map<string, string> }
+    { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
   >();
 
   let offset = 0;
@@ -131,6 +138,7 @@ export const listPublishedAuthors = async (
 
     for (const series of seriesBatch) {
       const creatorsInSeries = new Map<string, string>();
+      const creatorIconsInSeries = new Map<string, string>();
 
       for (const creator of series.creators) {
         const name = normalizeAuthorName(creator.name);
@@ -141,6 +149,7 @@ export const listPublishedAuthors = async (
         const creatorId =
           creator.publicId.trim() || encodeFallbackAuthorId(name);
         creatorsInSeries.set(creatorId, name);
+        creatorIconsInSeries.set(creatorId, creator.iconImageUrl.trim());
       }
 
       if (creatorsInSeries.size === 0) {
@@ -158,6 +167,7 @@ export const listPublishedAuthors = async (
           authorSeriesMap,
           creatorId,
           creatorName,
+          creatorIconsInSeries.get(creatorId) ?? "",
           series.publicId,
           series.title
         );
@@ -170,6 +180,7 @@ export const listPublishedAuthors = async (
 
   const allAuthors = [...authorSeriesMap.entries()]
     .map(([id, value]) => ({
+      iconImageUrl: value.iconImageUrl,
       id,
       name: value.name,
       seriesCount: value.seriesMap.size,
@@ -198,6 +209,7 @@ export const getPublishedAuthorDetail = async (
 
   const relatedSeries = new Map<string, string>();
   let resolvedAuthorName = fallbackAuthorName ?? "";
+  let resolvedAuthorIconImageUrl = "";
   let resolvedAuthorProfileText = "";
 
   let offset = 0;
@@ -251,6 +263,10 @@ export const getPublishedAuthorDetail = async (
         );
       }
 
+      if (!resolvedAuthorIconImageUrl) {
+        resolvedAuthorIconImageUrl = matchedCreator.iconImageUrl.trim();
+      }
+
       if (resolvedAuthorName.length > 0) {
         relatedSeries.set(series.publicId, series.title);
       }
@@ -265,6 +281,7 @@ export const getPublishedAuthorDetail = async (
   }
 
   return {
+    iconImageUrl: resolvedAuthorIconImageUrl,
     id: authorId,
     name: resolvedAuthorName,
     profileText: resolvedAuthorProfileText,

@@ -30,6 +30,7 @@ export interface SeriesListItem {
     publicId: string;
     name: string;
     profileText: string;
+    iconImageUrl: string;
   }[];
   creatorNames: string[];
 }
@@ -116,6 +117,7 @@ export const listPublishedSeries = async (
       .filter((n) => n.length > 0),
     creators: (s.creators ?? [])
       .map((c) => ({
+        iconImageUrl: c.iconImageUrl?.trim() ?? "",
         name: c.name.trim(),
         profileText: c.profileText.trim(),
         publicId: c.publicId,
