@@ -38,6 +38,48 @@ type episodeJSON struct {
 	PublishedAt        *string `json:"published_at"`
 }
 
+func mapSeriesEyeCatchVariants(seriesImageID uuid.UUID, rows []dbmodels.ListSeriesImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
+	items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
+			Label:         row.Label,
+			VariantType:   row.VariantType,
+			Url:           fmt.Sprintf("/images/series/%s/%s/%d", seriesImageID.String(), row.VariantType, row.Width),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
+	}
+	return items
+}
+
+func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
+	ctx context.Context,
+	imageIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
+	if len(imageIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
+	}
+
+	rows, err := s.queriesFor(ctx).ListSeriesImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	byImageID := make(map[uuid.UUID][]dbmodels.ListSeriesImageVariantsByImageIDsRow, len(imageIDs))
+	for _, row := range rows {
+		byImageID[row.SeriesImageID] = append(byImageID[row.SeriesImageID], row)
+	}
+
+	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
+	for imageID, variants := range byImageID {
+		mapped[imageID] = mapSeriesEyeCatchVariants(imageID, variants)
+	}
+
+	return mapped, nil
+}
+
 func (s *apiServer) ListPublishedLabels(
 	ctx context.Context,
 	req *connect.Request[publirav1.ListPublishedLabelsRequest],
@@ -110,10 +152,17 @@ func (s *apiServer) ListPublishedSeries(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	items := make([]*publirattypesv1.Series, 0, len(rows))
+	imageIDs := make([]uuid.UUID, 0)
 	for _, row := range rows {
 		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
 		if row.Synopsis.Valid {
 			item.Synopsis = row.Synopsis.String
+		}
+		if row.EyeCatchImageUpdatedAt.Valid {
+			item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		if row.EyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
 		}
 		creators := make([]creatorJSON, 0)
 		if len(row.Creators) > 0 {
@@ -154,6 +203,18 @@ func (s *apiServer) ListPublishedSeries(
 		}
 
 		items = append(items, item)
+	}
+	if len(imageIDs) > 0 {
+		variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
+		if err == nil {
+			for i, row := range rows {
+				if row.EyeCatchImageID.Valid {
+					if variants, ok := variantsByImageID[row.EyeCatchImageID.UUID]; ok {
+						items[i].EyeCatchImageVariants = variants
+					}
+				}
+			}
+		}
 	}
 	return connect.NewResponse(&publirav1.ListPublishedSeriesResponse{Series: items}), nil
 }
@@ -197,32 +258,28 @@ func (s *apiServer) GetSeriesDetail(
 	if row.Synopsis.Valid {
 		res.Msg.Series.Synopsis = row.Synopsis.String
 	}
-	
+	if row.EyeCatchImageUpdatedAt.Valid {
+		res.Msg.Series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+
 	// ラベル情報を処理
 	if row.LabelPublicID.Valid && row.LabelName.Valid {
 		label := &publirattypesv1.Label{
 			PublicId: row.LabelPublicID.String,
 			Name:     row.LabelName.String,
 		}
-		
-		// ラベル画像とバリアント情報を処理
-		if row.EyeCatchImageID.Valid {
-			if row.EyeCatchImageUpdatedAt.Valid {
-				label.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
-			}
-			
-			// ラベル画像バリアント情報を取得
-			variants, err := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
-			if err == nil && len(variants) > 0 {
-				if imageVariants, ok := variants[row.EyeCatchImageID.UUID]; ok {
-					label.EyeCatchImageVariants = imageVariants
-				}
-			}
-		}
-		
+
 		res.Msg.Series.Label = label
 	}
-	
+	if row.EyeCatchImageID.Valid {
+		variants, err := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		if err == nil && len(variants) > 0 {
+			if imageVariants, ok := variants[row.EyeCatchImageID.UUID]; ok {
+				res.Msg.Series.EyeCatchImageVariants = imageVariants
+			}
+		}
+	}
+
 	res.Msg.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
 		res.Msg.Series.Creators = append(res.Msg.Series.Creators, &publirattypesv1.Creator{

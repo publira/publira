@@ -4,7 +4,11 @@ import {
   listPublishedLabels,
   listPublishedSeries,
 } from "./catalog";
-import type { LabelListItem, SeriesListItem } from "./catalog";
+import type {
+  EyeCatchImageVariant,
+  LabelListItem,
+  SeriesListItem,
+} from "./catalog";
 
 export interface CatalogTopEpisodeItem {
   episodeId: string;
@@ -16,6 +20,7 @@ export interface CatalogTopEpisodeItem {
 
 export interface CatalogTopUpdatedSeriesItem {
   creatorNames: string[];
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   latestEpisodeId: string;
   latestEpisodeTitle: string;
   latestPublishedAt: string;
@@ -88,6 +93,7 @@ export const getCatalogTopData = async (
         return {
           creatorNames: seriesItem.creatorNames,
           episodes: detail.episodes,
+          eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
           publicId: seriesItem.publicId,
           title: seriesItem.title,
         };
@@ -126,6 +132,7 @@ export const getCatalogTopData = async (
 
       return {
         creatorNames: row.creatorNames,
+        eyeCatchImageVariants: row.eyeCatchImageVariants,
         latestEpisodeId: latestEpisode.publicId,
         latestEpisodeTitle: latestEpisode.title,
         latestPublishedAt: latestEpisode.publishedAt,

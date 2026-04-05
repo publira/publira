@@ -1,3 +1,4 @@
+import { CollectionIcon } from "@publira/icons";
 import {
   createPlaceholderStaticParams,
   guardPlaceholders,
@@ -5,6 +6,7 @@ import {
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { getSeriesDetail, SeriesNotFoundError } from "#lib/catalog";
 
 export const generateStaticParams = () =>
@@ -12,11 +14,16 @@ export const generateStaticParams = () =>
 
 const SeriesDetailSkeleton = () => (
   <div>
-    <div className="mb-4 h-9 w-3/4 animate-pulse rounded bg-muted" />
-    <div className="mb-8 h-5 w-32 animate-pulse rounded bg-muted" />
-    <div className="mb-2 h-4 w-full animate-pulse rounded bg-muted" />
-    <div className="mb-2 h-4 w-full animate-pulse rounded bg-muted" />
-    <div className="mb-2 h-4 w-1/2 animate-pulse rounded bg-muted" />
+    <div className="mb-10 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+      <div className="aspect-3/4 animate-pulse rounded-2xl bg-muted" />
+      <div>
+        <div className="mb-4 h-9 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="mb-8 h-5 w-32 animate-pulse rounded bg-muted" />
+        <div className="mb-2 h-4 w-full animate-pulse rounded bg-muted" />
+        <div className="mb-2 h-4 w-full animate-pulse rounded bg-muted" />
+        <div className="mb-2 h-4 w-1/2 animate-pulse rounded bg-muted" />
+      </div>
+    </div>
     <div className="mt-8 grid gap-3">
       {Array.from({ length: 4 }, (_, i) => (
         <div key={i} className="h-14 animate-pulse rounded bg-muted/70" />
@@ -31,7 +38,7 @@ const SeriesDetailData = async (
   const { series_id, tenant_public_id } = await props.params;
   guardPlaceholders({ series_id, tenant_public_id });
 
-  let result;
+  let result: Awaited<ReturnType<typeof getSeriesDetail>>;
   try {
     result = await getSeriesDetail(tenant_public_id, series_id);
   } catch (error) {
@@ -57,25 +64,50 @@ const SeriesDetailData = async (
 
   return (
     <>
-      <div className="mb-8">
-        <h1 className="mb-2 font-serif text-4xl font-bold">{series.title}</h1>
-        {series.creatorNames.length > 0 && (
-          <p className="mb-2 text-muted-foreground">
-            {series.creatorNames.join("、")}
-          </p>
+      <div className="mb-10 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+        {series.eyeCatchImageVariants &&
+        series.eyeCatchImageVariants.length > 0 ? (
+          <div className="overflow-hidden rounded-2xl bg-muted shadow-sm">
+            <div className="aspect-3/4 overflow-hidden bg-muted">
+              <EyeCatchPicture
+                alt={series.title}
+                imgClassName="h-full w-full object-cover"
+                preferredType="portrait"
+                sizes="(max-width: 1024px) 100vw, 280px"
+                variants={series.eyeCatchImageVariants}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex aspect-3/4 items-center justify-center rounded-2xl bg-linear-to-br from-primary/20 to-primary/10 text-primary/40 shadow-sm">
+            <CollectionIcon className="h-16 w-16" />
+          </div>
         )}
-        {series.labelName && (
-          <span className="inline-block rounded-full bg-muted px-3 py-0.5 text-xs text-muted-foreground">
-            {series.labelName}
-          </span>
-        )}
-      </div>
 
-      {series.synopsis && (
-        <p className="mb-10 max-w-2xl whitespace-pre-wrap text-muted-foreground">
-          {series.synopsis}
-        </p>
-      )}
+        <div>
+          <div className="mb-8">
+            <h1 className="mb-2 font-serif text-4xl font-bold">
+              {series.title}
+            </h1>
+            {series.creatorNames.length > 0 && (
+              <p className="mb-2 text-muted-foreground">
+                {series.creatorNames.join("、")}
+              </p>
+            )}
+            {series.labelName && (
+              <span className="inline-block rounded-full bg-muted px-3 py-0.5 text-xs text-muted-foreground">
+                {series.labelName}
+              </span>
+            )}
+          </div>
+
+          {series.synopsis && (
+            <p className="max-w-2xl whitespace-pre-wrap text-muted-foreground">
+              {series.synopsis}
+            </p>
+          )}
+        </div>
+      </div>
 
       <section>
         <h2 className="mb-4 font-serif text-2xl font-semibold">
@@ -118,7 +150,7 @@ export default function Page(
   props: PageProps<"/[tenant_public_id]/series/[series_id]">
 ) {
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-6 py-12">
       <nav className="mb-8">
         <Link
           href="/series"

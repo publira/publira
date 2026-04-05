@@ -87,21 +87,22 @@ const SeriesListData = async (
           href={`/series/${item.publicId}`}
           className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:shadow-md"
         >
-          {item.labelEyeCatchImageVariants &&
-          item.labelEyeCatchImageVariants.length > 0 ? (
-            <div className="mb-4 aspect-video overflow-hidden rounded bg-muted">
+          {item.eyeCatchImageVariants &&
+          item.eyeCatchImageVariants.length > 0 ? (
+            <div className="aspect-video overflow-hidden bg-muted">
               <EyeCatchPicture
-                alt={item.labelName || item.title}
+                alt={item.title}
                 imgClassName="h-full w-full object-cover"
-                variants={item.labelEyeCatchImageVariants}
+                preferredType="landscape"
+                variants={item.eyeCatchImageVariants}
               />
             </div>
           ) : (
-            <div className="mb-4 flex aspect-video items-center justify-center rounded bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
               <CollectionIcon className="h-12 w-12" />
             </div>
           )}
-          <div className="px-6 pb-6">
+          <div className="px-6 py-5">
             <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
               {item.title}
             </h2>

@@ -11,21 +11,52 @@ import { SeriesNotFoundError } from "./series-not-found-error";
 
 export { EpisodeNotFoundError, SeriesNotFoundError };
 
+export interface EyeCatchImageVariant {
+  variantType: string;
+  label: string;
+  url: string;
+  contentType: string;
+  width: number;
+  height: number;
+  fileSizeBytes: number;
+}
+
+const toEyeCatchImageVariants = (
+  variants:
+    | {
+        variantType?: string;
+        label?: string;
+        url?: string;
+        contentType?: string;
+        width?: number;
+        height?: number;
+        fileSizeBytes?: bigint | number;
+      }[]
+    | undefined
+): EyeCatchImageVariant[] | undefined => {
+  const mapped = (variants ?? [])
+    .map((variant) => ({
+      contentType: variant.contentType ?? "",
+      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      height: variant.height ?? 0,
+      label: variant.label ?? "",
+      url: variant.url ?? "",
+      variantType: variant.variantType ?? "",
+      width: variant.width ?? 0,
+    }))
+    .filter((variant) => variant.label.length > 0 && variant.url.length > 0);
+
+  return mapped.length > 0 ? mapped : undefined;
+};
+
 export interface SeriesListItem {
   publicId: string;
   title: string;
   synopsis: string;
   labelName: string;
   labelPublicId?: string;
-  labelEyeCatchImageVariants?: {
-    variantType: string;
-    label: string;
-    url: string;
-    contentType: string;
-    width: number;
-    height: number;
-    fileSizeBytes: number;
-  }[];
+  eyeCatchImageUpdatedAt?: string;
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   creators: {
     publicId: string;
     name: string;
@@ -77,21 +108,15 @@ export interface SeriesDetail {
   labelName: string;
   creatorNames: string[];
   readingPeriodHours: number;
+  eyeCatchImageUpdatedAt?: string;
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
 
 export interface LabelListItem {
   publicId: string;
   name: string;
   eyeCatchImageUpdatedAt?: string;
-  eyeCatchImageVariants?: {
-    variantType: string;
-    label: string;
-    url: string;
-    contentType: string;
-    width: number;
-    height: number;
-    fileSizeBytes: number;
-  }[];
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
 
 export const listPublishedSeries = async (
@@ -113,28 +138,18 @@ export const listPublishedSeries = async (
 
   return (response.series ?? []).map((s) => ({
     creatorNames: (s.creators ?? [])
-      .map((c) => c.name.trim())
+      .map((c) => (c.name ?? "").trim())
       .filter((n) => n.length > 0),
     creators: (s.creators ?? [])
       .map((c) => ({
         iconImageUrl: c.iconImageUrl?.trim() ?? "",
-        name: c.name.trim(),
-        profileText: c.profileText.trim(),
-        publicId: c.publicId,
+        name: (c.name ?? "").trim(),
+        profileText: (c.profileText ?? "").trim(),
+        publicId: c.publicId ?? "",
       }))
       .filter((c) => c.name.length > 0),
-    labelEyeCatchImageVariants:
-      (s.label?.eyeCatchImageVariants ?? [])
-        .map((v) => ({
-          contentType: v.contentType ?? "",
-          fileSizeBytes: Number(v.fileSizeBytes ?? 0),
-          height: v.height ?? 0,
-          label: v.label ?? "",
-          url: v.url ?? "",
-          variantType: v.variantType ?? "",
-          width: v.width ?? 0,
-        }))
-        .filter((v) => v.label.length > 0 && v.url.length > 0) || undefined,
+    eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
+    eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
     labelName: s.label?.name?.trim() ?? "",
     labelPublicId: s.label?.publicId?.trim() ?? "",
     publicId: s.publicId,
@@ -158,20 +173,7 @@ export const listPublishedLabels = async (
 
   return (response.labels ?? []).map((label) => ({
     eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
-    eyeCatchImageVariants:
-      (label.eyeCatchImageVariants ?? [])
-        .map((variant) => ({
-          contentType: variant.contentType ?? "",
-          fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
-          height: variant.height ?? 0,
-          label: variant.label ?? "",
-          url: variant.url ?? "",
-          variantType: variant.variantType ?? "",
-          width: variant.width ?? 0,
-        }))
-        .filter(
-          (variant) => variant.label.length > 0 && variant.url.length > 0
-        ) || undefined,
+    eyeCatchImageVariants: toEyeCatchImageVariants(label.eyeCatchImageVariants),
     name: label.name,
     publicId: label.publicId,
   }));
@@ -190,32 +192,48 @@ export const getSeriesDetail = async (
     tenantCatalogSeriesTag(normalizedTenantPublicId, normalizedSeriesPublicId)
   );
 
-  const response = await apiClient.catalog.getSeriesDetail({
-    publicId: seriesPublicId,
-    tenant: { tenantPublicId },
-  });
+  let response;
+  try {
+    response = await apiClient.catalog.getSeriesDetail({
+      publicId: normalizedSeriesPublicId,
+      tenant: { tenantPublicId: normalizedTenantPublicId },
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes("not_found") || msg.includes("permission_denied")) {
+        throw new SeriesNotFoundError();
+      }
+    }
+    throw error;
+  }
 
   const result = {
     episodes: (response.episodes ?? [])
       .map((e) => ({
-        orderIndex: e.orderIndex,
-        price: e.price,
-        publicId: e.publicId,
-        publishedAt: e.publishedAt,
-        status: e.status,
-        title: e.title,
+        orderIndex: e.orderIndex ?? 0,
+        price: e.price ?? 0,
+        publicId: e.publicId ?? "",
+        publishedAt: e.publishedAt ?? "",
+        status: e.status ?? "",
+        title: e.title ?? "",
       }))
       .toSorted((a, b) => a.orderIndex - b.orderIndex),
     series: response.series
       ? {
           creatorNames: (response.series.creators ?? [])
-            .map((c) => c.name.trim())
+            .map((c) => (c.name ?? "").trim())
             .filter((n) => n.length > 0),
+          eyeCatchImageUpdatedAt:
+            response.series.eyeCatchImageUpdatedAt || undefined,
+          eyeCatchImageVariants: toEyeCatchImageVariants(
+            response.series.eyeCatchImageVariants
+          ),
           labelName: response.series.label?.name?.trim() ?? "",
-          publicId: response.series.publicId,
+          publicId: response.series.publicId ?? "",
           readingPeriodHours: response.series.readingPeriodHours ?? 0,
-          synopsis: response.series.synopsis,
-          title: response.series.title,
+          synopsis: response.series.synopsis ?? "",
+          title: response.series.title ?? "",
         }
       : undefined,
   };

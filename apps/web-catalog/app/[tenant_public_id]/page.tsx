@@ -1,3 +1,4 @@
+import { CollectionIcon } from "@publira/icons";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -180,22 +181,39 @@ export default async function Page({
             {topData.recommendedSeries.map((series) => (
               <Link
                 key={series.publicId}
-                className="rounded-lg border border-border/70 bg-card p-5 shadow-sm transition hover:shadow-md"
+                className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:shadow-md"
                 href={`/series/${series.publicId}`}
               >
-                <h3 className="mb-2 line-clamp-2 font-serif text-lg font-semibold">
-                  {series.title}
-                </h3>
-                {series.creatorNames.length > 0 && (
-                  <p className="mb-2 text-sm text-muted-foreground">
-                    {series.creatorNames.join("、")}
-                  </p>
+                {series.eyeCatchImageVariants &&
+                series.eyeCatchImageVariants.length > 0 ? (
+                  <div className="aspect-video overflow-hidden bg-muted">
+                    <EyeCatchPicture
+                      alt={series.title}
+                      imgClassName="h-full w-full object-cover"
+                      preferredType="landscape"
+                      variants={series.eyeCatchImageVariants}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+                    <CollectionIcon className="h-10 w-10" />
+                  </div>
                 )}
-                {series.synopsis && (
-                  <p className="line-clamp-3 text-sm text-muted-foreground">
-                    {series.synopsis}
-                  </p>
-                )}
+                <div className="p-5">
+                  <h3 className="mb-2 line-clamp-2 font-serif text-lg font-semibold">
+                    {series.title}
+                  </h3>
+                  {series.creatorNames.length > 0 && (
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      {series.creatorNames.join("、")}
+                    </p>
+                  )}
+                  {series.synopsis && (
+                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                      {series.synopsis}
+                    </p>
+                  )}
+                </div>
               </Link>
             ))}
           </div>
@@ -268,31 +286,52 @@ export default async function Page({
               return (
                 <article
                   key={ids.seriesId}
-                  className="rounded-lg border border-border/70 bg-card p-5 shadow-sm"
+                  className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
                 >
-                  <h3 className="mb-1 font-serif text-lg font-semibold">
-                    <Link
-                      className="underline-offset-4 hover:underline"
-                      href={`/series/${ids.seriesId}`}
-                    >
-                      {item.seriesTitle}
-                    </Link>
-                  </h3>
-                  {item.creatorNames.length > 0 && (
-                    <p className="mb-3 text-sm text-muted-foreground">
-                      {item.creatorNames.join("、")}
-                    </p>
-                  )}
-                  <p className="mb-2 text-xs text-muted-foreground">最新更新</p>
-                  <Link
-                    className="font-medium text-primary underline-offset-4 hover:underline"
-                    href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
-                  >
-                    {item.latestEpisodeTitle}
+                  <Link className="block" href={`/series/${ids.seriesId}`}>
+                    {item.eyeCatchImageVariants &&
+                    item.eyeCatchImageVariants.length > 0 ? (
+                      <div className="aspect-video overflow-hidden bg-muted">
+                        <EyeCatchPicture
+                          alt={item.seriesTitle}
+                          imgClassName="h-full w-full object-cover"
+                          preferredType="landscape"
+                          variants={item.eyeCatchImageVariants}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+                        <CollectionIcon className="h-10 w-10" />
+                      </div>
+                    )}
                   </Link>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    公開日 {item.latestPublishedAt.slice(0, 10)}
-                  </p>
+                  <div className="p-5">
+                    <h3 className="mb-1 font-serif text-lg font-semibold">
+                      <Link
+                        className="underline-offset-4 hover:underline"
+                        href={`/series/${ids.seriesId}`}
+                      >
+                        {item.seriesTitle}
+                      </Link>
+                    </h3>
+                    {item.creatorNames.length > 0 && (
+                      <p className="mb-3 text-sm text-muted-foreground">
+                        {item.creatorNames.join("、")}
+                      </p>
+                    )}
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      最新更新
+                    </p>
+                    <Link
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                      href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
+                    >
+                      {item.latestEpisodeTitle}
+                    </Link>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      公開日 {item.latestPublishedAt.slice(0, 10)}
+                    </p>
+                  </div>
                 </article>
               );
             })}

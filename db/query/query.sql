@@ -663,6 +663,8 @@ SELECT s.id,
     s.title,
     sl.synopsis,
     s.published_at,
+    s.eye_catch_image_id,
+    NULL::timestamp AS eye_catch_image_updated_at,
     COALESCE(
         json_agg(
             json_build_object(
@@ -695,16 +697,13 @@ SELECT s.id,
             'public_id',
             l.public_id,
             'name',
-            l.name,
-            'eye_catch_image_updated_at',
-            li.updated_at::TEXT
+            l.name
         )
         ELSE '{}'::json
     END::jsonb AS label_info
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
-    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
@@ -716,8 +715,7 @@ GROUP BY s.id,
     sl.series_id,
     sl.synopsis,
     l.public_id,
-    l.name,
-    li.updated_at
+    l.name
 ORDER BY s.published_at DESC
 LIMIT $2 OFFSET $3;
 -- name: CreateEpisodeBase :one
@@ -828,8 +826,8 @@ SELECT s.id,
     s.title,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    l.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at,
+    s.eye_catch_image_id,
+    NULL::timestamp AS eye_catch_image_updated_at,
     sl.synopsis,
     s.is_published,
     s.published_at,
@@ -896,7 +894,6 @@ SELECT s.id,
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
-    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
