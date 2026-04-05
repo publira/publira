@@ -21,12 +21,17 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
+	seriesImageID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}).
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"}).
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, seriesImageID, now, []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
+	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(seriesImageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -43,6 +48,12 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	}
 	if len(resp.Msg.Series[0].Creators) != 1 || resp.Msg.Series[0].Creators[0].IconImageUrl == "" {
 		t.Fatalf("series creators = %+v, want creator icon_image_url", resp.Msg.Series[0].Creators)
+	}
+	if got := len(resp.Msg.Series[0].EyeCatchImageVariants); got != 1 {
+		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
+	}
+	if resp.Msg.Series[0].EyeCatchImageVariants[0].Url == "" {
+		t.Fatalf("eye_catch_image_variants url is empty")
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -102,13 +113,13 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	expectTenantLookup(mock, tenantAID, "TENANT_A", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantAID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_A", "Series A", "Synopsis A", now, []byte(`[]`), []byte(`{}`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_A", "Series A", "Synopsis A", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantBID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_B", "Series B", "Synopsis B", now, []byte(`[]`), []byte(`{}`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_B", "Series B", "Synopsis B", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -152,6 +163,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 
 	tenantID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
+	seriesImageID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
@@ -163,7 +175,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 				"Public Series",
 				"LABEL001",
 				"Weekly Jump",
-				nil,
+				seriesImageID,
 				nil,
 				"Public Synopsis",
 				true,
@@ -171,6 +183,10 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 				[]byte(`[{"name":"Author A","role":"writer","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`),
 				[]byte(`[{"public_id":"EP001","title":"Episode 1","order_index":1,"price":100,"reading_period_hours":24,"status":"published","scheduled_at":null,"published_at":"2026-03-18T00:00:00Z"}]`),
 			))
+	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(seriesImageID, "portrait", "md", "image/webp", int64(3072), int32(768), int32(1024)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -192,6 +208,9 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	}
 	if len(resp.Msg.Series.Creators) != 1 || resp.Msg.Series.Creators[0].Name != "Author A" {
 		t.Fatalf("series creators = %+v, want one creator Author A", resp.Msg.Series.Creators)
+	}
+	if got := len(resp.Msg.Series.EyeCatchImageVariants); got != 1 {
+		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
 	if resp.Msg.Series.Creators[0].IconImageUrl == "" {
 		t.Fatalf("creator icon_image_url is empty")
