@@ -55,6 +55,11 @@ export const EyeCatchPicture = ({
     .toSorted((a, b) => a.width - b.width);
 
   const largest = best.at(-1);
+
+  if (!largest) {
+    return null;
+  }
+
   const srcSet = best.map((v) => `${v.url} ${v.width}w`).join(", ");
 
   return (
