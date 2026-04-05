@@ -3,9 +3,9 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Suspense } from "react";
 
+import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { listPublishedLabels } from "#lib/catalog";
 import { getTenantSiteLabel } from "#lib/tenant";
 
@@ -61,54 +61,42 @@ const LabelsListData = async (
 
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {labels.map((label) => {
-        const landscapeVariant = label.eyeCatchImageVariants?.find(
-          (variant) => variant.variantType === "landscape"
-        );
-        const fallbackVariant = label.eyeCatchImageVariants?.[0];
-        const imageVariant = landscapeVariant || fallbackVariant;
-
-        return (
-          <article
-            key={label.publicId}
-            className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
-          >
-            {imageVariant ? (
-              <div className="relative aspect-video overflow-hidden bg-muted">
-                <Image
-                  alt={label.name}
-                  className="h-full w-full object-cover"
-                  height={imageVariant.height}
-                  loading="lazy"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  src={imageVariant.url}
-                  unoptimized
-                  width={imageVariant.width}
-                />
-              </div>
-            ) : (
-              <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
-                <svg
-                  className="h-12 w-12"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
-              </div>
-            )}
-            <div className="p-4">
-              <h2 className="font-serif text-lg font-semibold">{label.name}</h2>
+      {labels.map((label) => (
+        <article
+          key={label.publicId}
+          className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
+        >
+          {label.eyeCatchImageVariants &&
+          label.eyeCatchImageVariants.length > 0 ? (
+            <div className="aspect-video overflow-hidden bg-muted">
+              <EyeCatchPicture
+                alt={label.name}
+                imgClassName="h-full w-full object-cover"
+                variants={label.eyeCatchImageVariants}
+              />
             </div>
-          </article>
-        );
-      })}
+          ) : (
+            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+              <svg
+                className="h-12 w-12"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+            </div>
+          )}
+          <div className="p-4">
+            <h2 className="font-serif text-lg font-semibold">{label.name}</h2>
+          </div>
+        </article>
+      ))}
     </div>
   );
 };

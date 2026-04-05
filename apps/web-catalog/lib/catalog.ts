@@ -121,8 +121,6 @@ export const listPublishedSeries = async (
         publicId: c.publicId,
       }))
       .filter((c) => c.name.length > 0),
-    labelName: s.label?.name?.trim() ?? "",
-    labelPublicId: s.label?.publicId?.trim() ?? "",
     labelEyeCatchImageVariants:
       (s.label?.eyeCatchImageVariants ?? [])
         .map((v) => ({
@@ -135,6 +133,8 @@ export const listPublishedSeries = async (
           width: v.width ?? 0,
         }))
         .filter((v) => v.label.length > 0 && v.url.length > 0) || undefined,
+    labelName: s.label?.name?.trim() ?? "",
+    labelPublicId: s.label?.publicId?.trim() ?? "",
     publicId: s.publicId,
     synopsis: s.synopsis,
     title: s.title,
@@ -167,8 +167,9 @@ export const listPublishedLabels = async (
           variantType: variant.variantType ?? "",
           width: variant.width ?? 0,
         }))
-        .filter((variant) => variant.label.length > 0 && variant.url.length > 0) ||
-      undefined,
+        .filter(
+          (variant) => variant.label.length > 0 && variant.url.length > 0
+        ) || undefined,
     name: label.name,
     publicId: label.publicId,
   }));

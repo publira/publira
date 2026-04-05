@@ -4,10 +4,10 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { listPublishedSeries } from "#lib/catalog";
 import { getTenantSiteLabel } from "#lib/tenant";
 
@@ -81,61 +81,48 @@ const SeriesListData = async (
 
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {series.map((item) => {
-        // 16:9優先でラベル画像バリアントを選択
-        const landscapeVariant = item.labelEyeCatchImageVariants?.find(
-          (v) => v.variantType === "landscape"
-        );
-        const fallbackVariant = item.labelEyeCatchImageVariants?.[0];
-        const imageVariant = landscapeVariant || fallbackVariant;
-
-        return (
-          <Link
-            key={item.publicId}
-            href={`/series/${item.publicId}`}
-            className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:shadow-md"
-          >
-            {imageVariant ? (
-              <div className="relative mb-4 aspect-video overflow-hidden rounded bg-muted">
-                <Image
-                  alt={item.labelName || item.title}
-                  className="h-full w-full object-cover"
-                  height={imageVariant.height}
-                  loading="lazy"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  src={imageVariant.url}
-                  unoptimized
-                  width={imageVariant.width}
-                />
-              </div>
-            ) : (
-              <div className="mb-4 flex aspect-video items-center justify-center rounded bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
-                <CollectionIcon className="h-12 w-12" />
-              </div>
-            )}
-            <div className="px-6 pb-6">
-              <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
-                {item.title}
-              </h2>
-              {item.creatorNames.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {item.creatorNames.join("、")}
-                </p>
-              )}
-              {item.labelName && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {item.labelName}
-                </p>
-              )}
-              {item.synopsis && (
-                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                  {item.synopsis}
-                </p>
-              )}
+      {series.map((item) => (
+        <Link
+          key={item.publicId}
+          href={`/series/${item.publicId}`}
+          className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:shadow-md"
+        >
+          {item.labelEyeCatchImageVariants &&
+          item.labelEyeCatchImageVariants.length > 0 ? (
+            <div className="mb-4 aspect-video overflow-hidden rounded bg-muted">
+              <EyeCatchPicture
+                alt={item.labelName || item.title}
+                imgClassName="h-full w-full object-cover"
+                variants={item.labelEyeCatchImageVariants}
+              />
             </div>
-          </Link>
-        );
-      })}
+          ) : (
+            <div className="mb-4 flex aspect-video items-center justify-center rounded bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+              <CollectionIcon className="h-12 w-12" />
+            </div>
+          )}
+          <div className="px-6 pb-6">
+            <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
+              {item.title}
+            </h2>
+            {item.creatorNames.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {item.creatorNames.join("、")}
+              </p>
+            )}
+            {item.labelName && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {item.labelName}
+              </p>
+            )}
+            {item.synopsis && (
+              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                {item.synopsis}
+              </p>
+            )}
+          </div>
+        </Link>
+      ))}
     </div>
   );
 };

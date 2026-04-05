@@ -4,8 +4,7 @@ import {
   listPublishedLabels,
   listPublishedSeries,
 } from "./catalog";
-import type { LabelListItem } from "./catalog";
-import type { SeriesListItem } from "./catalog";
+import type { LabelListItem, SeriesListItem } from "./catalog";
 
 export interface CatalogTopEpisodeItem {
   episodeId: string;

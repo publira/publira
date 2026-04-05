@@ -3,9 +3,9 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
+import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { getCatalogTopData } from "#lib/catalog-top";
 import type {
   CatalogTopEpisodeItem,
@@ -302,7 +302,10 @@ export default async function Page({
 
       <section aria-labelledby="featured-labels" className="mb-12">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 id="featured-labels" className="font-serif text-2xl font-semibold">
+          <h2
+            id="featured-labels"
+            className="font-serif text-2xl font-semibold"
+          >
             注目のレーベル
           </h2>
           <Link
@@ -324,48 +327,32 @@ export default async function Page({
                 key={label.publicId}
                 className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
               >
-                {(() => {
-                  const landscapeVariant = label.eyeCatchImageVariants?.find(
-                    (variant) => variant.variantType === "landscape"
-                  );
-                  const fallbackVariant = label.eyeCatchImageVariants?.[0];
-                  const imageVariant = landscapeVariant || fallbackVariant;
-
-                  if (!imageVariant) {
-                    return (
-                      <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
-                        <svg
-                          className="h-10 w-10"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                          />
-                        </svg>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="relative aspect-video overflow-hidden bg-muted">
-                      <Image
-                        alt={label.name}
-                        className="h-full w-full object-cover"
-                        height={imageVariant.height}
-                        loading="lazy"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        src={imageVariant.url}
-                        unoptimized
-                        width={imageVariant.width}
+                {label.eyeCatchImageVariants &&
+                label.eyeCatchImageVariants.length > 0 ? (
+                  <div className="aspect-video overflow-hidden bg-muted">
+                    <EyeCatchPicture
+                      alt={label.name}
+                      imgClassName="h-full w-full object-cover"
+                      variants={label.eyeCatchImageVariants}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+                    <svg
+                      className="h-10 w-10"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
                       />
-                    </div>
-                  );
-                })()}
+                    </svg>
+                  </div>
+                )}
 
                 <div className="p-4">
                   <p className="font-medium">{label.name}</p>
@@ -377,7 +364,6 @@ export default async function Page({
       </section>
 
       <section aria-labelledby="featured-authors">
-
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2
             id="featured-authors"

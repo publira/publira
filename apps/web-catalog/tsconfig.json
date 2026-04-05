@@ -2,7 +2,8 @@
   "extends": "@publira/tsconfig/next.json",
   "compilerOptions": {
     "paths": {
-      "#lib/*": ["./lib/*"]
+      "#lib/*": ["./lib/*"],
+      "#components/*": ["./components/*"]
     }
   },
   "include": [

@@ -1,5 +1,4 @@
 import {
-  type LayoutLinkItem,
   SiteLayout,
   SiteLayoutActions,
   SiteLayoutBrand,
@@ -10,6 +9,7 @@ import {
   SiteLayoutNav,
   getAuthActions,
 } from "@publira/layouts";
+import type { LayoutLinkItem } from "@publira/layouts";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
