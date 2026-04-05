@@ -7,8 +7,13 @@ const { mockListPublishedAuthors } = vi.hoisted(() => ({
   mockListPublishedAuthors: vi.fn(),
 }));
 
-const { mockGetSeriesDetail, mockListPublishedSeries } = vi.hoisted(() => ({
+const {
+  mockGetSeriesDetail,
+  mockListPublishedLabels,
+  mockListPublishedSeries,
+} = vi.hoisted(() => ({
   mockGetSeriesDetail: vi.fn(),
+  mockListPublishedLabels: vi.fn(),
   mockListPublishedSeries: vi.fn(),
 }));
 
@@ -22,6 +27,7 @@ vi.mock("./catalog", async () => {
   return {
     ...original,
     getSeriesDetail: mockGetSeriesDetail,
+    listPublishedLabels: mockListPublishedLabels,
     listPublishedSeries: mockListPublishedSeries,
   };
 });
@@ -29,6 +35,7 @@ vi.mock("./catalog", async () => {
 describe("catalog-top.getCatalogTopData", () => {
   beforeEach(() => {
     mockGetSeriesDetail.mockReset();
+    mockListPublishedLabels.mockReset();
     mockListPublishedAuthors.mockReset();
     mockListPublishedSeries.mockReset();
   });
@@ -62,6 +69,15 @@ describe("catalog-top.getCatalogTopData", () => {
       page: 1,
       pageSize: 6,
     });
+
+    mockListPublishedLabels.mockResolvedValueOnce([
+      {
+        eyeCatchImageVariants: [],
+        name: "ラベルA",
+        publicId: "LABEL_1",
+        seriesCount: 3,
+      },
+    ]);
 
     mockGetSeriesDetail.mockResolvedValueOnce({
       episodes: [
@@ -139,6 +155,9 @@ describe("catalog-top.getCatalogTopData", () => {
       "AUTHOR_1",
       "AUTHOR_2",
     ]);
+    expect(result.featuredLabels.map((label) => label.publicId)).toEqual([
+      "LABEL_1",
+    ]);
   });
 
   it("一部シリーズ詳細の取得失敗を無視して継続する", async () => {
@@ -167,6 +186,8 @@ describe("catalog-top.getCatalogTopData", () => {
       page: 1,
       pageSize: 6,
     });
+
+    mockListPublishedLabels.mockResolvedValueOnce([]);
 
     mockGetSeriesDetail.mockRejectedValueOnce(new Error("network"));
     mockGetSeriesDetail.mockResolvedValueOnce({
@@ -203,5 +224,6 @@ describe("catalog-top.getCatalogTopData", () => {
     expect(result.updatedSeries.map((item) => item.seriesId)).toEqual([
       "SERIES_2",
     ]);
+    expect(result.featuredLabels).toEqual([]);
   });
 });
