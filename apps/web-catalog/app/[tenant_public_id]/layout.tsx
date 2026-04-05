@@ -1,4 +1,5 @@
 import {
+  type LayoutLinkItem,
   SiteLayout,
   SiteLayoutActions,
   SiteLayoutBrand,
@@ -19,6 +20,12 @@ import { cookies } from "next/headers";
 import { getTenantSiteInfo } from "#lib/tenant";
 
 const PUBLIC_SESSION_COOKIE_NAME = "publira_public_session";
+
+const catalogNavItems: LayoutLinkItem[] = [
+  { href: "/authors", label: "Authors" },
+  { href: "/labels", label: "Labels" },
+  { href: "/series", label: "Series" },
+];
 
 const getHeaderActionsContent = async () => {
   const cookieStore = await cookies();
@@ -105,7 +112,7 @@ export default function TenantLayout({
     <SiteLayout>
       <SiteLayoutHeader>
         <SiteLayoutBrand label={getAppLabel(tenantInfoPromise)} />
-        <SiteLayoutNav />
+        <SiteLayoutNav items={catalogNavItems} />
         <SiteLayoutHeaderActions content={getHeaderActionsContent()} />
       </SiteLayoutHeader>
       <SiteLayoutMain>{children}</SiteLayoutMain>

@@ -16,6 +16,16 @@ export interface SeriesListItem {
   title: string;
   synopsis: string;
   labelName: string;
+  labelPublicId?: string;
+  labelEyeCatchImageVariants?: {
+    variantType: string;
+    label: string;
+    url: string;
+    contentType: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }[];
   creators: {
     publicId: string;
     name: string;
@@ -68,6 +78,21 @@ export interface SeriesDetail {
   readingPeriodHours: number;
 }
 
+export interface LabelListItem {
+  publicId: string;
+  name: string;
+  eyeCatchImageUpdatedAt?: string;
+  eyeCatchImageVariants?: {
+    variantType: string;
+    label: string;
+    url: string;
+    contentType: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }[];
+}
+
 export const listPublishedSeries = async (
   tenantPublicId: string,
   limit = 50,
@@ -97,9 +122,55 @@ export const listPublishedSeries = async (
       }))
       .filter((c) => c.name.length > 0),
     labelName: s.label?.name?.trim() ?? "",
+    labelPublicId: s.label?.publicId?.trim() ?? "",
+    labelEyeCatchImageVariants:
+      (s.label?.eyeCatchImageVariants ?? [])
+        .map((v) => ({
+          contentType: v.contentType ?? "",
+          fileSizeBytes: Number(v.fileSizeBytes ?? 0),
+          height: v.height ?? 0,
+          label: v.label ?? "",
+          url: v.url ?? "",
+          variantType: v.variantType ?? "",
+          width: v.width ?? 0,
+        }))
+        .filter((v) => v.label.length > 0 && v.url.length > 0) || undefined,
     publicId: s.publicId,
     synopsis: s.synopsis,
     title: s.title,
+  }));
+};
+
+export const listPublishedLabels = async (
+  tenantPublicId: string,
+  limit = 50,
+  offset = 0
+): Promise<LabelListItem[]> => {
+  "use cache";
+
+  const response = await apiClient.catalog.listPublishedLabels({
+    limit,
+    offset,
+    tenant: { tenantPublicId },
+  });
+
+  return (response.labels ?? []).map((label) => ({
+    eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
+    eyeCatchImageVariants:
+      (label.eyeCatchImageVariants ?? [])
+        .map((variant) => ({
+          contentType: variant.contentType ?? "",
+          fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+          height: variant.height ?? 0,
+          label: variant.label ?? "",
+          url: variant.url ?? "",
+          variantType: variant.variantType ?? "",
+          width: variant.width ?? 0,
+        }))
+        .filter((variant) => variant.label.length > 0 && variant.url.length > 0) ||
+      undefined,
+    name: label.name,
+    publicId: label.publicId,
   }));
 };
 

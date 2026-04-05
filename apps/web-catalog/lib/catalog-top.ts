@@ -1,5 +1,10 @@
 import { listPublishedAuthors } from "./authors";
-import { getSeriesDetail, listPublishedSeries } from "./catalog";
+import {
+  getSeriesDetail,
+  listPublishedLabels,
+  listPublishedSeries,
+} from "./catalog";
+import type { LabelListItem } from "./catalog";
 import type { SeriesListItem } from "./catalog";
 
 export interface CatalogTopEpisodeItem {
@@ -25,6 +30,7 @@ export interface CatalogTopData {
     name: string;
     seriesCount: number;
   }[];
+  featuredLabels: LabelListItem[];
   newEpisodes: CatalogTopEpisodeItem[];
   recommendedSeries: SeriesListItem[];
   updatedSeries: CatalogTopUpdatedSeriesItem[];
@@ -33,6 +39,7 @@ export interface CatalogTopData {
 interface CatalogTopDataOptions {
   detailFetchLimit?: number;
   maxAuthors?: number;
+  maxLabels?: number;
   maxNewEpisodes?: number;
   maxRecommended?: number;
   maxUpdatedSeries?: number;
@@ -54,6 +61,7 @@ export const getCatalogTopData = async (
   {
     detailFetchLimit = 12,
     maxAuthors = 6,
+    maxLabels = 6,
     maxNewEpisodes = 6,
     maxRecommended = 6,
     maxUpdatedSeries = 6,
@@ -62,9 +70,10 @@ export const getCatalogTopData = async (
 ): Promise<CatalogTopData> => {
   "use cache";
 
-  const [series, authorsResult] = await Promise.all([
+  const [series, authorsResult, labels] = await Promise.all([
     listPublishedSeries(tenantPublicId, seriesLimit, 0),
     listPublishedAuthors(tenantPublicId, { page: 1, pageSize: maxAuthors }),
+    listPublishedLabels(tenantPublicId, maxLabels, 0),
   ]);
 
   const recommendedSeries = series.slice(0, maxRecommended);
@@ -135,6 +144,7 @@ export const getCatalogTopData = async (
 
   return {
     featuredAuthors: authorsResult.authors,
+    featuredLabels: labels,
     newEpisodes,
     recommendedSeries,
     updatedSeries,
