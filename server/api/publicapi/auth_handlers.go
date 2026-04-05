@@ -100,7 +100,7 @@ func (s *apiServer) authenticateSession(
 	if !ok {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, auth.HashToken(sessionToken), time.Now())
+	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queriesFor(ctx), tenant.ID, auth.HashToken(sessionToken), time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()

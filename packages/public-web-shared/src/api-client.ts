@@ -1,10 +1,11 @@
 import { createPublicApiClient } from "@publira/api-client/public/client";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 
 import { PUBLIC_SESSION_COOKIE_NAME } from "./auth-shared";
 
 const DEFAULT_PUBLIC_GRPC_URL = "http://localhost:8100";
+const PUBLIC_SESSION_CACHE_TAG_PREFIX = "public-session-cookie";
 
 export const createPublicGrpcApiClient = () =>
   createPublicApiClient({
@@ -15,9 +16,13 @@ export const createPublicGrpcApiClient = () =>
 export const buildPublicSessionHeaders = (sessionId: string) =>
   ({ headers: { "X-Publira-Session-Id": sessionId } }) as never;
 
+export const getPublicSessionCacheTag = (cookieName: string): string =>
+  `${PUBLIC_SESSION_CACHE_TAG_PREFIX}-${cookieName}`;
+
 const getSessionIdFromCookie = async (cookieName: string): Promise<string> => {
   "use cache: private";
   cacheLife({ stale: 30 });
+  cacheTag(getPublicSessionCacheTag(cookieName));
 
   const cookieStore = await cookies();
   return cookieStore.get(cookieName)?.value?.trim() ?? "";

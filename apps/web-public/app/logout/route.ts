@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -6,6 +7,7 @@ import {
   logoutPublic,
   sessionCookieOptions,
 } from "#lib/auth";
+import { getPublicSessionCacheTag } from "#lib/auth-shared";
 
 const clearSessionCookie = async () => {
   const cookieStore = await cookies();
@@ -28,10 +30,16 @@ export const POST = async () => {
   }
 
   await clearSessionCookie();
+  revalidateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME), {
+    expire: 0,
+  });
   redirect("/login");
 };
 
 export const GET = async () => {
   await clearSessionCookie();
+  revalidateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME), {
+    expire: 0,
+  });
   redirect("/login");
 };

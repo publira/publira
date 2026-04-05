@@ -11,6 +11,9 @@ import { PUBLIC_SESSION_COOKIE_NAME, buildLoginUrl } from "./lib/auth-shared";
 const publicApiClient = createPublicGrpcApiClient();
 const resolveTenantPublicId = createTenantPublicIdResolver(publicApiClient);
 
+const redirectToLogin = (request: NextRequest) =>
+  NextResponse.redirect(buildLoginUrl(request.nextUrl));
+
 const serviceUnavailableResponse = () =>
   new NextResponse("Service Unavailable", {
     headers: { "Retry-After": "30" },
@@ -30,8 +33,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     ?.value?.trim();
 
   if (!sessionId) {
-    // Redirect to login if no session
-    return NextResponse.redirect(buildLoginUrl(request.nextUrl));
+    return redirectToLogin(request);
   }
 
   let tenantPublicId: string | null;
@@ -49,7 +51,15 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 
   const url = request.nextUrl.clone();
   url.pathname = `/${tenantPublicId}${pathname}`;
-  return NextResponse.rewrite(url);
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-publira-session-id", sessionId);
+
+  return NextResponse.rewrite(url, {
+    request: {
+      headers: requestHeaders,
+    },
+  });
 };
 
 export const config = {

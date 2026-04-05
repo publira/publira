@@ -3,6 +3,7 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
+import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -14,6 +15,7 @@ import {
   sanitizeRedirectPath,
   sessionCookieOptions,
 } from "#lib/auth";
+import { getPublicSessionCacheTag } from "#lib/auth-shared";
 
 export const metadata: Metadata = {
   title: "ログイン",
@@ -53,6 +55,7 @@ const loginAction = async (formData: FormData): Promise<void> => {
     name: PUBLIC_SESSION_COOKIE_NAME,
     value: result.sessionId,
   });
+  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 
   redirect(returnToPath);
 };

@@ -1,18 +1,123 @@
+import { revalidateTag } from "next/cache";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { listMyNotifications } from "#lib/notifications";
+import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import {
+  listMyNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "#lib/notifications";
+
+const markNotificationAsReadAction = async (
+  formData: FormData
+): Promise<void> => {
+  "use server";
+
+  const tenantPublicId = String(formData.get("tenantPublicId") ?? "").trim();
+  const notificationId = String(formData.get("notificationId") ?? "").trim();
+
+  if (!tenantPublicId || !notificationId) {
+    return;
+  }
+
+  const cookieStore = await cookies();
+  const sessionId =
+    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
+
+  await markNotificationAsRead(tenantPublicId, notificationId, sessionId);
+  revalidateTag(`member-notifications-${tenantPublicId}`, "max");
+};
+
+const markAllNotificationsAsReadAction = async (
+  formData: FormData
+): Promise<void> => {
+  "use server";
+
+  const tenantPublicId = String(formData.get("tenantPublicId") ?? "").trim();
+  if (!tenantPublicId) {
+    return;
+  }
+
+  const cookieStore = await cookies();
+  const sessionId =
+    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
+
+  await markAllNotificationsAsRead(tenantPublicId, sessionId);
+  revalidateTag(`member-notifications-${tenantPublicId}`, "max");
+};
+
+const markNotificationAsReadAndNavigateAction = async (
+  formData: FormData
+): Promise<void> => {
+  "use server";
+
+  const tenantPublicId = String(formData.get("tenantPublicId") ?? "").trim();
+  const notificationId = String(formData.get("notificationId") ?? "").trim();
+  const linkUrl = String(formData.get("linkUrl") ?? "").trim();
+
+  if (!tenantPublicId || !linkUrl) {
+    return;
+  }
+
+  const cookieStore = await cookies();
+  const sessionId =
+    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
+
+  if (notificationId) {
+    await markNotificationAsRead(tenantPublicId, notificationId, sessionId);
+    revalidateTag(`member-notifications-${tenantPublicId}`, "max");
+  }
+
+  redirect(linkUrl);
+};
 
 const NotificationsSection = async ({
   tenantPublicId,
 }: {
   tenantPublicId: string;
 }) => {
-  const result = await listMyNotifications(tenantPublicId);
+  await connection();
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value ?? "";
+
+  const result = await listMyNotifications(tenantPublicId, sessionId);
+  if (!result.ok && result.message.includes("セッションが無効")) {
+    redirect("/login?returnTo=%2Fnotifications");
+  }
+
+  const unreadCount = result.notifications.filter(
+    (item) => !item.isRead
+  ).length;
 
   return (
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold">通知一覧</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">通知一覧</h2>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+            未読 {unreadCount} 件
+          </span>
+          {unreadCount > 0 ? (
+            <form action={markAllNotificationsAsReadAction}>
+              <input
+                name="tenantPublicId"
+                type="hidden"
+                value={tenantPublicId}
+              />
+              <button
+                className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                type="submit"
+              >
+                すべて既読にする
+              </button>
+            </form>
+          ) : null}
+        </div>
+      </div>
 
       {result.ok ? null : (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -26,32 +131,101 @@ const NotificationsSection = async ({
         </div>
       ) : (
         <div className="grid gap-3">
-          {result.notifications.map((notification) => (
-            <article
-              className="rounded-xl border border-border/70 bg-background p-4"
-              key={notification.id}
-            >
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="font-medium">{notification.title}</h3>
-                <span className="text-xs text-muted-foreground">
-                  {notification.createdAt || "-"}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {notification.body}
-              </p>
-              {notification.linkUrl ? (
-                <div className="mt-3">
+          {result.notifications.map((notification) => {
+            const linkAction = (() => {
+              if (!notification.linkUrl) {
+                return null;
+              }
+
+              if (notification.isRead) {
+                return (
                   <Link
-                    className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+                    className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
                     href={notification.linkUrl}
                   >
                     遷移先を開く
                   </Link>
+                );
+              }
+
+              return (
+                <form action={markNotificationAsReadAndNavigateAction}>
+                  <input
+                    name="tenantPublicId"
+                    type="hidden"
+                    value={tenantPublicId}
+                  />
+                  <input
+                    name="notificationId"
+                    type="hidden"
+                    value={notification.id}
+                  />
+                  <input
+                    name="linkUrl"
+                    type="hidden"
+                    value={notification.linkUrl}
+                  />
+                  <button
+                    className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                    type="submit"
+                  >
+                    開いて既読にする
+                  </button>
+                </form>
+              );
+            })();
+
+            return (
+              <article
+                className="rounded-xl border border-border/70 bg-background p-4"
+                key={notification.id}
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="font-medium">{notification.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={
+                        notification.isRead
+                          ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+                          : "rounded-full bg-primary/15 px-2 py-1 text-xs font-medium text-primary"
+                      }
+                    >
+                      {notification.isRead ? "既読" : "未読"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {notification.createdAt || "-"}
+                    </span>
+                  </div>
                 </div>
-              ) : null}
-            </article>
-          ))}
+                <p className="text-sm text-muted-foreground">
+                  {notification.body}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {notification.isRead ? null : (
+                    <form action={markNotificationAsReadAction}>
+                      <input
+                        name="tenantPublicId"
+                        type="hidden"
+                        value={tenantPublicId}
+                      />
+                      <input
+                        name="notificationId"
+                        type="hidden"
+                        value={notification.id}
+                      />
+                      <button
+                        className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                        type="submit"
+                      >
+                        既読にする
+                      </button>
+                    </form>
+                  )}
+                  {linkAction}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>

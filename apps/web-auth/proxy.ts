@@ -1,7 +1,6 @@
 import {
   createPublicGrpcApiClient,
   createTenantPublicIdResolver,
-  PUBLIC_SESSION_COOKIE_NAME,
 } from "@publira/public-web-shared";
 import { getTenantDomainCandidates } from "@publira/utils";
 import type { NextRequest } from "next/server";
@@ -18,14 +17,6 @@ const serviceUnavailableResponse = () =>
 
 export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;
-
-  const hasSession = Boolean(
-    request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value
-  );
-
-  if (hasSession && (pathname === "/login" || pathname === "/signup")) {
-    return NextResponse.redirect(new URL("/my", request.url));
-  }
 
   if (pathname === "/healthz") {
     return NextResponse.next();

@@ -3,7 +3,6 @@ package rpcmiddleware
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 
@@ -74,12 +73,10 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 	return func(ctx context.Context, req connect.AnyRequest) (context.Context, error) {
 		tenantReq, ok := req.Any().(tenantScopedRequest)
 		if !ok {
-			log.Printf("debug authz tenant resolution failed: tenant context accessor missing")
 			return nil, connect.NewError(connect.CodeInternal, errors.New("tenant context accessor is not implemented"))
 		}
 		tenantPublicID, err := ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
 		if err != nil {
-			log.Printf("debug authz tenant resolution failed: %v", err)
 			return nil, err
 		}
 
@@ -92,7 +89,6 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 
 		sessionCtx, err := authenticate(ctx, resolvedTenantRequest, "", req.Header())
 		if err != nil {
-			log.Printf("debug authz session authentication failed: tenant_public_id=%s error=%v", tenantPublicID, err)
 			return nil, err
 		}
 
@@ -103,12 +99,6 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 		if strings.TrimSpace(resolvedTenant.TenantPublicID) == "" {
 			resolvedTenant.TenantPublicID = tenantPublicID
 		}
-		log.Printf(
-			"debug authz tenant resolved: tenant_public_id=%s tenant_id=%s",
-			resolvedTenant.TenantPublicID,
-			resolvedTenant.TenantID,
-		)
-
 		return withSessionContext(withTenantContext(ctx, resolvedTenant), sessionCtx), nil
 	}
 }
