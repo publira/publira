@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Episode, EpisodeImage, Series, TenantContext } from "../types/v1/types_pb";
+import type { Episode, EpisodeImage, Label, Series, TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,51 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/catalog.proto.
  */
 export const file_publira_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJHChtMaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2USKAoGc2VyaWVzGAEgAygLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMiXAoWR2V0U2VyaWVzRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJInAKF0dldFNlcmllc0RldGFpbFJlc3BvbnNlEigKBnNlcmllcxgBIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEisKCGVwaXNvZGVzGAIgAygLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlIl0KF0dldEVwaXNvZGVEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkioAEKGEdldEVwaXNvZGVEZXRhaWxSZXNwb25zZRIqCgdlcGlzb2RlGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlEigKBnNlcmllcxgCIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEi4KBmltYWdlcxgDIAMoCzIeLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZUltYWdlMrkCCg5DYXRhbG9nU2VydmljZRJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJGChtMaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2USJwoGbGFiZWxzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCJsChpMaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDgoGb2Zmc2V0GAMgASgFIkcKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyJcChZHZXRTZXJpZXNEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkicAoXR2V0U2VyaWVzRGV0YWlsUmVzcG9uc2USKAoGc2VyaWVzGAEgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSKwoIZXBpc29kZXMYAiADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUiXQoXR2V0RXBpc29kZURldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSKgAQoYR2V0RXBpc29kZURldGFpbFJlc3BvbnNlEioKB2VwaXNvZGUYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUSKAoGc2VyaWVzGAIgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSLgoGaW1hZ2VzGAMgAygLMh4ucHVibGlyYS50eXBlcy52MS5FcGlzb2RlSW1hZ2UyowMKDkNhdGFsb2dTZXJ2aWNlEmgKE0xpc3RQdWJsaXNoZWRMYWJlbHMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRMYWJlbHNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2UiABJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+
+/**
+ * @generated from message publira.v1.ListPublishedLabelsRequest
+ */
+export type ListPublishedLabelsRequest = Message<"publira.v1.ListPublishedLabelsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext;
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
+
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset: number;
+};
+
+/**
+ * Describes the message publira.v1.ListPublishedLabelsRequest.
+ * Use `create(ListPublishedLabelsRequestSchema)` to create a new message.
+ */
+export const ListPublishedLabelsRequestSchema: GenMessage<ListPublishedLabelsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 0);
+
+/**
+ * @generated from message publira.v1.ListPublishedLabelsResponse
+ */
+export type ListPublishedLabelsResponse = Message<"publira.v1.ListPublishedLabelsResponse"> & {
+  /**
+   * @generated from field: repeated publira.types.v1.Label labels = 1;
+   */
+  labels: Label[];
+};
+
+/**
+ * Describes the message publira.v1.ListPublishedLabelsResponse.
+ * Use `create(ListPublishedLabelsResponseSchema)` to create a new message.
+ */
+export const ListPublishedLabelsResponseSchema: GenMessage<ListPublishedLabelsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 1);
 
 /**
  * @generated from message publira.v1.ListPublishedSeriesRequest
@@ -39,7 +83,7 @@ export type ListPublishedSeriesRequest = Message<"publira.v1.ListPublishedSeries
  * Use `create(ListPublishedSeriesRequestSchema)` to create a new message.
  */
 export const ListPublishedSeriesRequestSchema: GenMessage<ListPublishedSeriesRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 0);
+  messageDesc(file_publira_v1_catalog, 2);
 
 /**
  * @generated from message publira.v1.ListPublishedSeriesResponse
@@ -56,7 +100,7 @@ export type ListPublishedSeriesResponse = Message<"publira.v1.ListPublishedSerie
  * Use `create(ListPublishedSeriesResponseSchema)` to create a new message.
  */
 export const ListPublishedSeriesResponseSchema: GenMessage<ListPublishedSeriesResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 1);
+  messageDesc(file_publira_v1_catalog, 3);
 
 /**
  * @generated from message publira.v1.GetSeriesDetailRequest
@@ -78,7 +122,7 @@ export type GetSeriesDetailRequest = Message<"publira.v1.GetSeriesDetailRequest"
  * Use `create(GetSeriesDetailRequestSchema)` to create a new message.
  */
 export const GetSeriesDetailRequestSchema: GenMessage<GetSeriesDetailRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 2);
+  messageDesc(file_publira_v1_catalog, 4);
 
 /**
  * @generated from message publira.v1.GetSeriesDetailResponse
@@ -100,7 +144,7 @@ export type GetSeriesDetailResponse = Message<"publira.v1.GetSeriesDetailRespons
  * Use `create(GetSeriesDetailResponseSchema)` to create a new message.
  */
 export const GetSeriesDetailResponseSchema: GenMessage<GetSeriesDetailResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 3);
+  messageDesc(file_publira_v1_catalog, 5);
 
 /**
  * @generated from message publira.v1.GetEpisodeDetailRequest
@@ -122,7 +166,7 @@ export type GetEpisodeDetailRequest = Message<"publira.v1.GetEpisodeDetailReques
  * Use `create(GetEpisodeDetailRequestSchema)` to create a new message.
  */
 export const GetEpisodeDetailRequestSchema: GenMessage<GetEpisodeDetailRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 4);
+  messageDesc(file_publira_v1_catalog, 6);
 
 /**
  * Episode detail for public viewing.
@@ -152,12 +196,20 @@ export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailRespo
  * Use `create(GetEpisodeDetailResponseSchema)` to create a new message.
  */
 export const GetEpisodeDetailResponseSchema: GenMessage<GetEpisodeDetailResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 5);
+  messageDesc(file_publira_v1_catalog, 7);
 
 /**
  * @generated from service publira.v1.CatalogService
  */
 export const CatalogService: GenService<{
+  /**
+   * @generated from rpc publira.v1.CatalogService.ListPublishedLabels
+   */
+  listPublishedLabels: {
+    methodKind: "unary";
+    input: typeof ListPublishedLabelsRequestSchema;
+    output: typeof ListPublishedLabelsResponseSchema;
+  },
   /**
    * @generated from rpc publira.v1.CatalogService.ListPublishedSeries
    */

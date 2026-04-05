@@ -6,6 +6,16 @@ option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1"
 
 import "publira/types/v1/types.proto";
 
+message ListPublishedLabelsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListPublishedLabelsResponse {
+  repeated publira.types.v1.Label labels = 1;
+}
+
 message ListPublishedSeriesRequest {
   publira.types.v1.TenantContext tenant = 1;
   int32 limit = 2;
@@ -40,6 +50,7 @@ message GetEpisodeDetailResponse {
 }
 
 service CatalogService {
+  rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
   rpc GetSeriesDetail(GetSeriesDetailRequest) returns (GetSeriesDetailResponse) {}
   // Returns only currently published episodes in the requested tenant.

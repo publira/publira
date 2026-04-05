@@ -25,8 +25,8 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators"}).
-			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, []byte(`[]`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}).
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -52,7 +52,7 @@ func TestCatalogListPublishedSeriesPaginationUsesRequestValues(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantID, int32(1), int32(2)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -75,7 +75,7 @@ func TestCatalogListPublishedSeriesPaginationInvalidValuesUseDefault(t *testing.
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -99,13 +99,13 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	expectTenantLookup(mock, tenantAID, "TENANT_A", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantAID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_A", "Series A", "Synopsis A", now, []byte(`[]`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_A", "Series A", "Synopsis A", now, []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
 		WithArgs(tenantBID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_B", "Series B", "Synopsis B", now, []byte(`[]`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_B", "Series B", "Synopsis B", now, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -153,12 +153,15 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
 		WithArgs("SERIESPUB", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_name", "synopsis", "is_published", "published_at", "creators", "episodes"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "is_published", "published_at", "creators", "episodes"}).
 			AddRow(
 				seriesID,
 				"SERIESPUB",
 				"Public Series",
+				"LABEL001",
 				"Weekly Jump",
+				nil,
+				nil,
 				"Public Synopsis",
 				true,
 				now,
@@ -202,8 +205,8 @@ func TestCatalogGetSeriesDetailReturnsPermissionDeniedForUnpublishedSeries(t *te
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
 		WithArgs("SERIES_DRAFT", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_name", "synopsis", "is_published", "published_at", "creators", "episodes"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_DRAFT", "Draft Series", nil, nil, false, nil, []byte(`[]`), []byte(`[]`)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "is_published", "published_at", "creators", "episodes"}).
+			AddRow(uuid.Must(uuid.NewV7()), "SERIES_DRAFT", "Draft Series", nil, nil, nil, nil, nil, false, nil, []byte(`[]`), []byte(`[]`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
@@ -226,7 +229,7 @@ func TestCatalogGetSeriesDetailReturnsNotFoundForMissingSeries(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
 		WithArgs("SERIES_MISSING", tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_name", "synopsis", "is_published", "published_at", "creators", "episodes"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "is_published", "published_at", "creators", "episodes"}))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{

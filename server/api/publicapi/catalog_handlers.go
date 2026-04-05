@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
@@ -31,6 +33,57 @@ type episodeJSON struct {
 	Status             string  `json:"status"`
 	ScheduledAt        *string `json:"scheduled_at"`
 	PublishedAt        *string `json:"published_at"`
+}
+
+func (s *apiServer) ListPublishedLabels(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListPublishedLabelsRequest],
+) (*connect.Response[publirav1.ListPublishedLabelsResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	limit := req.Msg.Limit
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	offset := req.Msg.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	rows, err := s.queriesFor(ctx).ListLabelsByTenant(ctx, dbmodels.ListLabelsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	items := make([]*publirattypesv1.Label, 0, len(rows))
+	imageIDs := make([]uuid.UUID, 0)
+	for _, row := range rows {
+		item := &publirattypesv1.Label{PublicId: row.PublicID, Name: row.Name}
+		if row.EyeCatchImageUpdatedAt.Valid {
+			item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+		}
+		if row.EyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
+		}
+		items = append(items, item)
+	}
+
+	// ラベル画像バリアント情報を取得
+	if len(imageIDs) > 0 {
+		variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
+		if err == nil {
+			for i, row := range rows {
+				if row.EyeCatchImageID.Valid {
+					if variants, ok := variantsByImageID[row.EyeCatchImageID.UUID]; ok {
+						items[i].EyeCatchImageVariants = variants
+					}
+				}
+			}
+		}
+	}
+
+	return connect.NewResponse(&publirav1.ListPublishedLabelsResponse{Labels: items}), nil
 }
 
 func (s *apiServer) ListPublishedSeries(
@@ -74,6 +127,26 @@ func (s *apiServer) ListPublishedSeries(
 				ProfileText: creator.ProfileText,
 			})
 		}
+
+		// ラベル情報を処理
+		if len(row.LabelInfo) > 0 && string(row.LabelInfo) != "{}" {
+			var labelInfo map[string]interface{}
+			if err := json.Unmarshal(row.LabelInfo, &labelInfo); err == nil {
+				if publicIDVal, ok := labelInfo["public_id"].(string); ok {
+					label := &publirattypesv1.Label{
+						PublicId: publicIDVal,
+					}
+					if nameVal, ok := labelInfo["name"].(string); ok {
+						label.Name = nameVal
+					}
+					if eyeCatchImageUpdatedAtVal, ok := labelInfo["eye_catch_image_updated_at"].(string); ok {
+						label.EyeCatchImageUpdatedAt = eyeCatchImageUpdatedAtVal
+					}
+					item.Label = label
+				}
+			}
+		}
+
 		items = append(items, item)
 	}
 	return connect.NewResponse(&publirav1.ListPublishedSeriesResponse{Series: items}), nil
@@ -118,9 +191,32 @@ func (s *apiServer) GetSeriesDetail(
 	if row.Synopsis.Valid {
 		res.Msg.Series.Synopsis = row.Synopsis.String
 	}
-	if row.LabelName.Valid {
-		res.Msg.Series.Label = &publirattypesv1.Label{Name: row.LabelName.String}
+	
+	// ラベル情報を処理
+	if row.LabelPublicID.Valid && row.LabelName.Valid {
+		label := &publirattypesv1.Label{
+			PublicId: row.LabelPublicID.String,
+			Name:     row.LabelName.String,
+		}
+		
+		// ラベル画像とバリアント情報を処理
+		if row.EyeCatchImageID.Valid {
+			if row.EyeCatchImageUpdatedAt.Valid {
+				label.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+			}
+			
+			// ラベル画像バリアント情報を取得
+			variants, err := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+			if err == nil && len(variants) > 0 {
+				if imageVariants, ok := variants[row.EyeCatchImageID.UUID]; ok {
+					label.EyeCatchImageVariants = imageVariants
+				}
+			}
+		}
+		
+		res.Msg.Series.Label = label
 	}
+	
 	res.Msg.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
 		res.Msg.Series.Creators = append(res.Msg.Series.Creators, &publirattypesv1.Creator{
@@ -182,4 +278,43 @@ func (s *apiServer) GetEpisodeDetail(
 	}
 
 	return res, nil
+}
+
+// labelEyeCatchVariantsByImageIDs ラベル画像IDのリストからバリアント情報を取得する
+func (s *apiServer) labelEyeCatchVariantsByImageIDs(
+	ctx context.Context,
+	imageIDs []uuid.UUID,
+) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
+	if len(imageIDs) == 0 {
+		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
+	}
+
+	rows, err := s.queriesFor(ctx).ListLabelImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	byImageID := make(map[uuid.UUID][]dbmodels.ListLabelImageVariantsByImageIDsRow, len(imageIDs))
+	for _, row := range rows {
+		byImageID[row.LabelImageID] = append(byImageID[row.LabelImageID], row)
+	}
+
+	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
+	for imageID, variants := range byImageID {
+		items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(variants))
+		for _, row := range variants {
+			items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
+				Label:         row.Label,
+				VariantType:   row.VariantType,
+				Url:           fmt.Sprintf("/images/labels/%s/%s/%d", imageID.String(), row.VariantType, row.Width),
+				ContentType:   row.ContentType,
+				Width:         row.Width,
+				Height:        row.Height,
+				FileSizeBytes: row.FileSizeBytes,
+			})
+		}
+		mapped[imageID] = items
+	}
+
+	return mapped, nil
 }
