@@ -5,6 +5,7 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { getCatalogTopData } from "#lib/catalog-top";
 import type {
   CatalogTopEpisodeItem,
@@ -91,7 +92,13 @@ export default async function Page({
   let topData: Awaited<ReturnType<typeof getCatalogTopData>>;
   try {
     topData = await getCatalogTopData(tenant_public_id);
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      throw error;
+    }
+
+    console.error("Failed to load catalog top", error);
+
     return (
       <main className="mx-auto max-w-6xl px-6 py-12">
         <header className="mb-8 space-y-3">
@@ -132,6 +139,12 @@ export default async function Page({
             href="/series"
           >
             シリーズ一覧へ
+          </Link>
+          <Link
+            className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium hover:bg-muted"
+            href="/labels"
+          >
+            レーベル一覧へ
           </Link>
           <Link
             className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium hover:bg-muted"
@@ -283,6 +296,69 @@ export default async function Page({
                 </article>
               );
             })}
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="featured-labels" className="mb-12">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2
+            id="featured-labels"
+            className="font-serif text-2xl font-semibold"
+          >
+            注目のレーベル
+          </h2>
+          <Link
+            className="text-sm text-primary underline-offset-4 hover:underline"
+            href="/labels"
+          >
+            レーベル一覧へ
+          </Link>
+        </div>
+
+        {topData.featuredLabels.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+            公開中シリーズに紐づくレーベルはまだありません。
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {topData.featuredLabels.map((label) => (
+              <article
+                key={label.publicId}
+                className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
+              >
+                {label.eyeCatchImageVariants &&
+                label.eyeCatchImageVariants.length > 0 ? (
+                  <div className="aspect-video overflow-hidden bg-muted">
+                    <EyeCatchPicture
+                      alt={label.name}
+                      imgClassName="h-full w-full object-cover"
+                      variants={label.eyeCatchImageVariants}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+                    <svg
+                      className="h-10 w-10"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                      />
+                    </svg>
+                  </div>
+                )}
+
+                <div className="p-4">
+                  <p className="font-medium">{label.name}</p>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>

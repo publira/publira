@@ -680,9 +680,22 @@ SELECT s.id,
             WHERE c.id IS NOT NULL
         ),
         '[]'
-    )::jsonb AS creators
+    )::jsonb AS creators,
+    CASE
+        WHEN l.public_id IS NOT NULL THEN json_build_object(
+            'public_id',
+            l.public_id,
+            'name',
+            l.name,
+            'eye_catch_image_updated_at',
+            li.updated_at::TEXT
+        )
+        ELSE '{}'::json
+    END::jsonb AS label_info
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN labels l ON s.label_id = l.id
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.tenant_id = $1
@@ -691,7 +704,10 @@ WHERE s.tenant_id = $1
     AND s.published_at <= NOW()
 GROUP BY s.id,
     sl.series_id,
-    sl.synopsis
+    sl.synopsis,
+    l.public_id,
+    l.name,
+    li.updated_at
 ORDER BY s.published_at DESC
 LIMIT $2 OFFSET $3;
 -- name: CreateEpisodeBase :one
@@ -800,7 +816,10 @@ WHERE e.series_id = s.id
 SELECT s.id,
     s.public_id,
     s.title,
+    l.public_id AS label_public_id,
     l.name AS label_name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at,
     sl.synopsis,
     s.is_published,
     s.published_at,
@@ -858,6 +877,7 @@ SELECT s.id,
 FROM series s
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
 WHERE s.public_id = $1

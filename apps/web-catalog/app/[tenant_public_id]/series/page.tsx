@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { listPublishedSeries } from "#lib/catalog";
 import { getTenantSiteLabel } from "#lib/tenant";
 
@@ -84,29 +85,42 @@ const SeriesListData = async (
         <Link
           key={item.publicId}
           href={`/series/${item.publicId}`}
-          className="group overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm transition hover:shadow-md"
+          className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:shadow-md"
         >
-          <div className="mb-4 flex h-32 items-center justify-center rounded bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
-            <CollectionIcon className="h-12 w-12" />
+          {item.labelEyeCatchImageVariants &&
+          item.labelEyeCatchImageVariants.length > 0 ? (
+            <div className="mb-4 aspect-video overflow-hidden rounded bg-muted">
+              <EyeCatchPicture
+                alt={item.labelName || item.title}
+                imgClassName="h-full w-full object-cover"
+                variants={item.labelEyeCatchImageVariants}
+              />
+            </div>
+          ) : (
+            <div className="mb-4 flex aspect-video items-center justify-center rounded bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+              <CollectionIcon className="h-12 w-12" />
+            </div>
+          )}
+          <div className="px-6 pb-6">
+            <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
+              {item.title}
+            </h2>
+            {item.creatorNames.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {item.creatorNames.join("、")}
+              </p>
+            )}
+            {item.labelName && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {item.labelName}
+              </p>
+            )}
+            {item.synopsis && (
+              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                {item.synopsis}
+              </p>
+            )}
           </div>
-          <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
-            {item.title}
-          </h2>
-          {item.creatorNames.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {item.creatorNames.join("、")}
-            </p>
-          )}
-          {item.labelName && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {item.labelName}
-            </p>
-          )}
-          {item.synopsis && (
-            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-              {item.synopsis}
-            </p>
-          )}
         </Link>
       ))}
     </div>

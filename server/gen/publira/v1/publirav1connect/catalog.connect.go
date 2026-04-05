@@ -33,6 +33,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// CatalogServiceListPublishedLabelsProcedure is the fully-qualified name of the CatalogService's
+	// ListPublishedLabels RPC.
+	CatalogServiceListPublishedLabelsProcedure = "/publira.v1.CatalogService/ListPublishedLabels"
 	// CatalogServiceListPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
 	// ListPublishedSeries RPC.
 	CatalogServiceListPublishedSeriesProcedure = "/publira.v1.CatalogService/ListPublishedSeries"
@@ -46,6 +49,7 @@ const (
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
 type CatalogServiceClient interface {
+	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
 	// Returns only currently published episodes in the requested tenant.
@@ -65,6 +69,12 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	catalogServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods()
 	return &catalogServiceClient{
+		listPublishedLabels: connect.NewClient[v1.ListPublishedLabelsRequest, v1.ListPublishedLabelsResponse](
+			httpClient,
+			baseURL+CatalogServiceListPublishedLabelsProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedLabels")),
+			connect.WithClientOptions(opts...),
+		),
 		listPublishedSeries: connect.NewClient[v1.ListPublishedSeriesRequest, v1.ListPublishedSeriesResponse](
 			httpClient,
 			baseURL+CatalogServiceListPublishedSeriesProcedure,
@@ -88,9 +98,15 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // catalogServiceClient implements CatalogServiceClient.
 type catalogServiceClient struct {
+	listPublishedLabels *connect.Client[v1.ListPublishedLabelsRequest, v1.ListPublishedLabelsResponse]
 	listPublishedSeries *connect.Client[v1.ListPublishedSeriesRequest, v1.ListPublishedSeriesResponse]
 	getSeriesDetail     *connect.Client[v1.GetSeriesDetailRequest, v1.GetSeriesDetailResponse]
 	getEpisodeDetail    *connect.Client[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse]
+}
+
+// ListPublishedLabels calls publira.v1.CatalogService.ListPublishedLabels.
+func (c *catalogServiceClient) ListPublishedLabels(ctx context.Context, req *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error) {
+	return c.listPublishedLabels.CallUnary(ctx, req)
 }
 
 // ListPublishedSeries calls publira.v1.CatalogService.ListPublishedSeries.
@@ -110,6 +126,7 @@ func (c *catalogServiceClient) GetEpisodeDetail(ctx context.Context, req *connec
 
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
 type CatalogServiceHandler interface {
+	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
 	ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error)
 	GetSeriesDetail(context.Context, *connect.Request[v1.GetSeriesDetailRequest]) (*connect.Response[v1.GetSeriesDetailResponse], error)
 	// Returns only currently published episodes in the requested tenant.
@@ -125,6 +142,12 @@ type CatalogServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	catalogServiceMethods := v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods()
+	catalogServiceListPublishedLabelsHandler := connect.NewUnaryHandler(
+		CatalogServiceListPublishedLabelsProcedure,
+		svc.ListPublishedLabels,
+		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedLabels")),
+		connect.WithHandlerOptions(opts...),
+	)
 	catalogServiceListPublishedSeriesHandler := connect.NewUnaryHandler(
 		CatalogServiceListPublishedSeriesProcedure,
 		svc.ListPublishedSeries,
@@ -145,6 +168,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 	)
 	return "/publira.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case CatalogServiceListPublishedLabelsProcedure:
+			catalogServiceListPublishedLabelsHandler.ServeHTTP(w, r)
 		case CatalogServiceListPublishedSeriesProcedure:
 			catalogServiceListPublishedSeriesHandler.ServeHTTP(w, r)
 		case CatalogServiceGetSeriesDetailProcedure:
@@ -159,6 +184,10 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 
 // UnimplementedCatalogServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedCatalogServiceHandler struct{}
+
+func (UnimplementedCatalogServiceHandler) ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedLabels is not implemented"))
+}
 
 func (UnimplementedCatalogServiceHandler) ListPublishedSeries(context.Context, *connect.Request[v1.ListPublishedSeriesRequest]) (*connect.Response[v1.ListPublishedSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedSeries is not implemented"))
