@@ -4,6 +4,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { guardPlaceholder } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -16,6 +17,7 @@ import {
   sanitizeRedirectPath,
   sessionCookieOptions,
 } from "#lib/auth";
+import { getPublicSessionCacheTag } from "#lib/auth-shared";
 import { getTenantSiteInfo } from "#lib/tenant";
 
 export const metadata: Metadata = {
@@ -57,6 +59,7 @@ const loginAction = async (formData: FormData): Promise<void> => {
     name: PUBLIC_SESSION_COOKIE_NAME,
     value: result.sessionId,
   });
+  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 
   redirect(returnToPath);
 };

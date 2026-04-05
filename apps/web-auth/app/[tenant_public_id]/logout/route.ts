@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -6,6 +7,7 @@ import {
   logoutPublic,
   sessionCookieOptions,
 } from "#lib/auth";
+import { getPublicSessionCacheTag } from "#lib/auth-shared";
 
 const clearSessionCookie = (response: NextResponse) => {
   response.cookies.set({
@@ -34,6 +36,9 @@ export const POST = async (
   const response = NextResponse.redirect(new URL("/login", request.url));
 
   clearSessionCookie(response);
+  revalidateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME), {
+    expire: 0,
+  });
 
   return response;
 };

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"log"
 	"net/http"
 	"net/mail"
 	"net/url"
@@ -100,7 +101,7 @@ func (s *apiServer) authenticateSession(
 	if !ok {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, auth.HashToken(sessionToken), time.Now())
+	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queriesFor(ctx), tenant.ID, auth.HashToken(sessionToken), time.Now())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
@@ -1075,8 +1076,22 @@ func (s *apiServer) ListNotifications(
 	ctx context.Context,
 	req *connect.Request[publirav1.ListNotificationsRequest],
 ) (*connect.Response[publirav1.ListNotificationsResponse], error) {
+	log.Printf(
+		"debug list_notifications request tenant_public_id=%s has_session_msg=%t session_msg_len=%d has_session_header=%t session_header_len=%d",
+		req.Msg.Tenant.GetTenantPublicId(),
+		req.Msg.SessionId != "",
+		len(req.Msg.SessionId),
+		strings.TrimSpace(req.Header().Get("X-Publira-Session-Id")) != "",
+		len(strings.TrimSpace(req.Header().Get("X-Publira-Session-Id"))),
+	)
+
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
 	if err != nil {
+		log.Printf(
+			"debug list_notifications auth_failed tenant_public_id=%s error=%v",
+			req.Msg.Tenant.GetTenantPublicId(),
+			err,
+		)
 		return nil, err
 	}
 

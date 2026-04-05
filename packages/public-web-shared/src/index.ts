@@ -1,6 +1,7 @@
 export {
   buildPublicSessionHeaders,
   createPublicGrpcApiClient,
+  getPublicSessionCacheTag,
   resolvePublicSessionId,
 } from "./api-client";
 export {

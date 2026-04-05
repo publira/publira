@@ -1,9 +1,13 @@
+import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { deleteMe, getMe, updateMe } from "#lib/auth";
-import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import {
+  getPublicSessionCacheTag,
+  PUBLIC_SESSION_COOKIE_NAME,
+} from "#lib/auth-shared";
 
 import { DeleteAccountModal } from "./delete-account-modal";
 
@@ -81,6 +85,7 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   }
 
   await clearSessionCookie();
+  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
   redirect(
     "/login?message=アカウントを削除しました。ご利用ありがとうございました。&status=success"
   );

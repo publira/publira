@@ -14,9 +14,9 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { Suspense } from "react";
 
-import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { getMe } from "#lib/auth";
 import { getTenantSiteInfo } from "#lib/tenant";
 
 const resolveTenantPublicId = async (
@@ -27,11 +27,14 @@ const resolveTenantPublicId = async (
   return tenant_public_id;
 };
 
-const getHeaderActionsContent = async () => {
-  const cookieStore = await cookies();
-  const hasSession = Boolean(
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
-  );
+const HeaderActionsContent = async ({
+  tenantInfoPromise,
+}: {
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>;
+}) => {
+  const { tenantPublicId } = await tenantInfoPromise;
+  const me = await getMe(tenantPublicId);
+  const hasSession = Boolean(me?.publicId);
   const actions = getAuthActions(hasSession);
 
   return (
@@ -42,33 +45,58 @@ const getHeaderActionsContent = async () => {
   );
 };
 
+const HeaderActionsFallback = () => (
+  <div className="flex items-center gap-2" role="status">
+    <div
+      aria-hidden="true"
+      className="bg-muted/70 motion-safe:animate-pulse inline-block h-8 w-20 rounded-md"
+    />
+    <div
+      aria-hidden="true"
+      className="bg-muted/70 motion-safe:animate-pulse inline-block h-8 w-24 rounded-md"
+    />
+  </div>
+);
+
+const getHeaderActionsContent = (
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
+) => (
+  <Suspense fallback={<HeaderActionsFallback />}>
+    <HeaderActionsContent tenantInfoPromise={tenantInfoPromise} />
+  </Suspense>
+);
+
 const buildMemberTitleBase = (siteLabel: string): string => siteLabel;
 
 const resolveTenantInfo = async (
   params: Promise<{ tenant_public_id: string }>
 ) => {
   const tenantPublicId = await resolveTenantPublicId(params);
-  return getTenantSiteInfo(tenantPublicId);
+  const info = await getTenantSiteInfo(tenantPublicId);
+  return {
+    info,
+    tenantPublicId,
+  };
 };
 
 const getAppLabel = async (
   tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
 ): Promise<string | undefined> => {
-  const tenantInfo = await tenantInfoPromise;
+  const { info: tenantInfo } = await tenantInfoPromise;
   return tenantInfo?.siteLabel?.trim() || undefined;
 };
 
 const getCopyrightText = async (
   tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
 ): Promise<string | undefined> => {
-  const tenantInfo = await tenantInfoPromise;
+  const { info: tenantInfo } = await tenantInfoPromise;
   return tenantInfo?.copyrightText?.trim() || undefined;
 };
 
 const getFooterNote = async (
   tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
 ): Promise<string | undefined> => {
-  const tenantInfo = await tenantInfoPromise;
+  const { info: tenantInfo } = await tenantInfoPromise;
   return tenantInfo?.siteDescription?.trim() || undefined;
 };
 
@@ -112,7 +140,9 @@ export default function TenantLayout({
       <SiteLayoutHeader>
         <SiteLayoutBrand label={getAppLabel(tenantInfoPromise)} />
         <SiteLayoutNav />
-        <SiteLayoutHeaderActions content={getHeaderActionsContent()} />
+        <SiteLayoutHeaderActions
+          content={getHeaderActionsContent(tenantInfoPromise)}
+        />
       </SiteLayoutHeader>
       <SiteLayoutMain>{children}</SiteLayoutMain>
       <SiteLayoutFooter
