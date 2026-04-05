@@ -33,6 +33,7 @@ type CreateSeriesRequest struct {
 	CreatorPublicIds         []string               `protobuf:"bytes,7,rep,name=creator_public_ids,json=creatorPublicIds,proto3" json:"creator_public_ids,omitempty"`
 	EyeCatchImageData        []byte                 `protobuf:"bytes,8,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
 	EyeCatchImageContentType string                 `protobuf:"bytes,9,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
+	PublishedAt              string                 `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -130,6 +131,13 @@ func (x *CreateSeriesRequest) GetEyeCatchImageContentType() string {
 	return ""
 }
 
+func (x *CreateSeriesRequest) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
+}
+
 type CreateSeriesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Series        *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
@@ -187,6 +195,7 @@ type UpdateSeriesRequest struct {
 	EyeCatchImageData        []byte                 `protobuf:"bytes,9,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
 	EyeCatchImageContentType string                 `protobuf:"bytes,10,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
 	ClearEyeCatchImage       bool                   `protobuf:"varint,11,opt,name=clear_eye_catch_image,json=clearEyeCatchImage,proto3" json:"clear_eye_catch_image,omitempty"`
+	PublishedAt              string                 `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -296,6 +305,13 @@ func (x *UpdateSeriesRequest) GetClearEyeCatchImage() bool {
 		return x.ClearEyeCatchImage
 	}
 	return false
+}
+
+func (x *UpdateSeriesRequest) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
 }
 
 type UpdateSeriesResponse struct {
@@ -1398,7 +1414,7 @@ var File_publira_admin_v1_series_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
-	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x9c\x03\n" +
+	"\x1dpublira/admin/v1/series.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xbf\x03\n" +
 	"\x13CreateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -1408,9 +1424,10 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12,\n" +
 	"\x12creator_public_ids\x18\a \x03(\tR\x10creatorPublicIds\x12/\n" +
 	"\x14eye_catch_image_data\x18\b \x01(\fR\x11eyeCatchImageData\x12>\n" +
-	"\x1ceye_catch_image_content_type\x18\t \x01(\tR\x18eyeCatchImageContentType\"H\n" +
+	"\x1ceye_catch_image_content_type\x18\t \x01(\tR\x18eyeCatchImageContentType\x12!\n" +
+	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\"H\n" +
 	"\x14CreateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\xec\x03\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\x8f\x04\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
@@ -1423,7 +1440,8 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x14eye_catch_image_data\x18\t \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\n" +
 	" \x01(\tR\x18eyeCatchImageContentType\x121\n" +
-	"\x15clear_eye_catch_image\x18\v \x01(\bR\x12clearEyeCatchImage\"H\n" +
+	"\x15clear_eye_catch_image\x18\v \x01(\bR\x12clearEyeCatchImage\x12!\n" +
+	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\"H\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"z\n" +
 	"\x11ListSeriesRequest\x127\n" +

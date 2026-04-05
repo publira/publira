@@ -13,8 +13,9 @@ import (
 
 func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDForTenantRow) *publirattypesv1.Series {
 	series := &publirattypesv1.Series{
-		PublicId: row.PublicID,
-		Title:    row.Title,
+		PublicId:    row.PublicID,
+		Title:       row.Title,
+		IsPublished: row.IsPublished,
 	}
 	if row.LabelPublicID.Valid {
 		series.Label = Label(row.LabelPublicID.String, row.LabelName.String)
@@ -27,6 +28,9 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	}
 	if row.EyeCatchImageUpdatedAt.Valid {
 		series.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		series.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
 	return series
 }

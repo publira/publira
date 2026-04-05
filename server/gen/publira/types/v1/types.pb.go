@@ -439,6 +439,8 @@ type Series struct {
 	Label                  *Label                   `protobuf:"bytes,4,opt,name=label,proto3" json:"label,omitempty"`
 	Creators               []*Creator               `protobuf:"bytes,5,rep,name=creators,proto3" json:"creators,omitempty"`
 	ReadingPeriodHours     int32                    `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
+	IsPublished            bool                     `protobuf:"varint,11,opt,name=is_published,json=isPublished,proto3" json:"is_published,omitempty"`
+	PublishedAt            string                   `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
 	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,9,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
 	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,10,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
 	unknownFields          protoimpl.UnknownFields
@@ -515,6 +517,20 @@ func (x *Series) GetReadingPeriodHours() int32 {
 		return x.ReadingPeriodHours
 	}
 	return 0
+}
+
+func (x *Series) GetIsPublished() bool {
+	if x != nil {
+		return x.IsPublished
+	}
+	return false
+}
+
+func (x *Series) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
 }
 
 func (x *Series) GetEyeCatchImageUpdatedAt() string {
@@ -1211,14 +1227,16 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12\x14\n" +
 	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x05 \x01(\x05R\x06height\x12&\n" +
-	"\x0ffile_size_bytes\x18\x06 \x01(\x03R\rfileSizeBytes\"\x99\x03\n" +
+	"\x0ffile_size_bytes\x18\x06 \x01(\x03R\rfileSizeBytes\"\xdf\x03\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
 	"\bsynopsis\x18\x03 \x01(\tR\bsynopsis\x12-\n" +
 	"\x05label\x18\x04 \x01(\v2\x17.publira.types.v1.LabelR\x05label\x125\n" +
 	"\bcreators\x18\x05 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x120\n" +
-	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12:\n" +
+	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12!\n" +
+	"\fis_published\x18\v \x01(\bR\visPublished\x12!\n" +
+	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\x12:\n" +
 	"\x1aeye_catch_image_updated_at\x18\t \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
 	"\x18eye_catch_image_variants\x18\n" +
 	" \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariantsJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x83\x02\n" +

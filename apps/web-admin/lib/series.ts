@@ -6,6 +6,7 @@ export interface SeriesItem {
   title: string;
   synopsis: string;
   readingPeriodHours: number;
+  publishedAt: string;
   labelPublicId: string;
   labelName: string;
   creatorNames: string[];
@@ -49,12 +50,45 @@ const genericListErrorMessage =
 const genericMutationErrorMessage =
   "シリーズの保存に失敗しました。時間をおいて再試行してください。";
 
+const extractErrorText = (error: unknown): string => {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}`;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const record = error as Record<string, unknown>;
+    const message =
+      (typeof record.message === "string" && record.message) ||
+      (typeof record.rawMessage === "string" && record.rawMessage) ||
+      (typeof record.details === "string" && record.details) ||
+      "";
+    const code =
+      typeof record.code === "string" || typeof record.code === "number"
+        ? String(record.code)
+        : "";
+    const joined = [code, message]
+      .filter((value) => value.length > 0)
+      .join(" ");
+    if (joined.length > 0) {
+      return joined;
+    }
+  }
+
+  return String(error ?? "");
+};
+
 const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
-  if (!(error instanceof Error)) {
+  const message = extractErrorText(error).toLowerCase();
+  if (!message) {
     return fallbackMessage;
   }
 
-  const message = error.message.toLowerCase();
+  if (
+    message.includes("module not found") ||
+    message.includes("can't resolve")
+  ) {
+    return "依存パッケージの読み込みに失敗しました。開発サーバーを再起動して再試行してください。";
+  }
 
   if (
     message.includes("unauthenticated") ||
@@ -100,6 +134,8 @@ const mapSeries = (series: {
   title: string;
   synopsis: string;
   readingPeriodHours?: number;
+  isPublished?: boolean;
+  publishedAt?: string;
   label?: { publicId: string; name: string };
   creators: { publicId: string; name: string }[];
   eyeCatchImageVariants?: {
@@ -132,10 +168,11 @@ const mapSeries = (series: {
       width: variant.width ?? 0,
     }))
     .filter((variant) => variant.label.length > 0 && variant.url.length > 0),
-  isPublished: false,
+  isPublished: series.isPublished ?? false,
   labelName: series.label?.name?.trim() ?? "",
   labelPublicId: series.label?.publicId?.trim() ?? "",
   publicId: series.publicId,
+  publishedAt: series.publishedAt ?? "",
   readingPeriodHours: series.readingPeriodHours ?? 0,
   synopsis: series.synopsis,
   title: series.title,
@@ -246,6 +283,7 @@ export const createSeries = async (input: {
   labelPublicId: string;
   creatorPublicIds: string[];
   isPublished: boolean;
+  publishedAt?: string;
   eyeCatchImageContentType?: string;
   eyeCatchImageData?: Uint8Array;
 }): Promise<CreateSeriesResult> => {
@@ -265,6 +303,7 @@ export const createSeries = async (input: {
         eyeCatchImageData: input.eyeCatchImageData,
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
+        publishedAt: input.publishedAt,
         readingPeriodHours: input.readingPeriodHours,
         synopsis: input.synopsis,
         tenant: { tenantPublicId: input.tenantPublicId },
@@ -288,8 +327,9 @@ export const createSeries = async (input: {
       },
     };
   } catch (error) {
+    const errorText = extractErrorText(error);
     console.error("[web-admin] createSeries failed", {
-      error,
+      errorText,
       input,
     });
 
@@ -310,6 +350,7 @@ export const updateSeries = async (input: {
   labelPublicId: string;
   creatorPublicIds: string[];
   isPublished: boolean;
+  publishedAt?: string;
   clearEyeCatchImage?: boolean;
   eyeCatchImageContentType?: string;
   eyeCatchImageData?: Uint8Array;
@@ -332,6 +373,7 @@ export const updateSeries = async (input: {
         isPublished: input.isPublished,
         labelPublicId: input.labelPublicId,
         publicId: input.publicId,
+        publishedAt: input.publishedAt,
         readingPeriodHours: input.readingPeriodHours,
         synopsis: input.synopsis,
         tenant: { tenantPublicId: input.tenantPublicId },
@@ -355,8 +397,9 @@ export const updateSeries = async (input: {
       },
     };
   } catch (error) {
+    const errorText = extractErrorText(error);
     console.error("[web-admin] updateSeries failed", {
-      error,
+      errorText,
       input,
     });
 
