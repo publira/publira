@@ -1,7 +1,4 @@
-import { Button } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -9,17 +6,11 @@ import { Suspense } from "react";
 
 import { isSetupCompleted } from "#lib/setup";
 
-import { setupAction } from "./_lib/actions";
+import { SetupForm } from "./_components/setup-form";
 
 export const metadata: Metadata = {
   title: "初期セットアップ",
 };
-
-interface SetupPageProps {
-  searchParams: Promise<{
-    error?: string;
-  }>;
-}
 
 const Guard = async ({ children }: { children: React.ReactNode }) => {
   await connection();
@@ -39,88 +30,7 @@ const Guard = async ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const SetupFrom = async ({ searchParams }: SetupPageProps) => {
-  const params = await searchParams;
-  const errorMessage = params.error?.trim();
-
-  return (
-    <form action={setupAction} className="space-y-4">
-      <Field>
-        <FieldLabel htmlFor="name" required>
-          氏名
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            autoComplete="name"
-            id="name"
-            name="name"
-            placeholder="管理者 太郎"
-            required
-            type="text"
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="email" required>
-          メールアドレス
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            autoComplete="email"
-            id="email"
-            name="email"
-            placeholder="admin@example.com"
-            required
-            type="email"
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="password" required>
-          パスワード
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            autoComplete="new-password"
-            id="password"
-            name="password"
-            placeholder="••••••••"
-            required
-            type="password"
-          />
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="confirmPassword" required>
-          パスワード（確認）
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            autoComplete="new-password"
-            id="confirmPassword"
-            name="confirmPassword"
-            placeholder="••••••••"
-            required
-            type="password"
-          />
-        </FieldContent>
-      </Field>
-
-      {errorMessage ? (
-        <FormMessage variant="destructive">{errorMessage}</FormMessage>
-      ) : null}
-
-      <Button className="mt-2 w-full" type="submit">
-        管理ユーザーを作成する
-      </Button>
-    </form>
-  );
-};
-
-export default function SetupPage(props: SetupPageProps) {
+export default function SetupPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
@@ -136,9 +46,7 @@ export default function SetupPage(props: SetupPageProps) {
                 最初の管理ユーザーアカウントを作成してください。
               </p>
 
-              <Suspense fallback={null}>
-                <SetupFrom {...props} />
-              </Suspense>
+              <SetupForm />
             </Guard>
           </Suspense>
         </div>

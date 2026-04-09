@@ -1,15 +1,17 @@
 "use server";
 
 import type { FormActionState } from "@publira/utils/form-action";
+import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
-  PLATFORM_SESSION_COOKIE_NAME,
-  loginPlatform,
+  PUBLIC_SESSION_COOKIE_NAME,
+  loginPublic,
   sanitizeRedirectPath,
   sessionCookieOptions,
 } from "#lib/auth";
+import { getPublicSessionCacheTag } from "#lib/auth-shared";
 
 export const loginAction = async (
   _prevState: FormActionState,
@@ -17,9 +19,11 @@ export const loginAction = async (
 ): Promise<FormActionState> => {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const nextPath = sanitizeRedirectPath(String(formData.get("next") ?? "/"));
+  const returnToPath = sanitizeRedirectPath(
+    String(formData.get("returnTo") ?? "/")
+  );
 
-  const result = await loginPlatform(email, password);
+  const result = await loginPublic(email, password);
   if (!result) {
     return {
       message: "メールアドレスまたはパスワードが正しくありません。",
@@ -31,9 +35,10 @@ export const loginAction = async (
   cookieStore.set({
     ...sessionCookieOptions,
     expires: result.expiresAt,
-    name: PLATFORM_SESSION_COOKIE_NAME,
+    name: PUBLIC_SESSION_COOKIE_NAME,
     value: result.sessionId,
   });
+  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 
-  redirect(nextPath);
+  redirect(returnToPath);
 };

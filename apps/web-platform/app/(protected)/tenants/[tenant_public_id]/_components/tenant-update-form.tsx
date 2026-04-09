@@ -1,42 +1,29 @@
 "use client";
 
-import { Button } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { ActionForm } from "@publira/ui-components/action-form";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import * as React from "react";
-import { useActionState } from "react";
-
-export type TenantUpdateFormState = { ok: boolean; message: string } | null;
 
 interface TenantUpdateFormProps {
   action: (
-    prevState: TenantUpdateFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantUpdateFormState>;
+  ) => Promise<FormActionState>;
   children: React.ReactNode;
 }
 
 export const TenantUpdateForm = ({
   action,
   children,
-}: TenantUpdateFormProps) => {
-  const [state, formAction, isPending] = useActionState(action, null);
-
-  return (
-    <form action={formAction}>
-      {children}
-      {state ? (
-        <FormMessage
-          className="mt-3"
-          variant={state.ok ? "success" : "destructive"}
-        >
-          {state.message}
-        </FormMessage>
-      ) : null}
-      <div className="mt-4 flex justify-end">
-        <Button disabled={isPending} type="submit" variant="outline">
-          {isPending ? "保存中..." : "保存"}
-        </Button>
-      </div>
-    </form>
-  );
-};
+}: TenantUpdateFormProps) => (
+  <ActionForm
+    action={action}
+    pendingLabel="保存中..."
+    showSuccess
+    submitClassName="mt-4 ml-auto block"
+    submitLabel="保存"
+    submitVariant="outline"
+  >
+    {children}
+  </ActionForm>
+);

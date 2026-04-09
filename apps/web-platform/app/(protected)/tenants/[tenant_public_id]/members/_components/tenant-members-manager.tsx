@@ -35,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import type { FormActionState } from "@publira/utils/form-action";
 import * as React from "react";
 import { useActionState } from "react";
 
@@ -48,11 +49,6 @@ import type {
   PlatformTenantMemberSummary,
 } from "#lib/tenants";
 
-import type {
-  TenantInvitationFormState,
-  TenantMemberFormState,
-} from "../../_lib/actions";
-
 const tenantRoleOptions = [
   { label: "テナント管理者", value: "tenant_admin" },
   { label: "編集担当", value: "tenant_editor" },
@@ -61,32 +57,32 @@ const tenantRoleOptions = [
 
 interface TenantMembersManagerProps {
   addAction: (
-    prevState: TenantMemberFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantMemberFormState>;
+  ) => Promise<FormActionState>;
   cancelInvitationAction: (
-    prevState: TenantInvitationFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantInvitationFormState>;
+  ) => Promise<FormActionState>;
   createInvitationAction: (
-    prevState: TenantInvitationFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantInvitationFormState>;
+  ) => Promise<FormActionState>;
   invitations: PlatformTenantAdminInvitation[];
   members: PlatformTenantMemberSummary[];
   removeAction: (
-    prevState: TenantMemberFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantMemberFormState>;
+  ) => Promise<FormActionState>;
   resendInvitationAction: (
-    prevState: TenantInvitationFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantInvitationFormState>;
+  ) => Promise<FormActionState>;
   tenantPublicId: string;
   updateRoleAction: (
-    prevState: TenantMemberFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantMemberFormState>;
+  ) => Promise<FormActionState>;
 }
 
 const invitationStatusTone = (status: string) => {
@@ -121,32 +117,32 @@ const invitationStatusLabel = (status: string) => {
 interface TenantMemberRowProps {
   member: PlatformTenantMemberSummary;
   removeAction: (
-    prevState: TenantMemberFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantMemberFormState>;
-  setDeleteState: (state: TenantMemberFormState) => void;
+  ) => Promise<FormActionState>;
+  setDeleteState: (state: FormActionState) => void;
   tenantPublicId: string;
   updateRoleAction: (
-    prevState: TenantMemberFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantMemberFormState>;
+  ) => Promise<FormActionState>;
 }
 
 interface TenantMemberRoleDialogProps {
   member: PlatformTenantMemberSummary;
   tenantPublicId: string;
   updateRoleAction: (
-    prevState: TenantMemberFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantMemberFormState>;
+  ) => Promise<FormActionState>;
 }
 
 interface TenantMemberDeleteButtonProps {
   removeAction: (
-    prevState: TenantMemberFormState,
+    prevState: FormActionState,
     formData: FormData
-  ) => Promise<TenantMemberFormState>;
-  setDeleteState: (state: TenantMemberFormState) => void;
+  ) => Promise<FormActionState>;
+  setDeleteState: (state: FormActionState) => void;
   tenantPublicId: string;
   userPublicId: string;
 }
@@ -423,9 +419,8 @@ export const TenantMembersManager = ({
     null
   );
   const [invitationActionState, setInvitationActionState] =
-    React.useState<TenantInvitationFormState>(null);
-  const [deleteState, setDeleteState] =
-    React.useState<TenantMemberFormState>(null);
+    React.useState<FormActionState>(null);
+  const [deleteState, setDeleteState] = React.useState<FormActionState>(null);
 
   const [isResendPending, startResendTransition] = React.useTransition();
   const [isCancelPending, startCancelTransition] = React.useTransition();
