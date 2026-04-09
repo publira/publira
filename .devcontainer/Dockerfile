@@ -8,9 +8,12 @@ ARG SQLC_VERSION=1.30.0
 ARG BUF_VERSION=1.66.1
 # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
 ARG MIGRATE_VERSION=4.19.1
+# renovate: datasource=flutter-version depName=flutter
+ARG FLUTTER_VERSION=3.41.6
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
- && apt-get -y install --no-install-recommends postgresql-client
+ && apt-get -y install --no-install-recommends postgresql-client \
+    clang cmake ninja-build pkg-config libgtk-3-dev unzip xz-utils
 
 RUN set -eux; \
   sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d v${TASK_VERSION}; \
@@ -33,4 +36,13 @@ RUN set -eux; \
 	install -m 0755 /tmp/migrate /usr/local/bin/migrate; \
 	rm -f /tmp/migrate /tmp/migrate.tgz
 
+# Install Flutter SDK
+ENV FLUTTER_HOME=/usr/local/flutter
+ENV PATH="${FLUTTER_HOME}/bin:${PATH}"
+RUN curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" \
+	| tar -xJ -C /usr/local \
+ && chown -R vscode:vscode "${FLUTTER_HOME}"
+
 USER vscode
+
+RUN flutter precache

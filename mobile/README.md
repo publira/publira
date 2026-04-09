@@ -13,3 +13,69 @@ Flutter によるエンドユーザー向けモバイルアプリ (iOS / Android
 - 画面構成はカタログ一覧・シリーズ詳細・エピソード閲覧を優先
 - API は `packages/api-client/` で生成されるスキーマと整合させる
 - モバイル固有機能 (通知・スクショ検知等) は要件確定後に段階導入する
+
+## 前提条件
+
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.41 以上)
+- Xcode (iOS ビルド時)
+- Android Studio または Android SDK (Android ビルド時)
+
+## セットアップ
+
+```bash
+cd mobile
+flutter pub get
+```
+
+## 開発
+
+```bash
+# iOS シミュレータで起動
+flutter run -d ios
+
+# Android エミュレータで起動
+flutter run -d android
+
+# Web (Chrome) で起動
+flutter run -d chrome
+```
+
+## テスト
+
+```bash
+flutter test
+```
+
+## 静的解析
+
+```bash
+flutter analyze
+```
+
+## ディレクトリ構成
+
+```
+mobile/
+├── lib/           # アプリケーションコード
+│   └── main.dart  # エントリポイント
+├── test/          # ウィジェットテスト / ユニットテスト
+├── android/       # Android 固有ファイル
+├── ios/           # iOS 固有ファイル
+├── web/           # Web 固有ファイル
+├── pubspec.yaml   # 依存関係定義
+└── analysis_options.yaml  # lint / 静的解析設定
+```
+
+## 環境変数 / フレーバー方針
+
+環境ごとの設定は `--dart-define` を利用して切り替える方針です。
+
+```bash
+# 例: ステージング環境
+flutter run --dart-define=ENV=staging
+
+# 例: 本番環境
+flutter run --dart-define=ENV=production
+```
+
+フレーバー (Android の productFlavors / iOS の Scheme) は、要件が確定した段階で導入します。
