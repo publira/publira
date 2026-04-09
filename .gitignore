@@ -21,28 +21,47 @@ server/bin/
 
 # Flutter
 .dart_tool/
+.flutter-plugins-dependencies
 .packages
 .pub-cache/
 .pub/
 build/
+coverage/
 flutter_*.png
 *.log
+**/doc/api/
+app.*.symbols
+app.*.map.json
+.buildlog/
+migrate_working_dir/
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework/
 ios/Flutter/Flutter.podspec
+ios/Flutter/.last_build_id
 android/.gradle/
 android/local.properties
+android/app/debug
+android/app/profile
+android/app/release
 
 # OS & Editor
 .DS_Store
 Thumbs.db
+*.swp
+.atom/
+.history
+.svn/
+.swiftpm/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 .idea/
+*.iml
+*.ipr
+*.iws
 
 # Secrets & Local Data
 .env
