@@ -1,5 +1,6 @@
 "use server";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -12,12 +13,10 @@ import {
 } from "#lib/operators";
 import { isPlatformSuperAdmin } from "#lib/roles";
 
-import type { OperatorRoleFormState } from "../_components/operator-role-form";
-
 export const updateOperatorRoleAction = async (
-  _prevState: OperatorRoleFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<OperatorRoleFormState> => {
+): Promise<FormActionState> => {
   const publicId = String(formData.get("operator_public_id") ?? "").trim();
   const role = String(formData.get("operator_role") ?? "").trim();
 

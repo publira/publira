@@ -4,6 +4,7 @@ export default defineConfig({
   dts: true,
   entry: [
     "src/index.ts",
+    "src/action-form/index.ts",
     "src/badge/index.ts",
     "src/button/index.ts",
     "src/card/index.ts",

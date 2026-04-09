@@ -1,5 +1,6 @@
 "use server";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -13,11 +14,6 @@ import {
   updatePlatformTenant,
   updatePlatformTenantMemberRole,
 } from "#lib/tenants";
-
-import type { TenantUpdateFormState } from "../_components/tenant-update-form";
-
-export type TenantMemberFormState = { ok: boolean; message: string } | null;
-export type TenantInvitationFormState = { ok: boolean; message: string } | null;
 
 export const suspendTenantAction = async (
   formData: FormData
@@ -44,9 +40,9 @@ export const resumeTenantAction = async (formData: FormData): Promise<void> => {
 };
 
 export const updateTenantNameAction = async (
-  _prevState: TenantUpdateFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantUpdateFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const name = String(formData.get("tenant_name") ?? "").trim();
   const currentDomain = String(
@@ -69,9 +65,9 @@ export const updateTenantNameAction = async (
 };
 
 export const updateTenantDomainAction = async (
-  _prevState: TenantUpdateFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantUpdateFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const currentName = String(formData.get("tenant_current_name") ?? "").trim();
   const domain = String(formData.get("tenant_domain") ?? "").trim();
@@ -97,9 +93,9 @@ export const updateTenantDomainAction = async (
 };
 
 export const addTenantMemberAction = async (
-  _prevState: TenantMemberFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantMemberFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const email = String(formData.get("member_email") ?? "").trim();
   const role = String(formData.get("member_role") ?? "").trim();
@@ -121,9 +117,9 @@ export const addTenantMemberAction = async (
 };
 
 export const updateTenantMemberRoleAction = async (
-  _prevState: TenantMemberFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantMemberFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const userPublicId = String(
     formData.get("member_user_public_id") ?? ""
@@ -147,9 +143,9 @@ export const updateTenantMemberRoleAction = async (
 };
 
 export const removeTenantMemberAction = async (
-  _prevState: TenantMemberFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantMemberFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const userPublicId = String(
     formData.get("member_user_public_id") ?? ""
@@ -168,9 +164,9 @@ export const removeTenantMemberAction = async (
 };
 
 export const createTenantAdminInvitationAction = async (
-  _prevState: TenantInvitationFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantInvitationFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const email = String(formData.get("invite_email") ?? "").trim();
 
@@ -197,9 +193,9 @@ export const createTenantAdminInvitationAction = async (
 };
 
 export const resendTenantAdminInvitationAction = async (
-  _prevState: TenantInvitationFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantInvitationFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const invitationId = String(formData.get("invitation_id") ?? "").trim();
 
@@ -219,9 +215,9 @@ export const resendTenantAdminInvitationAction = async (
 };
 
 export const cancelTenantAdminInvitationAction = async (
-  _prevState: TenantInvitationFormState,
+  _prevState: FormActionState,
   formData: FormData
-): Promise<TenantInvitationFormState> => {
+): Promise<FormActionState> => {
   const tenantPublicId = String(formData.get("tenant_public_id") ?? "").trim();
   const invitationId = String(formData.get("invitation_id") ?? "").trim();
 
