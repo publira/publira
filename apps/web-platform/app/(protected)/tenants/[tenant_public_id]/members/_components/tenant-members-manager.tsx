@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import {
@@ -35,7 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import type { FormActionState } from "@publira/utils/form-action";
 import * as React from "react";
 import { useActionState } from "react";
 

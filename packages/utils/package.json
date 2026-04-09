@@ -22,10 +22,6 @@
     "./format-date-time": {
       "types": "./dist/format-date-time.d.mts",
       "default": "./dist/format-date-time.mjs"
-    },
-    "./form-action": {
-      "types": "./dist/form-action.d.mts",
-      "default": "./dist/form-action.mjs"
     }
   },
   "scripts": {

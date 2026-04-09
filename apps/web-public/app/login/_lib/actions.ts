@@ -1,6 +1,6 @@
 "use server";
 
-import type { FormActionState } from "@publira/utils/form-action";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";

@@ -1,6 +1,6 @@
 "use server";
 
-import type { FormActionState } from "@publira/utils/form-action";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { redirect } from "next/navigation";
 
 import { requestPlatformPasswordReset } from "#lib/password-reset";
