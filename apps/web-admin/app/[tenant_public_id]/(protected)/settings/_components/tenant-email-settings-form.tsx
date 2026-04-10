@@ -291,7 +291,7 @@ export const TenantEmailSettingsForm = ({
   const [hasStoredPassword, setHasStoredPassword] = React.useState(
     initialSettings.hasPassword
   );
-  const [isPasswordEditing, setPasswordEditing] = React.useState(
+  const [isPasswordEditing, setIsPasswordEditing] = React.useState(
     !initialSettings.hasPassword
   );
   const [sendToSelf, setSendToSelf] = React.useState(true);
@@ -300,7 +300,7 @@ export const TenantEmailSettingsForm = ({
   React.useEffect(() => {
     setSmtpOverrideEnabled(initialSettings.smtpOverrideEnabled);
     setHasStoredPassword(initialSettings.hasPassword);
-    setPasswordEditing(!initialSettings.hasPassword);
+    setIsPasswordEditing(!initialSettings.hasPassword);
   }, [initialSettings.hasPassword, initialSettings.smtpOverrideEnabled]);
 
   React.useEffect(() => {
@@ -310,7 +310,7 @@ export const TenantEmailSettingsForm = ({
 
     setSmtpOverrideEnabled(saveState.settings.smtpOverrideEnabled);
     setHasStoredPassword(saveState.settings.hasPassword);
-    setPasswordEditing(!saveState.settings.hasPassword);
+    setIsPasswordEditing(!saveState.settings.hasPassword);
   }, [saveState]);
 
   const fieldsInteractive = canEdit && smtpOverrideEnabled;
@@ -323,11 +323,11 @@ export const TenantEmailSettingsForm = ({
   );
 
   const handleStartPasswordEdit = React.useCallback(() => {
-    setPasswordEditing(true);
+    setIsPasswordEditing(true);
   }, []);
 
   const handleCancelPasswordEdit = React.useCallback(() => {
-    setPasswordEditing(false);
+    setIsPasswordEditing(false);
   }, []);
 
   return (

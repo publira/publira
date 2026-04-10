@@ -78,18 +78,18 @@ export const EmailSettingsForm = ({
   const [hasStoredPassword, setHasStoredPassword] = React.useState(
     initialSettings.hasPassword
   );
-  const [isPasswordEditing, setPasswordEditing] = React.useState(
+  const [isPasswordEditing, setIsPasswordEditing] = React.useState(
     !initialSettings.hasPassword
   );
   const [sendToSelf, setSendToSelf] = React.useState(true);
   const [dialogOpen, setDialogOpen] = React.useState(false);
 
   const handleStartPasswordEdit = React.useCallback(() => {
-    setPasswordEditing(true);
+    setIsPasswordEditing(true);
   }, []);
 
   const handleCancelPasswordEdit = React.useCallback(() => {
-    setPasswordEditing(false);
+    setIsPasswordEditing(false);
   }, []);
 
   const handleSendToSelfChange = React.useCallback(
@@ -105,7 +105,7 @@ export const EmailSettingsForm = ({
     }
 
     setHasStoredPassword(saveState.settings.hasPassword);
-    setPasswordEditing(!saveState.settings.hasPassword);
+    setIsPasswordEditing(!saveState.settings.hasPassword);
   }, [saveState]);
 
   return (
