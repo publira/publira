@@ -15,11 +15,11 @@
     "typegen": "turbo run typegen"
   },
   "devDependencies": {
-    "oxfmt": "0.43.0",
-    "oxlint": "1.58.0",
-    "turbo": "2.9.1",
+    "oxfmt": "0.44.0",
+    "oxlint": "1.59.0",
+    "turbo": "2.9.5",
     "typescript": "catalog:",
-    "ultracite": "7.4.2"
+    "ultracite": "7.4.4"
   },
-  "packageManager": "pnpm@10.32.1"
+  "packageManager": "pnpm@10.33.0"
 }

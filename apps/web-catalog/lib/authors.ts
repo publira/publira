@@ -34,7 +34,7 @@ const normalizeAuthorName = (value: string) => value.trim();
 const normalizeAuthorProfileText = (value: string) => value.trim();
 
 const encodeFallbackAuthorId = (name: string) =>
-  `${FALLBACK_AUTHOR_ID_PREFIX}${Buffer.from(name, "utf8").toString("base64url")}`;
+  `${FALLBACK_AUTHOR_ID_PREFIX}${Buffer.from(name, "utf-8").toString("base64url")}`;
 
 const decodeFallbackAuthorId = (id: string): string | null => {
   if (!id.startsWith(FALLBACK_AUTHOR_ID_PREFIX)) {
@@ -47,12 +47,12 @@ const decodeFallbackAuthorId = (id: string): string | null => {
   }
 
   try {
-    const decoded = Buffer.from(encoded, "base64url").toString("utf8").trim();
+    const decoded = Buffer.from(encoded, "base64url").toString("utf-8").trim();
     if (decoded.length === 0) {
       return null;
     }
 
-    const reencoded = Buffer.from(decoded, "utf8").toString("base64url");
+    const reencoded = Buffer.from(decoded, "utf-8").toString("base64url");
     if (reencoded !== encoded) {
       return null;
     }

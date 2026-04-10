@@ -7,18 +7,18 @@ catalog:
   "@tailwindcss/postcss": 4.2.2
   "@testing-library/dom": 10.4.1
   "@testing-library/react": 16.3.2
-  "@types/node": 24.11.1
+  "@types/node": 24.12.2
   "@types/react": 19.2.14
   "@types/react-dom": 19.2.3
-  jsdom: 29.0.1
-  lru-cache: 11.2.7
-  next: 16.2.1
-  react: 19.2.4
-  react-dom: 19.2.4
+  jsdom: 29.0.2
+  lru-cache: 11.3.3
+  next: 16.2.3
+  react: 19.2.5
+  react-dom: 19.2.5
   tailwindcss: 4.2.2
   tsdown: 0.21.7
   typescript: 6.0.2
-  vitest: 4.1.2
+  vitest: 4.1.4
   zod: 4.3.6
 
 catalogMode: strict
