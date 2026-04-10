@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 
 # API server template for server/cmd/* entrypoints.
 #
@@ -10,7 +10,7 @@
 #   -t publira/api-server:local \
 #   .
 
-FROM debian:bookworm-slim AS builder
+FROM debian:bookworm-slim@sha256:4724b8cc51e33e398f0e2e15e18d5ec2851ff0c2280647e1310bc1642182655d AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget golang && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
@@ -26,7 +26,7 @@ ARG BINARY_NAME
 RUN cd server && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   go build -trimpath -ldflags='-s -w' -o /out/${BINARY_NAME} ./cmd/${CMD_NAME}
 
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/static:nonroot@sha256:e3f945647ffb95b5839c07038d64f9811adf17308b9121d8a2b87b6a22a80a39
 
 ARG BINARY_NAME
 
