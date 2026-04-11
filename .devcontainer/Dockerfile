@@ -45,4 +45,5 @@ RUN curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/st
 
 USER vscode
 
-RUN flutter precache
+RUN flutter precache \
+ && dart --disable-analytics
