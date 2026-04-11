@@ -55,7 +55,7 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Setup / pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
 
       - name: Setup / Install sqlc
         uses: sqlc-dev/setup-sqlc@bac53b7fb28c039a6c7f5736fd1e89744021bdd6 # v5.0.0
@@ -128,7 +128,7 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Setup / pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
 
       - name: Dependencies / Install
         run: task deps
@@ -167,7 +167,7 @@ jobs:
           version: ${{ env.TASK_VERSION }}
 
       - name: Setup / pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
 
       - name: Dependencies / Install
         run: task deps
