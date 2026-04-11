@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/lib/pq v1.12.3
-	github.com/publira/epub v0.1.0
+	github.com/publira/epub v0.6.0
 	golang.org/x/crypto v0.49.0
 	golang.org/x/image v0.39.0
 	golang.org/x/net v0.52.0
