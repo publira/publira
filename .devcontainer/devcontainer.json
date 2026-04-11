@@ -24,8 +24,8 @@
       "extensions": [
         "bradlc.vscode-tailwindcss",
         "bufbuild.vscode-buf",
-        "dart-code.flutter",
-        "dart-code.dart-code",
+        "Dart-Code.flutter",
+        "Dart-Code.dart-code",
         "golang.go",
         "mtxr.sqltools",
         "mtxr.sqltools-driver-pg",
