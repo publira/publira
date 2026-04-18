@@ -70,7 +70,7 @@ func makeEPUBArchive(t *testing.T, images ...[]byte) []byte {
 	t.Helper()
 	doc := &epub.Document{Title: "Episode", Direction: "rtl", Layout: epub.LayoutPrePaginated}
 	for _, raw := range images {
-		if _, _, err := doc.AddPageWithAsset(bytes.NewReader(raw), "right"); err != nil {
+		if _, _, err := doc.AddPageWithAsset(bytes.NewReader(raw), int64(len(raw)), "right"); err != nil {
 			t.Fatalf("doc.AddPageWithAsset: %v", err)
 		}
 	}

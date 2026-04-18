@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 
 	"github.com/publira/epub"
@@ -16,7 +15,7 @@ import (
 )
 
 func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input, error) {
-	doc, err := epub.Decode(bytes.NewReader(epubData), int64(len(epubData)), epub.WithCompliance(epub.LevelFlexible))
+	doc, err := epub.Decode(bytes.NewReader(epubData), int64(len(epubData)))
 	if err != nil {
 		return nil, fmt.Errorf("archive_data must be a valid epub file: %w", err)
 	}
@@ -24,52 +23,21 @@ func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input,
 		return nil, errors.New("epub contains no spine entries")
 	}
 
-	assetsByID := make(map[string]referencedAsset, len(doc.Assets))
-	for href, asset := range doc.Assets {
-		if asset == nil {
-			continue
-		}
-		assetID := strings.TrimSpace(asset.ID)
-		if assetID == "" {
-			continue
-		}
-		normalizedHref, normalizeErr := normalizeEntryPath(href)
-		if normalizeErr != nil {
-			return nil, fmt.Errorf("epub manifest contains invalid path %q", href)
-		}
-		assetsByID[assetID] = referencedAsset{href: normalizedHref, asset: asset}
+	spineRefs, err := doc.ExtractReferencedImagesFromSpine()
+	if err != nil {
+		return nil, fmt.Errorf("invalid epub spine reference: %w", err)
 	}
 
-	pages := make([]*epub.Page, 0, len(doc.Pages))
-	pages = append(pages, doc.Pages...)
-	sort.SliceStable(pages, func(i, j int) bool {
-		left := pages[i]
-		right := pages[j]
-		if left == nil {
-			return false
+	inputs := make([]archiveimages.Input, 0, len(spineRefs))
+	for _, spineRef := range spineRefs {
+		if spineRef.Asset == nil {
+			return nil, errors.New("epub spine references a nil asset")
 		}
-		if right == nil {
-			return true
+		href, normalizeErr := normalizeEntryPath(spineRef.Href)
+		if normalizeErr != nil {
+			return nil, fmt.Errorf("epub manifest contains invalid path %q", spineRef.Href)
 		}
-		return left.Order < right.Order
-	})
-
-	inputs := make([]archiveimages.Input, 0, len(pages))
-	for index, page := range pages {
-		if page == nil {
-			return nil, fmt.Errorf("epub spine entry at index %d is nil", index)
-		}
-		assetID := strings.TrimSpace(page.AssetID)
-		if assetID == "" {
-			return nil, fmt.Errorf("epub spine entry at index %d has an empty asset_id", index)
-		}
-		ref, ok := assetsByID[assetID]
-		if !ok {
-			return nil, fmt.Errorf("epub spine references unknown asset_id %q", assetID)
-		}
-		if !assetIsImage(ref) {
-			return nil, fmt.Errorf("epub spine asset %q is not an image", ref.href)
-		}
+		ref := referencedAsset{href: href, asset: spineRef.Asset}
 		if len(inputs) >= maxEntries {
 			return nil, fmt.Errorf("archive contains more than %d images", maxEntries)
 		}
