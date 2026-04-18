@@ -18,6 +18,7 @@ export const DialogBackdrop = ({
   className,
   forceRender: _forceRender,
   render: _render,
+  style,
   ...props
 }: BaseDialog.Backdrop.Props) => (
   // NOTE:
@@ -28,6 +29,7 @@ export const DialogBackdrop = ({
   <div
     aria-hidden="true"
     {...props}
+    style={typeof style === "function" ? undefined : style}
     className={cn(
       "fixed inset-0 z-40 bg-foreground/20 backdrop-blur-xs",
       className
