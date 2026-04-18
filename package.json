@@ -16,7 +16,7 @@
     "typegen": "turbo run typegen"
   },
   "devDependencies": {
-    "oxfmt": "0.44.0",
+    "oxfmt": "0.45.0",
     "oxlint": "1.60.0",
     "turbo": "2.9.6",
     "typescript": "catalog:",
