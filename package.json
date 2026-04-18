@@ -4,6 +4,7 @@
   "description": "",
   "license": "Apache-2.0",
   "author": "",
+  "type": "module",
   "scripts": {
     "build": "turbo run build",
     "check": "ultracite check",
