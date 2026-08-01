@@ -291,17 +291,17 @@ importers:
   packages/api-client:
     dependencies:
       '@bufbuild/protobuf':
-        specifier: 2.11.0
-        version: 2.11.0
+        specifier: 2.13.0
+        version: 2.13.0
       '@connectrpc/connect':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.11.0)
+        version: 2.1.2(@bufbuild/protobuf@2.13.0)
       '@connectrpc/connect-node':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0))
+        version: 2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))
       '@connectrpc/connect-web':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0))
+        version: 2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -568,8 +568,8 @@ packages:
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
 
-  '@bufbuild/protobuf@2.11.0':
-    resolution: {integrity: sha512-sBXGT13cpmPR5BMgHE6UEEfEaShh5Ror6rfN3yEK5si7QVrtZg8LEPQb0VVhiLRUslD2yLnXtnRzG035J/mZXQ==}
+  '@bufbuild/protobuf@2.13.0':
+    resolution: {integrity: sha512-acq7c49vxfm1ggJ95P70TX7ABDM0vxr1SYD3BB0o0jnBLB4OAqeHyKuN+cD3w80gXEDQ2zxHpR6CUeA+O/aU9g==}
 
   '@clack/core@1.4.3':
     resolution: {integrity: sha512-/kr3UWNtdJfxZtPgDqUOmG2pvwlmcLGheex5yiZKdwbzZJxhV+HMNR9QNmyY5cGwTNV6LrR7Jtp+KjhUAP1qBQ==}
@@ -2914,7 +2914,7 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@bufbuild/protobuf@2.11.0': {}
+  '@bufbuild/protobuf@2.13.0': {}
 
   '@clack/core@1.4.3':
     dependencies:
@@ -2928,19 +2928,19 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
-  '@connectrpc/connect-node@2.1.2(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0))':
+  '@connectrpc/connect-node@2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))':
     dependencies:
-      '@bufbuild/protobuf': 2.11.0
-      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.11.0)
+      '@bufbuild/protobuf': 2.13.0
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.13.0)
 
-  '@connectrpc/connect-web@2.1.2(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0))':
+  '@connectrpc/connect-web@2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))':
     dependencies:
-      '@bufbuild/protobuf': 2.11.0
-      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.11.0)
+      '@bufbuild/protobuf': 2.13.0
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.13.0)
 
-  '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0)':
+  '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0)':
     dependencies:
-      '@bufbuild/protobuf': 2.11.0
+      '@bufbuild/protobuf': 2.13.0
 
   '@csstools/color-helpers@6.1.0': {}
 
