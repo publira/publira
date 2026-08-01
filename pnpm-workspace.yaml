@@ -5,6 +5,13 @@ packages:
 allowBuilds:
   sharp: true
 
+# Force patched transitive deps until Next.js stable ships them
+# (next@16.2.x pins postcss@8.4.31 and sharp@^0.34.5; canary already moved to 8.5.x / 0.35.x)
+# GHSA-r28c-9q8g-f849, GHSA-6g55-p6wh-862q (postcss); GHSA-f88m-g3jw-g9cj (sharp/libvips)
+overrides:
+  postcss: 8.5.25
+  sharp: 0.35.3
+
 catalog:
   "@base-ui/react": 1.6.0
   "@tailwindcss/postcss": 4.3.3
