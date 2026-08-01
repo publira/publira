@@ -1,5 +1,5 @@
 # Batch job Dockerfile (generated from infra/docker/templates/Dockerfile.batch)
-FROM debian:bookworm-slim@sha256:4724b8cc51e33e398f0e2e15e18d5ec2851ff0c2280647e1310bc1642182655d AS builder
+FROM debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818 AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates golang && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY ../../go.mod ../../go.sum ./server/
