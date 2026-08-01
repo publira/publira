@@ -288,15 +288,15 @@ func generatePublicID() string {
 	return strings.ToUpper(raw[:12])
 }
 
-func seriesRevalidateTags(tenantPublicID, seriesPublicID string) []string {
-	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
+func seriesRevalidateTags(tenantID, seriesPublicID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
 	normalizedSeriesPublicID := strings.TrimSpace(seriesPublicID)
 	return []string{
-		fmt.Sprintf("tenant:%s:site", normalizedTenantPublicID),
-		fmt.Sprintf("tenant:%s:series:list", normalizedTenantPublicID),
-		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantPublicID),
-		fmt.Sprintf("tenant:%s:series:%s", normalizedTenantPublicID, normalizedSeriesPublicID),
-		fmt.Sprintf("tenant:%s:authors", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:list", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
+		fmt.Sprintf("tenant:%s:series:%s", normalizedTenantID, normalizedSeriesPublicID),
+		fmt.Sprintf("tenant:%s:authors", normalizedTenantID),
 	}
 }
 
@@ -391,7 +391,7 @@ func (s *adminServer) CreateSeries(
 		})
 	}
 	if publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC()) && s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, seriesRevalidateTags(tenant.PublicID, base.PublicID)); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, seriesRevalidateTags(tenant.ID.String(), base.PublicID)); err != nil {
 			s.logger.Warn("failed to request next revalidate after series create", "tenant_public_id", tenant.PublicID, "series_public_id", base.PublicID, "error", err)
 		}
 	}
@@ -521,7 +521,7 @@ func (s *adminServer) UpdateSeries(
 	}
 	if s.reval != nil {
 		if current.IsPublished || (publishedAt.Valid && !publishedAt.Time.After(time.Now().UTC())) {
-			if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, seriesRevalidateTags(tenant.PublicID, current.PublicID)); err != nil {
+			if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, seriesRevalidateTags(tenant.ID.String(), current.PublicID)); err != nil {
 				s.logger.Warn("failed to request next revalidate after series update", "tenant_public_id", tenant.PublicID, "series_public_id", current.PublicID, "error", err)
 			}
 		}

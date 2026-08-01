@@ -27,11 +27,11 @@ const (
 
 const testPublicUserPublicID = "USR001"
 
-func issueTestPublicToken(tenantPublicID string) string {
+func issueTestPublicToken(tenantID string) string {
 	token, _, err := auth.MustTokenManagerFromEnv().Issue(
 		testPublicUserPublicID,
 		auth.AudiencePublic,
-		tenantPublicID,
+		tenantID,
 		"tenant_member",
 		1,
 		time.Now(),
@@ -58,9 +58,9 @@ func expectAuthSession(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now tim
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_member"))
 }
 
-func newAuthedPublicRequest[T any](msg *T, tenantPublicID string) *connect.Request[T] {
+func newAuthedPublicRequest[T any](msg *T, tenantID string) *connect.Request[T] {
 	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+issueTestPublicToken(tenantPublicID))
+	req.Header().Set("Authorization", "Bearer "+issueTestPublicToken(tenantID))
 	return req
 }
 
@@ -94,10 +94,10 @@ func TestAuthListNotificationsSuccess(t *testing.T) {
 
 	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListNotifications(context.Background(), newAuthedPublicRequest(&publirav1.ListNotificationsRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  -1,
 		Offset: -1,
-	}, "TENANT"))
+	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
@@ -133,9 +133,9 @@ func TestAuthMarkNotificationAsRead(t *testing.T) {
 
 		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
 		resp, err := client.MarkNotificationAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkNotificationAsReadRequest{
-			Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			NotificationId: notificationID.String(),
-		}, "TENANT"))
+		}, tenantID.String()))
 		if err != nil {
 			t.Fatalf("MarkNotificationAsRead: %v", err)
 		}
@@ -158,9 +158,9 @@ func TestAuthMarkNotificationAsRead(t *testing.T) {
 
 		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
 		_, err := client.MarkNotificationAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkNotificationAsReadRequest{
-			Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			NotificationId: "not-a-uuid",
-		}, "TENANT"))
+		}, tenantID.String()))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 		}
@@ -184,9 +184,9 @@ func TestAuthMarkNotificationAsRead(t *testing.T) {
 
 		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
 		_, err := client.MarkNotificationAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkNotificationAsReadRequest{
-			Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			NotificationId: notificationID.String(),
-		}, "TENANT"))
+		}, tenantID.String()))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
 		}
@@ -210,8 +210,8 @@ func TestAuthMarkAllNotificationsAsRead(t *testing.T) {
 
 	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.MarkAllNotificationsAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkAllNotificationsAsReadRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
-	}, "TENANT"))
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("MarkAllNotificationsAsRead: %v", err)
 	}

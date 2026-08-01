@@ -99,7 +99,7 @@ describe("getAdminCurrentUser", () => {
     await getAdminCurrentUser("tenant_001");
     expect(mockGetMe).toHaveBeenCalledWith(
       expect.objectContaining({
-        tenant: { tenantPublicId: "tenant_001" },
+        tenant: { tenantId: "tenant_001" },
       }),
       { headers: { Authorization: "Bearer valid-token" } }
     );

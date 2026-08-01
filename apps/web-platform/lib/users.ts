@@ -27,7 +27,7 @@ export interface ListPlatformEndUsersInput {
   offset?: number;
   publicIds?: string[];
   status?: string;
-  tenantPublicId?: string;
+  tenantId?: string;
 }
 
 export type ListPlatformEndUsersResult =
@@ -86,8 +86,8 @@ const createdAtInRange = (
   return true;
 };
 
-const normalizeTenantPublicId = (input: ListPlatformEndUsersInput): string =>
-  input.tenantPublicId?.trim() ?? "";
+const normalizeTenantId = (input: ListPlatformEndUsersInput): string =>
+  input.tenantId?.trim() ?? "";
 
 const normalizePublicIds = (input: ListPlatformEndUsersInput): string[] => [
   ...new Set(
@@ -184,11 +184,11 @@ const mergeUsers = (
 const enrichUsersWithTenantInfo = (
   mergedUsers: Map<string, PlatformEndUserSummary>,
   tenantNameMap: Map<string, string>,
-  normalizedTenantPublicId: string
+  normalizedTenantId: string
 ): PlatformEndUserSummary[] =>
   [...mergedUsers.values()].map((user) => {
-    const preferredTenantId = normalizedTenantPublicId
-      ? user.tenantIds.find((tenantId) => tenantId === normalizedTenantPublicId)
+    const preferredTenantId = normalizedTenantId
+      ? user.tenantIds.find((tenantId) => tenantId === normalizedTenantId)
       : user.tenantIds[0];
     const resolvedTenantId =
       preferredTenantId ?? user.primaryTenantPublicId ?? "";
@@ -225,7 +225,7 @@ const listTenantScopedUsersFallback = async (
   tenantNameMap: Map<string, string>;
   users: PlatformEndUserSummary[];
 }> => {
-  const normalizedTenantPublicId = normalizeTenantPublicId(input);
+  const normalizedTenantId = normalizeTenantId(input);
   const tenantsPerPage = 200;
   const membersPerPage = 200;
   const allUsers = new Map<string, PlatformEndUserSummary>();
@@ -250,10 +250,7 @@ const listTenantScopedUsersFallback = async (
 
     for (const tenant of tenants) {
       tenantNameMap.set(tenant.publicId, tenant.name ?? tenant.publicId);
-      if (
-        normalizedTenantPublicId &&
-        tenant.publicId !== normalizedTenantPublicId
-      ) {
+      if (normalizedTenantId && tenant.publicId !== normalizedTenantId) {
         continue;
       }
 
@@ -263,7 +260,7 @@ const listTenantScopedUsersFallback = async (
           {
             limit: membersPerPage,
             offset: memberOffset,
-            tenantPublicId: tenant.publicId,
+            tenantId: tenant.publicId,
           } as never,
           buildSessionHeaders(sid)
         );
@@ -311,7 +308,7 @@ export const listPlatformEndUsers = async (
   }
 
   try {
-    const normalizedTenantPublicId = normalizeTenantPublicId(input);
+    const normalizedTenantId = normalizeTenantId(input);
     const publicIds = normalizePublicIds(input);
     const publicIdsSet = new Set(publicIds);
 
@@ -330,8 +327,8 @@ export const listPlatformEndUsers = async (
     const mappedUsers = (response.users ?? [])
       .map(mapEndUser)
       .filter((user) =>
-        normalizedTenantPublicId
-          ? (user.tenantIds ?? []).includes(normalizedTenantPublicId)
+        normalizedTenantId
+          ? (user.tenantIds ?? []).includes(normalizedTenantId)
           : true
       );
     const { tenantNameMap, users: tenantScopedUsers } =
@@ -341,7 +338,7 @@ export const listPlatformEndUsers = async (
     const usersWithTenantInfo = enrichUsersWithTenantInfo(
       mergedUsers,
       tenantNameMap,
-      normalizedTenantPublicId
+      normalizedTenantId
     );
 
     return {

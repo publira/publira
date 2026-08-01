@@ -125,13 +125,13 @@ const isExpectedNullableError = (error: unknown): boolean => {
 export const loginAdmin = async (
   email: string,
   password: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<AdminLoginResult> => {
   try {
     const response = await apiClient.auth.login({
       email,
       password,
-      tenant: { tenantPublicId },
+      tenant: { tenantId },
     });
 
     const accessToken = response.accessToken?.token?.trim() ?? "";
@@ -161,20 +161,20 @@ export const loginAdmin = async (
 
 export const logoutAdmin = async (
   accessToken: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<void> => {
   if (!accessToken.trim()) {
     return;
   }
 
   await apiClient.auth.logout(
-    { tenant: { tenantPublicId } },
+    { tenant: { tenantId } },
     withSessionHeaders(accessToken)
   );
 };
 
 export const getAdminCurrentUser = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<AdminCurrentUser | null> => {
   "use cache: private";
 
@@ -186,7 +186,7 @@ export const getAdminCurrentUser = async (
   try {
     const response = await apiClient.auth.getMe(
       {
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       withSessionHeaders(token)
     );
@@ -210,9 +210,9 @@ export const getAdminCurrentUser = async (
 };
 
 export const isAdminSessionValid = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<boolean> => {
-  const user = await getAdminCurrentUser(tenantPublicId);
+  const user = await getAdminCurrentUser(tenantId);
   return user !== null;
 };
 
@@ -226,17 +226,17 @@ export const sessionCookieOptions = {
 export { ADMIN_SESSION_COOKIE_NAME, sanitizeRedirectPath };
 
 export const getTenantAdminInvitationState = async (
-  tenantPublicId: string,
+  tenantId: string,
   token: string
 ): Promise<TenantAdminInvitationState | null> => {
   const normalizedToken = token.trim();
-  if (!tenantPublicId.trim() || !normalizedToken) {
+  if (!tenantId.trim() || !normalizedToken) {
     return null;
   }
 
   try {
     const response = await apiClient.auth.getTenantAdminInvitationState({
-      tenant: { tenantPublicId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 
@@ -255,13 +255,13 @@ export const getTenantAdminInvitationState = async (
 };
 
 export const acceptTenantAdminInvitation = async (
-  tenantPublicId: string,
+  tenantId: string,
   token: string,
   name?: string,
   password?: string
 ): Promise<AcceptTenantAdminInvitationResult> => {
   const normalizedToken = token.trim();
-  if (!tenantPublicId.trim() || !normalizedToken) {
+  if (!tenantId.trim() || !normalizedToken) {
     return {
       message: "招待トークンが無効です。",
       ok: false,
@@ -272,7 +272,7 @@ export const acceptTenantAdminInvitation = async (
     const response = await apiClient.auth.acceptTenantAdminInvitation({
       name: name?.trim() ?? "",
       password: password?.trim() ?? "",
-      tenant: { tenantPublicId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 
@@ -308,11 +308,11 @@ export const acceptTenantAdminInvitation = async (
 };
 
 export const requestAdminPasswordReset = async (
-  tenantPublicId: string,
+  tenantId: string,
   email: string
 ): Promise<AdminPasswordResetRequestResult> => {
   const normalizedEmail = email.trim();
-  if (!tenantPublicId.trim() || !normalizedEmail) {
+  if (!tenantId.trim() || !normalizedEmail) {
     return {
       message: "メールアドレスを入力してください。",
       ok: false,
@@ -322,7 +322,7 @@ export const requestAdminPasswordReset = async (
   try {
     const response = await apiClient.auth.requestPasswordReset({
       email: normalizedEmail,
-      tenant: { tenantPublicId },
+      tenant: { tenantId },
     });
 
     return {
@@ -352,14 +352,14 @@ export const requestAdminPasswordReset = async (
 };
 
 export const confirmAdminPasswordReset = async (
-  tenantPublicId: string,
+  tenantId: string,
   token: string,
   newPassword: string
 ): Promise<AdminPasswordResetConfirmResult> => {
   const normalizedToken = token.trim();
   const normalizedPassword = newPassword.trim();
 
-  if (!tenantPublicId.trim() || !normalizedToken) {
+  if (!tenantId.trim() || !normalizedToken) {
     return {
       message:
         "再設定リンクが無効です。もう一度メール送信からやり直してください。",
@@ -379,7 +379,7 @@ export const confirmAdminPasswordReset = async (
   try {
     const response = await apiClient.auth.confirmPasswordReset({
       newPassword: normalizedPassword,
-      tenant: { tenantPublicId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 
@@ -425,7 +425,7 @@ export const confirmAdminPasswordReset = async (
 };
 
 export const requestAdminEmailChange = async (
-  tenantPublicId: string,
+  tenantId: string,
   currentEmail: string,
   newEmail: string,
   currentPassword: string
@@ -435,7 +435,7 @@ export const requestAdminEmailChange = async (
 
   const sessionId = await getAccessToken();
   if (
-    !tenantPublicId.trim() ||
+    !tenantId.trim() ||
     !sessionId.trim() ||
     !normalizedCurrentEmail ||
     !normalizedNewEmail ||
@@ -453,7 +453,7 @@ export const requestAdminEmailChange = async (
         currentEmail: normalizedCurrentEmail,
         currentPassword,
         newEmail: normalizedNewEmail,
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -500,17 +500,17 @@ export const requestAdminEmailChange = async (
 };
 
 export const confirmAdminEmailChange = async (
-  tenantPublicId: string,
+  tenantId: string,
   token: string
 ): Promise<AdminEmailChangeConfirmResult | null> => {
   const normalizedToken = token.trim();
-  if (!tenantPublicId.trim() || !normalizedToken) {
+  if (!tenantId.trim() || !normalizedToken) {
     return null;
   }
 
   try {
     const response = await apiClient.auth.confirmEmailChange({
-      tenant: { tenantPublicId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 

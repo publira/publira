@@ -722,7 +722,7 @@ WHERE el.status = 'scheduled'
     AND el.scheduled_at <= NOW();
 -- name: ListEpisodesReadyToPublishWithTenantInfo :many
 SELECT el.episode_id,
-    t.public_id AS tenant_public_id,
+    t.id AS tenant_id,
     t.domain AS tenant_domain
 FROM episode_listings el
 JOIN tenants t ON t.id = el.tenant_id
@@ -875,6 +875,12 @@ GROUP BY s.id,
 SELECT *
 FROM tenants
 WHERE public_id = $1
+LIMIT 1;
+
+-- name: GetTenantByID :one
+SELECT *
+FROM tenants
+WHERE id = $1
 LIMIT 1;
 -- name: GetLabelByPublicIDForTenant :one
 SELECT l.id,

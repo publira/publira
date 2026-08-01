@@ -139,11 +139,9 @@ const mapPageVersion = (version: {
   versionNumber: version.versionNumber,
 });
 
-export const listPages = async (
-  tenantPublicId: string
-): Promise<ListPagesResult> => {
+export const listPages = async (tenantId: string): Promise<ListPagesResult> => {
   "use cache: private";
-  cacheTag(`pages-${tenantPublicId}`);
+  cacheTag(`pages-${tenantId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -156,7 +154,7 @@ export const listPages = async (
 
   try {
     const response = await apiClient.pages.listPages(
-      { tenant: { tenantPublicId } },
+      { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
 
@@ -174,12 +172,12 @@ export const listPages = async (
 };
 
 export const getPage = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   pageId: string;
 }): Promise<GetPageResult> => {
   "use cache: private";
-  cacheTag(`pages-${input.tenantPublicId}`);
-  cacheTag(`page-${input.tenantPublicId}-${input.pageId}`);
+  cacheTag(`pages-${input.tenantId}`);
+  cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -193,7 +191,7 @@ export const getPage = async (input: {
     const response = await apiClient.pages.getPage(
       {
         pageId: input.pageId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -218,11 +216,11 @@ export const getPage = async (input: {
 };
 
 export const listPageVersions = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   pageId: string;
 }): Promise<ListPageVersionsResult> => {
   "use cache: private";
-  cacheTag(`page-${input.tenantPublicId}-${input.pageId}`);
+  cacheTag(`page-${input.tenantId}-${input.pageId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -237,7 +235,7 @@ export const listPageVersions = async (input: {
     const response = await apiClient.pages.listVersions(
       {
         pageId: input.pageId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -258,7 +256,7 @@ export const listPageVersions = async (input: {
 };
 
 export const createPage = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   slug: string;
   title: string;
 }): Promise<CreatePageResult> => {
@@ -274,7 +272,7 @@ export const createPage = async (input: {
     const response = await apiClient.pages.createPage(
       {
         slug: input.slug,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         title: input.title,
       },
       withSessionHeaders(sessionId)
@@ -300,7 +298,7 @@ export const createPage = async (input: {
 };
 
 export const updatePage = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   pageId: string;
   title: string;
 }): Promise<UpdatePageResult> => {
@@ -316,7 +314,7 @@ export const updatePage = async (input: {
     const response = await apiClient.pages.updatePage(
       {
         pageId: input.pageId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         title: input.title,
       },
       withSessionHeaders(sessionId)
@@ -342,7 +340,7 @@ export const updatePage = async (input: {
 };
 
 export const createPageVersion = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   pageId: string;
   contentMarkdown: string;
 }): Promise<CreatePageVersionResult> => {
@@ -359,7 +357,7 @@ export const createPageVersion = async (input: {
       {
         contentMarkdown: input.contentMarkdown,
         pageId: input.pageId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -384,7 +382,7 @@ export const createPageVersion = async (input: {
 };
 
 export const publishPageVersion = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   pageId: string;
   versionId: string;
 }): Promise<PublishPageVersionResult> => {
@@ -400,7 +398,7 @@ export const publishPageVersion = async (input: {
     const response = await apiClient.pages.publishVersion(
       {
         pageId: input.pageId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         versionId: input.versionId,
       },
       withSessionHeaders(sessionId)
@@ -426,7 +424,7 @@ export const publishPageVersion = async (input: {
 };
 
 export const rollbackPageVersion = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   pageId: string;
   versionId: string;
 }): Promise<RollbackPageVersionResult> => {
@@ -442,7 +440,7 @@ export const rollbackPageVersion = async (input: {
     const response = await apiClient.pages.rollbackToVersion(
       {
         pageId: input.pageId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         versionId: input.versionId,
       },
       withSessionHeaders(sessionId)

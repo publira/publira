@@ -23,20 +23,20 @@ export interface TenantDetail {
 }
 
 export const getTenantForSession = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<TenantDetail | null> => {
   "use cache: private";
 
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = tenantPublicId.trim();
-  if (!normalizedTenantPublicId || !sessionId) {
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
     return null;
   }
 
   try {
     const response = await apiClient.auth.getTenant(
       {
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
       },
       withSessionHeaders(sessionId)
     );

@@ -180,7 +180,7 @@ const uploadArchive = async (input: {
   archive: File;
   episodePublicId: string;
   seriesPublicId?: string;
-  tenantPublicId: string;
+  tenantId: string;
   sessionId: string;
 }) => {
   const request = {
@@ -189,7 +189,7 @@ const uploadArchive = async (input: {
     archiveFilename: input.archive.name,
     episodePublicId: input.episodePublicId,
     seriesPublicId: input.seriesPublicId ?? "",
-    tenant: { tenantPublicId: input.tenantPublicId },
+    tenant: { tenantId: input.tenantId },
   } as Parameters<typeof apiClient.series.uploadEpisodeImages>[0];
 
   return apiClient.series.uploadEpisodeImages(
@@ -201,7 +201,7 @@ const uploadArchive = async (input: {
 const uploadPages = async (input: {
   pages: File[];
   episodePublicId: string;
-  tenantPublicId: string;
+  tenantId: string;
   sessionId: string;
 }) =>
   apiClient.series.uploadEpisodeImages(
@@ -215,13 +215,13 @@ const uploadPages = async (input: {
           filename: page.name,
         }))
       ),
-      tenant: { tenantPublicId: input.tenantPublicId },
+      tenant: { tenantId: input.tenantId },
     },
     withSessionHeaders(input.sessionId)
   );
 
 export const createEpisode = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   seriesPublicId: string;
   title: string;
   orderIndex: number;
@@ -245,7 +245,7 @@ export const createEpisode = async (input: {
         readingPeriodHours: input.readingPeriodHours,
         scheduledAt: input.publishAt,
         seriesPublicId: input.seriesPublicId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         title: input.title,
       },
       withSessionHeaders(sessionId)
@@ -271,7 +271,7 @@ export const createEpisode = async (input: {
 };
 
 export const listEpisodes = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   seriesPublicId: string;
 }): Promise<ListEpisodesResult> => {
   const sessionId = await getAccessToken();
@@ -287,7 +287,7 @@ export const listEpisodes = async (input: {
     const response = await apiClient.series.listEpisodes(
       {
         seriesPublicId: input.seriesPublicId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -306,7 +306,7 @@ export const listEpisodes = async (input: {
 };
 
 export const updateEpisodePublishSchedule = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   episodePublicId: string;
   publishAt: string;
 }): Promise<UpdateEpisodePublishScheduleResult> => {
@@ -323,7 +323,7 @@ export const updateEpisodePublishSchedule = async (input: {
       {
         episodePublicId: input.episodePublicId,
         scheduledAt: input.publishAt,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -348,7 +348,7 @@ export const updateEpisodePublishSchedule = async (input: {
 };
 
 export const uploadEpisodePages = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   episodePublicId: string;
   seriesPublicId?: string;
   pages?: File[];
@@ -376,13 +376,13 @@ export const uploadEpisodePages = async (input: {
           episodePublicId: input.episodePublicId,
           seriesPublicId: input.seriesPublicId,
           sessionId,
-          tenantPublicId: input.tenantPublicId,
+          tenantId: input.tenantId,
         })
       : await uploadPages({
           episodePublicId: input.episodePublicId,
           pages: input.pages ?? [],
           sessionId,
-          tenantPublicId: input.tenantPublicId,
+          tenantId: input.tenantId,
         });
 
     return {
@@ -398,7 +398,7 @@ export const uploadEpisodePages = async (input: {
 };
 
 export const listEpisodeImages = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   episodePublicId: string;
 }): Promise<ListEpisodeImagesResult> => {
   const sessionId = await getAccessToken();
@@ -414,7 +414,7 @@ export const listEpisodeImages = async (input: {
     const response = await apiClient.series.listEpisodeImages(
       {
         episodePublicId: input.episodePublicId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -433,7 +433,7 @@ export const listEpisodeImages = async (input: {
 };
 
 export const reorderEpisodes = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   seriesPublicId: string;
   episodePublicIds: string[];
 }): Promise<ReorderEpisodesResult> => {
@@ -457,7 +457,7 @@ export const reorderEpisodes = async (input: {
       {
         episodePublicIds: input.episodePublicIds,
         seriesPublicId: input.seriesPublicId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -475,7 +475,7 @@ export const reorderEpisodes = async (input: {
 };
 
 export const reorderEpisodeImages = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   episodePublicId: string;
   imageIds: string[];
 }): Promise<ReorderEpisodeImagesResult> => {
@@ -499,7 +499,7 @@ export const reorderEpisodeImages = async (input: {
       {
         episodePublicId: input.episodePublicId,
         imageIds: input.imageIds,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );

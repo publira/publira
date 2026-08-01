@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	getTenantByPublicIDQuery                             = "-- name: GetTenantByPublicID :one\n"
+	getTenantByIDQuery                             = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
 	getUserByPublicIDForTenantQuery                      = "-- name: GetUserByPublicIDForTenant :one\n"
 	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\n"
 	listAuditLogsByTenantQuery                           = "-- name: ListAuditLogsByTenant :many\n"
@@ -101,18 +101,19 @@ var oneByOneJPEG = []byte{
 }
 
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(getTenantByPublicIDQuery)).
-		WithArgs(publicID).
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
+		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain"}).
 			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil))
 }
 
 // issueTestAdminToken creates a signed JWT for admin API tests.
-func issueTestAdminToken(tenantPublicID, userPublicID, role string) string {
+// tenantID is the tenant primary key (UUID string).
+func issueTestAdminToken(tenantID, userPublicID, role string) string {
 	token, _, err := auth.MustTokenManagerFromEnv().Issue(
 		userPublicID,
 		auth.AudienceAdmin,
-		tenantPublicID,
+		tenantID,
 		role,
 		1,
 		time.Now(),

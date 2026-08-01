@@ -5,7 +5,7 @@ import { getAccessToken } from "./session";
 export type { TenantSmtpSettings };
 
 export interface UpdateTenantSmtpSettingsInput {
-  tenantPublicId: string;
+  tenantId: string;
   smtpOverrideEnabled: boolean;
   host: string;
   port: number;
@@ -19,7 +19,7 @@ export interface UpdateTenantSmtpSettingsInput {
 }
 
 export interface SendTenantSmtpTestInput {
-  tenantPublicId: string;
+  tenantId: string;
   recipientType: number;
   recipientEmail: string;
   smtpOverrideEnabled: boolean;
@@ -95,21 +95,21 @@ const toTenantSmtpSettings = (settings?: {
 });
 
 export const getTenantEmailSettings = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<TenantSmtpSettingsResult> => {
   "use cache: private";
 
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = tenantPublicId.trim();
+  const normalizedTenantId = tenantId.trim();
 
-  if (!normalizedTenantPublicId || !sessionId) {
+  if (!normalizedTenantId || !sessionId) {
     return { message: sessionErrorMessage, ok: false };
   }
 
   try {
     const response = await apiClient.emailSettings.getTenantEmailSettings(
       {
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -124,9 +124,9 @@ export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput
 ): Promise<TenantSmtpSettingsResult> => {
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = input.tenantPublicId.trim();
+  const normalizedTenantId = input.tenantId.trim();
 
-  if (!normalizedTenantPublicId || !sessionId) {
+  if (!normalizedTenantId || !sessionId) {
     return { message: sessionErrorMessage, ok: false };
   }
 
@@ -142,7 +142,7 @@ export const updateTenantEmailSettings = async (
         port: input.port,
         replyTo: input.replyTo,
         smtpOverrideEnabled: input.smtpOverrideEnabled,
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
         username: input.username,
       } as never,
       withSessionHeaders(sessionId)
@@ -158,9 +158,9 @@ export const sendTenantSmtpTestEmail = async (
   input: SendTenantSmtpTestInput
 ): Promise<TenantSmtpTestResult> => {
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = input.tenantPublicId.trim();
+  const normalizedTenantId = input.tenantId.trim();
 
-  if (!normalizedTenantPublicId || !sessionId) {
+  if (!normalizedTenantId || !sessionId) {
     return { message: sessionErrorMessage, ok: false };
   }
 
@@ -178,7 +178,7 @@ export const sendTenantSmtpTestEmail = async (
         recipientType: input.recipientType,
         replyTo: input.replyTo,
         smtpOverrideEnabled: input.smtpOverrideEnabled,
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
         username: input.username,
       } as never,
       withSessionHeaders(sessionId)

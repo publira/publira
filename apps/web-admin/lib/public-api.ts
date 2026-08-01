@@ -16,19 +16,19 @@ const isExpectedNullableError = (error: unknown): boolean => {
 };
 
 export const getTenantName = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<string | null> => {
   "use cache";
   cacheLife({ stale: 30 });
 
-  const normalized = tenantPublicId.trim();
+  const normalized = tenantId.trim();
   if (!normalized) {
     return null;
   }
 
   try {
     const response = await publicApiClient.tenant.getTenant({
-      tenant: { tenantPublicId: normalized },
+      tenant: { tenantId: normalized },
     });
 
     return response.tenantName?.trim() || null;

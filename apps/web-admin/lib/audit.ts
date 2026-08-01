@@ -135,7 +135,7 @@ const mapAuditActorCandidate = (item: {
 });
 
 export const listAuditActorCandidates = async (
-  tenantPublicId: string,
+  tenantId: string,
   options: {
     limit?: number;
     query?: string;
@@ -155,7 +155,7 @@ export const listAuditActorCandidates = async (
       {
         limit: options.limit ?? 100,
         query: options.query?.trim() ?? "",
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -176,7 +176,7 @@ export const listAuditActorCandidates = async (
 };
 
 export const listAuditLogs = async (
-  tenantPublicId: string,
+  tenantId: string,
   filters: AuditLogFilters = {}
 ): Promise<ListAuditLogsResult> => {
   const sessionId = await getAccessToken();
@@ -198,7 +198,7 @@ export const listAuditLogs = async (
         createdTo: normalizeDateEnd(filters.createdTo),
         cursor: filters.cursor?.trim() ?? "",
         limit: filters.limit ?? 20,
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );

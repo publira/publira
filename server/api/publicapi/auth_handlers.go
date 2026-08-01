@@ -47,7 +47,7 @@ func (s *apiServer) issueAccessToken(
 	token, expiresAt, err := s.tokens.Issue(
 		user.PublicID,
 		auth.AudiencePublic,
-		tenant.PublicID,
+		tenant.ID.String(),
 		role,
 		user.CredentialsVersion,
 		time.Now(),
@@ -94,7 +94,7 @@ func (s *apiServer) authenticateAccessToken(
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	if claims.TenantPublicID != "" && claims.TenantPublicID != tenant.PublicID {
+	if claims.TenantID != "" && claims.TenantID != tenant.ID.String() {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
 	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{

@@ -32,7 +32,7 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}))
 	if err != nil {
 		t.Fatalf("ListPublishedPages: %v", err)
@@ -72,7 +72,7 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Slug:   "privacy",
 	}))
 	if err != nil {
@@ -90,11 +90,12 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 
 func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 	t.Run("empty-slug", func(t *testing.T) {
+		// Validation fails before tenant lookup when slug is empty.
 		testServer, _ := newTestPublicServer(t)
 		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 
 		_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
-			Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+			Tenant: &publirattypesv1.TenantContext{TenantId: "00000000-0000-7000-8000-000000000001"},
 			Slug:   " ",
 		}))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -117,7 +118,7 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 
 		client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 		_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
-			Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+			Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 			Slug:   "missing",
 		}))
 		if connect.CodeOf(err) != connect.CodeNotFound {

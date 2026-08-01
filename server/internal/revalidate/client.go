@@ -21,7 +21,7 @@ type Client struct {
 }
 
 type requestPayload struct {
-	TenantPublicID string   `json:"tenantPublicId"`
+	TenantID string   `json:"tenantId"`
 	Tags           []string `json:"tags"`
 }
 
@@ -47,13 +47,13 @@ func NewClient(token string, logger *slog.Logger) *Client {
 	}
 }
 
-func (c *Client) RevalidateTags(ctx context.Context, tenantPublicID, tenantDomain string, tags []string) error {
+func (c *Client) RevalidateTags(ctx context.Context, tenantID, tenantDomain string, tags []string) error {
 	if c == nil {
 		return nil
 	}
-	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
-	if normalizedTenantPublicID == "" {
-		return fmt.Errorf("tenantPublicId is required")
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	if normalizedTenantID == "" {
+		return fmt.Errorf("tenantId is required")
 	}
 	normalizedTenantDomain, err := normalizeTenantDomain(tenantDomain)
 	if err != nil {
@@ -62,7 +62,7 @@ func (c *Client) RevalidateTags(ctx context.Context, tenantPublicID, tenantDomai
 
 	normalizedTags := filterAllowedTenantTags(
 		normalizeTags(tags),
-		normalizedTenantPublicID,
+		normalizedTenantID,
 	)
 	if len(normalizedTags) == 0 {
 		return nil
@@ -72,7 +72,7 @@ func (c *Client) RevalidateTags(ctx context.Context, tenantPublicID, tenantDomai
 	if err != nil {
 		return err
 	}
-	return c.sendRequest(ctx, endpoint, normalizedTenantPublicID, normalizedTenantDomain, normalizedTags)
+	return c.sendRequest(ctx, endpoint, normalizedTenantID, normalizedTenantDomain, normalizedTags)
 }
 
 func buildEndpoint(baseURL, reqPath string) (string, error) {
@@ -88,9 +88,9 @@ func buildEndpoint(baseURL, reqPath string) (string, error) {
 	return parsed.String(), nil
 }
 
-func (c *Client) sendRequest(ctx context.Context, endpoint, tenantPublicID, tenantDomain string, tags []string) error {
+func (c *Client) sendRequest(ctx context.Context, endpoint, tenantID, tenantDomain string, tags []string) error {
 	payload, err := json.Marshal(requestPayload{
-		TenantPublicID: tenantPublicID,
+		TenantID: tenantID,
 		Tags:           tags,
 	})
 	if err != nil {
@@ -119,7 +119,7 @@ func (c *Client) sendRequest(ctx context.Context, endpoint, tenantPublicID, tena
 
 	c.logger.Info(
 		"next revalidate requested",
-		"tenant_public_id", tenantPublicID,
+		"tenant_id", tenantID,
 		"tenant_domain", tenantDomain,
 		"tags", tags,
 		"endpoint", endpoint,
@@ -127,11 +127,11 @@ func (c *Client) sendRequest(ctx context.Context, endpoint, tenantPublicID, tena
 	return nil
 }
 
-func filterAllowedTenantTags(tags []string, tenantPublicID string) []string {
+func filterAllowedTenantTags(tags []string, tenantID string) []string {
 	if len(tags) == 0 {
 		return nil
 	}
-	prefix := fmt.Sprintf("tenant:%s:", tenantPublicID)
+	prefix := fmt.Sprintf("tenant:%s:", tenantID)
 
 	filtered := make([]string, 0, len(tags))
 	for _, tag := range tags {

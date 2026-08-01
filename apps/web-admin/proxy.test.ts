@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { mockResolveTenantPublicId } = vi.hoisted(() => ({
-  mockResolveTenantPublicId: vi.fn(),
+const { mockResolveTenantId } = vi.hoisted(() => ({
+  mockResolveTenantId: vi.fn(),
 }));
 
 vi.mock("./lib/tenant", () => ({
-  resolveTenantPublicId: mockResolveTenantPublicId,
+  resolveTenantId: mockResolveTenantId,
 }));
 
 describe("web-admin proxy", () => {
@@ -13,7 +13,7 @@ describe("web-admin proxy", () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
-    mockResolveTenantPublicId.mockResolvedValueOnce(null);
+    mockResolveTenantId.mockResolvedValueOnce(null);
 
     const response = await proxy(
       new NextRequest("https://admin.unknown.example/series")
@@ -26,7 +26,7 @@ describe("web-admin proxy", () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
-    mockResolveTenantPublicId.mockResolvedValueOnce("tenant_001");
+    mockResolveTenantId.mockResolvedValueOnce("tenant_001");
 
     const response = await proxy(
       new NextRequest("https://admin.example.com/series?draft=1")
@@ -46,7 +46,7 @@ describe("web-admin proxy", () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
 
-    mockResolveTenantPublicId.mockResolvedValueOnce("tenant_001");
+    mockResolveTenantId.mockResolvedValueOnce("tenant_001");
 
     const response = await proxy(
       new NextRequest(`https://admin.example.com${path}`)

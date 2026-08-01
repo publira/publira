@@ -31,7 +31,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	scheduledAtJST := now.Add(2 * time.Hour).In(time.FixedZone("JST", 9*60*60)).Truncate(time.Second)
 	scheduledAtUTC := scheduledAtJST.UTC()
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -54,7 +54,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
-		Tenant:             &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesPublicId:     "SERIES001",
 		Title:              "Episode 1",
 		OrderIndex:         1,
@@ -90,7 +90,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		{
 			name: "invalid-title",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId: "SERIES001",
 				Title:          "  ",
 				OrderIndex:     1,
@@ -100,7 +100,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		{
 			name: "invalid-scheduled-at",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId: "SERIES001",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -111,7 +111,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		{
 			name: "past-scheduled-at",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId: "SERIES001",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -122,7 +122,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		{
 			name: "boundary-scheduled-at-now",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId: "SERIES001",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -133,7 +133,7 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 		{
 			name: "series-cross-tenant-or-not-found",
 			request: &publiraadminv1.CreateEpisodeRequest{
-				Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId: "SERIES_OTHER_TENANT",
 				Title:          "Episode",
 				OrderIndex:     1,
@@ -155,9 +155,12 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
-			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
+			if tc.request != nil && tc.request.Tenant != nil {
+				tc.request.Tenant.TenantId = tenantID.String()
+			}
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 			if tc.setup != nil {
 				tc.setup(mock, tenantID, now)
@@ -183,7 +186,7 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	episodeID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -223,7 +226,7 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodePublicId: "EPISODE001",
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "001.png", ContentType: "image/png", Data: oneByOnePNG, DisplayOrder: 0},
@@ -258,7 +261,7 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 		{
 			name: "images-required",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
 				EpisodePublicId: "EPISODE001",
 			},
 			wantCode: connect.CodeInvalidArgument,
@@ -266,7 +269,7 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 		{
 			name: "episode-not-found",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
 				EpisodePublicId: "EPISODE_NOT_FOUND",
 				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "001.png", ContentType: "image/png", Data: []byte{0x89, 0x50, 0x4e, 0x47}, DisplayOrder: 0}},
 			},
@@ -280,7 +283,7 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 		{
 			name: "invalid-content-type",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
 				EpisodePublicId: "EPISODE001",
 				Images:          []*publiraadminv1.EpisodeImageUpload{{Filename: "bad.txt", ContentType: "text/plain", Data: oneByOnePNG, DisplayOrder: 0}},
 			},
@@ -305,9 +308,12 @@ func TestUploadEpisodeImagesValidationAndBoundary(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
-			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
+			if tc.request != nil && tc.request.Tenant != nil {
+				tc.request.Tenant.TenantId = tenantID.String()
+			}
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 			if tc.setup != nil {
 				tc.setup(mock, tenantID, now)
@@ -333,7 +339,7 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	episodeID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -372,7 +378,7 @@ func TestUploadEpisodeImagesGeneratesDerivatives(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		EpisodePublicId: "EPISODE001",
 		Images: []*publiraadminv1.EpisodeImageUpload{
 			{Filename: "landscape.jpg", ContentType: "image/jpeg", Data: generateJPEG(t, 1600, 900), DisplayOrder: 0},
@@ -401,7 +407,7 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	episodeID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -437,7 +443,7 @@ func TestUploadEpisodeImagesArchiveSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UploadEpisodeImagesRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		SeriesPublicId:  "SERIES001",
 		EpisodePublicId: "EPISODE001",
 		ArchiveData: makeZipArchive(t,
@@ -469,7 +475,7 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 		{
 			name: "invalid-zip",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId:  "SERIES001",
 				EpisodePublicId: "EPISODE001",
 				ArchiveData:     []byte("not-a-zip"),
@@ -479,7 +485,7 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 		{
 			name: "invalid-path",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId:  "SERIES001",
 				EpisodePublicId: "EPISODE001",
 				ArchiveData: makeZipArchive(t,
@@ -491,7 +497,7 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 		{
 			name: "series-episode-mismatch",
 			request: &publiraadminv1.UploadEpisodeImagesRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:          &publirattypesv1.TenantContext{TenantId: ""},
 				SeriesPublicId:  "SERIES_OTHER",
 				EpisodePublicId: "EPISODE001",
 				ArchiveData: makeZipArchive(t,
@@ -515,9 +521,12 @@ func TestUploadEpisodeImagesArchiveValidationAndBoundary(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
-			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
+			if tc.request != nil && tc.request.Tenant != nil {
+				tc.request.Tenant.TenantId = tenantID.String()
+			}
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 			if tc.setup != nil {
 				tc.setup(mock, tenantID, now)
@@ -626,7 +635,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
-			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -636,7 +645,7 @@ func TestUpdateEpisodePublishScheduleValidationAndTimezone(t *testing.T) {
 
 			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 			req := connect.NewRequest(&publiraadminv1.UpdateEpisodePublishScheduleRequest{
-				Tenant:          &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				EpisodePublicId: "EPISODE001",
 				ScheduledAt:     tc.scheduled,
 			})

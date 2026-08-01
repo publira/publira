@@ -19,15 +19,15 @@ describe("tenant", () => {
     vi.unstubAllEnvs();
   });
 
-  it("admin ドメイン候補で tenantPublicId を解決する", async () => {
+  it("admin ドメイン候補で tenantId を解決する", async () => {
     mockGetTenantByDomain.mockResolvedValueOnce({
-      tenantPublicId: "tenant_admin_001",
+      tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
 
-    const { resolveTenantPublicId } = await import("./tenant");
+    const { resolveTenantId } = await import("./tenant");
 
-    await expect(resolveTenantPublicId(["admin.example.com"])).resolves.toBe(
-      "tenant_admin_001"
+    await expect(resolveTenantId(["admin.example.com"])).resolves.toBe(
+      "018f0e6a-1000-7000-8000-000000000001"
     );
 
     expect(mockGetTenantByDomain).toHaveBeenCalledWith({
@@ -38,19 +38,19 @@ describe("tenant", () => {
   it("未登録ドメインでは null を返す", async () => {
     mockGetTenantByDomain.mockRejectedValueOnce(new Error("not found"));
 
-    const { resolveTenantPublicId } = await import("./tenant");
+    const { resolveTenantId } = await import("./tenant");
 
     await expect(
-      resolveTenantPublicId(["admin.unknown.example"])
+      resolveTenantId(["admin.unknown.example"])
     ).resolves.toBeNull();
   });
 
   it("想定外エラーは再送出する", async () => {
     mockGetTenantByDomain.mockRejectedValueOnce(new Error("db timeout"));
 
-    const { resolveTenantPublicId } = await import("./tenant");
+    const { resolveTenantId } = await import("./tenant");
 
-    await expect(resolveTenantPublicId(["admin.example.com"])).rejects.toThrow(
+    await expect(resolveTenantId(["admin.example.com"])).rejects.toThrow(
       "db timeout"
     );
   });

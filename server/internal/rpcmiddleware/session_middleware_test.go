@@ -46,7 +46,7 @@ func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 	}
 
 	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
-	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantPublicId: "tenant-1"}})
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantId: "00000000-0000-7000-8000-000000000011"}})
 	ctx, err := builder(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -82,7 +82,7 @@ func TestBuildAdminSessionContext_AuthErrorPropagated(t *testing.T) {
 	}
 
 	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
-	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantPublicId: "tenant-1"}})
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantId: "00000000-0000-7000-8000-000000000011"}})
 	_, err := builder(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Errorf("error code = %v, want Unauthenticated", connect.CodeOf(err))
@@ -129,7 +129,7 @@ func TestBuildAdminSessionContext_EmptyTenantPublicIDReturnsInvalidArgument(t *t
 	}
 
 	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
-	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantPublicId: "  "}})
+	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: &publirattypesv1.TenantContext{TenantId: "  "}})
 	_, err := builder(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("error code = %v, want InvalidArgument", connect.CodeOf(err))
@@ -139,15 +139,16 @@ func TestBuildAdminSessionContext_EmptyTenantPublicIDReturnsInvalidArgument(t *t
 	}
 }
 
-func TestBuildAdminSessionContext_TenantPublicIDFromHeader(t *testing.T) {
+func TestBuildAdminSessionContext_TenantIDFromHeader(t *testing.T) {
+	const tenantID = "00000000-0000-7000-8000-000000000011"
 	want := rpcmiddleware.SessionContext{
-		Tenant: dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
+		Tenant: dbmodels.Tenant{ID: uuid.MustParse(tenantID), PublicID: "tenant-1"},
 	}
 	authenticate := func(_ context.Context, tenantCtx *publirattypesv1.TenantContext, headers http.Header) (rpcmiddleware.SessionContext, error) {
-		if tenantCtx == nil || tenantCtx.TenantPublicId != "tenant-1" {
-			t.Fatalf("tenant context = %+v, want tenant-1", tenantCtx)
+		if tenantCtx == nil || tenantCtx.TenantId != tenantID {
+			t.Fatalf("tenant context = %+v, want tenant_id=%s", tenantCtx, tenantID)
 		}
-		if headers.Get(rpcmiddleware.TenantPublicIDHeaderName) != "tenant-1" {
+		if headers.Get(rpcmiddleware.TenantIDHeaderName) != tenantID {
 			t.Fatalf("missing tenant header")
 		}
 		return want, nil
@@ -155,7 +156,7 @@ func TestBuildAdminSessionContext_TenantPublicIDFromHeader(t *testing.T) {
 
 	builder := rpcmiddleware.BuildAdminSessionContext(authenticate)
 	req := connect.NewRequest(&tenantRequest{Empty: &emptypb.Empty{}, tenant: nil})
-	req.Header().Set(rpcmiddleware.TenantPublicIDHeaderName, "tenant-1")
+	req.Header().Set(rpcmiddleware.TenantIDHeaderName, tenantID)
 
 	ctx, err := builder(context.Background(), req)
 	if err != nil {
@@ -165,6 +166,9 @@ func TestBuildAdminSessionContext_TenantPublicIDFromHeader(t *testing.T) {
 	gotTenantCtx, ok := rpcmiddleware.TenantContextFromContext(ctx)
 	if !ok {
 		t.Fatal("TenantContext not found in context")
+	}
+	if gotTenantCtx.TenantID != uuid.MustParse(tenantID) {
+		t.Fatalf("TenantContext.TenantID = %q, want %s", gotTenantCtx.TenantID, tenantID)
 	}
 	if gotTenantCtx.TenantPublicID != "tenant-1" {
 		t.Fatalf("TenantContext.TenantPublicID = %q, want tenant-1", gotTenantCtx.TenantPublicID)

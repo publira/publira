@@ -207,7 +207,7 @@ func (s *adminServer) Login(
 	if s.tokens == nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
 	}
-	token, expiresAt, err := s.tokens.Issue(user.PublicID, auth.AudienceAdmin, tenant.PublicID, role, user.CredentialsVersion, time.Now())
+	token, expiresAt, err := s.tokens.Issue(user.PublicID, auth.AudienceAdmin, tenant.ID.String(), role, user.CredentialsVersion, time.Now())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -442,7 +442,7 @@ func (s *adminServer) GetTenantByDomain(
 	}
 
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantByDomainResponse{
-		TenantPublicId: tenant.PublicID,
+		TenantId: tenant.ID.String(),
 	}), nil
 }
 

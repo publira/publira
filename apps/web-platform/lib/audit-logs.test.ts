@@ -63,8 +63,8 @@ describe("listPlatformAuditLogs", () => {
           targetName: "テナントA",
           targetPublicId: "tenant_001",
           targetType: "tenant",
+          tenantId: "tenant_001",
           tenantName: "テナントA",
-          tenantPublicId: "tenant_001",
         },
       ],
       ok: true,
@@ -76,7 +76,7 @@ describe("listPlatformAuditLogs", () => {
         actorUserPublicId: "",
         limit: 100,
         offset: 0,
-        tenantPublicId: "",
+        tenantId: "",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -91,7 +91,7 @@ describe("listPlatformAuditLogs", () => {
         actorUserPublicId: "op_123",
         limit: 20,
         offset: 40,
-        tenantPublicId: "tenant_999",
+        tenantId: "tenant_999",
       })
     ).resolves.toEqual({ auditLogs: [], ok: true });
 
@@ -101,7 +101,7 @@ describe("listPlatformAuditLogs", () => {
         actorUserPublicId: "op_123",
         limit: 20,
         offset: 40,
-        tenantPublicId: "tenant_999",
+        tenantId: "tenant_999",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -122,8 +122,8 @@ describe("listPlatformAuditLogs", () => {
           targetName: "運営 次郎",
           targetPublicId: "",
           targetType: "operator",
+          tenantId: undefined,
           tenantName: undefined,
-          tenantPublicId: undefined,
         },
       ],
     });
@@ -142,8 +142,8 @@ describe("listPlatformAuditLogs", () => {
           targetName: "運営 次郎",
           targetPublicId: "",
           targetType: "operator",
+          tenantId: "",
           tenantName: "",
-          tenantPublicId: "",
         },
       ],
       ok: true,

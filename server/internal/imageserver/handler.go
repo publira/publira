@@ -113,7 +113,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 
 	if rawToken, ok := requestmeta.AccessTokenFromRequest(r); ok && h.tokens != nil {
 		claims, err := h.tokens.Verify(rawToken, auth.AudiencePublic)
-		if err == nil && (claims.TenantPublicID == "" || claims.TenantPublicID == tenant.PublicID) {
+		if err == nil && (claims.TenantID == "" || claims.TenantID == tenant.ID.String()) {
 			userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 				PublicID: claims.Subject,
 				TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},

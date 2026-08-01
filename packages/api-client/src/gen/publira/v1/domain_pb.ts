@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/domain.proto.
  */
 export const file_publira_v1_domain: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL2RvbWFpbi5wcm90bxIKcHVibGlyYS52MSIrChhHZXRUZW5hbnRCeURvbWFpblJlcXVlc3QSDwoHZG9tYWlucxgBIAMoCSI1ChlHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhgKEHRlbmFudF9wdWJsaWNfaWQYASABKAkycwoNRG9tYWluU2VydmljZRJiChFHZXRUZW5hbnRCeURvbWFpbhIkLnB1YmxpcmEudjEuR2V0VGVuYW50QnlEb21haW5SZXF1ZXN0GiUucHVibGlyYS52MS5HZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlIgBCPFo6Z2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z");
+  fileDesc("ChdwdWJsaXJhL3YxL2RvbWFpbi5wcm90bxIKcHVibGlyYS52MSIrChhHZXRUZW5hbnRCeURvbWFpblJlcXVlc3QSDwoHZG9tYWlucxgBIAMoCSIuChlHZXRUZW5hbnRCeURvbWFpblJlc3BvbnNlEhEKCXRlbmFudF9pZBgBIAEoCTJzCg1Eb21haW5TZXJ2aWNlEmIKEUdldFRlbmFudEJ5RG9tYWluEiQucHVibGlyYS52MS5HZXRUZW5hbnRCeURvbWFpblJlcXVlc3QaJS5wdWJsaXJhLnYxLkdldFRlbmFudEJ5RG9tYWluUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM");
 
 /**
  * @generated from message publira.v1.GetTenantByDomainRequest
@@ -34,9 +34,11 @@ export const GetTenantByDomainRequestSchema: GenMessage<GetTenantByDomainRequest
  */
 export type GetTenantByDomainResponse = Message<"publira.v1.GetTenantByDomainResponse"> & {
   /**
-   * @generated from field: string tenant_public_id = 1;
+   * Primary key (UUID) for internal routing / TenantContext.
+   *
+   * @generated from field: string tenant_id = 1;
    */
-  tenantPublicId: string;
+  tenantId: string;
 };
 
 /**

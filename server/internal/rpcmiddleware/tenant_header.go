@@ -6,20 +6,24 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 )
 
 const (
+	// TenantIDHeaderName carries the tenant primary key (UUID) for internal RPC.
+	TenantIDHeaderName = "X-Publira-Tenant-Id"
+	// TenantPublicIDHeaderName is a legacy alias; values must be a tenant UUID when set.
+	// Prefer TenantIDHeaderName for new code.
 	TenantPublicIDHeaderName = "X-Publira-Tenant-Public-Id"
-	TenantIDHeaderName       = "X-Publira-Tenant-Id"
 )
 
-func tenantPublicIDFromHeader(headers http.Header) string {
+func tenantIDFromHeader(headers http.Header) string {
 	if headers == nil {
 		return ""
 	}
-	for _, key := range []string{TenantPublicIDHeaderName, TenantIDHeaderName} {
+	for _, key := range []string{TenantIDHeaderName, TenantPublicIDHeaderName} {
 		if value := strings.TrimSpace(headers.Get(key)); value != "" {
 			return value
 		}
@@ -27,41 +31,84 @@ func tenantPublicIDFromHeader(headers http.Header) string {
 	return ""
 }
 
-// ResolveTenantPublicID resolves tenant_public_id from request body or HTTP headers.
+// ResolveTenantID resolves the tenant primary key (UUID) from request body or HTTP headers.
 // If both are set, values must match.
-func ResolveTenantPublicID(tenantCtx *publirattypesv1.TenantContext, headers http.Header) (string, error) {
-	var bodyTenantPublicID string
+func ResolveTenantID(tenantCtx *publirattypesv1.TenantContext, headers http.Header) (uuid.UUID, error) {
+	var bodyTenantID string
 	if tenantCtx != nil {
-		bodyTenantPublicID = strings.TrimSpace(tenantCtx.TenantPublicId)
+		bodyTenantID = strings.TrimSpace(tenantCtx.TenantId)
 	}
-	headerTenantPublicID := tenantPublicIDFromHeader(headers)
+	headerTenantID := tenantIDFromHeader(headers)
 
-	if bodyTenantPublicID != "" && headerTenantPublicID != "" && bodyTenantPublicID != headerTenantPublicID {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id header and request body must match"))
+	if bodyTenantID != "" && headerTenantID != "" && bodyTenantID != headerTenantID {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id header and request body must match"))
 	}
-	if bodyTenantPublicID != "" {
-		return bodyTenantPublicID, nil
+
+	raw := bodyTenantID
+	if raw == "" {
+		raw = headerTenantID
 	}
-	if headerTenantPublicID != "" {
-		return headerTenantPublicID, nil
+	if raw == "" {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
 	}
-	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant context is required"))
+
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id must be a valid UUID"))
+	}
+	return id, nil
 }
 
-// ResolveTenantPublicIDValue resolves tenant_public_id from a string field or HTTP headers.
+// ResolveTenantIDValue resolves tenant primary key (UUID) from a string field or HTTP headers.
 // If both are set, values must match.
-func ResolveTenantPublicIDValue(fieldValue string, headers http.Header) (string, error) {
-	bodyTenantPublicID := strings.TrimSpace(fieldValue)
-	headerTenantPublicID := tenantPublicIDFromHeader(headers)
+//
+// Note: platform admin APIs that accept human-facing public_id should not use this helper;
+// it is for internal UUID wiring only.
+func ResolveTenantIDValue(fieldValue string, headers http.Header) (uuid.UUID, error) {
+	bodyTenantID := strings.TrimSpace(fieldValue)
+	headerTenantID := tenantIDFromHeader(headers)
 
-	if bodyTenantPublicID != "" && headerTenantPublicID != "" && bodyTenantPublicID != headerTenantPublicID {
+	if bodyTenantID != "" && headerTenantID != "" && bodyTenantID != headerTenantID {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id header and request body must match"))
+	}
+
+	raw := bodyTenantID
+	if raw == "" {
+		raw = headerTenantID
+	}
+	if raw == "" {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id is required"))
+	}
+
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id must be a valid UUID"))
+	}
+	return id, nil
+}
+
+// Deprecated: use ResolveTenantID.
+func ResolveTenantPublicID(tenantCtx *publirattypesv1.TenantContext, headers http.Header) (string, error) {
+	id, err := ResolveTenantID(tenantCtx, headers)
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
+}
+
+// Deprecated: use ResolveTenantIDValue for UUID fields.
+// Platform handlers that resolve public_id should keep their own helpers.
+func ResolveTenantPublicIDValue(fieldValue string, headers http.Header) (string, error) {
+	body := strings.TrimSpace(fieldValue)
+	header := tenantIDFromHeader(headers)
+	if body != "" && header != "" && body != header {
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id header and request body must match"))
 	}
-	if bodyTenantPublicID != "" {
-		return bodyTenantPublicID, nil
+	if body != "" {
+		return body, nil
 	}
-	if headerTenantPublicID != "" {
-		return headerTenantPublicID, nil
+	if header != "" {
+		return header, nil
 	}
 	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
 }

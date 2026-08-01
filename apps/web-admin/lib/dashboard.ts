@@ -38,7 +38,7 @@ const mapErrorToMessage = (error: unknown): string => {
 };
 
 export const getDashboard = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<GetDashboardResult> => {
   "use cache: private";
 
@@ -52,7 +52,7 @@ export const getDashboard = async (
 
   try {
     const response = await apiClient.dashboard.getDashboard(
-      { tenant: { tenantPublicId } },
+      { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
 

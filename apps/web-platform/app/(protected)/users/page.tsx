@@ -79,14 +79,14 @@ const buildUsersPath = (params: {
   limit: number;
   offset: number;
   status?: string;
-  tenantPublicId?: string;
+  tenantId?: string;
 }): string => {
   const search = new URLSearchParams();
   if (params.status) {
     search.set("status", params.status);
   }
-  if (params.tenantPublicId) {
-    search.set("tenant_public_id", params.tenantPublicId);
+  if (params.tenantId) {
+    search.set("tenant_id", params.tenantId);
   }
   if (params.createdFrom) {
     search.set("created_from", params.createdFrom);
@@ -122,7 +122,7 @@ interface UsersPageProps {
     limit?: string;
     offset?: string;
     status?: string;
-    tenant_public_id?: string;
+    tenant_id?: string;
   }>;
 }
 
@@ -132,7 +132,7 @@ interface UsersFilters {
   limit: number;
   offset: number;
   statusFilter: string;
-  tenantPublicIdFilter: string;
+  tenantIdFilter: string;
 }
 
 interface PaginationState {
@@ -146,7 +146,7 @@ const parseUsersFilters = (
   params: Awaited<UsersPageProps["searchParams"]>
 ): UsersFilters => {
   const statusFilter = params.status?.trim() ?? "";
-  const tenantPublicIdFilter = params.tenant_public_id?.trim() ?? "";
+  const tenantIdFilter = params.tenant_id?.trim() ?? "";
   const createdFromFilter = params.created_from?.trim() ?? "";
   const createdToFilter = params.created_to?.trim() ?? "";
 
@@ -168,7 +168,7 @@ const parseUsersFilters = (
     limit,
     offset,
     statusFilter,
-    tenantPublicIdFilter,
+    tenantIdFilter,
   };
 };
 
@@ -206,7 +206,7 @@ const UsersFilterForm = ({
   limit,
   statusFilter,
   tenantItems,
-  tenantPublicIdFilter,
+  tenantIdFilter,
 }: {
   createdFromFilter: string;
   createdToFilter: string;
@@ -214,12 +214,12 @@ const UsersFilterForm = ({
   limit: number;
   statusFilter: string;
   tenantItems: PlatformTenantFilterOption[];
-  tenantPublicIdFilter: string;
+  tenantIdFilter: string;
 }) => (
   <Form
     action="/users"
     className="flex flex-wrap gap-3"
-    key={`${statusFilter}::${tenantPublicIdFilter}::${createdFromFilter}::${createdToFilter}::${limit}`}
+    key={`${statusFilter}::${tenantIdFilter}::${createdFromFilter}::${createdToFilter}::${limit}`}
   >
     <Select
       className="w-44"
@@ -230,12 +230,12 @@ const UsersFilterForm = ({
     />
     <Select
       className="w-56"
-      defaultValue={tenantPublicIdFilter || undefined}
+      defaultValue={tenantIdFilter || undefined}
       items={tenantItems.map((tenant) => ({
         label: tenant.name,
         value: tenant.publicId,
       }))}
-      name="tenant_public_id"
+      name="tenant_id"
       placeholder="すべてのテナント"
     />
     <Input
@@ -344,14 +344,14 @@ const PaginationControls = ({
   limit,
   pagination,
   statusFilter,
-  tenantPublicIdFilter,
+  tenantIdFilter,
 }: {
   createdFromFilter: string;
   createdToFilter: string;
   limit: number;
   pagination: PaginationState;
   statusFilter: string;
-  tenantPublicIdFilter: string;
+  tenantIdFilter: string;
 }) => (
   <div className="flex items-center gap-2">
     {pagination.hasPrev ? (
@@ -364,7 +364,7 @@ const PaginationControls = ({
               limit,
               offset: pagination.prevOffset,
               status: statusFilter || undefined,
-              tenantPublicId: tenantPublicIdFilter || undefined,
+              tenantId: tenantIdFilter || undefined,
             })}
           />
         }
@@ -389,7 +389,7 @@ const PaginationControls = ({
               limit,
               offset: pagination.nextOffset,
               status: statusFilter || undefined,
-              tenantPublicId: tenantPublicIdFilter || undefined,
+              tenantId: tenantIdFilter || undefined,
             })}
           />
         }
@@ -415,13 +415,13 @@ const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
     limit: filters.limit,
     offset: filters.offset,
     status: filters.statusFilter || undefined,
-    tenantPublicId: filters.tenantPublicIdFilter || undefined,
+    tenantId: filters.tenantIdFilter || undefined,
   });
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(
     filters.statusFilter ||
-    filters.tenantPublicIdFilter ||
+    filters.tenantIdFilter ||
     filters.createdFromFilter ||
     filters.createdToFilter
   );
@@ -447,7 +447,7 @@ const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
           limit={filters.limit}
           statusFilter={filters.statusFilter}
           tenantItems={tenantItems}
-          tenantPublicIdFilter={filters.tenantPublicIdFilter}
+          tenantIdFilter={filters.tenantIdFilter}
         />
 
         {result.ok ? null : (
@@ -472,7 +472,7 @@ const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
             limit={filters.limit}
             pagination={pagination}
             statusFilter={filters.statusFilter}
-            tenantPublicIdFilter={filters.tenantPublicIdFilter}
+            tenantIdFilter={filters.tenantIdFilter}
           />
         </div>
       </CardContent>

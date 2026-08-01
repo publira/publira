@@ -17,7 +17,7 @@ export interface PlatformAuditLogSummary {
   targetName: string;
   targetType: string;
   tenantName: string;
-  tenantPublicId: string;
+  tenantId: string;
 }
 
 export interface ListPlatformAuditLogsInput {
@@ -25,7 +25,7 @@ export interface ListPlatformAuditLogsInput {
   actorUserPublicId?: string;
   limit?: number;
   offset?: number;
-  tenantPublicId?: string;
+  tenantId?: string;
 }
 
 export type ListPlatformAuditLogsResult =
@@ -61,7 +61,7 @@ export const listPlatformAuditLogs = async (
         actorUserPublicId: input.actorUserPublicId?.trim() ?? "",
         limit,
         offset,
-        tenantPublicId: input.tenantPublicId?.trim() ?? "",
+        tenantId: input.tenantId?.trim() ?? "",
       } as never,
       buildSessionHeaders(sid)
     );
@@ -79,8 +79,8 @@ export const listPlatformAuditLogs = async (
         targetName: log.targetName,
         targetPublicId: log.targetPublicId ?? "",
         targetType: log.targetType,
+        tenantId: log.tenantPublicId ?? "",
         tenantName: log.tenantName ?? "",
-        tenantPublicId: log.tenantPublicId ?? "",
       })),
       ok: true,
     };

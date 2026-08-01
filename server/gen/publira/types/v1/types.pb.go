@@ -21,11 +21,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// TenantContext identifies a tenant for internal RPC wiring.
+// tenant_id is the primary key (UUID), not the public-facing short code.
 type TenantContext struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TenantContext) Reset() {
@@ -58,9 +60,9 @@ func (*TenantContext) Descriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *TenantContext) GetTenantPublicId() string {
+func (x *TenantContext) GetTenantId() string {
 	if x != nil {
-		return x.TenantPublicId
+		return x.TenantId
 	}
 	return ""
 }
@@ -1196,9 +1198,9 @@ var File_publira_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"\x1cpublira/types/v1/types.proto\x12\x10publira.types.v1\"9\n" +
-	"\rTenantContext\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\"K\n" +
+	"\x1cpublira/types/v1/types.proto\x12\x10publira.types.v1\",\n" +
+	"\rTenantContext\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"K\n" +
 	"\x04User\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +

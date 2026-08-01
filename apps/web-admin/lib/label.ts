@@ -113,10 +113,10 @@ const mapLabel = (label: {
 });
 
 export const listLabels = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<ListLabelsResult> => {
   "use cache: private";
-  cacheTag(`labels-${tenantPublicId}`);
+  cacheTag(`labels-${tenantId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -132,7 +132,7 @@ export const listLabels = async (
       {
         limit: 100,
         offset: 0,
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -153,7 +153,7 @@ export const listLabels = async (
 };
 
 export const createLabel = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   name: string;
   eyeCatchImageContentType?: string;
   eyeCatchImageData?: Uint8Array;
@@ -172,7 +172,7 @@ export const createLabel = async (input: {
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
         name: input.name,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -197,7 +197,7 @@ export const createLabel = async (input: {
 };
 
 export const updateLabel = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   publicId: string;
   name: string;
   clearEyeCatchImage?: boolean;
@@ -220,7 +220,7 @@ export const updateLabel = async (input: {
         eyeCatchImageData: input.eyeCatchImageData,
         name: input.name,
         publicId: input.publicId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -245,12 +245,12 @@ export const updateLabel = async (input: {
 };
 
 export const getLabel = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   publicId: string;
 }): Promise<GetLabelResult> => {
   "use cache: private";
-  cacheTag(`labels-${input.tenantPublicId}`);
-  cacheTag(`label-${input.tenantPublicId}-${input.publicId}`);
+  cacheTag(`labels-${input.tenantId}`);
+  cacheTag(`label-${input.tenantId}-${input.publicId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -261,7 +261,7 @@ export const getLabel = async (input: {
   }
 
   try {
-    const response = await listLabels(input.tenantPublicId);
+    const response = await listLabels(input.tenantId);
 
     if (!response.ok) {
       return {

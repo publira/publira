@@ -44,20 +44,20 @@ const mapNotificationItems = (
   }));
 
 const listNotificationsRpc = (
-  tenantPublicId: string,
+  tenantId: string,
   sessionId: string
 ): Promise<Awaited<ReturnType<typeof apiClient.auth.listNotifications>>> =>
   apiClient.auth.listNotifications(
     {
       limit: 100,
       offset: 0,
-      tenant: { tenantPublicId },
+      tenant: { tenantId },
     },
     buildSessionHeaders(sessionId)
   );
 
 const fetchNotifications = async (
-  tenantPublicId: string,
+  tenantId: string,
   sessionId: string
 ): Promise<
   | { ok: true; notifications: MemberNotificationItem[] }
@@ -67,10 +67,10 @@ const fetchNotifications = async (
     console.info("[web-host] listNotifications request", {
       hasSessionId: sessionId.length > 0,
       sessionIdLength: sessionId.length,
-      tenantPublicId,
+      tenantId,
     });
 
-    const response = await listNotificationsRpc(tenantPublicId, sessionId);
+    const response = await listNotificationsRpc(tenantId, sessionId);
 
     return {
       notifications: mapNotificationItems(response),
@@ -81,7 +81,7 @@ const fetchNotifications = async (
       error: error instanceof Error ? error.message : String(error),
       hasSessionId: sessionId.length > 0,
       sessionIdLength: sessionId.length,
-      tenantPublicId,
+      tenantId,
     });
 
     return {
@@ -93,7 +93,7 @@ const fetchNotifications = async (
 };
 
 export const listMyNotifications = async (
-  tenantPublicId: string,
+  tenantId: string,
   sessionId?: string
 ): Promise<
   | { ok: true; notifications: MemberNotificationItem[] }
@@ -102,11 +102,11 @@ export const listMyNotifications = async (
   noStore();
 
   const sid = await resolveAccessToken(sessionId);
-  return fetchNotifications(tenantPublicId, sid);
+  return fetchNotifications(tenantId, sid);
 };
 
 export const markNotificationAsRead = async (
-  tenantPublicId: string,
+  tenantId: string,
   notificationId: string,
   sessionId?: string
 ): Promise<boolean> => {
@@ -119,7 +119,7 @@ export const markNotificationAsRead = async (
     const response = await apiClient.auth.markNotificationAsRead(
       {
         notificationId,
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -131,7 +131,7 @@ export const markNotificationAsRead = async (
 };
 
 export const markAllNotificationsAsRead = async (
-  tenantPublicId: string,
+  tenantId: string,
   sessionId?: string
 ): Promise<number> => {
   const sid = await resolveAccessToken(sessionId);
@@ -142,7 +142,7 @@ export const markAllNotificationsAsRead = async (
   try {
     const response = await apiClient.auth.markAllNotificationsAsRead(
       {
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );

@@ -2448,6 +2448,29 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 	return i, err
 }
 
+const getTenantByID = `-- name: GetTenantByID :one
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
+FROM tenants
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, getTenantByID, id)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Name,
+		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+		&i.AdminDomain,
+	)
+	return i, err
+}
+
 const getTenantByPublicID = `-- name: GetTenantByPublicID :one
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
 FROM tenants
@@ -3472,7 +3495,7 @@ func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, 
 
 const listEpisodesReadyToPublishWithTenantInfo = `-- name: ListEpisodesReadyToPublishWithTenantInfo :many
 SELECT el.episode_id,
-    t.public_id AS tenant_public_id,
+    t.id AS tenant_id,
     t.domain AS tenant_domain
 FROM episode_listings el
 JOIN tenants t ON t.id = el.tenant_id
@@ -3482,9 +3505,9 @@ WHERE el.status = 'scheduled'
 `
 
 type ListEpisodesReadyToPublishWithTenantInfoRow struct {
-	EpisodeID      uuid.UUID `json:"episode_id"`
-	TenantPublicID string    `json:"tenant_public_id"`
-	TenantDomain   string    `json:"tenant_domain"`
+	EpisodeID    uuid.UUID `json:"episode_id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	TenantDomain string    `json:"tenant_domain"`
 }
 
 func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error) {
@@ -3496,7 +3519,7 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	var items []ListEpisodesReadyToPublishWithTenantInfoRow
 	for rows.Next() {
 		var i ListEpisodesReadyToPublishWithTenantInfoRow
-		if err := rows.Scan(&i.EpisodeID, &i.TenantPublicID, &i.TenantDomain); err != nil {
+		if err := rows.Scan(&i.EpisodeID, &i.TenantID, &i.TenantDomain); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

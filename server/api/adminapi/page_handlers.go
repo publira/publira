@@ -409,7 +409,7 @@ func (s *adminServer) PublishVersion(
 			fmt.Sprintf("tenant:%s:pages", tenant.PublicID),
 			fmt.Sprintf("tenant:%s:pages:%s", tenant.PublicID, version.PageID.String()),
 		}
-		if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, tags); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tags); err != nil {
 			s.logger.Warn("failed to request next revalidate after page publish", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
 		}
 	}

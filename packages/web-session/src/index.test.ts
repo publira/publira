@@ -13,7 +13,7 @@ describe("web-session", () => {
     const payload = {
       accessToken: "token-abc",
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
-      tenantPublicId: "TENANT001",
+      tenantId: "TENANT001",
     };
 
     const sealed = await encryptSessionPayload(payload, secret);

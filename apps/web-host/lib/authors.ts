@@ -102,7 +102,7 @@ const addAuthorContribution = (
 };
 
 export const listPublishedAuthors = async (
-  tenantPublicId: string,
+  tenantId: string,
   {
     page = 1,
     pageSize = 12,
@@ -113,8 +113,8 @@ export const listPublishedAuthors = async (
 ): Promise<PublishedAuthorListResult> => {
   "use cache";
 
-  const normalizedTenantPublicId = tenantPublicId.trim();
-  applyCacheTag(tenantAuthorsTag(normalizedTenantPublicId));
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
 
   const targetEndIndex = page * pageSize + 1;
   const authorSeriesMap = new Map<
@@ -127,7 +127,7 @@ export const listPublishedAuthors = async (
 
   while (authorSeriesMap.size < targetEndIndex && !reachedSeriesEnd) {
     const seriesBatch = await listPublishedSeries(
-      tenantPublicId,
+      tenantId,
       SERIES_FETCH_BATCH_SIZE,
       offset
     );
@@ -199,7 +199,7 @@ export const listPublishedAuthors = async (
 };
 
 export const getPublishedAuthorDetail = async (
-  tenantPublicId: string,
+  tenantId: string,
   authorId: string
 ): Promise<PublishedAuthorDetail | null> => {
   "use cache";
@@ -217,7 +217,7 @@ export const getPublishedAuthorDetail = async (
 
   while (!reachedSeriesEnd) {
     const seriesBatch = await listPublishedSeries(
-      tenantPublicId,
+      tenantId,
       SERIES_FETCH_BATCH_SIZE,
       offset
     );

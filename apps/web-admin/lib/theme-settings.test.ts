@@ -67,7 +67,7 @@ describe("theme-settings", () => {
     expect(result).toEqual({ ok: true, theme: fullTheme });
 
     expect(mockGetTenantThemeApi).toHaveBeenCalledWith(
-      { tenant: { tenantPublicId: "TENANT001" } },
+      { tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
@@ -96,7 +96,7 @@ describe("theme-settings", () => {
     const result = await updateTenantThemeSettings({
       ...fullTheme,
       primaryColor: "#bad",
-      tenantPublicId: "TENANT001",
+      tenantId: "TENANT001",
     });
 
     expect(result).toEqual({
@@ -113,7 +113,7 @@ describe("theme-settings", () => {
 
     const result = await updateTenantThemeSettings({
       ...updatedTheme,
-      tenantPublicId: "TENANT001",
+      tenantId: "TENANT001",
     });
 
     expect(result).toEqual({ ok: true, theme: updatedTheme });
