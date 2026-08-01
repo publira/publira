@@ -2,7 +2,7 @@
   "name": "@publira/web-host",
   "version": "0.1.0",
   "private": true,
-  "description": "\u30c6\u30ca\u30f3\u30c8\u516c\u958b\u30b5\u30a4\u30c8 (\u914d\u4fe1\u30fb\u8a8d\u8a3c\u30fb\u30de\u30a4\u30da\u30fc\u30b8)",
+  "description": "テナント公開サイト (配信・認証・マイページ)",
   "repository": {
     "type": "git",
     "url": "https://github.com/publira/publira.git",
@@ -29,13 +29,13 @@
     "@publira/public-web-shared": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
+    "@publira/web-session": "workspace:*",
     "lru-cache": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "zod": "catalog:",
-    "@publira/web-session": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",

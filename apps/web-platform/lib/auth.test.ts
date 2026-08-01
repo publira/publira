@@ -6,24 +6,21 @@ import {
   logoutPlatform,
 } from "./auth";
 
-const {
-  mockLogin,
-  mockLogout,
-  mockGetMe,
-  mockResolveSessionId,
-} = vi.hoisted(() => ({
-  mockLogin: vi.fn(),
-  mockLogout: vi.fn(),
-  mockGetMe: vi.fn(),
-  mockResolveSessionId: vi.fn(),
-}));
+const { mockLogin, mockLogout, mockGetMe, mockResolveSessionId } = vi.hoisted(
+  () => ({
+    mockGetMe: vi.fn(),
+    mockLogin: vi.fn(),
+    mockLogout: vi.fn(),
+    mockResolveSessionId: vi.fn(),
+  })
+);
 
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
+      getMe: mockGetMe,
       login: mockLogin,
       logout: mockLogout,
-      getMe: mockGetMe,
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
@@ -41,7 +38,7 @@ describe("loginPlatform", () => {
   it("API 成功時は sessionId と expiresAt を返す", async () => {
     const expiresAt = "2026-03-22T00:00:00Z";
     mockLogin.mockResolvedValueOnce({
-      accessToken: { token: "tok_abc", expiresAt },
+      accessToken: { expiresAt, token: "tok_abc" },
       user: { name: "Admin", publicId: "usr_1", role: "platform_super_admin" },
     });
 
@@ -91,7 +88,7 @@ describe("logoutPlatform", () => {
     await logoutPlatform("tok_abc");
     expect(mockLogout).toHaveBeenCalledWith(
       {},
-      { headers: { "Authorization": "Bearer tok_abc" } }
+      { headers: { Authorization: "Bearer tok_abc" } }
     );
   });
 
@@ -116,7 +113,7 @@ describe("getPlatformCurrentOperator", () => {
     });
     expect(mockGetMe).toHaveBeenCalledWith(
       {},
-      { headers: { "Authorization": "Bearer tok_abc" } }
+      { headers: { Authorization: "Bearer tok_abc" } }
     );
   });
 

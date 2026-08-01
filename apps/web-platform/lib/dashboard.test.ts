@@ -76,7 +76,7 @@ describe("getPlatformDashboardSummary", () => {
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 6 },
-      { headers: { "Authorization": "Bearer sess_dashboard" } }
+      { headers: { Authorization: "Bearer sess_dashboard" } }
     );
   });
 
@@ -93,7 +93,7 @@ describe("getPlatformDashboardSummary", () => {
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 50 },
-      { headers: { "Authorization": "Bearer sess_dashboard" } }
+      { headers: { Authorization: "Bearer sess_dashboard" } }
     );
   });
 

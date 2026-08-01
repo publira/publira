@@ -78,7 +78,7 @@ describe("listPlatformAuditLogs", () => {
         offset: 0,
         tenantPublicId: "",
       },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
@@ -103,7 +103,7 @@ describe("listPlatformAuditLogs", () => {
         offset: 40,
         tenantPublicId: "tenant_999",
       },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 

@@ -49,7 +49,7 @@ describe("tenant-detail", () => {
         tenant: { tenantPublicId: "tenant_admin_001" },
       },
       {
-        headers: { "Authorization": "Bearer session-token" },
+        headers: { Authorization: "Bearer session-token" },
       }
     );
   });

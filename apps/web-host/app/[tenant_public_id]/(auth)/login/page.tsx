@@ -52,9 +52,8 @@ const loginAction = async (formData: FormData): Promise<void> => {
     );
   }
 
-  const { sealPublicSessionCookieValue } = await import(
-    "@publira/public-web-shared/api-client"
-  );
+  const { sealPublicSessionCookieValue } =
+    await import("@publira/public-web-shared/api-client");
   const sealed = await sealPublicSessionCookieValue({
     accessToken: result.sessionId,
     expiresAt: result.expiresAt.toISOString(),

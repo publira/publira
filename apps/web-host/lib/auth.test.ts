@@ -10,11 +10,11 @@ const {
   mockResolveSessionId,
   mockUpdateMe,
 } = vi.hoisted(() => ({
-  mockLogin: vi.fn(),
   mockDeleteMe: vi.fn(),
-  mockLogout: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
+  mockLogin: vi.fn(),
+  mockLogout: vi.fn(),
   mockRequestEmailChange: vi.fn(),
   mockResolveSessionId: vi.fn(),
   mockUpdateMe: vi.fn(),
@@ -23,11 +23,11 @@ const {
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
-      login: mockLogin,
       deleteMe: mockDeleteMe,
-      logout: mockLogout,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
+      login: mockLogin,
+      logout: mockLogout,
       requestEmailChange: mockRequestEmailChange,
       updateMe: mockUpdateMe,
     },
@@ -49,7 +49,8 @@ describe("web-host auth", () => {
   it("loginPublic: セッション情報が欠けると null を返す", async () => {
     const { loginPublic } = await importAuth();
     mockLogin.mockResolvedValueOnce({
-      accessToken: {} });
+      accessToken: {},
+    });
 
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });

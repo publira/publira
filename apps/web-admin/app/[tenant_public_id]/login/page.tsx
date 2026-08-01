@@ -69,9 +69,8 @@ const loginAction = async (formData: FormData): Promise<void> => {
   }
 
   try {
-    const { encryptSessionPayload, resolveAuthSecret } = await import(
-      "@publira/web-session"
-    );
+    const { encryptSessionPayload, resolveAuthSecret } =
+      await import("@publira/web-session");
     const sealed = await encryptSessionPayload(
       {
         accessToken: result.sessionId,

@@ -28,13 +28,13 @@
     "@publira/layouts": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
+    "@publira/web-session": "workspace:*",
     "lru-cache": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "zod": "catalog:",
-    "@publira/web-session": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",

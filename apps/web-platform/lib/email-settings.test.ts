@@ -128,7 +128,7 @@ describe("updatePlatformEmailSettings", () => {
         replyTo: "",
         username: "mailer",
       },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 });

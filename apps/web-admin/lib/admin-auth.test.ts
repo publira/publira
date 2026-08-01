@@ -100,7 +100,8 @@ describe("getAdminCurrentUser", () => {
     expect(mockGetMe).toHaveBeenCalledWith(
       expect.objectContaining({
         tenant: { tenantPublicId: "tenant_001" },
-      })
+      }),
+      { headers: { Authorization: "Bearer valid-token" } }
     );
   });
 

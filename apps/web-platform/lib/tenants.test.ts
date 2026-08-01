@@ -119,7 +119,7 @@ describe("listPlatformTenants", () => {
 
     expect(mockListTenants).toHaveBeenCalledWith(
       { name: "", status: "" },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
@@ -135,7 +135,7 @@ describe("listPlatformTenants", () => {
 
     expect(mockListTenants).toHaveBeenCalledWith(
       { name: "テスト", status: "active" },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
@@ -183,7 +183,7 @@ describe("createPlatformTenant", () => {
       },
       {
         headers: {
-          "Authorization": "Bearer sess_abc",
+          Authorization: "Bearer sess_abc",
         },
       }
     );
@@ -260,7 +260,7 @@ describe("createPlatformTenant", () => {
 
     expect(mockGetTenant).toHaveBeenCalledWith(
       { publicId: "tenant_seifuu" },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
@@ -299,11 +299,11 @@ describe("createPlatformTenant", () => {
 
     expect(mockSuspendTenant).toHaveBeenCalledWith(
       { publicId: "tenant_seifuu" },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
     expect(mockResumeTenant).toHaveBeenCalledWith(
       { publicId: "tenant_seifuu" },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
@@ -324,7 +324,7 @@ describe("createPlatformTenant", () => {
         role: "tenant_admin",
         tenantPublicId: "tenant_seifuu",
       },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
@@ -345,7 +345,7 @@ describe("createPlatformTenant", () => {
         role: "tenant_admin",
         tenantPublicId: "tenant_seifuu",
       },
-      { headers: { "Authorization": "Bearer sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 

@@ -26,7 +26,8 @@ const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 const getAccessTokenFromCookie = async (): Promise<string> => {
   // Avoid "use cache" so a cookie set during login is visible on the next request.
   const cookieStore = await cookies();
-  const raw = cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
+  const raw =
+    cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
   if (!raw) {
     return "";
   }
