@@ -31,8 +31,8 @@
   },
   "dependencies": {
     "@publira/api-client": "workspace:*",
-    "lru-cache": "catalog:",
-    "@publira/web-session": "workspace:*"
+    "@publira/web-session": "workspace:*",
+    "lru-cache": "catalog:"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",

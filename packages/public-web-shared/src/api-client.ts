@@ -1,11 +1,11 @@
 import { createPublicApiClient } from "@publira/api-client/public/client";
+import type { WebSessionPayload } from "@publira/web-session";
 import {
   buildBearerHeaders,
   decryptSessionPayload,
   encryptSessionPayload,
   isSessionExpired,
   resolveAuthSecret,
-  type WebSessionPayload,
 } from "@publira/web-session";
 import { cookies } from "next/headers";
 
@@ -26,13 +26,15 @@ export const buildPublicSessionHeaders = (accessToken: string) =>
 export const getPublicSessionCacheTag = (cookieName: string): string =>
   `${PUBLIC_SESSION_CACHE_TAG_PREFIX}-${cookieName}`;
 
-export const sealPublicSessionCookieValue = async (
+export const sealPublicSessionCookieValue = (
   payload: WebSessionPayload
 ): Promise<string> => encryptSessionPayload(payload, resolveAuthSecret());
 
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 
-const getAccessTokenFromCookie = async (cookieName: string): Promise<string> => {
+const getAccessTokenFromCookie = async (
+  cookieName: string
+): Promise<string> => {
   // Avoid "use cache" here so a cookie set during login is visible on the next request.
   const cookieStore = await cookies();
   const raw = cookieStore.get(cookieName)?.value?.trim() ?? "";

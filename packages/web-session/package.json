@@ -2,6 +2,9 @@
   "name": "@publira/web-session",
   "version": "0.1.0",
   "private": true,
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -9,7 +12,6 @@
       "default": "./dist/index.mjs"
     }
   },
-  "files": ["dist"],
   "scripts": {
     "build": "rm -rf dist && tsdown",
     "typecheck": "tsc --noEmit",

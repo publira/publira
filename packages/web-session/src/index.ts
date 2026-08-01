@@ -1,13 +1,13 @@
 import { CompactEncrypt, compactDecrypt } from "jose";
 
-export type WebSessionPayload = {
+export interface WebSessionPayload {
   accessToken: string;
   expiresAt: string;
   name?: string;
   publicId?: string;
   role?: string;
   tenantPublicId?: string;
-};
+}
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -21,7 +21,7 @@ const toAesGcmKeyBytes = (secret: string): Uint8Array => {
   return raw.slice(0, 32);
 };
 
-export const encryptSessionPayload = async (
+export const encryptSessionPayload = (
   payload: WebSessionPayload,
   secret: string
 ): Promise<string> => {
@@ -38,7 +38,9 @@ export const decryptSessionPayload = async (
   try {
     const key = toAesGcmKeyBytes(secret);
     const { plaintext } = await compactDecrypt(token, key);
-    const parsed = JSON.parse(textDecoder.decode(plaintext)) as WebSessionPayload;
+    const parsed = JSON.parse(
+      textDecoder.decode(plaintext)
+    ) as WebSessionPayload;
     if (!parsed.accessToken || !parsed.expiresAt) {
       return null;
     }
