@@ -58,8 +58,8 @@ catalogs:
       specifier: 4.1.10
       version: 4.1.10
     zod:
-      specifier: 4.3.6
-      version: 4.3.6
+      specifier: 4.4.3
+      version: 4.4.3
 
 importers:
 
@@ -121,7 +121,7 @@ importers:
         version: 4.2.2
       zod:
         specifier: 'catalog:'
-        version: 4.3.6
+        version: 4.4.3
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -194,7 +194,7 @@ importers:
         version: 4.2.2
       zod:
         specifier: 'catalog:'
-        version: 4.3.6
+        version: 4.4.3
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -264,7 +264,7 @@ importers:
         version: 4.2.2
       zod:
         specifier: 'catalog:'
-        version: 4.3.6
+        version: 4.4.3
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -2853,9 +2853,6 @@ packages:
   yuku-parser@0.8.1:
     resolution: {integrity: sha512-YvUz2jdFMIq0QjN8LmI32ox+RBCn3l8VToAXVQ5QFfLTxSxmGZS6JP80ptePEju+CpeTdINLmUm7Ewodzh1QnQ==}
 
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
-
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
@@ -4742,7 +4739,5 @@ snapshots:
       '@yuku-parser/binding-linux-x64-musl': 0.8.1
       '@yuku-parser/binding-win32-arm64': 0.8.1
       '@yuku-parser/binding-win32-x64': 0.8.1
-
-  zod@4.3.6: {}
 
   zod@4.4.3: {}
