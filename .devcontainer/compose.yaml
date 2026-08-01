@@ -33,34 +33,13 @@ services:
       - db
       - mailpit
     labels:
-      # web-public fallback (port 3000)
+      # web-host: テナント公開サイト (port 3000)
       - "traefik.enable=true"
-      - "traefik.http.routers.web-public.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.web-public.entrypoints=web"
-      - "traefik.http.routers.web-public.priority=1"
-      - "traefik.http.routers.web-public.service=web-public"
-      - "traefik.http.services.web-public.loadbalancer.server.port=3000"
-
-      # web-catalog (port 3001)
-      - "traefik.http.routers.web-catalog.rule=PathRegexp(`^/$|^/(authors|series|labels)(/.*)?$|^/web-catalog-assets(/.*)?$|^/api/catalog/revalidate/?$`)"
-      - "traefik.http.routers.web-catalog.entrypoints=web"
-      - "traefik.http.routers.web-catalog.priority=10"
-      - "traefik.http.routers.web-catalog.service=web-catalog"
-      - "traefik.http.services.web-catalog.loadbalancer.server.port=3001"
-
-      # web-member (port 3002)
-      - "traefik.http.routers.web-member.rule=PathRegexp(`^/my$|^/(notifications|settings)(/.*)?$|^/web-member-assets(/.*)?$`)"
-      - "traefik.http.routers.web-member.entrypoints=web"
-      - "traefik.http.routers.web-member.priority=10"
-      - "traefik.http.routers.web-member.service=web-member"
-      - "traefik.http.services.web-member.loadbalancer.server.port=3002"
-
-      # web-auth (port 3003)
-      - "traefik.http.routers.web-auth.rule=PathRegexp(`^/(login|logout|verify|confirm-email|confirm-password)$|^/(signup|reset-password)(/.*)?$|^/web-auth-assets(/.*)?$`)"
-      - "traefik.http.routers.web-auth.entrypoints=web"
-      - "traefik.http.routers.web-auth.priority=10"
-      - "traefik.http.routers.web-auth.service=web-auth"
-      - "traefik.http.services.web-auth.loadbalancer.server.port=3003"
+      - "traefik.http.routers.web-host.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.web-host.entrypoints=web"
+      - "traefik.http.routers.web-host.priority=1"
+      - "traefik.http.routers.web-host.service=web-host"
+      - "traefik.http.services.web-host.loadbalancer.server.port=3000"
 
       # web-admin on dedicated host: admin.*:3080
       - "traefik.http.routers.web-admin.rule=HostRegexp(`^admin\\d*\\..*$`)"
@@ -77,7 +56,7 @@ services:
       - "traefik.http.services.web-platform.loadbalancer.server.port=4100"
 
       # api-server on /api -> app:8000 (strip /api before forwarding)
-      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/revalidate/?$`) && !PathRegexp(`^/api/catalog/revalidate/?$`)"
+      - "traefik.http.routers.api.rule=PathRegexp(`^/api(/.*)?$`) && !PathRegexp(`^/api/revalidate/?$`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.routers.api.priority=100"
       - "traefik.http.routers.api.middlewares=api-strip"

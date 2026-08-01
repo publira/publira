@@ -180,7 +180,7 @@ func (r *runner) publishEpisode(ctx context.Context, episodeID uuid.UUID, tenant
 
 	if r.reval != nil {
 		tags := []string{
-			fmt.Sprintf("tenant:%s:catalog:series:detail", tenantPublicID),
+			fmt.Sprintf("tenant:%s:series:detail", tenantPublicID),
 		}
 		if err := r.reval.RevalidateTags(ctx, tenantPublicID, tenantDomain, tags); err != nil {
 			r.logger.Warn("failed to revalidate after episode publish",

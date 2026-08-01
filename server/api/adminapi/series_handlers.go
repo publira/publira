@@ -292,11 +292,11 @@ func seriesRevalidateTags(tenantPublicID, seriesPublicID string) []string {
 	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
 	normalizedSeriesPublicID := strings.TrimSpace(seriesPublicID)
 	return []string{
-		fmt.Sprintf("tenant:%s:public:site", normalizedTenantPublicID),
-		fmt.Sprintf("tenant:%s:catalog:series:list", normalizedTenantPublicID),
-		fmt.Sprintf("tenant:%s:catalog:series:detail", normalizedTenantPublicID),
-		fmt.Sprintf("tenant:%s:catalog:series:%s", normalizedTenantPublicID, normalizedSeriesPublicID),
-		fmt.Sprintf("tenant:%s:catalog:authors", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:site", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:series:list", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:series:%s", normalizedTenantPublicID, normalizedSeriesPublicID),
+		fmt.Sprintf("tenant:%s:authors", normalizedTenantPublicID),
 	}
 }
 
