@@ -1,4 +1,3 @@
-import { sealSessionCookieValue } from "#lib/api-client";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -12,6 +11,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "#components/tenant-document-title";
+import { sealSessionCookieValue } from "#lib/api-client";
 import {
   PUBLIC_SESSION_COOKIE_NAME,
   loginPublic,

@@ -20,8 +20,8 @@ const {
 } = vi.hoisted(() => ({
   mockAcceptTenantAdminInvitation: vi.fn(),
   mockConfirmPasswordReset: vi.fn(),
-  mockGetMe: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockGetMe: vi.fn(),
   mockGetTenantAdminInvitationState: vi.fn(),
   mockRequestPasswordReset: vi.fn(),
 }));
