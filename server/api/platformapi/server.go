@@ -12,6 +12,7 @@ import (
 
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -30,6 +31,7 @@ type platformServer struct {
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
 	mailer    internalsmtp.Sender
+	tokens    *auth.TokenManager
 }
 
 type platformActor struct {
@@ -60,7 +62,15 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 	if sender, ok := tester.(internalsmtp.Sender); ok {
 		mailer = sender
 	}
-	server := &platformServer{queries: queries, db: db, recorder: auditlog.New(queries, logger), encryptor: encryptor, tester: tester, mailer: mailer}
+	server := &platformServer{
+		queries:   queries,
+		db:        db,
+		recorder:  auditlog.New(queries, logger),
+		encryptor: encryptor,
+		tester:    tester,
+		mailer:    mailer,
+		tokens:    auth.MustTokenManagerFromEnv(),
+	}
 	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			_, user, role, err := server.authenticatePlatformSession(ctx, "", req.Header())

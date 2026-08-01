@@ -12,6 +12,7 @@ import (
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -29,10 +30,11 @@ type apiServer struct {
 	storage   storage.Provider
 	encryptor emailsettings.SecretManager
 	mailer    internalsmtp.Sender
+	tokens    *auth.TokenManager
 }
 
 func invalidSessionError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
+	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
 }
 
 func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
@@ -64,7 +66,14 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
 // CatalogService / AuthService / TenantService / DomainService を公開し、管理 API は含みません。
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender) http.Handler {
-	server := &apiServer{db: db, queries: queries, storage: storageProvider, encryptor: encryptor, mailer: mailer}
+	server := &apiServer{
+		db:        db,
+		queries:   queries,
+		storage:   storageProvider,
+		encryptor: encryptor,
+		mailer:    mailer,
+		tokens:    auth.MustTokenManagerFromEnv(),
+	}
 	mux := http.NewServeMux()
 	registerHealthz(mux)
 	registerPublicRoutes(mux, server)

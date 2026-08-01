@@ -16,8 +16,9 @@ message User {
   string role = 3;
 }
 
-message Session {
-  string session_id = 1;
+// AccessToken is a JWT issued by Login. Clients send it as Authorization: Bearer.
+message AccessToken {
+  string token = 1;
   string expires_at = 2;
 }
 

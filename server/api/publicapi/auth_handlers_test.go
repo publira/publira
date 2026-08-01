@@ -14,31 +14,54 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/auth"
 )
 
 const (
-	getSessionByTokenHashForTenantQuery = "-- name: GetSessionByTokenHashForTenant :one\nSELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at\nFROM sessions\nWHERE tenant_id = $1\n    AND token_hash = $2\nLIMIT 1\n"
-	getUserByIDQuery                    = "-- name: GetUserByID :one\nSELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at\nFROM users\nWHERE id = $1\n"
-	listTenantUserRolesQuery            = "-- name: ListTenantUserRoles :many\nSELECT role\nFROM tenant_user_roles\nWHERE user_id = $1\nORDER BY role\n"
-	listNotificationsForUserQuery       = "-- name: ListNotificationsForUser :many\nSELECT\n    n.id, n.tenant_id, n.target_user_id, n.notification_type, n.title, n.body, n.link_url, n.metadata, n.created_at,\n    (nr.notification_id IS NOT NULL) AS is_read,\n    nr.read_at\nFROM notifications n\n    LEFT JOIN notification_reads nr ON nr.notification_id = n.id\n    AND nr.user_id = $2\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\nORDER BY n.created_at DESC\nLIMIT $3 OFFSET $4\n"
-	markNotificationAsReadQuery         = "-- name: MarkNotificationAsRead :one\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $3, NOW()\nFROM notifications n\nWHERE n.id = $1\n    AND n.tenant_id = $2\n    AND (n.target_user_id IS NULL OR n.target_user_id = $3)\nON CONFLICT (notification_id, user_id) DO UPDATE\nSET read_at = EXCLUDED.read_at\nRETURNING notification_id, user_id, read_at\n"
-	markAllNotificationsAsReadQuery     = "-- name: MarkAllNotificationsAsRead :execrows\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $2, NOW()\nFROM notifications n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM notification_reads nr\n        WHERE nr.notification_id = n.id\n            AND nr.user_id = $2\n    )\n"
+	getUserByIDQuery                = "-- name: GetUserByID :one\n"
+	listTenantUserRolesQuery        = "-- name: ListTenantUserRoles :many\nSELECT role\nFROM tenant_user_roles\nWHERE user_id = $1\nORDER BY role\n"
+	listNotificationsForUserQuery   = "-- name: ListNotificationsForUser :many\nSELECT\n    n.id, n.tenant_id, n.target_user_id, n.notification_type, n.title, n.body, n.link_url, n.metadata, n.created_at,\n    (nr.notification_id IS NOT NULL) AS is_read,\n    nr.read_at\nFROM notifications n\n    LEFT JOIN notification_reads nr ON nr.notification_id = n.id\n    AND nr.user_id = $2\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\nORDER BY n.created_at DESC\nLIMIT $3 OFFSET $4\n"
+	markNotificationAsReadQuery     = "-- name: MarkNotificationAsRead :one\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $3, NOW()\nFROM notifications n\nWHERE n.id = $1\n    AND n.tenant_id = $2\n    AND (n.target_user_id IS NULL OR n.target_user_id = $3)\nON CONFLICT (notification_id, user_id) DO UPDATE\nSET read_at = EXCLUDED.read_at\nRETURNING notification_id, user_id, read_at\n"
+	markAllNotificationsAsReadQuery = "-- name: MarkAllNotificationsAsRead :execrows\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $2, NOW()\nFROM notifications n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM notification_reads nr\n        WHERE nr.notification_id = n.id\n            AND nr.user_id = $2\n    )\n"
 )
 
+const testPublicUserPublicID = "USR001"
+
+func issueTestPublicToken(tenantPublicID string) string {
+	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+		testPublicUserPublicID,
+		auth.AudiencePublic,
+		tenantPublicID,
+		"tenant_member",
+		1,
+		time.Now(),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return token
+}
+
 func expectAuthSession(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHashForTenantQuery)).
-		WithArgs(tenantID, sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, "hashed", now.Add(time.Hour), nil, now))
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, testPublicUserPublicID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
+			AddRow(userID, testPublicUserPublicID, "Member User", "member@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at"}).
-			AddRow(userID, "USR001", "member@example.com", "", "Member User", now, "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version"}).
+			AddRow(userID, testPublicUserPublicID, "member@example.com", "", "Member User", now, "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now, int32(1)))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantUserRolesQuery)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("tenant_member"))
+}
+
+func newAuthedPublicRequest[T any](msg *T, tenantPublicID string) *connect.Request[T] {
+	req := connect.NewRequest(msg)
+	req.Header().Set("Authorization", "Bearer "+issueTestPublicToken(tenantPublicID))
+	return req
 }
 
 func TestAuthListNotificationsSuccess(t *testing.T) {
@@ -70,12 +93,11 @@ func TestAuthListNotificationsSuccess(t *testing.T) {
 		))
 
 	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.ListNotifications(context.Background(), connect.NewRequest(&publirav1.ListNotificationsRequest{
-		Tenant:    &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
-		SessionId: "session-token",
-		Limit:     -1,
-		Offset:    -1,
-	}))
+	resp, err := client.ListNotifications(context.Background(), newAuthedPublicRequest(&publirav1.ListNotificationsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Limit:  -1,
+		Offset: -1,
+	}, "TENANT"))
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
@@ -110,11 +132,10 @@ func TestAuthMarkNotificationAsRead(t *testing.T) {
 				AddRow(notificationID, userID, now))
 
 		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-		resp, err := client.MarkNotificationAsRead(context.Background(), connect.NewRequest(&publirav1.MarkNotificationAsReadRequest{
+		resp, err := client.MarkNotificationAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkNotificationAsReadRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
-			SessionId:      "session-token",
 			NotificationId: notificationID.String(),
-		}))
+		}, "TENANT"))
 		if err != nil {
 			t.Fatalf("MarkNotificationAsRead: %v", err)
 		}
@@ -136,11 +157,10 @@ func TestAuthMarkNotificationAsRead(t *testing.T) {
 		expectAuthSession(mock, tenantID, userID, now)
 
 		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-		_, err := client.MarkNotificationAsRead(context.Background(), connect.NewRequest(&publirav1.MarkNotificationAsReadRequest{
+		_, err := client.MarkNotificationAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkNotificationAsReadRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
-			SessionId:      "session-token",
 			NotificationId: "not-a-uuid",
-		}))
+		}, "TENANT"))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 		}
@@ -163,11 +183,10 @@ func TestAuthMarkNotificationAsRead(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"notification_id", "user_id", "read_at"}))
 
 		client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-		_, err := client.MarkNotificationAsRead(context.Background(), connect.NewRequest(&publirav1.MarkNotificationAsReadRequest{
+		_, err := client.MarkNotificationAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkNotificationAsReadRequest{
 			Tenant:         &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
-			SessionId:      "session-token",
 			NotificationId: notificationID.String(),
-		}))
+		}, "TENANT"))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
 		}
@@ -190,10 +209,9 @@ func TestAuthMarkAllNotificationsAsRead(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 3))
 
 	client := publirav1connect.NewAuthServiceClient(testServer.Client(), testServer.URL)
-	resp, err := client.MarkAllNotificationsAsRead(context.Background(), connect.NewRequest(&publirav1.MarkAllNotificationsAsReadRequest{
-		Tenant:    &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
-		SessionId: "session-token",
-	}))
+	resp, err := client.MarkAllNotificationsAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkAllNotificationsAsReadRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+	}, "TENANT"))
 	if err != nil {
 		t.Fatalf("MarkAllNotificationsAsRead: %v", err)
 	}

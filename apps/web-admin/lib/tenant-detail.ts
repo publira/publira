@@ -36,7 +36,6 @@ export const getTenantForSession = async (
   try {
     const response = await apiClient.auth.getTenant(
       {
-        sessionId,
         tenant: { tenantPublicId: normalizedTenantPublicId },
       },
       withSessionHeaders(sessionId)

@@ -234,7 +234,6 @@ func (x *TenantEmailSettings) GetHasPassword() bool {
 type GetTenantEmailSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -274,13 +273,6 @@ func (x *GetTenantEmailSettingsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *GetTenantEmailSettingsRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 type GetTenantEmailSettingsResponse struct {
@@ -330,17 +322,16 @@ func (x *GetTenantEmailSettingsResponse) GetSettings() *TenantEmailSettings {
 type UpdateTenantEmailSettingsRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Tenant              *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId           string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	SmtpOverrideEnabled bool                   `protobuf:"varint,3,opt,name=smtp_override_enabled,json=smtpOverrideEnabled,proto3" json:"smtp_override_enabled,omitempty"`
-	Host                string                 `protobuf:"bytes,4,opt,name=host,proto3" json:"host,omitempty"`
-	Port                int32                  `protobuf:"varint,5,opt,name=port,proto3" json:"port,omitempty"`
-	Username            string                 `protobuf:"bytes,6,opt,name=username,proto3" json:"username,omitempty"`
-	PasswordUpdateMode  SecretUpdateMode       `protobuf:"varint,7,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
-	Password            string                 `protobuf:"bytes,8,opt,name=password,proto3" json:"password,omitempty"`
-	Encryption          string                 `protobuf:"bytes,9,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	FromName            string                 `protobuf:"bytes,10,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
-	FromAddress         string                 `protobuf:"bytes,11,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
-	ReplyTo             string                 `protobuf:"bytes,12,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	SmtpOverrideEnabled bool                   `protobuf:"varint,2,opt,name=smtp_override_enabled,json=smtpOverrideEnabled,proto3" json:"smtp_override_enabled,omitempty"`
+	Host                string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
+	Port                int32                  `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
+	Username            string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	PasswordUpdateMode  SecretUpdateMode       `protobuf:"varint,6,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
+	Password            string                 `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
+	Encryption          string                 `protobuf:"bytes,8,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	FromName            string                 `protobuf:"bytes,9,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	FromAddress         string                 `protobuf:"bytes,10,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	ReplyTo             string                 `protobuf:"bytes,11,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -380,13 +371,6 @@ func (x *UpdateTenantEmailSettingsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UpdateTenantEmailSettingsRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *UpdateTenantEmailSettingsRequest) GetSmtpOverrideEnabled() bool {
@@ -506,19 +490,18 @@ func (x *UpdateTenantEmailSettingsResponse) GetSettings() *TenantEmailSettings {
 type SendTenantSmtpTestEmailRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Tenant              *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId           string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	RecipientType       TestEmailRecipientType `protobuf:"varint,3,opt,name=recipient_type,json=recipientType,proto3,enum=publira.admin.v1.TestEmailRecipientType" json:"recipient_type,omitempty"`
-	RecipientEmail      string                 `protobuf:"bytes,4,opt,name=recipient_email,json=recipientEmail,proto3" json:"recipient_email,omitempty"`
-	SmtpOverrideEnabled bool                   `protobuf:"varint,5,opt,name=smtp_override_enabled,json=smtpOverrideEnabled,proto3" json:"smtp_override_enabled,omitempty"`
-	Host                string                 `protobuf:"bytes,6,opt,name=host,proto3" json:"host,omitempty"`
-	Port                int32                  `protobuf:"varint,7,opt,name=port,proto3" json:"port,omitempty"`
-	Username            string                 `protobuf:"bytes,8,opt,name=username,proto3" json:"username,omitempty"`
-	PasswordUpdateMode  SecretUpdateMode       `protobuf:"varint,9,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
-	Password            string                 `protobuf:"bytes,10,opt,name=password,proto3" json:"password,omitempty"`
-	Encryption          string                 `protobuf:"bytes,11,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	FromName            string                 `protobuf:"bytes,12,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
-	FromAddress         string                 `protobuf:"bytes,13,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
-	ReplyTo             string                 `protobuf:"bytes,14,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	RecipientType       TestEmailRecipientType `protobuf:"varint,2,opt,name=recipient_type,json=recipientType,proto3,enum=publira.admin.v1.TestEmailRecipientType" json:"recipient_type,omitempty"`
+	RecipientEmail      string                 `protobuf:"bytes,3,opt,name=recipient_email,json=recipientEmail,proto3" json:"recipient_email,omitempty"`
+	SmtpOverrideEnabled bool                   `protobuf:"varint,4,opt,name=smtp_override_enabled,json=smtpOverrideEnabled,proto3" json:"smtp_override_enabled,omitempty"`
+	Host                string                 `protobuf:"bytes,5,opt,name=host,proto3" json:"host,omitempty"`
+	Port                int32                  `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
+	Username            string                 `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
+	PasswordUpdateMode  SecretUpdateMode       `protobuf:"varint,8,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
+	Password            string                 `protobuf:"bytes,9,opt,name=password,proto3" json:"password,omitempty"`
+	Encryption          string                 `protobuf:"bytes,10,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	FromName            string                 `protobuf:"bytes,11,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	FromAddress         string                 `protobuf:"bytes,12,opt,name=from_address,json=fromAddress,proto3" json:"from_address,omitempty"`
+	ReplyTo             string                 `protobuf:"bytes,13,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -558,13 +541,6 @@ func (x *SendTenantSmtpTestEmailRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *SendTenantSmtpTestEmailRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *SendTenantSmtpTestEmailRequest) GetRecipientType() TestEmailRecipientType {
@@ -711,51 +687,45 @@ const file_publira_admin_v1_email_proto_rawDesc = "" +
 	"\tfrom_name\x18\x06 \x01(\tR\bfromName\x12!\n" +
 	"\ffrom_address\x18\a \x01(\tR\vfromAddress\x12\x19\n" +
 	"\breply_to\x18\b \x01(\tR\areplyTo\x12!\n" +
-	"\fhas_password\x18\t \x01(\bR\vhasPassword\"w\n" +
+	"\fhas_password\x18\t \x01(\bR\vhasPassword\"X\n" +
 	"\x1dGetTenantEmailSettingsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\"c\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"c\n" +
 	"\x1eGetTenantEmailSettingsResponse\x12A\n" +
-	"\bsettings\x18\x01 \x01(\v2%.publira.admin.v1.TenantEmailSettingsR\bsettings\"\xdf\x03\n" +
+	"\bsettings\x18\x01 \x01(\v2%.publira.admin.v1.TenantEmailSettingsR\bsettings\"\xc0\x03\n" +
 	" UpdateTenantEmailSettingsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x122\n" +
+	"\x15smtp_override_enabled\x18\x02 \x01(\bR\x13smtpOverrideEnabled\x12\x12\n" +
+	"\x04host\x18\x03 \x01(\tR\x04host\x12\x12\n" +
+	"\x04port\x18\x04 \x01(\x05R\x04port\x12\x1a\n" +
+	"\busername\x18\x05 \x01(\tR\busername\x12T\n" +
+	"\x14password_update_mode\x18\x06 \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
+	"\bpassword\x18\a \x01(\tR\bpassword\x12\x1e\n" +
 	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x122\n" +
-	"\x15smtp_override_enabled\x18\x03 \x01(\bR\x13smtpOverrideEnabled\x12\x12\n" +
-	"\x04host\x18\x04 \x01(\tR\x04host\x12\x12\n" +
-	"\x04port\x18\x05 \x01(\x05R\x04port\x12\x1a\n" +
-	"\busername\x18\x06 \x01(\tR\busername\x12T\n" +
-	"\x14password_update_mode\x18\a \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
-	"\bpassword\x18\b \x01(\tR\bpassword\x12\x1e\n" +
-	"\n" +
-	"encryption\x18\t \x01(\tR\n" +
+	"encryption\x18\b \x01(\tR\n" +
 	"encryption\x12\x1b\n" +
-	"\tfrom_name\x18\n" +
-	" \x01(\tR\bfromName\x12!\n" +
-	"\ffrom_address\x18\v \x01(\tR\vfromAddress\x12\x19\n" +
-	"\breply_to\x18\f \x01(\tR\areplyTo\"f\n" +
+	"\tfrom_name\x18\t \x01(\tR\bfromName\x12!\n" +
+	"\ffrom_address\x18\n" +
+	" \x01(\tR\vfromAddress\x12\x19\n" +
+	"\breply_to\x18\v \x01(\tR\areplyTo\"f\n" +
 	"!UpdateTenantEmailSettingsResponse\x12A\n" +
-	"\bsettings\x18\x01 \x01(\v2%.publira.admin.v1.TenantEmailSettingsR\bsettings\"\xd7\x04\n" +
+	"\bsettings\x18\x01 \x01(\v2%.publira.admin.v1.TenantEmailSettingsR\bsettings\"\xb8\x04\n" +
 	"\x1eSendTenantSmtpTestEmailRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12O\n" +
+	"\x0erecipient_type\x18\x02 \x01(\x0e2(.publira.admin.v1.TestEmailRecipientTypeR\rrecipientType\x12'\n" +
+	"\x0frecipient_email\x18\x03 \x01(\tR\x0erecipientEmail\x122\n" +
+	"\x15smtp_override_enabled\x18\x04 \x01(\bR\x13smtpOverrideEnabled\x12\x12\n" +
+	"\x04host\x18\x05 \x01(\tR\x04host\x12\x12\n" +
+	"\x04port\x18\x06 \x01(\x05R\x04port\x12\x1a\n" +
+	"\busername\x18\a \x01(\tR\busername\x12T\n" +
+	"\x14password_update_mode\x18\b \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
+	"\bpassword\x18\t \x01(\tR\bpassword\x12\x1e\n" +
 	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12O\n" +
-	"\x0erecipient_type\x18\x03 \x01(\x0e2(.publira.admin.v1.TestEmailRecipientTypeR\rrecipientType\x12'\n" +
-	"\x0frecipient_email\x18\x04 \x01(\tR\x0erecipientEmail\x122\n" +
-	"\x15smtp_override_enabled\x18\x05 \x01(\bR\x13smtpOverrideEnabled\x12\x12\n" +
-	"\x04host\x18\x06 \x01(\tR\x04host\x12\x12\n" +
-	"\x04port\x18\a \x01(\x05R\x04port\x12\x1a\n" +
-	"\busername\x18\b \x01(\tR\busername\x12T\n" +
-	"\x14password_update_mode\x18\t \x01(\x0e2\".publira.admin.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
-	"\bpassword\x18\n" +
-	" \x01(\tR\bpassword\x12\x1e\n" +
-	"\n" +
-	"encryption\x18\v \x01(\tR\n" +
+	"encryption\x18\n" +
+	" \x01(\tR\n" +
 	"encryption\x12\x1b\n" +
-	"\tfrom_name\x18\f \x01(\tR\bfromName\x12!\n" +
-	"\ffrom_address\x18\r \x01(\tR\vfromAddress\x12\x19\n" +
-	"\breply_to\x18\x0e \x01(\tR\areplyTo\"J\n" +
+	"\tfrom_name\x18\v \x01(\tR\bfromName\x12!\n" +
+	"\ffrom_address\x18\f \x01(\tR\vfromAddress\x12\x19\n" +
+	"\breply_to\x18\r \x01(\tR\areplyTo\"J\n" +
 	"\x1fSendTenantSmtpTestEmailResponse\x12'\n" +
 	"\x0frecipient_email\x18\x01 \x01(\tR\x0erecipientEmail*\x96\x01\n" +
 	"\x10SecretUpdateMode\x12\"\n" +

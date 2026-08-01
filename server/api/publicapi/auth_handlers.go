@@ -36,46 +36,37 @@ func generatePublicID() string {
 	return strings.ToUpper(raw[:12])
 }
 
-func (s *apiServer) issueUserSession(
-	ctx context.Context,
+func (s *apiServer) issueAccessToken(
 	tenant dbmodels.Tenant,
 	user dbmodels.User,
 	role string,
-) (*connect.Response[publirav1.CreateSessionResponse], error) {
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+) (*connect.Response[publirav1.LoginResponse], error) {
+	if s.tokens == nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
 	}
-	sessionToken := hex.EncodeToString(rawToken)
-	sessionID, err := uuid.NewV7()
+	token, expiresAt, err := s.tokens.Issue(
+		user.PublicID,
+		auth.AudiencePublic,
+		tenant.PublicID,
+		role,
+		user.CredentialsVersion,
+		time.Now(),
+	)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdSession, err := s.queriesFor(ctx).CreateSession(ctx, dbmodels.CreateSessionParams{
-		ID:        sessionID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(sessionToken),
-		ExpiresAt: time.Now().Add(auth.SessionTTL),
-	})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	resp := &publirav1.CreateSessionResponse{
+	resp := &publirav1.LoginResponse{
 		User: &publirattypesv1.User{
 			PublicId: user.PublicID,
 			Name:     user.Name,
 			Role:     role,
 		},
-		Session: &publirattypesv1.Session{
-			SessionId: sessionToken,
-			ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339),
+		AccessToken: &publirattypesv1.AccessToken{
+			Token:     token,
+			ExpiresAt: auth.FormatExpiresAt(expiresAt),
 		},
 	}
-	response := connect.NewResponse(resp)
-	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
-	return response, nil
+	return connect.NewResponse(resp), nil
 }
 
 func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
@@ -86,61 +77,69 @@ func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, e
 	return auth.ResolveTenantRole(roles), nil
 }
 
-func (s *apiServer) authenticateSession(
+func (s *apiServer) authenticateAccessToken(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	explicitToken string,
 	headers http.Header,
 ) (rpcmiddleware.SessionContext, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, err
 	}
-	sessionToken, ok := auth.SessionTokenFromRequest(explicitToken, headers)
-	if !ok {
+	rawToken, ok := auth.BearerTokenFromHeader(headers)
+	if !ok || s.tokens == nil {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queriesFor(ctx), tenant.ID, auth.HashToken(sessionToken), time.Now())
+	claims, err := s.tokens.Verify(rawToken, auth.AudiencePublic)
+	if err != nil {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	if claims.TenantPublicID != "" && claims.TenantPublicID != tenant.PublicID {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		PublicID: claims.Subject,
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
 		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
 	}
-	if lookup.State != auth.SessionStateActive {
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, userRef.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return rpcmiddleware.SessionContext{}, invalidSessionError()
+		}
+		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+	}
+	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	return rpcmiddleware.SessionContext{Tenant: tenant, Session: lookup.Session}, nil
+	role, err := s.tenantRole(ctx, user.ID)
+	if err != nil {
+		return rpcmiddleware.SessionContext{}, err
+	}
+	return rpcmiddleware.SessionContext{Tenant: tenant, User: user, Role: role}, nil
 }
 
 func (s *apiServer) currentUserFromSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	explicitToken string,
 	headers http.Header,
 ) (dbmodels.Tenant, dbmodels.User, string, error) {
-	authCtx, err := s.authenticateSession(ctx, tenantCtx, explicitToken, headers)
+	authCtx, err := s.authenticateAccessToken(ctx, tenantCtx, headers)
 	if err != nil {
 		return dbmodels.Tenant{}, dbmodels.User{}, "", err
 	}
-	user, err := s.queriesFor(ctx).GetUserByID(ctx, authCtx.Session.UserID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, dbmodels.User{}, "", invalidSessionError()
-		}
-		return dbmodels.Tenant{}, dbmodels.User{}, "", connect.NewError(connect.CodeInternal, err)
-	}
-	role, err := s.tenantRole(ctx, user.ID)
-	if err != nil {
-		return dbmodels.Tenant{}, dbmodels.User{}, "", err
-	}
-	return authCtx.Tenant, user, role, nil
+	return authCtx.Tenant, authCtx.User, authCtx.Role, nil
 }
 
-func (s *apiServer) CreateSession(
+func (s *apiServer) Login(
 	ctx context.Context,
-	req *connect.Request[publirav1.CreateSessionRequest],
-) (*connect.Response[publirav1.CreateSessionResponse], error) {
+	req *connect.Request[publirav1.LoginRequest],
+) (*connect.Response[publirav1.LoginResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "login", "failure", "", "", "tenant_not_found")
@@ -167,12 +166,12 @@ func (s *apiServer) CreateSession(
 	if err != nil {
 		return nil, err
 	}
-	response, err := s.issueUserSession(ctx, tenant, user, role)
+	response, err := s.issueAccessToken(tenant, user, role)
 	if err != nil {
-		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
+		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
 		return nil, err
 	}
-	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "session_issued")
+	auth.AuditEvent(req.Header(), "login", "success", tenant.PublicID, user.PublicID, "token_issued")
 	return response, nil
 }
 
@@ -577,7 +576,7 @@ func (s *apiServer) RequestEmailChange(
 	ctx context.Context,
 	req *connect.Request[publirav1.RequestEmailChangeRequest],
 ) (*connect.Response[publirav1.RequestEmailChangeResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", "", "", "invalid_session")
 		return nil, err
@@ -911,8 +910,8 @@ func (s *apiServer) ConfirmPasswordReset(
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queriesFor(ctx).TerminateUserSessions(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "session_terminate_failed")
+	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if err := s.queriesFor(ctx).MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
@@ -924,49 +923,29 @@ func (s *apiServer) ConfirmPasswordReset(
 	return connect.NewResponse(&publirav1.ConfirmPasswordResetResponse{Confirmed: true}), nil
 }
 
-func (s *apiServer) DeleteSession(
+func (s *apiServer) Logout(
 	ctx context.Context,
-	req *connect.Request[publirav1.DeleteSessionRequest],
-) (*connect.Response[publirav1.DeleteSessionResponse], error) {
+	req *connect.Request[publirav1.LogoutRequest],
+) (*connect.Response[publirav1.LogoutResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "logout", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	sessionToken, ok := auth.SessionTokenFromRequest(req.Msg.SessionId, req.Header())
-	response := connect.NewResponse(&publirav1.DeleteSessionResponse{})
-	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
-	if !ok {
-		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "no_session_cookie")
-		return response, nil
+	// Stateless JWT: client clears cookie. Logout is for audit only.
+	if _, ok := auth.BearerTokenFromHeader(req.Header()); ok {
+		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "client_logout")
+	} else {
+		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "no_token")
 	}
-	tokenHash := auth.HashToken(sessionToken)
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, tokenHash, time.Now())
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "session_not_found")
-			return response, nil
-		}
-		auth.AuditEvent(req.Header(), "logout", "failure", tenant.PublicID, "", "session_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if lookup.State == auth.SessionStateRevoked {
-		auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "already_revoked")
-		return response, nil
-	}
-	if err := s.queriesFor(ctx).RevokeSession(ctx, lookup.Session.ID); err != nil {
-		auth.AuditEvent(req.Header(), "logout", "failure", tenant.PublicID, "", "session_revoke_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	auth.AuditEvent(req.Header(), "logout", "success", tenant.PublicID, "", "session_revoked")
-	return response, nil
+	return connect.NewResponse(&publirav1.LogoutResponse{}), nil
 }
 
 func (s *apiServer) GetMe(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetMeRequest],
 ) (*connect.Response[publirav1.GetMeResponse], error) {
-	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -977,7 +956,7 @@ func (s *apiServer) UpdateMe(
 	ctx context.Context,
 	req *connect.Request[publirav1.UpdateMeRequest],
 ) (*connect.Response[publirav1.UpdateMeResponse], error) {
-	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "update_me", "failure", "", "", "invalid_session")
 		return nil, err
@@ -1007,7 +986,7 @@ func (s *apiServer) DeleteMe(
 	ctx context.Context,
 	req *connect.Request[publirav1.DeleteMeRequest],
 ) (*connect.Response[publirav1.DeleteMeResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", "", "", "invalid_session")
 		return nil, err
@@ -1021,8 +1000,8 @@ func (s *apiServer) DeleteMe(
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid password"))
 	}
-	if err := s.queriesFor(ctx).TerminateUserSessions(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "session_terminate_failed")
+	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
@@ -1030,16 +1009,14 @@ func (s *apiServer) DeleteMe(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	auth.AuditEvent(req.Header(), "delete_me", "success", tenant.PublicID, user.PublicID, "user_deleted")
-	response := connect.NewResponse(&publirav1.DeleteMeResponse{})
-	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
-	return response, nil
+	return connect.NewResponse(&publirav1.DeleteMeResponse{}), nil
 }
 
 func (s *apiServer) GetNotificationSettings(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetNotificationSettingsRequest],
 ) (*connect.Response[publirav1.GetNotificationSettingsResponse], error) {
-	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -1057,7 +1034,7 @@ func (s *apiServer) UpdateNotificationSettings(
 	ctx context.Context,
 	req *connect.Request[publirav1.UpdateNotificationSettingsRequest],
 ) (*connect.Response[publirav1.UpdateNotificationSettingsResponse], error) {
-	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	_, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -1075,7 +1052,7 @@ func (s *apiServer) ListNotifications(
 	ctx context.Context,
 	req *connect.Request[publirav1.ListNotificationsRequest],
 ) (*connect.Response[publirav1.ListNotificationsResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -1128,7 +1105,7 @@ func (s *apiServer) MarkNotificationAsRead(
 	ctx context.Context,
 	req *connect.Request[publirav1.MarkNotificationAsReadRequest],
 ) (*connect.Response[publirav1.MarkNotificationAsReadResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -1157,7 +1134,7 @@ func (s *apiServer) MarkAllNotificationsAsRead(
 	ctx context.Context,
 	req *connect.Request[publirav1.MarkAllNotificationsAsReadRequest],
 ) (*connect.Response[publirav1.MarkAllNotificationsAsReadResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}

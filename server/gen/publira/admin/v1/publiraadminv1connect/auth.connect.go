@@ -33,12 +33,10 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminAuthServiceCreateSessionProcedure is the fully-qualified name of the AdminAuthService's
-	// CreateSession RPC.
-	AdminAuthServiceCreateSessionProcedure = "/publira.admin.v1.AdminAuthService/CreateSession"
-	// AdminAuthServiceDeleteSessionProcedure is the fully-qualified name of the AdminAuthService's
-	// DeleteSession RPC.
-	AdminAuthServiceDeleteSessionProcedure = "/publira.admin.v1.AdminAuthService/DeleteSession"
+	// AdminAuthServiceLoginProcedure is the fully-qualified name of the AdminAuthService's Login RPC.
+	AdminAuthServiceLoginProcedure = "/publira.admin.v1.AdminAuthService/Login"
+	// AdminAuthServiceLogoutProcedure is the fully-qualified name of the AdminAuthService's Logout RPC.
+	AdminAuthServiceLogoutProcedure = "/publira.admin.v1.AdminAuthService/Logout"
 	// AdminAuthServiceRequestPasswordResetProcedure is the fully-qualified name of the
 	// AdminAuthService's RequestPasswordReset RPC.
 	AdminAuthServiceRequestPasswordResetProcedure = "/publira.admin.v1.AdminAuthService/RequestPasswordReset"
@@ -75,8 +73,8 @@ const (
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceClient interface {
-	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
-	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
+	Login(context.Context, *connect.Request[v1.AdminAuthServiceLoginRequest]) (*connect.Response[v1.AdminAuthServiceLoginResponse], error)
+	Logout(context.Context, *connect.Request[v1.AdminAuthServiceLogoutRequest]) (*connect.Response[v1.AdminAuthServiceLogoutResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceRequestPasswordResetResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
@@ -101,16 +99,16 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 	baseURL = strings.TrimRight(baseURL, "/")
 	adminAuthServiceMethods := v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods()
 	return &adminAuthServiceClient{
-		createSession: connect.NewClient[v1.AdminAuthServiceCreateSessionRequest, v1.AdminAuthServiceCreateSessionResponse](
+		login: connect.NewClient[v1.AdminAuthServiceLoginRequest, v1.AdminAuthServiceLoginResponse](
 			httpClient,
-			baseURL+AdminAuthServiceCreateSessionProcedure,
-			connect.WithSchema(adminAuthServiceMethods.ByName("CreateSession")),
+			baseURL+AdminAuthServiceLoginProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("Login")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteSession: connect.NewClient[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse](
+		logout: connect.NewClient[v1.AdminAuthServiceLogoutRequest, v1.AdminAuthServiceLogoutResponse](
 			httpClient,
-			baseURL+AdminAuthServiceDeleteSessionProcedure,
-			connect.WithSchema(adminAuthServiceMethods.ByName("DeleteSession")),
+			baseURL+AdminAuthServiceLogoutProcedure,
+			connect.WithSchema(adminAuthServiceMethods.ByName("Logout")),
 			connect.WithClientOptions(opts...),
 		),
 		requestPasswordReset: connect.NewClient[v1.AdminAuthServiceRequestPasswordResetRequest, v1.AdminAuthServiceRequestPasswordResetResponse](
@@ -184,8 +182,8 @@ func NewAdminAuthServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // adminAuthServiceClient implements AdminAuthServiceClient.
 type adminAuthServiceClient struct {
-	createSession                 *connect.Client[v1.AdminAuthServiceCreateSessionRequest, v1.AdminAuthServiceCreateSessionResponse]
-	deleteSession                 *connect.Client[v1.AdminAuthServiceDeleteSessionRequest, v1.AdminAuthServiceDeleteSessionResponse]
+	login                         *connect.Client[v1.AdminAuthServiceLoginRequest, v1.AdminAuthServiceLoginResponse]
+	logout                        *connect.Client[v1.AdminAuthServiceLogoutRequest, v1.AdminAuthServiceLogoutResponse]
 	requestPasswordReset          *connect.Client[v1.AdminAuthServiceRequestPasswordResetRequest, v1.AdminAuthServiceRequestPasswordResetResponse]
 	confirmPasswordReset          *connect.Client[v1.AdminAuthServiceConfirmPasswordResetRequest, v1.AdminAuthServiceConfirmPasswordResetResponse]
 	getMe                         *connect.Client[v1.AdminAuthServiceGetMeRequest, v1.AdminAuthServiceGetMeResponse]
@@ -199,14 +197,14 @@ type adminAuthServiceClient struct {
 	confirmEmailChange            *connect.Client[v1.AdminAuthServiceConfirmEmailChangeRequest, v1.AdminAuthServiceConfirmEmailChangeResponse]
 }
 
-// CreateSession calls publira.admin.v1.AdminAuthService.CreateSession.
-func (c *adminAuthServiceClient) CreateSession(ctx context.Context, req *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error) {
-	return c.createSession.CallUnary(ctx, req)
+// Login calls publira.admin.v1.AdminAuthService.Login.
+func (c *adminAuthServiceClient) Login(ctx context.Context, req *connect.Request[v1.AdminAuthServiceLoginRequest]) (*connect.Response[v1.AdminAuthServiceLoginResponse], error) {
+	return c.login.CallUnary(ctx, req)
 }
 
-// DeleteSession calls publira.admin.v1.AdminAuthService.DeleteSession.
-func (c *adminAuthServiceClient) DeleteSession(ctx context.Context, req *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error) {
-	return c.deleteSession.CallUnary(ctx, req)
+// Logout calls publira.admin.v1.AdminAuthService.Logout.
+func (c *adminAuthServiceClient) Logout(ctx context.Context, req *connect.Request[v1.AdminAuthServiceLogoutRequest]) (*connect.Response[v1.AdminAuthServiceLogoutResponse], error) {
+	return c.logout.CallUnary(ctx, req)
 }
 
 // RequestPasswordReset calls publira.admin.v1.AdminAuthService.RequestPasswordReset.
@@ -267,8 +265,8 @@ func (c *adminAuthServiceClient) ConfirmEmailChange(ctx context.Context, req *co
 
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
-	CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error)
-	DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error)
+	Login(context.Context, *connect.Request[v1.AdminAuthServiceLoginRequest]) (*connect.Response[v1.AdminAuthServiceLoginResponse], error)
+	Logout(context.Context, *connect.Request[v1.AdminAuthServiceLogoutRequest]) (*connect.Response[v1.AdminAuthServiceLogoutResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceRequestPasswordResetResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceConfirmPasswordResetResponse], error)
 	GetMe(context.Context, *connect.Request[v1.AdminAuthServiceGetMeRequest]) (*connect.Response[v1.AdminAuthServiceGetMeResponse], error)
@@ -289,16 +287,16 @@ type AdminAuthServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	adminAuthServiceMethods := v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods()
-	adminAuthServiceCreateSessionHandler := connect.NewUnaryHandler(
-		AdminAuthServiceCreateSessionProcedure,
-		svc.CreateSession,
-		connect.WithSchema(adminAuthServiceMethods.ByName("CreateSession")),
+	adminAuthServiceLoginHandler := connect.NewUnaryHandler(
+		AdminAuthServiceLoginProcedure,
+		svc.Login,
+		connect.WithSchema(adminAuthServiceMethods.ByName("Login")),
 		connect.WithHandlerOptions(opts...),
 	)
-	adminAuthServiceDeleteSessionHandler := connect.NewUnaryHandler(
-		AdminAuthServiceDeleteSessionProcedure,
-		svc.DeleteSession,
-		connect.WithSchema(adminAuthServiceMethods.ByName("DeleteSession")),
+	adminAuthServiceLogoutHandler := connect.NewUnaryHandler(
+		AdminAuthServiceLogoutProcedure,
+		svc.Logout,
+		connect.WithSchema(adminAuthServiceMethods.ByName("Logout")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminAuthServiceRequestPasswordResetHandler := connect.NewUnaryHandler(
@@ -369,10 +367,10 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 	)
 	return "/publira.admin.v1.AdminAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case AdminAuthServiceCreateSessionProcedure:
-			adminAuthServiceCreateSessionHandler.ServeHTTP(w, r)
-		case AdminAuthServiceDeleteSessionProcedure:
-			adminAuthServiceDeleteSessionHandler.ServeHTTP(w, r)
+		case AdminAuthServiceLoginProcedure:
+			adminAuthServiceLoginHandler.ServeHTTP(w, r)
+		case AdminAuthServiceLogoutProcedure:
+			adminAuthServiceLogoutHandler.ServeHTTP(w, r)
 		case AdminAuthServiceRequestPasswordResetProcedure:
 			adminAuthServiceRequestPasswordResetHandler.ServeHTTP(w, r)
 		case AdminAuthServiceConfirmPasswordResetProcedure:
@@ -404,12 +402,12 @@ func NewAdminAuthServiceHandler(svc AdminAuthServiceHandler, opts ...connect.Han
 // UnimplementedAdminAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminAuthServiceHandler struct{}
 
-func (UnimplementedAdminAuthServiceHandler) CreateSession(context.Context, *connect.Request[v1.AdminAuthServiceCreateSessionRequest]) (*connect.Response[v1.AdminAuthServiceCreateSessionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.CreateSession is not implemented"))
+func (UnimplementedAdminAuthServiceHandler) Login(context.Context, *connect.Request[v1.AdminAuthServiceLoginRequest]) (*connect.Response[v1.AdminAuthServiceLoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.Login is not implemented"))
 }
 
-func (UnimplementedAdminAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.AdminAuthServiceDeleteSessionRequest]) (*connect.Response[v1.AdminAuthServiceDeleteSessionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.DeleteSession is not implemented"))
+func (UnimplementedAdminAuthServiceHandler) Logout(context.Context, *connect.Request[v1.AdminAuthServiceLogoutRequest]) (*connect.Response[v1.AdminAuthServiceLogoutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminAuthService.Logout is not implemented"))
 }
 
 func (UnimplementedAdminAuthServiceHandler) RequestPasswordReset(context.Context, *connect.Request[v1.AdminAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.AdminAuthServiceRequestPasswordResetResponse], error) {

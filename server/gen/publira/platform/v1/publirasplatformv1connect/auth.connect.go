@@ -33,12 +33,12 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// PlatformAuthServiceCreateSessionProcedure is the fully-qualified name of the
-	// PlatformAuthService's CreateSession RPC.
-	PlatformAuthServiceCreateSessionProcedure = "/publira.platform.v1.PlatformAuthService/CreateSession"
-	// PlatformAuthServiceDeleteSessionProcedure is the fully-qualified name of the
-	// PlatformAuthService's DeleteSession RPC.
-	PlatformAuthServiceDeleteSessionProcedure = "/publira.platform.v1.PlatformAuthService/DeleteSession"
+	// PlatformAuthServiceLoginProcedure is the fully-qualified name of the PlatformAuthService's Login
+	// RPC.
+	PlatformAuthServiceLoginProcedure = "/publira.platform.v1.PlatformAuthService/Login"
+	// PlatformAuthServiceLogoutProcedure is the fully-qualified name of the PlatformAuthService's
+	// Logout RPC.
+	PlatformAuthServiceLogoutProcedure = "/publira.platform.v1.PlatformAuthService/Logout"
 	// PlatformAuthServiceRequestPasswordResetProcedure is the fully-qualified name of the
 	// PlatformAuthService's RequestPasswordReset RPC.
 	PlatformAuthServiceRequestPasswordResetProcedure = "/publira.platform.v1.PlatformAuthService/RequestPasswordReset"
@@ -64,8 +64,8 @@ const (
 
 // PlatformAuthServiceClient is a client for the publira.platform.v1.PlatformAuthService service.
 type PlatformAuthServiceClient interface {
-	CreateSession(context.Context, *connect.Request[v1.PlatformAuthServiceCreateSessionRequest]) (*connect.Response[v1.PlatformAuthServiceCreateSessionResponse], error)
-	DeleteSession(context.Context, *connect.Request[v1.PlatformAuthServiceDeleteSessionRequest]) (*connect.Response[v1.PlatformAuthServiceDeleteSessionResponse], error)
+	Login(context.Context, *connect.Request[v1.PlatformAuthServiceLoginRequest]) (*connect.Response[v1.PlatformAuthServiceLoginResponse], error)
+	Logout(context.Context, *connect.Request[v1.PlatformAuthServiceLogoutRequest]) (*connect.Response[v1.PlatformAuthServiceLogoutResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceRequestPasswordResetResponse], error)
 	VerifyPasswordResetToken(context.Context, *connect.Request[v1.PlatformAuthServiceVerifyPasswordResetTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyPasswordResetTokenResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmPasswordResetResponse], error)
@@ -86,16 +86,16 @@ func NewPlatformAuthServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	platformAuthServiceMethods := v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods()
 	return &platformAuthServiceClient{
-		createSession: connect.NewClient[v1.PlatformAuthServiceCreateSessionRequest, v1.PlatformAuthServiceCreateSessionResponse](
+		login: connect.NewClient[v1.PlatformAuthServiceLoginRequest, v1.PlatformAuthServiceLoginResponse](
 			httpClient,
-			baseURL+PlatformAuthServiceCreateSessionProcedure,
-			connect.WithSchema(platformAuthServiceMethods.ByName("CreateSession")),
+			baseURL+PlatformAuthServiceLoginProcedure,
+			connect.WithSchema(platformAuthServiceMethods.ByName("Login")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteSession: connect.NewClient[v1.PlatformAuthServiceDeleteSessionRequest, v1.PlatformAuthServiceDeleteSessionResponse](
+		logout: connect.NewClient[v1.PlatformAuthServiceLogoutRequest, v1.PlatformAuthServiceLogoutResponse](
 			httpClient,
-			baseURL+PlatformAuthServiceDeleteSessionProcedure,
-			connect.WithSchema(platformAuthServiceMethods.ByName("DeleteSession")),
+			baseURL+PlatformAuthServiceLogoutProcedure,
+			connect.WithSchema(platformAuthServiceMethods.ByName("Logout")),
 			connect.WithClientOptions(opts...),
 		),
 		requestPasswordReset: connect.NewClient[v1.PlatformAuthServiceRequestPasswordResetRequest, v1.PlatformAuthServiceRequestPasswordResetResponse](
@@ -145,8 +145,8 @@ func NewPlatformAuthServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // platformAuthServiceClient implements PlatformAuthServiceClient.
 type platformAuthServiceClient struct {
-	createSession            *connect.Client[v1.PlatformAuthServiceCreateSessionRequest, v1.PlatformAuthServiceCreateSessionResponse]
-	deleteSession            *connect.Client[v1.PlatformAuthServiceDeleteSessionRequest, v1.PlatformAuthServiceDeleteSessionResponse]
+	login                    *connect.Client[v1.PlatformAuthServiceLoginRequest, v1.PlatformAuthServiceLoginResponse]
+	logout                   *connect.Client[v1.PlatformAuthServiceLogoutRequest, v1.PlatformAuthServiceLogoutResponse]
 	requestPasswordReset     *connect.Client[v1.PlatformAuthServiceRequestPasswordResetRequest, v1.PlatformAuthServiceRequestPasswordResetResponse]
 	verifyPasswordResetToken *connect.Client[v1.PlatformAuthServiceVerifyPasswordResetTokenRequest, v1.PlatformAuthServiceVerifyPasswordResetTokenResponse]
 	confirmPasswordReset     *connect.Client[v1.PlatformAuthServiceConfirmPasswordResetRequest, v1.PlatformAuthServiceConfirmPasswordResetResponse]
@@ -156,14 +156,14 @@ type platformAuthServiceClient struct {
 	getMe                    *connect.Client[v1.PlatformAuthServiceGetMeRequest, v1.PlatformAuthServiceGetMeResponse]
 }
 
-// CreateSession calls publira.platform.v1.PlatformAuthService.CreateSession.
-func (c *platformAuthServiceClient) CreateSession(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceCreateSessionRequest]) (*connect.Response[v1.PlatformAuthServiceCreateSessionResponse], error) {
-	return c.createSession.CallUnary(ctx, req)
+// Login calls publira.platform.v1.PlatformAuthService.Login.
+func (c *platformAuthServiceClient) Login(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceLoginRequest]) (*connect.Response[v1.PlatformAuthServiceLoginResponse], error) {
+	return c.login.CallUnary(ctx, req)
 }
 
-// DeleteSession calls publira.platform.v1.PlatformAuthService.DeleteSession.
-func (c *platformAuthServiceClient) DeleteSession(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceDeleteSessionRequest]) (*connect.Response[v1.PlatformAuthServiceDeleteSessionResponse], error) {
-	return c.deleteSession.CallUnary(ctx, req)
+// Logout calls publira.platform.v1.PlatformAuthService.Logout.
+func (c *platformAuthServiceClient) Logout(ctx context.Context, req *connect.Request[v1.PlatformAuthServiceLogoutRequest]) (*connect.Response[v1.PlatformAuthServiceLogoutResponse], error) {
+	return c.logout.CallUnary(ctx, req)
 }
 
 // RequestPasswordReset calls publira.platform.v1.PlatformAuthService.RequestPasswordReset.
@@ -204,8 +204,8 @@ func (c *platformAuthServiceClient) GetMe(ctx context.Context, req *connect.Requ
 // PlatformAuthServiceHandler is an implementation of the publira.platform.v1.PlatformAuthService
 // service.
 type PlatformAuthServiceHandler interface {
-	CreateSession(context.Context, *connect.Request[v1.PlatformAuthServiceCreateSessionRequest]) (*connect.Response[v1.PlatformAuthServiceCreateSessionResponse], error)
-	DeleteSession(context.Context, *connect.Request[v1.PlatformAuthServiceDeleteSessionRequest]) (*connect.Response[v1.PlatformAuthServiceDeleteSessionResponse], error)
+	Login(context.Context, *connect.Request[v1.PlatformAuthServiceLoginRequest]) (*connect.Response[v1.PlatformAuthServiceLoginResponse], error)
+	Logout(context.Context, *connect.Request[v1.PlatformAuthServiceLogoutRequest]) (*connect.Response[v1.PlatformAuthServiceLogoutResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceRequestPasswordResetResponse], error)
 	VerifyPasswordResetToken(context.Context, *connect.Request[v1.PlatformAuthServiceVerifyPasswordResetTokenRequest]) (*connect.Response[v1.PlatformAuthServiceVerifyPasswordResetTokenResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceConfirmPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceConfirmPasswordResetResponse], error)
@@ -222,16 +222,16 @@ type PlatformAuthServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewPlatformAuthServiceHandler(svc PlatformAuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	platformAuthServiceMethods := v1.File_publira_platform_v1_auth_proto.Services().ByName("PlatformAuthService").Methods()
-	platformAuthServiceCreateSessionHandler := connect.NewUnaryHandler(
-		PlatformAuthServiceCreateSessionProcedure,
-		svc.CreateSession,
-		connect.WithSchema(platformAuthServiceMethods.ByName("CreateSession")),
+	platformAuthServiceLoginHandler := connect.NewUnaryHandler(
+		PlatformAuthServiceLoginProcedure,
+		svc.Login,
+		connect.WithSchema(platformAuthServiceMethods.ByName("Login")),
 		connect.WithHandlerOptions(opts...),
 	)
-	platformAuthServiceDeleteSessionHandler := connect.NewUnaryHandler(
-		PlatformAuthServiceDeleteSessionProcedure,
-		svc.DeleteSession,
-		connect.WithSchema(platformAuthServiceMethods.ByName("DeleteSession")),
+	platformAuthServiceLogoutHandler := connect.NewUnaryHandler(
+		PlatformAuthServiceLogoutProcedure,
+		svc.Logout,
+		connect.WithSchema(platformAuthServiceMethods.ByName("Logout")),
 		connect.WithHandlerOptions(opts...),
 	)
 	platformAuthServiceRequestPasswordResetHandler := connect.NewUnaryHandler(
@@ -278,10 +278,10 @@ func NewPlatformAuthServiceHandler(svc PlatformAuthServiceHandler, opts ...conne
 	)
 	return "/publira.platform.v1.PlatformAuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case PlatformAuthServiceCreateSessionProcedure:
-			platformAuthServiceCreateSessionHandler.ServeHTTP(w, r)
-		case PlatformAuthServiceDeleteSessionProcedure:
-			platformAuthServiceDeleteSessionHandler.ServeHTTP(w, r)
+		case PlatformAuthServiceLoginProcedure:
+			platformAuthServiceLoginHandler.ServeHTTP(w, r)
+		case PlatformAuthServiceLogoutProcedure:
+			platformAuthServiceLogoutHandler.ServeHTTP(w, r)
 		case PlatformAuthServiceRequestPasswordResetProcedure:
 			platformAuthServiceRequestPasswordResetHandler.ServeHTTP(w, r)
 		case PlatformAuthServiceVerifyPasswordResetTokenProcedure:
@@ -305,12 +305,12 @@ func NewPlatformAuthServiceHandler(svc PlatformAuthServiceHandler, opts ...conne
 // UnimplementedPlatformAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPlatformAuthServiceHandler struct{}
 
-func (UnimplementedPlatformAuthServiceHandler) CreateSession(context.Context, *connect.Request[v1.PlatformAuthServiceCreateSessionRequest]) (*connect.Response[v1.PlatformAuthServiceCreateSessionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.CreateSession is not implemented"))
+func (UnimplementedPlatformAuthServiceHandler) Login(context.Context, *connect.Request[v1.PlatformAuthServiceLoginRequest]) (*connect.Response[v1.PlatformAuthServiceLoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.Login is not implemented"))
 }
 
-func (UnimplementedPlatformAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.PlatformAuthServiceDeleteSessionRequest]) (*connect.Response[v1.PlatformAuthServiceDeleteSessionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.DeleteSession is not implemented"))
+func (UnimplementedPlatformAuthServiceHandler) Logout(context.Context, *connect.Request[v1.PlatformAuthServiceLogoutRequest]) (*connect.Response[v1.PlatformAuthServiceLogoutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformAuthService.Logout is not implemented"))
 }
 
 func (UnimplementedPlatformAuthServiceHandler) RequestPasswordReset(context.Context, *connect.Request[v1.PlatformAuthServiceRequestPasswordResetRequest]) (*connect.Response[v1.PlatformAuthServiceRequestPasswordResetResponse], error) {

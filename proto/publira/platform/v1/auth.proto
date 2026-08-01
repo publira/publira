@@ -6,19 +6,19 @@ option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;p
 
 import "publira/types/v1/types.proto";
 
-message PlatformAuthServiceCreateSessionRequest {
+message PlatformAuthServiceLoginRequest {
   string email = 1;
   string password = 2;
 }
 
-message PlatformAuthServiceCreateSessionResponse {
+message PlatformAuthServiceLoginResponse {
   publira.types.v1.User user = 1;
-  publira.types.v1.Session session = 2;
+  publira.types.v1.AccessToken access_token = 2;
 }
 
-message PlatformAuthServiceDeleteSessionRequest {}
+message PlatformAuthServiceLogoutRequest {}
 
-message PlatformAuthServiceDeleteSessionResponse {}
+message PlatformAuthServiceLogoutResponse {}
 
 message PlatformAuthServiceRequestPasswordResetRequest {
   string email = 1;
@@ -46,10 +46,9 @@ message PlatformAuthServiceConfirmPasswordResetResponse {
 }
 
 message PlatformAuthServiceRequestEmailChangeRequest {
-  string session_id = 1;
-  string current_email = 2;
-  string new_email = 3;
-  string current_password = 4;
+  string current_email = 1;
+  string new_email = 2;
+  string current_password = 3;
 }
 
 message PlatformAuthServiceRequestEmailChangeResponse {
@@ -81,8 +80,8 @@ message PlatformAuthServiceGetMeResponse {
 }
 
 service PlatformAuthService {
-  rpc CreateSession(PlatformAuthServiceCreateSessionRequest) returns (PlatformAuthServiceCreateSessionResponse) {}
-  rpc DeleteSession(PlatformAuthServiceDeleteSessionRequest) returns (PlatformAuthServiceDeleteSessionResponse) {}
+  rpc Login(PlatformAuthServiceLoginRequest) returns (PlatformAuthServiceLoginResponse) {}
+  rpc Logout(PlatformAuthServiceLogoutRequest) returns (PlatformAuthServiceLogoutResponse) {}
   rpc RequestPasswordReset(PlatformAuthServiceRequestPasswordResetRequest) returns (PlatformAuthServiceRequestPasswordResetResponse) {}
   rpc VerifyPasswordResetToken(PlatformAuthServiceVerifyPasswordResetTokenRequest) returns (PlatformAuthServiceVerifyPasswordResetTokenResponse) {}
   rpc ConfirmPasswordReset(PlatformAuthServiceConfirmPasswordResetRequest) returns (PlatformAuthServiceConfirmPasswordResetResponse) {}

@@ -33,9 +33,8 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AuthServiceCreateSessionProcedure is the fully-qualified name of the AuthService's CreateSession
-	// RPC.
-	AuthServiceCreateSessionProcedure = "/publira.v1.AuthService/CreateSession"
+	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
+	AuthServiceLoginProcedure = "/publira.v1.AuthService/Login"
 	// AuthServiceCreateUserProcedure is the fully-qualified name of the AuthService's CreateUser RPC.
 	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
 	// AuthServiceVerifyUserEmailProcedure is the fully-qualified name of the AuthService's
@@ -53,9 +52,8 @@ const (
 	// AuthServiceConfirmPasswordResetProcedure is the fully-qualified name of the AuthService's
 	// ConfirmPasswordReset RPC.
 	AuthServiceConfirmPasswordResetProcedure = "/publira.v1.AuthService/ConfirmPasswordReset"
-	// AuthServiceDeleteSessionProcedure is the fully-qualified name of the AuthService's DeleteSession
-	// RPC.
-	AuthServiceDeleteSessionProcedure = "/publira.v1.AuthService/DeleteSession"
+	// AuthServiceLogoutProcedure is the fully-qualified name of the AuthService's Logout RPC.
+	AuthServiceLogoutProcedure = "/publira.v1.AuthService/Logout"
 	// AuthServiceGetMeProcedure is the fully-qualified name of the AuthService's GetMe RPC.
 	AuthServiceGetMeProcedure = "/publira.v1.AuthService/GetMe"
 	// AuthServiceUpdateMeProcedure is the fully-qualified name of the AuthService's UpdateMe RPC.
@@ -81,14 +79,14 @@ const (
 
 // AuthServiceClient is a client for the publira.v1.AuthService service.
 type AuthServiceClient interface {
-	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
-	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
+	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
@@ -110,10 +108,10 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 	baseURL = strings.TrimRight(baseURL, "/")
 	authServiceMethods := v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods()
 	return &authServiceClient{
-		createSession: connect.NewClient[v1.CreateSessionRequest, v1.CreateSessionResponse](
+		login: connect.NewClient[v1.LoginRequest, v1.LoginResponse](
 			httpClient,
-			baseURL+AuthServiceCreateSessionProcedure,
-			connect.WithSchema(authServiceMethods.ByName("CreateSession")),
+			baseURL+AuthServiceLoginProcedure,
+			connect.WithSchema(authServiceMethods.ByName("Login")),
 			connect.WithClientOptions(opts...),
 		),
 		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
@@ -152,10 +150,10 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteSession: connect.NewClient[v1.DeleteSessionRequest, v1.DeleteSessionResponse](
+		logout: connect.NewClient[v1.LogoutRequest, v1.LogoutResponse](
 			httpClient,
-			baseURL+AuthServiceDeleteSessionProcedure,
-			connect.WithSchema(authServiceMethods.ByName("DeleteSession")),
+			baseURL+AuthServiceLogoutProcedure,
+			connect.WithSchema(authServiceMethods.ByName("Logout")),
 			connect.WithClientOptions(opts...),
 		),
 		getMe: connect.NewClient[v1.GetMeRequest, v1.GetMeResponse](
@@ -211,14 +209,14 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	createSession              *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	login                      *connect.Client[v1.LoginRequest, v1.LoginResponse]
 	createUser                 *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
 	verifyUserEmail            *connect.Client[v1.VerifyUserEmailRequest, v1.VerifyUserEmailResponse]
 	requestEmailChange         *connect.Client[v1.RequestEmailChangeRequest, v1.RequestEmailChangeResponse]
 	confirmEmailChange         *connect.Client[v1.ConfirmEmailChangeRequest, v1.ConfirmEmailChangeResponse]
 	requestPasswordReset       *connect.Client[v1.RequestPasswordResetRequest, v1.RequestPasswordResetResponse]
 	confirmPasswordReset       *connect.Client[v1.ConfirmPasswordResetRequest, v1.ConfirmPasswordResetResponse]
-	deleteSession              *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	logout                     *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
 	getMe                      *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 	updateMe                   *connect.Client[v1.UpdateMeRequest, v1.UpdateMeResponse]
 	deleteMe                   *connect.Client[v1.DeleteMeRequest, v1.DeleteMeResponse]
@@ -229,9 +227,9 @@ type authServiceClient struct {
 	markAllNotificationsAsRead *connect.Client[v1.MarkAllNotificationsAsReadRequest, v1.MarkAllNotificationsAsReadResponse]
 }
 
-// CreateSession calls publira.v1.AuthService.CreateSession.
-func (c *authServiceClient) CreateSession(ctx context.Context, req *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
-	return c.createSession.CallUnary(ctx, req)
+// Login calls publira.v1.AuthService.Login.
+func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
+	return c.login.CallUnary(ctx, req)
 }
 
 // CreateUser calls publira.v1.AuthService.CreateUser.
@@ -264,9 +262,9 @@ func (c *authServiceClient) ConfirmPasswordReset(ctx context.Context, req *conne
 	return c.confirmPasswordReset.CallUnary(ctx, req)
 }
 
-// DeleteSession calls publira.v1.AuthService.DeleteSession.
-func (c *authServiceClient) DeleteSession(ctx context.Context, req *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {
-	return c.deleteSession.CallUnary(ctx, req)
+// Logout calls publira.v1.AuthService.Logout.
+func (c *authServiceClient) Logout(ctx context.Context, req *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
+	return c.logout.CallUnary(ctx, req)
 }
 
 // GetMe calls publira.v1.AuthService.GetMe.
@@ -311,14 +309,14 @@ func (c *authServiceClient) MarkAllNotificationsAsRead(ctx context.Context, req 
 
 // AuthServiceHandler is an implementation of the publira.v1.AuthService service.
 type AuthServiceHandler interface {
-	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	VerifyUserEmail(context.Context, *connect.Request[v1.VerifyUserEmailRequest]) (*connect.Response[v1.VerifyUserEmailResponse], error)
 	RequestEmailChange(context.Context, *connect.Request[v1.RequestEmailChangeRequest]) (*connect.Response[v1.RequestEmailChangeResponse], error)
 	ConfirmEmailChange(context.Context, *connect.Request[v1.ConfirmEmailChangeRequest]) (*connect.Response[v1.ConfirmEmailChangeResponse], error)
 	RequestPasswordReset(context.Context, *connect.Request[v1.RequestPasswordResetRequest]) (*connect.Response[v1.RequestPasswordResetResponse], error)
 	ConfirmPasswordReset(context.Context, *connect.Request[v1.ConfirmPasswordResetRequest]) (*connect.Response[v1.ConfirmPasswordResetResponse], error)
-	DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error)
+	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	UpdateMe(context.Context, *connect.Request[v1.UpdateMeRequest]) (*connect.Response[v1.UpdateMeResponse], error)
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
@@ -336,10 +334,10 @@ type AuthServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	authServiceMethods := v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods()
-	authServiceCreateSessionHandler := connect.NewUnaryHandler(
-		AuthServiceCreateSessionProcedure,
-		svc.CreateSession,
-		connect.WithSchema(authServiceMethods.ByName("CreateSession")),
+	authServiceLoginHandler := connect.NewUnaryHandler(
+		AuthServiceLoginProcedure,
+		svc.Login,
+		connect.WithSchema(authServiceMethods.ByName("Login")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceCreateUserHandler := connect.NewUnaryHandler(
@@ -378,10 +376,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("ConfirmPasswordReset")),
 		connect.WithHandlerOptions(opts...),
 	)
-	authServiceDeleteSessionHandler := connect.NewUnaryHandler(
-		AuthServiceDeleteSessionProcedure,
-		svc.DeleteSession,
-		connect.WithSchema(authServiceMethods.ByName("DeleteSession")),
+	authServiceLogoutHandler := connect.NewUnaryHandler(
+		AuthServiceLogoutProcedure,
+		svc.Logout,
+		connect.WithSchema(authServiceMethods.ByName("Logout")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceGetMeHandler := connect.NewUnaryHandler(
@@ -434,8 +432,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 	)
 	return "/publira.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case AuthServiceCreateSessionProcedure:
-			authServiceCreateSessionHandler.ServeHTTP(w, r)
+		case AuthServiceLoginProcedure:
+			authServiceLoginHandler.ServeHTTP(w, r)
 		case AuthServiceCreateUserProcedure:
 			authServiceCreateUserHandler.ServeHTTP(w, r)
 		case AuthServiceVerifyUserEmailProcedure:
@@ -448,8 +446,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceRequestPasswordResetHandler.ServeHTTP(w, r)
 		case AuthServiceConfirmPasswordResetProcedure:
 			authServiceConfirmPasswordResetHandler.ServeHTTP(w, r)
-		case AuthServiceDeleteSessionProcedure:
-			authServiceDeleteSessionHandler.ServeHTTP(w, r)
+		case AuthServiceLogoutProcedure:
+			authServiceLogoutHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
 			authServiceGetMeHandler.ServeHTTP(w, r)
 		case AuthServiceUpdateMeProcedure:
@@ -475,8 +473,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 // UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAuthServiceHandler struct{}
 
-func (UnimplementedAuthServiceHandler) CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.CreateSession is not implemented"))
+func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.Login is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
@@ -503,8 +501,8 @@ func (UnimplementedAuthServiceHandler) ConfirmPasswordReset(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.ConfirmPasswordReset is not implemented"))
 }
 
-func (UnimplementedAuthServiceHandler) DeleteSession(context.Context, *connect.Request[v1.DeleteSessionRequest]) (*connect.Response[v1.DeleteSessionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.DeleteSession is not implemented"))
+func (UnimplementedAuthServiceHandler) Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.Logout is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {

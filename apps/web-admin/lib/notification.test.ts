@@ -27,7 +27,7 @@ vi.mock("./api", () => ({
     },
   },
   withSessionHeaders: (sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }),
 }));
 

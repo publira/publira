@@ -333,7 +333,7 @@ func (s *platformServer) SuspendOperator(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := txq.TerminatePlatformUserSessions(ctx, updatedUser.ID); err != nil {
+	if _, err := txq.BumpPlatformUserCredentialsVersion(ctx, updatedUser.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -473,7 +473,7 @@ func (s *platformServer) DeactivateOperator(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := txq.TerminatePlatformUserSessions(ctx, updatedUser.ID); err != nil {
+	if _, err := txq.BumpPlatformUserCredentialsVersion(ctx, updatedUser.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

@@ -1,5 +1,12 @@
 import { createPublicApiClient } from "@publira/api-client/public/client";
-import { cacheLife, cacheTag } from "next/cache";
+import {
+  buildBearerHeaders,
+  decryptSessionPayload,
+  encryptSessionPayload,
+  isSessionExpired,
+  resolveAuthSecret,
+  type WebSessionPayload,
+} from "@publira/web-session";
 import { cookies } from "next/headers";
 
 import { PUBLIC_SESSION_COOKIE_NAME } from "./auth-shared";
@@ -13,29 +20,48 @@ export const createPublicGrpcApiClient = () =>
     transport: "grpc",
   });
 
-export const buildPublicSessionHeaders = (sessionId: string) =>
-  ({ headers: { "X-Publira-Session-Id": sessionId } }) as never;
+export const buildPublicSessionHeaders = (accessToken: string) =>
+  buildBearerHeaders(accessToken);
 
 export const getPublicSessionCacheTag = (cookieName: string): string =>
   `${PUBLIC_SESSION_CACHE_TAG_PREFIX}-${cookieName}`;
 
-const getSessionIdFromCookie = async (cookieName: string): Promise<string> => {
-  "use cache: private";
-  cacheLife({ stale: 30 });
-  cacheTag(getPublicSessionCacheTag(cookieName));
+export const sealPublicSessionCookieValue = async (
+  payload: WebSessionPayload
+): Promise<string> => encryptSessionPayload(payload, resolveAuthSecret());
 
+const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
+
+const getAccessTokenFromCookie = async (cookieName: string): Promise<string> => {
+  // Avoid "use cache" here so a cookie set during login is visible on the next request.
   const cookieStore = await cookies();
-  return cookieStore.get(cookieName)?.value?.trim() ?? "";
+  const raw = cookieStore.get(cookieName)?.value?.trim() ?? "";
+  if (!raw) {
+    return "";
+  }
+
+  // Prefer JWE payload; fall back to raw JWT for transitional cookies.
+  const payload = await decryptSessionPayload(raw, resolveAuthSecret());
+  if (payload) {
+    if (isSessionExpired(payload.expiresAt)) {
+      return "";
+    }
+    return payload.accessToken.trim();
+  }
+  if (looksLikeJwt(raw)) {
+    return raw;
+  }
+  return "";
 };
 
 export const resolvePublicSessionId = (
   cookieName = PUBLIC_SESSION_COOKIE_NAME,
-  sessionId?: string
+  accessToken?: string
 ): Promise<string> => {
-  const sid = (sessionId ?? "").trim();
-  if (sid) {
-    return Promise.resolve(sid);
+  const token = (accessToken ?? "").trim();
+  if (token) {
+    return Promise.resolve(token);
   }
 
-  return getSessionIdFromCookie(cookieName);
+  return getAccessTokenFromCookie(cookieName);
 };

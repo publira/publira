@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   mockResolveSessionId.mockResolvedValue("sess_dashboard");
   mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }));
 });
 
@@ -76,7 +76,7 @@ describe("getPlatformDashboardSummary", () => {
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 6 },
-      { headers: { "X-Publira-Session-Id": "sess_dashboard" } }
+      { headers: { "Authorization": "Bearer sess_dashboard" } }
     );
   });
 
@@ -93,7 +93,7 @@ describe("getPlatformDashboardSummary", () => {
 
     expect(mockGetDashboardSummary).toHaveBeenCalledWith(
       { recentEventsLimit: 50 },
-      { headers: { "X-Publira-Session-Id": "sess_dashboard" } }
+      { headers: { "Authorization": "Bearer sess_dashboard" } }
     );
   });
 

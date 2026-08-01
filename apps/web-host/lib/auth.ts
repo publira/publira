@@ -47,14 +47,14 @@ export const loginPublic = async (
   tenantPublicId: string
 ): Promise<{ expiresAt: Date; sessionId: string } | null> => {
   try {
-    const response = await apiClient.auth.createSession({
+    const response = await apiClient.auth.login({
       email,
       password,
       tenant: {
         tenantPublicId,
       },
     });
-    const { sessionId, expiresAt } = response.session ?? {};
+    const { token: sessionId, expiresAt } = response.accessToken ?? {};
     if (!sessionId || !expiresAt) {
       return null;
     }
@@ -82,14 +82,13 @@ export const signupPublic = async (
         tenantPublicId,
       },
     });
-    const { sessionId, expiresAt } = response.session ?? {};
+    const { token: sessionId, expiresAt } = response.accessToken ?? {};
     if (!sessionId || !expiresAt) {
       return { pendingVerification: true };
     }
     return {
       expiresAt: new Date(expiresAt),
       pendingVerification: false,
-      sessionId,
     };
   } catch (error) {
     if (isExpectedNullableError(error)) {
@@ -188,7 +187,7 @@ export const logoutPublic = async (
     return;
   }
   try {
-    await apiClient.auth.deleteSession(
+    await apiClient.auth.logout(
       {
         tenant: {
           tenantPublicId,
@@ -251,7 +250,6 @@ export const requestPublicEmailChange = async (
         currentEmail,
         currentPassword,
         newEmail,
-        sessionId: sid,
         tenant: {
           tenantPublicId,
         },
@@ -278,7 +276,6 @@ export const getMe = async (
     try {
       const response = await apiClient.auth.getMe(
         {
-          sessionId: sid,
           tenant: { tenantPublicId },
         },
         buildSessionHeaders(sid)
@@ -320,7 +317,6 @@ export const updateMe = async (
     const response = await apiClient.auth.updateMe(
       {
         name,
-        sessionId: sid,
         tenant: { tenantPublicId },
       },
       buildSessionHeaders(sid)
@@ -357,7 +353,6 @@ export const deleteMe = async (
     await apiClient.auth.deleteMe(
       {
         password,
-        sessionId: sid,
         tenant: { tenantPublicId },
       },
       buildSessionHeaders(sid)
@@ -381,7 +376,6 @@ export const getNotificationSettings = async (
   try {
     const response = await apiClient.auth.getNotificationSettings(
       {
-        sessionId: sid,
         tenant: { tenantPublicId },
       },
       buildSessionHeaders(sid)
@@ -412,7 +406,6 @@ export const updateNotificationSettings = async (
     const response = await apiClient.auth.updateNotificationSettings(
       {
         emailNotificationsEnabled,
-        sessionId: sid,
         tenant: { tenantPublicId },
       },
       buildSessionHeaders(sid)

@@ -28,7 +28,7 @@ func TestCreateOperatorSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "new-operator@example.com", sqlmock.AnyArg(), "New Operator").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "hash", "New Operator", "active", now))
+			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "hash", "New Operator", "active", now, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
 		WithArgs(newOperatorID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))
@@ -128,10 +128,11 @@ func TestSuspendOperatorSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserStatusQuery)).
 		WithArgs("PLATUSER003", "suspended").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(targetID, "PLATUSER003", "operator3@example.com", "hash", "Operator Three", "suspended", now))
-	mock.ExpectExec(regexp.QuoteMeta(testTerminatePlatformUserSessionsQuery)).
+			AddRow(targetID, "PLATUSER003", "operator3@example.com", "hash", "Operator Three", "suspended", now, int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(testBumpPlatformUserCredentialsVersionQuery)).
 		WithArgs(targetID).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(targetID, "PLATUSER001", "platform@example.com", "hash", "User", "active", now, int32(2)))
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
 		WithArgs("PLATUSER003").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
@@ -185,10 +186,11 @@ func TestDeactivateOperatorSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserStatusQuery)).
 		WithArgs("PLATUSER005", "inactive").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(targetID, "PLATUSER005", "operator5@example.com", "hash", "Operator Five", "inactive", now))
-	mock.ExpectExec(regexp.QuoteMeta(testTerminatePlatformUserSessionsQuery)).
+			AddRow(targetID, "PLATUSER005", "operator5@example.com", "hash", "Operator Five", "inactive", now, int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(testBumpPlatformUserCredentialsVersionQuery)).
 		WithArgs(targetID).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(targetID, "PLATUSER001", "platform@example.com", "hash", "User", "active", now, int32(2)))
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
 		WithArgs("PLATUSER005").
 		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).

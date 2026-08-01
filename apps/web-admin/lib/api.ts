@@ -11,5 +11,5 @@ type SessionCallOptions = NonNullable<
 >;
 
 export const withSessionHeaders = (sessionId: string): SessionCallOptions => ({
-  headers: { "X-Publira-Session-Id": sessionId },
+  headers: { Authorization: `Bearer ${sessionId}` },
 });

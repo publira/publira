@@ -68,7 +68,7 @@ describe("theme-settings", () => {
 
     expect(mockGetTenantThemeApi).toHaveBeenCalledWith(
       { tenant: { tenantPublicId: "TENANT001" } },
-      { headers: { "X-Publira-Session-Id": "session-token" } }
+      { headers: { "Authorization": "Bearer session-token" } }
     );
   });
 

@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockCreateSession,
+  mockLogin,
   mockDeleteMe,
-  mockDeleteSession,
+  mockLogout,
   mockGetMe,
   mockGetNotificationSettings,
   mockRequestEmailChange,
   mockResolveSessionId,
   mockUpdateMe,
 } = vi.hoisted(() => ({
-  mockCreateSession: vi.fn(),
+  mockLogin: vi.fn(),
   mockDeleteMe: vi.fn(),
-  mockDeleteSession: vi.fn(),
+  mockLogout: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
   mockRequestEmailChange: vi.fn(),
@@ -23,9 +23,9 @@ const {
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
-      createSession: mockCreateSession,
+      login: mockLogin,
       deleteMe: mockDeleteMe,
-      deleteSession: mockDeleteSession,
+      logout: mockLogout,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
       requestEmailChange: mockRequestEmailChange,
@@ -33,7 +33,7 @@ vi.mock("./api-client", () => ({
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }),
   resolveSessionId: mockResolveSessionId,
 }));
@@ -48,16 +48,15 @@ describe("web-host auth", () => {
 
   it("loginPublic: セッション情報が欠けると null を返す", async () => {
     const { loginPublic } = await importAuth();
-    mockCreateSession.mockResolvedValueOnce({
-      session: { sessionId: "sid_001" },
-    });
+    mockLogin.mockResolvedValueOnce({
+      accessToken: {} });
 
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });
 
   it("loginPublic: expected error は null を返す", async () => {
     const { loginPublic } = await importAuth();
-    mockCreateSession.mockRejectedValueOnce(new Error("unauthenticated"));
+    mockLogin.mockRejectedValueOnce(new Error("unauthenticated"));
 
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });
@@ -66,7 +65,7 @@ describe("web-host auth", () => {
     const { logoutPublic } = await importAuth();
     await logoutPublic("   ", "TENANT001");
 
-    expect(mockDeleteSession).not.toHaveBeenCalled();
+    expect(mockLogout).not.toHaveBeenCalled();
   });
 
   it("getPublicCurrentUser: session 解決不可なら null", async () => {

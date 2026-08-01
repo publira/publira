@@ -6,7 +6,7 @@ import {
   ConsoleSidebarSkeleton,
 } from "@publira/layouts/admin";
 import { guardPlaceholder } from "@publira/utils/next-static-params";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
@@ -38,7 +38,8 @@ const ProtectedLayoutInner = async ({
 
   const tenant = await getTenantForSession(tenant_public_id);
   if (!tenant) {
-    notFound();
+    // Invalid/missing session: send back to login instead of a blank 404.
+    redirect("/login");
   }
 
   return (

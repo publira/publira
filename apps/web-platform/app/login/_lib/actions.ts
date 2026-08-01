@@ -27,12 +27,22 @@ export const loginAction = async (
     };
   }
 
+  const { encryptSessionPayload, resolveAuthSecret } = await import(
+    "@publira/web-session"
+  );
+  const sealed = await encryptSessionPayload(
+    {
+      accessToken: result.sessionId,
+      expiresAt: result.expiresAt.toISOString(),
+    },
+    resolveAuthSecret()
+  );
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions,
     expires: result.expiresAt,
     name: PLATFORM_SESSION_COOKIE_NAME,
-    value: result.sessionId,
+    value: sealed,
   });
 
   redirect(nextPath);

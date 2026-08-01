@@ -32,7 +32,7 @@ const (
 )
 
 func invalidSessionError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
+	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
 }
 
 func platformRoleRequiredError() error {
@@ -49,39 +49,37 @@ func (s *platformServer) platformRoles(ctx context.Context, platformUserID uuid.
 
 func (s *platformServer) authenticatePlatformSession(
 	ctx context.Context,
-	explicitToken string,
+	_ string,
 	headers http.Header,
-) (dbmodels.PlatformSession, dbmodels.PlatformUser, string, error) {
-	sessionToken, ok := auth.SessionTokenFromRequest(explicitToken, headers)
-	if !ok {
-		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", invalidSessionError()
+) (dbmodels.PlatformUser, dbmodels.PlatformUser, string, error) {
+	// First return value kept for call-site arity; use the user as both (session removed).
+	rawToken, ok := auth.BearerTokenFromHeader(headers)
+	if !ok || s.tokens == nil {
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
 	}
-	lookup, err := auth.LookupPlatformSessionByTokenHash(ctx, s.queries, auth.HashToken(sessionToken), time.Now())
+	claims, err := s.tokens.Verify(rawToken, auth.AudiencePlatform)
+	if err != nil {
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
+	}
+	platformUser, err := s.queriesFor(ctx).GetPlatformUserByPublicID(ctx, claims.Subject)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", invalidSessionError()
+			return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
 		}
-		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", connect.NewError(connect.CodeInternal, err)
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", connect.NewError(connect.CodeInternal, err)
 	}
-	if lookup.State != auth.SessionStateActive {
-		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", invalidSessionError()
-	}
-	platformUser, err := s.queriesFor(ctx).GetPlatformUserByID(ctx, lookup.Session.PlatformUserID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", invalidSessionError()
-		}
-		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", connect.NewError(connect.CodeInternal, err)
+	if platformUser.Status != "active" || platformUser.CredentialsVersion != claims.CredentialsVersion {
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
 	}
 	roles, err := s.platformRoles(ctx, platformUser.ID)
 	if err != nil {
-		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", err
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", err
 	}
 	resolvedRole := auth.ResolvePlatformRole(roles)
 	if !auth.IsPlatformRole(resolvedRole) {
-		return dbmodels.PlatformSession{}, dbmodels.PlatformUser{}, "", platformRoleRequiredError()
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", platformRoleRequiredError()
 	}
-	return lookup.Session, platformUser, resolvedRole, nil
+	return platformUser, platformUser, resolvedRole, nil
 }
 
 func platformPasswordResetConfirmationURL(token string) (string, error) {
@@ -246,10 +244,10 @@ func (s *platformServer) sendPlatformEmailChangedNotice(
 	return nil
 }
 
-func (s *platformServer) CreateSession(
+func (s *platformServer) Login(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceCreateSessionRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceCreateSessionResponse], error) {
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceLoginRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceLoginResponse], error) {
 	email := strings.TrimSpace(req.Msg.Email)
 	password := req.Msg.Password
 	if email == "" || strings.TrimSpace(password) == "" {
@@ -274,70 +272,36 @@ func (s *platformServer) CreateSession(
 		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
-
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+	if platformUser.Status != "active" {
+		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "user_inactive")
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
-	sessionToken := hex.EncodeToString(rawToken)
-	sessionID, err := uuid.NewV7()
+	if s.tokens == nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
+	}
+	token, expiresAt, err := s.tokens.Issue(platformUser.PublicID, auth.AudiencePlatform, "", resolvedRole, platformUser.CredentialsVersion, time.Now())
 	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "session_id_generation_failed")
+		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "token_issue_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdSession, err := s.queriesFor(ctx).CreatePlatformSession(ctx, dbmodels.CreatePlatformSessionParams{
-		ID:             sessionID,
-		PlatformUserID: platformUser.ID,
-		TokenHash:      auth.HashToken(sessionToken),
-		ExpiresAt:      time.Now().Add(auth.SessionTTL),
-	})
-	if err != nil {
-		auth.AuditEvent(req.Header(), "platform_login", "failure", "", platformUser.PublicID, "session_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+	resp := &publirasplatformv1.PlatformAuthServiceLoginResponse{
+		User:        &publirattypesv1.User{PublicId: platformUser.PublicID, Name: platformUser.Name, Role: resolvedRole},
+		AccessToken: &publirattypesv1.AccessToken{Token: token, ExpiresAt: auth.FormatExpiresAt(expiresAt)},
 	}
-
-	resp := &publirasplatformv1.PlatformAuthServiceCreateSessionResponse{
-		User:    &publirattypesv1.User{PublicId: platformUser.PublicID, Name: platformUser.Name, Role: resolvedRole},
-		Session: &publirattypesv1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
-	}
-	response := connect.NewResponse(resp)
-	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
-	auth.AuditEvent(req.Header(), "platform_login", "success", "", platformUser.PublicID, "session_issued")
-	return response, nil
+	auth.AuditEvent(req.Header(), "platform_login", "success", "", platformUser.PublicID, "token_issued")
+	return connect.NewResponse(resp), nil
 }
 
-func (s *platformServer) DeleteSession(
+func (s *platformServer) Logout(
 	ctx context.Context,
-	req *connect.Request[publirasplatformv1.PlatformAuthServiceDeleteSessionRequest],
-) (*connect.Response[publirasplatformv1.PlatformAuthServiceDeleteSessionResponse], error) {
-	sessionToken, ok := auth.SessionTokenFromRequest("", req.Header())
-	response := connect.NewResponse(&publirasplatformv1.PlatformAuthServiceDeleteSessionResponse{})
-	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
-	if !ok {
-		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "no_session_cookie")
-		return response, nil
+	req *connect.Request[publirasplatformv1.PlatformAuthServiceLogoutRequest],
+) (*connect.Response[publirasplatformv1.PlatformAuthServiceLogoutResponse], error) {
+	if _, ok := auth.BearerTokenFromHeader(req.Header()); ok {
+		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "client_logout")
+	} else {
+		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "no_token")
 	}
-
-	lookup, err := auth.LookupPlatformSessionByTokenHash(ctx, s.queries, auth.HashToken(sessionToken), time.Now())
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "session_not_found")
-			return response, nil
-		}
-		auth.AuditEvent(req.Header(), "platform_logout", "failure", "", "", "session_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if lookup.State == auth.SessionStateRevoked {
-		auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "already_revoked")
-		return response, nil
-	}
-	if err := s.queriesFor(ctx).RevokePlatformSession(ctx, lookup.Session.ID); err != nil {
-		auth.AuditEvent(req.Header(), "platform_logout", "failure", "", "", "session_revoke_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	auth.AuditEvent(req.Header(), "platform_logout", "success", "", "", "session_revoked")
-	return response, nil
+	return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceLogoutResponse{}), nil
 }
 
 func (s *platformServer) RequestPasswordReset(
@@ -475,7 +439,7 @@ func (s *platformServer) ConfirmPasswordReset(
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_update_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queriesFor(ctx).TerminatePlatformUserSessions(ctx, platformUser.ID); err != nil {
+	if _, err := s.queriesFor(ctx).BumpPlatformUserCredentialsVersion(ctx, platformUser.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "session_terminate_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -492,7 +456,7 @@ func (s *platformServer) RequestEmailChange(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.PlatformAuthServiceRequestEmailChangeRequest],
 ) (*connect.Response[publirasplatformv1.PlatformAuthServiceRequestEmailChangeResponse], error) {
-	_, platformUser, _, err := s.authenticatePlatformSession(ctx, req.Msg.SessionId, req.Header())
+	_, platformUser, _, err := s.authenticatePlatformSession(ctx, "", req.Header())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", "", "invalid_session")
 		return nil, err

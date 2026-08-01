@@ -176,17 +176,6 @@ SET background_color = EXCLUDED.background_color,
     logo_url = EXCLUDED.logo_url,
     updated_at = NOW()
 RETURNING *;
--- name: CreateSession :one
-INSERT INTO sessions (
-        id,
-        tenant_id,
-        user_id,
-        token_hash,
-        expires_at
-    )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING *;
-
 -- name: CreateUserEmailVerificationToken :one
 INSERT INTO user_email_verification_tokens (
         id,
@@ -425,46 +414,18 @@ WHERE tenant_id = $1
     )
 ORDER BY created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
--- name: GetSessionByTokenHashForTenant :one
-SELECT *
-FROM sessions
-WHERE tenant_id = $1
-    AND token_hash = $2
-LIMIT 1;
-
--- name: GetSessionByTokenHash :one
-SELECT *
-FROM sessions
-WHERE token_hash = $1
-LIMIT 1;
--- name: RevokeSession :exec
-UPDATE sessions
-SET revoked_at = NOW()
-WHERE id = $1;
--- name: CreatePlatformSession :one
-INSERT INTO platform_sessions (
-        id,
-        platform_user_id,
-        token_hash,
-        expires_at
-    )
-VALUES ($1, $2, $3, $4)
+-- name: BumpUserCredentialsVersion :one
+UPDATE users
+SET credentials_version = credentials_version + 1
+WHERE id = $1
 RETURNING *;
--- name: GetPlatformSessionByTokenHash :one
-SELECT *
-FROM platform_sessions
-WHERE token_hash = $1
-LIMIT 1;
--- name: RevokePlatformSession :exec
-UPDATE platform_sessions
-SET revoked_at = NOW()
-WHERE id = $1;
--- name: TerminatePlatformUserSessions :exec
--- プラットフォームユーザーの全セッションを失効させる
-UPDATE platform_sessions
-SET revoked_at = NOW()
-WHERE platform_user_id = $1
-    AND revoked_at IS NULL;
+
+-- name: BumpPlatformUserCredentialsVersion :one
+UPDATE platform_users
+SET credentials_version = credentials_version + 1
+WHERE id = $1
+RETURNING *;
+
 -- name: GetUserByEmailForTenant :one
 SELECT *
 FROM users
@@ -482,6 +443,13 @@ SELECT *
 FROM platform_users
 WHERE id = $1
 LIMIT 1;
+
+-- name: GetPlatformUserByPublicID :one
+SELECT *
+FROM platform_users
+WHERE public_id = $1
+LIMIT 1;
+
 -- name: GetUserByID :one
 SELECT *
 FROM users
@@ -1234,7 +1202,7 @@ WHERE s.tenant_id = $1
 ORDER BY ei.display_order ASC,
     ei.created_at ASC;
 
--- name: GetEpisodeImageAccessByIDForSession :one
+-- name: GetEpisodeImageAccessByIDForUser :one
 SELECT ei.id,
     eiv.object_key,
     eiv.content_type,
@@ -1654,13 +1622,6 @@ UPDATE users
 SET password_hash = $2
 WHERE id = $1
 RETURNING *;
-
--- name: TerminateUserSessions :exec
--- ユーザーの全セッションを失効させる
-UPDATE sessions
-SET revoked_at = NOW()
-WHERE user_id = $1
-    AND revoked_at IS NULL;
 
 -- name: DeleteUserByID :exec
 -- ユーザーを物理削除（外部キー制約により関連データも削除）

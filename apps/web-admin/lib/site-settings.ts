@@ -61,7 +61,6 @@ export const getTenantSiteSettings = async (
   try {
     const response = await apiClient.auth.getTenantConfig(
       {
-        sessionId,
         tenant: { tenantPublicId: normalizedTenantPublicId },
       },
       withSessionHeaders(sessionId)
@@ -103,7 +102,6 @@ export const updateTenantSiteSettings = async (input: {
     const response = await apiClient.auth.updateTenantConfig(
       {
         copyrightText: input.copyrightText,
-        sessionId,
         siteDescription: input.siteDescription,
         siteTagline: input.siteTagline,
         tenant: { tenantPublicId: normalizedTenantPublicId },

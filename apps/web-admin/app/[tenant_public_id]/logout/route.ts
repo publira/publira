@@ -24,8 +24,8 @@ const clearSessionCookie = async () => {
 export const POST = async (_request: Request, { params }: RouteContext) => {
   const { tenant_public_id } = await params;
 
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value ?? "";
+  const { getSessionId } = await import("#lib/session");
+  const sessionId = await getSessionId();
 
   try {
     await logoutAdmin(sessionId, tenant_public_id);

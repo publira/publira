@@ -22,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type PlatformAuthServiceCreateSessionRequest struct {
+type PlatformAuthServiceLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
 	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
@@ -30,20 +30,20 @@ type PlatformAuthServiceCreateSessionRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PlatformAuthServiceCreateSessionRequest) Reset() {
-	*x = PlatformAuthServiceCreateSessionRequest{}
+func (x *PlatformAuthServiceLoginRequest) Reset() {
+	*x = PlatformAuthServiceLoginRequest{}
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PlatformAuthServiceCreateSessionRequest) String() string {
+func (x *PlatformAuthServiceLoginRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PlatformAuthServiceCreateSessionRequest) ProtoMessage() {}
+func (*PlatformAuthServiceLoginRequest) ProtoMessage() {}
 
-func (x *PlatformAuthServiceCreateSessionRequest) ProtoReflect() protoreflect.Message {
+func (x *PlatformAuthServiceLoginRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -55,47 +55,47 @@ func (x *PlatformAuthServiceCreateSessionRequest) ProtoReflect() protoreflect.Me
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PlatformAuthServiceCreateSessionRequest.ProtoReflect.Descriptor instead.
-func (*PlatformAuthServiceCreateSessionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use PlatformAuthServiceLoginRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceLoginRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *PlatformAuthServiceCreateSessionRequest) GetEmail() string {
+func (x *PlatformAuthServiceLoginRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
 	}
 	return ""
 }
 
-func (x *PlatformAuthServiceCreateSessionRequest) GetPassword() string {
+func (x *PlatformAuthServiceLoginRequest) GetPassword() string {
 	if x != nil {
 		return x.Password
 	}
 	return ""
 }
 
-type PlatformAuthServiceCreateSessionResponse struct {
+type PlatformAuthServiceLoginResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	Session       *v1.Session            `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
+	AccessToken   *v1.AccessToken        `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PlatformAuthServiceCreateSessionResponse) Reset() {
-	*x = PlatformAuthServiceCreateSessionResponse{}
+func (x *PlatformAuthServiceLoginResponse) Reset() {
+	*x = PlatformAuthServiceLoginResponse{}
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PlatformAuthServiceCreateSessionResponse) String() string {
+func (x *PlatformAuthServiceLoginResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PlatformAuthServiceCreateSessionResponse) ProtoMessage() {}
+func (*PlatformAuthServiceLoginResponse) ProtoMessage() {}
 
-func (x *PlatformAuthServiceCreateSessionResponse) ProtoReflect() protoreflect.Message {
+func (x *PlatformAuthServiceLoginResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -107,45 +107,45 @@ func (x *PlatformAuthServiceCreateSessionResponse) ProtoReflect() protoreflect.M
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PlatformAuthServiceCreateSessionResponse.ProtoReflect.Descriptor instead.
-func (*PlatformAuthServiceCreateSessionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use PlatformAuthServiceLoginResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceLoginResponse) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *PlatformAuthServiceCreateSessionResponse) GetUser() *v1.User {
+func (x *PlatformAuthServiceLoginResponse) GetUser() *v1.User {
 	if x != nil {
 		return x.User
 	}
 	return nil
 }
 
-func (x *PlatformAuthServiceCreateSessionResponse) GetSession() *v1.Session {
+func (x *PlatformAuthServiceLoginResponse) GetAccessToken() *v1.AccessToken {
 	if x != nil {
-		return x.Session
+		return x.AccessToken
 	}
 	return nil
 }
 
-type PlatformAuthServiceDeleteSessionRequest struct {
+type PlatformAuthServiceLogoutRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PlatformAuthServiceDeleteSessionRequest) Reset() {
-	*x = PlatformAuthServiceDeleteSessionRequest{}
+func (x *PlatformAuthServiceLogoutRequest) Reset() {
+	*x = PlatformAuthServiceLogoutRequest{}
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PlatformAuthServiceDeleteSessionRequest) String() string {
+func (x *PlatformAuthServiceLogoutRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PlatformAuthServiceDeleteSessionRequest) ProtoMessage() {}
+func (*PlatformAuthServiceLogoutRequest) ProtoMessage() {}
 
-func (x *PlatformAuthServiceDeleteSessionRequest) ProtoReflect() protoreflect.Message {
+func (x *PlatformAuthServiceLogoutRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -157,31 +157,31 @@ func (x *PlatformAuthServiceDeleteSessionRequest) ProtoReflect() protoreflect.Me
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PlatformAuthServiceDeleteSessionRequest.ProtoReflect.Descriptor instead.
-func (*PlatformAuthServiceDeleteSessionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use PlatformAuthServiceLogoutRequest.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceLogoutRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{2}
 }
 
-type PlatformAuthServiceDeleteSessionResponse struct {
+type PlatformAuthServiceLogoutResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PlatformAuthServiceDeleteSessionResponse) Reset() {
-	*x = PlatformAuthServiceDeleteSessionResponse{}
+func (x *PlatformAuthServiceLogoutResponse) Reset() {
+	*x = PlatformAuthServiceLogoutResponse{}
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PlatformAuthServiceDeleteSessionResponse) String() string {
+func (x *PlatformAuthServiceLogoutResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PlatformAuthServiceDeleteSessionResponse) ProtoMessage() {}
+func (*PlatformAuthServiceLogoutResponse) ProtoMessage() {}
 
-func (x *PlatformAuthServiceDeleteSessionResponse) ProtoReflect() protoreflect.Message {
+func (x *PlatformAuthServiceLogoutResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_platform_v1_auth_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -193,8 +193,8 @@ func (x *PlatformAuthServiceDeleteSessionResponse) ProtoReflect() protoreflect.M
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PlatformAuthServiceDeleteSessionResponse.ProtoReflect.Descriptor instead.
-func (*PlatformAuthServiceDeleteSessionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use PlatformAuthServiceLogoutResponse.ProtoReflect.Descriptor instead.
+func (*PlatformAuthServiceLogoutResponse) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{3}
 }
 
@@ -472,10 +472,9 @@ func (x *PlatformAuthServiceConfirmPasswordResetResponse) GetConfirmed() bool {
 
 type PlatformAuthServiceRequestEmailChangeRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	CurrentEmail    string                 `protobuf:"bytes,2,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
-	NewEmail        string                 `protobuf:"bytes,3,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
-	CurrentPassword string                 `protobuf:"bytes,4,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	CurrentEmail    string                 `protobuf:"bytes,1,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
+	NewEmail        string                 `protobuf:"bytes,2,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
+	CurrentPassword string                 `protobuf:"bytes,3,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -508,13 +507,6 @@ func (x *PlatformAuthServiceRequestEmailChangeRequest) ProtoReflect() protorefle
 // Deprecated: Use PlatformAuthServiceRequestEmailChangeRequest.ProtoReflect.Descriptor instead.
 func (*PlatformAuthServiceRequestEmailChangeRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_auth_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *PlatformAuthServiceRequestEmailChangeRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *PlatformAuthServiceRequestEmailChangeRequest) GetCurrentEmail() string {
@@ -858,15 +850,15 @@ var File_publira_platform_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/platform/v1/auth.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"[\n" +
-	"'PlatformAuthServiceCreateSessionRequest\x12\x14\n" +
+	"\x1epublira/platform/v1/auth.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"S\n" +
+	"\x1fPlatformAuthServiceLoginRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x8b\x01\n" +
-	"(PlatformAuthServiceCreateSessionResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x123\n" +
-	"\asession\x18\x02 \x01(\v2\x19.publira.types.v1.SessionR\asession\")\n" +
-	"'PlatformAuthServiceDeleteSessionRequest\"*\n" +
-	"(PlatformAuthServiceDeleteSessionResponse\"F\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x90\x01\n" +
+	" PlatformAuthServiceLoginResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
+	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"\"\n" +
+	" PlatformAuthServiceLogoutRequest\"#\n" +
+	"!PlatformAuthServiceLogoutResponse\"F\n" +
 	".PlatformAuthServiceRequestPasswordResetRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\"O\n" +
 	"/PlatformAuthServiceRequestPasswordResetResponse\x12\x1c\n" +
@@ -879,13 +871,11 @@ const file_publira_platform_v1_auth_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"O\n" +
 	"/PlatformAuthServiceConfirmPasswordResetResponse\x12\x1c\n" +
-	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\"\xba\x01\n" +
-	",PlatformAuthServiceRequestEmailChangeRequest\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12#\n" +
-	"\rcurrent_email\x18\x02 \x01(\tR\fcurrentEmail\x12\x1b\n" +
-	"\tnew_email\x18\x03 \x01(\tR\bnewEmail\x12)\n" +
-	"\x10current_password\x18\x04 \x01(\tR\x0fcurrentPassword\"M\n" +
+	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\"\x9b\x01\n" +
+	",PlatformAuthServiceRequestEmailChangeRequest\x12#\n" +
+	"\rcurrent_email\x18\x01 \x01(\tR\fcurrentEmail\x12\x1b\n" +
+	"\tnew_email\x18\x02 \x01(\tR\bnewEmail\x12)\n" +
+	"\x10current_password\x18\x03 \x01(\tR\x0fcurrentPassword\"M\n" +
 	"-PlatformAuthServiceRequestEmailChangeResponse\x12\x1c\n" +
 	"\trequested\x18\x01 \x01(\bR\trequested\"H\n" +
 	"0PlatformAuthServiceVerifyEmailChangeTokenRequest\x12\x14\n" +
@@ -900,10 +890,11 @@ const file_publira_platform_v1_auth_proto_rawDesc = "" +
 	"\x18pending_confirmation_for\x18\x03 \x01(\tR\x16pendingConfirmationFor\"!\n" +
 	"\x1fPlatformAuthServiceGetMeRequest\"N\n" +
 	" PlatformAuthServiceGetMeResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user2\x99\v\n" +
-	"\x13PlatformAuthService\x12\x8e\x01\n" +
-	"\rCreateSession\x12<.publira.platform.v1.PlatformAuthServiceCreateSessionRequest\x1a=.publira.platform.v1.PlatformAuthServiceCreateSessionResponse\"\x00\x12\x8e\x01\n" +
-	"\rDeleteSession\x12<.publira.platform.v1.PlatformAuthServiceDeleteSessionRequest\x1a=.publira.platform.v1.PlatformAuthServiceDeleteSessionResponse\"\x00\x12\xa3\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user2\xea\n" +
+	"\n" +
+	"\x13PlatformAuthService\x12v\n" +
+	"\x05Login\x124.publira.platform.v1.PlatformAuthServiceLoginRequest\x1a5.publira.platform.v1.PlatformAuthServiceLoginResponse\"\x00\x12y\n" +
+	"\x06Logout\x125.publira.platform.v1.PlatformAuthServiceLogoutRequest\x1a6.publira.platform.v1.PlatformAuthServiceLogoutResponse\"\x00\x12\xa3\x01\n" +
 	"\x14RequestPasswordReset\x12C.publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest\x1aD.publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse\"\x00\x12\xaf\x01\n" +
 	"\x18VerifyPasswordResetToken\x12G.publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest\x1aH.publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse\"\x00\x12\xa3\x01\n" +
 	"\x14ConfirmPasswordReset\x12C.publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest\x1aD.publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse\"\x00\x12\x9d\x01\n" +
@@ -926,10 +917,10 @@ func file_publira_platform_v1_auth_proto_rawDescGZIP() []byte {
 
 var file_publira_platform_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_publira_platform_v1_auth_proto_goTypes = []any{
-	(*PlatformAuthServiceCreateSessionRequest)(nil),             // 0: publira.platform.v1.PlatformAuthServiceCreateSessionRequest
-	(*PlatformAuthServiceCreateSessionResponse)(nil),            // 1: publira.platform.v1.PlatformAuthServiceCreateSessionResponse
-	(*PlatformAuthServiceDeleteSessionRequest)(nil),             // 2: publira.platform.v1.PlatformAuthServiceDeleteSessionRequest
-	(*PlatformAuthServiceDeleteSessionResponse)(nil),            // 3: publira.platform.v1.PlatformAuthServiceDeleteSessionResponse
+	(*PlatformAuthServiceLoginRequest)(nil),                     // 0: publira.platform.v1.PlatformAuthServiceLoginRequest
+	(*PlatformAuthServiceLoginResponse)(nil),                    // 1: publira.platform.v1.PlatformAuthServiceLoginResponse
+	(*PlatformAuthServiceLogoutRequest)(nil),                    // 2: publira.platform.v1.PlatformAuthServiceLogoutRequest
+	(*PlatformAuthServiceLogoutResponse)(nil),                   // 3: publira.platform.v1.PlatformAuthServiceLogoutResponse
 	(*PlatformAuthServiceRequestPasswordResetRequest)(nil),      // 4: publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
 	(*PlatformAuthServiceRequestPasswordResetResponse)(nil),     // 5: publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
 	(*PlatformAuthServiceVerifyPasswordResetTokenRequest)(nil),  // 6: publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
@@ -945,14 +936,14 @@ var file_publira_platform_v1_auth_proto_goTypes = []any{
 	(*PlatformAuthServiceGetMeRequest)(nil),                     // 16: publira.platform.v1.PlatformAuthServiceGetMeRequest
 	(*PlatformAuthServiceGetMeResponse)(nil),                    // 17: publira.platform.v1.PlatformAuthServiceGetMeResponse
 	(*v1.User)(nil),                                             // 18: publira.types.v1.User
-	(*v1.Session)(nil),                                          // 19: publira.types.v1.Session
+	(*v1.AccessToken)(nil),                                      // 19: publira.types.v1.AccessToken
 }
 var file_publira_platform_v1_auth_proto_depIdxs = []int32{
-	18, // 0: publira.platform.v1.PlatformAuthServiceCreateSessionResponse.user:type_name -> publira.types.v1.User
-	19, // 1: publira.platform.v1.PlatformAuthServiceCreateSessionResponse.session:type_name -> publira.types.v1.Session
+	18, // 0: publira.platform.v1.PlatformAuthServiceLoginResponse.user:type_name -> publira.types.v1.User
+	19, // 1: publira.platform.v1.PlatformAuthServiceLoginResponse.access_token:type_name -> publira.types.v1.AccessToken
 	18, // 2: publira.platform.v1.PlatformAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
-	0,  // 3: publira.platform.v1.PlatformAuthService.CreateSession:input_type -> publira.platform.v1.PlatformAuthServiceCreateSessionRequest
-	2,  // 4: publira.platform.v1.PlatformAuthService.DeleteSession:input_type -> publira.platform.v1.PlatformAuthServiceDeleteSessionRequest
+	0,  // 3: publira.platform.v1.PlatformAuthService.Login:input_type -> publira.platform.v1.PlatformAuthServiceLoginRequest
+	2,  // 4: publira.platform.v1.PlatformAuthService.Logout:input_type -> publira.platform.v1.PlatformAuthServiceLogoutRequest
 	4,  // 5: publira.platform.v1.PlatformAuthService.RequestPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
 	6,  // 6: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
 	8,  // 7: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
@@ -960,8 +951,8 @@ var file_publira_platform_v1_auth_proto_depIdxs = []int32{
 	12, // 9: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
 	14, // 10: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
 	16, // 11: publira.platform.v1.PlatformAuthService.GetMe:input_type -> publira.platform.v1.PlatformAuthServiceGetMeRequest
-	1,  // 12: publira.platform.v1.PlatformAuthService.CreateSession:output_type -> publira.platform.v1.PlatformAuthServiceCreateSessionResponse
-	3,  // 13: publira.platform.v1.PlatformAuthService.DeleteSession:output_type -> publira.platform.v1.PlatformAuthServiceDeleteSessionResponse
+	1,  // 12: publira.platform.v1.PlatformAuthService.Login:output_type -> publira.platform.v1.PlatformAuthServiceLoginResponse
+	3,  // 13: publira.platform.v1.PlatformAuthService.Logout:output_type -> publira.platform.v1.PlatformAuthServiceLogoutResponse
 	5,  // 14: publira.platform.v1.PlatformAuthService.RequestPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
 	7,  // 15: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
 	9,  // 16: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse

@@ -344,7 +344,6 @@ export const requestEmailChangeAction = async (
 
   const result = await requestAdminEmailChange(
     tenantPublicId,
-    sessionId,
     currentEmail,
     newEmail,
     currentPassword

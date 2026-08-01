@@ -52,12 +52,20 @@ const loginAction = async (formData: FormData): Promise<void> => {
     );
   }
 
+  const { sealPublicSessionCookieValue } = await import(
+    "@publira/public-web-shared/api-client"
+  );
+  const sealed = await sealPublicSessionCookieValue({
+    accessToken: result.sessionId,
+    expiresAt: result.expiresAt.toISOString(),
+    tenantPublicId,
+  });
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions,
     expires: result.expiresAt,
     name: PUBLIC_SESSION_COOKIE_NAME,
-    value: result.sessionId,
+    value: sealed,
   });
   updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 

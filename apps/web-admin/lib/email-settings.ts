@@ -109,7 +109,6 @@ export const getTenantEmailSettings = async (
   try {
     const response = await apiClient.emailSettings.getTenantEmailSettings(
       {
-        sessionId,
         tenant: { tenantPublicId: normalizedTenantPublicId },
       },
       withSessionHeaders(sessionId)
@@ -142,7 +141,6 @@ export const updateTenantEmailSettings = async (
         passwordUpdateMode: input.passwordUpdateMode,
         port: input.port,
         replyTo: input.replyTo,
-        sessionId,
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantPublicId: normalizedTenantPublicId },
         username: input.username,
@@ -179,7 +177,6 @@ export const sendTenantSmtpTestEmail = async (
         recipientEmail: input.recipientEmail,
         recipientType: input.recipientType,
         replyTo: input.replyTo,
-        sessionId,
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantPublicId: normalizedTenantPublicId },
         username: input.username,

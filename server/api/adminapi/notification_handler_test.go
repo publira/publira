@@ -22,7 +22,7 @@ func TestCreateNotificationRequiresTenantAdmin(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -33,7 +33,7 @@ func TestCreateNotificationRequiresTenantAdmin(t *testing.T) {
 		Title:  "メンテナンス告知",
 		Body:   "本日 25:00 からメンテナンスを実施します。",
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	_, err := client.CreateNotification(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
@@ -53,7 +53,7 @@ func TestCreateNotificationForSelectedUsers(t *testing.T) {
 	notification1ID := uuid.Must(uuid.NewV7())
 	notification2ID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
@@ -89,7 +89,7 @@ func TestCreateNotificationForSelectedUsers(t *testing.T) {
 		AudienceType:        publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS,
 		TargetUserPublicIds: []string{"USER001", "USER002"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	resp, err := client.CreateNotification(context.Background(), req)
 	if err != nil {
@@ -112,7 +112,7 @@ func TestListNotificationsSuccess(t *testing.T) {
 	actorID := uuid.Must(uuid.NewV7())
 	notificationID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
@@ -126,7 +126,7 @@ func TestListNotificationsSuccess(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.ListNotificationsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	resp, err := client.ListNotifications(context.Background(), req)
 	if err != nil {

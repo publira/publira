@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
   mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }));
 });
 
@@ -78,7 +78,7 @@ describe("listPlatformAuditLogs", () => {
         offset: 0,
         tenantPublicId: "",
       },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 
@@ -103,7 +103,7 @@ describe("listPlatformAuditLogs", () => {
         offset: 40,
         tenantPublicId: "tenant_999",
       },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 

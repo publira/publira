@@ -227,7 +227,7 @@ func (s *platformServer) SuspendEndUser(
 	}
 
 	// セッションを失効させる
-	if err := s.queriesFor(ctx).TerminateUserSessions(ctx, updated.ID); err != nil {
+	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, updated.ID); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

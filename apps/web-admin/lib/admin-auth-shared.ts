@@ -1,4 +1,4 @@
-export const ADMIN_SESSION_COOKIE_NAME = "publira_session";
+export const ADMIN_SESSION_COOKIE_NAME = "publira_web_admin_auth";
 
 export const sanitizeRedirectPath = (
   path: string | null | undefined

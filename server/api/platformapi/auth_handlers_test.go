@@ -69,7 +69,7 @@ func platformSMTPColumnsForAuth() []string {
 	return []string{"singleton", "host", "port", "username", "password_encrypted", "encryption", "from_address", "reply_to", "created_at", "updated_at"}
 }
 
-func TestPlatformAuthCreateSessionSuccess(t *testing.T) {
+func TestPlatformAuthLoginSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
@@ -82,32 +82,24 @@ func TestPlatformAuthCreateSessionSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
 		WithArgs("platform@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", "active", now, int32(1)))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(rolePlatformOperator))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformSessionQuery)).
-		WithArgs(sqlmock.AnyArg(), userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), userID, "token-hash", now.Add(time.Hour), nil, now))
-
-	resp, err := server.CreateSession(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceCreateSessionRequest{
+	resp, err := server.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "platform@example.com",
 		Password: password,
 	}))
 	if err != nil {
-		t.Fatalf("CreateSession: %v", err)
+		t.Fatalf("Login: %v", err)
 	}
 	if resp.Msg.User == nil || resp.Msg.User.Role != rolePlatformOperator {
 		t.Fatalf("user.role = %v, want %s", resp.Msg.User, rolePlatformOperator)
 	}
-	if resp.Msg.Session == nil || resp.Msg.Session.SessionId == "" {
+	if resp.Msg.AccessToken == nil || resp.Msg.AccessToken.Token == "" {
 		t.Fatalf("session is missing token")
-	}
-	if got := resp.Header().Get("Set-Cookie"); got == "" {
-		t.Fatalf("Set-Cookie is empty")
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -127,7 +119,7 @@ func TestPlatformAuthRequestPasswordResetSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
 		WithArgs("platform@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 	mock.ExpectExec(regexp.QuoteMeta(testDeletePlatformUserPasswordResetTokens)).
 		WithArgs(userID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -211,14 +203,15 @@ func TestPlatformAuthConfirmPasswordResetSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserPasswordHashByID)).
 		WithArgs(userID, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "updated-hash", "Platform User", "active", now))
-	mock.ExpectExec(regexp.QuoteMeta(testTerminatePlatformUserSessionsQuery)).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "updated-hash", "Platform User", "active", now, int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(testBumpPlatformUserCredentialsVersionQuery)).
 		WithArgs(userID).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "updated-hash", "Platform User", "active", now, int32(2)))
 	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformPasswordResetTokenCompleted)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -260,7 +253,6 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 	server.mailer = mailer
 	now := time.Now()
 	userID := uuid.Must(uuid.NewV7())
-	sessionID := uuid.Must(uuid.NewV7())
 	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte("current-password"), bcrypt.DefaultCost)
 	if err != nil {
 		t.Fatalf("GenerateFromPassword: %v", err)
@@ -270,14 +262,10 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 		t.Fatalf("EncryptString: %v", err)
 	}
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSessionByTokenHashQuery)).
-		WithArgs(auth.HashToken(testPlatformSessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(sessionID, userID, auth.HashToken(testPlatformSessionToken), now.Add(time.Hour), nil, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
-		WithArgs(userID).
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByPublicIDQuery)).
+		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", "active", now, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow(rolePlatformOperator))
@@ -359,14 +347,14 @@ func TestPlatformAuthConfirmEmailChangeSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeNewConfirmed)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdatePlatformUserEmailByID)).
 		WithArgs(userID, "next@example.com").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "next@example.com", "hashed", "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "next@example.com", "hashed", "Platform User", "active", now, int32(1)))
 	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeCompleted)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -400,7 +388,7 @@ func TestPlatformAuthConfirmEmailChangePendingAfterFirstConfirmation(t *testing.
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 	mock.ExpectExec(regexp.QuoteMeta(testMarkPlatformEmailChangeCurrentConfirmed)).
 		WithArgs(tokenID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -434,40 +422,22 @@ func TestPlatformAuthGetMeSuccess(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-func TestPlatformAuthDeleteSessionRevokes(t *testing.T) {
+func TestPlatformAuthLogoutRevokes(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	now := time.Now()
-	userID := uuid.Must(uuid.NewV7())
-	sessionID := uuid.Must(uuid.NewV7())
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSessionByTokenHashQuery)).
-		WithArgs(auth.HashToken(testPlatformSessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(sessionID, userID, auth.HashToken(testPlatformSessionToken), now.Add(time.Hour), nil, now))
-
-	mock.ExpectExec(regexp.QuoteMeta(testRevokePlatformSessionQuery)).
-		WithArgs(sessionID).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-
-	resp, err := server.DeleteSession(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.PlatformAuthServiceDeleteSessionRequest{}))
+	_, err := server.Logout(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.PlatformAuthServiceLogoutRequest{}))
 	if err != nil {
-		t.Fatalf("DeleteSession: %v", err)
-	}
-	if got := resp.Header().Get("Set-Cookie"); got == "" {
-		t.Fatalf("Set-Cookie is empty")
+		t.Fatalf("Logout: %v", err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-func TestPlatformAuthDeleteSessionMissingTokenClearsCookie(t *testing.T) {
+func TestPlatformAuthLogoutMissingTokenClearsCookie(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	resp, err := server.DeleteSession(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceDeleteSessionRequest{}))
+	_, err := server.Logout(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLogoutRequest{}))
 	if err != nil {
-		t.Fatalf("DeleteSession: %v", err)
-	}
-	if got := resp.Header().Get("Set-Cookie"); got == "" {
-		t.Fatalf("Set-Cookie is empty")
+		t.Fatalf("Logout: %v", err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -482,19 +452,19 @@ func TestPlatformAuthGetMeUnauthenticated(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-func TestPlatformAuthCreateSessionInvalidCredentials(t *testing.T) {
+func TestPlatformAuthLoginInvalidCredentials(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
 		WithArgs("platform@example.com").
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := server.CreateSession(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceCreateSessionRequest{
+	_, err := server.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    "platform@example.com",
 		Password: "wrong-password",
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
-		t.Fatalf("CreateSession code = %v, want unauthenticated", connect.CodeOf(err))
+		t.Fatalf("Login code = %v, want unauthenticated", connect.CodeOf(err))
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

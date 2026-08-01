@@ -33,7 +33,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@publira/web-session": "workspace:*"
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",

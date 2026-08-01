@@ -11,11 +11,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	SessionCookieName = "publira_session"
-	SessionTTL        = 24 * time.Hour
-)
+// AccessTokenTTL is defined in jwt.go (24h).
 
+// HashToken returns a hex-encoded SHA-256 digest (email tokens, reset tokens, etc.).
 func HashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
@@ -33,43 +31,24 @@ func VerifyPassword(password, storedHash string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) == nil
 }
 
-func BuildSessionCookie(token string, expiresAt time.Time) string {
-	cookie := &http.Cookie{
-		Name:     SessionCookieName,
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  expiresAt,
+// BearerTokenFromHeader extracts the token from Authorization: Bearer <token>.
+func BearerTokenFromHeader(headers http.Header) (string, bool) {
+	if headers == nil {
+		return "", false
 	}
-	return cookie.String()
-}
-
-func BuildClearedSessionCookie() string {
-	cookie := &http.Cookie{
-		Name:     SessionCookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-		Expires:  time.Unix(0, 0),
+	raw := strings.TrimSpace(headers.Get("Authorization"))
+	if raw == "" {
+		return "", false
 	}
-	return cookie.String()
-}
-
-func SessionTokenFromRequest(explicitToken string, headers http.Header) (string, bool) {
-	token := strings.TrimSpace(explicitToken)
-	if token != "" {
-		return token, true
+	const prefix = "Bearer "
+	if len(raw) < len(prefix) || !strings.EqualFold(raw[:len(prefix)], prefix) {
+		return "", false
 	}
-	token = strings.TrimSpace(headers.Get("X-Publira-Session-Id"))
-	if token != "" {
-		return token, true
+	token := strings.TrimSpace(raw[len(prefix):])
+	if token == "" {
+		return "", false
 	}
-	return "", false
+	return token, true
 }
 
 func firstForwardedIP(headerValue string) string {
@@ -93,4 +72,9 @@ func AuditEvent(headers http.Header, action, outcome, tenantPublicID, userPublic
 		clientIP,
 		userAgent,
 	)
+}
+
+// FormatExpiresAt formats token expiry for API responses.
+func FormatExpiresAt(t time.Time) string {
+	return t.UTC().Format(time.RFC3339)
 }

@@ -31,11 +31,11 @@ export const loginPlatform = async (
   password: string
 ): Promise<{ expiresAt: Date; sessionId: string } | null> => {
   try {
-    const response = await apiClient.auth.createSession({
+    const response = await apiClient.auth.login({
       email,
       password,
     });
-    const { sessionId, expiresAt } = response.session ?? {};
+    const { token: sessionId, expiresAt } = response.accessToken ?? {};
     if (!sessionId || !expiresAt) {
       return null;
     }
@@ -53,7 +53,7 @@ export const logoutPlatform = async (sessionId: string): Promise<void> => {
     return;
   }
   try {
-    await apiClient.auth.deleteSession({}, buildSessionHeaders(sessionId));
+    await apiClient.auth.logout({}, buildSessionHeaders(sessionId));
   } catch {
     // セッション失効・ネットワークエラー時もクッキーはクリアする
   }

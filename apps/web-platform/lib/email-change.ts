@@ -33,7 +33,6 @@ export const requestPlatformEmailChange = async (
         currentEmail: normalizedCurrentEmail,
         currentPassword,
         newEmail: normalizedNewEmail,
-        sessionId,
       },
       buildSessionHeaders(sessionId)
     );

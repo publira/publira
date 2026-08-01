@@ -18,7 +18,7 @@ import (
 
 const (
 	getTenantByPublicIDQuery                             = "-- name: GetTenantByPublicID :one\n"
-	getSessionByTokenHashForTenantQuery                  = "-- name: GetSessionByTokenHashForTenant :one\n"
+	getUserByPublicIDForTenantQuery                      = "-- name: GetUserByPublicIDForTenant :one\n"
 	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\n"
 	listAuditLogsByTenantQuery                           = "-- name: ListAuditLogsByTenant :many\n"
 	getUserByIDQuery                                     = "-- name: GetUserByID :one\n"
@@ -36,6 +36,7 @@ const (
 	getEpisodeByPublicIDForTenantAndSeriesQuery          = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
 	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery       = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
 	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
+	testUserPublicID                                     = "USER001"
 )
 
 func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
@@ -106,20 +107,36 @@ func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID strin
 			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil))
 }
 
-func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, sessionToken string, now time.Time) {
-	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+// issueTestAdminToken creates a signed JWT for admin API tests.
+func issueTestAdminToken(tenantPublicID, userPublicID, role string) string {
+	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+		userPublicID,
+		auth.AudienceAdmin,
+		tenantPublicID,
+		role,
+		1,
+		time.Now(),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return token
 }
 
-func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, sessionToken string, now time.Time, role string) {
-	mock.ExpectQuery(regexp.QuoteMeta(getSessionByTokenHashForTenantQuery)).
-		WithArgs(tenantID, auth.HashToken(sessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, userID, auth.HashToken(sessionToken), now.Add(time.Hour), nil, now))
+func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, _ string, now time.Time) {
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, "", now, "editor")
+}
+
+func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, _ string, now time.Time, role string) {
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDForTenantQuery)).
+		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, testUserPublicID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
+			AddRow(userID, testUserPublicID, "User", "user@example.com", "active", tenantID, now))
 
 	mock.ExpectQuery(regexp.QuoteMeta(getUserByIDQuery)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at"}).
-			AddRow(userID, "USER001", "user@example.com", "hashed", "User", now, "active", tenantID, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version"}).
+			AddRow(userID, testUserPublicID, "user@example.com", "hashed", "User", now, "active", tenantID, nil, int32(1)))
 
 	mock.ExpectQuery(regexp.QuoteMeta(listTenantRolesByUserAndTenantQuery)).
 		WithArgs(userID).

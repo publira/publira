@@ -33,7 +33,6 @@ message TenantEmailSettings {
 
 message GetTenantEmailSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
 message GetTenantEmailSettingsResponse {
@@ -42,17 +41,16 @@ message GetTenantEmailSettingsResponse {
 
 message UpdateTenantEmailSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  bool smtp_override_enabled = 3;
-  string host = 4;
-  int32 port = 5;
-  string username = 6;
-  SecretUpdateMode password_update_mode = 7;
-  string password = 8;
-  string encryption = 9;
-  string from_name = 10;
-  string from_address = 11;
-  string reply_to = 12;
+  bool smtp_override_enabled = 2;
+  string host = 3;
+  int32 port = 4;
+  string username = 5;
+  SecretUpdateMode password_update_mode = 6;
+  string password = 7;
+  string encryption = 8;
+  string from_name = 9;
+  string from_address = 10;
+  string reply_to = 11;
 }
 
 message UpdateTenantEmailSettingsResponse {
@@ -61,19 +59,18 @@ message UpdateTenantEmailSettingsResponse {
 
 message SendTenantSmtpTestEmailRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  TestEmailRecipientType recipient_type = 3;
-  string recipient_email = 4;
-  bool smtp_override_enabled = 5;
-  string host = 6;
-  int32 port = 7;
-  string username = 8;
-  SecretUpdateMode password_update_mode = 9;
-  string password = 10;
-  string encryption = 11;
-  string from_name = 12;
-  string from_address = 13;
-  string reply_to = 14;
+  TestEmailRecipientType recipient_type = 2;
+  string recipient_email = 3;
+  bool smtp_override_enabled = 4;
+  string host = 5;
+  int32 port = 6;
+  string username = 7;
+  SecretUpdateMode password_update_mode = 8;
+  string password = 9;
+  string encryption = 10;
+  string from_name = 11;
+  string from_address = 12;
+  string reply_to = 13;
 }
 
 message SendTenantSmtpTestEmailResponse {

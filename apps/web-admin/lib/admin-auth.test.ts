@@ -99,7 +99,6 @@ describe("getAdminCurrentUser", () => {
     await getAdminCurrentUser("tenant_001");
     expect(mockGetMe).toHaveBeenCalledWith(
       expect.objectContaining({
-        sessionId: "valid-token",
         tenant: { tenantPublicId: "tenant_001" },
       })
     );

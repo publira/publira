@@ -6,23 +6,22 @@ option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publ
 
 import "publira/types/v1/types.proto";
 
-message AdminAuthServiceCreateSessionRequest {
+message AdminAuthServiceLoginRequest {
   publira.types.v1.TenantContext tenant = 1;
   string email = 2;
   string password = 3;
 }
 
-message AdminAuthServiceCreateSessionResponse {
+message AdminAuthServiceLoginResponse {
   publira.types.v1.User user = 1;
-  publira.types.v1.Session session = 2;
+  publira.types.v1.AccessToken access_token = 2;
 }
 
-message AdminAuthServiceDeleteSessionRequest {
+message AdminAuthServiceLogoutRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
-message AdminAuthServiceDeleteSessionResponse {}
+message AdminAuthServiceLogoutResponse {}
 
 message AdminAuthServiceRequestPasswordResetRequest {
   publira.types.v1.TenantContext tenant = 1;
@@ -45,7 +44,6 @@ message AdminAuthServiceConfirmPasswordResetResponse {
 
 message AdminAuthServiceGetMeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
 message AdminAuthServiceGetMeResponse {
@@ -62,7 +60,6 @@ message AdminAuthServiceGetTenantByDomainResponse {
 
 message AdminAuthServiceGetTenantRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
 message AdminAuthServiceTenant {
@@ -78,7 +75,6 @@ message AdminAuthServiceGetTenantResponse {
 
 message AdminAuthServiceGetTenantConfigRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
 message AdminAuthServiceGetTenantConfigResponse {
@@ -113,10 +109,9 @@ message AdminAuthServiceAcceptTenantAdminInvitationResponse {
 
 message AdminAuthServiceUpdateTenantConfigRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  string copyright_text = 3;
-  string site_description = 4;
-  string site_tagline = 5;
+  string copyright_text = 2;
+  string site_description = 3;
+  string site_tagline = 4;
 }
 
 message AdminAuthServiceUpdateTenantConfigResponse {
@@ -127,10 +122,9 @@ message AdminAuthServiceUpdateTenantConfigResponse {
 
 message AdminAuthServiceRequestEmailChangeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  string current_email = 3;
-  string new_email = 4;
-  string current_password = 5;
+  string current_email = 2;
+  string new_email = 3;
+  string current_password = 4;
 }
 
 message AdminAuthServiceRequestEmailChangeResponse {
@@ -149,8 +143,8 @@ message AdminAuthServiceConfirmEmailChangeResponse {
 }
 
 service AdminAuthService {
-  rpc CreateSession(AdminAuthServiceCreateSessionRequest) returns (AdminAuthServiceCreateSessionResponse) {}
-  rpc DeleteSession(AdminAuthServiceDeleteSessionRequest) returns (AdminAuthServiceDeleteSessionResponse) {}
+  rpc Login(AdminAuthServiceLoginRequest) returns (AdminAuthServiceLoginResponse) {}
+  rpc Logout(AdminAuthServiceLogoutRequest) returns (AdminAuthServiceLogoutResponse) {}
   rpc RequestPasswordReset(AdminAuthServiceRequestPasswordResetRequest) returns (AdminAuthServiceRequestPasswordResetResponse) {}
   rpc ConfirmPasswordReset(AdminAuthServiceConfirmPasswordResetRequest) returns (AdminAuthServiceConfirmPasswordResetResponse) {}
   rpc GetMe(AdminAuthServiceGetMeRequest) returns (AdminAuthServiceGetMeResponse) {}

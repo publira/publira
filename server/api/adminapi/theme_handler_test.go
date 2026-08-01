@@ -162,7 +162,7 @@ func TestGetTenantThemeReturnsConfiguredTheme(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT001", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
@@ -176,7 +176,7 @@ func TestGetTenantThemeReturnsConfiguredTheme(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT001"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.GetTenantTheme(context.Background(), req)
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
@@ -201,7 +201,7 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT001", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
@@ -214,7 +214,7 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT001"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.GetTenantTheme(context.Background(), req)
 	if err != nil {
 		t.Fatalf("GetTenantTheme: %v", err)
@@ -239,7 +239,7 @@ func TestUpsertTenantThemeValidatesColorCode(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT001", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
@@ -252,7 +252,7 @@ func TestUpsertTenantThemeValidatesColorCode(t *testing.T) {
 			AccentColor:    "#445566",
 		},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	_, err := client.UpsertTenantTheme(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpsertTenantTheme code = %v, want invalid_argument", connect.CodeOf(err))
@@ -265,7 +265,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT001", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
@@ -339,7 +339,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 			LogoUrl:                    "https://cdn.example.com/new-logo.png",
 		},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.UpsertTenantTheme(context.Background(), req)
 	if err != nil {
 		t.Fatalf("UpsertTenantTheme: %v", err)

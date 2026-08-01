@@ -68,13 +68,34 @@ const loginAction = async (formData: FormData): Promise<void> => {
     redirect(buildLoginErrorPath(result.message, next));
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions,
-    expires: result.expiresAt,
-    name: ADMIN_SESSION_COOKIE_NAME,
-    value: result.sessionId,
-  });
+  try {
+    const { encryptSessionPayload, resolveAuthSecret } = await import(
+      "@publira/web-session"
+    );
+    const sealed = await encryptSessionPayload(
+      {
+        accessToken: result.sessionId,
+        expiresAt: result.expiresAt.toISOString(),
+        tenantPublicId,
+      },
+      resolveAuthSecret()
+    );
+    const cookieStore = await cookies();
+    cookieStore.set({
+      ...sessionCookieOptions,
+      expires: result.expiresAt,
+      name: ADMIN_SESSION_COOKIE_NAME,
+      value: sealed,
+    });
+  } catch (error) {
+    console.error("[web-admin] login cookie seal failed", error);
+    redirect(
+      buildLoginErrorPath(
+        "ログイン処理に失敗しました。時間をおいて再試行してください。",
+        next
+      )
+    );
+  }
 
   redirect(next);
 };

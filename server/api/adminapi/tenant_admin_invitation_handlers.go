@@ -62,9 +62,9 @@ func (s *adminServer) GetTenantAdminInvitationState(
 	}
 
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateResponse{
-		Email:       invitation.Email,
-		Status:      adminInvitationStatus(invitation, time.Now()),
-		ExpiresAt:   invitation.ExpiresAt.UTC().Format(time.RFC3339),
+		Email:         invitation.Email,
+		Status:        adminInvitationStatus(invitation, time.Now()),
+		ExpiresAt:     invitation.ExpiresAt.UTC().Format(time.RFC3339),
 		AccountExists: userErr == nil,
 	}), nil
 }

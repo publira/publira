@@ -84,7 +84,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockResolveSessionId.mockResolvedValue("sess_abc");
   mockBuildSessionHeaders.mockImplementation((sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }));
 });
 
@@ -119,7 +119,7 @@ describe("listPlatformTenants", () => {
 
     expect(mockListTenants).toHaveBeenCalledWith(
       { name: "", status: "" },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 
@@ -135,7 +135,7 @@ describe("listPlatformTenants", () => {
 
     expect(mockListTenants).toHaveBeenCalledWith(
       { name: "テスト", status: "active" },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 
@@ -161,7 +161,7 @@ describe("listPlatformTenants", () => {
 });
 
 describe("createPlatformTenant", () => {
-  it("正常系: payload と X-Publira-Session-Id ヘッダーを付与して API を呼ぶ", async () => {
+  it("正常系: payload と Authorization ヘッダーを付与して API を呼ぶ", async () => {
     mockCreateTenant.mockResolvedValueOnce({
       tenant: { publicId: "TENANT000001" },
     });
@@ -183,7 +183,7 @@ describe("createPlatformTenant", () => {
       },
       {
         headers: {
-          "X-Publira-Session-Id": "sess_abc",
+          "Authorization": "Bearer sess_abc",
         },
       }
     );
@@ -260,7 +260,7 @@ describe("createPlatformTenant", () => {
 
     expect(mockGetTenant).toHaveBeenCalledWith(
       { publicId: "tenant_seifuu" },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 
@@ -299,11 +299,11 @@ describe("createPlatformTenant", () => {
 
     expect(mockSuspendTenant).toHaveBeenCalledWith(
       { publicId: "tenant_seifuu" },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
     expect(mockResumeTenant).toHaveBeenCalledWith(
       { publicId: "tenant_seifuu" },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 
@@ -324,7 +324,7 @@ describe("createPlatformTenant", () => {
         role: "tenant_admin",
         tenantPublicId: "tenant_seifuu",
       },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 
@@ -345,7 +345,7 @@ describe("createPlatformTenant", () => {
         role: "tenant_admin",
         tenantPublicId: "tenant_seifuu",
       },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { "Authorization": "Bearer sess_abc" } }
     );
   });
 
