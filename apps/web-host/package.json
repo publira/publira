@@ -26,7 +26,6 @@
     "@publira/brand": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",
-    "@publira/public-web-shared": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
     "@publira/web-session": "workspace:*",

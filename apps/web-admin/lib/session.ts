@@ -41,6 +41,3 @@ export const getAccessToken = async (): Promise<string> => {
 
   return "";
 };
-
-/** @deprecated Use getAccessToken */
-export const getSessionId = getAccessToken;

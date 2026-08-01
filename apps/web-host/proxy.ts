@@ -1,16 +1,12 @@
-import {
-  PUBLIC_SESSION_COOKIE_NAME,
-  createPublicGrpcApiClient,
-  createTenantPublicIdResolver,
-} from "@publira/public-web-shared";
 import { getTenantDomainCandidates } from "@publira/utils";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { buildLoginUrl } from "./lib/auth-shared";
+import { apiClient } from "./lib/api-client";
+import { buildLoginUrl, PUBLIC_SESSION_COOKIE_NAME } from "./lib/auth-shared";
+import { createTenantPublicIdResolver } from "./lib/tenant-resolution";
 
-const publicApiClient = createPublicGrpcApiClient();
-const resolveTenantPublicId = createTenantPublicIdResolver(publicApiClient);
+const resolveTenantPublicId = createTenantPublicIdResolver(apiClient);
 
 const MEMBER_PATH_PREFIXES = ["/my", "/notifications", "/settings"] as const;
 const GUEST_ONLY_PATHS = new Set(["/login", "/signup"]);

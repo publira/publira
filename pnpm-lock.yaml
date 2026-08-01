@@ -168,9 +168,6 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
-      '@publira/public-web-shared':
-        specifier: workspace:*
-        version: link:../../packages/public-web-shared
       '@publira/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components
@@ -400,34 +397,6 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 29.0.2
-      next:
-        specifier: 'catalog:'
-        version: 16.2.11(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.21.9(typescript@6.0.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.4(@types/node@24.12.2)(jsdom@29.0.2)(vite@8.0.8(@types/node@24.12.2)(jiti@2.6.1)(yaml@2.8.3))
-
-  packages/public-web-shared:
-    dependencies:
-      '@publira/api-client':
-        specifier: workspace:*
-        version: link:../api-client
-      '@publira/web-session':
-        specifier: workspace:*
-        version: link:../web-session
-      lru-cache:
-        specifier: 'catalog:'
-        version: 11.3.5
-    devDependencies:
-      '@publira/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
       next:
         specifier: 'catalog:'
         version: 16.2.11(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

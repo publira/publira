@@ -86,11 +86,12 @@ export const signupPublic = async (
         tenantPublicId,
       },
     });
-    const { token: sessionId, expiresAt } = response.accessToken ?? {};
-    if (!sessionId || !expiresAt) {
+    const { token: accessToken, expiresAt } = response.accessToken ?? {};
+    if (!accessToken || !expiresAt) {
       return { pendingVerification: true };
     }
     return {
+      accessToken,
       expiresAt: new Date(expiresAt),
       pendingVerification: false,
     };
