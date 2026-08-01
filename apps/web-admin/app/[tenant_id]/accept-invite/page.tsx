@@ -77,7 +77,12 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
   );
 };
 
-const AcceptInviteFormWrapper = ({ token }: { token: string }) => {
+const AcceptInvitePageContent = async ({
+  searchParams,
+}: Pick<AcceptInvitePageProps, "searchParams">) => {
+  const sp = await searchParams;
+  const token = sp.token?.trim() ?? "";
+
   if (!token) {
     return (
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
@@ -96,21 +101,16 @@ const AcceptInviteFormWrapper = ({ token }: { token: string }) => {
     );
   }
 
-  return (
-    <Suspense
-      fallback={<div className="h-40 animate-pulse rounded bg-muted/70" />}
-    >
-      <AcceptInviteFormContent token={token} />
-    </Suspense>
-  );
+  return <AcceptInviteFormContent token={token} />;
 };
 
-export default async function AcceptInvitePage({
+const AcceptInviteFallback = () => (
+  <div className="h-40 animate-pulse rounded bg-muted/70" />
+);
+
+export default function AcceptInvitePage({
   searchParams,
 }: AcceptInvitePageProps) {
-  const sp = await searchParams;
-  const token = sp.token?.trim() ?? "";
-
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-6">
@@ -123,7 +123,9 @@ export default async function AcceptInvitePage({
           </p>
         </div>
 
-        <AcceptInviteFormWrapper token={token} />
+        <Suspense fallback={<AcceptInviteFallback />}>
+          <AcceptInvitePageContent searchParams={searchParams} />
+        </Suspense>
       </div>
     </main>
   );
