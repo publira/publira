@@ -30,8 +30,8 @@ func TestAdminSeriesRequiresSession(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListSeries error code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
 	}
-	if err == nil || err.Error() != "unauthenticated: invalid session" {
-		t.Fatalf("ListSeries error = %v, want unauthenticated invalid session", err)
+	if err == nil || err.Error() != "unauthenticated: invalid token" {
+		t.Fatalf("ListSeries error = %v, want unauthenticated invalid token", err)
 	}
 	assertExpectations(t, mock)
 }
@@ -43,7 +43,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now()
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantQuery)).
@@ -58,7 +58,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.ListSeries(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
@@ -81,7 +81,7 @@ func TestCreateSeriesRequiresTitle(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now()
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
@@ -90,7 +90,7 @@ func TestCreateSeriesRequiresTitle(t *testing.T) {
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 		Title:  "   ",
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	_, err := client.CreateSeries(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -106,7 +106,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
@@ -142,7 +142,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 		LabelPublicId: "LABEL001",
 		IsPublished:   true,
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	resp, err := client.CreateSeries(context.Background(), req)
 	if err != nil {
@@ -163,7 +163,7 @@ func TestUpdateSeriesRequiresTitle(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now()
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
@@ -173,7 +173,7 @@ func TestUpdateSeriesRequiresTitle(t *testing.T) {
 		PublicId: "SERIES001",
 		Title:    "\t",
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	_, err := client.UpdateSeries(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -189,7 +189,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
@@ -228,7 +228,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 		Synopsis:    "New synopsis",
 		IsPublished: true,
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	resp, err := client.UpdateSeries(context.Background(), req)
 	if err != nil {
@@ -255,7 +255,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	creatorID1 := uuid.Must(uuid.NewV7())
 	creatorID2 := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -300,7 +300,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 		IsPublished:      true,
 		CreatorPublicIds: []string{"CREATOR001", "CREATOR002"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	resp, err := client.CreateSeries(context.Background(), req)
 	if err != nil {
@@ -324,7 +324,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	creatorID1 := uuid.Must(uuid.NewV7())
 	creatorID2 := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -379,7 +379,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 		IsPublished:      true,
 		CreatorPublicIds: []string{"CREATOR001", "CREATOR002"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	resp, err := client.UpdateSeries(context.Background(), req)
 	if err != nil {
@@ -431,7 +431,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now()
-			sessionToken := "session-token"
+			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -449,7 +449,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 				Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 				PublicId: tc.publicID,
 			})
-			req.Header().Set("X-Publira-Session-Id", sessionToken)
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 			resp, err := client.GetSeries(context.Background(), req)
 			if tc.wantCode == 0 {

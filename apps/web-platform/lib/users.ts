@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 export interface PlatformEndUserSummary {
   createdAt: string;
@@ -298,7 +302,7 @@ export const listPlatformEndUsers = async (
 ): Promise<ListPlatformEndUsersResult> => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -357,7 +361,7 @@ export const listPlatformTenantFilterOptions = async (): Promise<
 > => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return [];
   }
@@ -415,7 +419,7 @@ export const getPlatformEndUser = async (
     return { ok: true, user: null };
   }
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -448,7 +452,7 @@ export const suspendPlatformEndUser = async (
     return false;
   }
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return false;
   }
@@ -472,7 +476,7 @@ export const unsuspendPlatformEndUser = async (
     return false;
   }
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return false;
   }
@@ -496,7 +500,7 @@ export const deletePlatformEndUser = async (
     return { message: "ユーザーIDが不正です。", ok: false };
   }
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",

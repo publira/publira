@@ -1,5 +1,5 @@
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface AuditLogItem {
   action: string;
@@ -141,7 +141,7 @@ export const listAuditActorCandidates = async (
     query?: string;
   } = {}
 ): Promise<ListAuditActorCandidatesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       actors: [],
@@ -179,7 +179,7 @@ export const listAuditLogs = async (
   tenantPublicId: string,
   filters: AuditLogFilters = {}
 ): Promise<ListAuditLogsResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       auditLogs: [],

@@ -27,6 +27,9 @@ catalogs:
     '@types/react-dom':
       specifier: 19.2.3
       version: 19.2.3
+    jose:
+      specifier: 6.0.11
+      version: 6.0.11
     jsdom:
       specifier: 29.0.2
       version: 29.0.2
@@ -98,6 +101,9 @@ importers:
       '@publira/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@publira/web-session':
+        specifier: workspace:*
+        version: link:../../packages/web-session
       lru-cache:
         specifier: 'catalog:'
         version: 11.3.5
@@ -162,15 +168,15 @@ importers:
       '@publira/layouts':
         specifier: workspace:*
         version: link:../../packages/layouts
-      '@publira/public-web-shared':
-        specifier: workspace:*
-        version: link:../../packages/public-web-shared
       '@publira/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components
       '@publira/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@publira/web-session':
+        specifier: workspace:*
+        version: link:../../packages/web-session
       lru-cache:
         specifier: 'catalog:'
         version: 11.3.5
@@ -241,6 +247,9 @@ importers:
       '@publira/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@publira/web-session':
+        specifier: workspace:*
+        version: link:../../packages/web-session
       next:
         specifier: 'catalog:'
         version: 16.2.11(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -401,31 +410,6 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@24.12.2)(jsdom@29.0.2)(vite@8.0.8(@types/node@24.12.2)(jiti@2.6.1)(yaml@2.8.3))
 
-  packages/public-web-shared:
-    dependencies:
-      '@publira/api-client':
-        specifier: workspace:*
-        version: link:../api-client
-      lru-cache:
-        specifier: 'catalog:'
-        version: 11.3.5
-    devDependencies:
-      '@publira/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      next:
-        specifier: 'catalog:'
-        version: 16.2.11(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.21.9(typescript@6.0.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.4(@types/node@24.12.2)(jsdom@29.0.2)(vite@8.0.8(@types/node@24.12.2)(jiti@2.6.1)(yaml@2.8.3))
-
   packages/tsconfig: {}
 
   packages/ui-components:
@@ -492,6 +476,31 @@ importers:
       next:
         specifier: 'catalog:'
         version: 16.2.11(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.9(typescript@6.0.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@24.12.2)(jsdom@29.0.2)(vite@8.0.8(@types/node@24.12.2)(jiti@2.6.1)(yaml@2.8.3))
+
+  packages/web-session:
+    dependencies:
+      jose:
+        specifier: 'catalog:'
+        version: 6.0.11
+      next:
+        specifier: ^16.2.0
+        version: 16.2.11(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+    devDependencies:
+      '@publira/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.12.2
       tsdown:
         specifier: 'catalog:'
         version: 0.21.9(typescript@6.0.3)
@@ -1762,6 +1771,9 @@ packages:
   jiti@2.6.1:
     resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
+
+  jose@6.0.11:
+    resolution: {integrity: sha512-QxG7EaliDARm1O1S8BGakqncGT9s25bKL1WSf6/oa17Tkqwi8D2ZNglqCF+DsYF88/rV66Q/Q2mFAy697E1DUg==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -3209,6 +3221,8 @@ snapshots:
   isexe@2.0.0: {}
 
   jiti@2.6.1: {}
+
+  jose@6.0.11: {}
 
   js-tokens@4.0.0: {}
 

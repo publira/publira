@@ -28,6 +28,7 @@
     "@publira/layouts": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
+    "@publira/web-session": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

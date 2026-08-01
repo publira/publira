@@ -1,26 +1,64 @@
+import { createPublicApiClient } from "@publira/api-client/public/client";
+import type { WebSessionPayload } from "@publira/web-session";
 import {
-  buildPublicSessionHeaders,
-  createPublicGrpcApiClient,
+  buildBearerHeaders,
+  decryptSessionPayload,
+  encryptSessionPayload,
+  isSessionExpired,
+  resolveAuthSecret,
+} from "@publira/web-session";
+import { cacheLife, cacheTag } from "next/cache";
+import { cookies } from "next/headers";
+
+import {
+  getPublicSessionCacheTag,
   PUBLIC_SESSION_COOKIE_NAME,
-} from "@publira/public-web-shared";
-import { cookies, headers } from "next/headers";
+} from "./auth-shared";
 
-export const apiClient = createPublicGrpcApiClient();
+const DEFAULT_PUBLIC_GRPC_URL = "http://localhost:8100";
 
-export const buildSessionHeaders = buildPublicSessionHeaders;
+export const apiClient = createPublicApiClient({
+  baseUrl: process.env.PUBLIRA_PUBLIC_GRPC_URL ?? DEFAULT_PUBLIC_GRPC_URL,
+  transport: "grpc",
+});
 
-export const resolveSessionId = async (sessionId = ""): Promise<string> => {
-  if (sessionId.length > 0) {
-    return sessionId;
-  }
+export const buildSessionHeaders = (accessToken: string) =>
+  buildBearerHeaders(accessToken);
+
+export const sealSessionCookieValue = (
+  payload: WebSessionPayload
+): Promise<string> => encryptSessionPayload(payload, resolveAuthSecret());
+
+const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
+
+const getAccessTokenFromCookie = async (): Promise<string> => {
+  "use cache: private";
+  cacheLife({ stale: 30 });
+  cacheTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 
   const cookieStore = await cookies();
-  const cookieSessionId =
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value ?? "";
-  if (cookieSessionId.length > 0) {
-    return cookieSessionId;
+  const raw = cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
+  if (!raw) {
+    return "";
   }
 
-  const headerStore = await headers();
-  return headerStore.get("x-publira-session-id") ?? "";
+  const payload = await decryptSessionPayload(raw, resolveAuthSecret());
+  if (payload) {
+    if (isSessionExpired(payload.expiresAt)) {
+      return "";
+    }
+    return payload.accessToken.trim();
+  }
+  if (looksLikeJwt(raw)) {
+    return raw;
+  }
+  return "";
+};
+
+export const resolveAccessToken = (accessToken = ""): Promise<string> => {
+  const token = accessToken.trim();
+  if (token) {
+    return Promise.resolve(token);
+  }
+  return getAccessTokenFromCookie();
 };

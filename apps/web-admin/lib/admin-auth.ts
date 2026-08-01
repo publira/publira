@@ -2,13 +2,13 @@ import {
   ADMIN_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./admin-auth-shared";
-import { apiClient } from "./api";
-import { getSessionId } from "./session";
+import { apiClient, withSessionHeaders } from "./api";
+import { getAccessToken } from "./session";
 
 export type AdminLoginResult =
   | {
       ok: true;
-      sessionId: string;
+      accessToken: string;
       expiresAt: Date;
     }
   | {
@@ -128,17 +128,17 @@ export const loginAdmin = async (
   tenantPublicId: string
 ): Promise<AdminLoginResult> => {
   try {
-    const response = await apiClient.auth.createSession({
+    const response = await apiClient.auth.login({
       email,
       password,
       tenant: { tenantPublicId },
     });
 
-    const sessionId = response.session?.sessionId?.trim() ?? "";
-    const expiresAtRaw = response.session?.expiresAt ?? "";
+    const accessToken = response.accessToken?.token?.trim() ?? "";
+    const expiresAtRaw = response.accessToken?.expiresAt ?? "";
     const expiresAt = new Date(expiresAtRaw);
 
-    if (!sessionId || Number.isNaN(expiresAt.getTime())) {
+    if (!accessToken || Number.isNaN(expiresAt.getTime())) {
       return {
         message: genericErrorMessage,
         ok: false,
@@ -146,11 +146,12 @@ export const loginAdmin = async (
     }
 
     return {
+      accessToken,
       expiresAt,
       ok: true,
-      sessionId,
     };
   } catch (error) {
+    console.error("[web-admin] loginAdmin failed", error);
     return {
       message: toErrorMessage(error),
       ok: false,
@@ -159,17 +160,17 @@ export const loginAdmin = async (
 };
 
 export const logoutAdmin = async (
-  sessionId: string,
+  accessToken: string,
   tenantPublicId: string
 ): Promise<void> => {
-  if (!sessionId) {
+  if (!accessToken.trim()) {
     return;
   }
 
-  await apiClient.auth.deleteSession({
-    sessionId,
-    tenant: { tenantPublicId },
-  });
+  await apiClient.auth.logout(
+    { tenant: { tenantPublicId } },
+    withSessionHeaders(accessToken)
+  );
 };
 
 export const getAdminCurrentUser = async (
@@ -177,16 +178,18 @@ export const getAdminCurrentUser = async (
 ): Promise<AdminCurrentUser | null> => {
   "use cache: private";
 
-  const token = await getSessionId();
+  const token = await getAccessToken();
   if (!token) {
     return null;
   }
 
   try {
-    const response = await apiClient.auth.getMe({
-      sessionId: token,
-      tenant: { tenantPublicId },
-    });
+    const response = await apiClient.auth.getMe(
+      {
+        tenant: { tenantPublicId },
+      },
+      withSessionHeaders(token)
+    );
 
     const publicId = response.user?.publicId?.trim() ?? "";
     if (!publicId) {
@@ -423,7 +426,6 @@ export const confirmAdminPasswordReset = async (
 
 export const requestAdminEmailChange = async (
   tenantPublicId: string,
-  sessionId: string,
   currentEmail: string,
   newEmail: string,
   currentPassword: string
@@ -431,6 +433,7 @@ export const requestAdminEmailChange = async (
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
 
+  const sessionId = await getAccessToken();
   if (
     !tenantPublicId.trim() ||
     !sessionId.trim() ||
@@ -445,13 +448,15 @@ export const requestAdminEmailChange = async (
   }
 
   try {
-    const response = await apiClient.auth.requestEmailChange({
-      currentEmail: normalizedCurrentEmail,
-      currentPassword,
-      newEmail: normalizedNewEmail,
-      sessionId,
-      tenant: { tenantPublicId },
-    });
+    const response = await apiClient.auth.requestEmailChange(
+      {
+        currentEmail: normalizedCurrentEmail,
+        currentPassword,
+        newEmail: normalizedNewEmail,
+        tenant: { tenantPublicId },
+      },
+      withSessionHeaders(sessionId)
+    );
 
     return {
       ok: true,

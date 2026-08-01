@@ -1,7 +1,7 @@
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface LabelItem {
   publicId: string;
@@ -118,7 +118,7 @@ export const listLabels = async (
   "use cache: private";
   cacheTag(`labels-${tenantPublicId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       labels: [],
@@ -158,7 +158,7 @@ export const createLabel = async (input: {
   eyeCatchImageContentType?: string;
   eyeCatchImageData?: Uint8Array;
 }): Promise<CreateLabelResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -204,7 +204,7 @@ export const updateLabel = async (input: {
   eyeCatchImageContentType?: string;
   eyeCatchImageData?: Uint8Array;
 }): Promise<UpdateLabelResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -252,7 +252,7 @@ export const getLabel = async (input: {
   cacheTag(`labels-${input.tenantPublicId}`);
   cacheTag(`label-${input.tenantPublicId}-${input.publicId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",

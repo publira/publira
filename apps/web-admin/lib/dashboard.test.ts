@@ -6,7 +6,7 @@ const { mockGetSessionId, mockGetDashboardApi } = vi.hoisted(() => ({
 }));
 
 vi.mock("./session", () => ({
-  getSessionId: mockGetSessionId,
+  getAccessToken: mockGetSessionId,
 }));
 
 vi.mock("@publira/api-client/admin/client", () => ({
@@ -68,7 +68,7 @@ describe("dashboard", () => {
 
     expect(mockGetDashboardApi).toHaveBeenCalledWith(
       { tenant: { tenantPublicId: "TENANT001" } },
-      { headers: { "X-Publira-Session-Id": "session-token" } }
+      { headers: { Authorization: "Bearer session-token" } }
     );
   });
 

@@ -22,19 +22,18 @@ type TenantContext struct {
 	TenantPublicID string
 }
 
-// SessionContext holds the authenticated tenant and session for a request.
+// SessionContext holds the authenticated tenant and user for a request.
+// Name kept for call-site stability; authentication is JWT-based (not DB sessions).
 type SessionContext struct {
-	Tenant  dbmodels.Tenant
-	Session dbmodels.Session
-	User    dbmodels.User // User is the authenticated user, populated when available.
-	Role    string        // Role is the actor's resolved role in the tenant context.
+	Tenant dbmodels.Tenant
+	User   dbmodels.User
+	Role   string
 }
 
-// SessionAuthenticator resolves a session from request metadata.
+// SessionAuthenticator resolves an authenticated user from request metadata (Bearer JWT).
 type SessionAuthenticator func(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	explicitToken string,
 	headers http.Header,
 ) (SessionContext, error)
 
@@ -55,7 +54,7 @@ func WithTenantContext(ctx context.Context, tenantCtx TenantContext) context.Con
 	return withTenantContext(ctx, tenantCtx)
 }
 
-// SessionContextFromContext retrieves the SessionContext injected by the session middleware.
+// SessionContextFromContext retrieves the SessionContext injected by the auth middleware.
 func SessionContextFromContext(ctx context.Context) (SessionContext, bool) {
 	sessionCtx, ok := ctx.Value(sessionContextKey{}).(SessionContext)
 	return sessionCtx, ok
@@ -68,7 +67,7 @@ func TenantContextFromContext(ctx context.Context) (TenantContext, bool) {
 }
 
 // BuildAdminSessionContext returns a UnaryContextBuilder that extracts the tenant,
-// authenticates the session, and injects the resulting SessionContext into ctx.
+// authenticates the access token, and injects the resulting SessionContext into ctx.
 func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBuilder {
 	return func(ctx context.Context, req connect.AnyRequest) (context.Context, error) {
 		tenantReq, ok := req.Any().(tenantScopedRequest)
@@ -87,7 +86,7 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 			resolvedTenantRequest.TenantPublicId = tenantPublicID
 		}
 
-		sessionCtx, err := authenticate(ctx, resolvedTenantRequest, "", req.Header())
+		sessionCtx, err := authenticate(ctx, resolvedTenantRequest, req.Header())
 		if err != nil {
 			return nil, err
 		}

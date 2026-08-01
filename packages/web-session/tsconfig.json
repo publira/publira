@@ -1,9 +1,7 @@
 {
   "extends": "@publira/tsconfig/base.json",
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "rootDir": "./src",
-    "outDir": "./dist"
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"]
 }

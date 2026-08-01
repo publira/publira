@@ -56,7 +56,7 @@ func TestGetTenantEmailSettingsRejectsEditorRole(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT001", testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
@@ -64,7 +64,7 @@ func TestGetTenantEmailSettingsRejectsEditorRole(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.GetTenantEmailSettingsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT001"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	_, err := client.GetTenantEmailSettings(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("GetTenantEmailSettings code = %v, want permission_denied", connect.CodeOf(err))
@@ -77,7 +77,7 @@ func TestUpdateTenantEmailSettingsDisabledPreservesStoredValues(t *testing.T) {
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT001", testUserPublicID, "editor")
 	encrypted := "enc:tenant:stored"
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
@@ -108,7 +108,7 @@ func TestUpdateTenantEmailSettingsDisabledPreservesStoredValues(t *testing.T) {
 		SmtpOverrideEnabled: false,
 		PasswordUpdateMode:  publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.UpdateTenantEmailSettings(context.Background(), req)
 	if err != nil {
 		t.Fatalf("UpdateTenantEmailSettings: %v", err)
@@ -136,7 +136,7 @@ func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *test
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT001", testUserPublicID, "editor")
 	encrypted, err := encryptor.EncryptString("platform-secret")
 	if err != nil {
 		t.Fatalf("EncryptString: %v", err)
@@ -155,7 +155,7 @@ func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *test
 		RecipientType:       publiraadminv1.TestEmailRecipientType_TEST_EMAIL_RECIPIENT_TYPE_SELF,
 		SmtpOverrideEnabled: false,
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.SendTenantSmtpTestEmail(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SendTenantSmtpTestEmail: %v", err)

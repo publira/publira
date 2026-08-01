@@ -6,15 +6,15 @@ option go_package = "github.com/publira/publira/server/gen/publira/v1;publirav1"
 
 import "publira/types/v1/types.proto";
 
-message CreateSessionRequest {
+message LoginRequest {
   publira.types.v1.TenantContext tenant = 1;
   string email = 2;
   string password = 3;
 }
 
-message CreateSessionResponse {
+message LoginResponse {
   publira.types.v1.User user = 1;
-  publira.types.v1.Session session = 2;
+  publira.types.v1.AccessToken access_token = 2;
 }
 
 message CreateUserRequest {
@@ -26,7 +26,7 @@ message CreateUserRequest {
 
 message CreateUserResponse {
   publira.types.v1.User user = 1;
-  publira.types.v1.Session session = 2;
+  publira.types.v1.AccessToken access_token = 2;
 }
 
 message VerifyUserEmailRequest {
@@ -40,10 +40,9 @@ message VerifyUserEmailResponse {
 
 message RequestEmailChangeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  string current_email = 3;
-  string new_email = 4;
-  string current_password = 5;
+  string current_email = 2;
+  string new_email = 3;
+  string current_password = 4;
 }
 
 message RequestEmailChangeResponse {
@@ -80,16 +79,14 @@ message ConfirmPasswordResetResponse {
   bool confirmed = 1;
 }
 
-message DeleteSessionRequest {
+message LogoutRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
-message DeleteSessionResponse {}
+message LogoutResponse {}
 
 message GetMeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
 message GetMeResponse {
@@ -98,8 +95,7 @@ message GetMeResponse {
 
 message UpdateMeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  string name = 3;
+  string name = 2;
 }
 
 message UpdateMeResponse {
@@ -108,15 +104,13 @@ message UpdateMeResponse {
 
 message DeleteMeRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  string password = 3;
+  string password = 2;
 }
 
 message DeleteMeResponse {}
 
 message GetNotificationSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
 message GetNotificationSettingsResponse {
@@ -125,8 +119,7 @@ message GetNotificationSettingsResponse {
 
 message UpdateNotificationSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  bool email_notifications_enabled = 3;
+  bool email_notifications_enabled = 2;
 }
 
 message UpdateNotificationSettingsResponse {
@@ -146,9 +139,8 @@ message NotificationItem {
 
 message ListNotificationsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  int32 limit = 3;
-  int32 offset = 4;
+  int32 limit = 2;
+  int32 offset = 3;
 }
 
 message ListNotificationsResponse {
@@ -157,8 +149,7 @@ message ListNotificationsResponse {
 
 message MarkNotificationAsReadRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
-  string notification_id = 3;
+  string notification_id = 2;
 }
 
 message MarkNotificationAsReadResponse {
@@ -167,7 +158,6 @@ message MarkNotificationAsReadResponse {
 
 message MarkAllNotificationsAsReadRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string session_id = 2;
 }
 
 message MarkAllNotificationsAsReadResponse {
@@ -175,14 +165,14 @@ message MarkAllNotificationsAsReadResponse {
 }
 
 service AuthService {
-  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
+  rpc Login(LoginRequest) returns (LoginResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
   rpc RequestEmailChange(RequestEmailChangeRequest) returns (RequestEmailChangeResponse) {}
   rpc ConfirmEmailChange(ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse) {}
   rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse) {}
   rpc ConfirmPasswordReset(ConfirmPasswordResetRequest) returns (ConfirmPasswordResetResponse) {}
-  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {}
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
   rpc UpdateMe(UpdateMeRequest) returns (UpdateMeResponse) {}
   rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}

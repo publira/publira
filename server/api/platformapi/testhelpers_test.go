@@ -20,7 +20,7 @@ import (
 
 const (
 	// プラットフォームオペレーター・認証
-	testGetPlatformSessionByTokenHashQuery      = "-- name: GetPlatformSessionByTokenHash :one\n"
+	testGetPlatformUserByPublicIDQuery          = "-- name: GetPlatformUserByPublicID :one\n"
 	testGetPlatformUserByIDQuery                = "-- name: GetPlatformUserByID :one\n"
 	testGetPlatformUserByEmailQuery             = "-- name: GetPlatformUserByEmail :one\n"
 	testCreatePlatformUserPasswordResetToken    = "-- name: CreatePlatformUserPasswordResetToken :one\n"
@@ -41,7 +41,7 @@ const (
 	testUpdatePlatformUserPasswordHashByID      = "-- name: UpdatePlatformUserPasswordHashByID :one\n"
 	testUpdatePlatformUserEmailByID             = "-- name: UpdatePlatformUserEmailByID :one\n"
 	testUpdatePlatformUserStatusQuery           = "-- name: UpdatePlatformUserStatus :one\n"
-	testTerminatePlatformUserSessionsQuery      = "-- name: TerminatePlatformUserSessions :exec\n"
+	testBumpPlatformUserCredentialsVersionQuery = "-- name: BumpPlatformUserCredentialsVersion :one\n"
 	testPlatformSessionToken                    = "platform-session-token"
 
 	// テナントメンバー
@@ -56,12 +56,12 @@ const (
 	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
 
 	// エンドユーザー
-	testListEndUsersQuery          = "-- name: ListEndUsers :many\n"
-	testGetUserByPublicIDQuery     = "-- name: GetUserByPublicID :one\n"
-	testGetTenantByUserIDQuery     = "-- name: GetTenantByUserID :one\n"
-	testUpdateUserStatusQuery      = "-- name: UpdateUserStatus :one\n"
-	testTerminateUserSessionsQuery = "-- name: TerminateUserSessions :exec\n"
-	testDeleteUserByIDQuery        = "-- name: DeleteUserByID :exec\n"
+	testListEndUsersQuery               = "-- name: ListEndUsers :many\n"
+	testGetUserByPublicIDQuery          = "-- name: GetUserByPublicID :one\n"
+	testGetTenantByUserIDQuery          = "-- name: GetTenantByUserID :one\n"
+	testUpdateUserStatusQuery           = "-- name: UpdateUserStatus :one\n"
+	testBumpUserCredentialsVersionQuery = "-- name: BumpUserCredentialsVersion :one\n"
+	testDeleteUserByIDQuery             = "-- name: DeleteUserByID :exec\n"
 )
 
 func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmock) {
@@ -78,11 +78,27 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 		queries:  queries,
 		db:       db,
 		recorder: auditlog.New(queries, slog.Default()),
+		tokens:   auth.MustTokenManagerFromEnv(),
 	}, mock
 }
 
 func operatorTestUserColumns() []string {
-	return []string{"id", "public_id", "email", "password_hash", "name", "status", "created_at"}
+	return []string{"id", "public_id", "email", "password_hash", "name", "status", "created_at", "credentials_version"}
+}
+
+func issueTestPlatformToken(userPublicID, role string) string {
+	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+		userPublicID,
+		auth.AudiencePlatform,
+		"",
+		role,
+		1,
+		time.Now(),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return token
 }
 
 func operatorTestColumns() []string {
@@ -91,20 +107,15 @@ func operatorTestColumns() []string {
 
 func newAuthedOperatorRequest[T any](msg *T) *connect.Request[T] {
 	req := connect.NewRequest(msg)
-	req.Header().Set("X-Publira-Session-Id", testPlatformSessionToken)
+	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", "platform_operator"))
 	return req
 }
 
 func expectOperatorAuth(mock sqlmock.Sqlmock, userID uuid.UUID, role string, now time.Time) {
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSessionByTokenHashQuery)).
-		WithArgs(auth.HashToken(testPlatformSessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), userID, auth.HashToken(testPlatformSessionToken), now.Add(time.Hour), nil, now))
-
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
-		WithArgs(userID).
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByPublicIDQuery)).
+		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
 		WithArgs(userID).
@@ -167,13 +178,13 @@ func newIntegrationRequest[T any](msg T) *connect.Request[T] {
 
 func newAuthedIntegrationRequest[T any](msg T) *connect.Request[T] {
 	req := connect.NewRequest(&msg)
-	req.Header().Set("X-Publira-Session-Id", integrationSessionToken)
+	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", integrationPlatformRole))
 	return req
 }
 
 func newAuthedCreateTenantIntegrationRequest(msg *publirasplatformv1.CreateTenantRequest) *connect.Request[publirasplatformv1.CreateTenantRequest] {
 	req := connect.NewRequest(msg)
-	req.Header().Set("X-Publira-Session-Id", integrationSessionToken)
+	req.Header().Set("Authorization", "Bearer "+issueTestPlatformToken("PLATUSER001", integrationPlatformRole))
 	return req
 }
 
@@ -187,15 +198,10 @@ func validIntegrationCreateTenantRequest() *publirasplatformv1.CreateTenantReque
 
 func expectIntegrationAuth(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, role string, now time.Time) {
 	_ = tenantID
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSessionByTokenHashQuery)).
-		WithArgs(auth.HashToken(integrationSessionToken)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "platform_user_id", "token_hash", "expires_at", "revoked_at", "created_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), userID, auth.HashToken(integrationSessionToken), now.Add(time.Hour), nil, now))
-
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByIDQuery)).
-		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "status", "created_at"}).
-			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now))
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByPublicIDQuery)).
+		WithArgs("PLATUSER001").
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(userID, "PLATUSER001", "platform@example.com", "hashed", "Platform User", "active", now, int32(1)))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
 		WithArgs(userID).

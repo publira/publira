@@ -1,5 +1,5 @@
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface DashboardStats {
   publishedSeriesCount: number;
@@ -42,7 +42,7 @@ export const getDashboard = async (
 ): Promise<GetDashboardResult> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",

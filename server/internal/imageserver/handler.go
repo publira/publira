@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -27,9 +26,10 @@ type TenantScopedQuerier interface {
 	GetCreatorImageByIDForTenant(ctx context.Context, arg dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
-	GetEpisodeImageAccessByIDForSession(ctx context.Context, arg dbmodels.GetEpisodeImageAccessByIDForSessionParams) (dbmodels.GetEpisodeImageAccessByIDForSessionRow, error)
+	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams) (dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow, error)
-	GetSessionByTokenHashForTenant(ctx context.Context, arg dbmodels.GetSessionByTokenHashForTenantParams) (dbmodels.Session, error)
+	GetUserByPublicIDForTenant(ctx context.Context, arg dbmodels.GetUserByPublicIDForTenantParams) (dbmodels.GetUserByPublicIDForTenantRow, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (dbmodels.User, error)
 }
 
 type TenantScopedQuerierFactory interface {
@@ -53,10 +53,17 @@ type Handler struct {
 	tenantFactory   TenantScopedQuerierFactory
 	objects         ObjectStore
 	logger          *slog.Logger
+	tokens          *auth.TokenManager
 }
 
 func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger) http.Handler {
-	h := &Handler{resolverQuerier: resolver, tenantFactory: tenantFactory, objects: objects, logger: logger}
+	h := &Handler{
+		resolverQuerier: resolver,
+		tenantFactory:   tenantFactory,
+		objects:         objects,
+		logger:          logger,
+		tokens:          auth.MustTokenManagerFromEnv(),
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", h.handleHealthz)
 	mux.HandleFunc("GET /images/creators/{media_id}", h.handleGetCreatorImage)
@@ -104,40 +111,40 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 	contentTypeFromDB := ""
 	cacheControl := "public, max-age=3600"
 
-	sessionToken, hasSession := requestmeta.SessionTokenFromRequest(r)
-	if hasSession {
-		lookup, err := auth.LookupSessionByTokenHashForTenant(
-			ctx,
-			tenantQueries,
-			tenant.ID,
-			auth.HashToken(sessionToken),
-			time.Now(),
-		)
-		if err != nil {
-			if !errors.Is(err, sql.ErrNoRows) {
-				h.logger.Error("failed to lookup session", "error", err)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
-			}
-		} else if lookup.State == auth.SessionStateActive {
-			access, err := tenantQueries.GetEpisodeImageAccessByIDForSession(ctx, dbmodels.GetEpisodeImageAccessByIDForSessionParams{
-				ID:       mediaID,
-				TenantID: lookup.Session.TenantID,
-				UserID:   lookup.Session.UserID,
+	if rawToken, ok := requestmeta.AccessTokenFromRequest(r); ok && h.tokens != nil {
+		claims, err := h.tokens.Verify(rawToken, auth.AudiencePublic)
+		if err == nil && (claims.TenantPublicID == "" || claims.TenantPublicID == tenant.PublicID) {
+			userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+				PublicID: claims.Subject,
+				TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			})
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					http.Error(w, "image not found", http.StatusNotFound)
-					return
+			if err == nil {
+				user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
+				if err == nil && user.Status == "active" && user.CredentialsVersion == claims.CredentialsVersion {
+					access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
+						ID:       mediaID,
+						TenantID: tenant.ID,
+						UserID:   user.ID,
+					})
+					if err != nil {
+						if errors.Is(err, sql.ErrNoRows) {
+							http.Error(w, "image not found", http.StatusNotFound)
+							return
+						}
+						h.logger.Error("failed to evaluate token image access", "error", err, "media_id", mediaID.String())
+						http.Error(w, "internal server error", http.StatusInternalServerError)
+						return
+					}
+					if access.IsPublished.Valid && access.IsPublished.Bool && access.HasAccess.Valid && access.HasAccess.Bool {
+						objectKey = access.ObjectKey
+						contentTypeFromDB = access.ContentType
+						cacheControl = "private, max-age=60"
+					}
 				}
-				h.logger.Error("failed to evaluate session image access", "error", err, "media_id", mediaID.String())
+			} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				h.logger.Error("failed to resolve user from token", "error", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
-			}
-			if access.IsPublished.Valid && access.IsPublished.Bool && access.HasAccess.Valid && access.HasAccess.Bool {
-				objectKey = access.ObjectKey
-				contentTypeFromDB = access.ContentType
-				cacheControl = "private, max-age=60"
 			}
 		}
 	}

@@ -1,6 +1,6 @@
 import { apiClient, withSessionHeaders } from "./api";
 import type { TenantSmtpSettings } from "./email-settings-shared";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export type { TenantSmtpSettings };
 
@@ -99,7 +99,7 @@ export const getTenantEmailSettings = async (
 ): Promise<TenantSmtpSettingsResult> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = tenantPublicId.trim();
 
   if (!normalizedTenantPublicId || !sessionId) {
@@ -109,7 +109,6 @@ export const getTenantEmailSettings = async (
   try {
     const response = await apiClient.emailSettings.getTenantEmailSettings(
       {
-        sessionId,
         tenant: { tenantPublicId: normalizedTenantPublicId },
       },
       withSessionHeaders(sessionId)
@@ -124,7 +123,7 @@ export const getTenantEmailSettings = async (
 export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput
 ): Promise<TenantSmtpSettingsResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = input.tenantPublicId.trim();
 
   if (!normalizedTenantPublicId || !sessionId) {
@@ -142,7 +141,6 @@ export const updateTenantEmailSettings = async (
         passwordUpdateMode: input.passwordUpdateMode,
         port: input.port,
         replyTo: input.replyTo,
-        sessionId,
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantPublicId: normalizedTenantPublicId },
         username: input.username,
@@ -159,7 +157,7 @@ export const updateTenantEmailSettings = async (
 export const sendTenantSmtpTestEmail = async (
   input: SendTenantSmtpTestInput
 ): Promise<TenantSmtpTestResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = input.tenantPublicId.trim();
 
   if (!normalizedTenantPublicId || !sessionId) {
@@ -179,7 +177,6 @@ export const sendTenantSmtpTestEmail = async (
         recipientEmail: input.recipientEmail,
         recipientType: input.recipientType,
         replyTo: input.replyTo,
-        sessionId,
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantPublicId: normalizedTenantPublicId },
         username: input.username,

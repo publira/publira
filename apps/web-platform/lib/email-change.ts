@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 const genericErrorMessage =
   "メールアドレスの変更リクエストに失敗しました。しばらくしてからもう一度お試しください。";
@@ -15,7 +19,7 @@ export const requestPlatformEmailChange = async (
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
 
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再度ログインしてください。",
@@ -33,7 +37,6 @@ export const requestPlatformEmailChange = async (
         currentEmail: normalizedCurrentEmail,
         currentPassword,
         newEmail: normalizedNewEmail,
-        sessionId,
       },
       buildSessionHeaders(sessionId)
     );

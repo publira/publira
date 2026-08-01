@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
-	"github.com/publira/publira/server/internal/auth"
 )
 
 // GetUserByPublicID の RETURNING カラム（id, public_id, name, email, status, tenant_id, created_at）
@@ -27,7 +26,7 @@ func listEndUsersResultColumns() []string {
 
 // UpdateUserStatus の RETURNING カラム
 func updateUserStatusResultColumns() []string {
-	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at"}
+	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version"}
 }
 
 // TestListEndUsers はエンドユーザー一覧の正常系を検証する。
@@ -64,11 +63,7 @@ func TestListEndUsers(t *testing.T) {
 func TestListEndUsersUnauthenticated(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSessionByTokenHashQuery)).
-		WithArgs(auth.HashToken(testPlatformSessionToken)).
-		WillReturnError(sql.ErrNoRows)
-
-	_, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{}))
+	_, err := server.ListEndUsers(context.Background(), connect.NewRequest(&publirasplatformv1.ListEndUsersRequest{}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListEndUsers code = %v, want unauthenticated", connect.CodeOf(err))
 	}
@@ -146,12 +141,13 @@ func TestSuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
 		WithArgs("EUSER00001", "suspended").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1)))
 
 	// セッション失効
-	mock.ExpectExec(regexp.QuoteMeta(testTerminateUserSessionsQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(testBumpUserCredentialsVersionQuery)).
 		WithArgs(endUserID).
-		WillReturnResult(sqlmock.NewResult(0, 0))
+		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(2)))
 
 	// テナント情報取得（なし）
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
@@ -217,7 +213,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testUpdateUserStatusQuery)).
 		WithArgs("EUSER00001", "active").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1)))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
 		WithArgs(endUserID).

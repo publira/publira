@@ -39,10 +39,9 @@ func (r *tenantRequest) GetTenant() *publirattypesv1.TenantContext { return r.te
 
 func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 	want := rpcmiddleware.SessionContext{
-		Tenant:  dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
-		Session: dbmodels.Session{ID: uuid.Must(uuid.NewV7())},
+		Tenant: dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
 	}
-	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		return want, nil
 	}
 
@@ -60,8 +59,8 @@ func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 	if got.Tenant.PublicID != want.Tenant.PublicID {
 		t.Errorf("Tenant.PublicID = %q, want %q", got.Tenant.PublicID, want.Tenant.PublicID)
 	}
-	if got.Session.ID != want.Session.ID {
-		t.Errorf("Session.ID = %v, want %v", got.Session.ID, want.Session.ID)
+	if got.User.ID != want.User.ID {
+		t.Errorf("User.ID = %v, want %v", got.User.ID, want.User.ID)
 	}
 
 	gotTenantCtx, ok := rpcmiddleware.TenantContextFromContext(ctx)
@@ -78,7 +77,7 @@ func TestBuildAdminSessionContext_InjectsSessionContext(t *testing.T) {
 
 func TestBuildAdminSessionContext_AuthErrorPropagated(t *testing.T) {
 	authErr := connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
-	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		return rpcmiddleware.SessionContext{}, authErr
 	}
 
@@ -91,7 +90,7 @@ func TestBuildAdminSessionContext_AuthErrorPropagated(t *testing.T) {
 }
 
 func TestBuildAdminSessionContext_NonTenantRequestReturnsInternal(t *testing.T) {
-	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		return rpcmiddleware.SessionContext{}, nil
 	}
 
@@ -106,7 +105,7 @@ func TestBuildAdminSessionContext_NonTenantRequestReturnsInternal(t *testing.T) 
 
 func TestBuildAdminSessionContext_MissingTenantContextReturnsInvalidArgument(t *testing.T) {
 	authenticateCalled := false
-	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		authenticateCalled = true
 		return rpcmiddleware.SessionContext{}, nil
 	}
@@ -124,7 +123,7 @@ func TestBuildAdminSessionContext_MissingTenantContextReturnsInvalidArgument(t *
 
 func TestBuildAdminSessionContext_EmptyTenantPublicIDReturnsInvalidArgument(t *testing.T) {
 	authenticateCalled := false
-	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ string, _ http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, _ *publirattypesv1.TenantContext, _ http.Header) (rpcmiddleware.SessionContext, error) {
 		authenticateCalled = true
 		return rpcmiddleware.SessionContext{}, nil
 	}
@@ -142,10 +141,9 @@ func TestBuildAdminSessionContext_EmptyTenantPublicIDReturnsInvalidArgument(t *t
 
 func TestBuildAdminSessionContext_TenantPublicIDFromHeader(t *testing.T) {
 	want := rpcmiddleware.SessionContext{
-		Tenant:  dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
-		Session: dbmodels.Session{ID: uuid.Must(uuid.NewV7())},
+		Tenant: dbmodels.Tenant{ID: uuid.Must(uuid.NewV7()), PublicID: "tenant-1"},
 	}
-	authenticate := func(_ context.Context, tenantCtx *publirattypesv1.TenantContext, _ string, headers http.Header) (rpcmiddleware.SessionContext, error) {
+	authenticate := func(_ context.Context, tenantCtx *publirattypesv1.TenantContext, headers http.Header) (rpcmiddleware.SessionContext, error) {
 		if tenantCtx == nil || tenantCtx.TenantPublicId != "tenant-1" {
 			t.Fatalf("tenant context = %+v, want tenant-1", tenantCtx)
 		}

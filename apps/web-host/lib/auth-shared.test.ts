@@ -8,7 +8,7 @@ import {
 
 describe("web-host auth-shared", () => {
   it("cookie 名は公開セッション用を使う", () => {
-    expect(PUBLIC_SESSION_COOKIE_NAME).toBe("publira_public_session");
+    expect(PUBLIC_SESSION_COOKIE_NAME).toBe("publira_web_host_auth");
   });
 
   it("buildLoginUrl は returnTo を引き継ぐ", () => {

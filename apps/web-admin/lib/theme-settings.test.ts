@@ -8,7 +8,7 @@ const { mockGetSessionId, mockGetTenantThemeApi, mockUpsertTenantThemeApi } =
   }));
 
 vi.mock("./session", () => ({
-  getSessionId: mockGetSessionId,
+  getAccessToken: mockGetSessionId,
 }));
 
 vi.mock("@publira/api-client/admin/client", () => ({
@@ -68,7 +68,7 @@ describe("theme-settings", () => {
 
     expect(mockGetTenantThemeApi).toHaveBeenCalledWith(
       { tenant: { tenantPublicId: "TENANT001" } },
-      { headers: { "X-Publira-Session-Id": "session-token" } }
+      { headers: { Authorization: "Bearer session-token" } }
     );
   });
 

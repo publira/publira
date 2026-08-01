@@ -15,6 +15,54 @@ import (
 	"github.com/lib/pq"
 )
 
+const bumpPlatformUserCredentialsVersion = `-- name: BumpPlatformUserCredentialsVersion :one
+UPDATE platform_users
+SET credentials_version = credentials_version + 1
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, status, created_at, credentials_version
+`
+
+func (q *Queries) BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, bumpPlatformUserCredentialsVersion, id)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CredentialsVersion,
+	)
+	return i, err
+}
+
+const bumpUserCredentialsVersion = `-- name: BumpUserCredentialsVersion :one
+UPDATE users
+SET credentials_version = credentials_version + 1
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
+`
+
+func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, bumpUserCredentialsVersion, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
+	)
+	return i, err
+}
+
 const cancelTenantAdminInvitation = `-- name: CancelTenantAdminInvitation :one
 UPDATE tenant_admin_invitations
 SET canceled_at = COALESCE(canceled_at, NOW()),
@@ -614,47 +662,10 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 	return i, err
 }
 
-const createPlatformSession = `-- name: CreatePlatformSession :one
-INSERT INTO platform_sessions (
-        id,
-        platform_user_id,
-        token_hash,
-        expires_at
-    )
-VALUES ($1, $2, $3, $4)
-RETURNING id, platform_user_id, token_hash, expires_at, revoked_at, created_at
-`
-
-type CreatePlatformSessionParams struct {
-	ID             uuid.UUID `json:"id"`
-	PlatformUserID uuid.UUID `json:"platform_user_id"`
-	TokenHash      string    `json:"token_hash"`
-	ExpiresAt      time.Time `json:"expires_at"`
-}
-
-func (q *Queries) CreatePlatformSession(ctx context.Context, arg CreatePlatformSessionParams) (PlatformSession, error) {
-	row := q.db.QueryRowContext(ctx, createPlatformSession,
-		arg.ID,
-		arg.PlatformUserID,
-		arg.TokenHash,
-		arg.ExpiresAt,
-	)
-	var i PlatformSession
-	err := row.Scan(
-		&i.ID,
-		&i.PlatformUserID,
-		&i.TokenHash,
-		&i.ExpiresAt,
-		&i.RevokedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const createPlatformUser = `-- name: CreatePlatformUser :one
 INSERT INTO platform_users (id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, public_id, email, password_hash, name, status, created_at
+RETURNING id, public_id, email, password_hash, name, status, created_at, credentials_version
 `
 
 type CreatePlatformUserParams struct {
@@ -682,6 +693,7 @@ func (q *Queries) CreatePlatformUser(ctx context.Context, arg CreatePlatformUser
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -966,47 +978,6 @@ func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeries
 	return i, err
 }
 
-const createSession = `-- name: CreateSession :one
-INSERT INTO sessions (
-        id,
-        tenant_id,
-        user_id,
-        token_hash,
-        expires_at
-    )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
-`
-
-type CreateSessionParams struct {
-	ID        uuid.UUID `json:"id"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	UserID    uuid.UUID `json:"user_id"`
-	TokenHash string    `json:"token_hash"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
-
-func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
-	row := q.db.QueryRowContext(ctx, createSession,
-		arg.ID,
-		arg.TenantID,
-		arg.UserID,
-		arg.TokenHash,
-		arg.ExpiresAt,
-	)
-	var i Session
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.UserID,
-		&i.TokenHash,
-		&i.ExpiresAt,
-		&i.RevokedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const createTenant = `-- name: CreateTenant :one
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
 VALUES ($1, $2, $3, $4, $5, 'active')
@@ -1147,7 +1118,7 @@ func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUser
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, tenant_id, public_id, email, password_hash, name)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 `
 
 type CreateUserParams struct {
@@ -1179,6 +1150,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -1639,7 +1611,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 	return i, err
 }
 
-const getEpisodeImageAccessByIDForSession = `-- name: GetEpisodeImageAccessByIDForSession :one
+const getEpisodeImageAccessByIDForUser = `-- name: GetEpisodeImageAccessByIDForUser :one
 SELECT ei.id,
     eiv.object_key,
     eiv.content_type,
@@ -1681,13 +1653,13 @@ WHERE ei.id = $1
 LIMIT 1
 `
 
-type GetEpisodeImageAccessByIDForSessionParams struct {
+type GetEpisodeImageAccessByIDForUserParams struct {
 	ID       uuid.UUID `json:"id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	UserID   uuid.UUID `json:"user_id"`
 }
 
-type GetEpisodeImageAccessByIDForSessionRow struct {
+type GetEpisodeImageAccessByIDForUserRow struct {
 	ID          uuid.UUID    `json:"id"`
 	ObjectKey   string       `json:"object_key"`
 	ContentType string       `json:"content_type"`
@@ -1695,9 +1667,9 @@ type GetEpisodeImageAccessByIDForSessionRow struct {
 	HasAccess   sql.NullBool `json:"has_access"`
 }
 
-func (q *Queries) GetEpisodeImageAccessByIDForSession(ctx context.Context, arg GetEpisodeImageAccessByIDForSessionParams) (GetEpisodeImageAccessByIDForSessionRow, error) {
-	row := q.db.QueryRowContext(ctx, getEpisodeImageAccessByIDForSession, arg.ID, arg.TenantID, arg.UserID)
-	var i GetEpisodeImageAccessByIDForSessionRow
+func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error) {
+	row := q.db.QueryRowContext(ctx, getEpisodeImageAccessByIDForUser, arg.ID, arg.TenantID, arg.UserID)
+	var i GetEpisodeImageAccessByIDForUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.ObjectKey,
@@ -1930,29 +1902,8 @@ func (q *Queries) GetPlatformOperatorByPublicID(ctx context.Context, publicID st
 	return i, err
 }
 
-const getPlatformSessionByTokenHash = `-- name: GetPlatformSessionByTokenHash :one
-SELECT id, platform_user_id, token_hash, expires_at, revoked_at, created_at
-FROM platform_sessions
-WHERE token_hash = $1
-LIMIT 1
-`
-
-func (q *Queries) GetPlatformSessionByTokenHash(ctx context.Context, tokenHash string) (PlatformSession, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformSessionByTokenHash, tokenHash)
-	var i PlatformSession
-	err := row.Scan(
-		&i.ID,
-		&i.PlatformUserID,
-		&i.TokenHash,
-		&i.ExpiresAt,
-		&i.RevokedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const getPlatformUserByEmail = `-- name: GetPlatformUserByEmail :one
-SELECT id, public_id, email, password_hash, name, status, created_at
+SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
 FROM platform_users
 WHERE email = $1
 LIMIT 1
@@ -1969,12 +1920,13 @@ func (q *Queries) GetPlatformUserByEmail(ctx context.Context, email string) (Pla
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
 
 const getPlatformUserByID = `-- name: GetPlatformUserByID :one
-SELECT id, public_id, email, password_hash, name, status, created_at
+SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
 FROM platform_users
 WHERE id = $1
 LIMIT 1
@@ -1991,6 +1943,30 @@ func (q *Queries) GetPlatformUserByID(ctx context.Context, id uuid.UUID) (Platfo
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CredentialsVersion,
+	)
+	return i, err
+}
+
+const getPlatformUserByPublicID = `-- name: GetPlatformUserByPublicID :one
+SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
+FROM platform_users
+WHERE public_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformUserByPublicID, publicID)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -2357,56 +2333,6 @@ func (q *Queries) GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Conte
 	return i, err
 }
 
-const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
-SELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
-FROM sessions
-WHERE token_hash = $1
-LIMIT 1
-`
-
-func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error) {
-	row := q.db.QueryRowContext(ctx, getSessionByTokenHash, tokenHash)
-	var i Session
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.UserID,
-		&i.TokenHash,
-		&i.ExpiresAt,
-		&i.RevokedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getSessionByTokenHashForTenant = `-- name: GetSessionByTokenHashForTenant :one
-SELECT id, tenant_id, user_id, token_hash, expires_at, revoked_at, created_at
-FROM sessions
-WHERE tenant_id = $1
-    AND token_hash = $2
-LIMIT 1
-`
-
-type GetSessionByTokenHashForTenantParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	TokenHash string    `json:"token_hash"`
-}
-
-func (q *Queries) GetSessionByTokenHashForTenant(ctx context.Context, arg GetSessionByTokenHashForTenantParams) (Session, error) {
-	row := q.db.QueryRowContext(ctx, getSessionByTokenHashForTenant, arg.TenantID, arg.TokenHash)
-	var i Session
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.UserID,
-		&i.TokenHash,
-		&i.ExpiresAt,
-		&i.RevokedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const getTenantAdminInvitationByHashForTenant = `-- name: GetTenantAdminInvitationByHashForTenant :one
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations
@@ -2699,7 +2625,7 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (G
 }
 
 const getUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 FROM users
 WHERE tenant_id = $1
     AND email = $2
@@ -2724,12 +2650,13 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 FROM users
 WHERE id = $1
 `
@@ -2747,6 +2674,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -4773,54 +4701,6 @@ func (q *Queries) MarkUserPasswordResetTokenCompleted(ctx context.Context, id uu
 	return err
 }
 
-const revokePlatformSession = `-- name: RevokePlatformSession :exec
-UPDATE platform_sessions
-SET revoked_at = NOW()
-WHERE id = $1
-`
-
-func (q *Queries) RevokePlatformSession(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, revokePlatformSession, id)
-	return err
-}
-
-const revokeSession = `-- name: RevokeSession :exec
-UPDATE sessions
-SET revoked_at = NOW()
-WHERE id = $1
-`
-
-func (q *Queries) RevokeSession(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, revokeSession, id)
-	return err
-}
-
-const terminatePlatformUserSessions = `-- name: TerminatePlatformUserSessions :exec
-UPDATE platform_sessions
-SET revoked_at = NOW()
-WHERE platform_user_id = $1
-    AND revoked_at IS NULL
-`
-
-// プラットフォームユーザーの全セッションを失効させる
-func (q *Queries) TerminatePlatformUserSessions(ctx context.Context, platformUserID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, terminatePlatformUserSessions, platformUserID)
-	return err
-}
-
-const terminateUserSessions = `-- name: TerminateUserSessions :exec
-UPDATE sessions
-SET revoked_at = NOW()
-WHERE user_id = $1
-    AND revoked_at IS NULL
-`
-
-// ユーザーの全セッションを失効させる
-func (q *Queries) TerminateUserSessions(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, terminateUserSessions, userID)
-	return err
-}
-
 const updateCreator = `-- name: UpdateCreator :exec
 UPDATE creators
 SET name = $2,
@@ -4942,7 +4822,7 @@ const updatePlatformUserEmailByID = `-- name: UpdatePlatformUserEmailByID :one
 UPDATE platform_users
 SET email = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, status, created_at
+RETURNING id, public_id, email, password_hash, name, status, created_at, credentials_version
 `
 
 type UpdatePlatformUserEmailByIDParams struct {
@@ -4961,6 +4841,7 @@ func (q *Queries) UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePla
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -4969,7 +4850,7 @@ const updatePlatformUserPasswordHashByID = `-- name: UpdatePlatformUserPasswordH
 UPDATE platform_users
 SET password_hash = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, status, created_at
+RETURNING id, public_id, email, password_hash, name, status, created_at, credentials_version
 `
 
 type UpdatePlatformUserPasswordHashByIDParams struct {
@@ -4988,6 +4869,7 @@ func (q *Queries) UpdatePlatformUserPasswordHashByID(ctx context.Context, arg Up
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -4996,7 +4878,7 @@ const updatePlatformUserStatus = `-- name: UpdatePlatformUserStatus :one
 UPDATE platform_users
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, email, password_hash, name, status, created_at
+RETURNING id, public_id, email, password_hash, name, status, created_at, credentials_version
 `
 
 type UpdatePlatformUserStatusParams struct {
@@ -5016,6 +4898,7 @@ func (q *Queries) UpdatePlatformUserStatus(ctx context.Context, arg UpdatePlatfo
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -5219,7 +5102,7 @@ const updateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users
 SET email = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 `
 
 type UpdateUserEmailByIDParams struct {
@@ -5241,6 +5124,7 @@ func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailBy
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -5249,7 +5133,7 @@ const updateUserEmailVerifiedAtByID = `-- name: UpdateUserEmailVerifiedAtByID :o
 UPDATE users
 SET email_verified_at = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 `
 
 type UpdateUserEmailVerifiedAtByIDParams struct {
@@ -5271,6 +5155,7 @@ func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateU
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -5279,7 +5164,7 @@ const updateUserNameByID = `-- name: UpdateUserNameByID :one
 UPDATE users
 SET name = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 `
 
 type UpdateUserNameByIDParams struct {
@@ -5301,6 +5186,7 @@ func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByID
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -5309,7 +5195,7 @@ const updateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 `
 
 type UpdateUserPasswordHashByIDParams struct {
@@ -5331,6 +5217,7 @@ func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUser
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -5339,7 +5226,7 @@ const updateUserStatus = `-- name: UpdateUserStatus :one
 UPDATE users
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 `
 
 type UpdateUserStatusParams struct {
@@ -5361,6 +5248,7 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }
@@ -5369,7 +5257,7 @@ const updateUserStatusByID = `-- name: UpdateUserStatusByID :one
 UPDATE users
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version
 `
 
 type UpdateUserStatusByIDParams struct {
@@ -5391,6 +5279,7 @@ func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatus
 		&i.Status,
 		&i.TenantID,
 		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
 	)
 	return i, err
 }

@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
@@ -40,10 +40,11 @@ type adminServer struct {
 	mailer    internalsmtp.Sender
 	logger    *slog.Logger
 	reval     *revalidate.Client
+	tokens    *auth.TokenManager
 }
 
 func invalidSessionError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid session"))
+	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
 }
 
 func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
@@ -78,43 +79,51 @@ func (s *adminServer) queriesFor(ctx context.Context) Querier {
 func (s *adminServer) authenticateSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	explicitToken string,
 	headers http.Header,
 ) (rpcmiddleware.SessionContext, error) {
 	tenant, err := s.tenantByContext(ctx, tenantCtx)
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, err
 	}
-	sessionToken, ok := auth.SessionTokenFromRequest(explicitToken, headers)
-	if !ok {
+	rawToken, ok := auth.BearerTokenFromHeader(headers)
+	if !ok || s.tokens == nil {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queriesFor(ctx), tenant.ID, auth.HashToken(sessionToken), time.Now())
+	claims, err := s.tokens.Verify(rawToken, auth.AudienceAdmin)
+	if err != nil {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	if claims.TenantPublicID != "" && claims.TenantPublicID != tenant.PublicID {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
+	}
+	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		PublicID: claims.Subject,
+		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
 		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
 	}
-	if lookup.State != auth.SessionStateActive {
-		return rpcmiddleware.SessionContext{}, invalidSessionError()
-	}
-	user, err := s.queriesFor(ctx).GetUserByID(ctx, lookup.Session.UserID)
+	user, err := s.queriesFor(ctx).GetUserByID(ctx, userRef.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
 		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+	}
+	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
 	}
 	return rpcmiddleware.SessionContext{
-		Tenant:  tenant,
-		Session: lookup.Session,
-		User:    user,
-		Role:    auth.ResolveTenantRole(roles),
+		Tenant: tenant,
+		User:   user,
+		Role:   auth.ResolveTenantRole(roles),
 	}, nil
 }
 
@@ -140,6 +149,7 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		mailer:    mailer,
 		logger:    logger,
 		reval:     revalidator,
+		tokens:    auth.MustTokenManagerFromEnv(),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {

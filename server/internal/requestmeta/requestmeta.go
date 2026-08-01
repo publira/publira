@@ -8,22 +8,12 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 )
 
-var sessionCookieCandidates = []string{
-	auth.SessionCookieName,
-	"publira_public_session",
-	"publira_publira_session",
-}
-
-func SessionTokenFromRequest(r *http.Request) (string, bool) {
-	for _, name := range sessionCookieCandidates {
-		if c, err := r.Cookie(name); err == nil {
-			token := strings.TrimSpace(c.Value)
-			if token != "" {
-				return token, true
-			}
-		}
+// AccessTokenFromRequest extracts a Bearer access token from the request.
+func AccessTokenFromRequest(r *http.Request) (string, bool) {
+	if r == nil {
+		return "", false
 	}
-	return auth.SessionTokenFromRequest("", r.Header)
+	return auth.BearerTokenFromHeader(r.Header)
 }
 
 func HostCandidatesFromRequest(r *http.Request) []string {

@@ -165,20 +165,19 @@ func (s *adminServer) tenantRole(ctx context.Context, userID uuid.UUID) (string,
 func (s *adminServer) currentUserFromSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
-	explicitToken string,
 	headers http.Header,
 ) (dbmodels.Tenant, dbmodels.User, string, error) {
-	authCtx, err := s.authenticateSession(ctx, tenantCtx, explicitToken, headers)
+	authCtx, err := s.authenticateSession(ctx, tenantCtx, headers)
 	if err != nil {
 		return dbmodels.Tenant{}, dbmodels.User{}, "", err
 	}
 	return authCtx.Tenant, authCtx.User, authCtx.Role, nil
 }
 
-func (s *adminServer) CreateSession(
+func (s *adminServer) Login(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceCreateSessionRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceCreateSessionResponse], error) {
+	req *connect.Request[publiraadminv1.AdminAuthServiceLoginRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceLoginResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_login", "failure", "", "", "tenant_not_found")
@@ -197,78 +196,45 @@ func (s *adminServer) CreateSession(
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
+	if user.Status != "active" {
+		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "user_inactive")
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+	}
 	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
-	rawToken := make([]byte, 32)
-	if _, err := rand.Read(rawToken); err != nil {
-		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "token_generation_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+	if s.tokens == nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("token manager is not configured"))
 	}
-	sessionToken := hex.EncodeToString(rawToken)
-	sessionID, err := uuid.NewV7()
+	token, expiresAt, err := s.tokens.Issue(user.PublicID, auth.AudienceAdmin, tenant.PublicID, role, user.CredentialsVersion, time.Now())
 	if err != nil {
-		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "session_id_generation_failed")
+		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdSession, err := s.queriesFor(ctx).CreateSession(ctx, dbmodels.CreateSessionParams{
-		ID:        sessionID,
-		TenantID:  tenant.ID,
-		UserID:    user.ID,
-		TokenHash: auth.HashToken(sessionToken),
-		ExpiresAt: time.Now().Add(auth.SessionTTL),
-	})
-	if err != nil {
-		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "session_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+	resp := &publiraadminv1.AdminAuthServiceLoginResponse{
+		User:        &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role},
+		AccessToken: &publirattypesv1.AccessToken{Token: token, ExpiresAt: auth.FormatExpiresAt(expiresAt)},
 	}
-	resp := &publiraadminv1.AdminAuthServiceCreateSessionResponse{
-		User:    &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role},
-		Session: &publirattypesv1.Session{SessionId: sessionToken, ExpiresAt: createdSession.ExpiresAt.UTC().Format(time.RFC3339)},
-	}
-	response := connect.NewResponse(resp)
-	response.Header().Add("Set-Cookie", auth.BuildSessionCookie(sessionToken, createdSession.ExpiresAt))
-	auth.AuditEvent(req.Header(), "admin_login", "success", tenant.PublicID, user.PublicID, "session_issued")
-	return response, nil
+	auth.AuditEvent(req.Header(), "admin_login", "success", tenant.PublicID, user.PublicID, "token_issued")
+	return connect.NewResponse(resp), nil
 }
 
-func (s *adminServer) DeleteSession(
+func (s *adminServer) Logout(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.AdminAuthServiceDeleteSessionRequest],
-) (*connect.Response[publiraadminv1.AdminAuthServiceDeleteSessionResponse], error) {
+	req *connect.Request[publiraadminv1.AdminAuthServiceLogoutRequest],
+) (*connect.Response[publiraadminv1.AdminAuthServiceLogoutResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_logout", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	sessionToken, ok := auth.SessionTokenFromRequest(req.Msg.SessionId, req.Header())
-	response := connect.NewResponse(&publiraadminv1.AdminAuthServiceDeleteSessionResponse{})
-	response.Header().Add("Set-Cookie", auth.BuildClearedSessionCookie())
-	if !ok {
-		auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "no_session_cookie")
-		return response, nil
+	if _, ok := auth.BearerTokenFromHeader(req.Header()); ok {
+		auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "client_logout")
+	} else {
+		auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "no_token")
 	}
-	tokenHash := auth.HashToken(sessionToken)
-	lookup, err := auth.LookupSessionByTokenHashForTenant(ctx, s.queries, tenant.ID, tokenHash, time.Now())
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "session_not_found")
-			return response, nil
-		}
-		auth.AuditEvent(req.Header(), "admin_logout", "failure", tenant.PublicID, "", "session_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if lookup.State == auth.SessionStateRevoked {
-		auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "already_revoked")
-		return response, nil
-	}
-	if err := s.queriesFor(ctx).RevokeSession(ctx, lookup.Session.ID); err != nil {
-		auth.AuditEvent(req.Header(), "admin_logout", "failure", tenant.PublicID, "", "session_revoke_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	auth.AuditEvent(req.Header(), "admin_logout", "success", tenant.PublicID, "", "session_revoked")
-	return response, nil
+	return connect.NewResponse(&publiraadminv1.AdminAuthServiceLogoutResponse{}), nil
 }
 
 func (s *adminServer) RequestPasswordReset(
@@ -403,8 +369,8 @@ func (s *adminServer) ConfirmPasswordReset(
 		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := s.queriesFor(ctx).TerminateUserSessions(ctx, user.ID); err != nil {
-		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "session_terminate_failed")
+	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
+		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if err := s.queriesFor(ctx).MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
@@ -420,7 +386,7 @@ func (s *adminServer) GetMe(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceGetMeRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceGetMeResponse], error) {
-	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	_, user, role, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +397,7 @@ func (s *adminServer) GetTenant(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantResponse], error) {
-	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +450,7 @@ func (s *adminServer) GetTenantConfig(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceGetTenantConfigRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceGetTenantConfigResponse], error) {
-	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -515,7 +481,7 @@ func (s *adminServer) UpdateTenantConfig(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceUpdateTenantConfigResponse], error) {
-	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, _, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -649,7 +615,7 @@ func (s *adminServer) RequestEmailChange(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.AdminAuthServiceRequestEmailChangeRequest],
 ) (*connect.Response[publiraadminv1.AdminAuthServiceRequestEmailChangeResponse], error) {
-	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Msg.SessionId, req.Header())
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", "", "", "invalid_session")
 		return nil, err

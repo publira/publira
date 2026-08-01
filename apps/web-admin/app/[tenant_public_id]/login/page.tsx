@@ -3,6 +3,7 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { guardPlaceholder } from "@publira/utils/next-static-params";
+import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -68,13 +69,31 @@ const loginAction = async (formData: FormData): Promise<void> => {
     redirect(buildLoginErrorPath(result.message, next));
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions,
-    expires: result.expiresAt,
-    name: ADMIN_SESSION_COOKIE_NAME,
-    value: result.sessionId,
-  });
+  try {
+    const sealed = await encryptSessionPayload(
+      {
+        accessToken: result.accessToken,
+        expiresAt: result.expiresAt.toISOString(),
+        tenantPublicId,
+      },
+      resolveAuthSecret()
+    );
+    const cookieStore = await cookies();
+    cookieStore.set({
+      ...sessionCookieOptions,
+      expires: result.expiresAt,
+      name: ADMIN_SESSION_COOKIE_NAME,
+      value: sealed,
+    });
+  } catch (error) {
+    console.error("[web-admin] login cookie seal failed", error);
+    redirect(
+      buildLoginErrorPath(
+        "ログイン処理に失敗しました。時間をおいて再試行してください。",
+        next
+      )
+    );
+  }
 
   redirect(next);
 };

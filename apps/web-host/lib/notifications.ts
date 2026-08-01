@@ -1,6 +1,10 @@
 import { unstable_noStore as noStore } from "next/cache";
 
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 export interface MemberNotificationItem {
   id: string;
@@ -47,7 +51,6 @@ const listNotificationsRpc = (
     {
       limit: 100,
       offset: 0,
-      sessionId,
       tenant: { tenantPublicId },
     },
     buildSessionHeaders(sessionId)
@@ -98,7 +101,7 @@ export const listMyNotifications = async (
 > => {
   noStore();
 
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(sessionId);
   return fetchNotifications(tenantPublicId, sid);
 };
 
@@ -107,7 +110,7 @@ export const markNotificationAsRead = async (
   notificationId: string,
   sessionId?: string
 ): Promise<boolean> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(sessionId);
   if (!sid) {
     return false;
   }
@@ -116,7 +119,6 @@ export const markNotificationAsRead = async (
     const response = await apiClient.auth.markNotificationAsRead(
       {
         notificationId,
-        sessionId: sid,
         tenant: { tenantPublicId },
       },
       buildSessionHeaders(sid)
@@ -132,7 +134,7 @@ export const markAllNotificationsAsRead = async (
   tenantPublicId: string,
   sessionId?: string
 ): Promise<number> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(sessionId);
   if (!sid) {
     return 0;
   }
@@ -140,7 +142,6 @@ export const markAllNotificationsAsRead = async (
   try {
     const response = await apiClient.auth.markAllNotificationsAsRead(
       {
-        sessionId: sid,
         tenant: { tenantPublicId },
       },
       buildSessionHeaders(sid)

@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	BumpPlatformUserCredentialsVersion(ctx context.Context, id uuid.UUID) (PlatformUser, error)
+	BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error)
 	CancelTenantAdminInvitation(ctx context.Context, arg CancelTenantAdminInvitationParams) (TenantAdminInvitation, error)
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
@@ -40,7 +42,6 @@ type Querier interface {
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
 	// ページバージョンを新規作成する
 	CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error)
-	CreatePlatformSession(ctx context.Context, arg CreatePlatformSessionParams) (PlatformSession, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
 	CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error)
 	CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error)
@@ -49,7 +50,6 @@ type Querier interface {
 	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
-	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	// プラットフォーム管理者向けテナント作成
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
@@ -75,7 +75,7 @@ type Querier interface {
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
-	GetEpisodeImageAccessByIDForSession(ctx context.Context, arg GetEpisodeImageAccessByIDForSessionParams) (GetEpisodeImageAccessByIDForSessionRow, error)
+	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
@@ -89,9 +89,9 @@ type Querier interface {
 	GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
-	GetPlatformSessionByTokenHash(ctx context.Context, tokenHash string) (PlatformSession, error)
 	GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error)
 	GetPlatformUserByID(ctx context.Context, id uuid.UUID) (PlatformUser, error)
+	GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error)
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
@@ -100,8 +100,6 @@ type Querier interface {
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
-	GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error)
-	GetSessionByTokenHashForTenant(ctx context.Context, arg GetSessionByTokenHashForTenantParams) (Session, error)
 	GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
@@ -188,14 +186,8 @@ type Querier interface {
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
 	// ページバージョンを公開状態にする
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
-	RevokePlatformSession(ctx context.Context, id uuid.UUID) error
-	RevokeSession(ctx context.Context, id uuid.UUID) error
 	// ページの公開バージョンIDを更新する
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
-	// プラットフォームユーザーの全セッションを失効させる
-	TerminatePlatformUserSessions(ctx context.Context, platformUserID uuid.UUID) error
-	// ユーザーの全セッションを失効させる
-	TerminateUserSessions(ctx context.Context, userID uuid.UUID) error
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error

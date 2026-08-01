@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 import { normalizePlatformRole } from "./roles";
 
 export interface PlatformOperatorSummary {
@@ -28,7 +32,7 @@ export const listPlatformOperators = async (): Promise<
 > => {
   "use cache: private";
 
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return [];
   }
@@ -54,7 +58,7 @@ export const listPlatformOperators = async (): Promise<
 export const createPlatformOperator = async (
   input: CreatePlatformOperatorInput
 ): Promise<CreatePlatformOperatorResult> => {
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -88,7 +92,7 @@ export const suspendPlatformOperator = async (
   if (!publicId.trim()) {
     return false;
   }
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return false;
   }
@@ -109,7 +113,7 @@ export const unsuspendPlatformOperator = async (
   if (!publicId.trim()) {
     return false;
   }
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return false;
   }
@@ -152,7 +156,7 @@ export type UpdatePlatformOperatorRoleResult =
 export const updatePlatformOperatorRole = async (
   input: UpdatePlatformOperatorRoleInput
 ): Promise<UpdatePlatformOperatorRoleResult> => {
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -186,7 +190,7 @@ export const deactivatePlatformOperator = async (
   if (!publicId.trim()) {
     return false;
   }
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   try {
     await apiClient.operators.deactivateOperator(
       { publicId } as never,

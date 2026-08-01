@@ -58,7 +58,7 @@ func TestCreateInitialUserSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "admin@example.com", sqlmock.AnyArg(), "Admin User").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
-			AddRow(userID, "ADMINUSER01", "admin@example.com", "hash", "Admin User", "active", now))
+			AddRow(userID, "ADMINUSER01", "admin@example.com", "hash", "Admin User", "active", now, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserRoleQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "platform_super_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "role", "created_at", "platform_user_id"}).

@@ -22,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type CreateSessionRequest struct {
+type LoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
@@ -31,20 +31,20 @@ type CreateSessionRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CreateSessionRequest) Reset() {
-	*x = CreateSessionRequest{}
+func (x *LoginRequest) Reset() {
+	*x = LoginRequest{}
 	mi := &file_publira_v1_auth_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CreateSessionRequest) String() string {
+func (x *LoginRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateSessionRequest) ProtoMessage() {}
+func (*LoginRequest) ProtoMessage() {}
 
-func (x *CreateSessionRequest) ProtoReflect() protoreflect.Message {
+func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_v1_auth_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -56,54 +56,54 @@ func (x *CreateSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateSessionRequest.ProtoReflect.Descriptor instead.
-func (*CreateSessionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
+func (*LoginRequest) Descriptor() ([]byte, []int) {
 	return file_publira_v1_auth_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CreateSessionRequest) GetTenant() *v1.TenantContext {
+func (x *LoginRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
 	return nil
 }
 
-func (x *CreateSessionRequest) GetEmail() string {
+func (x *LoginRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
 	}
 	return ""
 }
 
-func (x *CreateSessionRequest) GetPassword() string {
+func (x *LoginRequest) GetPassword() string {
 	if x != nil {
 		return x.Password
 	}
 	return ""
 }
 
-type CreateSessionResponse struct {
+type LoginResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	Session       *v1.Session            `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
+	AccessToken   *v1.AccessToken        `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CreateSessionResponse) Reset() {
-	*x = CreateSessionResponse{}
+func (x *LoginResponse) Reset() {
+	*x = LoginResponse{}
 	mi := &file_publira_v1_auth_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CreateSessionResponse) String() string {
+func (x *LoginResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateSessionResponse) ProtoMessage() {}
+func (*LoginResponse) ProtoMessage() {}
 
-func (x *CreateSessionResponse) ProtoReflect() protoreflect.Message {
+func (x *LoginResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_v1_auth_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -115,21 +115,21 @@ func (x *CreateSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateSessionResponse.ProtoReflect.Descriptor instead.
-func (*CreateSessionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
+func (*LoginResponse) Descriptor() ([]byte, []int) {
 	return file_publira_v1_auth_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CreateSessionResponse) GetUser() *v1.User {
+func (x *LoginResponse) GetUser() *v1.User {
 	if x != nil {
 		return x.User
 	}
 	return nil
 }
 
-func (x *CreateSessionResponse) GetSession() *v1.Session {
+func (x *LoginResponse) GetAccessToken() *v1.AccessToken {
 	if x != nil {
-		return x.Session
+		return x.AccessToken
 	}
 	return nil
 }
@@ -205,7 +205,7 @@ func (x *CreateUserRequest) GetPassword() string {
 type CreateUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	Session       *v1.Session            `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
+	AccessToken   *v1.AccessToken        `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -247,9 +247,9 @@ func (x *CreateUserResponse) GetUser() *v1.User {
 	return nil
 }
 
-func (x *CreateUserResponse) GetSession() *v1.Session {
+func (x *CreateUserResponse) GetAccessToken() *v1.AccessToken {
 	if x != nil {
-		return x.Session
+		return x.AccessToken
 	}
 	return nil
 }
@@ -353,10 +353,9 @@ func (x *VerifyUserEmailResponse) GetVerified() bool {
 type RequestEmailChangeRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId       string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	CurrentEmail    string                 `protobuf:"bytes,3,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
-	NewEmail        string                 `protobuf:"bytes,4,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
-	CurrentPassword string                 `protobuf:"bytes,5,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	CurrentEmail    string                 `protobuf:"bytes,2,opt,name=current_email,json=currentEmail,proto3" json:"current_email,omitempty"`
+	NewEmail        string                 `protobuf:"bytes,3,opt,name=new_email,json=newEmail,proto3" json:"new_email,omitempty"`
+	CurrentPassword string                 `protobuf:"bytes,4,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -396,13 +395,6 @@ func (x *RequestEmailChangeRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *RequestEmailChangeRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *RequestEmailChangeRequest) GetCurrentEmail() string {
@@ -782,28 +774,27 @@ func (x *ConfirmPasswordResetResponse) GetConfirmed() bool {
 	return false
 }
 
-type DeleteSessionRequest struct {
+type LogoutRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteSessionRequest) Reset() {
-	*x = DeleteSessionRequest{}
+func (x *LogoutRequest) Reset() {
+	*x = LogoutRequest{}
 	mi := &file_publira_v1_auth_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteSessionRequest) String() string {
+func (x *LogoutRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteSessionRequest) ProtoMessage() {}
+func (*LogoutRequest) ProtoMessage() {}
 
-func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
+func (x *LogoutRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_v1_auth_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -815,45 +806,38 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
-func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LogoutRequest.ProtoReflect.Descriptor instead.
+func (*LogoutRequest) Descriptor() ([]byte, []int) {
 	return file_publira_v1_auth_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *DeleteSessionRequest) GetTenant() *v1.TenantContext {
+func (x *LogoutRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
 	return nil
 }
 
-func (x *DeleteSessionRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-type DeleteSessionResponse struct {
+type LogoutResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteSessionResponse) Reset() {
-	*x = DeleteSessionResponse{}
+func (x *LogoutResponse) Reset() {
+	*x = LogoutResponse{}
 	mi := &file_publira_v1_auth_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteSessionResponse) String() string {
+func (x *LogoutResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteSessionResponse) ProtoMessage() {}
+func (*LogoutResponse) ProtoMessage() {}
 
-func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
+func (x *LogoutResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_v1_auth_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -865,15 +849,14 @@ func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSessionResponse.ProtoReflect.Descriptor instead.
-func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use LogoutResponse.ProtoReflect.Descriptor instead.
+func (*LogoutResponse) Descriptor() ([]byte, []int) {
 	return file_publira_v1_auth_proto_rawDescGZIP(), []int{15}
 }
 
 type GetMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -913,13 +896,6 @@ func (x *GetMeRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *GetMeRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 type GetMeResponse struct {
@@ -969,8 +945,7 @@ func (x *GetMeResponse) GetUser() *v1.User {
 type UpdateMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1010,13 +985,6 @@ func (x *UpdateMeRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UpdateMeRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *UpdateMeRequest) GetName() string {
@@ -1073,8 +1041,7 @@ func (x *UpdateMeResponse) GetUser() *v1.User {
 type DeleteMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1114,13 +1081,6 @@ func (x *DeleteMeRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *DeleteMeRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *DeleteMeRequest) GetPassword() string {
@@ -1169,7 +1129,6 @@ func (*DeleteMeResponse) Descriptor() ([]byte, []int) {
 type GetNotificationSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1209,13 +1168,6 @@ func (x *GetNotificationSettingsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *GetNotificationSettingsRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 type GetNotificationSettingsResponse struct {
@@ -1265,8 +1217,7 @@ func (x *GetNotificationSettingsResponse) GetEmailNotificationsEnabled() bool {
 type UpdateNotificationSettingsRequest struct {
 	state                     protoimpl.MessageState `protogen:"open.v1"`
 	Tenant                    *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId                 string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	EmailNotificationsEnabled bool                   `protobuf:"varint,3,opt,name=email_notifications_enabled,json=emailNotificationsEnabled,proto3" json:"email_notifications_enabled,omitempty"`
+	EmailNotificationsEnabled bool                   `protobuf:"varint,2,opt,name=email_notifications_enabled,json=emailNotificationsEnabled,proto3" json:"email_notifications_enabled,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -1306,13 +1257,6 @@ func (x *UpdateNotificationSettingsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *UpdateNotificationSettingsRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *UpdateNotificationSettingsRequest) GetEmailNotificationsEnabled() bool {
@@ -1469,9 +1413,8 @@ func (x *NotificationItem) GetCreatedAt() string {
 type ListNotificationsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1511,13 +1454,6 @@ func (x *ListNotificationsRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *ListNotificationsRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *ListNotificationsRequest) GetLimit() int32 {
@@ -1581,8 +1517,7 @@ func (x *ListNotificationsResponse) GetNotifications() []*NotificationItem {
 type MarkNotificationAsReadRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId      string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	NotificationId string                 `protobuf:"bytes,3,opt,name=notification_id,json=notificationId,proto3" json:"notification_id,omitempty"`
+	NotificationId string                 `protobuf:"bytes,2,opt,name=notification_id,json=notificationId,proto3" json:"notification_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1622,13 +1557,6 @@ func (x *MarkNotificationAsReadRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *MarkNotificationAsReadRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 func (x *MarkNotificationAsReadRequest) GetNotificationId() string {
@@ -1685,7 +1613,6 @@ func (x *MarkNotificationAsReadResponse) GetMarked() bool {
 type MarkAllNotificationsAsReadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1725,13 +1652,6 @@ func (x *MarkAllNotificationsAsReadRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
-}
-
-func (x *MarkAllNotificationsAsReadRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
 }
 
 type MarkAllNotificationsAsReadResponse struct {
@@ -1783,34 +1703,32 @@ var File_publira_v1_auth_proto protoreflect.FileDescriptor
 const file_publira_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x15publira/v1/auth.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"\x81\x01\n" +
-	"\x14CreateSessionRequest\x127\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"y\n" +
+	"\fLoginRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\"x\n" +
-	"\x15CreateSessionResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x123\n" +
-	"\asession\x18\x02 \x01(\v2\x19.publira.types.v1.SessionR\asession\"\x92\x01\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\"}\n" +
+	"\rLoginResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
+	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"\x92\x01\n" +
 	"\x11CreateUserRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x04 \x01(\tR\bpassword\"u\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\"\x82\x01\n" +
 	"\x12CreateUserResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x123\n" +
-	"\asession\x18\x02 \x01(\v2\x19.publira.types.v1.SessionR\asession\"g\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
+	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\"g\n" +
 	"\x16VerifyUserEmailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"5\n" +
 	"\x17VerifyUserEmailResponse\x12\x1a\n" +
-	"\bverified\x18\x01 \x01(\bR\bverified\"\xe0\x01\n" +
+	"\bverified\x18\x01 \x01(\bR\bverified\"\xc1\x01\n" +
 	"\x19RequestEmailChangeRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12#\n" +
-	"\rcurrent_email\x18\x03 \x01(\tR\fcurrentEmail\x12\x1b\n" +
-	"\tnew_email\x18\x04 \x01(\tR\bnewEmail\x12)\n" +
-	"\x10current_password\x18\x05 \x01(\tR\x0fcurrentPassword\":\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12#\n" +
+	"\rcurrent_email\x18\x02 \x01(\tR\fcurrentEmail\x12\x1b\n" +
+	"\tnew_email\x18\x03 \x01(\tR\bnewEmail\x12)\n" +
+	"\x10current_password\x18\x04 \x01(\tR\x0fcurrentPassword\":\n" +
 	"\x1aRequestEmailChangeResponse\x12\x1c\n" +
 	"\trequested\x18\x01 \x01(\bR\trequested\"j\n" +
 	"\x19ConfirmEmailChangeRequest\x127\n" +
@@ -1830,42 +1748,30 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
 	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\"<\n" +
 	"\x1cConfirmPasswordResetResponse\x12\x1c\n" +
-	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\"n\n" +
-	"\x14DeleteSessionRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\"\x17\n" +
-	"\x15DeleteSessionResponse\"f\n" +
+	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\"H\n" +
+	"\rLogoutRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x10\n" +
+	"\x0eLogoutResponse\"G\n" +
 	"\fGetMeRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\";\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\";\n" +
 	"\rGetMeResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"}\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"^\n" +
 	"\x0fUpdateMeRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\">\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\">\n" +
 	"\x10UpdateMeResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"\x85\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"f\n" +
 	"\x0fDeleteMeRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\"\x12\n" +
-	"\x10DeleteMeResponse\"x\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x12\n" +
+	"\x10DeleteMeResponse\"Y\n" +
 	"\x1eGetNotificationSettingsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\"a\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"a\n" +
 	"\x1fGetNotificationSettingsResponse\x12>\n" +
-	"\x1bemail_notifications_enabled\x18\x01 \x01(\bR\x19emailNotificationsEnabled\"\xbb\x01\n" +
+	"\x1bemail_notifications_enabled\x18\x01 \x01(\bR\x19emailNotificationsEnabled\"\x9c\x01\n" +
 	"!UpdateNotificationSettingsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12>\n" +
-	"\x1bemail_notifications_enabled\x18\x03 \x01(\bR\x19emailNotificationsEnabled\"d\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12>\n" +
+	"\x1bemail_notifications_enabled\x18\x02 \x01(\bR\x19emailNotificationsEnabled\"d\n" +
 	"\"UpdateNotificationSettingsResponse\x12>\n" +
 	"\x1bemail_notifications_enabled\x18\x01 \x01(\bR\x19emailNotificationsEnabled\"\xe5\x01\n" +
 	"\x10NotificationItem\x12\x0e\n" +
@@ -1877,38 +1783,32 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\ais_read\x18\x06 \x01(\bR\x06isRead\x12\x17\n" +
 	"\aread_at\x18\a \x01(\tR\x06readAt\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"\xa0\x01\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"\x81\x01\n" +
 	"\x18ListNotificationsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x04 \x01(\x05R\x06offset\"_\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"_\n" +
 	"\x19ListNotificationsResponse\x12B\n" +
-	"\rnotifications\x18\x01 \x03(\v2\x1c.publira.v1.NotificationItemR\rnotifications\"\xa0\x01\n" +
+	"\rnotifications\x18\x01 \x03(\v2\x1c.publira.v1.NotificationItemR\rnotifications\"\x81\x01\n" +
 	"\x1dMarkNotificationAsReadRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12'\n" +
-	"\x0fnotification_id\x18\x03 \x01(\tR\x0enotificationId\"8\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12'\n" +
+	"\x0fnotification_id\x18\x02 \x01(\tR\x0enotificationId\"8\n" +
 	"\x1eMarkNotificationAsReadResponse\x12\x16\n" +
-	"\x06marked\x18\x01 \x01(\bR\x06marked\"{\n" +
+	"\x06marked\x18\x01 \x01(\bR\x06marked\"\\\n" +
 	"!MarkAllNotificationsAsReadRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\"G\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
 	"\"MarkAllNotificationsAsReadResponse\x12!\n" +
-	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount2\xaf\f\n" +
-	"\vAuthService\x12V\n" +
-	"\rCreateSession\x12 .publira.v1.CreateSessionRequest\x1a!.publira.v1.CreateSessionResponse\"\x00\x12M\n" +
+	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount2\x82\f\n" +
+	"\vAuthService\x12>\n" +
+	"\x05Login\x12\x18.publira.v1.LoginRequest\x1a\x19.publira.v1.LoginResponse\"\x00\x12M\n" +
 	"\n" +
 	"CreateUser\x12\x1d.publira.v1.CreateUserRequest\x1a\x1e.publira.v1.CreateUserResponse\"\x00\x12\\\n" +
 	"\x0fVerifyUserEmail\x12\".publira.v1.VerifyUserEmailRequest\x1a#.publira.v1.VerifyUserEmailResponse\"\x00\x12e\n" +
 	"\x12RequestEmailChange\x12%.publira.v1.RequestEmailChangeRequest\x1a&.publira.v1.RequestEmailChangeResponse\"\x00\x12e\n" +
 	"\x12ConfirmEmailChange\x12%.publira.v1.ConfirmEmailChangeRequest\x1a&.publira.v1.ConfirmEmailChangeResponse\"\x00\x12k\n" +
 	"\x14RequestPasswordReset\x12'.publira.v1.RequestPasswordResetRequest\x1a(.publira.v1.RequestPasswordResetResponse\"\x00\x12k\n" +
-	"\x14ConfirmPasswordReset\x12'.publira.v1.ConfirmPasswordResetRequest\x1a(.publira.v1.ConfirmPasswordResetResponse\"\x00\x12V\n" +
-	"\rDeleteSession\x12 .publira.v1.DeleteSessionRequest\x1a!.publira.v1.DeleteSessionResponse\"\x00\x12>\n" +
+	"\x14ConfirmPasswordReset\x12'.publira.v1.ConfirmPasswordResetRequest\x1a(.publira.v1.ConfirmPasswordResetResponse\"\x00\x12A\n" +
+	"\x06Logout\x12\x19.publira.v1.LogoutRequest\x1a\x1a.publira.v1.LogoutResponse\"\x00\x12>\n" +
 	"\x05GetMe\x12\x18.publira.v1.GetMeRequest\x1a\x19.publira.v1.GetMeResponse\"\x00\x12G\n" +
 	"\bUpdateMe\x12\x1b.publira.v1.UpdateMeRequest\x1a\x1c.publira.v1.UpdateMeResponse\"\x00\x12G\n" +
 	"\bDeleteMe\x12\x1b.publira.v1.DeleteMeRequest\x1a\x1c.publira.v1.DeleteMeResponse\"\x00\x12t\n" +
@@ -1932,8 +1832,8 @@ func file_publira_v1_auth_proto_rawDescGZIP() []byte {
 
 var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_publira_v1_auth_proto_goTypes = []any{
-	(*CreateSessionRequest)(nil),               // 0: publira.v1.CreateSessionRequest
-	(*CreateSessionResponse)(nil),              // 1: publira.v1.CreateSessionResponse
+	(*LoginRequest)(nil),                       // 0: publira.v1.LoginRequest
+	(*LoginResponse)(nil),                      // 1: publira.v1.LoginResponse
 	(*CreateUserRequest)(nil),                  // 2: publira.v1.CreateUserRequest
 	(*CreateUserResponse)(nil),                 // 3: publira.v1.CreateUserResponse
 	(*VerifyUserEmailRequest)(nil),             // 4: publira.v1.VerifyUserEmailRequest
@@ -1946,8 +1846,8 @@ var file_publira_v1_auth_proto_goTypes = []any{
 	(*RequestPasswordResetResponse)(nil),       // 11: publira.v1.RequestPasswordResetResponse
 	(*ConfirmPasswordResetRequest)(nil),        // 12: publira.v1.ConfirmPasswordResetRequest
 	(*ConfirmPasswordResetResponse)(nil),       // 13: publira.v1.ConfirmPasswordResetResponse
-	(*DeleteSessionRequest)(nil),               // 14: publira.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),              // 15: publira.v1.DeleteSessionResponse
+	(*LogoutRequest)(nil),                      // 14: publira.v1.LogoutRequest
+	(*LogoutResponse)(nil),                     // 15: publira.v1.LogoutResponse
 	(*GetMeRequest)(nil),                       // 16: publira.v1.GetMeRequest
 	(*GetMeResponse)(nil),                      // 17: publira.v1.GetMeResponse
 	(*UpdateMeRequest)(nil),                    // 18: publira.v1.UpdateMeRequest
@@ -1967,21 +1867,21 @@ var file_publira_v1_auth_proto_goTypes = []any{
 	(*MarkAllNotificationsAsReadResponse)(nil), // 32: publira.v1.MarkAllNotificationsAsReadResponse
 	(*v1.TenantContext)(nil),                   // 33: publira.types.v1.TenantContext
 	(*v1.User)(nil),                            // 34: publira.types.v1.User
-	(*v1.Session)(nil),                         // 35: publira.types.v1.Session
+	(*v1.AccessToken)(nil),                     // 35: publira.types.v1.AccessToken
 }
 var file_publira_v1_auth_proto_depIdxs = []int32{
-	33, // 0: publira.v1.CreateSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	34, // 1: publira.v1.CreateSessionResponse.user:type_name -> publira.types.v1.User
-	35, // 2: publira.v1.CreateSessionResponse.session:type_name -> publira.types.v1.Session
+	33, // 0: publira.v1.LoginRequest.tenant:type_name -> publira.types.v1.TenantContext
+	34, // 1: publira.v1.LoginResponse.user:type_name -> publira.types.v1.User
+	35, // 2: publira.v1.LoginResponse.access_token:type_name -> publira.types.v1.AccessToken
 	33, // 3: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
 	34, // 4: publira.v1.CreateUserResponse.user:type_name -> publira.types.v1.User
-	35, // 5: publira.v1.CreateUserResponse.session:type_name -> publira.types.v1.Session
+	35, // 5: publira.v1.CreateUserResponse.access_token:type_name -> publira.types.v1.AccessToken
 	33, // 6: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
 	33, // 7: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
 	33, // 8: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
 	33, // 9: publira.v1.RequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
 	33, // 10: publira.v1.ConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 11: publira.v1.DeleteSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	33, // 11: publira.v1.LogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
 	33, // 12: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
 	34, // 13: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
 	33, // 14: publira.v1.UpdateMeRequest.tenant:type_name -> publira.types.v1.TenantContext
@@ -1993,14 +1893,14 @@ var file_publira_v1_auth_proto_depIdxs = []int32{
 	26, // 20: publira.v1.ListNotificationsResponse.notifications:type_name -> publira.v1.NotificationItem
 	33, // 21: publira.v1.MarkNotificationAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
 	33, // 22: publira.v1.MarkAllNotificationsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 23: publira.v1.AuthService.CreateSession:input_type -> publira.v1.CreateSessionRequest
+	0,  // 23: publira.v1.AuthService.Login:input_type -> publira.v1.LoginRequest
 	2,  // 24: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
 	4,  // 25: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
 	6,  // 26: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
 	8,  // 27: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
 	10, // 28: publira.v1.AuthService.RequestPasswordReset:input_type -> publira.v1.RequestPasswordResetRequest
 	12, // 29: publira.v1.AuthService.ConfirmPasswordReset:input_type -> publira.v1.ConfirmPasswordResetRequest
-	14, // 30: publira.v1.AuthService.DeleteSession:input_type -> publira.v1.DeleteSessionRequest
+	14, // 30: publira.v1.AuthService.Logout:input_type -> publira.v1.LogoutRequest
 	16, // 31: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
 	18, // 32: publira.v1.AuthService.UpdateMe:input_type -> publira.v1.UpdateMeRequest
 	20, // 33: publira.v1.AuthService.DeleteMe:input_type -> publira.v1.DeleteMeRequest
@@ -2009,14 +1909,14 @@ var file_publira_v1_auth_proto_depIdxs = []int32{
 	27, // 36: publira.v1.AuthService.ListNotifications:input_type -> publira.v1.ListNotificationsRequest
 	29, // 37: publira.v1.AuthService.MarkNotificationAsRead:input_type -> publira.v1.MarkNotificationAsReadRequest
 	31, // 38: publira.v1.AuthService.MarkAllNotificationsAsRead:input_type -> publira.v1.MarkAllNotificationsAsReadRequest
-	1,  // 39: publira.v1.AuthService.CreateSession:output_type -> publira.v1.CreateSessionResponse
+	1,  // 39: publira.v1.AuthService.Login:output_type -> publira.v1.LoginResponse
 	3,  // 40: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
 	5,  // 41: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
 	7,  // 42: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
 	9,  // 43: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
 	11, // 44: publira.v1.AuthService.RequestPasswordReset:output_type -> publira.v1.RequestPasswordResetResponse
 	13, // 45: publira.v1.AuthService.ConfirmPasswordReset:output_type -> publira.v1.ConfirmPasswordResetResponse
-	15, // 46: publira.v1.AuthService.DeleteSession:output_type -> publira.v1.DeleteSessionResponse
+	15, // 46: publira.v1.AuthService.Logout:output_type -> publira.v1.LogoutResponse
 	17, // 47: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
 	19, // 48: publira.v1.AuthService.UpdateMe:output_type -> publira.v1.UpdateMeResponse
 	21, // 49: publira.v1.AuthService.DeleteMe:output_type -> publira.v1.DeleteMeResponse

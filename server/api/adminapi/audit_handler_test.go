@@ -22,7 +22,7 @@ func TestListAuditLogsSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 	firstLogID := uuid.Must(uuid.NewV7())
 	secondLogID := uuid.Must(uuid.NewV7())
 
@@ -61,7 +61,7 @@ func TestListAuditLogsSuccess(t *testing.T) {
 	req := connect.NewRequest(&publiraadminv1.ListAuditLogsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	resp, err := client.ListAuditLogs(context.Background(), req)
 	if err != nil {
@@ -88,7 +88,7 @@ func TestListAuditLogsInvalidCursor(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := "session-token"
+	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -98,7 +98,7 @@ func TestListAuditLogsInvalidCursor(t *testing.T) {
 		Cursor: "not-a-valid-cursor",
 		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
 	})
-	req.Header().Set("X-Publira-Session-Id", sessionToken)
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
 	_, err := client.ListAuditLogs(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {

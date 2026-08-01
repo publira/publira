@@ -1,5 +1,5 @@
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface TenantSiteSettings {
   copyrightText: string;
@@ -48,7 +48,7 @@ export const getTenantSiteSettings = async (
 ): Promise<GetTenantSiteSettingsResult> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = tenantPublicId.trim();
   if (!normalizedTenantPublicId || !sessionId) {
     return {
@@ -61,7 +61,6 @@ export const getTenantSiteSettings = async (
   try {
     const response = await apiClient.auth.getTenantConfig(
       {
-        sessionId,
         tenant: { tenantPublicId: normalizedTenantPublicId },
       },
       withSessionHeaders(sessionId)
@@ -90,7 +89,7 @@ export const updateTenantSiteSettings = async (input: {
   siteDescription: string;
   siteTagline: string;
 }): Promise<UpdateTenantSiteSettingsResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = input.tenantPublicId.trim();
   if (!normalizedTenantPublicId || !sessionId) {
     return {
@@ -103,7 +102,6 @@ export const updateTenantSiteSettings = async (input: {
     const response = await apiClient.auth.updateTenantConfig(
       {
         copyrightText: input.copyrightText,
-        sessionId,
         siteDescription: input.siteDescription,
         siteTagline: input.siteTagline,
         tenant: { tenantPublicId: normalizedTenantPublicId },

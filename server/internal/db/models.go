@@ -185,15 +185,6 @@ type PlatformAuditLog struct {
 	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
 }
 
-type PlatformSession struct {
-	ID             uuid.UUID    `json:"id"`
-	PlatformUserID uuid.UUID    `json:"platform_user_id"`
-	TokenHash      string       `json:"token_hash"`
-	ExpiresAt      time.Time    `json:"expires_at"`
-	RevokedAt      sql.NullTime `json:"revoked_at"`
-	CreatedAt      time.Time    `json:"created_at"`
-}
-
 type PlatformSmtpConfig struct {
 	Singleton         bool           `json:"singleton"`
 	Host              string         `json:"host"`
@@ -208,13 +199,14 @@ type PlatformSmtpConfig struct {
 }
 
 type PlatformUser struct {
-	ID           uuid.UUID `json:"id"`
-	PublicID     string    `json:"public_id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"password_hash"`
-	Name         string    `json:"name"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                 uuid.UUID `json:"id"`
+	PublicID           string    `json:"public_id"`
+	Email              string    `json:"email"`
+	PasswordHash       string    `json:"password_hash"`
+	Name               string    `json:"name"`
+	Status             string    `json:"status"`
+	CreatedAt          time.Time `json:"created_at"`
+	CredentialsVersion int32     `json:"credentials_version"`
 }
 
 type PlatformUserEmailChangeToken struct {
@@ -310,16 +302,6 @@ type SeriesListing struct {
 	TenantID           uuid.UUID      `json:"tenant_id"`
 }
 
-type Session struct {
-	ID        uuid.UUID    `json:"id"`
-	TenantID  uuid.UUID    `json:"tenant_id"`
-	UserID    uuid.UUID    `json:"user_id"`
-	TokenHash string       `json:"token_hash"`
-	ExpiresAt time.Time    `json:"expires_at"`
-	RevokedAt sql.NullTime `json:"revoked_at"`
-	CreatedAt time.Time    `json:"created_at"`
-}
-
 type Tenant struct {
 	ID                        uuid.UUID      `json:"id"`
 	PublicID                  string         `json:"public_id"`
@@ -409,15 +391,16 @@ type TenantUserRole struct {
 }
 
 type User struct {
-	ID              uuid.UUID     `json:"id"`
-	PublicID        string        `json:"public_id"`
-	Email           string        `json:"email"`
-	PasswordHash    string        `json:"password_hash"`
-	Name            string        `json:"name"`
-	CreatedAt       time.Time     `json:"created_at"`
-	Status          string        `json:"status"`
-	TenantID        uuid.NullUUID `json:"tenant_id"`
-	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Email              string        `json:"email"`
+	PasswordHash       string        `json:"password_hash"`
+	Name               string        `json:"name"`
+	CreatedAt          time.Time     `json:"created_at"`
+	Status             string        `json:"status"`
+	TenantID           uuid.NullUUID `json:"tenant_id"`
+	EmailVerifiedAt    sql.NullTime  `json:"email_verified_at"`
+	CredentialsVersion int32         `json:"credentials_version"`
 }
 
 type UserEmailChangeToken struct {

@@ -10,6 +10,7 @@ Node.js 側で共有するパッケージ群です。
 - `tsconfig/`: ワークスペース共通 TypeScript 設定
 - `ui-components/`: `web-host` / `web-admin` 共有 UI コンポーネント
 - `utils/`: 共有ユーティリティ (`cn` など)
+- `web-session/`: Next.js 向け jose JWE セッション Cookie ヘルパ（Bearer 付与含む）
 
 ## 運用ルール
 

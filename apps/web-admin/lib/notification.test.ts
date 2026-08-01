@@ -13,7 +13,7 @@ const {
 }));
 
 vi.mock("./session", () => ({
-  getSessionId: mockGetSessionId,
+  getAccessToken: mockGetSessionId,
 }));
 
 vi.mock("./api", () => ({
@@ -27,7 +27,7 @@ vi.mock("./api", () => ({
     },
   },
   withSessionHeaders: (sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }),
 }));
 

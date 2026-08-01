@@ -1,41 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockCreateSession,
+  mockLogin,
   mockDeleteMe,
-  mockDeleteSession,
+  mockLogout,
   mockGetMe,
   mockGetNotificationSettings,
   mockRequestEmailChange,
-  mockResolveSessionId,
+  mockResolveAccessToken,
   mockUpdateMe,
 } = vi.hoisted(() => ({
-  mockCreateSession: vi.fn(),
   mockDeleteMe: vi.fn(),
-  mockDeleteSession: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
+  mockLogin: vi.fn(),
+  mockLogout: vi.fn(),
   mockRequestEmailChange: vi.fn(),
-  mockResolveSessionId: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
   mockUpdateMe: vi.fn(),
 }));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
-      createSession: mockCreateSession,
       deleteMe: mockDeleteMe,
-      deleteSession: mockDeleteSession,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
+      login: mockLogin,
+      logout: mockLogout,
       requestEmailChange: mockRequestEmailChange,
       updateMe: mockUpdateMe,
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveAccessToken,
 }));
 
 const importAuth = () => import("./auth");
@@ -43,13 +43,13 @@ const importAuth = () => import("./auth");
 describe("web-host auth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSessionId.mockResolvedValue("sid_001");
+    mockResolveAccessToken.mockResolvedValue("sid_001");
   });
 
   it("loginPublic: セッション情報が欠けると null を返す", async () => {
     const { loginPublic } = await importAuth();
-    mockCreateSession.mockResolvedValueOnce({
-      session: { sessionId: "sid_001" },
+    mockLogin.mockResolvedValueOnce({
+      accessToken: {},
     });
 
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
@@ -57,21 +57,21 @@ describe("web-host auth", () => {
 
   it("loginPublic: expected error は null を返す", async () => {
     const { loginPublic } = await importAuth();
-    mockCreateSession.mockRejectedValueOnce(new Error("unauthenticated"));
+    mockLogin.mockRejectedValueOnce(new Error("unauthenticated"));
 
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });
 
-  it("logoutPublic: sessionId 空なら API を呼ばない", async () => {
+  it("logoutPublic: accessToken 空なら API を呼ばない", async () => {
     const { logoutPublic } = await importAuth();
     await logoutPublic("   ", "TENANT001");
 
-    expect(mockDeleteSession).not.toHaveBeenCalled();
+    expect(mockLogout).not.toHaveBeenCalled();
   });
 
   it("getPublicCurrentUser: session 解決不可なら null", async () => {
     const { getPublicCurrentUser } = await importAuth();
-    mockResolveSessionId.mockResolvedValueOnce("");
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(getPublicCurrentUser("TENANT001")).resolves.toBeNull();
     expect(mockGetMe).not.toHaveBeenCalled();
@@ -98,7 +98,7 @@ describe("web-host auth", () => {
 
   it("requestPublicEmailChange: session が無ければ false", async () => {
     const { requestPublicEmailChange } = await importAuth();
-    mockResolveSessionId.mockResolvedValueOnce("");
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(
       requestPublicEmailChange(
@@ -151,7 +151,7 @@ describe("web-host auth", () => {
 
   it("getNotificationSettings: session 無しなら null", async () => {
     const { getNotificationSettings } = await importAuth();
-    mockResolveSessionId.mockResolvedValueOnce("");
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(getNotificationSettings("TENANT001")).resolves.toBeNull();
   });

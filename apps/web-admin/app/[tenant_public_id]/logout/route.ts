@@ -24,11 +24,11 @@ const clearSessionCookie = async () => {
 export const POST = async (_request: Request, { params }: RouteContext) => {
   const { tenant_public_id } = await params;
 
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value ?? "";
+  const { getAccessToken } = await import("#lib/session");
+  const accessToken = await getAccessToken();
 
   try {
-    await logoutAdmin(sessionId, tenant_public_id);
+    await logoutAdmin(accessToken, tenant_public_id);
   } catch {
     // Always clear local session cookie, even when upstream revoke fails.
   }

@@ -1,6 +1,7 @@
 "use server";
 
 import type { FormActionState } from "@publira/ui-components/action-form";
+import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -27,12 +28,19 @@ export const loginAction = async (
     };
   }
 
+  const sealed = await encryptSessionPayload(
+    {
+      accessToken: result.accessToken,
+      expiresAt: result.expiresAt.toISOString(),
+    },
+    resolveAuthSecret()
+  );
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions,
     expires: result.expiresAt,
     name: PLATFORM_SESSION_COOKIE_NAME,
-    value: result.sessionId,
+    value: sealed,
   });
 
   redirect(nextPath);

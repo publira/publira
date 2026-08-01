@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "#components/tenant-document-title";
+import { sealSessionCookieValue } from "#lib/api-client";
 import {
   PUBLIC_SESSION_COOKIE_NAME,
   loginPublic,
@@ -52,12 +53,17 @@ const loginAction = async (formData: FormData): Promise<void> => {
     );
   }
 
+  const sealed = await sealSessionCookieValue({
+    accessToken: result.accessToken,
+    expiresAt: result.expiresAt.toISOString(),
+    tenantPublicId,
+  });
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions,
     expires: result.expiresAt,
     name: PUBLIC_SESSION_COOKIE_NAME,
-    value: result.sessionId,
+    value: sealed,
   });
   updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
 

@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 export interface PlatformTenantSummary {
   adminDomain: string;
@@ -65,7 +69,7 @@ export const listPlatformTenants = async (
 ): Promise<ListPlatformTenantsResult> => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -141,7 +145,7 @@ export const getPlatformTenant = async (
 ): Promise<PlatformTenantDetail | null> => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!publicId.trim() || !sid) {
     return null;
   }
@@ -165,7 +169,7 @@ export const listPlatformTenantMembers = async (
 ): Promise<PlatformTenantMemberSummary[]> => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!tenantPublicId.trim() || !sid) {
     return [];
   }
@@ -191,7 +195,7 @@ export const listPlatformTenantMembers = async (
 export const suspendPlatformTenant = async (
   publicId: string
 ): Promise<boolean> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!publicId.trim() || !sid) {
     return false;
   }
@@ -210,7 +214,7 @@ export const suspendPlatformTenant = async (
 export const resumePlatformTenant = async (
   publicId: string
 ): Promise<boolean> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!publicId.trim() || !sid) {
     return false;
   }
@@ -229,7 +233,7 @@ export const resumePlatformTenant = async (
 export const createPlatformTenant = async (
   input: CreatePlatformTenantInput
 ): Promise<CreatePlatformTenantResult> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -366,7 +370,7 @@ export const listPlatformTenantAdminInvitations = async (
 ): Promise<PlatformTenantAdminInvitation[]> => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!tenantPublicId.trim() || !sid) {
     return [];
   }
@@ -392,7 +396,7 @@ export const createPlatformTenantAdminInvitation = async (
   tenantPublicId: string,
   email: string
 ): Promise<CreateTenantAdminInvitationResult> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -452,7 +456,7 @@ export const resendPlatformTenantAdminInvitation = async (
   tenantPublicId: string,
   invitationId: string
 ): Promise<UpdateTenantAdminInvitationResult> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -505,7 +509,7 @@ export const cancelPlatformTenantAdminInvitation = async (
   tenantPublicId: string,
   invitationId: string
 ): Promise<UpdateTenantAdminInvitationResult> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -559,7 +563,7 @@ export const updatePlatformTenant = async (
   domain: string,
   adminDomain?: string
 ): Promise<UpdatePlatformTenantResult> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -635,7 +639,7 @@ export const addPlatformTenantMember = async (
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -694,7 +698,7 @@ export const updatePlatformTenantMemberRole = async (
   userPublicId: string,
   role: string
 ): Promise<UpdatePlatformTenantMemberRoleResult> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -748,7 +752,7 @@ export const removePlatformTenantMember = async (
   tenantPublicId: string,
   userPublicId: string
 ): Promise<RemovePlatformTenantMemberResult> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",

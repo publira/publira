@@ -125,28 +125,29 @@ func (x *User) GetRole() string {
 	return ""
 }
 
-type Session struct {
+// AccessToken is a JWT issued by Login. Clients send it as Authorization: Bearer.
+type AccessToken struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	ExpiresAt     string                 `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Session) Reset() {
-	*x = Session{}
+func (x *AccessToken) Reset() {
+	*x = AccessToken{}
 	mi := &file_publira_types_v1_types_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Session) String() string {
+func (x *AccessToken) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Session) ProtoMessage() {}
+func (*AccessToken) ProtoMessage() {}
 
-func (x *Session) ProtoReflect() protoreflect.Message {
+func (x *AccessToken) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_types_v1_types_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -158,19 +159,19 @@ func (x *Session) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Session.ProtoReflect.Descriptor instead.
-func (*Session) Descriptor() ([]byte, []int) {
+// Deprecated: Use AccessToken.ProtoReflect.Descriptor instead.
+func (*AccessToken) Descriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *Session) GetSessionId() string {
+func (x *AccessToken) GetToken() string {
 	if x != nil {
-		return x.SessionId
+		return x.Token
 	}
 	return ""
 }
 
-func (x *Session) GetExpiresAt() string {
+func (x *AccessToken) GetExpiresAt() string {
 	if x != nil {
 		return x.ExpiresAt
 	}
@@ -1201,10 +1202,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x04User\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"G\n" +
-	"\aSession\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\"B\n" +
+	"\vAccessToken\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
 	"expires_at\x18\x02 \x01(\tR\texpiresAt\"\x86\x02\n" +
 	"\aCreator\x12\x1b\n" +
@@ -1331,7 +1331,7 @@ var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 1
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(*TenantContext)(nil),         // 0: publira.types.v1.TenantContext
 	(*User)(nil),                  // 1: publira.types.v1.User
-	(*Session)(nil),               // 2: publira.types.v1.Session
+	(*AccessToken)(nil),           // 2: publira.types.v1.AccessToken
 	(*Creator)(nil),               // 3: publira.types.v1.Creator
 	(*Label)(nil),                 // 4: publira.types.v1.Label
 	(*SeriesEyeCatchVariant)(nil), // 5: publira.types.v1.SeriesEyeCatchVariant

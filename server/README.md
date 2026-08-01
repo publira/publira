@@ -96,6 +96,21 @@ task server:build
 - 鍵や平文をログへ出力しない
 - 暗号化/復号に失敗した場合は処理を継続せず失敗として扱う
 
+## 認証 (JWT アクセストークン)
+
+API は email + password で **HS256 JWT アクセストークン** を発行します（`Login` / `Logout`）。  
+ブラウザ向け Cookie は Next.js 側が `jose` で JWE 管理し、API へは `Authorization: Bearer <token>` のみを送ります。
+
+| 項目        | 値                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| 環境変数    | `AUTH_JWT_SECRET`（32 文字以上。未設定時は開発用フォールバック）                            |
+| TTL         | 24h                                                                                         |
+| Audience    | `public` / `admin` / `platform`                                                             |
+| 失効        | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |
+| Next Cookie | `AUTH_SECRET`（JWE 用、API の JWT secret とは別） / Cookie 名: `publira_web_host_auth` 等   |
+
+マイグレーション `20260801000000_access_token_credentials_version` で `sessions` / `platform_sessions` を廃止します。
+
 ## API サーバ分離
 
 - 公開 API サーバー: `server/cmd/api-server`

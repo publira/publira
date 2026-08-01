@@ -6,30 +6,27 @@ import {
   logoutPlatform,
 } from "./auth";
 
-const {
-  mockCreateSession,
-  mockDeleteSession,
-  mockGetMe,
-  mockResolveSessionId,
-} = vi.hoisted(() => ({
-  mockCreateSession: vi.fn(),
-  mockDeleteSession: vi.fn(),
-  mockGetMe: vi.fn(),
-  mockResolveSessionId: vi.fn(),
-}));
+const { mockLogin, mockLogout, mockGetMe, mockResolveSessionId } = vi.hoisted(
+  () => ({
+    mockGetMe: vi.fn(),
+    mockLogin: vi.fn(),
+    mockLogout: vi.fn(),
+    mockResolveSessionId: vi.fn(),
+  })
+);
 
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
-      createSession: mockCreateSession,
-      deleteSession: mockDeleteSession,
       getMe: mockGetMe,
+      login: mockLogin,
+      logout: mockLogout,
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveSessionId,
 }));
 
 beforeEach(() => {
@@ -38,32 +35,32 @@ beforeEach(() => {
 });
 
 describe("loginPlatform", () => {
-  it("API 成功時は sessionId と expiresAt を返す", async () => {
+  it("API 成功時は accessToken と expiresAt を返す", async () => {
     const expiresAt = "2026-03-22T00:00:00Z";
-    mockCreateSession.mockResolvedValueOnce({
-      session: { expiresAt, sessionId: "tok_abc" },
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt, token: "tok_abc" },
       user: { name: "Admin", publicId: "usr_1", role: "platform_super_admin" },
     });
 
     const result = await loginPlatform("admin@example.com", "secret");
     expect(result).toEqual({
+      accessToken: "tok_abc",
       expiresAt: new Date(expiresAt),
-      sessionId: "tok_abc",
     });
-    expect(mockCreateSession).toHaveBeenCalledWith({
+    expect(mockLogin).toHaveBeenCalledWith({
       email: "admin@example.com",
       password: "secret",
     });
   });
 
   it("API がセッション情報を返さない場合は null を返す", async () => {
-    mockCreateSession.mockResolvedValueOnce({ user: {} });
+    mockLogin.mockResolvedValueOnce({ user: {} });
 
     await expect(loginPlatform("a@b.com", "x")).resolves.toBeNull();
   });
 
   it("認証失敗 (Unauthenticated エラー) は null を返す", async () => {
-    mockCreateSession.mockRejectedValueOnce(
+    mockLogin.mockRejectedValueOnce(
       new Error("unauthenticated: invalid credentials")
     );
 
@@ -71,7 +68,7 @@ describe("loginPlatform", () => {
   });
 
   it("想定外エラー時は再throwする", async () => {
-    mockCreateSession.mockRejectedValueOnce(new Error("network error"));
+    mockLogin.mockRejectedValueOnce(new Error("network error"));
 
     await expect(loginPlatform("a@b.com", "x")).rejects.toThrow(
       "network error"
@@ -80,23 +77,23 @@ describe("loginPlatform", () => {
 });
 
 describe("logoutPlatform", () => {
-  it("sessionId が空文字の場合 API を呼ばない", async () => {
+  it("accessToken が空文字の場合 API を呼ばない", async () => {
     await logoutPlatform("  ");
-    expect(mockDeleteSession).not.toHaveBeenCalled();
+    expect(mockLogout).not.toHaveBeenCalled();
   });
 
-  it("正常な sessionId で API を呼ぶ", async () => {
-    mockDeleteSession.mockResolvedValueOnce({});
+  it("正常な accessToken で API を呼ぶ", async () => {
+    mockLogout.mockResolvedValueOnce({});
 
     await logoutPlatform("tok_abc");
-    expect(mockDeleteSession).toHaveBeenCalledWith(
+    expect(mockLogout).toHaveBeenCalledWith(
       {},
-      { headers: { "X-Publira-Session-Id": "tok_abc" } }
+      { headers: { Authorization: "Bearer tok_abc" } }
     );
   });
 
   it("API エラー時も例外を投げない", async () => {
-    mockDeleteSession.mockRejectedValueOnce(new Error("network error"));
+    mockLogout.mockRejectedValueOnce(new Error("network error"));
 
     await expect(logoutPlatform("tok_abc")).resolves.toBeUndefined();
   });
@@ -116,7 +113,7 @@ describe("getPlatformCurrentOperator", () => {
     });
     expect(mockGetMe).toHaveBeenCalledWith(
       {},
-      { headers: { "X-Publira-Session-Id": "tok_abc" } }
+      { headers: { Authorization: "Bearer tok_abc" } }
     );
   });
 

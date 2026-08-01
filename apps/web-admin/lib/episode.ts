@@ -1,5 +1,5 @@
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface EpisodeItem {
   publicId: string;
@@ -229,7 +229,7 @@ export const createEpisode = async (input: {
   readingPeriodHours: number;
   publishAt: string;
 }): Promise<CreateEpisodeResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -274,7 +274,7 @@ export const listEpisodes = async (input: {
   tenantPublicId: string;
   seriesPublicId: string;
 }): Promise<ListEpisodesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       episodes: [],
@@ -310,7 +310,7 @@ export const updateEpisodePublishSchedule = async (input: {
   episodePublicId: string;
   publishAt: string;
 }): Promise<UpdateEpisodePublishScheduleResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -354,7 +354,7 @@ export const uploadEpisodePages = async (input: {
   pages?: File[];
   archive?: File;
 }): Promise<UploadEpisodePagesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -401,7 +401,7 @@ export const listEpisodeImages = async (input: {
   tenantPublicId: string;
   episodePublicId: string;
 }): Promise<ListEpisodeImagesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       images: [],
@@ -437,7 +437,7 @@ export const reorderEpisodes = async (input: {
   seriesPublicId: string;
   episodePublicIds: string[];
 }): Promise<ReorderEpisodesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -479,7 +479,7 @@ export const reorderEpisodeImages = async (input: {
   episodePublicId: string;
   imageIds: string[];
 }): Promise<ReorderEpisodeImagesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",

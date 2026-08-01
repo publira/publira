@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 export interface PlatformDashboardRecentEvent {
   action: string;
@@ -33,7 +37,7 @@ export const getPlatformDashboardSummary = async (input?: {
 }): Promise<GetPlatformDashboardSummaryResult> => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",

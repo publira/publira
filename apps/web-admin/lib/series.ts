@@ -1,5 +1,5 @@
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface SeriesItem {
   publicId: string;
@@ -183,7 +183,7 @@ export const listSeries = async (
 ): Promise<ListSeriesResult> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       defaultReadingPeriodHours: 0,
@@ -232,7 +232,7 @@ export const getSeries = async (input: {
 }): Promise<GetSeriesResult> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -287,7 +287,7 @@ export const createSeries = async (input: {
   eyeCatchImageContentType?: string;
   eyeCatchImageData?: Uint8Array;
 }): Promise<CreateSeriesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -355,7 +355,7 @@ export const updateSeries = async (input: {
   eyeCatchImageContentType?: string;
   eyeCatchImageData?: Uint8Array;
 }): Promise<UpdateSeriesResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",

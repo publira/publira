@@ -29,9 +29,9 @@ vi.mock("./api-client", () => ({
     },
   },
   buildSessionHeaders: (sessionId: string) => ({
-    headers: { "X-Publira-Session-Id": sessionId },
+    headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveSessionId,
 }));
 
 beforeEach(() => {
@@ -128,7 +128,7 @@ describe("updatePlatformEmailSettings", () => {
         replyTo: "",
         username: "mailer",
       },
-      { headers: { "X-Publira-Session-Id": "sess_abc" } }
+      { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 });
