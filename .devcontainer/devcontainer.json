@@ -40,5 +40,5 @@
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
   },
-  "postCreateCommand": "task setup && task db:setup"
+  "postCreateCommand": ".devcontainer/post-create.sh"
 }
