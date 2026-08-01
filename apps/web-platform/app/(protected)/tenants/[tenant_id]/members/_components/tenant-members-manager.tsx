@@ -205,12 +205,14 @@ const TenantMemberRoleDialog = ({
     updateRoleAction,
     null
   );
+  const [prevUpdateState, setPrevUpdateState] = React.useState(updateState);
 
-  React.useEffect(() => {
+  if (updateState !== prevUpdateState) {
+    setPrevUpdateState(updateState);
     if (updateState?.ok) {
       setOpen(false);
     }
-  }, [updateState]);
+  }
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>

@@ -55,11 +55,16 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);
-  const [name, setName] = useState(initialLabel?.name ?? "");
+  const initialName = initialLabel?.name ?? "";
+  const [name, setName] = useState(initialName);
+  const [prevInitialName, setPrevInitialName] = useState(initialName);
+  const [prevMode, setPrevMode] = useState(mode);
 
-  useEffect(() => {
-    setName(initialLabel?.name ?? "");
-  }, [initialLabel?.name, mode]);
+  if (initialName !== prevInitialName || mode !== prevMode) {
+    setPrevInitialName(initialName);
+    setPrevMode(mode);
+    setName(initialName);
+  }
 
   useEffect(() => {
     if (state?.ok && state.mode === "create") {

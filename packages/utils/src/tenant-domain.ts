@@ -18,7 +18,7 @@ const getHostVariants = (value: string): string[] => {
     return [];
   }
 
-  const normalizedValue = trimmedValue.replace(/\/.*/, "").toLowerCase();
+  const normalizedValue = trimmedValue.replace(/\/.*/u, "").toLowerCase();
 
   try {
     const url = new URL(
@@ -35,7 +35,7 @@ const getHostVariants = (value: string): string[] => {
       ),
     ];
   } catch {
-    const withoutPort = normalizedValue.replace(/:\d+$/, "");
+    const withoutPort = normalizedValue.replace(/:\d+$/u, "");
     return [
       ...new Set(
         [normalizedValue, withoutPort].filter(

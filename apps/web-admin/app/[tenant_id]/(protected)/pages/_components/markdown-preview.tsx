@@ -29,7 +29,8 @@ const toItemEntries = (blockKey: string, items: string[]) => {
 
 const parseInline = (text: string): ReactNode[] => {
   const nodes: ReactNode[] = [];
-  const tokenPattern = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/;
+  const tokenPattern =
+    /(?:`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/u;
   let rest = text;
   let key = 0;
 
@@ -59,7 +60,9 @@ const parseInline = (text: string): ReactNode[] => {
     } else if (token.startsWith("*")) {
       nodes.push(<em key={key}>{parseInline(token.slice(1, -1))}</em>);
     } else {
-      const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      // Numbered groups: Next apps target ES2017 (no named capture groups).
+      // oxlint-disable-next-line prefer-named-capture-group
+      const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/u);
       if (linkMatch) {
         nodes.push(
           <a
@@ -89,7 +92,9 @@ const parseFencedCode = (
   index: number
 ): { block: MarkdownBlock; nextIndex: number } | null => {
   const line = lines[index];
-  const fenceMatch = line.match(/^```(.*)$/);
+  // Numbered groups: Next apps target ES2017 (no named capture groups).
+  // oxlint-disable-next-line prefer-named-capture-group
+  const fenceMatch = line.match(/^```(.*)$/u);
   if (!fenceMatch) {
     return null;
   }
@@ -116,7 +121,9 @@ const parseHeading = (
   line: string,
   index: number
 ): { block: MarkdownBlock; nextIndex: number } | null => {
-  const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+  // Numbered groups: Next apps target ES2017 (no named capture groups).
+  // oxlint-disable-next-line prefer-named-capture-group
+  const headingMatch = line.match(/^(#{1,6})\s+(.*)$/u);
   if (!headingMatch) {
     return null;
   }
@@ -143,7 +150,7 @@ const parseBlockquote = (
   const quoteLines: string[] = [];
   let nextIndex = index;
   while (nextIndex < lines.length && lines[nextIndex].startsWith(">")) {
-    quoteLines.push(lines[nextIndex].replace(/^>\s?/, ""));
+    quoteLines.push(lines[nextIndex].replace(/^>\s?/u, ""));
     nextIndex += 1;
   }
 
@@ -162,8 +169,8 @@ const parseList = (
   index: number,
   kind: "ordered-list" | "unordered-list"
 ): { block: MarkdownBlock; nextIndex: number } | null => {
-  const matcher = kind === "unordered-list" ? /^[-*]\s+/ : /^\d+\.\s+/;
-  const replacer = kind === "unordered-list" ? /^[-*]\s+/ : /^\d+\.\s+/;
+  const matcher = kind === "unordered-list" ? /^[-*]\s+/u : /^\d+\.\s+/u;
+  const replacer = kind === "unordered-list" ? /^[-*]\s+/u : /^\d+\.\s+/u;
   if (!matcher.test(lines[index])) {
     return null;
   }
@@ -189,9 +196,10 @@ const isParagraphLine = (line: string): boolean =>
   !!line.trim() &&
   !line.startsWith(">") &&
   !line.startsWith("```") &&
-  !/^[-*]\s+/.test(line) &&
-  !/^\d+\.\s+/.test(line) &&
-  !/^(#{1,6})\s+/.test(line);
+  !/^[-*]\s+/u.test(line) &&
+  !/^\d+\.\s+/u.test(line) &&
+  // oxlint-disable-next-line prefer-named-capture-group
+  !/^(#{1,6})\s+/u.test(line);
 
 const parseParagraph = (
   lines: string[],

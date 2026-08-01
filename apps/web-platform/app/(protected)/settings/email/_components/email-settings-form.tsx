@@ -83,6 +83,15 @@ export const EmailSettingsForm = ({
   );
   const [sendToSelf, setSendToSelf] = React.useState(true);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [prevSaveState, setPrevSaveState] = React.useState(saveState);
+
+  if (saveState !== prevSaveState) {
+    setPrevSaveState(saveState);
+    if (saveState?.ok) {
+      setHasStoredPassword(saveState.settings.hasPassword);
+      setIsPasswordEditing(!saveState.settings.hasPassword);
+    }
+  }
 
   const handleStartPasswordEdit = React.useCallback(() => {
     setIsPasswordEditing(true);
@@ -98,15 +107,6 @@ export const EmailSettingsForm = ({
     },
     []
   );
-
-  React.useEffect(() => {
-    if (!saveState?.ok) {
-      return;
-    }
-
-    setHasStoredPassword(saveState.settings.hasPassword);
-    setIsPasswordEditing(!saveState.settings.hasPassword);
-  }, [saveState]);
 
   return (
     <Card>

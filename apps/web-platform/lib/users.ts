@@ -233,6 +233,8 @@ const listTenantScopedUsersFallback = async (
 
   for (let tenantPage = 0; tenantPage < 20; tenantPage += 1) {
     const tenantOffset = tenantPage * tenantsPerPage;
+    // Sequential pagination depends on previous page results.
+    // oxlint-disable-next-line no-await-in-loop
     const tenantResponse = await apiClient.tenants.listTenants(
       {
         limit: tenantsPerPage,
@@ -256,6 +258,8 @@ const listTenantScopedUsersFallback = async (
 
       for (let memberPage = 0; memberPage < 20; memberPage += 1) {
         const memberOffset = memberPage * membersPerPage;
+        // Sequential pagination depends on previous page results.
+        // oxlint-disable-next-line no-await-in-loop
         const memberResponse = await apiClient.tenants.listTenantMembers(
           {
             limit: membersPerPage,
@@ -369,6 +373,8 @@ export const listPlatformTenantFilterOptions = async (): Promise<
 
     for (let tenantPage = 0; tenantPage < 20; tenantPage += 1) {
       const offset = tenantPage * tenantsPerPage;
+      // Sequential pagination depends on previous page results.
+      // oxlint-disable-next-line no-await-in-loop
       const response = await apiClient.tenants.listTenants(
         {
           limit: tenantsPerPage,

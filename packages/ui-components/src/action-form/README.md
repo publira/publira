@@ -77,14 +77,14 @@ import type { FormActionState } from "@publira/ui-components/action-form";
 
 ## Props
 
-| Prop              | 型                                                  | デフォルト    | 説明                                         |
-| ----------------- | --------------------------------------------------- | ------------- | -------------------------------------------- |
-| `action`          | `(prevState, formData) => Promise<FormActionState>` | 必須          | Server Action                                |
-| `children`        | `ReactNode \| (props) => ReactNode`                 | 必須          | フォーム内容。関数を渡すとレンダー関数モード |
-| `submitLabel`     | `string`                                            | —             | 自動モードの送信ボタンテキスト               |
-| `pendingLabel`    | `string`                                            | `submitLabel` | 送信中のボタンテキスト                       |
-| `showSuccess`     | `boolean`                                           | `false`       | `{ ok: true }` 時に成功メッセージを表示      |
-| `className`       | `string`                                            | —             | `<form>` の className                        |
-| `submitClassName` | `string`                                            | —             | 送信ボタンの className                       |
-| `submitVariant`   | `ButtonProps["variant"]`                            | —             | 送信ボタンの variant                         |
-| `disabled`        | `boolean`                                           | —             | 送信ボタンを無効化                           |
+| Prop | 型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `action` | `(prevState, formData) => Promise<FormActionState>` | 必須 | Server Action |
+| `children` | `ReactNode \| (props) => ReactNode` | 必須 | フォーム内容。関数を渡すとレンダー関数モード |
+| `submitLabel` | `string` | — | 自動モードの送信ボタンテキスト |
+| `pendingLabel` | `string` | `submitLabel` | 送信中のボタンテキスト |
+| `showSuccess` | `boolean` | `false` | `{ ok: true }` 時に成功メッセージを表示 |
+| `className` | `string` | — | `<form>` の className |
+| `submitClassName` | `string` | — | 送信ボタンの className |
+| `submitVariant` | `ButtonProps["variant"]` | — | 送信ボタンの variant |
+| `disabled` | `boolean` | — | 送信ボタンを無効化 |

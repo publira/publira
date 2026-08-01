@@ -261,20 +261,30 @@ const EyeCatchImageField = ({
 const useSeriesFormState = ({
   initialSeries,
 }: Pick<SeriesFormProps, "initialSeries">) => {
-  const [selectedCreatorPublicIds, setSelectedCreatorPublicIds] = useState<
-    string[]
-  >([]);
-  const [selectedLabelPublicId, setSelectedLabelPublicId] = useState("");
+  const initialCreatorPublicIds = initialSeries?.creatorPublicIds ?? [];
+  const initialLabelPublicId = initialSeries?.labelPublicId ?? "";
+  const initialCreatorIdsKey = initialCreatorPublicIds.join("\0");
+  const [selectedCreatorPublicIds, setSelectedCreatorPublicIds] = useState(
+    () => initialCreatorPublicIds
+  );
+  const [selectedLabelPublicId, setSelectedLabelPublicId] =
+    useState(initialLabelPublicId);
+  const [prevCreatorIdsKey, setPrevCreatorIdsKey] =
+    useState(initialCreatorIdsKey);
+  const [prevLabelPublicId, setPrevLabelPublicId] =
+    useState(initialLabelPublicId);
   const [uploadedEyeCatchPreviewUrl, setUploadedEyeCatchPreviewUrl] =
     useState("");
 
-  useEffect(() => {
-    setSelectedCreatorPublicIds(initialSeries?.creatorPublicIds ?? []);
-  }, [initialSeries?.creatorPublicIds]);
+  if (initialCreatorIdsKey !== prevCreatorIdsKey) {
+    setPrevCreatorIdsKey(initialCreatorIdsKey);
+    setSelectedCreatorPublicIds(initialCreatorPublicIds);
+  }
 
-  useEffect(() => {
-    setSelectedLabelPublicId(initialSeries?.labelPublicId ?? "");
-  }, [initialSeries?.labelPublicId]);
+  if (initialLabelPublicId !== prevLabelPublicId) {
+    setPrevLabelPublicId(initialLabelPublicId);
+    setSelectedLabelPublicId(initialLabelPublicId);
+  }
 
   useEffect(
     () => () => {

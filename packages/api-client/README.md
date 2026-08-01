@@ -47,8 +47,7 @@ import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/aut
 
 ## テナントヘッダー
 
-`tenantPublicId` を指定すると、すべての API リクエストに
-`X-Publira-Tenant-Public-Id` ヘッダーが自動で付与されます。
+`tenantPublicId` を指定すると、すべての API リクエストに `X-Publira-Tenant-Public-Id` ヘッダーが自動で付与されます。
 
 - 固定値: `tenantPublicId: "TENANT001"`
 - 動的値: `tenantPublicId: () => selectedTenantPublicId`

@@ -51,7 +51,7 @@ const parseCommonFields = async (formData: FormData) => {
     .getAll("creator_public_ids")
     .map((value) => String(value).trim())
     .filter((value) => value.length > 0);
-  const readingPeriodHours = Number.parseInt(readingPeriodHoursRaw, 10);
+  const readingPeriodHours = Math.trunc(Number(readingPeriodHoursRaw));
 
   const eyeCatchImageFile = formData.get("eye_catch_image");
   let eyeCatchImageData: Uint8Array | undefined;

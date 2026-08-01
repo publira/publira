@@ -3,7 +3,8 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import {
+
+export {
   PUBLIC_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./auth-shared";
@@ -261,6 +262,8 @@ export const getMe = async (
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
+      // Retry once on transient failures; must stay sequential.
+      // oxlint-disable-next-line no-await-in-loop
       const response = await apiClient.auth.getMe(
         {
           tenant: { tenantId },
@@ -415,5 +418,3 @@ export const sessionCookieOptions = {
   sameSite: "lax" as const,
   secure: process.env.NODE_ENV === "production",
 };
-
-export { PUBLIC_SESSION_COOKIE_NAME, sanitizeRedirectPath };

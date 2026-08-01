@@ -17,7 +17,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent } from "react";
 
 import { useTenantId } from "#lib/use-tenant-id";
@@ -37,15 +37,27 @@ interface PageFormProps {
 export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
+  const initialSlug = initialPage?.slug ?? "";
+  const initialTitle = initialPage?.title ?? "";
   const [contentMarkdown, setContentMarkdown] = useState("");
-  const [slug, setSlug] = useState(initialPage?.slug ?? "");
-  const [title, setTitle] = useState(initialPage?.title ?? "");
+  const [slug, setSlug] = useState(initialSlug);
+  const [title, setTitle] = useState(initialTitle);
+  const [prevInitialSlug, setPrevInitialSlug] = useState(initialSlug);
+  const [prevInitialTitle, setPrevInitialTitle] = useState(initialTitle);
+  const [prevMode, setPrevMode] = useState(mode);
 
-  useEffect(() => {
+  if (
+    initialSlug !== prevInitialSlug ||
+    initialTitle !== prevInitialTitle ||
+    mode !== prevMode
+  ) {
+    setPrevInitialSlug(initialSlug);
+    setPrevInitialTitle(initialTitle);
+    setPrevMode(mode);
     setContentMarkdown("");
-    setSlug(initialPage?.slug ?? "");
-    setTitle(initialPage?.title ?? "");
-  }, [initialPage?.slug, initialPage?.title, mode]);
+    setSlug(initialSlug);
+    setTitle(initialTitle);
+  }
 
   const isUpdate = mode === "update";
   const handleSlugBlur = useCallback(() => {

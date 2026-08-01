@@ -16,7 +16,7 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useCallback, useEffect, useId, useState } from "react";
+import { useActionState, useCallback, useId, useState } from "react";
 
 import type { TenantThemeSettings } from "#lib/theme-settings";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -300,16 +300,20 @@ export const ThemeSettingsForm = ({
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [colors, setColors] = useState<TenantThemeSettings>(initialTheme);
+  const [prevInitialTheme, setPrevInitialTheme] = useState(initialTheme);
+  const [prevState, setPrevState] = useState(state);
 
-  useEffect(() => {
+  if (initialTheme !== prevInitialTheme) {
+    setPrevInitialTheme(initialTheme);
     setColors(initialTheme);
-  }, [initialTheme]);
+  }
 
-  useEffect(() => {
+  if (state !== prevState) {
+    setPrevState(state);
     if (state?.ok) {
       setColors(state.theme);
     }
-  }, [state]);
+  }
 
   const createHandler = useCallback(
     (key: ColorKey) => (event: React.ChangeEvent<HTMLInputElement>) => {

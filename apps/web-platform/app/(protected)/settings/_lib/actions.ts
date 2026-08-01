@@ -44,7 +44,7 @@ interface ParsedSmtpFormData {
 }
 
 const parseIntOrFallback = (value: string, fallback: number): number => {
-  const parsed = Number.parseInt(value, 10);
+  const parsed = Math.trunc(Number(value));
   if (!Number.isFinite(parsed)) {
     return fallback;
   }

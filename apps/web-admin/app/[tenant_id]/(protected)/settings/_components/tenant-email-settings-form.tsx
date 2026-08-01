@@ -296,22 +296,33 @@ export const TenantEmailSettingsForm = ({
   );
   const [sendToSelf, setSendToSelf] = React.useState(true);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [prevHasPassword, setPrevHasPassword] = React.useState(
+    initialSettings.hasPassword
+  );
+  const [prevSmtpOverrideEnabled, setPrevSmtpOverrideEnabled] = React.useState(
+    initialSettings.smtpOverrideEnabled
+  );
+  const [prevSaveState, setPrevSaveState] = React.useState(saveState);
 
-  React.useEffect(() => {
+  if (
+    initialSettings.hasPassword !== prevHasPassword ||
+    initialSettings.smtpOverrideEnabled !== prevSmtpOverrideEnabled
+  ) {
+    setPrevHasPassword(initialSettings.hasPassword);
+    setPrevSmtpOverrideEnabled(initialSettings.smtpOverrideEnabled);
     setSmtpOverrideEnabled(initialSettings.smtpOverrideEnabled);
     setHasStoredPassword(initialSettings.hasPassword);
     setIsPasswordEditing(!initialSettings.hasPassword);
-  }, [initialSettings.hasPassword, initialSettings.smtpOverrideEnabled]);
+  }
 
-  React.useEffect(() => {
-    if (!saveState?.ok) {
-      return;
+  if (saveState !== prevSaveState) {
+    setPrevSaveState(saveState);
+    if (saveState?.ok) {
+      setSmtpOverrideEnabled(saveState.settings.smtpOverrideEnabled);
+      setHasStoredPassword(saveState.settings.hasPassword);
+      setIsPasswordEditing(!saveState.settings.hasPassword);
     }
-
-    setSmtpOverrideEnabled(saveState.settings.smtpOverrideEnabled);
-    setHasStoredPassword(saveState.settings.hasPassword);
-    setIsPasswordEditing(!saveState.settings.hasPassword);
-  }, [saveState]);
+  }
 
   const fieldsInteractive = canEdit && smtpOverrideEnabled;
 

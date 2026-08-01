@@ -22,7 +22,7 @@ const formMessageVariants = cva(
   }
 );
 
-export type FormMessageProps = React.ComponentPropsWithoutRef<"p"> &
+export type FormMessageProps = React.ComponentPropsWithoutRef<"output"> &
   VariantProps<typeof formMessageVariants>;
 
 const iconByVariant = {
@@ -41,10 +41,9 @@ export const FormMessage = ({
   const tone = variant ?? "info";
 
   return (
-    <p
+    <output
       {...props}
       className={cn(formMessageVariants({ variant: tone }), className)}
-      role="status"
     >
       <span
         aria-hidden="true"
@@ -53,6 +52,6 @@ export const FormMessage = ({
         {iconByVariant[tone]}
       </span>
       <span className="leading-5">{children}</span>
-    </p>
+    </output>
   );
 };

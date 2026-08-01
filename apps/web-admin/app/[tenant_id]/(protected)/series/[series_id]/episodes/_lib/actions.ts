@@ -23,9 +23,9 @@ const parseCreateEpisodeInput = (formData: FormData) => {
   const publishAtRaw = String(formData.get("publish_at") ?? "").trim();
 
   return {
-    price: Number.parseInt(priceRaw, 10),
+    price: Math.trunc(Number(priceRaw)),
     publishAtRaw,
-    readingPeriodHours: Number.parseInt(readingPeriodHoursRaw, 10),
+    readingPeriodHours: Math.trunc(Number(readingPeriodHoursRaw)),
     seriesPublicId,
     tenantId,
     title,
