@@ -106,7 +106,9 @@ const LoginPageFallback = () => (
   </div>
 );
 
-const LoginPageContent = async ({ params, searchParams }: LoginPageProps) => {
+const LoginPageContent = async ({
+  searchParams,
+}: Pick<LoginPageProps, "searchParams">) => {
   const tenantId = await getTenantId();
 
   const sp = await searchParams;

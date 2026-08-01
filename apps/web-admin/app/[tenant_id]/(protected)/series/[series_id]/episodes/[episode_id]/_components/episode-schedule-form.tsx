@@ -11,9 +11,10 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
+import { useTenantId } from "#lib/use-tenant-id";
+
 import { PublishAtInput } from "../../_components/publish-at-input";
 import type { EpisodeEditActionState } from "../episode-edit-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface EpisodeScheduleFormProps {
   seriesPublicId: string;
@@ -24,11 +25,11 @@ interface EpisodeScheduleFormProps {
   ) => Promise<EpisodeEditActionState>;
 }
 
-export const EpisodeScheduleForm = ({ seriesPublicId,
+export const EpisodeScheduleForm = ({
+  seriesPublicId,
   episodePublicId,
   action,
 }: EpisodeScheduleFormProps) => {
-
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 

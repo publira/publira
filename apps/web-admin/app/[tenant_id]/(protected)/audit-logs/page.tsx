@@ -18,16 +18,14 @@ import {
   TableLoadingRow,
   TableRow,
 } from "@publira/ui-components/table";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminPage } from "#components/admin-page";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
 import { buildQueryString } from "#lib/query-string";
+import { getTenantId } from "#lib/tenant-id";
 
 import { ActorFilterCombobox } from "./_components/actor-filter-combobox";
 import {
@@ -37,7 +35,6 @@ import {
   AuditLogOutcomeCell,
   auditActionOptions,
 } from "./_components/audit-log-cells";
-import { getTenantId } from "#lib/tenant-id";
 import {
   parseAuditLogFilters,
   toAllowedActionValues,
@@ -94,7 +91,11 @@ const AuditLogsSkeleton = () => (
   </div>
 );
 
-const AuditLogsContent = async ({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) => {
+const AuditLogsContent = async ({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) => {
   const tenantId = await getTenantId();
   const filters = parseAuditLogFilters(searchParams, allowedActionValues);
 
@@ -292,7 +293,6 @@ const AuditLogsContent = async ({ searchParams }: { searchParams: Record<string,
 };
 
 export default async function AuditLogsPage({
-  params,
   searchParams,
 }: AuditLogsPageProps) {
   const sp = await searchParams;

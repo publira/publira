@@ -30,7 +30,11 @@ export const AcceptInviteForm = ({
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="token" type="hidden" value={token} />
-      <input name="account_exists" type="hidden" value={String(accountExists)} />
+      <input
+        name="account_exists"
+        type="hidden"
+        value={String(accountExists)}
+      />
       <input name="email" type="hidden" value={email} />
 
       {accountExists ? (

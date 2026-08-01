@@ -21,9 +21,7 @@ const pickFirstQueryParam = (
   return value;
 };
 
-const ConfirmationResult = async ({ token,
- }: { token: string;
- }) => {
+const ConfirmationResult = async ({ token }: { token: string }) => {
   const tenantId = await getTenantId();
   if (!token) {
     return (
@@ -95,7 +93,6 @@ const ConfirmationFallback = () => (
 );
 
 const ConfirmEmailPageContent = async ({
-  params,
   searchParams,
 }: {
   params: Promise<{ tenant_id: string }>;

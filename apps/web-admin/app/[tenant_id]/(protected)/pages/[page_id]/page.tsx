@@ -11,9 +11,9 @@ import { Suspense } from "react";
 import { AdminPage } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getPage, listPageVersions } from "#lib/page";
+import { getTenantId } from "#lib/tenant-id";
 
 import { PageWorkspace } from "../_components/page-workspace";
-import { getTenantId } from "#lib/tenant-id";
 import {
   createDraftVersionAction,
   publishVersionAction,

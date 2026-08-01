@@ -21,7 +21,6 @@ const pickFirstQueryParam = (
 };
 
 const ResetPasswordRequestedContent = async ({
-  params,
   searchParams,
 }: {
   params: Promise<{ tenant_id: string }>;

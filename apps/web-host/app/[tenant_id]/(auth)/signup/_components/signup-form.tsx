@@ -90,7 +90,10 @@ export const SignupForm = () => {
         <span className="text-muted-foreground">
           すでにアカウントをお持ちの方は
         </span>{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
           ログイン
         </Link>
       </div>

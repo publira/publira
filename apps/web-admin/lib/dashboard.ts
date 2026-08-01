@@ -52,7 +52,7 @@ export const getDashboard = async (
 
   try {
     const response = await apiClient.dashboard.getDashboard(
-      { tenant: { tenantId: tenantId } },
+      { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
 

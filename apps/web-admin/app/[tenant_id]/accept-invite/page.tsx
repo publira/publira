@@ -4,9 +4,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { getTenantAdminInvitationState } from "#lib/admin-auth";
+import { getTenantId } from "#lib/tenant-id";
 
 import { AcceptInviteForm } from "./_components/accept-invite-form";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "管理者招待の承諾",
@@ -19,9 +19,7 @@ interface AcceptInvitePageProps {
   }>;
 }
 
-const AcceptInviteFormContent = async ({ token,
- }: { token: string;
- }) => {
+const AcceptInviteFormContent = async ({ token }: { token: string }) => {
   const tenantId = await getTenantId();
   const invitation = await getTenantAdminInvitationState(tenantId, token);
 
@@ -108,10 +106,8 @@ const AcceptInviteFormWrapper = ({ token }: { token: string }) => {
 };
 
 export default async function AcceptInvitePage({
-  params,
   searchParams,
 }: AcceptInvitePageProps) {
-
   const sp = await searchParams;
   const token = sp.token?.trim() ?? "";
 
@@ -127,9 +123,7 @@ export default async function AcceptInvitePage({
           </p>
         </div>
 
-        <AcceptInviteFormWrapper
-          token={token}
-        />
+        <AcceptInviteFormWrapper token={token} />
       </div>
     </main>
   );

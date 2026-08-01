@@ -1,8 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -11,10 +8,10 @@ import { AdminPage } from "#components/admin-page";
 import { listCreators } from "#lib/creator";
 import { listLabels } from "#lib/label";
 import { listSeries } from "#lib/series";
+import { getTenantId } from "#lib/tenant-id";
 
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "シリーズ新規作成",
@@ -57,10 +54,7 @@ const NewSeriesFormData = async () => {
   );
 };
 
-export default async function NewSeriesPage({
-  params,
-}: PageProps<"/[tenant_id]/series/new">) {
-
+export default function NewSeriesPage() {
   return (
     <AdminPage
       actions={

@@ -19,9 +19,9 @@ import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback, useEffect, useId, useState } from "react";
 
 import type { TenantThemeSettings } from "#lib/theme-settings";
+import { useTenantId } from "#lib/use-tenant-id";
 
 import type { ThemeSettingsActionState } from "../settings-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface ThemeSettingsFormProps {
   action: (

@@ -1,8 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -29,14 +26,10 @@ const NewLabelFormSkeleton = () => (
 );
 
 const NewLabelFormData = () => (
-  <LabelForm
-    action={createLabelAction}
-    mode="create"
-  />
+  <LabelForm action={createLabelAction} mode="create" />
 );
 
-export default async function NewLabelPage() {
-
+export default function NewLabelPage() {
   return (
     <AdminPage
       actions={

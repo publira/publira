@@ -79,8 +79,8 @@ export const listPlatformAuditLogs = async (
         targetName: log.targetName,
         targetPublicId: log.targetPublicId ?? "",
         targetType: log.targetType,
-        tenantName: log.tenantName ?? "",
         tenantId: log.tenantPublicId ?? "",
+        tenantName: log.tenantName ?? "",
       })),
       ok: true,
     };

@@ -69,11 +69,7 @@ const TenantDetailSkeleton = () => (
   </div>
 );
 
-const TenantDetailContent = async ({
-  tenantId,
-}: {
-  tenantId: string;
-}) => {
+const TenantDetailContent = async ({ tenantId }: { tenantId: string }) => {
   const tenant = await getPlatformTenant(tenantId);
 
   if (!tenant) {
@@ -102,20 +98,12 @@ const TenantDetailContent = async ({
           </LinkButton>
           {tenant.status === "suspended" ? (
             <form action={resumeTenantAction}>
-              <input
-                name="tenant_id"
-                type="hidden"
-                value={tenant.publicId}
-              />
+              <input name="tenant_id" type="hidden" value={tenant.publicId} />
               <Button type="submit">再開する</Button>
             </form>
           ) : (
             <form action={suspendTenantAction}>
-              <input
-                name="tenant_id"
-                type="hidden"
-                value={tenant.publicId}
-              />
+              <input name="tenant_id" type="hidden" value={tenant.publicId} />
               <Button type="submit" variant="destructive">
                 停止する
               </Button>
@@ -140,11 +128,7 @@ const TenantDetailContent = async ({
             </CardHeader>
             <CardContent className="grid gap-4">
               <TenantUpdateForm action={updateTenantNameAction}>
-                <input
-                  name="tenant_id"
-                  type="hidden"
-                  value={tenant.publicId}
-                />
+                <input name="tenant_id" type="hidden" value={tenant.publicId} />
                 <input
                   name="tenant_current_domain"
                   type="hidden"
@@ -186,11 +170,7 @@ const TenantDetailContent = async ({
             <CardContent className="grid gap-4">
               <TenantDomainCautions mode="update" />
               <TenantUpdateForm action={updateTenantDomainAction}>
-                <input
-                  name="tenant_id"
-                  type="hidden"
-                  value={tenant.publicId}
-                />
+                <input name="tenant_id" type="hidden" value={tenant.publicId} />
                 <input
                   name="tenant_current_name"
                   type="hidden"

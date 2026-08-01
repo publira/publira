@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useState } from "react";
+
 import { useTenantId } from "#lib/use-tenant-id";
 
 interface DeleteAccountModalProps {
   deleteAction: (formData: FormData) => Promise<void>;
 }
 
-export const DeleteAccountModal = ({ deleteAction,
+export const DeleteAccountModal = ({
+  deleteAction,
 }: DeleteAccountModalProps) => {
-
   const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const openModal = useCallback(() => setOpen(true), []);
@@ -44,11 +45,7 @@ export const DeleteAccountModal = ({ deleteAction,
             </p>
 
             <form action={deleteAction} className="mt-5 space-y-4">
-              <input
-                name="tenantId"
-                type="hidden"
-                value={tenantId}
-              />
+              <input name="tenantId" type="hidden" value={tenantId} />
 
               <div className="space-y-2">
                 <label htmlFor="deletePassword" className="text-sm font-medium">

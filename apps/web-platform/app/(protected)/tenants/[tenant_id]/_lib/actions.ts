@@ -52,11 +52,7 @@ export const updateTenantNameAction = async (
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
-  const result = await updatePlatformTenant(
-    tenantId,
-    name,
-    currentDomain
-  );
+  const result = await updatePlatformTenant(tenantId, name, currentDomain);
   revalidatePath(`/tenants/${tenantId}`);
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -170,10 +166,7 @@ export const createTenantAdminInvitationAction = async (
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const email = String(formData.get("invite_email") ?? "").trim();
 
-  const result = await createPlatformTenantAdminInvitation(
-    tenantId,
-    email
-  );
+  const result = await createPlatformTenantAdminInvitation(tenantId, email);
 
   revalidatePath(`/tenants/${tenantId}`);
   revalidatePath(`/tenants/${tenantId}/members`);

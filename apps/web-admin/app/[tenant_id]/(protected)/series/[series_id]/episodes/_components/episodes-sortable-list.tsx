@@ -38,11 +38,11 @@ const reorderItems = <T extends { publicId: string }>(
   return nextItems;
 };
 
-export const EpisodesSortableList = ({ seriesPublicId,
+export const EpisodesSortableList = ({
+  seriesPublicId,
   episodes,
   reorderAction,
 }: EpisodesSortableListProps) => {
-
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();

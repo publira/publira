@@ -14,9 +14,9 @@ import {
 import type { ChangeEventHandler } from "react";
 
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
+import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface SeriesEyeCatchFormProps {
   initialSeries: SeriesListItem;
@@ -30,7 +30,6 @@ export const SeriesEyeCatchForm = ({
   initialSeries,
   action,
 }: SeriesEyeCatchFormProps) => {
-
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);

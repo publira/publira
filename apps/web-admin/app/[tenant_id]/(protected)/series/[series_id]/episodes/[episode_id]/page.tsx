@@ -9,6 +9,7 @@ import Link from "next/link";
 import { AdminPage } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { listEpisodeImages } from "#lib/episode";
+import { getTenantId } from "#lib/tenant-id";
 
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
@@ -18,7 +19,6 @@ import {
   updateEpisodeScheduleAction,
   uploadEpisodePagesAction,
 } from "./_lib/actions";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "エピソード編集",

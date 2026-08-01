@@ -86,10 +86,7 @@ export const getCatalogTopData = async (
   const seriesDetails = await Promise.all(
     seriesForDetails.map(async (seriesItem) => {
       try {
-        const detail = await getSeriesDetail(
-          tenantId,
-          seriesItem.publicId
-        );
+        const detail = await getSeriesDetail(tenantId, seriesItem.publicId);
         return {
           creatorNames: seriesItem.creatorNames,
           episodes: detail.episodes,

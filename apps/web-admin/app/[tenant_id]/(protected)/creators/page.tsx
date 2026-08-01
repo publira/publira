@@ -1,15 +1,12 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminPage } from "#components/admin-page";
 import { listCreators } from "#lib/creator";
+import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorManager } from "./_components/creator-manager";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "著者",
@@ -41,10 +38,7 @@ const CreatorManagerData = async () => {
   );
 };
 
-export default async function CreatorPage({
-  params,
-}: PageProps<"/[tenant_id]/creators">) {
-
+export default function CreatorPage() {
   return (
     <AdminPage
       description="著者一覧の確認と、編集への遷移を行います。"

@@ -1,20 +1,17 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { getTenantSiteLabel } from "#lib/tenant";
+import { getTenantId } from "#lib/tenant-id";
 
 import { SettingsTabs } from "./settings-tabs";
-import { getTenantId } from "#lib/tenant-id";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async ({
-  params,
+  params: _params,
 }: {
   params: Promise<{ tenant_id: string }>;
 }): Promise<Metadata> => {
@@ -73,9 +70,9 @@ const FlashMessage = async ({
   );
 };
 
-export default async function SettingsLayout({
+export default function SettingsLayout({
   children,
-  params,
+  params: _params,
   searchParams,
 }: {
   children: ReactNode;
@@ -88,7 +85,6 @@ export default async function SettingsLayout({
     | undefined
   >;
 }) {
-
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <header className="space-y-4 border-b border-border/50 pb-6">

@@ -104,7 +104,7 @@ export const listCreators = async (
       {
         limit: 100,
         offset: 0,
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );

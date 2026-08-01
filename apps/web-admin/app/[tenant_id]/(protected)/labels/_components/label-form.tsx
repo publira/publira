@@ -14,8 +14,9 @@ import { Input } from "@publira/ui-components/input";
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useState } from "react";
 
-import type { LabelActionState, LabelListItem } from "../label-types";
 import { useTenantId } from "#lib/use-tenant-id";
+
+import type { LabelActionState, LabelListItem } from "../label-types";
 
 interface LabelFormProps {
   mode: "create" | "update";
@@ -50,11 +51,7 @@ const getCardDescription = (isUpdate: boolean): string => {
   return "新しいレーベル名を入力してください。";
 };
 
-export const LabelForm = ({
-  mode,
-  action,
-  initialLabel,
-}: LabelFormProps) => {
+export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);

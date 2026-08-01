@@ -133,7 +133,7 @@ export const listPublishedSeries = async (
   const response = await apiClient.catalog.listPublishedSeries({
     limit,
     offset,
-    tenant: { tenantId: tenantId },
+    tenant: { tenantId },
   });
 
   return (response.series ?? []).map((s) => ({
@@ -168,7 +168,7 @@ export const listPublishedLabels = async (
   const response = await apiClient.catalog.listPublishedLabels({
     limit,
     offset,
-    tenant: { tenantId: tenantId },
+    tenant: { tenantId },
   });
 
   return (response.labels ?? []).map((label) => ({
@@ -188,9 +188,7 @@ export const getSeriesDetail = async (
   const normalizedTenantId = tenantId.trim();
   const normalizedSeriesPublicId = seriesPublicId.trim();
   applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
-  applyCacheTag(
-    tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId)
-  );
+  applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   let response;
   try {
@@ -262,13 +260,11 @@ export const getEpisodeDetail = async (
   const normalizedTenantId = tenantId.trim();
   const normalizedSeriesPublicId = seriesPublicId.trim();
   applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
-  applyCacheTag(
-    tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId)
-  );
+  applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   const response = await apiClient.catalog.getEpisodeDetail({
     publicId: episodePublicId,
-    tenant: { tenantId: tenantId },
+    tenant: { tenantId },
   });
 
   const series = response.series

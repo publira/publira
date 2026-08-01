@@ -51,11 +51,7 @@ const TenantMembersSkeleton = () => (
   </div>
 );
 
-const TenantMembersContent = async ({
-  tenantId,
-}: {
-  tenantId: string;
-}) => {
+const TenantMembersContent = async ({ tenantId }: { tenantId: string }) => {
   const [tenant, members, invitations] = await Promise.all([
     getPlatformTenant(tenantId),
     listPlatformTenantMembers(tenantId),

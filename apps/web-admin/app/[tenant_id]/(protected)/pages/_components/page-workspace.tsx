@@ -29,6 +29,8 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useState } from "react";
 import type { ChangeEvent, MouseEvent } from "react";
 
+import { useTenantId } from "#lib/use-tenant-id";
+
 import {
   buildVersionDiff,
   getDefaultComparisonVersionId,
@@ -40,7 +42,6 @@ import type {
   PageVersionListItem,
 } from "../page-types";
 import { MarkdownPreview } from "./markdown-preview";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface PageWorkspaceProps {
   createDraftAction: (
@@ -224,11 +225,7 @@ export const PageWorkspace = ({
         </CardHeader>
         <CardContent>
           <form action={titleFormAction} className="grid gap-4">
-            <input
-              name="tenant_id"
-              type="hidden"
-              value={tenantId}
-            />
+            <input name="tenant_id" type="hidden" value={tenantId} />
             <input name="page_id" type="hidden" value={initialPage.id} />
             <input name="slug" type="hidden" value={initialPage.slug} />
 
@@ -297,11 +294,7 @@ export const PageWorkspace = ({
           </CardHeader>
           <CardContent>
             <form action={draftFormAction} className="grid gap-4">
-              <input
-                name="tenant_id"
-                type="hidden"
-                value={tenantId}
-              />
+              <input name="tenant_id" type="hidden" value={tenantId} />
               <input name="page_id" type="hidden" value={initialPage.id} />
               <input name="title" type="hidden" value={initialPage.title} />
 

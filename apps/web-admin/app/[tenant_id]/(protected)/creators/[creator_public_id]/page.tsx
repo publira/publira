@@ -11,10 +11,10 @@ import { Suspense } from "react";
 import { AdminPage } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getCreator } from "#lib/creator";
+import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorForm } from "../_components/creator-form";
 import { updateCreatorAction } from "../_lib/actions";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "著者編集",
@@ -40,7 +40,11 @@ interface EditCreatorPageProps {
   }>;
 }
 
-const EditCreatorFormData = async ({ creatorPublicId }: { creatorPublicId: string }) => {
+const EditCreatorFormData = async ({
+  creatorPublicId,
+}: {
+  creatorPublicId: string;
+}) => {
   const tenantId = await getTenantId();
   const result = await getCreator({
     publicId: creatorPublicId,
@@ -87,9 +91,7 @@ export default async function EditCreatorPage({
     >
       <FlashToast title="著者を作成しました。" />
       <Suspense fallback={<EditCreatorFormSkeleton />}>
-        <EditCreatorFormData
-          creatorPublicId={creator_public_id}
-        />
+        <EditCreatorFormData creatorPublicId={creator_public_id} />
       </Suspense>
     </AdminPage>
   );

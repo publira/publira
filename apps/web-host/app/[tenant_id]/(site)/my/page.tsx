@@ -138,12 +138,7 @@ const MyContentFallback = () => (
   </>
 );
 
-export default async function MyPage({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}) {
-
+export default function MyPage() {
   return (
     <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">

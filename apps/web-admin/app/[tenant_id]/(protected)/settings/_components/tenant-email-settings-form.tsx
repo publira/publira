@@ -40,12 +40,12 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
 import type { TenantSmtpSettings } from "#lib/email-settings-shared";
+import { useTenantId } from "#lib/use-tenant-id";
 
 import type {
   TenantEmailSettingsFormState,
   TenantSmtpTestFormState,
 } from "../settings-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 const encryptionOptions = [
   { label: "TLS", value: "tls" },

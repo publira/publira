@@ -77,12 +77,7 @@ const NotificationsSectionFallback = () => (
   </section>
 );
 
-export default async function NotificationsSettingsPage({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}) {
-
+export default function NotificationsSettingsPage() {
   return (
     <div className="space-y-6">
       <Suspense fallback={<NotificationsSectionFallback />}>

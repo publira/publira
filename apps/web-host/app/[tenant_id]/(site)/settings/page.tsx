@@ -8,9 +8,9 @@ import {
   getPublicSessionCacheTag,
   PUBLIC_SESSION_COOKIE_NAME,
 } from "#lib/auth-shared";
+import { getTenantId } from "#lib/tenant-id";
 
 import { DeleteAccountModal } from "./delete-account-modal";
-import { getTenantId } from "#lib/tenant-id";
 
 const buildSettingsPath = (status: "success" | "error", message: string) => {
   const params = new URLSearchParams({ message, status });
@@ -150,19 +150,12 @@ const DeleteSection = () => (
       退会するとアカウント情報にアクセスできなくなります。この操作は取り消せません。実行前にご注意ください。
     </p>
     <div className="flex justify-end">
-      <DeleteAccountModal
-        deleteAction={deleteAccountAction}
-      />
+      <DeleteAccountModal deleteAction={deleteAccountAction} />
     </div>
   </section>
 );
 
-export default async function BasicSettingsPage({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}) {
-
+export default function BasicSettingsPage() {
   return (
     <div className="space-y-6">
       <Suspense fallback={<ProfileSectionFallback />}>

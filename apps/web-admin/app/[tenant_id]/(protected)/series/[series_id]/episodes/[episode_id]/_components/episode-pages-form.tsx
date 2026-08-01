@@ -18,8 +18,9 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState, useEffectEvent, useRef, useState } from "react";
 
-import type { EpisodeEditActionState } from "../episode-edit-types";
 import { useTenantId } from "#lib/use-tenant-id";
+
+import type { EpisodeEditActionState } from "../episode-edit-types";
 
 interface EpisodePagesFormProps {
   seriesPublicId: string;
@@ -30,11 +31,11 @@ interface EpisodePagesFormProps {
   ) => Promise<EpisodeEditActionState>;
 }
 
-export const EpisodePagesForm = ({ seriesPublicId,
+export const EpisodePagesForm = ({
+  seriesPublicId,
   episodePublicId,
   action,
 }: EpisodePagesFormProps) => {
-
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [uploadMode, setUploadMode] = useState<"pages" | "zip" | "epub">(

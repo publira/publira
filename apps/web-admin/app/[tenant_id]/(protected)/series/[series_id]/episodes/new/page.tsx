@@ -46,10 +46,7 @@ export default async function NewEpisodePage({
       eyebrow={`Series ${series_id}`}
       title="エピソード新規作成"
     >
-      <EpisodeForm
-        action={createEpisodeAction}
-        seriesPublicId={series_id}
-      />
+      <EpisodeForm action={createEpisodeAction} seriesPublicId={series_id} />
     </AdminPage>
   );
 }

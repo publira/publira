@@ -20,9 +20,9 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useEffect, useState } from "react";
 
 import type { TenantSiteSettings } from "#lib/site-settings";
+import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SiteSettingsActionState } from "../settings-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface SiteSettingsFormProps {
   action: (
@@ -36,7 +36,6 @@ export const SiteSettingsForm = ({
   action,
   initialSettings,
 }: SiteSettingsFormProps) => {
-
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [copyrightText, setCopyrightText] = useState(

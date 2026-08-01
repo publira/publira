@@ -11,12 +11,12 @@ import { Suspense } from "react";
 import { AdminPage } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getLabel } from "#lib/label";
+import { getTenantId } from "#lib/tenant-id";
 
 import { LabelEyeCatchForm } from "../_components/label-eye-catch-form";
 import { LabelForm } from "../_components/label-form";
 import { LabelTabNav } from "../_components/label-tab-nav";
 import { updateLabelAction } from "../_lib/actions";
-import { getTenantId } from "#lib/tenant-id";
 
 interface EditLabelPageProps {
   params: Promise<{
@@ -44,7 +44,13 @@ const EditLabelFormSkeleton = () => (
   </div>
 );
 
-const EditLabelFormData = async ({ activeTab, labelPublicId }: { activeTab: "basic" | "eye-catch"; labelPublicId: string }) => {
+const EditLabelFormData = async ({
+  activeTab,
+  labelPublicId,
+}: {
+  activeTab: "basic" | "eye-catch";
+  labelPublicId: string;
+}) => {
   const tenantId = await getTenantId();
   const result = await getLabel({
     publicId: labelPublicId,
@@ -88,7 +94,7 @@ export default async function EditLabelPage({
 }: EditLabelPageProps) {
   const { label_public_id } = await params;
   const { tab } = await searchParams;
-  
+
   guardPlaceholder(label_public_id);
 
   const activeTab = tab === "eye-catch" ? "eye-catch" : "basic";

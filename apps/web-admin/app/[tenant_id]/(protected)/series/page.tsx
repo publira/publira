@@ -1,15 +1,12 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminPage } from "#components/admin-page";
 import { listSeries } from "#lib/series";
+import { getTenantId } from "#lib/tenant-id";
 
 import { SeriesManager } from "./_components/series-manager";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "シリーズ",
@@ -41,10 +38,7 @@ const SeriesManagerData = async () => {
   );
 };
 
-export default async function SeriesPage({
-  params,
-}: PageProps<"/[tenant_id]/series">) {
-
+export default function SeriesPage() {
   return (
     <AdminPage
       description="シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。"

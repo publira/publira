@@ -1,17 +1,14 @@
 import { EmptyState } from "@publira/ui-components/empty-state";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
 import { AdminPage } from "#components/admin-page";
 import { getTenantSiteSettings } from "#lib/site-settings";
+import { getTenantId } from "#lib/tenant-id";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
 import { updateSiteSettingsAction } from "./_lib/actions";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "設定 - 基本情報",
@@ -20,9 +17,7 @@ export const metadata: Metadata = {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export default async function SettingsPage({
-  params,
-}: PageProps<"/[tenant_id]">) {
+export default async function SettingsPage() {
   const tenantId = await getTenantId();
 
   const settingsResult = await getTenantSiteSettings(tenantId);

@@ -26,8 +26,9 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
-import type { SeriesActionState, SeriesListItem } from "../series-types";
 import { useTenantId } from "#lib/use-tenant-id";
+
+import type { SeriesActionState, SeriesListItem } from "../series-types";
 
 interface CreatorOption {
   publicId: string;
@@ -57,7 +58,6 @@ const getSubmitLabel = (
   mode: "create" | "update",
   isPending: boolean
 ): string => {
-
   if (isPending) {
     return "送信中...";
   }

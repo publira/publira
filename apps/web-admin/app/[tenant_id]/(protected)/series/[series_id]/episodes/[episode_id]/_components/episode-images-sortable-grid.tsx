@@ -38,12 +38,12 @@ const reorderItems = <T extends { id: string }>(
   return nextItems;
 };
 
-export const EpisodeImagesSortableGrid = ({ seriesPublicId,
+export const EpisodeImagesSortableGrid = ({
+  seriesPublicId,
   episodePublicId,
   images,
   reorderAction,
 }: EpisodeImagesSortableGridProps) => {
-
   const tenantId = useTenantId();
   const router = useRouter();
   const { add } = useToastManager();
@@ -72,7 +72,6 @@ export const EpisodeImagesSortableGrid = ({ seriesPublicId,
             type: "error",
           });
           router.refresh();
-          router.refresh();
           return;
         }
 
@@ -86,13 +85,7 @@ export const EpisodeImagesSortableGrid = ({ seriesPublicId,
         router.refresh();
       }
     },
-    [
-      add,
-      episodePublicId,
-      reorderAction,
-      router,
-      seriesPublicId,
-    ]
+    [add, episodePublicId, reorderAction, router, seriesPublicId, tenantId]
   );
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {

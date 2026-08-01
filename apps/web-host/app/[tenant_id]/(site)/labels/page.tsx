@@ -1,7 +1,4 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -13,11 +10,7 @@ import { getTenantId } from "#lib/tenant-id";
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async ({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}): Promise<Metadata> => {
+export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -43,9 +36,7 @@ const LabelsListSkeleton = () => (
   </div>
 );
 
-const LabelsListData = async (
-  props: PageProps<"/[tenant_id]/labels">
-) => {
+const LabelsListData = async () => {
   const tenantId = await getTenantId();
 
   const labels = await listPublishedLabels(tenantId);
@@ -100,9 +91,7 @@ const LabelsListData = async (
   );
 };
 
-export default async function LabelsPage(
-  props: PageProps<"/[tenant_id]/labels">
-) {
+export default async function LabelsPage() {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -115,7 +104,7 @@ export default async function LabelsPage(
       </p>
 
       <Suspense fallback={<LabelsListSkeleton />}>
-        <LabelsListData {...props} />
+        <LabelsListData />
       </Suspense>
     </main>
   );

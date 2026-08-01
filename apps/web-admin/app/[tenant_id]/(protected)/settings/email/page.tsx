@@ -1,7 +1,4 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
 import { AdminPage } from "#components/admin-page";
@@ -9,6 +6,7 @@ import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { getTenantEmailSettings } from "#lib/email-settings";
 import type { TenantSmtpSettings } from "#lib/email-settings";
 import { getTenantForSession } from "#lib/tenant-detail";
+import { getTenantId } from "#lib/tenant-id";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { TenantEmailSettingsForm } from "../_components/tenant-email-settings-form";
@@ -16,7 +14,6 @@ import {
   sendTenantSmtpTestEmailAction,
   updateTenantEmailSettingsAction,
 } from "../_lib/actions";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "設定 - メール情報",
@@ -37,9 +34,7 @@ const emptySettings: TenantSmtpSettings = {
   username: "",
 };
 
-export default async function SettingsEmailPage({
-  params,
-}: PageProps<"/[tenant_id]/settings/email">) {
+export default async function SettingsEmailPage() {
   const tenantId = await getTenantId();
 
   const [emailSettingsResult, currentUser, tenant] = await Promise.all([

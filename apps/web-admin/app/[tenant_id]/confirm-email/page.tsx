@@ -18,9 +18,7 @@ interface ConfirmEmailPageProps {
   }>;
 }
 
-const ConfirmationResult = async ({ token,
- }: { token: string;
- }) => {
+const ConfirmationResult = async ({ token }: { token: string }) => {
   const tenantId = await getTenantId();
   if (!token) {
     return (
@@ -121,10 +119,8 @@ const ConfirmEmailFallback = () => (
 );
 
 const ConfirmEmailPageContent = async ({
-  params,
   searchParams,
 }: ConfirmEmailPageProps) => {
-
   const sp = await searchParams;
   const token = sp.token?.trim() ?? "";
 

@@ -1,8 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -30,16 +27,10 @@ const NewCreatorFormSkeleton = () => (
 );
 
 const NewCreatorFormData = () => (
-  <CreatorForm
-    action={createCreatorAction}
-    mode="create"
-  />
+  <CreatorForm action={createCreatorAction} mode="create" />
 );
 
-export default async function NewCreatorPage({
-  params,
-}: PageProps<"/[tenant_id]/creators/new">) {
-
+export default function NewCreatorPage() {
   return (
     <AdminPage
       actions={

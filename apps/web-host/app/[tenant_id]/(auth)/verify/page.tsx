@@ -21,9 +21,7 @@ const pickFirstQueryParam = (
   return value;
 };
 
-const VerificationResult = async ({ token,
- }: { token: string;
- }) => {
+const VerificationResult = async ({ token }: { token: string }) => {
   const tenantId = await getTenantId();
   if (!token) {
     return (
@@ -82,7 +80,6 @@ const VerificationFallback = () => (
 );
 
 const VerifyPageContent = async ({
-  params,
   searchParams,
 }: {
   params: Promise<{ tenant_id: string }>;

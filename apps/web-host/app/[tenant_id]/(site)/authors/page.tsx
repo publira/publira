@@ -1,7 +1,4 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,11 +13,7 @@ const AUTHORS_PAGE_SIZE = 12;
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async ({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}): Promise<Metadata> => {
+export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const siteLabel = await getTenantSiteLabel(tenantId);
 
@@ -45,7 +38,6 @@ const AuthorsListSkeleton = () => (
 );
 
 const AuthorsListData = async ({
-  params,
   searchParams,
 }: {
   params: Promise<{ tenant_id: string }>;

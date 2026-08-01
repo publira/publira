@@ -1,15 +1,12 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminPage } from "#components/admin-page";
 import { listLabels } from "#lib/label";
+import { getTenantId } from "#lib/tenant-id";
 
 import { LabelManager } from "./_components/label-manager";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "レーベル",
@@ -41,8 +38,7 @@ const LabelManagerData = async () => {
   );
 };
 
-export default async function LabelPage() {
-
+export default function LabelPage() {
   return (
     <AdminPage
       description="レーベル一覧の確認と、編集への遷移を行います。"

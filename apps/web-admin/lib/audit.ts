@@ -155,7 +155,7 @@ export const listAuditActorCandidates = async (
       {
         limit: options.limit ?? 100,
         query: options.query?.trim() ?? "",
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -198,7 +198,7 @@ export const listAuditLogs = async (
         createdTo: normalizeDateEnd(filters.createdTo),
         cursor: filters.cursor?.trim() ?? "",
         limit: filters.limit ?? 20,
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );

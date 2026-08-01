@@ -51,7 +51,7 @@ const listNotificationsRpc = (
     {
       limit: 100,
       offset: 0,
-      tenant: { tenantId: tenantId },
+      tenant: { tenantId },
     },
     buildSessionHeaders(sessionId)
   );
@@ -119,7 +119,7 @@ export const markNotificationAsRead = async (
     const response = await apiClient.auth.markNotificationAsRead(
       {
         notificationId,
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -142,7 +142,7 @@ export const markAllNotificationsAsRead = async (
   try {
     const response = await apiClient.auth.markAllNotificationsAsRead(
       {
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );

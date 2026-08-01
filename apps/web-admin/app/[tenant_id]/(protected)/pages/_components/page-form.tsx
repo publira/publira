@@ -20,9 +20,10 @@ import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
 
+import { useTenantId } from "#lib/use-tenant-id";
+
 import { formatPagePath, normalizePageSlugInput } from "../page-types";
 import type { PageFormState, PageListItem } from "../page-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface PageFormProps {
   action: (
@@ -33,12 +34,7 @@ interface PageFormProps {
   mode: "create" | "update";
 }
 
-export const PageForm = ({
-  action,
-  initialPage,
-  mode,
-}: PageFormProps) => {
-
+export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [contentMarkdown, setContentMarkdown] = useState("");

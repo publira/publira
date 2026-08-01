@@ -131,7 +131,7 @@ export const loginAdmin = async (
     const response = await apiClient.auth.login({
       email,
       password,
-      tenant: { tenantId: tenantId },
+      tenant: { tenantId },
     });
 
     const accessToken = response.accessToken?.token?.trim() ?? "";
@@ -168,7 +168,7 @@ export const logoutAdmin = async (
   }
 
   await apiClient.auth.logout(
-    { tenant: { tenantId: tenantId } },
+    { tenant: { tenantId } },
     withSessionHeaders(accessToken)
   );
 };
@@ -186,7 +186,7 @@ export const getAdminCurrentUser = async (
   try {
     const response = await apiClient.auth.getMe(
       {
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(token)
     );
@@ -236,7 +236,7 @@ export const getTenantAdminInvitationState = async (
 
   try {
     const response = await apiClient.auth.getTenantAdminInvitationState({
-      tenant: { tenantId: tenantId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 
@@ -272,7 +272,7 @@ export const acceptTenantAdminInvitation = async (
     const response = await apiClient.auth.acceptTenantAdminInvitation({
       name: name?.trim() ?? "",
       password: password?.trim() ?? "",
-      tenant: { tenantId: tenantId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 
@@ -322,7 +322,7 @@ export const requestAdminPasswordReset = async (
   try {
     const response = await apiClient.auth.requestPasswordReset({
       email: normalizedEmail,
-      tenant: { tenantId: tenantId },
+      tenant: { tenantId },
     });
 
     return {
@@ -379,7 +379,7 @@ export const confirmAdminPasswordReset = async (
   try {
     const response = await apiClient.auth.confirmPasswordReset({
       newPassword: normalizedPassword,
-      tenant: { tenantId: tenantId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 
@@ -453,7 +453,7 @@ export const requestAdminEmailChange = async (
         currentEmail: normalizedCurrentEmail,
         currentPassword,
         newEmail: normalizedNewEmail,
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -510,7 +510,7 @@ export const confirmAdminEmailChange = async (
 
   try {
     const response = await apiClient.auth.confirmEmailChange({
-      tenant: { tenantId: tenantId },
+      tenant: { tenantId },
       token: normalizedToken,
     });
 

@@ -15,9 +15,9 @@ describe("createTenantIdResolver", () => {
   });
 
   it("解決結果をキャッシュし同一キーの2回目呼び出しで再取得しない", async () => {
-    const getTenantByDomain = vi
-      .fn()
-      .mockResolvedValue({ tenantId: " 018f0e6a-1000-7000-8000-000000000001 " });
+    const getTenantByDomain = vi.fn().mockResolvedValue({
+      tenantId: " 018f0e6a-1000-7000-8000-000000000001 ",
+    });
     const resolver = createTenantIdResolver(
       { domain: { getTenantByDomain } } as never,
       { max: 10, ttl: 10_000 }

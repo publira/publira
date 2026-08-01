@@ -3,17 +3,15 @@ import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { getTenantSiteInfo } from "#lib/tenant";
+import { getTenantId } from "#lib/tenant-id";
 
 import { SignupForm } from "./_components/signup-form";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "新規登録",
 };
 
-const SignupPageContent = async ({
-  params,
-}: PageProps<"/[tenant_id]/signup">) => {
+const SignupPageContent = async () => {
   const tenantId = await getTenantId();
 
   const info = await getTenantSiteInfo(tenantId);
@@ -44,13 +42,11 @@ const SignupPageFallback = () => (
   </div>
 );
 
-export default function SignupPage({
-  params,
-}: PageProps<"/[tenant_id]/signup">) {
+export default function SignupPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
       <Suspense fallback={<SignupPageFallback />}>
-        <SignupPageContent params={params} searchParams={Promise.resolve({})} />
+        <SignupPageContent />
       </Suspense>
     </main>
   );

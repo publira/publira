@@ -75,9 +75,7 @@ export const getTenantSiteInfo = async (
   }
 };
 
-export const getTenantSiteLabel = async (
-  tenantId: string
-): Promise<string> => {
+export const getTenantSiteLabel = async (tenantId: string): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.siteLabel ?? "サイト";
 };

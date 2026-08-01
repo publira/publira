@@ -18,8 +18,9 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { useActionState, useCallback, useState } from "react";
 
-import type { EmailChangeActionState } from "../settings-types";
 import { useTenantId } from "#lib/use-tenant-id";
+
+import type { EmailChangeActionState } from "../settings-types";
 
 interface EmailChangeFormProps {
   action: (
@@ -28,10 +29,7 @@ interface EmailChangeFormProps {
   ) => Promise<EmailChangeActionState>;
 }
 
-export const EmailChangeForm = ({
-  action,
-}: EmailChangeFormProps) => {
-
+export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [currentEmail, setCurrentEmail] = useState("");

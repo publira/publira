@@ -1,8 +1,5 @@
 import { CollectionIcon } from "@publira/icons";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -68,11 +65,7 @@ const resolveUpdatedSeriesLinkIds = (
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async ({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}): Promise<Metadata> => {
+export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -82,9 +75,7 @@ export const generateMetadata = async ({
   };
 };
 
-export default async function Page({
-  params,
-}: PageProps<"/[tenant_id]">) {
+export default async function Page() {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);

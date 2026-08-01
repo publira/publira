@@ -1,7 +1,4 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
 import { AdminPage } from "#components/admin-page";
@@ -17,18 +14,13 @@ export const metadata: Metadata = {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export default async function AccountSettingsPage({
-  params,
-}: PageProps<"/[tenant_id]">) {
-
+export default function AccountSettingsPage() {
   return (
     <AdminPage description="管理者アカウントの設定を管理します。" title="設定">
       <div className="grid gap-6">
         <SettingsTabNav current="account" />
 
-        <EmailChangeForm
-          action={requestEmailChangeAction}
-        />
+        <EmailChangeForm action={requestEmailChangeAction} />
       </div>
     </AdminPage>
   );

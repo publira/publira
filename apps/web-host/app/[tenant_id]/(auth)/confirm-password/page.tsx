@@ -171,23 +171,21 @@ const ConfirmPasswordForm = async ({
   );
 };
 
-const ConfirmPasswordFormContent = async ({ searchParams }: { searchParams: PageProps<"/[tenant_id]/confirm-password">["searchParams"] }) => {
+const ConfirmPasswordFormContent = async ({
+  searchParams,
+}: {
+  searchParams: PageProps<"/[tenant_id]/confirm-password">["searchParams"];
+}) => {
   await connection();
 
   const sp = await searchParams;
   const token = pickFirstQueryParam(sp.token)?.trim() ?? "";
   const errorMessage = pickFirstQueryParam(sp.error)?.trim();
 
-  return (
-    <ConfirmPasswordForm
-      errorMessage={errorMessage}
-      token={token}
-    />
-  );
+  return <ConfirmPasswordForm errorMessage={errorMessage} token={token} />;
 };
 
 const ConfirmPasswordPageContent = async ({
-  params,
   searchParams,
 }: PageProps<"/[tenant_id]/confirm-password">) => {
   const tenantId = await getTenantId();
@@ -208,14 +206,8 @@ const ConfirmPasswordPageContent = async ({
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
         ) : null}
       </div>
-      <Suspense
-        fallback={
-          <ConfirmPasswordForm token="" />
-        }
-      >
-        <ConfirmPasswordFormContent
-          searchParams={searchParams}
-        />
+      <Suspense fallback={<ConfirmPasswordForm token="" />}>
+        <ConfirmPasswordFormContent searchParams={searchParams} />
       </Suspense>
     </div>
   );

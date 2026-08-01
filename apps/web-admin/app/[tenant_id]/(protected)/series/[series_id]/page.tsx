@@ -13,11 +13,11 @@ import { FlashToast } from "#components/flash-toast";
 import { listCreators } from "#lib/creator";
 import { listLabels } from "#lib/label";
 import { getSeries } from "#lib/series";
+import { getTenantId } from "#lib/tenant-id";
 
 import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
 import { SeriesForm } from "../_components/series-form";
 import { SeriesTabNav } from "../_components/series-tab-nav";
-import { getTenantId } from "#lib/tenant-id";
 import {
   updateSeriesAction,
   updateSeriesEyeCatchAction,
@@ -51,7 +51,13 @@ interface EditSeriesPageProps {
   }>;
 }
 
-const EditSeriesFormData = async ({ activeTab, seriesId }: { activeTab: "basic" | "eye-catch"; seriesId: string }) => {
+const EditSeriesFormData = async ({
+  activeTab,
+  seriesId,
+}: {
+  activeTab: "basic" | "eye-catch";
+  seriesId: string;
+}) => {
   const tenantId = await getTenantId();
   if (activeTab === "eye-catch") {
     const result = await getSeries({ publicId: seriesId, tenantId });
@@ -116,7 +122,7 @@ export default async function EditSeriesPage({
 }: EditSeriesPageProps) {
   const { series_id } = await params;
   const { tab } = await searchParams;
-  
+
   guardPlaceholder(series_id);
 
   const activeTab = tab === "eye-catch" ? "eye-catch" : "basic";
@@ -144,10 +150,7 @@ export default async function EditSeriesPage({
       <div className="grid gap-6">
         <SeriesTabNav current={activeTab} seriesId={series_id} />
         <Suspense fallback={<EditSeriesFormSkeleton />}>
-          <EditSeriesFormData
-            activeTab={activeTab}
-            seriesId={series_id}
-          />
+          <EditSeriesFormData activeTab={activeTab} seriesId={series_id} />
         </Suspense>
       </div>
     </AdminPage>

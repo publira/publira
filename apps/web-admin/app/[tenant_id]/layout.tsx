@@ -3,8 +3,8 @@ import {
   guardPlaceholder,
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { tenant_id } from "next/root-params";
+import type { ReactNode } from "react";
 
 import { getTenantName } from "#lib/public-api";
 
@@ -31,7 +31,11 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-export default function TenantRootLayout({ children }: { children: ReactNode }) {
+export default function TenantRootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <html lang="ja">
       <body className="min-h-dvh antialiased">{children}</body>

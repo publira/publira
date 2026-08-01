@@ -109,82 +109,89 @@ const LoginForm = async ({
 }) => {
   const tenantId = await getTenantId();
   return (
-  <>
-    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <form action={loginAction} className="space-y-4">
-        <input name="tenantId" type="hidden" value={tenantId} />
-        <input name="returnTo" type="hidden" value={returnToPath} />
+    <>
+      <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+        <form action={loginAction} className="space-y-4">
+          <input name="tenantId" type="hidden" value={tenantId} />
+          <input name="returnTo" type="hidden" value={returnToPath} />
 
-        <Field>
-          <FieldLabel htmlFor="email" required>
-            メールアドレス
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="email"
-              id="email"
-              name="email"
-              placeholder="your@email.com"
-              required
-              type="email"
-            />
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="email" required>
+              メールアドレス
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="email"
+                id="email"
+                name="email"
+                placeholder="your@email.com"
+                required
+                type="email"
+              />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="password" required>
-            パスワード
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              autoComplete="current-password"
-              id="password"
-              name="password"
-              placeholder="••••••••"
-              required
-              type="password"
-            />
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="password" required>
+              パスワード
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                autoComplete="current-password"
+                id="password"
+                name="password"
+                placeholder="••••••••"
+                required
+                type="password"
+              />
+            </FieldContent>
+          </Field>
 
-        {errorMessage ? (
-          <FormMessage variant="destructive">{errorMessage}</FormMessage>
-        ) : null}
+          {errorMessage ? (
+            <FormMessage variant="destructive">{errorMessage}</FormMessage>
+          ) : null}
 
-        {resetDone ? (
-          <FormMessage variant="success">
-            パスワードを再設定しました。新しいパスワードでログインしてください。
-          </FormMessage>
-        ) : null}
+          {resetDone ? (
+            <FormMessage variant="success">
+              パスワードを再設定しました。新しいパスワードでログインしてください。
+            </FormMessage>
+          ) : null}
 
-        <Button className="mt-2 w-full" type="submit">
-          ログイン
-        </Button>
-      </form>
+          <Button className="mt-2 w-full" type="submit">
+            ログイン
+          </Button>
+        </form>
 
-      <div className="text-right text-sm">
+        <div className="text-right text-sm">
+          <Link
+            href="/reset-password"
+            className="font-medium text-primary hover:underline"
+          >
+            パスワードをお忘れですか？
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-4 text-center text-sm">
+        <span className="text-muted-foreground">
+          アカウントをお持ちでない方は
+        </span>{" "}
         <Link
-          href="/reset-password"
+          href="/signup"
           className="font-medium text-primary hover:underline"
         >
-          パスワードをお忘れですか？
+          新規登録
         </Link>
       </div>
-    </div>
-
-    <div className="mt-4 text-center text-sm">
-      <span className="text-muted-foreground">
-        アカウントをお持ちでない方は
-      </span>{" "}
-      <Link href="/signup" className="font-medium text-primary hover:underline">
-        新規登録
-      </Link>
-    </div>
-  </>
+    </>
   );
 };
 
-const LoginFormContent = async ({ searchParams }: { searchParams: PageProps<"/[tenant_id]/login">["searchParams"] }) => {
+const LoginFormContent = async ({
+  searchParams,
+}: {
+  searchParams: PageProps<"/[tenant_id]/login">["searchParams"];
+}) => {
   const { errorMessage, resetDone, returnToPath } =
     await getLoginViewModel(searchParams);
 
@@ -198,7 +205,6 @@ const LoginFormContent = async ({ searchParams }: { searchParams: PageProps<"/[t
 };
 
 const LoginPageContent = async ({
-  params,
   searchParams,
 }: PageProps<"/[tenant_id]/login">) => {
   const tenantId = await getTenantId();
@@ -216,14 +222,8 @@ const LoginPageContent = async ({
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
         ) : null}
       </div>
-      <Suspense
-        fallback={
-          <LoginForm returnToPath="/" />
-        }
-      >
-        <LoginFormContent
-          searchParams={searchParams}
-        />
+      <Suspense fallback={<LoginForm returnToPath="/" />}>
+        <LoginFormContent searchParams={searchParams} />
       </Suspense>
     </div>
   );

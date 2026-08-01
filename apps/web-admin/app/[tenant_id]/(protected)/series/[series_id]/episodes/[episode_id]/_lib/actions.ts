@@ -234,12 +234,7 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
     formData.get("ordered_image_ids") ?? ""
   ).trim();
 
-  if (
-    !tenantId ||
-    !seriesPublicId ||
-    !episodePublicId ||
-    !orderedImageIdsRaw
-  ) {
+  if (!tenantId || !seriesPublicId || !episodePublicId || !orderedImageIdsRaw) {
     return {
       message: "並び順の更新に必要な情報が不足しています。",
       ok: false,

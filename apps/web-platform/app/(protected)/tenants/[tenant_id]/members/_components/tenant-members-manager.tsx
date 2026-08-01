@@ -226,11 +226,7 @@ const TenantMemberRoleDialog = ({
         <DialogViewport>
           <DialogPopup>
             <form action={roleFormAction} className="grid gap-4">
-              <input
-                name="tenant_id"
-                type="hidden"
-                value={tenantId}
-              />
+              <input name="tenant_id" type="hidden" value={tenantId} />
               <input
                 name="member_user_public_id"
                 type="hidden"
@@ -462,11 +458,7 @@ export const TenantMembersManager = ({
         </CardHeader>
         <CardContent>
           <form action={createInviteAction} className="grid gap-4">
-            <input
-              name="tenant_id"
-              type="hidden"
-              value={tenantId}
-            />
+            <input name="tenant_id" type="hidden" value={tenantId} />
             <Field>
               <FieldLabel htmlFor="invite_email" required>
                 招待するメールアドレス
@@ -560,11 +552,7 @@ export const TenantMembersManager = ({
         </CardHeader>
         <CardContent>
           <form action={addFormAction} className="grid gap-4">
-            <input
-              name="tenant_id"
-              type="hidden"
-              value={tenantId}
-            />
+            <input name="tenant_id" type="hidden" value={tenantId} />
             <Field>
               <FieldLabel htmlFor="member_email" required>
                 追加するユーザーのメールアドレス

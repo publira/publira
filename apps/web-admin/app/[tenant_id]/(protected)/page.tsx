@@ -15,10 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -171,10 +168,7 @@ const DashboardContent = async () => {
   );
 };
 
-export default async function DashboardPage({
-  params,
-}: PageProps<"/[tenant_id]">) {
-
+export default function DashboardPage() {
   return (
     <AdminPage title="ダッシュボード">
       <Suspense fallback={<DashboardSkeleton />}>

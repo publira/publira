@@ -1,15 +1,12 @@
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminPage } from "#components/admin-page";
 import { listNotifications } from "#lib/notification";
+import { getTenantId } from "#lib/tenant-id";
 
 import { NotificationManager } from "./_components/notification-manager";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "通知",
@@ -41,10 +38,7 @@ const NotificationManagerData = async () => {
   );
 };
 
-export default async function NotificationsPage({
-  params,
-}: PageProps<"/[tenant_id]/notifications">) {
-
+export default function NotificationsPage() {
   return (
     <AdminPage
       description="通知の作成状況と配信対象を確認できます。"

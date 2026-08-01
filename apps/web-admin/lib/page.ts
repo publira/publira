@@ -139,9 +139,7 @@ const mapPageVersion = (version: {
   versionNumber: version.versionNumber,
 });
 
-export const listPages = async (
-  tenantId: string
-): Promise<ListPagesResult> => {
+export const listPages = async (tenantId: string): Promise<ListPagesResult> => {
   "use cache: private";
   cacheTag(`pages-${tenantId}`);
 
@@ -156,7 +154,7 @@ export const listPages = async (
 
   try {
     const response = await apiClient.pages.listPages(
-      { tenant: { tenantId: tenantId } },
+      { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
 

@@ -91,7 +91,7 @@ export const listNotifications = async (
       {
         limit: 200,
         query: "",
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -108,7 +108,7 @@ export const listNotifications = async (
       {
         limit: 100,
         offset: 0,
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );

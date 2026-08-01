@@ -6,7 +6,11 @@ import "../globals.css";
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export default function TenantRootLayout({ children }: { children: ReactNode }) {
+export default function TenantRootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <html lang="ja">
       <body>{children}</body>

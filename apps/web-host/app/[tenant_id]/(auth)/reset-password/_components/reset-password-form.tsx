@@ -43,7 +43,10 @@ export const ResetPasswordForm = () => {
       </div>
 
       <div className="mt-4 text-center text-sm">
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
           ログイン画面へ戻る
         </Link>
       </div>

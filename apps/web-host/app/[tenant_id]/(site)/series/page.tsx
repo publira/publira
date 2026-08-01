@@ -1,8 +1,5 @@
 import { CollectionIcon } from "@publira/icons";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -15,11 +12,7 @@ import { getTenantId } from "#lib/tenant-id";
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async ({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}): Promise<Metadata> => {
+export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -46,9 +39,7 @@ const SeriesListSkeleton = () => (
   </div>
 );
 
-const SeriesListData = async (
-  props: PageProps<"/[tenant_id]/series">
-) => {
+const SeriesListData = async () => {
   const tenantId = await getTenantId();
 
   let series;
@@ -127,9 +118,7 @@ const SeriesListData = async (
   );
 };
 
-export default async function SeriesPage(
-  props: PageProps<"/[tenant_id]/series">
-) {
+export default async function SeriesPage() {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -142,7 +131,7 @@ export default async function SeriesPage(
       </p>
 
       <Suspense fallback={<SeriesListSkeleton />}>
-        <SeriesListData {...props} />
+        <SeriesListData />
       </Suspense>
     </main>
   );

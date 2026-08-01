@@ -20,8 +20,9 @@ import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
 import { useActionState, useCallback, useEffect, useState } from "react";
 
-import type { CreatorActionState, CreatorListItem } from "../creator-types";
 import { useTenantId } from "#lib/use-tenant-id";
+
+import type { CreatorActionState, CreatorListItem } from "../creator-types";
 
 interface CreatorFormProps {
   mode: "create" | "update";

@@ -13,11 +13,12 @@ import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import { useActionState, useCallback, useMemo, useState } from "react";
 
+import { useTenantId } from "#lib/use-tenant-id";
+
 import type {
   CreateNotificationActionState,
   NotificationTargetUser,
 } from "../notification-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface NotificationFormProps {
   users: NotificationTargetUser[];
@@ -28,11 +29,11 @@ interface NotificationFormProps {
   ) => Promise<CreateNotificationActionState>;
 }
 
-export const NotificationForm = ({ users,
+export const NotificationForm = ({
+  users,
   usersErrorMessage,
   action,
 }: NotificationFormProps) => {
-
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [audienceType, setAudienceType] = useState<"all" | "selected">("all");

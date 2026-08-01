@@ -94,7 +94,6 @@ const ForgotPasswordFallback = () => (
 );
 
 const ForgotPasswordPageContent = async ({
-  params,
   searchParams,
 }: ForgotPasswordPageProps) => {
   const tenantId = await getTenantId();

@@ -3,17 +3,15 @@ import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { getTenantSiteInfo } from "#lib/tenant";
+import { getTenantId } from "#lib/tenant-id";
 
 import { ResetPasswordForm } from "./_components/reset-password-form";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "パスワード再設定",
 };
 
-const ResetPasswordPageContent = async ({
-  params,
-}: PageProps<"/[tenant_id]/reset-password">) => {
+const ResetPasswordPageContent = async () => {
   const tenantId = await getTenantId();
 
   const info = await getTenantSiteInfo(tenantId);
@@ -47,14 +45,11 @@ const ResetPasswordPageFallback = () => (
   </div>
 );
 
-export default function ResetPasswordPage({
-  params,
-  searchParams,
-}: PageProps<"/[tenant_id]/reset-password">) {
+export default function ResetPasswordPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <Suspense fallback={<ResetPasswordPageFallback />}>
-        <ResetPasswordPageContent params={params} searchParams={searchParams} />
+        <ResetPasswordPageContent />
       </Suspense>
     </main>
   );

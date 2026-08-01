@@ -14,9 +14,9 @@ import {
 import type { ChangeEventHandler } from "react";
 
 import { EyeCatchImageField } from "#components/eye-catch/image-field";
+import { useTenantId } from "#lib/use-tenant-id";
 
 import type { LabelActionState, LabelListItem } from "../label-types";
-import { useTenantId } from "#lib/use-tenant-id";
 
 interface LabelEyeCatchFormProps {
   action: (
@@ -30,7 +30,6 @@ export const LabelEyeCatchForm = ({
   action,
   initialLabel,
 }: LabelEyeCatchFormProps) => {
-
   const tenantId = useTenantId();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);

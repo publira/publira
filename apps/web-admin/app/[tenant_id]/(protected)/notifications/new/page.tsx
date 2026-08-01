@@ -1,18 +1,15 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { AdminPage } from "#components/admin-page";
 import { listNotifications } from "#lib/notification";
+import { getTenantId } from "#lib/tenant-id";
 
 import { NotificationForm } from "../_components/notification-form";
 import { createNotificationAction } from "../_lib/actions";
-import { getTenantId } from "#lib/tenant-id";
 
 export const metadata: Metadata = {
   title: "通知作成",
@@ -45,10 +42,7 @@ const NotificationFormData = async () => {
   );
 };
 
-export default async function NewNotificationPage({
-  params,
-}: PageProps<"/[tenant_id]/notifications/new">) {
-
+export default function NewNotificationPage() {
   return (
     <AdminPage
       actions={

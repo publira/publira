@@ -198,7 +198,7 @@ export const listSeries = async (
       {
         limit: 100,
         offset: 0,
-        tenant: { tenantId: tenantId },
+        tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );

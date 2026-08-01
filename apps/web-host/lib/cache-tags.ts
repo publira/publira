@@ -8,10 +8,8 @@ export const tenantSeriesListTag = (tenantId: string) =>
 export const tenantSeriesDetailTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:series:detail`;
 
-export const tenantSeriesTag = (
-  tenantId: string,
-  seriesPublicId: string
-) => `tenant:${normalized(tenantId)}:series:${seriesPublicId.trim()}`;
+export const tenantSeriesTag = (tenantId: string, seriesPublicId: string) =>
+  `tenant:${normalized(tenantId)}:series:${seriesPublicId.trim()}`;
 
 export const tenantAuthorsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:authors`;

@@ -101,11 +101,7 @@ const NotificationsSection = async () => {
           </span>
           {unreadCount > 0 ? (
             <form action={markAllNotificationsAsReadAction}>
-              <input
-                name="tenantId"
-                type="hidden"
-                value={tenantId}
-              />
+              <input name="tenantId" type="hidden" value={tenantId} />
               <button
                 className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
                 type="submit"
@@ -148,11 +144,7 @@ const NotificationsSection = async () => {
 
               return (
                 <form action={markNotificationAsReadAndNavigateAction}>
-                  <input
-                    name="tenantId"
-                    type="hidden"
-                    value={tenantId}
-                  />
+                  <input name="tenantId" type="hidden" value={tenantId} />
                   <input
                     name="notificationId"
                     type="hidden"
@@ -201,11 +193,7 @@ const NotificationsSection = async () => {
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {notification.isRead ? null : (
                     <form action={markNotificationAsReadAction}>
-                      <input
-                        name="tenantId"
-                        type="hidden"
-                        value={tenantId}
-                      />
+                      <input name="tenantId" type="hidden" value={tenantId} />
                       <input
                         name="notificationId"
                         type="hidden"
@@ -237,12 +225,7 @@ const NotificationsSectionFallback = () => (
   </section>
 );
 
-export default async function NotificationsPage({
-  params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}) {
-
+export default function NotificationsPage() {
   return (
     <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">

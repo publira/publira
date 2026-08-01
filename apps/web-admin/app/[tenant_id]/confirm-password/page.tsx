@@ -90,11 +90,7 @@ const confirmPasswordAction = async (formData: FormData): Promise<void> => {
     );
   }
 
-  const result = await confirmAdminPasswordReset(
-    tenantId,
-    token,
-    password
-  );
+  const result = await confirmAdminPasswordReset(tenantId, token, password);
   if (!result.ok) {
     if (result.reason === "expired" || result.reason === "invalid") {
       redirect(buildConfirmPasswordPath({ status: result.reason }));
@@ -152,7 +148,6 @@ const ConfirmPasswordFallback = () => (
 );
 
 const ConfirmPasswordPageContent = async ({
-  params,
   searchParams,
 }: ConfirmPasswordPageProps) => {
   const tenantId = await getTenantId();

@@ -78,7 +78,7 @@ describe("EpisodePagesForm", () => {
         action={action}
         episodePublicId="EP001"
         seriesPublicId="SERIES001"
-              />
+      />
     );
 
   it("初期状態は pages モードでファイル入力が画像向けになる", () => {

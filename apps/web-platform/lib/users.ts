@@ -250,10 +250,7 @@ const listTenantScopedUsersFallback = async (
 
     for (const tenant of tenants) {
       tenantNameMap.set(tenant.publicId, tenant.name ?? tenant.publicId);
-      if (
-        normalizedTenantId &&
-        tenant.publicId !== normalizedTenantId
-      ) {
+      if (normalizedTenantId && tenant.publicId !== normalizedTenantId) {
         continue;
       }
 
