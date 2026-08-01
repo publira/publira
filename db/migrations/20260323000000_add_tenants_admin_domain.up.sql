@@ -1,2 +1,0 @@
-ALTER TABLE tenants
-ADD COLUMN admin_domain VARCHAR(255) UNIQUE;

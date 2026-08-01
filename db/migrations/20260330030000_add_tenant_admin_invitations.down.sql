@@ -1,3 +1,0 @@
-DROP INDEX IF EXISTS idx_tenant_admin_invitations_tenant_created_at;
-DROP INDEX IF EXISTS idx_tenant_admin_invitations_tenant_token_hash;
-DROP TABLE IF EXISTS tenant_admin_invitations;
