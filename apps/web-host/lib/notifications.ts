@@ -1,6 +1,10 @@
 import { unstable_noStore as noStore } from "next/cache";
 
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 export interface MemberNotificationItem {
   id: string;
@@ -97,7 +101,7 @@ export const listMyNotifications = async (
 > => {
   noStore();
 
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(sessionId);
   return fetchNotifications(tenantPublicId, sid);
 };
 
@@ -106,7 +110,7 @@ export const markNotificationAsRead = async (
   notificationId: string,
   sessionId?: string
 ): Promise<boolean> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(sessionId);
   if (!sid) {
     return false;
   }
@@ -130,7 +134,7 @@ export const markAllNotificationsAsRead = async (
   tenantPublicId: string,
   sessionId?: string
 ): Promise<number> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(sessionId);
   if (!sid) {
     return 0;
   }

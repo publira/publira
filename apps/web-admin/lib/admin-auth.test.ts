@@ -27,7 +27,7 @@ const {
 }));
 
 vi.mock("./session", () => ({
-  getSessionId: mockGetSessionId,
+  getAccessToken: mockGetSessionId,
 }));
 
 vi.mock("@publira/api-client/admin/client", () => ({

@@ -1,5 +1,5 @@
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface TenantThemeSettings {
   primaryColor: string;
@@ -120,7 +120,7 @@ export const getTenantThemeSettings = async (
 ): Promise<TenantThemeSettingsResult> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = tenantPublicId.trim();
   if (!normalizedTenantPublicId || !sessionId) {
     return { message: sessionErrorMessage, ok: false };
@@ -146,7 +146,7 @@ export const getTenantThemeSettings = async (
 export const updateTenantThemeSettings = async (
   input: UpdateTenantThemeSettingsInput
 ): Promise<TenantThemeSettingsResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = input.tenantPublicId.trim();
   if (!normalizedTenantPublicId || !sessionId) {
     return { message: sessionErrorMessage, ok: false };

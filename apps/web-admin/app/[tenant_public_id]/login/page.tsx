@@ -3,6 +3,7 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { guardPlaceholder } from "@publira/utils/next-static-params";
+import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -69,11 +70,9 @@ const loginAction = async (formData: FormData): Promise<void> => {
   }
 
   try {
-    const { encryptSessionPayload, resolveAuthSecret } =
-      await import("@publira/web-session");
     const sealed = await encryptSessionPayload(
       {
-        accessToken: result.sessionId,
+        accessToken: result.accessToken,
         expiresAt: result.expiresAt.toISOString(),
         tenantPublicId,
       },

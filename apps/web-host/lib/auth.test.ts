@@ -7,7 +7,7 @@ const {
   mockGetMe,
   mockGetNotificationSettings,
   mockRequestEmailChange,
-  mockResolveSessionId,
+  mockResolveAccessToken,
   mockUpdateMe,
 } = vi.hoisted(() => ({
   mockDeleteMe: vi.fn(),
@@ -16,7 +16,7 @@ const {
   mockLogin: vi.fn(),
   mockLogout: vi.fn(),
   mockRequestEmailChange: vi.fn(),
-  mockResolveSessionId: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
   mockUpdateMe: vi.fn(),
 }));
 
@@ -35,7 +35,7 @@ vi.mock("./api-client", () => ({
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveAccessToken,
 }));
 
 const importAuth = () => import("./auth");
@@ -43,7 +43,7 @@ const importAuth = () => import("./auth");
 describe("web-host auth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSessionId.mockResolvedValue("sid_001");
+    mockResolveAccessToken.mockResolvedValue("sid_001");
   });
 
   it("loginPublic: セッション情報が欠けると null を返す", async () => {
@@ -62,7 +62,7 @@ describe("web-host auth", () => {
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });
 
-  it("logoutPublic: sessionId 空なら API を呼ばない", async () => {
+  it("logoutPublic: accessToken 空なら API を呼ばない", async () => {
     const { logoutPublic } = await importAuth();
     await logoutPublic("   ", "TENANT001");
 
@@ -71,7 +71,7 @@ describe("web-host auth", () => {
 
   it("getPublicCurrentUser: session 解決不可なら null", async () => {
     const { getPublicCurrentUser } = await importAuth();
-    mockResolveSessionId.mockResolvedValueOnce("");
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(getPublicCurrentUser("TENANT001")).resolves.toBeNull();
     expect(mockGetMe).not.toHaveBeenCalled();
@@ -98,7 +98,7 @@ describe("web-host auth", () => {
 
   it("requestPublicEmailChange: session が無ければ false", async () => {
     const { requestPublicEmailChange } = await importAuth();
-    mockResolveSessionId.mockResolvedValueOnce("");
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(
       requestPublicEmailChange(
@@ -151,7 +151,7 @@ describe("web-host auth", () => {
 
   it("getNotificationSettings: session 無しなら null", async () => {
     const { getNotificationSettings } = await importAuth();
-    mockResolveSessionId.mockResolvedValueOnce("");
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(getNotificationSettings("TENANT001")).resolves.toBeNull();
   });

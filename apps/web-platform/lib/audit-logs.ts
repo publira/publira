@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 
 export interface PlatformAuditLogSummary {
   action: string;
@@ -33,7 +37,7 @@ export const listPlatformAuditLogs = async (
 ): Promise<ListPlatformAuditLogsResult> => {
   "use cache: private";
 
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",

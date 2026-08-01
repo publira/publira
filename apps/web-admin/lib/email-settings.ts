@@ -1,6 +1,6 @@
 import { apiClient, withSessionHeaders } from "./api";
 import type { TenantSmtpSettings } from "./email-settings-shared";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export type { TenantSmtpSettings };
 
@@ -99,7 +99,7 @@ export const getTenantEmailSettings = async (
 ): Promise<TenantSmtpSettingsResult> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = tenantPublicId.trim();
 
   if (!normalizedTenantPublicId || !sessionId) {
@@ -123,7 +123,7 @@ export const getTenantEmailSettings = async (
 export const updateTenantEmailSettings = async (
   input: UpdateTenantSmtpSettingsInput
 ): Promise<TenantSmtpSettingsResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = input.tenantPublicId.trim();
 
   if (!normalizedTenantPublicId || !sessionId) {
@@ -157,7 +157,7 @@ export const updateTenantEmailSettings = async (
 export const sendTenantSmtpTestEmail = async (
   input: SendTenantSmtpTestInput
 ): Promise<TenantSmtpTestResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = input.tenantPublicId.trim();
 
   if (!normalizedTenantPublicId || !sessionId) {

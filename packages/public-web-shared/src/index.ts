@@ -2,7 +2,9 @@ export {
   buildPublicSessionHeaders,
   createPublicGrpcApiClient,
   getPublicSessionCacheTag,
+  resolvePublicAccessToken,
   resolvePublicSessionId,
+  sealPublicSessionCookieValue,
 } from "./api-client";
 export {
   buildPublicLoginUrl,

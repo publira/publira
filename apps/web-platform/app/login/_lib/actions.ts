@@ -1,6 +1,7 @@
 "use server";
 
 import type { FormActionState } from "@publira/ui-components/action-form";
+import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -27,11 +28,9 @@ export const loginAction = async (
     };
   }
 
-  const { encryptSessionPayload, resolveAuthSecret } =
-    await import("@publira/web-session");
   const sealed = await encryptSessionPayload(
     {
-      accessToken: result.sessionId,
+      accessToken: result.accessToken,
       expiresAt: result.expiresAt.toISOString(),
     },
     resolveAuthSecret()

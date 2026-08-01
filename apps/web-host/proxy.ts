@@ -36,16 +36,15 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return NextResponse.next();
   }
 
-  const sessionId = request.cookies
-    .get(PUBLIC_SESSION_COOKIE_NAME)
-    ?.value?.trim();
-  const hasSession = Boolean(sessionId);
+  const hasSessionCookie = Boolean(
+    request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim()
+  );
 
-  if (hasSession && GUEST_ONLY_PATHS.has(pathname)) {
+  if (hasSessionCookie && GUEST_ONLY_PATHS.has(pathname)) {
     return NextResponse.redirect(new URL("/my", request.url));
   }
 
-  if (!hasSession && isMemberPath(pathname)) {
+  if (!hasSessionCookie && isMemberPath(pathname)) {
     return redirectToLogin(request);
   }
 
@@ -64,19 +63,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 
   const url = request.nextUrl.clone();
   url.pathname = `/${tenantPublicId}${pathname}`;
-
-  if (!sessionId) {
-    return NextResponse.rewrite(url);
-  }
-
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-publira-session-id", sessionId);
-
-  return NextResponse.rewrite(url, {
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  return NextResponse.rewrite(url);
 };
 
 export const config = {

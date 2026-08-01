@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 import {
   PUBLIC_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
@@ -36,16 +40,16 @@ export interface NotificationSettings {
 }
 
 export interface SignupPublicResult {
+  accessToken?: string;
   expiresAt?: Date;
   pendingVerification: boolean;
-  sessionId?: string;
 }
 
 export const loginPublic = async (
   email: string,
   password: string,
   tenantPublicId: string
-): Promise<{ expiresAt: Date; sessionId: string } | null> => {
+): Promise<{ accessToken: string; expiresAt: Date } | null> => {
   try {
     const response = await apiClient.auth.login({
       email,
@@ -54,11 +58,11 @@ export const loginPublic = async (
         tenantPublicId,
       },
     });
-    const { token: sessionId, expiresAt } = response.accessToken ?? {};
-    if (!sessionId || !expiresAt) {
+    const { token: accessToken, expiresAt } = response.accessToken ?? {};
+    if (!accessToken || !expiresAt) {
       return null;
     }
-    return { expiresAt: new Date(expiresAt), sessionId };
+    return { accessToken, expiresAt: new Date(expiresAt) };
   } catch (error) {
     if (isExpectedNullableError(error)) {
       return null;
@@ -180,10 +184,10 @@ export const confirmPublicPasswordReset = async (
 };
 
 export const logoutPublic = async (
-  sessionId: string,
+  accessToken: string,
   tenantPublicId: string
 ): Promise<void> => {
-  if (!sessionId.trim()) {
+  if (!accessToken.trim()) {
     return;
   }
   try {
@@ -193,7 +197,7 @@ export const logoutPublic = async (
           tenantPublicId,
         },
       },
-      buildSessionHeaders(sessionId)
+      buildSessionHeaders(accessToken)
     );
   } catch {
     // セッション失効・ネットワークエラー時もクッキーはクリアする
@@ -203,7 +207,7 @@ export const logoutPublic = async (
 export const getPublicCurrentUser = async (
   tenantPublicId: string
 ): Promise<PublicCurrentUser | null> => {
-  const sid = await resolveSessionId();
+  const sid = await resolveAccessToken();
   if (!sid) {
     return null;
   }
@@ -237,9 +241,9 @@ export const requestPublicEmailChange = async (
   currentEmail: string,
   newEmail: string,
   currentPassword: string,
-  sessionId?: string
+  accessToken?: string
 ): Promise<boolean> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return false;
   }
@@ -265,9 +269,9 @@ export const requestPublicEmailChange = async (
 
 export const getMe = async (
   tenantPublicId: string,
-  sessionId?: string
+  accessToken?: string
 ): Promise<MeInfo | null> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return null;
   }
@@ -306,9 +310,9 @@ export const getMe = async (
 export const updateMe = async (
   tenantPublicId: string,
   name: string,
-  sessionId?: string
+  accessToken?: string
 ): Promise<MeInfo | null> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return null;
   }
@@ -342,9 +346,9 @@ export const updateMe = async (
 export const deleteMe = async (
   tenantPublicId: string,
   password: string,
-  sessionId?: string
+  accessToken?: string
 ): Promise<boolean> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return false;
   }
@@ -366,9 +370,9 @@ export const deleteMe = async (
 
 export const getNotificationSettings = async (
   tenantPublicId: string,
-  sessionId?: string
+  accessToken?: string
 ): Promise<NotificationSettings | null> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return null;
   }
@@ -395,9 +399,9 @@ export const getNotificationSettings = async (
 export const updateNotificationSettings = async (
   tenantPublicId: string,
   emailNotificationsEnabled: boolean,
-  sessionId?: string
+  accessToken?: string
 ): Promise<NotificationSettings | null> => {
-  const sid = await resolveSessionId(sessionId);
+  const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return null;
   }

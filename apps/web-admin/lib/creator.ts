@@ -1,7 +1,7 @@
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface CreatorItem {
   publicId: string;
@@ -90,7 +90,7 @@ export const listCreators = async (
   "use cache: private";
   cacheTag(`creators-${tenantPublicId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       creators: [],
@@ -131,7 +131,7 @@ export const createCreator = async (input: {
   iconImageContentType?: string;
   iconImageData?: Uint8Array;
 }): Promise<CreateCreatorResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -179,7 +179,7 @@ export const updateCreator = async (input: {
   iconImageContentType?: string;
   iconImageData?: Uint8Array;
 }): Promise<UpdateCreatorResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -228,7 +228,7 @@ export const getCreator = async (input: {
   cacheTag(`creators-${input.tenantPublicId}`);
   cacheTag(`creator-${input.tenantPublicId}-${input.publicId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",

@@ -3,21 +3,23 @@ import {
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
+import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 
 import { ADMIN_SESSION_COOKIE_NAME } from "./admin-auth-shared";
 
-const looksLikeJwt = (value: string): boolean => {
-  const parts = value.split(".");
-  // Compact JWE has 5 segments; JWT has 3.
-  return parts.length === 3;
-};
+const ADMIN_SESSION_CACHE_TAG = "admin-session-cookie";
+
+const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 
 /**
- * Returns the API access token from the encrypted session cookie.
- * Does not use "use cache" so a cookie set during login is visible on the next request.
+ * Returns the API access token from the encrypted browser session cookie.
  */
-export const getSessionId = async (): Promise<string> => {
+export const getAccessToken = async (): Promise<string> => {
+  "use cache: private";
+  cacheLife({ stale: 30 });
+  cacheTag(ADMIN_SESSION_CACHE_TAG);
+
   const cookieStore = await cookies();
   const raw = cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
   if (!raw) {
@@ -39,3 +41,6 @@ export const getSessionId = async (): Promise<string> => {
 
   return "";
 };
+
+/** @deprecated Use getAccessToken */
+export const getSessionId = getAccessToken;

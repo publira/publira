@@ -31,7 +31,7 @@ vi.mock("./api-client", () => ({
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveSessionId,
 }));
 
 beforeEach(() => {

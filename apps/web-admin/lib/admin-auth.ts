@@ -3,12 +3,12 @@ import {
   sanitizeRedirectPath,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export type AdminLoginResult =
   | {
       ok: true;
-      sessionId: string;
+      accessToken: string;
       expiresAt: Date;
     }
   | {
@@ -134,11 +134,11 @@ export const loginAdmin = async (
       tenant: { tenantPublicId },
     });
 
-    const sessionId = response.accessToken?.token?.trim() ?? "";
+    const accessToken = response.accessToken?.token?.trim() ?? "";
     const expiresAtRaw = response.accessToken?.expiresAt ?? "";
     const expiresAt = new Date(expiresAtRaw);
 
-    if (!sessionId || Number.isNaN(expiresAt.getTime())) {
+    if (!accessToken || Number.isNaN(expiresAt.getTime())) {
       return {
         message: genericErrorMessage,
         ok: false,
@@ -146,9 +146,9 @@ export const loginAdmin = async (
     }
 
     return {
+      accessToken,
       expiresAt,
       ok: true,
-      sessionId,
     };
   } catch (error) {
     console.error("[web-admin] loginAdmin failed", error);
@@ -160,16 +160,16 @@ export const loginAdmin = async (
 };
 
 export const logoutAdmin = async (
-  sessionId: string,
+  accessToken: string,
   tenantPublicId: string
 ): Promise<void> => {
-  if (!sessionId.trim()) {
+  if (!accessToken.trim()) {
     return;
   }
 
   await apiClient.auth.logout(
     { tenant: { tenantPublicId } },
-    withSessionHeaders(sessionId)
+    withSessionHeaders(accessToken)
   );
 };
 
@@ -178,7 +178,7 @@ export const getAdminCurrentUser = async (
 ): Promise<AdminCurrentUser | null> => {
   "use cache: private";
 
-  const token = await getSessionId();
+  const token = await getAccessToken();
   if (!token) {
     return null;
   }
@@ -433,7 +433,7 @@ export const requestAdminEmailChange = async (
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (
     !tenantPublicId.trim() ||
     !sessionId.trim() ||

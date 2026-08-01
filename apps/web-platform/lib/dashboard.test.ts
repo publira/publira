@@ -19,7 +19,7 @@ vi.mock("./api-client", () => ({
     },
   },
   buildSessionHeaders: mockBuildSessionHeaders,
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveSessionId,
 }));
 
 beforeEach(() => {

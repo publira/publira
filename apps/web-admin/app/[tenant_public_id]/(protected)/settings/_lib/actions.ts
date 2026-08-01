@@ -13,7 +13,7 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
-import { getSessionId } from "#lib/session";
+import { getAccessToken } from "#lib/session";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import { updateTenantThemeSettings } from "#lib/theme-settings";
 
@@ -334,7 +334,7 @@ export const requestEmailChangeAction = async (
     };
   }
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再度ログインしてください。",

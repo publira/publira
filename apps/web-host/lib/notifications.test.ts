@@ -4,12 +4,12 @@ const {
   mockListNotifications,
   mockMarkAllNotificationsAsRead,
   mockMarkNotificationAsRead,
-  mockResolveSessionId,
+  mockResolveAccessToken,
 } = vi.hoisted(() => ({
   mockListNotifications: vi.fn(),
   mockMarkAllNotificationsAsRead: vi.fn(),
   mockMarkNotificationAsRead: vi.fn(),
-  mockResolveSessionId: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
 }));
 
 vi.mock("./api-client", () => ({
@@ -23,7 +23,7 @@ vi.mock("./api-client", () => ({
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveAccessToken,
 }));
 
 vi.mock("next/cache", () => ({
@@ -36,7 +36,7 @@ const importNotifications = () => import("./notifications");
 describe("web-host notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSessionId.mockResolvedValue("sid_001");
+    mockResolveAccessToken.mockResolvedValue("sid_001");
   });
 
   it("listMyNotifications: API 応答を画面用に変換する", async () => {
@@ -72,7 +72,7 @@ describe("web-host notifications", () => {
 
   it("markNotificationAsRead: session が無ければ false", async () => {
     const { markNotificationAsRead } = await importNotifications();
-    mockResolveSessionId.mockResolvedValueOnce("");
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(markNotificationAsRead("TENANT001", "N001")).resolves.toBe(
       false

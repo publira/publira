@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 import {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
@@ -29,17 +33,17 @@ export interface PlatformCurrentOperator {
 export const loginPlatform = async (
   email: string,
   password: string
-): Promise<{ expiresAt: Date; sessionId: string } | null> => {
+): Promise<{ accessToken: string; expiresAt: Date } | null> => {
   try {
     const response = await apiClient.auth.login({
       email,
       password,
     });
-    const { token: sessionId, expiresAt } = response.accessToken ?? {};
-    if (!sessionId || !expiresAt) {
+    const { token: accessToken, expiresAt } = response.accessToken ?? {};
+    if (!accessToken || !expiresAt) {
       return null;
     }
-    return { expiresAt: new Date(expiresAt), sessionId };
+    return { accessToken, expiresAt: new Date(expiresAt) };
   } catch (error) {
     if (isExpectedNullableError(error)) {
       return null;
@@ -48,12 +52,12 @@ export const loginPlatform = async (
   }
 };
 
-export const logoutPlatform = async (sessionId: string): Promise<void> => {
-  if (!sessionId.trim()) {
+export const logoutPlatform = async (accessToken: string): Promise<void> => {
+  if (!accessToken.trim()) {
     return;
   }
   try {
-    await apiClient.auth.logout({}, buildSessionHeaders(sessionId));
+    await apiClient.auth.logout({}, buildSessionHeaders(accessToken));
   } catch {
     // セッション失効・ネットワークエラー時もクッキーはクリアする
   }
@@ -63,7 +67,7 @@ export const getPlatformCurrentOperator =
   async (): Promise<PlatformCurrentOperator | null> => {
     "use cache: private";
 
-    const sid = await resolveSessionId();
+    const sid = await resolveAccessToken();
     if (!sid) {
       return null;
     }

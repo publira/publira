@@ -1,4 +1,8 @@
-import { apiClient, buildSessionHeaders, resolveSessionId } from "./api-client";
+import {
+  apiClient,
+  buildSessionHeaders,
+  resolveAccessToken,
+} from "./api-client";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
 import {
   SECRET_UPDATE_MODE_REPLACE,
@@ -100,7 +104,7 @@ export const getPlatformEmailSettings =
   async (): Promise<PlatformSmtpSettingsResult> => {
     "use cache: private";
 
-    const sessionId = await resolveSessionId();
+    const sessionId = await resolveAccessToken();
     if (!sessionId) {
       return { message: sessionErrorMessage, ok: false };
     }
@@ -119,7 +123,7 @@ export const getPlatformEmailSettings =
 export const updatePlatformEmailSettings = async (
   input: UpdatePlatformSmtpSettingsInput
 ): Promise<PlatformSmtpSettingsResult> => {
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return { message: sessionErrorMessage, ok: false };
   }
@@ -148,7 +152,7 @@ export const updatePlatformEmailSettings = async (
 export const sendPlatformSmtpTestEmail = async (
   input: SendPlatformSmtpTestInput
 ): Promise<PlatformSmtpTestResult> => {
-  const sessionId = await resolveSessionId();
+  const sessionId = await resolveAccessToken();
   if (!sessionId) {
     return { message: sessionErrorMessage, ok: false };
   }

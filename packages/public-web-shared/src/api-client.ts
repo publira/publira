@@ -7,6 +7,7 @@ import {
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
+import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 
 import { PUBLIC_SESSION_COOKIE_NAME } from "./auth-shared";
@@ -35,7 +36,10 @@ const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 const getAccessTokenFromCookie = async (
   cookieName: string
 ): Promise<string> => {
-  // Avoid "use cache" here so a cookie set during login is visible on the next request.
+  "use cache: private";
+  cacheLife({ stale: 30 });
+  cacheTag(getPublicSessionCacheTag(cookieName));
+
   const cookieStore = await cookies();
   const raw = cookieStore.get(cookieName)?.value?.trim() ?? "";
   if (!raw) {
@@ -56,14 +60,18 @@ const getAccessTokenFromCookie = async (
   return "";
 };
 
-export const resolvePublicSessionId = (
+/** Resolve the API access token from an explicit value or the browser session cookie. */
+export const resolvePublicAccessToken = (
   cookieName = PUBLIC_SESSION_COOKIE_NAME,
-  accessToken?: string
+  accessToken = ""
 ): Promise<string> => {
-  const token = (accessToken ?? "").trim();
+  const token = accessToken.trim();
   if (token) {
     return Promise.resolve(token);
   }
 
   return getAccessTokenFromCookie(cookieName);
 };
+
+/** @deprecated Use resolvePublicAccessToken */
+export const resolvePublicSessionId = resolvePublicAccessToken;

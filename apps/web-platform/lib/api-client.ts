@@ -24,7 +24,8 @@ export const buildSessionHeaders = (accessToken: string) =>
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 
 const getAccessTokenFromCookie = async (): Promise<string> => {
-  // Avoid "use cache" so a cookie set during login is visible on the next request.
+  "use cache: private";
+
   const cookieStore = await cookies();
   const raw =
     cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
@@ -45,8 +46,8 @@ const getAccessTokenFromCookie = async (): Promise<string> => {
   return "";
 };
 
-export const resolveSessionId = (accessToken?: string): Promise<string> => {
-  const token = (accessToken ?? "").trim();
+export const resolveAccessToken = (accessToken = ""): Promise<string> => {
+  const token = accessToken.trim();
   if (token) {
     return Promise.resolve(token);
   }

@@ -26,7 +26,7 @@ vi.mock("./api-client", () => ({
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveSessionId: mockResolveSessionId,
+  resolveAccessToken: mockResolveSessionId,
 }));
 
 beforeEach(() => {
@@ -35,7 +35,7 @@ beforeEach(() => {
 });
 
 describe("loginPlatform", () => {
-  it("API 成功時は sessionId と expiresAt を返す", async () => {
+  it("API 成功時は accessToken と expiresAt を返す", async () => {
     const expiresAt = "2026-03-22T00:00:00Z";
     mockLogin.mockResolvedValueOnce({
       accessToken: { expiresAt, token: "tok_abc" },
@@ -44,8 +44,8 @@ describe("loginPlatform", () => {
 
     const result = await loginPlatform("admin@example.com", "secret");
     expect(result).toEqual({
+      accessToken: "tok_abc",
       expiresAt: new Date(expiresAt),
-      sessionId: "tok_abc",
     });
     expect(mockLogin).toHaveBeenCalledWith({
       email: "admin@example.com",
@@ -77,12 +77,12 @@ describe("loginPlatform", () => {
 });
 
 describe("logoutPlatform", () => {
-  it("sessionId が空文字の場合 API を呼ばない", async () => {
+  it("accessToken が空文字の場合 API を呼ばない", async () => {
     await logoutPlatform("  ");
     expect(mockLogout).not.toHaveBeenCalled();
   });
 
-  it("正常な sessionId で API を呼ぶ", async () => {
+  it("正常な accessToken で API を呼ぶ", async () => {
     mockLogout.mockResolvedValueOnce({});
 
     await logoutPlatform("tok_abc");

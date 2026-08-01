@@ -1,3 +1,4 @@
+import { sealPublicSessionCookieValue } from "@publira/public-web-shared/api-client";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -52,10 +53,8 @@ const loginAction = async (formData: FormData): Promise<void> => {
     );
   }
 
-  const { sealPublicSessionCookieValue } =
-    await import("@publira/public-web-shared/api-client");
   const sealed = await sealPublicSessionCookieValue({
-    accessToken: result.sessionId,
+    accessToken: result.accessToken,
     expiresAt: result.expiresAt.toISOString(),
     tenantPublicId,
   });

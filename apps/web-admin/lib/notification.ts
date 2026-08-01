@@ -6,7 +6,7 @@ import type {
   NotificationTargetUser,
 } from "../app/[tenant_public_id]/(protected)/notifications/notification-types";
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
 const listErrorMessage =
@@ -73,7 +73,7 @@ export const listNotifications = async (
   "use cache: private";
   cacheTag(`notifications-${tenantPublicId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: sessionErrorMessage,
@@ -142,7 +142,7 @@ export const createNotification = async (input: {
 }): Promise<
   { ok: true; createdCount: number } | { ok: false; message: string }
 > => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: sessionErrorMessage,

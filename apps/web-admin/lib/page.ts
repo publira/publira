@@ -1,7 +1,7 @@
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 export interface PageItem {
   id: string;
@@ -145,7 +145,7 @@ export const listPages = async (
   "use cache: private";
   cacheTag(`pages-${tenantPublicId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -181,7 +181,7 @@ export const getPage = async (input: {
   cacheTag(`pages-${input.tenantPublicId}`);
   cacheTag(`page-${input.tenantPublicId}-${input.pageId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -224,7 +224,7 @@ export const listPageVersions = async (input: {
   "use cache: private";
   cacheTag(`page-${input.tenantPublicId}-${input.pageId}`);
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -262,7 +262,7 @@ export const createPage = async (input: {
   slug: string;
   title: string;
 }): Promise<CreatePageResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -304,7 +304,7 @@ export const updatePage = async (input: {
   pageId: string;
   title: string;
 }): Promise<UpdatePageResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -346,7 +346,7 @@ export const createPageVersion = async (input: {
   pageId: string;
   contentMarkdown: string;
 }): Promise<CreatePageVersionResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -388,7 +388,7 @@ export const publishPageVersion = async (input: {
   pageId: string;
   versionId: string;
 }): Promise<PublishPageVersionResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
@@ -430,7 +430,7 @@ export const rollbackPageVersion = async (input: {
   pageId: string;
   versionId: string;
 }): Promise<RollbackPageVersionResult> => {
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",

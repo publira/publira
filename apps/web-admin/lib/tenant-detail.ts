@@ -1,5 +1,5 @@
 import { apiClient, withSessionHeaders } from "./api";
-import { getSessionId } from "./session";
+import { getAccessToken } from "./session";
 
 const isExpectedNullableError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
@@ -27,7 +27,7 @@ export const getTenantForSession = async (
 ): Promise<TenantDetail | null> => {
   "use cache: private";
 
-  const sessionId = await getSessionId();
+  const sessionId = await getAccessToken();
   const normalizedTenantPublicId = tenantPublicId.trim();
   if (!normalizedTenantPublicId || !sessionId) {
     return null;
