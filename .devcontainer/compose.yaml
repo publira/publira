@@ -20,11 +20,14 @@ services:
 
   app:
     platform: linux/amd64
+    init: true
     build:
       context: .
       dockerfile: Dockerfile
     command: sleep infinity
     volumes:
+      - gh-config:/home/vscode/.config/gh
+      - grok-config:/home/vscode/.grok
       - ../..:/workspaces:cached
     depends_on:
       - db
@@ -113,4 +116,6 @@ services:
       - "8025:8025"
 
 volumes:
+  gh-config:
+  grok-config:
   postgres-data:
