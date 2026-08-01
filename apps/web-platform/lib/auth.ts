@@ -3,11 +3,12 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import {
+import { normalizePlatformRole } from "./roles";
+
+export {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./auth-shared";
-import { normalizePlatformRole } from "./roles";
 
 const isExpectedNullableError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
@@ -96,5 +97,3 @@ export const sessionCookieOptions = {
   sameSite: "lax" as const,
   secure: process.env.NODE_ENV === "production",
 };
-
-export { PLATFORM_SESSION_COOKIE_NAME, sanitizeRedirectPath };

@@ -131,6 +131,8 @@ export const EpisodeImagesSortableGrid = ({
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
       {optimisticItems.map((image, index) => (
+        // Drag-and-drop reordering is intentionally on the figure container.
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <figure
           aria-disabled={isPending}
           className="grid cursor-move gap-2 rounded-md border border-border/70 bg-background p-2"

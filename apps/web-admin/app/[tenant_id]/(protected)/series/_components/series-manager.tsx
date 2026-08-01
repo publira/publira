@@ -36,7 +36,7 @@ const getStatusLabel = (isPublished: boolean) =>
   isPublished ? "公開中" : "下書き";
 
 const excerpt = (text: string, max = 56) => {
-  const normalized = text.replaceAll(/\s+/g, " ").trim();
+  const normalized = text.replaceAll(/\s+/gu, " ").trim();
   if (normalized.length <= max) {
     return normalized || "-";
   }

@@ -46,6 +46,7 @@ export const EyeCatchImageField = ({
       <div className="grid gap-2">
         {!hasVariants || clearEyeCatchImage ? (
           <button
+            aria-label="アイキャッチ画像を選択"
             className="relative aspect-[3/4] overflow-hidden rounded-md border-2 border-dashed border-border/60 bg-muted/40 transition-colors hover:border-blue-300"
             onClick={onVariantImageClick}
             type="button"

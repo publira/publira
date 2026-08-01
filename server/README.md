@@ -74,8 +74,7 @@ task server:build
 
 ## 機密情報の暗号化設定 (AES-GCM)
 
-機密情報を保存時に AES-GCM で暗号化するための基盤を用意しています。
-現時点では機密項目の保存経路に適用したときに、以下の環境変数を設定してください。
+機密情報を保存時に AES-GCM で暗号化するための基盤を用意しています。現時点では機密項目の保存経路に適用したときに、以下の環境変数を設定してください。
 
 - `SECRET_ENCRYPTION_KEYS`
   - 形式: `key-id-1:base64key,key-id-2:base64key`
@@ -101,13 +100,13 @@ task server:build
 API は email + password で **HS256 JWT アクセストークン** を発行します（`Login` / `Logout`）。  
 ブラウザ向け Cookie は Next.js 側が `jose` で JWE 管理し、API へは `Authorization: Bearer <token>` のみを送ります。
 
-| 項目        | 値                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------- |
-| 環境変数    | `AUTH_JWT_SECRET`（32 文字以上。未設定時は開発用フォールバック）                            |
-| TTL         | 24h                                                                                         |
-| Audience    | `public` / `admin` / `platform`                                                             |
-| 失効        | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |
-| Next Cookie | `AUTH_SECRET`（JWE 用、API の JWT secret とは別） / Cookie 名: `publira_web_host_auth` 等   |
+| 項目 | 値 |
+| --- | --- |
+| 環境変数 | `AUTH_JWT_SECRET`（32 文字以上。未設定時は開発用フォールバック） |
+| TTL | 24h |
+| Audience | `public` / `admin` / `platform` |
+| 失効 | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |
+| Next Cookie | `AUTH_SECRET`（JWE 用、API の JWT secret とは別） / Cookie 名: `publira_web_host_auth` 等 |
 
 ## API サーバ分離
 
@@ -126,11 +125,11 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 
 各 API サーバーは専用の PostgreSQL ログインユーザーで接続し、最小権限を実現します。
 
-| サーバー     | DB ユーザー        | 環境変数                  | ローカルデフォルト                                                         |
-| ------------ | ------------------ | ------------------------- | -------------------------------------------------------------------------- |
+| サーバー | DB ユーザー | 環境変数 | ローカルデフォルト |
+| --- | --- | --- | --- |
 | platform-api | `publira_platform` | `PUBLIRA_PLATFORM_DB_URL` | `postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable` |
-| admin-api    | `publira_admin`    | `PUBLIRA_ADMIN_DB_URL`    | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable`       |
-| api (public) | `publira_public`   | `PUBLIRA_PUBLIC_DB_URL`   | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable`     |
+| admin-api | `publira_admin` | `PUBLIRA_ADMIN_DB_URL` | `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable` |
+| api (public) | `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `postgres://publira_public:publicpass@db:5432/publira?sslmode=disable` |
 
 `publira_platform` は BYPASSRLS 属性を持ち、全テナントのデータに横断アクセスします。  
 `publira_admin` / `publira_public` は RLS が有効で、テナント ID でスコープされます。

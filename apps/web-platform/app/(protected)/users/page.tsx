@@ -150,13 +150,13 @@ const parseUsersFilters = (
   const createdFromFilter = params.created_from?.trim() ?? "";
   const createdToFilter = params.created_to?.trim() ?? "";
 
-  const requestedLimit = Number.parseInt(params.limit ?? "20", 10);
+  const requestedLimit = Math.trunc(Number(params.limit ?? "20"));
   const limit =
     Number.isFinite(requestedLimit) && allowedPageSizes.has(requestedLimit)
       ? requestedLimit
       : 20;
 
-  const requestedOffset = Number.parseInt(params.offset ?? "0", 10);
+  const requestedOffset = Math.trunc(Number(params.offset ?? "0"));
   const offset =
     Number.isFinite(requestedOffset) && requestedOffset >= 0
       ? requestedOffset

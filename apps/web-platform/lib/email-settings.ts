@@ -4,20 +4,14 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
-import {
-  SECRET_UPDATE_MODE_REPLACE,
-  SECRET_UPDATE_MODE_UNCHANGED,
-  TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
-  TEST_EMAIL_RECIPIENT_TYPE_SELF,
-} from "./email-settings-shared";
 
 export {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
-};
-export type { PlatformSmtpSettings };
+} from "./email-settings-shared";
+export type { PlatformSmtpSettings } from "./email-settings-shared";
 
 export interface UpdatePlatformSmtpSettingsInput {
   encryption: string;

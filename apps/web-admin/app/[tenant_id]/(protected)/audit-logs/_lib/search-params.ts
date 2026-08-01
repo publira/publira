@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const maxSearchParamLength = 255;
-const dateParamPattern = /^\d{4}-\d{2}-\d{2}$/;
+const dateParamPattern = /^\d{4}-\d{2}-\d{2}$/u;
 
 type QueryParamValue = string | string[] | undefined;
 

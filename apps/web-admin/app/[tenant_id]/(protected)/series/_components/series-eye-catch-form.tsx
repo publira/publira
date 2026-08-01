@@ -38,17 +38,24 @@ export const SeriesEyeCatchForm = ({
   const [selectedVariantType, setSelectedVariantType] = useState<string | null>(
     null
   );
+  const [prevSeriesPublicId, setPrevSeriesPublicId] = useState(
+    initialSeries.publicId
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const effectiveSeries = state?.ok ? state.series : initialSeries;
   const variants = effectiveSeries.eyeCatchImageVariants ?? [];
   const hasVariants = variants.length > 0;
 
-  useEffect(() => {
+  if (initialSeries.publicId !== prevSeriesPublicId) {
+    setPrevSeriesPublicId(initialSeries.publicId);
     setClearEyeCatchImage(false);
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
     setLocalPreviewUrl("");
     setSelectedVariantType(null);
-  }, [initialSeries.publicId]);
+  }
 
   useEffect(
     () => () => {

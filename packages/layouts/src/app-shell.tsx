@@ -7,7 +7,7 @@ import { cn } from "@publira/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { NavSection } from "./navigation";
 import { isCurrentPath } from "./navigation";
@@ -43,12 +43,15 @@ export const AppShell = ({
 }: AppShellProps) => {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const closeMobileNav = useEffectEvent(() => setMobileNavOpen(false));
-  const openMobileNav = useEffectEvent(() => setMobileNavOpen(true));
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+  const openMobileNav = useCallback(() => setMobileNavOpen(true), []);
 
-  useEffect(() => {
+  // Close mobile nav when the route changes (render-time state adjust).
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setMobileNavOpen(false);
-  }, [pathname]);
+  }
 
   return (
     <div className="relative min-h-dvh bg-background text-foreground">
@@ -169,6 +172,7 @@ export const AppShellSidebar = ({
   <>
     <button
       aria-hidden={!mobileNavOpen}
+      aria-label="ナビゲーションを閉じる"
       className={cn(
         "fixed inset-0 z-30 bg-foreground/20 backdrop-blur-xs transition-opacity lg:hidden",
         mobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0"

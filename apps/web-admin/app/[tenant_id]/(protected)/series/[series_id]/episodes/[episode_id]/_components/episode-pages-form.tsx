@@ -16,7 +16,8 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState, useEffectEvent, useRef, useState } from "react";
+import { useActionState, useCallback, useRef, useState } from "react";
+import type { ChangeEvent, DragEvent } from "react";
 
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -45,33 +46,27 @@ export const EpisodePagesForm = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const updateFiles = (files: FileList | null) => {
+  const updateFiles = useCallback((files: FileList | null) => {
     setSelectedFileNames(files ? [...files].map((file) => file.name) : []);
-  };
+  }, []);
 
-  const handleDragEnter = useEffectEvent(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      setIsDragOver(true);
-    }
-  );
+  const handleDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  }, []);
 
-  const handleDragLeave = useEffectEvent(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      setIsDragOver(false);
-    }
-  );
+  const handleDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragOver(false);
+  }, []);
 
-  const handleDragOver = useEffectEvent(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      setIsDragOver(true);
-    }
-  );
+  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  }, []);
 
-  const handleDrop = useEffectEvent(
-    (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       setIsDragOver(false);
       const { files } = event.dataTransfer;
@@ -88,38 +83,40 @@ export const EpisodePagesForm = ({
       }
       inputRef.current.files = dataTransfer.files;
       updateFiles(dataTransfer.files);
-    }
+    },
+    [updateFiles, uploadMode]
   );
 
-  const handleChange = useEffectEvent(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
       updateFiles(event.currentTarget.files);
-    }
+    },
+    [updateFiles]
   );
 
-  const handleSelectPages = useEffectEvent(() => {
+  const handleSelectPages = useCallback(() => {
     setUploadMode("pages");
     setSelectedFileNames([]);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
-  });
+  }, []);
 
-  const handleSelectZip = useEffectEvent(() => {
+  const handleSelectZip = useCallback(() => {
     setUploadMode("zip");
     setSelectedFileNames([]);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
-  });
+  }, []);
 
-  const handleSelectEpub = useEffectEvent(() => {
+  const handleSelectEpub = useCallback(() => {
     setUploadMode("epub");
     setSelectedFileNames([]);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
-  });
+  }, []);
 
   let fileLabel = "ページ画像";
   let dropMessage = "ここに画像をドロップするか、ファイルを選択してください。";

@@ -16,7 +16,7 @@ export const createTenantAction = async (
     formData.get("initial_admin_emails") ?? ""
   );
   const initialAdminEmails = initialAdminEmailsRaw
-    .split(/[\n,]/)
+    .split(/[\n,]/u)
     .map((email) => email.trim())
     .filter((email) => email.length > 0);
 

@@ -53,12 +53,12 @@ task db:seed ENV=prod    # 本番用シード（DBユーザー・ロールのみ
 
 `baseline/000_rls_bypass_role.sql` で以下を作成します（冪等）:
 
-| 名前                 | 種別               | 用途                                                                        |
-| -------------------- | ------------------ | --------------------------------------------------------------------------- |
-| `publira_rls_bypass` | NOLOGIN, BYPASSRLS | 本番で専用ロールを付与するための名前付き権限                                |
-| `publira_platform`   | LOGIN, BYPASSRLS   | platform API 用ログインユーザー。RLS をバイパスして全テナントに横断アクセス |
-| `publira_admin`      | LOGIN              | admin API 用ログインユーザー。RLS 有効（テナントスコープ）                  |
-| `publira_public`     | LOGIN              | public API 用ログインユーザー。RLS 有効（テナントスコープ）                 |
+| 名前 | 種別 | 用途 |
+| --- | --- | --- |
+| `publira_rls_bypass` | NOLOGIN, BYPASSRLS | 本番で専用ロールを付与するための名前付き権限 |
+| `publira_platform` | LOGIN, BYPASSRLS | platform API 用ログインユーザー。RLS をバイパスして全テナントに横断アクセス |
+| `publira_admin` | LOGIN | admin API 用ログインユーザー。RLS 有効（テナントスコープ） |
+| `publira_public` | LOGIN | public API 用ログインユーザー。RLS 有効（テナントスコープ） |
 
 開発用パスワードはそれぞれ `platformpass` / `adminpass` / `publicpass` です。  
 本番環境では seed 後に `ALTER ROLE ... PASSWORD` で安全な値に変更してください。

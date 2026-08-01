@@ -16,7 +16,9 @@ export const SiteLayoutActions = ({
   <div className="flex items-center gap-2">
     <LinkButton
       // oxlint-disable-next-line jsx_a11y/anchor-has-content
-      render={<a href={secondaryAction.href} />}
+      render={
+        <a aria-label={secondaryAction.label} href={secondaryAction.href} />
+      }
       size="sm"
       variant="outline"
       className={secondaryAction.className}
@@ -25,7 +27,7 @@ export const SiteLayoutActions = ({
     </LinkButton>
     <LinkButton
       // oxlint-disable-next-line jsx_a11y/anchor-has-content
-      render={<a href={primaryAction.href} />}
+      render={<a aria-label={primaryAction.label} href={primaryAction.href} />}
       size="sm"
       className={primaryAction.className}
     >

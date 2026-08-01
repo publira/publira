@@ -42,7 +42,7 @@ const decodeFallbackAuthorId = (id: string): string | null => {
   }
 
   const encoded = id.slice(FALLBACK_AUTHOR_ID_PREFIX.length);
-  if (!/^[A-Za-z0-9_-]+$/.test(encoded)) {
+  if (!/^[A-Za-z0-9_-]+$/u.test(encoded)) {
     return null;
   }
 
@@ -68,7 +68,7 @@ const toPositiveInt = (
   fallback: number
 ) => {
   const raw = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(raw ?? "", 10);
+  const parsed = Math.trunc(Number(raw ?? ""));
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return fallback;
   }
@@ -126,6 +126,8 @@ export const listPublishedAuthors = async (
   let reachedSeriesEnd = false;
 
   while (authorSeriesMap.size < targetEndIndex && !reachedSeriesEnd) {
+    // Sequential pagination depends on previous batch results.
+    // oxlint-disable-next-line no-await-in-loop
     const seriesBatch = await listPublishedSeries(
       tenantId,
       SERIES_FETCH_BATCH_SIZE,
@@ -216,6 +218,8 @@ export const getPublishedAuthorDetail = async (
   let reachedSeriesEnd = false;
 
   while (!reachedSeriesEnd) {
+    // Sequential pagination depends on previous batch results.
+    // oxlint-disable-next-line no-await-in-loop
     const seriesBatch = await listPublishedSeries(
       tenantId,
       SERIES_FETCH_BATCH_SIZE,

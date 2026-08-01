@@ -50,7 +50,11 @@ export const SiteLayoutBrandSkeleton = () => (
 );
 
 export const SiteLayoutFooterSkeleton = () => (
-  <footer className="border-t border-border/70 bg-surface" role="status">
+  <footer
+    aria-busy="true"
+    aria-live="polite"
+    className="border-t border-border/70 bg-surface"
+  >
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 md:flex-row md:items-center md:justify-between">
       <Skeleton className="inline-block h-4 w-56 rounded" />
       <Skeleton className="inline-block h-4 w-48 rounded" />
@@ -142,7 +146,7 @@ export const SiteLayoutMain = ({ children }: { children: ReactNode }) => (
 );
 
 export const SiteLayoutHeaderActionsSkeleton = () => (
-  <div className="flex items-center gap-2" role="status">
+  <div aria-busy="true" aria-live="polite" className="flex items-center gap-2">
     <Skeleton className="inline-block h-8 w-20 rounded-md" />
     <Skeleton className="inline-block h-8 w-24 rounded-md" />
   </div>

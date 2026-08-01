@@ -45,7 +45,7 @@ interface ParsedTenantSmtpFormData {
 const hexColorCodeSchema = z
   .string()
   .trim()
-  .regex(/^#[0-9a-fA-F]{6}$/, "#RRGGBB 形式で入力してください。")
+  .regex(/^#[0-9a-fA-F]{6}$/u, "#RRGGBB 形式で入力してください。")
   .transform((value) => value.toLowerCase());
 
 const tenantThemeSchema = z.object({
@@ -126,7 +126,7 @@ const mapThemeFieldErrors = (
   ) as ThemeSettingsFieldErrors;
 
 const parseIntOrFallback = (value: string, fallback: number): number => {
-  const parsed = Number.parseInt(value, 10);
+  const parsed = Math.trunc(Number(value));
   if (!Number.isFinite(parsed)) {
     return fallback;
   }

@@ -9,7 +9,8 @@ import {
 import { EpisodeNotFoundError } from "./errors";
 import { SeriesNotFoundError } from "./series-not-found-error";
 
-export { EpisodeNotFoundError, SeriesNotFoundError };
+export { EpisodeNotFoundError } from "./errors";
+export { SeriesNotFoundError } from "./series-not-found-error";
 
 export interface EyeCatchImageVariant {
   variantType: string;

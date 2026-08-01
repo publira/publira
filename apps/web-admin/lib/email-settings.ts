@@ -2,7 +2,7 @@ import { apiClient, withSessionHeaders } from "./api";
 import type { TenantSmtpSettings } from "./email-settings-shared";
 import { getAccessToken } from "./session";
 
-export type { TenantSmtpSettings };
+export type { TenantSmtpSettings } from "./email-settings-shared";
 
 export interface UpdateTenantSmtpSettingsInput {
   tenantId: string;

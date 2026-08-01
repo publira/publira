@@ -70,7 +70,7 @@ const AuditLogsSkeleton = () => (
 );
 
 const parseOffset = (value: string | undefined): number => {
-  const parsed = Number.parseInt(value ?? "0", 10);
+  const parsed = Math.trunc(Number(value ?? "0"));
   if (!Number.isFinite(parsed) || parsed < 0) {
     return 0;
   }

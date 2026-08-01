@@ -17,7 +17,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 
 import type { TenantSiteSettings } from "#lib/site-settings";
 import { useTenantId } from "#lib/use-tenant-id";
@@ -45,16 +45,28 @@ export const SiteSettingsForm = ({
     initialSettings.siteDescription
   );
   const [siteTagline, setSiteTagline] = useState(initialSettings.siteTagline);
+  const [prevCopyrightText, setPrevCopyrightText] = useState(
+    initialSettings.copyrightText
+  );
+  const [prevSiteDescription, setPrevSiteDescription] = useState(
+    initialSettings.siteDescription
+  );
+  const [prevSiteTagline, setPrevSiteTagline] = useState(
+    initialSettings.siteTagline
+  );
 
-  useEffect(() => {
+  if (
+    initialSettings.copyrightText !== prevCopyrightText ||
+    initialSettings.siteDescription !== prevSiteDescription ||
+    initialSettings.siteTagline !== prevSiteTagline
+  ) {
+    setPrevCopyrightText(initialSettings.copyrightText);
+    setPrevSiteDescription(initialSettings.siteDescription);
+    setPrevSiteTagline(initialSettings.siteTagline);
     setCopyrightText(initialSettings.copyrightText);
     setSiteDescription(initialSettings.siteDescription);
     setSiteTagline(initialSettings.siteTagline);
-  }, [
-    initialSettings.copyrightText,
-    initialSettings.siteDescription,
-    initialSettings.siteTagline,
-  ]);
+  }
 
   const handleCopyrightTextChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {

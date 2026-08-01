@@ -38,17 +38,24 @@ export const LabelEyeCatchForm = ({
   const [selectedVariantType, setSelectedVariantType] = useState<string | null>(
     null
   );
+  const [prevLabelPublicId, setPrevLabelPublicId] = useState(
+    initialLabel.publicId
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const effectiveLabel = state?.ok ? state.label : initialLabel;
   const variants = effectiveLabel.eyeCatchImageVariants ?? [];
   const hasVariants = variants.length > 0;
 
-  useEffect(() => {
+  if (initialLabel.publicId !== prevLabelPublicId) {
+    setPrevLabelPublicId(initialLabel.publicId);
     setClearEyeCatchImage(false);
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
     setLocalPreviewUrl("");
     setSelectedVariantType(null);
-  }, [initialLabel.publicId]);
+  }
 
   useEffect(
     () => () => {

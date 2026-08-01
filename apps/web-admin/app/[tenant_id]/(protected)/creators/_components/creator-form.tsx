@@ -18,7 +18,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import Image from "next/image";
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -99,17 +99,28 @@ export const CreatorForm = ({
 }: CreatorFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const [name, setName] = useState(initialCreator?.name ?? "");
-  const [profileText, setProfileText] = useState(
-    initialCreator?.profileText ?? ""
-  );
+  const initialName = initialCreator?.name ?? "";
+  const initialProfileText = initialCreator?.profileText ?? "";
+  const [name, setName] = useState(initialName);
+  const [profileText, setProfileText] = useState(initialProfileText);
   const [clearIconImage, setClearIconImage] = useState(false);
+  const [prevInitialName, setPrevInitialName] = useState(initialName);
+  const [prevInitialProfileText, setPrevInitialProfileText] =
+    useState(initialProfileText);
+  const [prevMode, setPrevMode] = useState(mode);
 
-  useEffect(() => {
-    setName(initialCreator?.name ?? "");
-    setProfileText(initialCreator?.profileText ?? "");
+  if (
+    initialName !== prevInitialName ||
+    initialProfileText !== prevInitialProfileText ||
+    mode !== prevMode
+  ) {
+    setPrevInitialName(initialName);
+    setPrevInitialProfileText(initialProfileText);
+    setPrevMode(mode);
+    setName(initialName);
+    setProfileText(initialProfileText);
     setClearIconImage(false);
-  }, [initialCreator?.name, initialCreator?.profileText, mode]);
+  }
 
   const handleNameChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
