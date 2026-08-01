@@ -7,7 +7,7 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2.16.1": {
       "version": "29.3.1"
     },
-    "ghcr.io/devcontainers/features/node:1.7.1": {
+    "ghcr.io/devcontainers/features/node:2.1.0": {
       "version": "24.18.1",
       "pnpmVersion": "11.18.0"
     },
