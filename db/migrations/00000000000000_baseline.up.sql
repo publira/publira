@@ -1,8 +1,3 @@
--- Baseline schema for Publira (squashed pre-public-release migrations).
--- This is the final DDL state only; intermediate ADD/DROP/RENAME/backfill history
--- has been intentionally discarded. Existing local/dev DBs must be rebuilt with
--- `task db:reset` (or drop + setup); do not `migrate force` across this squash.
-
 -- TABLE: audit_logs
 CREATE TABLE audit_logs (
     id uuid NOT NULL,

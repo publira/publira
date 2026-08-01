@@ -1,6 +1,3 @@
--- Tear down baseline schema objects.
--- Leaves schema_migrations intact so golang-migrate can record the down.
-
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS creator_image_variants CASCADE;
 DROP TABLE IF EXISTS creator_images CASCADE;

@@ -35,7 +35,7 @@ server/
 ```bash
 task db:setup
 task db:seed
-task db:create NAME=add_sessions_table
+task db:create NAME=add_example_column
 task server:dev-api
 task server:dev-admin-api
 task server:dev-platform-api
@@ -108,8 +108,6 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | Audience    | `public` / `admin` / `platform`                                                             |
 | 失効        | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |
 | Next Cookie | `AUTH_SECRET`（JWE 用、API の JWT secret とは別） / Cookie 名: `publira_web_host_auth` 等   |
-
-マイグレーション `20260801000000_access_token_credentials_version` で `sessions` / `platform_sessions` を廃止します。
 
 ## API サーバ分離
 
