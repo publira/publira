@@ -29,6 +29,9 @@ task db:seed ENV=prod    # 本番用シード（DBユーザー・ロールのみ
 
 `task db:setup` は `db:migrate` + `db:seed`（dev）を実行します。
 
+スキーマは公開前に `db/migrations/00000000000000_baseline` へ squash 済みです。
+既に旧 migration version を適用した DB は `task db:reset` で再構築してください。
+
 ## 基本方針
 
 - スキーマ変更は migration にのみ追加する

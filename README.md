@@ -51,7 +51,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 task setup
 ```
 
-Dev Container では `migrate` CLI (golang-migrate) を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
+Dev Container では `migrate` CLI (golang-migrate) を同梱しています。DB 変更は `db/migrations/` に timestamp 付きの `.up.sql` / `.down.sql` で追加してください。
 
 ## ローカル DB 初期化
 
@@ -70,6 +70,12 @@ task db:setup
 - seed: ローカル開発・画面確認用の初期データ（DML、冪等）
 
 seed の詳細と固定ログイン情報は `db/seeds/README.md` を参照してください。
+
+### migration baseline（squash 済み）
+
+公開前に incremental migration 履歴を **単一 baseline**（`00000000000000_baseline`）へ squash 済みです。
+旧 version を適用済みのローカル / 共有 dev DB は **`task db:reset`（drop + migrate + seed）で作り直す**前提です（`migrate force` は使わない）。
+公開後は通常どおり timestamp migration を積み上げ、全面 squash は破壊的メジャー扱いにします。
 
 ## 開発用メール確認 (Mailpit)
 

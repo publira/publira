@@ -1,3 +1,0 @@
-DROP INDEX IF EXISTS idx_platform_user_password_reset_tokens_token_hash;
-DROP INDEX IF EXISTS idx_platform_user_password_reset_tokens_user_id;
-DROP TABLE IF EXISTS platform_user_password_reset_tokens;

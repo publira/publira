@@ -1,4 +1,0 @@
-DROP INDEX IF EXISTS idx_platform_user_email_change_tokens_new_token;
-DROP INDEX IF EXISTS idx_platform_user_email_change_tokens_current_token;
-DROP INDEX IF EXISTS idx_platform_user_email_change_tokens_user_id;
-DROP TABLE IF EXISTS platform_user_email_change_tokens;
