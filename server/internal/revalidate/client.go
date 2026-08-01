@@ -25,7 +25,10 @@ type requestPayload struct {
 	Tags           []string `json:"tags"`
 }
 
-const internalRevalidateBaseURL = "http://traefik"
+const (
+	internalRevalidateBaseURL = "http://traefik"
+	revalidatePath            = "/api/revalidate"
+)
 
 func NewClient(token string, logger *slog.Logger) *Client {
 	normalizedToken := strings.TrimSpace(token)
@@ -57,49 +60,19 @@ func (c *Client) RevalidateTags(ctx context.Context, tenantPublicID, tenantDomai
 		return err
 	}
 
-	normalizedTags := normalizeTags(tags)
+	normalizedTags := filterAllowedTenantTags(
+		normalizeTags(tags),
+		normalizedTenantPublicID,
+	)
 	if len(normalizedTags) == 0 {
 		return nil
 	}
 
-	publicPrefix := fmt.Sprintf("tenant:%s:public:", normalizedTenantPublicID)
-	catalogPrefix := fmt.Sprintf("tenant:%s:catalog:", normalizedTenantPublicID)
-
-	targets := []struct {
-		path string
-		tags []string
-	}{
-		{
-			path: "/api/revalidate",
-			tags: filterByPrefix(normalizedTags, publicPrefix),
-		},
-		{
-			path: "/api/catalog/revalidate",
-			tags: filterByPrefix(normalizedTags, catalogPrefix),
-		},
+	endpoint, err := buildEndpoint(internalRevalidateBaseURL, revalidatePath)
+	if err != nil {
+		return err
 	}
-
-	var errs []string
-	for _, target := range targets {
-		if len(target.tags) == 0 {
-			continue
-		}
-
-		endpoint, err := buildEndpoint(internalRevalidateBaseURL, target.path)
-		if err != nil {
-			errs = append(errs, err.Error())
-			continue
-		}
-		if err := c.sendRequest(ctx, endpoint, normalizedTenantPublicID, normalizedTenantDomain, target.tags); err != nil {
-			errs = append(errs, err.Error())
-		}
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("revalidate request failed: %s", strings.Join(errs, "; "))
-	}
-
-	return nil
+	return c.sendRequest(ctx, endpoint, normalizedTenantPublicID, normalizedTenantDomain, normalizedTags)
 }
 
 func buildEndpoint(baseURL, reqPath string) (string, error) {
@@ -154,10 +127,12 @@ func (c *Client) sendRequest(ctx context.Context, endpoint, tenantPublicID, tena
 	return nil
 }
 
-func filterByPrefix(tags []string, prefix string) []string {
+func filterAllowedTenantTags(tags []string, tenantPublicID string) []string {
 	if len(tags) == 0 {
 		return nil
 	}
+	prefix := fmt.Sprintf("tenant:%s:", tenantPublicID)
+
 	filtered := make([]string, 0, len(tags))
 	for _, tag := range tags {
 		if strings.HasPrefix(tag, prefix) {
@@ -185,7 +160,6 @@ func normalizeTenantDomain(tenantDomain string) (string, error) {
 	}
 	return normalized, nil
 }
-
 
 func normalizeTags(tags []string) []string {
 	if len(tags) == 0 {

@@ -46,7 +46,7 @@ func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (s
 func episodeScheduleRevalidateTags(tenantPublicID string) []string {
 	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
 	return []string{
-		fmt.Sprintf("tenant:%s:catalog:series:detail", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantPublicID),
 	}
 }
 

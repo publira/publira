@@ -41,5 +41,4 @@ cd server && make build
 このとき内部ネットワーク上の Traefik 宛に送信し、`Host`/`X-Forwarded-Host` はテナントの `domain` を設定します。
 固定パスは次のとおりです:
 
-- web-public: `/api/revalidate`
-- web-catalog: `/api/catalog/revalidate`
+- web-host: `/api/revalidate`

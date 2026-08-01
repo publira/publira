@@ -1,0 +1,51 @@
+{
+  "name": "@publira/web-host",
+  "version": "0.1.0",
+  "private": true,
+  "description": "テナント公開サイト (配信・認証・マイページ)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/publira/publira.git",
+    "directory": "apps/web-host"
+  },
+  "type": "module",
+  "imports": {
+    "#lib/*": "./lib/*",
+    "#components/*": "./components/*"
+  },
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3000",
+    "start": "next start",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit",
+    "typegen": "next typegen"
+  },
+  "dependencies": {
+    "@publira/api-client": "workspace:*",
+    "@publira/brand": "workspace:*",
+    "@publira/icons": "workspace:*",
+    "@publira/layouts": "workspace:*",
+    "@publira/public-web-shared": "workspace:*",
+    "@publira/ui-components": "workspace:*",
+    "@publira/utils": "workspace:*",
+    "lru-cache": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

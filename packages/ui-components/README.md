@@ -1,6 +1,6 @@
 # @publira/ui-components
 
-web-admin / web-public などで共有利用する UI コンポーネント群です。
+web-admin / web-host などで共有利用する UI コンポーネント群です。
 
 ## 方針
 

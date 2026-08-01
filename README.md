@@ -12,10 +12,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 ```text
 .
 ├── apps/               # [Node.js] Web アプリ (Turborepo)
-│   ├── web-public/     # 公開ページ
-│   ├── web-catalog/    # 認証状態で表示が変わる配信サイト
-│   ├── web-member/     # 認証ユーザー専用ページ
-│   ├── web-auth/       # ログイン/認証関連ページ
+│   ├── web-host/       # テナント公開サイト (カタログ/認証/マイページ)
 │   ├── web-admin/      # 出版社・編集者向け入稿/管理画面
 │   └── web-platform/   # プラットフォーム運営者向け横断運用画面
 ├── packages/           # [Node.js] 共有 UI / ユーティリティ
