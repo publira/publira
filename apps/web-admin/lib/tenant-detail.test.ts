@@ -25,7 +25,7 @@ describe("tenant-detail", () => {
     mockGetSessionId.mockResolvedValue("session-token");
   });
 
-  it("tenantPublicId と sessionId からテナント詳細を取得する", async () => {
+  it("tenantId と sessionId からテナント詳細を取得する", async () => {
     mockGetTenant.mockResolvedValueOnce({
       tenant: {
         adminDomain: "admin.example.com",
@@ -46,7 +46,7 @@ describe("tenant-detail", () => {
 
     expect(mockGetTenant).toHaveBeenCalledWith(
       {
-        tenant: { tenantPublicId: "tenant_admin_001" },
+        tenant: { tenantId: "tenant_admin_001" },
       },
       {
         headers: { Authorization: "Bearer session-token" },

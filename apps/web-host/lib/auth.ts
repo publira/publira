@@ -48,15 +48,13 @@ export interface SignupPublicResult {
 export const loginPublic = async (
   email: string,
   password: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<{ accessToken: string; expiresAt: Date } | null> => {
   try {
     const response = await apiClient.auth.login({
       email,
       password,
-      tenant: {
-        tenantPublicId,
-      },
+      tenant: { tenantId },
     });
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
     if (!accessToken || !expiresAt) {
@@ -75,16 +73,14 @@ export const signupPublic = async (
   name: string,
   email: string,
   password: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<SignupPublicResult | null> => {
   try {
     const response = await apiClient.auth.createUser({
       email,
       name,
       password,
-      tenant: {
-        tenantPublicId,
-      },
+      tenant: { tenantId },
     });
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
     if (!accessToken || !expiresAt) {
@@ -105,13 +101,11 @@ export const signupPublic = async (
 
 export const verifyPublicEmail = async (
   token: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<boolean> => {
   try {
     const response = await apiClient.auth.verifyUserEmail({
-      tenant: {
-        tenantPublicId,
-      },
+      tenant: { tenantId },
       token,
     });
     return Boolean(response.verified);
@@ -122,7 +116,7 @@ export const verifyPublicEmail = async (
 
 export const confirmPublicEmailChange = async (
   token: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<{
   changed: boolean;
   confirmed: boolean;
@@ -130,9 +124,7 @@ export const confirmPublicEmailChange = async (
 } | null> => {
   try {
     const response = await apiClient.auth.confirmEmailChange({
-      tenant: {
-        tenantPublicId,
-      },
+      tenant: { tenantId },
       token,
     });
     return {
@@ -150,14 +142,12 @@ export const confirmPublicEmailChange = async (
 
 export const requestPublicPasswordReset = async (
   email: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<boolean> => {
   try {
     const response = await apiClient.auth.requestPasswordReset({
       email,
-      tenant: {
-        tenantPublicId,
-      },
+      tenant: { tenantId },
     });
     return Boolean(response.requested);
   } catch {
@@ -168,14 +158,12 @@ export const requestPublicPasswordReset = async (
 export const confirmPublicPasswordReset = async (
   token: string,
   newPassword: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<boolean> => {
   try {
     const response = await apiClient.auth.confirmPasswordReset({
       newPassword,
-      tenant: {
-        tenantPublicId,
-      },
+      tenant: { tenantId },
       token,
     });
     return Boolean(response.confirmed);
@@ -186,7 +174,7 @@ export const confirmPublicPasswordReset = async (
 
 export const logoutPublic = async (
   accessToken: string,
-  tenantPublicId: string
+  tenantId: string
 ): Promise<void> => {
   if (!accessToken.trim()) {
     return;
@@ -194,9 +182,7 @@ export const logoutPublic = async (
   try {
     await apiClient.auth.logout(
       {
-        tenant: {
-          tenantPublicId,
-        },
+        tenant: { tenantId },
       },
       buildSessionHeaders(accessToken)
     );
@@ -206,7 +192,7 @@ export const logoutPublic = async (
 };
 
 export const getPublicCurrentUser = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<PublicCurrentUser | null> => {
   const sid = await resolveAccessToken();
   if (!sid) {
@@ -215,9 +201,7 @@ export const getPublicCurrentUser = async (
   try {
     const response = await apiClient.auth.getMe(
       {
-        tenant: {
-          tenantPublicId,
-        },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -238,7 +222,7 @@ export const getPublicCurrentUser = async (
 };
 
 export const requestPublicEmailChange = async (
-  tenantPublicId: string,
+  tenantId: string,
   currentEmail: string,
   newEmail: string,
   currentPassword: string,
@@ -255,9 +239,7 @@ export const requestPublicEmailChange = async (
         currentEmail,
         currentPassword,
         newEmail,
-        tenant: {
-          tenantPublicId,
-        },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -269,7 +251,7 @@ export const requestPublicEmailChange = async (
 };
 
 export const getMe = async (
-  tenantPublicId: string,
+  tenantId: string,
   accessToken?: string
 ): Promise<MeInfo | null> => {
   const sid = await resolveAccessToken(accessToken);
@@ -281,7 +263,7 @@ export const getMe = async (
     try {
       const response = await apiClient.auth.getMe(
         {
-          tenant: { tenantPublicId },
+          tenant: { tenantId },
         },
         buildSessionHeaders(sid)
       );
@@ -309,7 +291,7 @@ export const getMe = async (
 };
 
 export const updateMe = async (
-  tenantPublicId: string,
+  tenantId: string,
   name: string,
   accessToken?: string
 ): Promise<MeInfo | null> => {
@@ -322,7 +304,7 @@ export const updateMe = async (
     const response = await apiClient.auth.updateMe(
       {
         name,
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -345,7 +327,7 @@ export const updateMe = async (
 };
 
 export const deleteMe = async (
-  tenantPublicId: string,
+  tenantId: string,
   password: string,
   accessToken?: string
 ): Promise<boolean> => {
@@ -358,7 +340,7 @@ export const deleteMe = async (
     await apiClient.auth.deleteMe(
       {
         password,
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -370,7 +352,7 @@ export const deleteMe = async (
 };
 
 export const getNotificationSettings = async (
-  tenantPublicId: string,
+  tenantId: string,
   accessToken?: string
 ): Promise<NotificationSettings | null> => {
   const sid = await resolveAccessToken(accessToken);
@@ -381,7 +363,7 @@ export const getNotificationSettings = async (
   try {
     const response = await apiClient.auth.getNotificationSettings(
       {
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
@@ -398,7 +380,7 @@ export const getNotificationSettings = async (
 };
 
 export const updateNotificationSettings = async (
-  tenantPublicId: string,
+  tenantId: string,
   emailNotificationsEnabled: boolean,
   accessToken?: string
 ): Promise<NotificationSettings | null> => {
@@ -411,7 +393,7 @@ export const updateNotificationSettings = async (
     const response = await apiClient.auth.updateNotificationSettings(
       {
         emailNotificationsEnabled,
-        tenant: { tenantPublicId },
+        tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );

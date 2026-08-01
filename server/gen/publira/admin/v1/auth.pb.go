@@ -547,10 +547,11 @@ func (x *AdminAuthServiceGetTenantByDomainRequest) GetDomains() []string {
 }
 
 type AdminAuthServiceGetTenantByDomainResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Primary key (UUID) for internal routing / TenantContext.
+	TenantId      string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminAuthServiceGetTenantByDomainResponse) Reset() {
@@ -583,9 +584,9 @@ func (*AdminAuthServiceGetTenantByDomainResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *AdminAuthServiceGetTenantByDomainResponse) GetTenantPublicId() string {
+func (x *AdminAuthServiceGetTenantByDomainResponse) GetTenantId() string {
 	if x != nil {
-		return x.TenantPublicId
+		return x.TenantId
 	}
 	return ""
 }
@@ -1473,9 +1474,9 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\x1dAdminAuthServiceGetMeResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\"D\n" +
 	"(AdminAuthServiceGetTenantByDomainRequest\x12\x18\n" +
-	"\adomains\x18\x01 \x03(\tR\adomains\"U\n" +
-	")AdminAuthServiceGetTenantByDomainResponse\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\"[\n" +
+	"\adomains\x18\x01 \x03(\tR\adomains\"H\n" +
+	")AdminAuthServiceGetTenantByDomainResponse\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"[\n" +
 	" AdminAuthServiceGetTenantRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x84\x01\n" +
 	"\x16AdminAuthServiceTenant\x12\x1b\n" +

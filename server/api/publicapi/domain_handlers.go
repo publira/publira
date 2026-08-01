@@ -35,6 +35,6 @@ func (s *apiServer) GetTenantByDomain(
 	}
 
 	return connect.NewResponse(&publirav1.GetTenantByDomainResponse{
-		TenantPublicId: tenant.PublicID,
+		TenantId: tenant.ID.String(),
 	}), nil
 }

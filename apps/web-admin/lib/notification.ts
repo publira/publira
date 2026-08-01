@@ -4,7 +4,7 @@ import type {
   ListNotificationsResult,
   NotificationItem,
   NotificationTargetUser,
-} from "../app/[tenant_public_id]/(protected)/notifications/notification-types";
+} from "../app/[tenant_id]/(protected)/notifications/notification-types";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -68,10 +68,10 @@ const mapUsers = (
     .toSorted((a, b) => a.name.localeCompare(b.name, "ja"));
 
 export const listNotifications = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<ListNotificationsResult> => {
   "use cache: private";
-  cacheTag(`notifications-${tenantPublicId}`);
+  cacheTag(`notifications-${tenantId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -91,7 +91,7 @@ export const listNotifications = async (
       {
         limit: 200,
         query: "",
-        tenant: { tenantPublicId },
+        tenant: { tenantId: tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -108,7 +108,7 @@ export const listNotifications = async (
       {
         limit: 100,
         offset: 0,
-        tenant: { tenantPublicId },
+        tenant: { tenantId: tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -133,7 +133,7 @@ export const listNotifications = async (
 };
 
 export const createNotification = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   title: string;
   body: string;
   linkUrl: string;
@@ -162,7 +162,7 @@ export const createNotification = async (input: {
         body: input.body,
         linkUrl: input.linkUrl,
         targetUserPublicIds: input.targetUserPublicIds,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         title: input.title,
       },
       withSessionHeaders(sessionId)

@@ -61,7 +61,7 @@ const byNewestDateDesc = (
 ) => toTimestamp(right.publishedAt) - toTimestamp(left.publishedAt);
 
 export const getCatalogTopData = async (
-  tenantPublicId: string,
+  tenantId: string,
   {
     detailFetchLimit = 12,
     maxAuthors = 6,
@@ -75,9 +75,9 @@ export const getCatalogTopData = async (
   "use cache";
 
   const [series, authorsResult, labels] = await Promise.all([
-    listPublishedSeries(tenantPublicId, seriesLimit, 0),
-    listPublishedAuthors(tenantPublicId, { page: 1, pageSize: maxAuthors }),
-    listPublishedLabels(tenantPublicId, maxLabels, 0),
+    listPublishedSeries(tenantId, seriesLimit, 0),
+    listPublishedAuthors(tenantId, { page: 1, pageSize: maxAuthors }),
+    listPublishedLabels(tenantId, maxLabels, 0),
   ]);
 
   const recommendedSeries = series.slice(0, maxRecommended);
@@ -87,7 +87,7 @@ export const getCatalogTopData = async (
     seriesForDetails.map(async (seriesItem) => {
       try {
         const detail = await getSeriesDetail(
-          tenantPublicId,
+          tenantId,
           seriesItem.publicId
         );
         return {

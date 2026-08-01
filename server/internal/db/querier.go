@@ -105,6 +105,7 @@ type Querier interface {
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
 	// 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
 	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
+	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	// ユーザーが所属するテナントを取得
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)

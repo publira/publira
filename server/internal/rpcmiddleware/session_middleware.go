@@ -74,16 +74,16 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 		if !ok {
 			return nil, connect.NewError(connect.CodeInternal, errors.New("tenant context accessor is not implemented"))
 		}
-		tenantPublicID, err := ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
+		tenantID, err := ResolveTenantID(tenantReq.GetTenant(), req.Header())
 		if err != nil {
 			return nil, err
 		}
 
 		resolvedTenantRequest := tenantReq.GetTenant()
 		if resolvedTenantRequest == nil {
-			resolvedTenantRequest = &publirattypesv1.TenantContext{TenantPublicId: tenantPublicID}
-		} else if strings.TrimSpace(resolvedTenantRequest.TenantPublicId) == "" {
-			resolvedTenantRequest.TenantPublicId = tenantPublicID
+			resolvedTenantRequest = &publirattypesv1.TenantContext{TenantId: tenantID.String()}
+		} else if strings.TrimSpace(resolvedTenantRequest.TenantId) == "" {
+			resolvedTenantRequest.TenantId = tenantID.String()
 		}
 
 		sessionCtx, err := authenticate(ctx, resolvedTenantRequest, req.Header())
@@ -94,9 +94,6 @@ func BuildAdminSessionContext(authenticate SessionAuthenticator) UnaryContextBui
 		resolvedTenant := TenantContext{
 			TenantID:       sessionCtx.Tenant.ID,
 			TenantPublicID: sessionCtx.Tenant.PublicID,
-		}
-		if strings.TrimSpace(resolvedTenant.TenantPublicID) == "" {
-			resolvedTenant.TenantPublicID = tenantPublicID
 		}
 		return withSessionContext(withTenantContext(ctx, resolvedTenant), sessionCtx), nil
 	}

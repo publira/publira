@@ -61,7 +61,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
       publicId: "EP_001",
-      tenant: { tenantPublicId: "TENANT_001" },
+      tenant: { tenantId: "TENANT_001" },
     });
     expect(result.series).toEqual({
       publicId: "SERIES_001",

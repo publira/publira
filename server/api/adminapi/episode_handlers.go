@@ -43,10 +43,10 @@ func normalizeAndValidateScheduledAt(scheduledAt sql.NullTime, now time.Time) (s
 	return sql.NullTime{Time: normalized, Valid: true}, nil
 }
 
-func episodeScheduleRevalidateTags(tenantPublicID string) []string {
-	normalizedTenantPublicID := strings.TrimSpace(tenantPublicID)
+func episodeScheduleRevalidateTags(tenantID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
-		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantPublicID),
+		fmt.Sprintf("tenant:%s:series:detail", normalizedTenantID),
 	}
 }
 
@@ -403,7 +403,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		})
 	}
 	if s.reval != nil {
-		if err := s.reval.RevalidateTags(ctx, tenant.PublicID, tenant.Domain, episodeScheduleRevalidateTags(tenant.PublicID)); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, episodeScheduleRevalidateTags(tenant.ID.String())); err != nil {
 			s.logger.Warn("failed to request next revalidate after episode schedule update", "tenant_public_id", tenant.PublicID, "episode_public_id", req.Msg.EpisodePublicId, "error", err)
 		}
 	}

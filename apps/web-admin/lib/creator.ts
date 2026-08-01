@@ -85,10 +85,10 @@ const mapCreator = (creator: {
 });
 
 export const listCreators = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
-  cacheTag(`creators-${tenantPublicId}`);
+  cacheTag(`creators-${tenantId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -104,7 +104,7 @@ export const listCreators = async (
       {
         limit: 100,
         offset: 0,
-        tenant: { tenantPublicId },
+        tenant: { tenantId: tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -125,7 +125,7 @@ export const listCreators = async (
 };
 
 export const createCreator = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   name: string;
   profileText: string;
   iconImageContentType?: string;
@@ -146,7 +146,7 @@ export const createCreator = async (input: {
         iconImageData: input.iconImageData,
         name: input.name,
         profileText: input.profileText,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -171,7 +171,7 @@ export const createCreator = async (input: {
 };
 
 export const updateCreator = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   publicId: string;
   name: string;
   profileText: string;
@@ -196,7 +196,7 @@ export const updateCreator = async (input: {
         name: input.name,
         profileText: input.profileText,
         publicId: input.publicId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -221,12 +221,12 @@ export const updateCreator = async (input: {
 };
 
 export const getCreator = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   publicId: string;
 }): Promise<GetCreatorResult> => {
   "use cache: private";
-  cacheTag(`creators-${input.tenantPublicId}`);
-  cacheTag(`creator-${input.tenantPublicId}-${input.publicId}`);
+  cacheTag(`creators-${input.tenantId}`);
+  cacheTag(`creator-${input.tenantId}-${input.publicId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -237,7 +237,7 @@ export const getCreator = async (input: {
   }
 
   try {
-    const response = await listCreators(input.tenantPublicId);
+    const response = await listCreators(input.tenantId);
 
     if (!response.ok) {
       return {

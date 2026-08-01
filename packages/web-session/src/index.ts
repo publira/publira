@@ -6,7 +6,7 @@ export interface WebSessionPayload {
   name?: string;
   publicId?: string;
   role?: string;
-  tenantPublicId?: string;
+  tenantId?: string;
 }
 
 const textEncoder = new TextEncoder();

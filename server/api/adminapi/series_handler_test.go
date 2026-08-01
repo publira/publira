@@ -25,7 +25,7 @@ func TestAdminSeriesRequiresSession(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListSeries(context.Background(), connect.NewRequest(&publiraadminv1.ListSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("ListSeries error code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
@@ -43,7 +43,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now()
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantQuery)).
@@ -56,7 +56,7 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	resp, err := client.ListSeries(context.Background(), req)
@@ -81,13 +81,13 @@ func TestCreateSeriesRequiresTitle(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now()
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "   ",
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
@@ -106,7 +106,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
@@ -136,7 +136,7 @@ func TestCreateSeriesSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
-		Tenant:        &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:        &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:         "New Series",
 		Synopsis:      "Synopsis",
 		LabelPublicId: "LABEL001",
@@ -163,13 +163,13 @@ func TestUpdateSeriesRequiresTitle(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now()
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES001",
 		Title:    "\t",
 	})
@@ -189,7 +189,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
@@ -222,7 +222,7 @@ func TestUpdateSeriesSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
-		Tenant:      &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId:    "SERIES001",
 		Title:       "After",
 		Synopsis:    "New synopsis",
@@ -255,7 +255,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 	creatorID1 := uuid.Must(uuid.NewV7())
 	creatorID2 := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -294,7 +294,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:            "New Series",
 		Synopsis:         "Synopsis",
 		IsPublished:      true,
@@ -324,7 +324,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 	creatorID1 := uuid.Must(uuid.NewV7())
 	creatorID2 := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -372,7 +372,7 @@ func TestUpdateSeriesWithCreatorsSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateSeriesRequest{
-		Tenant:           &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:           &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId:         "SERIES001",
 		Title:            "After",
 		Synopsis:         "New synopsis",
@@ -431,7 +431,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now()
-			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -446,7 +446,7 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 
 			client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
 			req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
-				Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: tc.publicID,
 			})
 			req.Header().Set("Authorization", "Bearer "+sessionToken)

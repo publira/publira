@@ -35,7 +35,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	}))
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
@@ -70,7 +70,7 @@ func TestCatalogListPublishedSeriesPaginationUsesRequestValues(t *testing.T) {
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  1,
 		Offset: 2,
 	}))
@@ -93,7 +93,7 @@ func TestCatalogListPublishedSeriesPaginationInvalidValuesUseDefault(t *testing.
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  101,
 		Offset: -1,
 	}))
@@ -123,13 +123,13 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT_A"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantAID.String()},
 	}))
 	if err != nil {
 		t.Fatalf("ListPublishedSeries for TENANT_A: %v", err)
 	}
 	respB, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT_B"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantBID.String()},
 	}))
 	if err != nil {
 		t.Fatalf("ListPublishedSeries for TENANT_B: %v", err)
@@ -190,7 +190,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIESPUB",
 	}))
 	if err != nil {
@@ -235,7 +235,7 @@ func TestCatalogGetSeriesDetailReturnsPermissionDeniedForUnpublishedSeries(t *te
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES_DRAFT",
 	}))
 
@@ -258,7 +258,7 @@ func TestCatalogGetSeriesDetailReturnsNotFoundForMissingSeries(t *testing.T) {
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIES_MISSING",
 	}))
 
@@ -333,7 +333,7 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
-				Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: tc.publicID,
 			}))
 

@@ -67,7 +67,7 @@ describe("dashboard", () => {
     });
 
     expect(mockGetDashboardApi).toHaveBeenCalledWith(
-      { tenant: { tenantPublicId: "TENANT001" } },
+      { tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });

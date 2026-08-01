@@ -1,23 +1,23 @@
 import { cacheTag } from "next/cache";
 
-const normalized = (tenantPublicId: string) => tenantPublicId.trim();
+const normalized = (tenantId: string) => tenantId.trim();
 
-export const tenantSeriesListTag = (tenantPublicId: string) =>
-  `tenant:${normalized(tenantPublicId)}:series:list`;
+export const tenantSeriesListTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:series:list`;
 
-export const tenantSeriesDetailTag = (tenantPublicId: string) =>
-  `tenant:${normalized(tenantPublicId)}:series:detail`;
+export const tenantSeriesDetailTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:series:detail`;
 
 export const tenantSeriesTag = (
-  tenantPublicId: string,
+  tenantId: string,
   seriesPublicId: string
-) => `tenant:${normalized(tenantPublicId)}:series:${seriesPublicId.trim()}`;
+) => `tenant:${normalized(tenantId)}:series:${seriesPublicId.trim()}`;
 
-export const tenantAuthorsTag = (tenantPublicId: string) =>
-  `tenant:${normalized(tenantPublicId)}:authors`;
+export const tenantAuthorsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:authors`;
 
-export const tenantSiteTag = (tenantPublicId: string) =>
-  `tenant:${normalized(tenantPublicId)}:site`;
+export const tenantSiteTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:site`;
 
 export const applyCacheTag = (tag: string) => {
   try {

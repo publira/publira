@@ -33,23 +33,24 @@ const isExpectedNullableError = (error: unknown): boolean => {
 };
 
 export const getTenantSiteInfo = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<TenantSiteInfo | null> => {
   "use cache";
   cacheLife({ stale: 30 });
 
-  const normalizedTenantPublicId = tenantPublicId.trim();
-  if (!normalizedTenantPublicId) {
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId) {
     return null;
   }
 
-  applyCacheTag(tenantSiteTag(normalizedTenantPublicId));
+  applyCacheTag(tenantSiteTag(normalizedTenantId));
 
   try {
     const response = await apiClient.tenant.getTenant({
-      tenant: { tenantPublicId: normalizedTenantPublicId },
+      tenant: { tenantId: normalizedTenantId },
     });
 
+    // Display / short code for UI — not used for internal routing.
     const publicId = response.tenantPublicId?.trim() ?? "";
     if (!publicId) {
       return null;
@@ -75,8 +76,8 @@ export const getTenantSiteInfo = async (
 };
 
 export const getTenantSiteLabel = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<string> => {
-  const tenant = await getTenantSiteInfo(tenantPublicId);
+  const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.siteLabel ?? "サイト";
 };

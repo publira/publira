@@ -23,7 +23,8 @@ const (
 
 // AccessTokenClaims are the claims embedded in API access tokens.
 type AccessTokenClaims struct {
-	TenantPublicID     string `json:"tid,omitempty"`
+	// TenantID is the tenant primary key (UUID). JSON key remains "tid" for wire stability.
+	TenantID           string `json:"tid,omitempty"`
 	Role               string `json:"role,omitempty"`
 	CredentialsVersion int32  `json:"cv"`
 	jwt.RegisteredClaims
@@ -53,10 +54,11 @@ func NewTokenManager(secret []byte) *TokenManager {
 }
 
 // Issue creates a signed JWT access token.
+// tenantID should be the tenant primary key (UUID string); empty for platform tokens.
 func (m *TokenManager) Issue(
 	subjectPublicID string,
 	audience string,
-	tenantPublicID string,
+	tenantID string,
 	role string,
 	credentialsVersion int32,
 	now time.Time,
@@ -75,7 +77,7 @@ func (m *TokenManager) Issue(
 
 	expiresAt = now.Add(AccessTokenTTL)
 	claims := AccessTokenClaims{
-		TenantPublicID:     strings.TrimSpace(tenantPublicID),
+		TenantID:           strings.TrimSpace(tenantID),
 		Role:               strings.TrimSpace(role),
 		CredentialsVersion: credentialsVersion,
 		RegisteredClaims: jwt.RegisteredClaims{

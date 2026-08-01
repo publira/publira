@@ -66,10 +66,11 @@ func (x *GetTenantByDomainRequest) GetDomains() []string {
 }
 
 type GetTenantByDomainResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Primary key (UUID) for internal routing / TenantContext.
+	TenantId      string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTenantByDomainResponse) Reset() {
@@ -102,9 +103,9 @@ func (*GetTenantByDomainResponse) Descriptor() ([]byte, []int) {
 	return file_publira_v1_domain_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetTenantByDomainResponse) GetTenantPublicId() string {
+func (x *GetTenantByDomainResponse) GetTenantId() string {
 	if x != nil {
-		return x.TenantPublicId
+		return x.TenantId
 	}
 	return ""
 }
@@ -116,9 +117,9 @@ const file_publira_v1_domain_proto_rawDesc = "" +
 	"\x17publira/v1/domain.proto\x12\n" +
 	"publira.v1\"4\n" +
 	"\x18GetTenantByDomainRequest\x12\x18\n" +
-	"\adomains\x18\x01 \x03(\tR\adomains\"E\n" +
-	"\x19GetTenantByDomainResponse\x12(\n" +
-	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId2s\n" +
+	"\adomains\x18\x01 \x03(\tR\adomains\"8\n" +
+	"\x19GetTenantByDomainResponse\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId2s\n" +
 	"\rDomainService\x12b\n" +
 	"\x11GetTenantByDomain\x12$.publira.v1.GetTenantByDomainRequest\x1a%.publira.v1.GetTenantByDomainResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 

@@ -136,11 +136,11 @@ func (r *runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 			}
 		}
 
-		if err := r.publishEpisode(ctx, row.EpisodeID, row.TenantPublicID, row.TenantDomain); err != nil {
+		if err := r.publishEpisode(ctx, row.EpisodeID, row.TenantID.String(), row.TenantDomain); err != nil {
 			lastErr = err
 			r.logger.Warn("failed to publish episode",
 				"episode_id", row.EpisodeID,
-				"tenant_public_id", row.TenantPublicID,
+				"tenant_id", row.TenantID.String(),
 				"attempt", attempt+1,
 				"error", err,
 			)
@@ -149,20 +149,20 @@ func (r *runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 
 		r.logger.Info("episode published successfully",
 			"episode_id", row.EpisodeID,
-			"tenant_public_id", row.TenantPublicID,
+			"tenant_id", row.TenantID.String(),
 		)
 		return
 	}
 
 	r.logger.Error("episode publish failed after all retries",
 		"episode_id", row.EpisodeID,
-		"tenant_public_id", row.TenantPublicID,
+		"tenant_id", row.TenantID.String(),
 		"max_retries", r.maxRetries,
 		"error", lastErr,
 	)
 }
 
-func (r *runner) publishEpisode(ctx context.Context, episodeID uuid.UUID, tenantPublicID, tenantDomain string) error {
+func (r *runner) publishEpisode(ctx context.Context, episodeID uuid.UUID, tenantID, tenantDomain string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -180,12 +180,12 @@ func (r *runner) publishEpisode(ctx context.Context, episodeID uuid.UUID, tenant
 
 	if r.reval != nil {
 		tags := []string{
-			fmt.Sprintf("tenant:%s:series:detail", tenantPublicID),
+			fmt.Sprintf("tenant:%s:series:detail", tenantID),
 		}
-		if err := r.reval.RevalidateTags(ctx, tenantPublicID, tenantDomain, tags); err != nil {
+		if err := r.reval.RevalidateTags(ctx, tenantID, tenantDomain, tags); err != nil {
 			r.logger.Warn("failed to revalidate after episode publish",
 				"episode_id", episodeID,
-				"tenant_public_id", tenantPublicID,
+				"tenant_id", tenantID,
 				"error", err,
 			)
 		}

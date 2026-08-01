@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
@@ -37,16 +38,16 @@ func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
 }
 
-func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
-	return rpcmiddleware.ResolveTenantPublicID(ctx, nil)
+func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
+	return rpcmiddleware.ResolveTenantID(ctx, nil)
 }
 
 func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
-	tenantPublicID, err := tenantPublicIDFromContext(tenantCtx)
+	tenantID, err := tenantIDFromContext(tenantCtx)
 	if err != nil {
 		return dbmodels.Tenant{}, err
 	}
-	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -123,12 +124,12 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				return next(ctx, req)
 			}
 
-			tenantPublicID, err := rpcmiddleware.ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
+			tenantID, err := rpcmiddleware.ResolveTenantID(tenantReq.GetTenant(), req.Header())
 			if err != nil {
 				return nil, err
 			}
 
-			tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+			tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))

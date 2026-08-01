@@ -55,7 +55,8 @@ message AdminAuthServiceGetTenantByDomainRequest {
 }
 
 message AdminAuthServiceGetTenantByDomainResponse {
-  string tenant_public_id = 1;
+  // Primary key (UUID) for internal routing / TenantContext.
+  string tenant_id = 1;
 }
 
 message AdminAuthServiceGetTenantRequest {

@@ -179,7 +179,7 @@ const mapSeries = (series: {
 });
 
 export const listSeries = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<ListSeriesResult> => {
   "use cache: private";
 
@@ -198,7 +198,7 @@ export const listSeries = async (
       {
         limit: 100,
         offset: 0,
-        tenant: { tenantPublicId },
+        tenant: { tenantId: tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -213,7 +213,7 @@ export const listSeries = async (
   } catch (error) {
     console.error("[web-admin] listSeries failed", {
       error,
-      tenantPublicId,
+      tenantId,
     });
 
     const message = mapErrorToMessage(error, genericListErrorMessage);
@@ -227,7 +227,7 @@ export const listSeries = async (
 };
 
 export const getSeries = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   publicId: string;
 }): Promise<GetSeriesResult> => {
   "use cache: private";
@@ -244,7 +244,7 @@ export const getSeries = async (input: {
     const response = await apiClient.series.getSeries(
       {
         publicId: input.publicId,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -264,7 +264,7 @@ export const getSeries = async (input: {
     console.error("[web-admin] getSeries failed", {
       error,
       publicId: input.publicId,
-      tenantPublicId: input.tenantPublicId,
+      tenantId: input.tenantId,
     });
 
     const message = mapErrorToMessage(error, genericListErrorMessage);
@@ -276,7 +276,7 @@ export const getSeries = async (input: {
 };
 
 export const createSeries = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   title: string;
   synopsis: string;
   readingPeriodHours: number;
@@ -306,7 +306,7 @@ export const createSeries = async (input: {
         publishedAt: input.publishedAt,
         readingPeriodHours: input.readingPeriodHours,
         synopsis: input.synopsis,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         title: input.title,
       },
       withSessionHeaders(sessionId)
@@ -342,7 +342,7 @@ export const createSeries = async (input: {
 };
 
 export const updateSeries = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   publicId: string;
   title: string;
   synopsis: string;
@@ -376,7 +376,7 @@ export const updateSeries = async (input: {
         publishedAt: input.publishedAt,
         readingPeriodHours: input.readingPeriodHours,
         synopsis: input.synopsis,
-        tenant: { tenantPublicId: input.tenantPublicId },
+        tenant: { tenantId: input.tenantId },
         title: input.title,
       },
       withSessionHeaders(sessionId)

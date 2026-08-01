@@ -44,13 +44,13 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
 };
 
 export const getTenantSiteSettings = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<GetTenantSiteSettingsResult> => {
   "use cache: private";
 
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = tenantPublicId.trim();
-  if (!normalizedTenantPublicId || !sessionId) {
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -61,7 +61,7 @@ export const getTenantSiteSettings = async (
   try {
     const response = await apiClient.auth.getTenantConfig(
       {
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -84,14 +84,14 @@ export const getTenantSiteSettings = async (
 };
 
 export const updateTenantSiteSettings = async (input: {
-  tenantPublicId: string;
+  tenantId: string;
   copyrightText: string;
   siteDescription: string;
   siteTagline: string;
 }): Promise<UpdateTenantSiteSettingsResult> => {
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = input.tenantPublicId.trim();
-  if (!normalizedTenantPublicId || !sessionId) {
+  const normalizedTenantId = input.tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -104,7 +104,7 @@ export const updateTenantSiteSettings = async (input: {
         copyrightText: input.copyrightText,
         siteDescription: input.siteDescription,
         siteTagline: input.siteTagline,
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
       },
       withSessionHeaders(sessionId)
     );

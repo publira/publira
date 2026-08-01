@@ -105,7 +105,7 @@ describe("notification lib", () => {
       body: "本文",
       linkUrl: "",
       targetUserPublicIds: [],
-      tenantPublicId: "TENANT001",
+      tenantId: "TENANT001",
       title: "タイトル",
     });
 

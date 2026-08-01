@@ -120,20 +120,20 @@ export interface LabelListItem {
 }
 
 export const listPublishedSeries = async (
-  tenantPublicId: string,
+  tenantId: string,
   limit = 50,
   offset = 0
 ): Promise<SeriesListItem[]> => {
   "use cache";
 
-  const normalizedTenantPublicId = tenantPublicId.trim();
-  applyCacheTag(tenantSeriesListTag(normalizedTenantPublicId));
-  applyCacheTag(tenantAuthorsTag(normalizedTenantPublicId));
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
 
   const response = await apiClient.catalog.listPublishedSeries({
     limit,
     offset,
-    tenant: { tenantPublicId },
+    tenant: { tenantId: tenantId },
   });
 
   return (response.series ?? []).map((s) => ({
@@ -159,7 +159,7 @@ export const listPublishedSeries = async (
 };
 
 export const listPublishedLabels = async (
-  tenantPublicId: string,
+  tenantId: string,
   limit = 50,
   offset = 0
 ): Promise<LabelListItem[]> => {
@@ -168,7 +168,7 @@ export const listPublishedLabels = async (
   const response = await apiClient.catalog.listPublishedLabels({
     limit,
     offset,
-    tenant: { tenantPublicId },
+    tenant: { tenantId: tenantId },
   });
 
   return (response.labels ?? []).map((label) => ({
@@ -180,23 +180,23 @@ export const listPublishedLabels = async (
 };
 
 export const getSeriesDetail = async (
-  tenantPublicId: string,
+  tenantId: string,
   seriesPublicId: string
 ): Promise<{ series: SeriesDetail; episodes: EpisodeItem[] }> => {
   "use cache";
 
-  const normalizedTenantPublicId = tenantPublicId.trim();
+  const normalizedTenantId = tenantId.trim();
   const normalizedSeriesPublicId = seriesPublicId.trim();
-  applyCacheTag(tenantSeriesDetailTag(normalizedTenantPublicId));
+  applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
   applyCacheTag(
-    tenantSeriesTag(normalizedTenantPublicId, normalizedSeriesPublicId)
+    tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId)
   );
 
   let response;
   try {
     response = await apiClient.catalog.getSeriesDetail({
       publicId: normalizedSeriesPublicId,
-      tenant: { tenantPublicId: normalizedTenantPublicId },
+      tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
     if (error instanceof Error) {
@@ -249,7 +249,7 @@ export const getSeriesDetail = async (
 };
 
 export const getEpisodeDetail = async (
-  tenantPublicId: string,
+  tenantId: string,
   seriesPublicId: string,
   episodePublicId: string
 ): Promise<{
@@ -259,16 +259,16 @@ export const getEpisodeDetail = async (
 }> => {
   "use cache";
 
-  const normalizedTenantPublicId = tenantPublicId.trim();
+  const normalizedTenantId = tenantId.trim();
   const normalizedSeriesPublicId = seriesPublicId.trim();
-  applyCacheTag(tenantSeriesDetailTag(normalizedTenantPublicId));
+  applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
   applyCacheTag(
-    tenantSeriesTag(normalizedTenantPublicId, normalizedSeriesPublicId)
+    tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId)
   );
 
   const response = await apiClient.catalog.getEpisodeDetail({
     publicId: episodePublicId,
-    tenant: { tenantPublicId },
+    tenant: { tenantId: tenantId },
   });
 
   const series = response.series

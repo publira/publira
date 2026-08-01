@@ -6,7 +6,7 @@ import {
   ADMIN_SESSION_COOKIE_NAME,
   buildLoginUrl,
 } from "./lib/admin-auth-shared";
-import { resolveTenantPublicId } from "./lib/tenant";
+import { resolveTenantId } from "./lib/tenant";
 
 const PUBLIC_PATHS = new Set([
   "/accept-invite",
@@ -31,21 +31,21 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next();
   }
 
-  let tenantPublicId: string | null;
+  let tenantId: string | null;
   try {
-    tenantPublicId = await resolveTenantPublicId(
+    tenantId = await resolveTenantId(
       getTenantDomainCandidates(request.headers)
     );
   } catch {
     return serviceUnavailableResponse();
   }
 
-  if (!tenantPublicId) {
+  if (!tenantId) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
   const rewriteUrl = request.nextUrl.clone();
-  rewriteUrl.pathname = `/${tenantPublicId}${pathname}`;
+  rewriteUrl.pathname = `/${tenantId}${pathname}`;
 
   if (PUBLIC_PATHS.has(pathname)) {
     return NextResponse.rewrite(rewriteUrl);

@@ -1,20 +1,26 @@
 import type { Interceptor } from "@connectrpc/connect";
 
-const TENANT_PUBLIC_ID_HEADER = "X-Publira-Tenant-Public-Id";
+/** Internal tenant primary key (UUID) header. */
+const TENANT_ID_HEADER = "X-Publira-Tenant-Id";
 
 export type TenantHeaderValueResolver = string | (() => string | undefined);
 
 export interface TenantHeaderOptions {
+  /** Tenant primary key (UUID). Prefer this over embedding in every message. */
+  tenantId?: TenantHeaderValueResolver;
+  /**
+   * @deprecated Use tenantId. Accepted for temporary compatibility.
+   */
   tenantPublicId?: TenantHeaderValueResolver;
 }
 
-const resolveTenantPublicId = (
-  tenantPublicId?: TenantHeaderValueResolver
+const resolveTenantId = (
+  tenantId?: TenantHeaderValueResolver
 ): string | undefined => {
-  if (typeof tenantPublicId === "function") {
-    return tenantPublicId();
+  if (typeof tenantId === "function") {
+    return tenantId();
   }
-  return tenantPublicId;
+  return tenantId;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined => {
@@ -32,46 +38,49 @@ const readStringProp = (
   return typeof value === "string" ? value.trim() : "";
 };
 
-const inferTenantPublicIdFromMessage = (
-  message: unknown
-): string | undefined => {
+const inferTenantIdFromMessage = (message: unknown): string | undefined => {
   const root = asRecord(message);
   if (!root) {
     return undefined;
   }
 
-  const topLevelTenantPublicId =
+  const topLevel =
+    readStringProp(root, "tenantId") ||
+    readStringProp(root, "tenant_id") ||
     readStringProp(root, "tenantPublicId") ||
     readStringProp(root, "tenant_public_id");
-  if (topLevelTenantPublicId) {
-    return topLevelTenantPublicId;
+  if (topLevel) {
+    return topLevel;
   }
 
   const tenant = asRecord(root.tenant);
   if (!tenant) {
     return undefined;
   }
-  const tenantPublicId =
+  const tenantId =
+    readStringProp(tenant, "tenantId") ||
+    readStringProp(tenant, "tenant_id") ||
     readStringProp(tenant, "tenantPublicId") ||
     readStringProp(tenant, "tenant_public_id");
-  return tenantPublicId || undefined;
+  return tenantId || undefined;
 };
 
 export const createTenantHeaderInterceptor =
   (options: TenantHeaderOptions): Interceptor | undefined =>
   (next) =>
   async (req) => {
-    if (req.header.get(TENANT_PUBLIC_ID_HEADER)?.trim()) {
+    if (req.header.get(TENANT_ID_HEADER)?.trim()) {
       return await next(req);
     }
 
-    const tenantPublicId = (
-      resolveTenantPublicId(options.tenantPublicId) ??
-      inferTenantPublicIdFromMessage(req.message)
+    const tenantId = (
+      resolveTenantId(options.tenantId) ??
+      resolveTenantId(options.tenantPublicId) ??
+      inferTenantIdFromMessage(req.message)
     )?.trim();
 
-    if (tenantPublicId) {
-      req.header.set(TENANT_PUBLIC_ID_HEADER, tenantPublicId);
+    if (tenantId) {
+      req.header.set(TENANT_ID_HEADER, tenantId);
     }
     return await next(req);
   };

@@ -314,7 +314,7 @@ describe("createPlatformTenant", () => {
       addPlatformTenantMember({
         email: "member@example.com",
         role: "tenant_admin",
-        tenantPublicId: "tenant_seifuu",
+        tenantId: "tenant_seifuu",
       })
     ).resolves.toEqual({ ok: true });
 
@@ -322,7 +322,7 @@ describe("createPlatformTenant", () => {
       {
         email: "member@example.com",
         role: "tenant_admin",
-        tenantPublicId: "tenant_seifuu",
+        tenantId: "tenant_seifuu",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -335,7 +335,7 @@ describe("createPlatformTenant", () => {
       addPlatformTenantMember({
         email: "Member@Example.COM",
         role: "tenant_admin",
-        tenantPublicId: "tenant_seifuu",
+        tenantId: "tenant_seifuu",
       })
     ).resolves.toEqual({ ok: true });
 
@@ -343,7 +343,7 @@ describe("createPlatformTenant", () => {
       {
         email: "member@example.com",
         role: "tenant_admin",
-        tenantPublicId: "tenant_seifuu",
+        tenantId: "tenant_seifuu",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -358,7 +358,7 @@ describe("createPlatformTenant", () => {
       addPlatformTenantMember({
         email: "member@example.com",
         role: "tenant_admin",
-        tenantPublicId: "tenant_seifuu",
+        tenantId: "tenant_seifuu",
       })
     ).resolves.toEqual({
       message: "指定したメールアドレスのユーザーが見つかりません。",

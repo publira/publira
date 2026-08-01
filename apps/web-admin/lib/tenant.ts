@@ -2,7 +2,7 @@ import { LRUCache } from "lru-cache";
 
 import { apiClient } from "./api";
 
-const tenantCache = new LRUCache<string, { tenantPublicId: string | null }>({
+const tenantCache = new LRUCache<string, { tenantId: string | null }>({
   max: 500,
   ttl: 300_000,
 });
@@ -35,7 +35,7 @@ const isNotFoundError = (error: unknown): boolean => {
   );
 };
 
-export const resolveTenantPublicId = async (
+export const resolveTenantId = async (
   domainCandidates: readonly string[]
 ): Promise<string | null> => {
   if (domainCandidates.length === 0) {
@@ -45,19 +45,19 @@ export const resolveTenantPublicId = async (
   const cacheKey = domainCandidates.join("\0");
   const cached = tenantCache.get(cacheKey);
   if (cached !== undefined) {
-    return cached.tenantPublicId;
+    return cached.tenantId;
   }
 
   try {
     const response = await apiClient.auth.getTenantByDomain({
       domains: [...domainCandidates],
     });
-    const tenantPublicId = response.tenantPublicId?.trim() || null;
-    tenantCache.set(cacheKey, { tenantPublicId });
-    return tenantPublicId;
+    const tenantId = response.tenantId?.trim() || null;
+    tenantCache.set(cacheKey, { tenantId });
+    return tenantId;
   } catch (error) {
     if (isNotFoundError(error)) {
-      tenantCache.set(cacheKey, { tenantPublicId: null });
+      tenantCache.set(cacheKey, { tenantId: null });
       return null;
     }
 

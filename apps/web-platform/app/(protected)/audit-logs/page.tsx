@@ -330,13 +330,13 @@ const AuditLogsTableBody = ({
       );
     }
 
-    if (log.tenantPublicId) {
+    if (log.tenantId) {
       return (
         <Link
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          href={`/tenants/${log.tenantPublicId}`}
+          href={`/tenants/${log.tenantId}`}
         >
-          {log.targetName || log.tenantName || log.tenantPublicId}
+          {log.targetName || log.tenantName || log.tenantId}
         </Link>
       );
     }

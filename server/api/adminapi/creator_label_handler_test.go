@@ -22,7 +22,7 @@ func TestListCreatorsSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -33,7 +33,7 @@ func TestListCreatorsSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ListCreatorsRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -60,7 +60,7 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 		{
 			name: "invalid-name",
 			request: &publiraadminv1.CreateCreatorRequest{
-				Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant: &publirattypesv1.TenantContext{TenantId: ""},
 				Name:   "   ",
 			},
 			wantCode: connect.CodeInvalidArgument,
@@ -68,7 +68,7 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 		{
 			name: "success",
 			request: &publiraadminv1.CreateCreatorRequest{
-				Tenant:      &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant:      &publirattypesv1.TenantContext{TenantId: ""},
 				Name:        "Creator One",
 				ProfileText: "profile",
 			},
@@ -94,9 +94,12 @@ func TestCreateCreatorValidationAndSuccess(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
-			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
+			if tc.request != nil && tc.request.Tenant != nil {
+				tc.request.Tenant.TenantId = tenantID.String()
+			}
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 			if tc.setup != nil {
 				tc.setup(mock, tenantID, now)
@@ -132,7 +135,7 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -151,7 +154,7 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateCreatorRequest{
-		Tenant:      &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId:    "CREATOR001",
 		Name:        "After",
 		ProfileText: "new",
@@ -177,7 +180,7 @@ func TestListLabelsSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -188,7 +191,7 @@ func TestListLabelsSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.ListLabelsRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
@@ -215,7 +218,7 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 		{
 			name: "invalid-name",
 			request: &publiraadminv1.CreateLabelRequest{
-				Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant: &publirattypesv1.TenantContext{TenantId: ""},
 				Name:   "   ",
 			},
 			wantCode: connect.CodeInvalidArgument,
@@ -223,7 +226,7 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 		{
 			name: "success",
 			request: &publiraadminv1.CreateLabelRequest{
-				Tenant: &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+				Tenant: &publirattypesv1.TenantContext{TenantId: ""},
 				Name:   "Weekly",
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
@@ -248,9 +251,12 @@ func TestCreateLabelValidationAndSuccess(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
-			sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
+			if tc.request != nil && tc.request.Tenant != nil {
+				tc.request.Tenant.TenantId = tenantID.String()
+			}
 			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 			if tc.setup != nil {
 				tc.setup(mock, tenantID, now)
@@ -286,7 +292,7 @@ func TestUpdateLabelSuccess(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	labelID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
@@ -305,7 +311,7 @@ func TestUpdateLabelSuccess(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
-		Tenant:   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "LABEL001",
 		Name:     "After",
 	})
@@ -330,14 +336,14 @@ func TestUpdateLabelRejectsClearAndImageTogether(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken("TENANT", testUserPublicID, "editor")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
 	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
 	req := connect.NewRequest(&publiraadminv1.UpdateLabelRequest{
-		Tenant:                   &publirattypesv1.TenantContext{TenantPublicId: "TENANT"},
+		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId:                 "LABEL001",
 		Name:                     "After",
 		ClearEyeCatchImage:       true,

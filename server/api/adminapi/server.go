@@ -47,19 +47,19 @@ func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
 }
 
-func tenantPublicIDFromContext(ctx *publirattypesv1.TenantContext) (string, error) {
-	return rpcmiddleware.ResolveTenantPublicID(ctx, nil)
+func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
+	return rpcmiddleware.ResolveTenantID(ctx, nil)
 }
 
 func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (dbmodels.Tenant, error) {
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		return sessionCtx.Tenant, nil
 	}
-	tenantPublicID, err := tenantPublicIDFromContext(tenantCtx)
+	tenantID, err := tenantIDFromContext(tenantCtx)
 	if err != nil {
 		return dbmodels.Tenant{}, err
 	}
-	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+	tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
@@ -93,7 +93,7 @@ func (s *adminServer) authenticateSession(
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
-	if claims.TenantPublicID != "" && claims.TenantPublicID != tenant.PublicID {
+	if claims.TenantID != "" && claims.TenantID != tenant.ID.String() {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
 	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
@@ -285,12 +285,12 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				return next(ctx, req)
 			}
 
-			tenantPublicID, err := rpcmiddleware.ResolveTenantPublicID(tenantReq.GetTenant(), req.Header())
+			tenantID, err := rpcmiddleware.ResolveTenantID(tenantReq.GetTenant(), req.Header())
 			if err != nil {
 				return nil, err
 			}
 
-			tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
+			tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))

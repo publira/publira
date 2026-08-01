@@ -64,7 +64,7 @@ describe("listPlatformAuditLogs", () => {
           targetPublicId: "tenant_001",
           targetType: "tenant",
           tenantName: "テナントA",
-          tenantPublicId: "tenant_001",
+          tenantId: "tenant_001",
         },
       ],
       ok: true,
@@ -76,7 +76,7 @@ describe("listPlatformAuditLogs", () => {
         actorUserPublicId: "",
         limit: 100,
         offset: 0,
-        tenantPublicId: "",
+        tenantId: "",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -91,7 +91,7 @@ describe("listPlatformAuditLogs", () => {
         actorUserPublicId: "op_123",
         limit: 20,
         offset: 40,
-        tenantPublicId: "tenant_999",
+        tenantId: "tenant_999",
       })
     ).resolves.toEqual({ auditLogs: [], ok: true });
 
@@ -101,7 +101,7 @@ describe("listPlatformAuditLogs", () => {
         actorUserPublicId: "op_123",
         limit: 20,
         offset: 40,
-        tenantPublicId: "tenant_999",
+        tenantId: "tenant_999",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -123,7 +123,7 @@ describe("listPlatformAuditLogs", () => {
           targetPublicId: "",
           targetType: "operator",
           tenantName: undefined,
-          tenantPublicId: undefined,
+          tenantId: undefined,
         },
       ],
     });
@@ -143,7 +143,7 @@ describe("listPlatformAuditLogs", () => {
           targetPublicId: "",
           targetType: "operator",
           tenantName: "",
-          tenantPublicId: "",
+          tenantId: "",
         },
       ],
       ok: true,

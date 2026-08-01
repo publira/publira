@@ -23,13 +23,13 @@ export const buildLoginUrl = (
   requestUrl: URL,
   options?: {
     returnToParamName?: string;
-    tenantPublicId?: string;
+    tenantId?: string;
   }
 ): URL => {
-  const { returnToParamName = "returnTo", tenantPublicId } = options ?? {};
+  const { returnToParamName = "returnTo", tenantId } = options ?? {};
 
-  const loginUrl = tenantPublicId
-    ? new URL(`/${tenantPublicId}/login`, requestUrl)
+  const loginUrl = tenantId
+    ? new URL(`/${tenantId}/login`, requestUrl)
     : new URL("/login", requestUrl);
 
   const returnToPath = `${requestUrl.pathname}${requestUrl.search}`;

@@ -4,9 +4,9 @@ import { NextResponse } from "next/server";
 
 import { apiClient } from "./lib/api-client";
 import { buildLoginUrl, PUBLIC_SESSION_COOKIE_NAME } from "./lib/auth-shared";
-import { createTenantPublicIdResolver } from "./lib/tenant-resolution";
+import { createTenantIdResolver } from "./lib/tenant-resolution";
 
-const resolveTenantPublicId = createTenantPublicIdResolver(apiClient);
+const resolveTenantId = createTenantIdResolver(apiClient);
 
 const MEMBER_PATH_PREFIXES = ["/my", "/notifications", "/settings"] as const;
 const GUEST_ONLY_PATHS = new Set(["/login", "/signup"]);
@@ -44,21 +44,21 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return redirectToLogin(request);
   }
 
-  let tenantPublicId: string | null;
+  let tenantId: string | null;
   try {
-    tenantPublicId = await resolveTenantPublicId(
+    tenantId = await resolveTenantId(
       getTenantDomainCandidates(request.headers)
     );
   } catch {
     return serviceUnavailableResponse();
   }
 
-  if (!tenantPublicId) {
+  if (!tenantId) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
   const url = request.nextUrl.clone();
-  url.pathname = `/${tenantPublicId}${pathname}`;
+  url.pathname = `/${tenantId}${pathname}`;
   return NextResponse.rewrite(url);
 };
 

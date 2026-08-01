@@ -32,7 +32,7 @@ export interface TenantThemeSettings {
 }
 
 export interface UpdateTenantThemeSettingsInput extends TenantThemeSettings {
-  tenantPublicId: string;
+  tenantId: string;
 }
 
 export type TenantThemeSettingsResult =
@@ -116,20 +116,20 @@ const toTenantTheme = (
 };
 
 export const getTenantThemeSettings = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<TenantThemeSettingsResult> => {
   "use cache: private";
 
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = tenantPublicId.trim();
-  if (!normalizedTenantPublicId || !sessionId) {
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
     return { message: sessionErrorMessage, ok: false };
   }
 
   try {
     const response = await apiClient.theme.getTenantTheme(
       {
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
       },
       withSessionHeaders(sessionId)
     );
@@ -147,15 +147,15 @@ export const updateTenantThemeSettings = async (
   input: UpdateTenantThemeSettingsInput
 ): Promise<TenantThemeSettingsResult> => {
   const sessionId = await getAccessToken();
-  const normalizedTenantPublicId = input.tenantPublicId.trim();
-  if (!normalizedTenantPublicId || !sessionId) {
+  const normalizedTenantId = input.tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
     return { message: sessionErrorMessage, ok: false };
   }
 
   try {
     const response = await apiClient.theme.upsertTenantTheme(
       {
-        tenant: { tenantPublicId: normalizedTenantPublicId },
+        tenant: { tenantId: normalizedTenantId },
         theme: {
           accentColor: input.accentColor,
           accentForegroundColor: input.accentForegroundColor,

@@ -6,8 +6,10 @@ option go_package = "github.com/publira/publira/server/gen/publira/types/v1;publ
 
 // Common data models shared across services
 
+// TenantContext identifies a tenant for internal RPC wiring.
+// tenant_id is the primary key (UUID), not the public-facing short code.
 message TenantContext {
-  string tenant_public_id = 1;
+  string tenant_id = 1;
 }
 
 message User {

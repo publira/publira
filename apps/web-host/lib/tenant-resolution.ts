@@ -2,7 +2,7 @@ import type { PublicApiClient } from "@publira/api-client/public/client";
 import { LRUCache } from "lru-cache";
 
 interface TenantCacheValue {
-  tenantPublicId: string | null;
+  tenantId: string | null;
 }
 
 const isNotFoundError = (error: unknown): boolean => {
@@ -33,7 +33,7 @@ const isNotFoundError = (error: unknown): boolean => {
   );
 };
 
-export const createTenantPublicIdResolver = (
+export const createTenantIdResolver = (
   publicApiClient: PublicApiClient,
   options?: {
     max?: number;
@@ -55,19 +55,19 @@ export const createTenantPublicIdResolver = (
     const cacheKey = domainCandidates.join("\0");
     const cached = tenantCache.get(cacheKey);
     if (cached !== undefined) {
-      return cached.tenantPublicId;
+      return cached.tenantId;
     }
 
     try {
       const response = await publicApiClient.domain.getTenantByDomain({
         domains: [...domainCandidates],
       });
-      const tenantPublicId = response.tenantPublicId?.trim() || null;
-      tenantCache.set(cacheKey, { tenantPublicId });
-      return tenantPublicId;
+      const tenantId = response.tenantId?.trim() || null;
+      tenantCache.set(cacheKey, { tenantId });
+      return tenantId;
     } catch (error) {
       if (isNotFoundError(error)) {
-        tenantCache.set(cacheKey, { tenantPublicId: null });
+        tenantCache.set(cacheKey, { tenantId: null });
         return null;
       }
 

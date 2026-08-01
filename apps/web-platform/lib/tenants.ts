@@ -165,18 +165,18 @@ export const getPlatformTenant = async (
 };
 
 export const listPlatformTenantMembers = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<PlatformTenantMemberSummary[]> => {
   "use cache: private";
 
   const sid = await resolveAccessToken();
-  if (!tenantPublicId.trim() || !sid) {
+  if (!tenantId.trim() || !sid) {
     return [];
   }
 
   try {
     const response = await apiClient.tenants.listTenantMembers(
-      { tenantPublicId } as never,
+      { tenantId } as never,
       buildSessionHeaders(sid)
     );
     return (response.members ?? []).map((member) => ({
@@ -324,7 +324,7 @@ export type UpdatePlatformTenantMemberRoleResult =
 export interface AddPlatformTenantMemberInput {
   email: string;
   role: string;
-  tenantPublicId: string;
+  tenantId: string;
 }
 
 export type AddPlatformTenantMemberResult =
@@ -366,12 +366,12 @@ const mapInvitation = (invitation: {
 });
 
 export const listPlatformTenantAdminInvitations = async (
-  tenantPublicId: string
+  tenantId: string
 ): Promise<PlatformTenantAdminInvitation[]> => {
   "use cache: private";
 
   const sid = await resolveAccessToken();
-  if (!tenantPublicId.trim() || !sid) {
+  if (!tenantId.trim() || !sid) {
     return [];
   }
 
@@ -380,7 +380,7 @@ export const listPlatformTenantAdminInvitations = async (
       {
         limit: 100,
         offset: 0,
-        tenantPublicId,
+        tenantId,
       } as never,
       buildSessionHeaders(sid)
     );
@@ -393,7 +393,7 @@ export const listPlatformTenantAdminInvitations = async (
 };
 
 export const createPlatformTenantAdminInvitation = async (
-  tenantPublicId: string,
+  tenantId: string,
   email: string
 ): Promise<CreateTenantAdminInvitationResult> => {
   const sid = await resolveAccessToken();
@@ -403,7 +403,7 @@ export const createPlatformTenantAdminInvitation = async (
       ok: false,
     };
   }
-  if (!tenantPublicId.trim() || !email.trim()) {
+  if (!tenantId.trim() || !email.trim()) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
@@ -411,7 +411,7 @@ export const createPlatformTenantAdminInvitation = async (
     const response = await apiClient.tenants.createTenantAdminInvitation(
       {
         email: email.trim().toLowerCase(),
-        tenantPublicId: tenantPublicId.trim(),
+        tenantId: tenantId.trim(),
       } as never,
       buildSessionHeaders(sid)
     );
@@ -453,7 +453,7 @@ export const createPlatformTenantAdminInvitation = async (
 };
 
 export const resendPlatformTenantAdminInvitation = async (
-  tenantPublicId: string,
+  tenantId: string,
   invitationId: string
 ): Promise<UpdateTenantAdminInvitationResult> => {
   const sid = await resolveAccessToken();
@@ -463,7 +463,7 @@ export const resendPlatformTenantAdminInvitation = async (
       ok: false,
     };
   }
-  if (!tenantPublicId.trim() || !invitationId.trim()) {
+  if (!tenantId.trim() || !invitationId.trim()) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
@@ -471,7 +471,7 @@ export const resendPlatformTenantAdminInvitation = async (
     const response = await apiClient.tenants.resendTenantAdminInvitation(
       {
         invitationId: invitationId.trim(),
-        tenantPublicId: tenantPublicId.trim(),
+        tenantId: tenantId.trim(),
       } as never,
       buildSessionHeaders(sid)
     );
@@ -506,7 +506,7 @@ export const resendPlatformTenantAdminInvitation = async (
 };
 
 export const cancelPlatformTenantAdminInvitation = async (
-  tenantPublicId: string,
+  tenantId: string,
   invitationId: string
 ): Promise<UpdateTenantAdminInvitationResult> => {
   const sid = await resolveAccessToken();
@@ -516,7 +516,7 @@ export const cancelPlatformTenantAdminInvitation = async (
       ok: false,
     };
   }
-  if (!tenantPublicId.trim() || !invitationId.trim()) {
+  if (!tenantId.trim() || !invitationId.trim()) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
@@ -524,7 +524,7 @@ export const cancelPlatformTenantAdminInvitation = async (
     const response = await apiClient.tenants.cancelTenantAdminInvitation(
       {
         invitationId: invitationId.trim(),
-        tenantPublicId: tenantPublicId.trim(),
+        tenantId: tenantId.trim(),
       } as never,
       buildSessionHeaders(sid)
     );
@@ -631,11 +631,11 @@ export const updatePlatformTenant = async (
 export const addPlatformTenantMember = async (
   input: AddPlatformTenantMemberInput
 ): Promise<AddPlatformTenantMemberResult> => {
-  const tenantPublicId = input.tenantPublicId.trim();
+  const tenantId = input.tenantId.trim();
   const role = input.role.trim();
   const email = input.email.trim();
 
-  if (!tenantPublicId || !email || !role) {
+  if (!tenantId || !email || !role) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
@@ -652,7 +652,7 @@ export const addPlatformTenantMember = async (
       {
         email: email.toLowerCase(),
         role,
-        tenantPublicId,
+        tenantId,
       } as never,
       buildSessionHeaders(sid)
     );
@@ -694,7 +694,7 @@ export const addPlatformTenantMember = async (
 };
 
 export const updatePlatformTenantMemberRole = async (
-  tenantPublicId: string,
+  tenantId: string,
   userPublicId: string,
   role: string
 ): Promise<UpdatePlatformTenantMemberRoleResult> => {
@@ -706,7 +706,7 @@ export const updatePlatformTenantMemberRole = async (
     };
   }
 
-  if (!tenantPublicId.trim() || !userPublicId.trim() || !role.trim()) {
+  if (!tenantId.trim() || !userPublicId.trim() || !role.trim()) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
@@ -714,7 +714,7 @@ export const updatePlatformTenantMemberRole = async (
     await apiClient.tenants.updateTenantMemberRole(
       {
         role: role.trim(),
-        tenantPublicId: tenantPublicId.trim(),
+        tenantId: tenantId.trim(),
         userPublicId: userPublicId.trim(),
       } as never,
       buildSessionHeaders(sid)
@@ -749,7 +749,7 @@ export const updatePlatformTenantMemberRole = async (
 };
 
 export const removePlatformTenantMember = async (
-  tenantPublicId: string,
+  tenantId: string,
   userPublicId: string
 ): Promise<RemovePlatformTenantMemberResult> => {
   const sid = await resolveAccessToken();
@@ -760,14 +760,14 @@ export const removePlatformTenantMember = async (
     };
   }
 
-  if (!tenantPublicId.trim() || !userPublicId.trim()) {
+  if (!tenantId.trim() || !userPublicId.trim()) {
     return { message: "必須項目が入力されていません。", ok: false };
   }
 
   try {
     await apiClient.tenants.removeTenantMember(
       {
-        tenantPublicId: tenantPublicId.trim(),
+        tenantId: tenantId.trim(),
         userPublicId: userPublicId.trim(),
       } as never,
       buildSessionHeaders(sid)
