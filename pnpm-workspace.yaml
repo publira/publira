@@ -20,7 +20,7 @@ catalog:
   "@types/node": 24.13.3
   "@types/react": 19.2.18
   "@types/react-dom": 19.2.4
-  jose: 6.2.5
+  jose: 6.2.6
   jsdom: 30.0.1
   lru-cache: 11.5.2
   next: 16.2.12
