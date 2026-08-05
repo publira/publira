@@ -292,9 +292,7 @@ const AuditLogsContent = async ({
   );
 };
 
-export default async function AuditLogsPage({
-  searchParams,
-}: AuditLogsPageProps) {
+const AuditLogsPage = async ({ searchParams }: AuditLogsPageProps) => {
   const sp = await searchParams;
 
   return (
@@ -307,4 +305,6 @@ export default async function AuditLogsPage({
       </Suspense>
     </AdminPage>
   );
-}
+};
+
+export default AuditLogsPage;

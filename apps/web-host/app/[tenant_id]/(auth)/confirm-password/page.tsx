@@ -222,18 +222,15 @@ const ConfirmPasswordPageFallback = () => (
   </div>
 );
 
-export default function ConfirmPasswordPage({
+const ConfirmPasswordPage = ({
   params,
   searchParams,
-}: PageProps<"/[tenant_id]/confirm-password">) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <Suspense fallback={<ConfirmPasswordPageFallback />}>
-        <ConfirmPasswordPageContent
-          params={params}
-          searchParams={searchParams}
-        />
-      </Suspense>
-    </main>
-  );
-}
+}: PageProps<"/[tenant_id]/confirm-password">) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <Suspense fallback={<ConfirmPasswordPageFallback />}>
+      <ConfirmPasswordPageContent params={params} searchParams={searchParams} />
+    </Suspense>
+  </main>
+);
+
+export default ConfirmPasswordPage;

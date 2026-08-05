@@ -34,7 +34,7 @@ const emptySettings: TenantSmtpSettings = {
   username: "",
 };
 
-export default async function SettingsEmailPage() {
+const SettingsEmailPage = async () => {
   const tenantId = await getTenantId();
 
   const [emailSettingsResult, currentUser, tenant] = await Promise.all([
@@ -67,4 +67,6 @@ export default async function SettingsEmailPage() {
       </div>
     </AdminPage>
   );
-}
+};
+
+export default SettingsEmailPage;

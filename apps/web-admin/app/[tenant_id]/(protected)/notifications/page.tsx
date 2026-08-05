@@ -38,15 +38,15 @@ const NotificationManagerData = async () => {
   );
 };
 
-export default function NotificationsPage() {
-  return (
-    <AdminPage
-      description="通知の作成状況と配信対象を確認できます。"
-      title="通知"
-    >
-      <Suspense fallback={<NotificationManagerSkeleton />}>
-        <NotificationManagerData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const NotificationsPage = () => (
+  <AdminPage
+    description="通知の作成状況と配信対象を確認できます。"
+    title="通知"
+  >
+    <Suspense fallback={<NotificationManagerSkeleton />}>
+      <NotificationManagerData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default NotificationsPage;

@@ -45,12 +45,12 @@ const ResetPasswordPageFallback = () => (
   </div>
 );
 
-export default function ResetPasswordPage() {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <Suspense fallback={<ResetPasswordPageFallback />}>
-        <ResetPasswordPageContent />
-      </Suspense>
-    </main>
-  );
-}
+const ResetPasswordPage = () => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <Suspense fallback={<ResetPasswordPageFallback />}>
+      <ResetPasswordPageContent />
+    </Suspense>
+  </main>
+);
+
+export default ResetPasswordPage;

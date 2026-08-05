@@ -38,15 +38,15 @@ const SeriesManagerData = async () => {
   );
 };
 
-export default function SeriesPage() {
-  return (
-    <AdminPage
-      description="シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。"
-      title="シリーズ"
-    >
-      <Suspense fallback={<SeriesManagerSkeleton />}>
-        <SeriesManagerData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const SeriesPage = () => (
+  <AdminPage
+    description="シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。"
+    title="シリーズ"
+  >
+    <Suspense fallback={<SeriesManagerSkeleton />}>
+      <SeriesManagerData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default SeriesPage;

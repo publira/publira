@@ -182,17 +182,17 @@ const AuthorsListData = async ({
   );
 };
 
-export default function AuthorsPage({
+const AuthorsPage = ({
   params,
   searchParams,
-}: PageProps<"/[tenant_id]/authors">) {
-  return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <h1 className="mb-2 font-serif text-4xl font-bold">著者一覧</h1>
+}: PageProps<"/[tenant_id]/authors">) => (
+  <main className="mx-auto max-w-6xl px-6 py-12">
+    <h1 className="mb-2 font-serif text-4xl font-bold">著者一覧</h1>
 
-      <Suspense fallback={<AuthorsListSkeleton />}>
-        <AuthorsListData params={params} searchParams={searchParams} />
-      </Suspense>
-    </main>
-  );
-}
+    <Suspense fallback={<AuthorsListSkeleton />}>
+      <AuthorsListData params={params} searchParams={searchParams} />
+    </Suspense>
+  </main>
+);
+
+export default AuthorsPage;

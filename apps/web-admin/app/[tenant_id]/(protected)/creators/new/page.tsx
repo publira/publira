@@ -30,20 +30,20 @@ const NewCreatorFormData = () => (
   <CreatorForm action={createCreatorAction} mode="create" />
 );
 
-export default function NewCreatorPage() {
-  return (
-    <AdminPage
-      actions={
-        <LinkButton render={<Link href="/creators" />} variant="outline">
-          一覧へ戻る
-        </LinkButton>
-      }
-      description="新しい著者を登録します。"
-      title="著者新規作成"
-    >
-      <Suspense fallback={<NewCreatorFormSkeleton />}>
-        <NewCreatorFormData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const NewCreatorPage = () => (
+  <AdminPage
+    actions={
+      <LinkButton render={<Link href="/creators" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description="新しい著者を登録します。"
+    title="著者新規作成"
+  >
+    <Suspense fallback={<NewCreatorFormSkeleton />}>
+      <NewCreatorFormData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default NewCreatorPage;

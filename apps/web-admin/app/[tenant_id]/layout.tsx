@@ -31,14 +31,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-export default function TenantRootLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return (
-    <html lang="ja">
-      <body className="min-h-dvh antialiased">{children}</body>
-    </html>
-  );
-}
+const TenantRootLayout = ({ children }: { children: ReactNode }) => (
+  <html lang="ja">
+    <body className="min-h-dvh antialiased">{children}</body>
+  </html>
+);
+
+export default TenantRootLayout;

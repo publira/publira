@@ -88,10 +88,7 @@ const EditLabelFormData = async ({
   );
 };
 
-export default async function EditLabelPage({
-  params,
-  searchParams,
-}: EditLabelPageProps) {
+const EditLabelPage = async ({ params, searchParams }: EditLabelPageProps) => {
   const { label_public_id } = await params;
   const { tab } = await searchParams;
 
@@ -127,4 +124,6 @@ export default async function EditLabelPage({
       </div>
     </AdminPage>
   );
-}
+};
+
+export default EditLabelPage;

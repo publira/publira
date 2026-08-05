@@ -77,12 +77,12 @@ const NotificationsSectionFallback = () => (
   </section>
 );
 
-export default function NotificationsSettingsPage() {
-  return (
-    <div className="space-y-6">
-      <Suspense fallback={<NotificationsSectionFallback />}>
-        <NotificationsSection />
-      </Suspense>
-    </div>
-  );
-}
+const NotificationsSettingsPage = () => (
+  <div className="space-y-6">
+    <Suspense fallback={<NotificationsSectionFallback />}>
+      <NotificationsSection />
+    </Suspense>
+  </div>
+);
+
+export default NotificationsSettingsPage;

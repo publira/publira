@@ -116,10 +116,10 @@ const EditSeriesFormData = async ({
   );
 };
 
-export default async function EditSeriesPage({
+const EditSeriesPage = async ({
   params,
   searchParams,
-}: EditSeriesPageProps) {
+}: EditSeriesPageProps) => {
   const { series_id } = await params;
   const { tab } = await searchParams;
 
@@ -155,4 +155,6 @@ export default async function EditSeriesPage({
       </div>
     </AdminPage>
   );
-}
+};
+
+export default EditSeriesPage;

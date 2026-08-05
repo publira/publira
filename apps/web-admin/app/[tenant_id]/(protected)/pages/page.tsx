@@ -38,15 +38,15 @@ const PageManagerData = async () => {
   );
 };
 
-export default function PagesPage() {
-  return (
-    <AdminPage
-      description="個別ページの一覧確認、作成、編集画面への遷移を行います。"
-      title="ページ"
-    >
-      <Suspense fallback={<PageManagerSkeleton />}>
-        <PageManagerData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const PagesPage = () => (
+  <AdminPage
+    description="個別ページの一覧確認、作成、編集画面への遷移を行います。"
+    title="ページ"
+  >
+    <Suspense fallback={<PageManagerSkeleton />}>
+      <PageManagerData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default PagesPage;

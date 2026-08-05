@@ -60,9 +60,9 @@ export const generateMetadata = async ({
   };
 };
 
-export default async function Page({
+const Page = async ({
   params,
-}: PageProps<"/[tenant_id]/authors/[author_id]">) {
+}: PageProps<"/[tenant_id]/authors/[author_id]">) => {
   const { author_id } = await params;
   const tenantId = await getTenantId();
 
@@ -176,4 +176,6 @@ export default async function Page({
       </div>
     </main>
   );
-}
+};
+
+export default Page;

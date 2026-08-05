@@ -8,10 +8,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
-  return (
-    <html lang="ja">
-      <body className="min-h-dvh antialiased">{children}</body>
-    </html>
-  );
-}
+const RootLayout = ({ children }: LayoutProps<"/">) => (
+  <html lang="ja">
+    <body className="min-h-dvh antialiased">{children}</body>
+  </html>
+);
+
+export default RootLayout;

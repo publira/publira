@@ -29,20 +29,20 @@ const NewLabelFormData = () => (
   <LabelForm action={createLabelAction} mode="create" />
 );
 
-export default function NewLabelPage() {
-  return (
-    <AdminPage
-      actions={
-        <LinkButton render={<Link href="/labels" />} variant="outline">
-          一覧へ戻る
-        </LinkButton>
-      }
-      description="新しいレーベルを登録します。"
-      title="レーベル新規作成"
-    >
-      <Suspense fallback={<NewLabelFormSkeleton />}>
-        <NewLabelFormData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const NewLabelPage = () => (
+  <AdminPage
+    actions={
+      <LinkButton render={<Link href="/labels" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description="新しいレーベルを登録します。"
+    title="レーベル新規作成"
+  >
+    <Suspense fallback={<NewLabelFormSkeleton />}>
+      <NewLabelFormData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default NewLabelPage;

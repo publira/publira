@@ -87,9 +87,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-export default function TenantLayout({
-  children,
-}: LayoutProps<"/[tenant_id]">) {
+const TenantLayout = ({ children }: LayoutProps<"/[tenant_id]">) => {
   const tenantInfoPromise = resolveTenantInfo();
 
   return (
@@ -106,4 +104,6 @@ export default function TenantLayout({
       />
     </SiteLayout>
   );
-}
+};
+
+export default TenantLayout;

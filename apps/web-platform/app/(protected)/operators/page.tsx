@@ -122,21 +122,21 @@ const OperatorsContent = async () => {
   );
 };
 
-export default function OperatorsPage() {
-  return (
-    <PlatformPage
-      actions={
-        <LinkButton render={<Link href="/operators/new" />}>
-          オペレーターを追加
-        </LinkButton>
-      }
-      description="プラットフォームオペレーターの一覧・ロール確認・有効化／停止を行います。"
-      eyebrow="Platform Governance"
-      title="オペレーター管理"
-    >
-      <Suspense fallback={<OperatorsTableSkeleton />}>
-        <OperatorsContent />
-      </Suspense>
-    </PlatformPage>
-  );
-}
+const OperatorsPage = () => (
+  <PlatformPage
+    actions={
+      <LinkButton render={<Link href="/operators/new" />}>
+        オペレーターを追加
+      </LinkButton>
+    }
+    description="プラットフォームオペレーターの一覧・ロール確認・有効化／停止を行います。"
+    eyebrow="Platform Governance"
+    title="オペレーター管理"
+  >
+    <Suspense fallback={<OperatorsTableSkeleton />}>
+      <OperatorsContent />
+    </Suspense>
+  </PlatformPage>
+);
+
+export default OperatorsPage;

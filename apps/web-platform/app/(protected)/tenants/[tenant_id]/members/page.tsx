@@ -92,9 +92,7 @@ const TenantMembersContent = async ({ tenantId }: { tenantId: string }) => {
   );
 };
 
-export default async function TenantMembersPage({
-  params,
-}: TenantMembersPageProps) {
+const TenantMembersPage = async ({ params }: TenantMembersPageProps) => {
   const { tenant_id: tenantId } = await params;
 
   return (
@@ -102,4 +100,6 @@ export default async function TenantMembersPage({
       <TenantMembersContent tenantId={tenantId} />
     </Suspense>
   );
-}
+};
+
+export default TenantMembersPage;

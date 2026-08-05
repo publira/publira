@@ -118,7 +118,7 @@ const SeriesListData = async () => {
   );
 };
 
-export default async function SeriesPage() {
+const SeriesPage = async () => {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -135,4 +135,6 @@ export default async function SeriesPage() {
       </Suspense>
     </main>
   );
-}
+};
+
+export default SeriesPage;

@@ -197,7 +197,7 @@ const UserDetailContent = async ({
   );
 };
 
-export default async function UserDetailPage({ params }: UserDetailPageProps) {
+const UserDetailPage = async ({ params }: UserDetailPageProps) => {
   const { user_public_id: userPublicId } = await params;
 
   return (
@@ -205,4 +205,6 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
       <UserDetailContent userPublicId={userPublicId} />
     </Suspense>
   );
-}
+};
+
+export default UserDetailPage;

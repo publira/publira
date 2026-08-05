@@ -220,29 +220,29 @@ const ConfirmPasswordPageContent = async ({
   );
 };
 
-export default function ConfirmPasswordPage({
+const ConfirmPasswordPage = ({
   params,
   searchParams,
-}: ConfirmPasswordPageProps) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="font-serif text-2xl font-semibold">
-            新しいパスワードの設定
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            メールで受け取ったリンクから、管理画面用の新しいパスワードを設定します。
-          </p>
-        </div>
-
-        <Suspense fallback={<ConfirmPasswordFallback />}>
-          <ConfirmPasswordPageContent
-            params={params}
-            searchParams={searchParams}
-          />
-        </Suspense>
+}: ConfirmPasswordPageProps) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-md space-y-6">
+      <div className="text-center">
+        <h1 className="font-serif text-2xl font-semibold">
+          新しいパスワードの設定
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          メールで受け取ったリンクから、管理画面用の新しいパスワードを設定します。
+        </p>
       </div>
-    </main>
-  );
-}
+
+      <Suspense fallback={<ConfirmPasswordFallback />}>
+        <ConfirmPasswordPageContent
+          params={params}
+          searchParams={searchParams}
+        />
+      </Suspense>
+    </div>
+  </main>
+);
+
+export default ConfirmPasswordPage;

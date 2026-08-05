@@ -108,25 +108,21 @@ const AcceptInviteFallback = () => (
   <div className="h-40 animate-pulse rounded bg-muted/70" />
 );
 
-export default function AcceptInvitePage({
-  searchParams,
-}: AcceptInvitePageProps) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="font-serif text-2xl font-semibold">
-            管理者招待の承諾
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            招待を承諾すると、このテナントの管理画面にアクセスできます。
-          </p>
-        </div>
-
-        <Suspense fallback={<AcceptInviteFallback />}>
-          <AcceptInvitePageContent searchParams={searchParams} />
-        </Suspense>
+const AcceptInvitePage = ({ searchParams }: AcceptInvitePageProps) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-md space-y-6">
+      <div className="text-center">
+        <h1 className="font-serif text-2xl font-semibold">管理者招待の承諾</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          招待を承諾すると、このテナントの管理画面にアクセスできます。
+        </p>
       </div>
-    </main>
-  );
-}
+
+      <Suspense fallback={<AcceptInviteFallback />}>
+        <AcceptInvitePageContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  </main>
+);
+
+export default AcceptInvitePage;

@@ -27,9 +27,9 @@ export const metadata: Metadata = {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
 
-export default async function EditEpisodePage({
+const EditEpisodePage = async ({
   params,
-}: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">) {
+}: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">) => {
   const { episode_id, series_id } = await params;
   const tenantId = await getTenantId();
   guardPlaceholder(series_id);
@@ -115,4 +115,6 @@ export default async function EditEpisodePage({
       </div>
     </AdminPage>
   );
-}
+};
+
+export default EditEpisodePage;

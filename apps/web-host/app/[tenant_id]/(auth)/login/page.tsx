@@ -238,15 +238,15 @@ const LoginPageFallback = () => (
   </div>
 );
 
-export default function LoginPage({
+const LoginPage = ({
   params,
   searchParams,
-}: PageProps<"/[tenant_id]/login">) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <Suspense fallback={<LoginPageFallback />}>
-        <LoginPageContent params={params} searchParams={searchParams} />
-      </Suspense>
-    </main>
-  );
-}
+}: PageProps<"/[tenant_id]/login">) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent params={params} searchParams={searchParams} />
+    </Suspense>
+  </main>
+);
+
+export default LoginPage;

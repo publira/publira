@@ -328,26 +328,26 @@ const DashboardContent = async () => {
   );
 };
 
-export default function Page() {
-  return (
-    <PlatformPage
-      actions={
-        <>
-          <LinkButton render={<Link href="/audit-logs" />} variant="outline">
-            監査ログを見る
-          </LinkButton>
-          <LinkButton render={<Link href="/tenants" />}>
-            テナント一覧へ
-          </LinkButton>
-        </>
-      }
-      description="プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。"
-      eyebrow="Platform Dashboard"
-      title="横断オペレーションの基準点"
-    >
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
-      </Suspense>
-    </PlatformPage>
-  );
-}
+const Page = () => (
+  <PlatformPage
+    actions={
+      <>
+        <LinkButton render={<Link href="/audit-logs" />} variant="outline">
+          監査ログを見る
+        </LinkButton>
+        <LinkButton render={<Link href="/tenants" />}>
+          テナント一覧へ
+        </LinkButton>
+      </>
+    }
+    description="プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。"
+    eyebrow="Platform Dashboard"
+    title="横断オペレーションの基準点"
+  >
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
+  </PlatformPage>
+);
+
+export default Page;

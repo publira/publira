@@ -111,20 +111,20 @@ const VerifyPageContent = async ({
   );
 };
 
-export default function VerifyPage({
+const VerifyPage = ({
   params,
   searchParams,
 }: {
   params: Promise<{ tenant_id: string }>;
   searchParams: Promise<{ token?: string | string[] }>;
-}) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <Suspense fallback={<VerificationFallback />}>
-          <VerifyPageContent params={params} searchParams={searchParams} />
-        </Suspense>
-      </div>
-    </main>
-  );
-}
+}) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+      <Suspense fallback={<VerificationFallback />}>
+        <VerifyPageContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  </main>
+);
+
+export default VerifyPage;

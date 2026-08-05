@@ -38,15 +38,15 @@ const CreatorManagerData = async () => {
   );
 };
 
-export default function CreatorPage() {
-  return (
-    <AdminPage
-      description="著者一覧の確認と、編集への遷移を行います。"
-      title="著者"
-    >
-      <Suspense fallback={<CreatorManagerSkeleton />}>
-        <CreatorManagerData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const CreatorPage = () => (
+  <AdminPage
+    description="著者一覧の確認と、編集への遷移を行います。"
+    title="著者"
+  >
+    <Suspense fallback={<CreatorManagerSkeleton />}>
+      <CreatorManagerData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default CreatorPage;

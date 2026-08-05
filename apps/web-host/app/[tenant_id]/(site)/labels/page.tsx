@@ -91,7 +91,7 @@ const LabelsListData = async () => {
   );
 };
 
-export default async function LabelsPage() {
+const LabelsPage = async () => {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -108,4 +108,6 @@ export default async function LabelsPage() {
       </Suspense>
     </main>
   );
-}
+};
+
+export default LabelsPage;

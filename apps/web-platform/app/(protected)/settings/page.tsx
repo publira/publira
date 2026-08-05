@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
-export default function SettingsPage() {
+const SettingsPage = () => {
   redirect("/settings/email");
-}
+};
+
+export default SettingsPage;

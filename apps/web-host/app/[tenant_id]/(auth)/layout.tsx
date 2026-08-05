@@ -49,12 +49,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function TenantLayout({
-  children,
-}: LayoutProps<"/[tenant_id]">) {
-  return (
-    <Suspense fallback={<AuthShellFallback>{children}</AuthShellFallback>}>
-      <AuthShell>{children}</AuthShell>
-    </Suspense>
-  );
-}
+const TenantLayout = ({ children }: LayoutProps<"/[tenant_id]">) => (
+  <Suspense fallback={<AuthShellFallback>{children}</AuthShellFallback>}>
+    <AuthShell>{children}</AuthShell>
+  </Suspense>
+);
+
+export default TenantLayout;

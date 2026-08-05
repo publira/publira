@@ -42,20 +42,20 @@ const NotificationFormData = async () => {
   );
 };
 
-export default function NewNotificationPage() {
-  return (
-    <AdminPage
-      actions={
-        <LinkButton render={<Link href="/notifications" />} variant="outline">
-          一覧へ戻る
-        </LinkButton>
-      }
-      description="本文・リンク先・配信対象を指定して通知を配信します。"
-      title="通知を作成"
-    >
-      <Suspense fallback={<NotificationFormSkeleton />}>
-        <NotificationFormData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const NewNotificationPage = () => (
+  <AdminPage
+    actions={
+      <LinkButton render={<Link href="/notifications" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description="本文・リンク先・配信対象を指定して通知を配信します。"
+    title="通知を作成"
+  >
+    <Suspense fallback={<NotificationFormSkeleton />}>
+      <NotificationFormData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default NewNotificationPage;

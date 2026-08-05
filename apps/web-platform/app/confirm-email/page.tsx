@@ -113,18 +113,18 @@ const ConfirmEmailPageContent = async ({
   );
 };
 
-export default function ConfirmEmailPage({
+const ConfirmEmailPage = ({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
-}) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <Suspense fallback={<ConfirmationFallback />}>
-          <ConfirmEmailPageContent searchParams={searchParams} />
-        </Suspense>
-      </div>
-    </main>
-  );
-}
+}) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+      <Suspense fallback={<ConfirmationFallback />}>
+        <ConfirmEmailPageContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  </main>
+);
+
+export default ConfirmEmailPage;

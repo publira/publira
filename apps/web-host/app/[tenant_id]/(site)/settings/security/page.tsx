@@ -43,7 +43,7 @@ const requestEmailChangeAction = async (formData: FormData): Promise<void> => {
   );
 };
 
-export default async function SecuritySettingsPage() {
+const SecuritySettingsPage = async () => {
   const tenantId = await getTenantId();
 
   return (
@@ -113,4 +113,6 @@ export default async function SecuritySettingsPage() {
       </section>
     </div>
   );
-}
+};
+
+export default SecuritySettingsPage;
