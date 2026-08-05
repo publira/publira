@@ -1,0 +1,4 @@
+interface:
+  display_name: "Organize GitHub Issues"
+  short_description: "Create and normalize structured GitHub Issues"
+  default_prompt: "Use $organize-github-issues to create or reorganize GitHub Issues with consistent metadata and relationships."
