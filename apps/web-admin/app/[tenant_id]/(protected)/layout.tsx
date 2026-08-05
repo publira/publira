@@ -42,12 +42,10 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   );
 };
 
-export default function ProtectedLayout({
-  children,
-}: LayoutProps<"/[tenant_id]">) {
-  return (
-    <Suspense fallback={<AdminLayoutSkeleton />}>
-      <ProtectedLayoutInner>{children}</ProtectedLayoutInner>
-    </Suspense>
-  );
-}
+const ProtectedLayout = ({ children }: LayoutProps<"/[tenant_id]">) => (
+  <Suspense fallback={<AdminLayoutSkeleton />}>
+    <ProtectedLayoutInner>{children}</ProtectedLayoutInner>
+  </Suspense>
+);
+
+export default ProtectedLayout;

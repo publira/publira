@@ -75,7 +75,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-export default async function Page() {
+const Page = async () => {
   const tenantId = await getTenantId();
 
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -431,4 +431,6 @@ export default async function Page() {
       </section>
     </main>
   );
-}
+};
+
+export default Page;

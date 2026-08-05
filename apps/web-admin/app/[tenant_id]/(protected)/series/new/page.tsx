@@ -54,19 +54,19 @@ const NewSeriesFormData = async () => {
   );
 };
 
-export default function NewSeriesPage() {
-  return (
-    <AdminPage
-      actions={
-        <LinkButton render={<Link href="/series" />} variant="outline">
-          一覧へ戻る
-        </LinkButton>
-      }
-      title="シリーズを新規作成"
-    >
-      <Suspense fallback={<NewSeriesFormSkeleton />}>
-        <NewSeriesFormData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const NewSeriesPage = () => (
+  <AdminPage
+    actions={
+      <LinkButton render={<Link href="/series" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    title="シリーズを新規作成"
+  >
+    <Suspense fallback={<NewSeriesFormSkeleton />}>
+      <NewSeriesFormData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default NewSeriesPage;

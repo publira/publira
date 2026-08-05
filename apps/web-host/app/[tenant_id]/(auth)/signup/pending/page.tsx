@@ -87,20 +87,20 @@ const SignupPendingFallback = () => (
   </>
 );
 
-export default function SignupPendingPage({
+const SignupPendingPage = ({
   params,
   searchParams,
 }: {
   params: Promise<{ tenant_id: string }>;
   searchParams: Promise<{ email?: string | string[] }>;
-}) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <Suspense fallback={<SignupPendingFallback />}>
-          <SignupPendingContent params={params} searchParams={searchParams} />
-        </Suspense>
-      </div>
-    </main>
-  );
-}
+}) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+      <Suspense fallback={<SignupPendingFallback />}>
+        <SignupPendingContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  </main>
+);
+
+export default SignupPendingPage;

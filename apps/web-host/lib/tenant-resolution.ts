@@ -45,9 +45,9 @@ export const createTenantIdResolver = (
     ttl: options?.ttl ?? 300_000,
   });
 
-  return async (
+  return async function resolveTenantId(
     domainCandidates: readonly string[]
-  ): Promise<string | null> => {
+  ): Promise<string | null> {
     if (domainCandidates.length === 0) {
       return null;
     }

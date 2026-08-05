@@ -38,15 +38,15 @@ const LabelManagerData = async () => {
   );
 };
 
-export default function LabelPage() {
-  return (
-    <AdminPage
-      description="レーベル一覧の確認と、編集への遷移を行います。"
-      title="レーベル"
-    >
-      <Suspense fallback={<LabelManagerSkeleton />}>
-        <LabelManagerData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const LabelPage = () => (
+  <AdminPage
+    description="レーベル一覧の確認と、編集への遷移を行います。"
+    title="レーベル"
+  >
+    <Suspense fallback={<LabelManagerSkeleton />}>
+      <LabelManagerData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default LabelPage;

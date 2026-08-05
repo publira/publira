@@ -30,20 +30,20 @@ const NewPageFormData = () => (
   <PageForm action={createPageAction} mode="create" />
 );
 
-export default function NewPagePage() {
-  return (
-    <AdminPage
-      actions={
-        <LinkButton render={<Link href="/pages" />} variant="outline">
-          一覧へ戻る
-        </LinkButton>
-      }
-      description="新しい固定ページを作成します。作成後は編集画面で Markdown と公開設定を管理できます。"
-      title="ページ新規作成"
-    >
-      <Suspense fallback={<PageFormSkeleton />}>
-        <NewPageFormData />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const NewPagePage = () => (
+  <AdminPage
+    actions={
+      <LinkButton render={<Link href="/pages" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description="新しい固定ページを作成します。作成後は編集画面で Markdown と公開設定を管理できます。"
+    title="ページ新規作成"
+  >
+    <Suspense fallback={<PageFormSkeleton />}>
+      <NewPageFormData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default NewPagePage;

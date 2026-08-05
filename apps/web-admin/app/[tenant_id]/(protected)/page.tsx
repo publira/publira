@@ -168,12 +168,12 @@ const DashboardContent = async () => {
   );
 };
 
-export default function DashboardPage() {
-  return (
-    <AdminPage title="ダッシュボード">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
-      </Suspense>
-    </AdminPage>
-  );
-}
+const DashboardPage = () => (
+  <AdminPage title="ダッシュボード">
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
+  </AdminPage>
+);
+
+export default DashboardPage;

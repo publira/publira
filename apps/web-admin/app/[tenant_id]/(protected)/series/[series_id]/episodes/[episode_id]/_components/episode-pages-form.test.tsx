@@ -58,9 +58,7 @@ vi.mock("@publira/ui-components/form-message", () => ({
 }));
 
 vi.mock("@publira/ui-components/input", () => ({
-  Input: React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-    (props, ref) => <input {...props} ref={ref} />
-  ),
+  Input: (props: React.ComponentPropsWithRef<"input">) => <input {...props} />,
 }));
 
 afterEach(() => {

@@ -176,7 +176,7 @@ const TenantsContent = async ({
   );
 };
 
-export default async function TenantsPage({ searchParams }: TenantsPageProps) {
+const TenantsPage = async ({ searchParams }: TenantsPageProps) => {
   const params = await searchParams;
   const nameFilter = params.name?.trim() ?? "";
   const statusFilter = params.status?.trim() ?? "";
@@ -197,4 +197,6 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
       </Suspense>
     </PlatformPage>
   );
-}
+};
+
+export default TenantsPage;

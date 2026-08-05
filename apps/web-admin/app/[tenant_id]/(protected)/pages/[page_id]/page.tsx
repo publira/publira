@@ -93,7 +93,7 @@ const PageWorkspaceData = async ({ pageId }: { pageId: string }) => {
   );
 };
 
-export default async function EditPagePage({ params }: EditPagePageProps) {
+const EditPagePage = async ({ params }: EditPagePageProps) => {
   const { page_id } = await params;
   guardPlaceholder(page_id);
 
@@ -127,4 +127,6 @@ export default async function EditPagePage({ params }: EditPagePageProps) {
       </Suspense>
     </AdminPage>
   );
-}
+};
+
+export default EditPagePage;

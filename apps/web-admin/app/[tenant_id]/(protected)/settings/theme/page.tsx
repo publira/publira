@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export default async function SettingsThemePage() {
+const SettingsThemePage = async () => {
   const tenantId = await getTenantId();
 
   const themeResult = await getTenantThemeSettings(tenantId);
@@ -53,4 +53,6 @@ export default async function SettingsThemePage() {
       </div>
     </AdminPage>
   );
-}
+};
+
+export default SettingsThemePage;

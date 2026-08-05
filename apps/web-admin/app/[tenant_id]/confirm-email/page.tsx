@@ -127,29 +127,23 @@ const ConfirmEmailPageContent = async ({
   return <ConfirmationResult token={token} />;
 };
 
-export default function ConfirmEmailPage({
-  params,
-  searchParams,
-}: ConfirmEmailPageProps) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="font-serif text-2xl font-semibold">
-            メールアドレス変更確認
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            メールアドレス変更の確認を処理しています。
-          </p>
-        </div>
-
-        <Suspense fallback={<ConfirmEmailFallback />}>
-          <ConfirmEmailPageContent
-            params={params}
-            searchParams={searchParams}
-          />
-        </Suspense>
+const ConfirmEmailPage = ({ params, searchParams }: ConfirmEmailPageProps) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-md space-y-6">
+      <div className="text-center">
+        <h1 className="font-serif text-2xl font-semibold">
+          メールアドレス変更確認
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          メールアドレス変更の確認を処理しています。
+        </p>
       </div>
-    </main>
-  );
-}
+
+      <Suspense fallback={<ConfirmEmailFallback />}>
+        <ConfirmEmailPageContent params={params} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  </main>
+);
+
+export default ConfirmEmailPage;

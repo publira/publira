@@ -42,12 +42,12 @@ const SignupPageFallback = () => (
   </div>
 );
 
-export default function SignupPage() {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4">
-      <Suspense fallback={<SignupPageFallback />}>
-        <SignupPageContent />
-      </Suspense>
-    </main>
-  );
-}
+const SignupPage = () => (
+  <main className="flex min-h-dvh items-center justify-center px-4">
+    <Suspense fallback={<SignupPageFallback />}>
+      <SignupPageContent />
+    </Suspense>
+  </main>
+);
+
+export default SignupPage;

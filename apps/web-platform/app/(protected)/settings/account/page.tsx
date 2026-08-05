@@ -10,17 +10,17 @@ export const metadata: Metadata = {
   title: "設定 - アカウント",
 };
 
-export default function PlatformAccountSettingsPage() {
-  return (
-    <PlatformPage
-      description="アカウント情報を管理します。"
-      eyebrow="Platform Settings"
-      title="設定"
-    >
-      <div className="grid gap-6">
-        <SettingsTabNav current="account" />
-        <EmailChangeForm action={requestPlatformEmailChangeAction} />
-      </div>
-    </PlatformPage>
-  );
-}
+const PlatformAccountSettingsPage = () => (
+  <PlatformPage
+    description="アカウント情報を管理します。"
+    eyebrow="Platform Settings"
+    title="設定"
+  >
+    <div className="grid gap-6">
+      <SettingsTabNav current="account" />
+      <EmailChangeForm action={requestPlatformEmailChangeAction} />
+    </div>
+  </PlatformPage>
+);
+
+export default PlatformAccountSettingsPage;

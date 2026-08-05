@@ -209,9 +209,7 @@ const OperatorDetailContent = async ({
   );
 };
 
-export default async function OperatorDetailPage({
-  params,
-}: OperatorDetailPageProps) {
+const OperatorDetailPage = async ({ params }: OperatorDetailPageProps) => {
   const { operator_public_id: operatorPublicId } = await params;
 
   return (
@@ -219,4 +217,6 @@ export default async function OperatorDetailPage({
       <OperatorDetailContent operatorPublicId={operatorPublicId} />
     </Suspense>
   );
-}
+};
+
+export default OperatorDetailPage;

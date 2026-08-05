@@ -25,7 +25,7 @@ const emptySettings: PlatformSmtpSettings = {
   username: "",
 };
 
-export default async function PlatformEmailSettingsPage() {
+const PlatformEmailSettingsPage = async () => {
   const settingsResult = await getPlatformEmailSettings();
 
   const initialSettings = settingsResult.ok
@@ -51,4 +51,6 @@ export default async function PlatformEmailSettingsPage() {
       </div>
     </PlatformPage>
   );
-}
+};
+
+export default PlatformEmailSettingsPage;

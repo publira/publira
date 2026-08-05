@@ -188,9 +188,9 @@ const EpisodeDetailData = async (
   );
 };
 
-export default async function Page(
+const Page = async (
   props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
-) {
+) => {
   const { series_id } = await props.params;
   guardPlaceholders({ series_id });
 
@@ -214,4 +214,6 @@ export default async function Page(
       </Suspense>
     </main>
   );
-}
+};
+
+export default Page;

@@ -167,29 +167,27 @@ const ForgotPasswordPageContent = async ({
   );
 };
 
-export default function ForgotPasswordPage({
+const ForgotPasswordPage = ({
   params,
   searchParams,
-}: ForgotPasswordPageProps) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="font-serif text-2xl font-semibold">
-            パスワード再設定
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            管理画面に登録済みのメールアドレス宛てに、再設定リンクを送信します。
-          </p>
-        </div>
-
-        <Suspense fallback={<ForgotPasswordFallback />}>
-          <ForgotPasswordPageContent
-            params={params}
-            searchParams={searchParams}
-          />
-        </Suspense>
+}: ForgotPasswordPageProps) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-md space-y-6">
+      <div className="text-center">
+        <h1 className="font-serif text-2xl font-semibold">パスワード再設定</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          管理画面に登録済みのメールアドレス宛てに、再設定リンクを送信します。
+        </p>
       </div>
-    </main>
-  );
-}
+
+      <Suspense fallback={<ForgotPasswordFallback />}>
+        <ForgotPasswordPageContent
+          params={params}
+          searchParams={searchParams}
+        />
+      </Suspense>
+    </div>
+  </main>
+);
+
+export default ForgotPasswordPage;

@@ -70,7 +70,7 @@ const FlashMessage = async ({
   );
 };
 
-export default function SettingsLayout({
+const SettingsLayout = ({
   children,
   params: _params,
   searchParams,
@@ -84,22 +84,22 @@ export default function SettingsLayout({
       }
     | undefined
   >;
-}) {
-  return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-10">
-      <header className="space-y-4 border-b border-border/50 pb-6">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">アカウント設定</h1>
-          <p className="text-sm text-muted-foreground">
-            プロフィール・通知・セキュリティ・アカウント情報を管理できます。
-          </p>
-        </div>
-        <SettingsTabs />
-      </header>
+}) => (
+  <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <header className="space-y-4 border-b border-border/50 pb-6">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold">アカウント設定</h1>
+        <p className="text-sm text-muted-foreground">
+          プロフィール・通知・セキュリティ・アカウント情報を管理できます。
+        </p>
+      </div>
+      <SettingsTabs />
+    </header>
 
-      <FlashMessage searchParams={searchParams} />
+    <FlashMessage searchParams={searchParams} />
 
-      {children}
-    </main>
-  );
-}
+    {children}
+  </main>
+);
+
+export default SettingsLayout;

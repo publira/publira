@@ -148,23 +148,21 @@ const SeriesDetailData = async (
   );
 };
 
-export default function Page(
-  props: PageProps<"/[tenant_id]/series/[series_id]">
-) {
-  return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <nav className="mb-8">
-        <Link
-          href="/series"
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          ← シリーズ一覧に戻る
-        </Link>
-      </nav>
+const Page = (props: PageProps<"/[tenant_id]/series/[series_id]">) => (
+  <main className="mx-auto max-w-5xl px-6 py-12">
+    <nav className="mb-8">
+      <Link
+        href="/series"
+        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+      >
+        ← シリーズ一覧に戻る
+      </Link>
+    </nav>
 
-      <Suspense fallback={<SeriesDetailSkeleton />}>
-        <SeriesDetailData {...props} />
-      </Suspense>
-    </main>
-  );
-}
+    <Suspense fallback={<SeriesDetailSkeleton />}>
+      <SeriesDetailData {...props} />
+    </Suspense>
+  </main>
+);
+
+export default Page;

@@ -73,9 +73,7 @@ const EditCreatorFormData = async ({
   );
 };
 
-export default async function EditCreatorPage({
-  params,
-}: EditCreatorPageProps) {
+const EditCreatorPage = async ({ params }: EditCreatorPageProps) => {
   const { creator_public_id } = await params;
   guardPlaceholder(creator_public_id);
 
@@ -95,4 +93,6 @@ export default async function EditCreatorPage({
       </Suspense>
     </AdminPage>
   );
-}
+};
+
+export default EditCreatorPage;

@@ -155,13 +155,13 @@ const DeleteSection = () => (
   </section>
 );
 
-export default function BasicSettingsPage() {
-  return (
-    <div className="space-y-6">
-      <Suspense fallback={<ProfileSectionFallback />}>
-        <ProfileSection />
-      </Suspense>
-      <DeleteSection />
-    </div>
-  );
-}
+const BasicSettingsPage = () => (
+  <div className="space-y-6">
+    <Suspense fallback={<ProfileSectionFallback />}>
+      <ProfileSection />
+    </Suspense>
+    <DeleteSection />
+  </div>
+);
+
+export default BasicSettingsPage;

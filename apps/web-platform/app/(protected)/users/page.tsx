@@ -480,7 +480,7 @@ const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
   );
 };
 
-export default async function UsersPage({ searchParams }: UsersPageProps) {
+const UsersPage = async ({ searchParams }: UsersPageProps) => {
   const params = await searchParams;
   const filters = parseUsersFilters(params);
 
@@ -495,4 +495,6 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
       </Suspense>
     </PlatformPage>
   );
-}
+};
+
+export default UsersPage;

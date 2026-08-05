@@ -225,19 +225,19 @@ const NotificationsSectionFallback = () => (
   </section>
 );
 
-export default function NotificationsPage() {
-  return (
-    <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <h1 className="text-xl font-semibold">通知</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          運営から配信された通知を確認できます。
-        </p>
-      </section>
+const NotificationsPage = () => (
+  <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+      <h1 className="text-xl font-semibold">通知</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        運営から配信された通知を確認できます。
+      </p>
+    </section>
 
-      <Suspense fallback={<NotificationsSectionFallback />}>
-        <NotificationsSection />
-      </Suspense>
-    </div>
-  );
-}
+    <Suspense fallback={<NotificationsSectionFallback />}>
+      <NotificationsSection />
+    </Suspense>
+  </div>
+);
+
+export default NotificationsPage;

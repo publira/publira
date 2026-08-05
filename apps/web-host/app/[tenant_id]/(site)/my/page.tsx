@@ -138,29 +138,29 @@ const MyContentFallback = () => (
   </>
 );
 
-export default function MyPage() {
-  return (
-    <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">マイページ</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              登録情報と利用状況を確認できます。
-            </p>
-          </div>
-          <Link
-            className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-            href="/settings"
-          >
-            設定を開く
-          </Link>
+const MyPage = () => (
+  <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">マイページ</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            登録情報と利用状況を確認できます。
+          </p>
         </div>
-      </section>
+        <Link
+          className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          href="/settings"
+        >
+          設定を開く
+        </Link>
+      </div>
+    </section>
 
-      <Suspense fallback={<MyContentFallback />}>
-        <MyContent />
-      </Suspense>
-    </div>
-  );
-}
+    <Suspense fallback={<MyContentFallback />}>
+      <MyContent />
+    </Suspense>
+  </div>
+);
+
+export default MyPage;

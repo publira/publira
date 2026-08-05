@@ -482,9 +482,7 @@ const AuditLogsContent = async ({
   );
 };
 
-export default async function AuditLogsPage({
-  searchParams,
-}: AuditLogsPageProps) {
+const AuditLogsPage = async ({ searchParams }: AuditLogsPageProps) => {
   const params = await searchParams;
   const actorFilter = params.actor_user_public_id?.trim() ?? "";
   const actionFilter = params.action?.trim() ?? "";
@@ -505,4 +503,6 @@ export default async function AuditLogsPage({
       </Suspense>
     </PlatformPage>
   );
-}
+};
+
+export default AuditLogsPage;

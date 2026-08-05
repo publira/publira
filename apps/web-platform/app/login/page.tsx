@@ -43,23 +43,23 @@ const LoginFormSkeleton = () => (
   </div>
 );
 
-export default function LoginPage({ searchParams }: PageProps<"/login">) {
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Platform Console ログイン
-          </p>
-        </div>
-
-        <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-          <Suspense fallback={<LoginFormSkeleton />}>
-            <LoginFormWrapper searchParams={searchParams} />
-          </Suspense>
-        </div>
+const LoginPage = ({ searchParams }: PageProps<"/login">) => (
+  <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+    <div className="w-full max-w-sm">
+      <div className="mb-8 text-center">
+        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Platform Console ログイン
+        </p>
       </div>
-    </main>
-  );
-}
+
+      <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+        <Suspense fallback={<LoginFormSkeleton />}>
+          <LoginFormWrapper searchParams={searchParams} />
+        </Suspense>
+      </div>
+    </div>
+  </main>
+);
+
+export default LoginPage;
