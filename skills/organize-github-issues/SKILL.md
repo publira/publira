@@ -12,7 +12,7 @@ Use GitHub's structured metadata for classification and planning. Keep titles fo
 1. Read the repository's `AGENTS.md` files and Issue templates.
 2. Inspect the repository's existing language, terminology, types, fields, labels, and hierarchy.
 3. Run `gh auth status` and identify the repository with `gh repo view`.
-4. Check `gh` help and current official GitHub documentation before relying on newer Issue features. Read [references/github-api.md](references/github-api.md) when the installed CLI lacks the required flags.
+4. Check `gh` help and current official GitHub documentation before relying on newer Issue features. Prefer dedicated `gh issue` commands, then read [references/github-api.md](references/github-api.md) to select an API fallback only for unsupported operations such as Issue field values.
 5. Inventory open and closed Issues when the user requests repository-wide normalization.
 
 Do not mutate GitHub while still discovering the taxonomy. Establish a mapping first, preserve unrelated metadata, and make changes idempotently.
