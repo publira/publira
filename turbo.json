@@ -2,6 +2,10 @@
   "$schema": "./node_modules/turbo/schema.json",
   "globalDependencies": ["**/.env.*local"],
   "tasks": {
+    "//#check": {},
+    "//#fix": {
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
