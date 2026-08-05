@@ -11,8 +11,6 @@ gh issue edit --help
 gh issue view --help
 ```
 
-The repository devcontainer pins GitHub CLI 2.97.0, which supports Issue types, parents, Sub-issues, and dependency Relationships.
-
 ## Create with native commands
 
 Use `gh issue create` for the Issue and all metadata it supports:
