@@ -14,7 +14,8 @@ server/
 ├── bin/                   # task build で生成されるバイナリ
 ├── gen/                   # buf 自動生成コード (編集禁止)
 └── internal/
-    └── db/                # sqlc 自動生成コード (編集禁止)
+    ├── db/                # sqlc 自動生成コード (編集禁止)
+    └── testutil/          # Testcontainers 等のテスト共通ヘルパー
 ```
 
 ## 担当機能
@@ -41,7 +42,17 @@ task server:dev-admin-api
 task server:dev-platform-api
 task server:tidy
 task server:build
+task server:test
 ```
+
+## テスト
+
+- 単体テストは主に `sqlmock` で DB をモックします。
+- 実 DB の統合テストは [Testcontainers for Go](https://golang.testcontainers.org/) で PostgreSQL コンテナを起動します。
+  - 共通ヘルパー: `internal/testutil`（マイグレーション適用・アプリロール seed・Snapshot/Restore）
+  - 例: `api/platformapi` の `TestDB*`（テナント作成・重複制約・状態遷移など）
+- 実行要件: ローカルに Docker が使えること（未起動時は当該テストを skip）
+- 高速化: `go test -short ./...` でコンテナ起動を伴う統合テストをスキップできます
 
 ## エントリポイント詳細
 

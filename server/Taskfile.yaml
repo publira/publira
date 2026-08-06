@@ -70,9 +70,14 @@ tasks:
       - task: deps
 
   test:
-    desc: Run all Go tests in the server module
+    desc: Run all Go tests in the server module (includes Testcontainers DB integration tests; requires Docker)
     cmds:
       - go test ./...
+
+  test-short:
+    desc: Run Go tests excluding Testcontainers-backed integration tests
+    cmds:
+      - go test -short ./...
 
   tidy:
     desc: Sync and clean up Go module dependencies
