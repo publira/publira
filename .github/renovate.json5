@@ -1,5 +1,24 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["github>publira/.github//renovate.json5"],
-  ignoreDeps: ["dev.flutter.flutter-plugin-loader"],
+  ignoreDeps: [
+    // Gradle Flutter plugin loader id (not a real versioned dep for Renovate)
+    "dev.flutter.flutter-plugin-loader",
+    // Pinned exactly by the Flutter/Dart SDK in use. Advance only by upgrading
+    // Flutter (Dockerfile FLUTTER_VERSION); lockFileMaintenance must not float them.
+    "characters",
+    "matcher",
+    "meta",
+    "test_api",
+    "vector_math",
+  ],
+  packageRules: [
+    {
+      description:
+        "pubspec.lock must be resolved with the project's Flutter SDK. Disable lockFileMaintenance for pub so Renovate does not rewrite SDK-pinned transitives (which flutter pub get then reverts).",
+      matchManagers: ["pub"],
+      matchUpdateTypes: ["lockFileMaintenance"],
+      enabled: false,
+    },
+  ],
 }
