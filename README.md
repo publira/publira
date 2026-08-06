@@ -33,6 +33,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 - Backend: Go 1.26, ConnectRPC (HTTP/2), sqlc
 - Mobile: Flutter
 - Database: PostgreSQL, golang-migrate
+- Cache: Redis（Next.js `cacheHandler` / `cacheHandlers` の共有ストア）
 - Storage/Image: S3 互換ストレージ
 - Infrastructure: Dev Containers, Docker, Make
 
@@ -84,3 +85,17 @@ Dev Container 起動時に Mailpit コンテナも起動します。
 2. `task dev` (または API/Web 個別タスク) を起動
 3. SMTP テスト送信や通知送信を実行
 4. Mailpit UI (`http://localhost:8025`) で受信メールを確認
+
+## Next.js 共有キャッシュ (Redis)
+
+self-host / multi-instance 向けに、Next.js のサーバー側キャッシュを **Redis** で共有します（`@publira/next-cache-handlers`）。
+
+| 設定 | 用途 |
+| --- | --- |
+| `cacheHandlers`（複数形） | `"use cache"` / `"use cache: remote"` |
+| `cacheHandler`（単数） | ISR・Route Handler・`fetch`、および `next/image` 最適化結果（`images.customCacheHandler: true`） |
+
+- Dev Container では `redis` サービスが起動し、app コンテナに `REDIS_URL=redis://redis:6379` が渡ります
+- ホストから直に触る場合の既定は `redis://localhost:6379`
+- キー空間は `NEXT_CACHE_APP`（例: `web-host`）でアプリ別に分離
+- 詳細: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)

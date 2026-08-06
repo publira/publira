@@ -108,6 +108,17 @@ useEffect(() => {
 - レンダー中の `prev*` + 裸の `setXxx` は **中間形**でありゴールではない。  
   本廃止（`key` 載せ替え・Action 側 `redirect` 等）は [#456](https://github.com/publira/publira/issues/456)。
 
+## Next.js キャッシュ: `cacheHandler` vs `cacheHandlers`
+
+self-host の共有ストアは **Redis**（パッケージ `@publira/next-cache-handlers`）。
+
+| 設定 | 用途 |
+| --- | --- |
+| **`cacheHandlers`（複数形）** | `"use cache"` / `"use cache: remote"` のバックエンド |
+| **`cacheHandler`（単数）** | ISR・Route Handler・`fetch` / `unstable_cache`、および **`next/image` 最適化画像**（要 `images.customCacheHandler: true`） |
+
+両方を配線すること。片方だけだと multi-instance で片系統がローカルのまま残る。詳細は `packages/next-cache-handlers/README.md`。
+
 ## その他
 
 - Next.js 作業前: 各 app の `AGENTS.md` / `node_modules/next/dist/docs/` を確認する

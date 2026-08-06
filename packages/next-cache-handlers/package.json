@@ -1,0 +1,42 @@
+{
+  "name": "@publira/next-cache-handlers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared Redis-backed Next.js cacheHandler / cacheHandlers for multi-instance self-host",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./incremental": {
+      "types": "./dist/incremental.d.mts",
+      "default": "./dist/incremental.mjs"
+    },
+    "./use-cache": {
+      "types": "./dist/use-cache.d.mts",
+      "default": "./dist/use-cache.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "redis": "catalog:"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "^16.3.0"
+  }
+}

@@ -15,8 +15,8 @@
   },
   "scripts": {
     "build": "next build",
-    "dev": "next dev --port 4000",
-    "start": "next start",
+    "dev": "NEXT_CACHE_APP=web-admin next dev --port 4000",
+    "start": "NEXT_CACHE_APP=web-admin next start",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit",
     "typegen": "next typegen"
@@ -26,6 +26,7 @@
     "@publira/brand": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",
+    "@publira/next-cache-handlers": "workspace:*",
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
     "@publira/web-session": "workspace:*",
