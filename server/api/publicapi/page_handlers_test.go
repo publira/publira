@@ -28,7 +28,7 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedPagesForTenantQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "slug", "title", "published_version_id", "created_at", "updated_at"}).
-			AddRow(pageID, tenantID, "privacy", "プライバシーポリシー", versionID, now, now))
+			AddRow(pageID, tenantID, "/privacy", "プライバシーポリシー", versionID, now, now))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
@@ -41,8 +41,8 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	if len(resp.Msg.Pages) != 1 {
 		t.Fatalf("pages count = %d, want 1", len(resp.Msg.Pages))
 	}
-	if resp.Msg.Pages[0].Slug != "privacy" {
-		t.Fatalf("page slug = %q, want privacy", resp.Msg.Pages[0].Slug)
+	if resp.Msg.Pages[0].Slug != "/privacy" {
+		t.Fatalf("page slug = %q, want /privacy", resp.Msg.Pages[0].Slug)
 	}
 	if resp.Msg.Pages[0].PublishedVersionId != versionID.String() {
 		t.Fatalf("published version id = %q, want %q", resp.Msg.Pages[0].PublishedVersionId, versionID.String())
@@ -60,13 +60,14 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	now := time.Now().UTC()
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
+	// Lookup normalizes client slug "privacy" → "/privacy" to match admin storage.
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
-		WithArgs(tenantID, "privacy").
+		WithArgs(tenantID, "/privacy").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "slug", "title", "published_version_id", "created_at", "updated_at",
 			"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
 		}).AddRow(
-			pageID, tenantID, "privacy", "プライバシーポリシー", versionID, now, now,
+			pageID, tenantID, "/privacy", "プライバシーポリシー", versionID, now, now,
 			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now,
 		))
 
@@ -78,8 +79,8 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPublishedPage: %v", err)
 	}
-	if resp.Msg.Page == nil || resp.Msg.Page.Slug != "privacy" {
-		t.Fatalf("page = %+v, want slug privacy", resp.Msg.Page)
+	if resp.Msg.Page == nil || resp.Msg.Page.Slug != "/privacy" {
+		t.Fatalf("page = %+v, want slug /privacy", resp.Msg.Page)
 	}
 	if resp.Msg.Version == nil || resp.Msg.Version.ContentMarkdown != "# Privacy" {
 		t.Fatalf("version = %+v, want markdown", resp.Msg.Version)
@@ -110,7 +111,7 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		now := time.Now().UTC()
 		expectTenantLookup(mock, tenantID, "TENANT", now)
 		mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
-			WithArgs(tenantID, "missing").
+			WithArgs(tenantID, "/missing").
 			WillReturnRows(sqlmock.NewRows([]string{
 				"id", "tenant_id", "slug", "title", "published_version_id", "created_at", "updated_at",
 				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
