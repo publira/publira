@@ -17,6 +17,8 @@ message GetTenantResponse {
   string copyright_text = 4;
   string site_description = 5;
   string site_tagline = 6;
+  // Public branding colors (defaults applied when unset).
+  publira.types.v1.TenantTheme theme = 7;
 }
 
 service TenantService {

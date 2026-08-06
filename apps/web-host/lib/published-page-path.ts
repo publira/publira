@@ -18,6 +18,7 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "series",
   "settings",
   "signup",
+  "theme.css",
   "verify",
 ]);
 

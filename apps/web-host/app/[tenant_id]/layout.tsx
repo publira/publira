@@ -8,7 +8,14 @@ export const generateStaticParams = () =>
 
 const TenantRootLayout = ({ children }: { children: ReactNode }) => (
   <html lang="ja">
-    <body>{children}</body>
+    <head>
+      {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}
+      {/* oxlint-disable-next-line next/no-css-tags -- not a static import; tenant theme route */}
+      <link href="/theme.css" rel="stylesheet" />
+    </head>
+    <body className="min-h-dvh bg-background text-foreground antialiased">
+      {children}
+    </body>
   </html>
 );
 

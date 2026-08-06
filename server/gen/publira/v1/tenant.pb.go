@@ -74,8 +74,10 @@ type GetTenantResponse struct {
 	CopyrightText   string                 `protobuf:"bytes,4,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
 	SiteDescription string                 `protobuf:"bytes,5,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
 	SiteTagline     string                 `protobuf:"bytes,6,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Public branding colors (defaults applied when unset).
+	Theme         *v1.TenantTheme `protobuf:"bytes,7,opt,name=theme,proto3" json:"theme,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -150,6 +152,13 @@ func (x *GetTenantResponse) GetSiteTagline() string {
 	return ""
 }
 
+func (x *GetTenantResponse) GetTheme() *v1.TenantTheme {
+	if x != nil {
+		return x.Theme
+	}
+	return nil
+}
+
 var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_v1_tenant_proto_rawDesc = "" +
@@ -157,7 +166,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x17publira/v1/tenant.proto\x12\n" +
 	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xf8\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xad\x02\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -165,7 +174,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\rtenant_domain\x18\x03 \x01(\tR\ftenantDomain\x12%\n" +
 	"\x0ecopyright_text\x18\x04 \x01(\tR\rcopyrightText\x12)\n" +
 	"\x10site_description\x18\x05 \x01(\tR\x0fsiteDescription\x12!\n" +
-	"\fsite_tagline\x18\x06 \x01(\tR\vsiteTagline2[\n" +
+	"\fsite_tagline\x18\x06 \x01(\tR\vsiteTagline\x123\n" +
+	"\x05theme\x18\a \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme2[\n" +
 	"\rTenantService\x12J\n" +
 	"\tGetTenant\x12\x1c.publira.v1.GetTenantRequest\x1a\x1d.publira.v1.GetTenantResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 
@@ -186,16 +196,18 @@ var file_publira_v1_tenant_proto_goTypes = []any{
 	(*GetTenantRequest)(nil),  // 0: publira.v1.GetTenantRequest
 	(*GetTenantResponse)(nil), // 1: publira.v1.GetTenantResponse
 	(*v1.TenantContext)(nil),  // 2: publira.types.v1.TenantContext
+	(*v1.TenantTheme)(nil),    // 3: publira.types.v1.TenantTheme
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
 	2, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	1, // 2: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
+	0, // 2: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	1, // 3: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }

@@ -5,6 +5,9 @@ import (
 	"database/sql"
 
 	"connectrpc.com/connect"
+
+	"github.com/publira/publira/server/api/protomapper"
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 )
 
@@ -17,8 +20,10 @@ func (s *apiServer) GetTenant(
 		return nil, err
 	}
 
+	queries := s.queriesFor(ctx)
+
 	// Fetch tenant config (optional)
-	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
+	config, err := queries.GetTenantConfigByTenantID(ctx, tenant.ID)
 	copyrightText := ""
 	siteDescription := ""
 	siteTagline := ""
@@ -38,6 +43,15 @@ func (s *apiServer) GetTenant(
 		_ = err
 	}
 
+	var theme *publirattypesv1.TenantTheme
+	themeRow, themeErr := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
+	if themeErr == nil {
+		theme = protomapper.TenantThemeFromGetRow(themeRow)
+	} else if themeErr != sql.ErrNoRows {
+		// Theme is branding only; keep GetTenant available even if theme load fails.
+		_ = themeErr
+	}
+
 	return connect.NewResponse(&publirav1.GetTenantResponse{
 		TenantPublicId:  tenant.PublicID,
 		TenantName:      tenant.Name,
@@ -45,5 +59,6 @@ func (s *apiServer) GetTenant(
 		CopyrightText:   copyrightText,
 		SiteDescription: siteDescription,
 		SiteTagline:     siteTagline,
+		Theme:           theme,
 	}), nil
 }

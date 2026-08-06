@@ -16,6 +16,7 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
 import { useActionState, useCallback, useId, useState } from "react";
 
 import type { TenantThemeSettings } from "#lib/theme-settings";
@@ -293,6 +294,17 @@ const colorGroups: {
   },
 ];
 
+const applyThemePreview = (theme: TenantThemeSettings) => {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const vars = toPubliraThemeCssVariables(theme);
+  const root = document.documentElement;
+  for (const [property, value] of Object.entries(vars)) {
+    root.style.setProperty(property, value);
+  }
+};
+
 export const ThemeSettingsForm = ({
   action,
   initialTheme,
@@ -317,7 +329,12 @@ export const ThemeSettingsForm = ({
 
   const createHandler = useCallback(
     (key: ColorKey) => (event: React.ChangeEvent<HTMLInputElement>) => {
-      setColors((prev) => ({ ...prev, [key]: event.target.value }));
+      const nextValue = event.target.value;
+      setColors((prev) => {
+        const next = { ...prev, [key]: nextValue };
+        applyThemePreview(next);
+        return next;
+      });
     },
     []
   );

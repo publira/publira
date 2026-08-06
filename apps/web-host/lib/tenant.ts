@@ -1,7 +1,11 @@
+import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
+import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantSiteTag } from "./cache-tags";
+
+export type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 
 export interface TenantSiteInfo {
   copyrightText?: string;
@@ -11,6 +15,7 @@ export interface TenantSiteInfo {
   siteDescription?: string;
   siteLabel: string;
   siteTagline?: string;
+  theme: TenantThemeColors;
 }
 
 const buildTenantSiteLabel = (tenantName: string): string => {
@@ -66,6 +71,7 @@ export const getTenantSiteInfo = async (
       siteDescription: response.siteDescription?.trim(),
       siteLabel: buildTenantSiteLabel(name),
       siteTagline: response.siteTagline?.trim(),
+      theme: resolveTenantThemeColors(response.theme),
     };
   } catch (error) {
     if (isExpectedNullableError(error)) {

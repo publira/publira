@@ -1,5 +1,6 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { z } from "zod";
 
 import { requestAdminEmailChange } from "#lib/admin-auth";
@@ -247,6 +248,9 @@ export const updateTenantThemeSettingsAction = async (
       ok: false,
     };
   }
+
+  // Refresh SSR theme injection for this admin app (public GetTenant cache).
+  updateTag(`tenant:${tenantId}:site`);
 
   return {
     message: "テーマを保存しました。",
