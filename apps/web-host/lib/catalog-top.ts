@@ -28,16 +28,10 @@ export interface CatalogTopUpdatedSeriesItem {
   seriesTitle: string;
 }
 
-export interface CatalogTopData {
-  featuredAuthors: {
-    id: string;
-    name: string;
-    seriesCount: number;
-  }[];
-  featuredLabels: LabelListItem[];
-  newEpisodes: CatalogTopEpisodeItem[];
-  recommendedSeries: SeriesListItem[];
-  updatedSeries: CatalogTopUpdatedSeriesItem[];
+export interface CatalogTopFeaturedAuthor {
+  id: string;
+  name: string;
+  seriesCount: number;
 }
 
 interface CatalogTopDataOptions {
@@ -60,29 +54,26 @@ const byNewestDateDesc = (
   right: { publishedAt: string }
 ) => toTimestamp(right.publishedAt) - toTimestamp(left.publishedAt);
 
-export const getCatalogTopData = async (
+interface SeriesDetailRow {
+  creatorNames: string[];
+  episodes: {
+    publicId: string;
+    publishedAt: string;
+    title: string;
+  }[];
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
+  publicId: string;
+  title: string;
+}
+
+const loadSeriesDetailRows = async (
   tenantId: string,
-  {
-    detailFetchLimit = 12,
-    maxAuthors = 6,
-    maxLabels = 6,
-    maxNewEpisodes = 6,
-    maxRecommended = 6,
-    maxUpdatedSeries = 6,
-    seriesLimit = 24,
-  }: CatalogTopDataOptions = {}
-): Promise<CatalogTopData> => {
-  "use cache";
-
-  const [series, authorsResult, labels] = await Promise.all([
-    listPublishedSeries(tenantId, seriesLimit, 0),
-    listPublishedAuthors(tenantId, { page: 1, pageSize: maxAuthors }),
-    listPublishedLabels(tenantId, maxLabels, 0),
-  ]);
-
-  const recommendedSeries = series.slice(0, maxRecommended);
-
+  seriesLimit: number,
+  detailFetchLimit: number
+): Promise<SeriesDetailRow[]> => {
+  const series = await listPublishedSeries(tenantId, seriesLimit, 0);
   const seriesForDetails = series.slice(0, detailFetchLimit);
+
   const seriesDetails = await Promise.all(
     seriesForDetails.map(async (seriesItem) => {
       try {
@@ -100,9 +91,36 @@ export const getCatalogTopData = async (
     })
   );
 
-  const detailRows = seriesDetails.filter((item) => item !== null);
+  return seriesDetails.filter((item) => item !== null);
+};
 
-  const newEpisodes = detailRows
+export const getCatalogTopRecommendedSeries = async (
+  tenantId: string,
+  { maxRecommended = 6, seriesLimit = 24 }: CatalogTopDataOptions = {}
+): Promise<SeriesListItem[]> => {
+  "use cache";
+
+  const series = await listPublishedSeries(tenantId, seriesLimit, 0);
+  return series.slice(0, maxRecommended);
+};
+
+export const getCatalogTopNewEpisodes = async (
+  tenantId: string,
+  {
+    detailFetchLimit = 12,
+    maxNewEpisodes = 6,
+    seriesLimit = 24,
+  }: CatalogTopDataOptions = {}
+): Promise<CatalogTopEpisodeItem[]> => {
+  "use cache";
+
+  const detailRows = await loadSeriesDetailRows(
+    tenantId,
+    seriesLimit,
+    detailFetchLimit
+  );
+
+  return detailRows
     .flatMap((row) =>
       row.episodes
         .filter((episode) => episode.publishedAt.trim().length > 0)
@@ -116,8 +134,25 @@ export const getCatalogTopData = async (
     )
     .toSorted(byNewestDateDesc)
     .slice(0, maxNewEpisodes);
+};
 
-  const updatedSeries = detailRows
+export const getCatalogTopUpdatedSeries = async (
+  tenantId: string,
+  {
+    detailFetchLimit = 12,
+    maxUpdatedSeries = 6,
+    seriesLimit = 24,
+  }: CatalogTopDataOptions = {}
+): Promise<CatalogTopUpdatedSeriesItem[]> => {
+  "use cache";
+
+  const detailRows = await loadSeriesDetailRows(
+    tenantId,
+    seriesLimit,
+    detailFetchLimit
+  );
+
+  return detailRows
     .map((row) => {
       const [latestEpisode] = row.episodes
         .filter((episode) => episode.publishedAt.trim().length > 0)
@@ -144,12 +179,26 @@ export const getCatalogTopData = async (
         toTimestamp(left.latestPublishedAt)
     )
     .slice(0, maxUpdatedSeries);
+};
 
-  return {
-    featuredAuthors: authorsResult.authors,
-    featuredLabels: labels,
-    newEpisodes,
-    recommendedSeries,
-    updatedSeries,
-  };
+export const getCatalogTopFeaturedLabels = async (
+  tenantId: string,
+  { maxLabels = 6 }: CatalogTopDataOptions = {}
+): Promise<LabelListItem[]> => {
+  "use cache";
+
+  return await listPublishedLabels(tenantId, maxLabels, 0);
+};
+
+export const getCatalogTopFeaturedAuthors = async (
+  tenantId: string,
+  { maxAuthors = 6 }: CatalogTopDataOptions = {}
+): Promise<CatalogTopFeaturedAuthor[]> => {
+  "use cache";
+
+  const authorsResult = await listPublishedAuthors(tenantId, {
+    page: 1,
+    pageSize: maxAuthors,
+  });
+  return authorsResult.authors;
 };
