@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { apiClient } from "./lib/api-client";
 import { buildLoginUrl, PUBLIC_SESSION_COOKIE_NAME } from "./lib/auth-shared";
+import { buildTenantRewritePathname } from "./lib/published-page-path";
 import { createTenantIdResolver } from "./lib/tenant-resolution";
 
 const resolveTenantId = createTenantIdResolver(apiClient);
@@ -58,7 +59,8 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   }
 
   const url = request.nextUrl.clone();
-  url.pathname = `/${tenantId}${pathname}`;
+  // Single-segment published pages (admin slugs) rewrite to /page/[slug].
+  url.pathname = buildTenantRewritePathname(tenantId, pathname);
   return NextResponse.rewrite(url);
 };
 

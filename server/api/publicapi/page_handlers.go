@@ -70,11 +70,28 @@ func (s *apiServer) ListPublishedPages(
 	return connect.NewResponse(&publirav1.ListPublishedPagesResponse{Pages: pages}), nil
 }
 
+// normalizePublishedPageSlugLookup matches admin storage form so clients may
+// send "privacy", "/privacy", or "//privacy" and still hit the same row.
+func normalizePublishedPageSlugLookup(slug string) string {
+	normalized := strings.TrimSpace(slug)
+	if normalized == "" || normalized == "/" {
+		return ""
+	}
+	for strings.Contains(normalized, "//") {
+		normalized = strings.ReplaceAll(normalized, "//", "/")
+	}
+	normalized = strings.Trim(normalized, "/")
+	if normalized == "" {
+		return ""
+	}
+	return "/" + normalized
+}
+
 func (s *apiServer) GetPublishedPage(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetPublishedPageRequest],
 ) (*connect.Response[publirav1.GetPublishedPageResponse], error) {
-	slug := strings.TrimSpace(req.Msg.Slug)
+	slug := normalizePublishedPageSlugLookup(req.Msg.Slug)
 	if slug == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
 	}

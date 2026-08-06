@@ -17,7 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
-var slugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]*$`)
+var slugSegmentPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]*$`)
 
 const slugMaxLen = 255
 
@@ -56,19 +56,46 @@ func pageVersionFromModel(v dbmodels.PageVersion) *publirattypesv1.PageVersion {
 	return proto
 }
 
-func validateSlug(slug string) (string, error) {
+// normalizePageSlugForStorage canonicalizes page slugs for DB storage:
+//   - trim whitespace
+//   - empty / "/" → ""
+//   - strip leading/trailing slashes, collapse "//"
+//   - each path segment: [a-z0-9][a-z0-9-]*
+//   - stored form always has a single leading "/" (e.g. "/privacy", "/legal/terms")
+func normalizePageSlugForStorage(slug string) (string, error) {
 	normalized := strings.TrimSpace(slug)
 	if normalized == "" || normalized == "/" {
 		return "", nil
 	}
-	normalized = strings.TrimPrefix(normalized, "/")
+
+	// Collapse repeated slashes, then strip outer slashes for segment checks.
+	for strings.Contains(normalized, "//") {
+		normalized = strings.ReplaceAll(normalized, "//", "/")
+	}
+	normalized = strings.Trim(normalized, "/")
+	if normalized == "" {
+		return "", nil
+	}
+
 	if len(normalized) > slugMaxLen {
 		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug must not exceed %d characters", slugMaxLen))
 	}
-	if !slugPattern.MatchString(normalized) {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("slug must be empty or contain only lowercase letters, digits, and hyphens, and may optionally start with /"))
+
+	segments := strings.Split(normalized, "/")
+	for _, segment := range segments {
+		if segment == "" || !slugSegmentPattern.MatchString(segment) {
+			return "", connect.NewError(
+				connect.CodeInvalidArgument,
+				errors.New("slug must be empty or path segments of lowercase letters, digits, and hyphens (optionally starting with /)"),
+			)
+		}
 	}
+
 	return "/" + normalized, nil
+}
+
+func validateSlug(slug string) (string, error) {
+	return normalizePageSlugForStorage(slug)
 }
 
 func validatePageTitle(title string) (string, error) {
@@ -403,13 +430,15 @@ func (s *adminServer) PublishVersion(
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
-	// Trigger revalidation for the page on the public site
+	// Trigger revalidation for the page on the public site.
+	// Tags must use tenant.ID (path / cache key), same as series revalidate.
 	if s.reval != nil {
+		tenantID := tenant.ID.String()
 		tags := []string{
-			fmt.Sprintf("tenant:%s:pages", tenant.PublicID),
-			fmt.Sprintf("tenant:%s:pages:%s", tenant.PublicID, version.PageID.String()),
+			fmt.Sprintf("tenant:%s:pages", tenantID),
+			fmt.Sprintf("tenant:%s:pages:%s", tenantID, version.PageID.String()),
 		}
-		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tags); err != nil {
+		if err := s.reval.RevalidateTags(ctx, tenantID, tenant.Domain, tags); err != nil {
 			s.logger.Warn("failed to request next revalidate after page publish", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
 		}
 	}

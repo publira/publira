@@ -118,9 +118,9 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
                 value={slug}
               />
               <FieldDescription>
-                公開 URL は {formatPagePath(slug)} になります。空欄は
-                /、それ以外は /
-                で始まる半角小文字・数字・ハイフンを利用できます。
+                公開 URL は {formatPagePath(slug)} になります。空欄は /。先頭の
+                / は任意で、半角小文字・数字・ハイフン（複数階層は /
+                区切り）を利用できます。
               </FieldDescription>
             </FieldContent>
           </Field>

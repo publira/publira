@@ -9,7 +9,7 @@ INSERT INTO pages (id, tenant_id, slug, title)
 SELECT
     '018f1000-0001-7000-8000-000000000001'::uuid,
     ts.tenant_id,
-    'privacy',
+    '/privacy',
     'プライバシーポリシー'
 FROM tenant_scope ts
 ON CONFLICT (tenant_id, slug) DO UPDATE
@@ -33,7 +33,7 @@ SET page_id = p.id,
     published_at = NOW()
 FROM pages p
 WHERE pv.id = '018f1000-0002-7000-8000-000000000001'::uuid
-  AND p.slug = 'privacy'
+  AND p.slug = '/privacy'
   AND p.tenant_id = pv.tenant_id;
 
 INSERT INTO page_versions (id, page_id, tenant_id, version_number, content_markdown, author_user_id, status, published_at)
@@ -54,7 +54,7 @@ SELECT
     'published',
     NOW()
 FROM pages p
-WHERE p.slug = 'privacy'
+WHERE p.slug = '/privacy'
   AND p.tenant_id IN (
       SELECT t.id
       FROM tenants t
@@ -68,7 +68,7 @@ WHERE p.slug = 'privacy'
 
 UPDATE pages
 SET published_version_id = '018f1000-0002-7000-8000-000000000001'::uuid
-WHERE slug = 'privacy'
+WHERE slug = '/privacy'
   AND tenant_id IN (
       SELECT t.id
       FROM tenants t
@@ -85,7 +85,7 @@ INSERT INTO pages (id, tenant_id, slug, title)
 SELECT
     '018f1000-0003-7000-8000-000000000001'::uuid,
     ts.tenant_id,
-    'terms',
+    '/terms',
     '利用規約'
 FROM tenant_scope ts
 ON CONFLICT (tenant_id, slug) DO UPDATE
@@ -109,7 +109,7 @@ SET page_id = p.id,
     published_at = NOW()
 FROM pages p
 WHERE pv.id = '018f1000-0004-7000-8000-000000000001'::uuid
-  AND p.slug = 'terms'
+  AND p.slug = '/terms'
   AND p.tenant_id = pv.tenant_id;
 
 INSERT INTO page_versions (id, page_id, tenant_id, version_number, content_markdown, author_user_id, status, published_at)
@@ -130,7 +130,7 @@ SELECT
     'published',
     NOW()
 FROM pages p
-WHERE p.slug = 'terms'
+WHERE p.slug = '/terms'
   AND p.tenant_id IN (
       SELECT t.id
       FROM tenants t
@@ -144,7 +144,84 @@ WHERE p.slug = 'terms'
 
 UPDATE pages
 SET published_version_id = '018f1000-0004-7000-8000-000000000001'::uuid
-WHERE slug = 'terms'
+WHERE slug = '/terms'
+  AND tenant_id IN (
+      SELECT t.id
+      FROM tenants t
+      WHERE t.public_id = '018F0E6A1000'
+  );
+
+-- Multi-segment slug sample for /legal/terms public URL coverage
+WITH tenant_scope AS (
+    SELECT t.id AS tenant_id
+    FROM tenants t
+    WHERE t.public_id = '018F0E6A1000'
+    LIMIT 1
+)
+INSERT INTO pages (id, tenant_id, slug, title)
+SELECT
+    '018f1000-0005-7000-8000-000000000001'::uuid,
+    ts.tenant_id,
+    '/legal/terms',
+    '階層スラッグテスト'
+FROM tenant_scope ts
+ON CONFLICT (tenant_id, slug) DO UPDATE
+SET title = EXCLUDED.title,
+    updated_at = NOW();
+
+UPDATE page_versions pv
+SET page_id = p.id,
+    tenant_id = p.tenant_id,
+    version_number = 1,
+    content_markdown = E'## 階層 slug テスト\n\n`/legal/terms` が表示できていれば OK です。',
+    author_user_id = (
+        SELECT u.id
+        FROM users u
+        WHERE u.email = 'admin@example.com'
+          AND u.tenant_id = p.tenant_id
+        ORDER BY u.created_at ASC
+        LIMIT 1
+    ),
+    status = 'published',
+    published_at = NOW()
+FROM pages p
+WHERE pv.id = '018f1000-0006-7000-8000-000000000001'::uuid
+  AND p.slug = '/legal/terms'
+  AND p.tenant_id = pv.tenant_id;
+
+INSERT INTO page_versions (id, page_id, tenant_id, version_number, content_markdown, author_user_id, status, published_at)
+SELECT
+    '018f1000-0006-7000-8000-000000000001'::uuid,
+    p.id,
+    p.tenant_id,
+    1,
+    E'## 階層 slug テスト\n\n`/legal/terms` が表示できていれば OK です。',
+    (
+        SELECT u.id
+        FROM users u
+        WHERE u.email = 'admin@example.com'
+          AND u.tenant_id = p.tenant_id
+        ORDER BY u.created_at ASC
+        LIMIT 1
+    ),
+    'published',
+    NOW()
+FROM pages p
+WHERE p.slug = '/legal/terms'
+  AND p.tenant_id IN (
+      SELECT t.id
+      FROM tenants t
+      WHERE t.public_id = '018F0E6A1000'
+  )
+  AND NOT EXISTS (
+      SELECT 1
+      FROM page_versions pv
+      WHERE pv.id = '018f1000-0006-7000-8000-000000000001'::uuid
+  );
+
+UPDATE pages
+SET published_version_id = '018f1000-0006-7000-8000-000000000001'::uuid
+WHERE slug = '/legal/terms'
   AND tenant_id IN (
       SELECT t.id
       FROM tenants t

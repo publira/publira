@@ -24,14 +24,27 @@ export const formatPageDateTime = (value: string): string => {
   return formatter.format(date);
 };
 
+/**
+ * Canonical page slug for create/update forms and display.
+ * Collapses leading/trailing/repeated `/` so `/privacy` and `//privacy/`
+ * both become `/privacy`. Multi-segment paths become `/a/b`.
+ */
 export const normalizePageSlugInput = (value: string): string => {
-  const trimmed = value.trim();
+  let normalized = value.trim();
 
-  if (!trimmed || trimmed === "/") {
+  if (!normalized || normalized === "/") {
     return "";
   }
 
-  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  while (normalized.includes("//")) {
+    normalized = normalized.replaceAll("//", "/");
+  }
+  normalized = normalized.replaceAll(/^\/+|\/+$/gu, "");
+  if (!normalized) {
+    return "";
+  }
+
+  return `/${normalized}`;
 };
 
 export const formatPagePath = (slug: string): string => {

@@ -17,6 +17,12 @@ export const tenantAuthorsTag = (tenantId: string) =>
 export const tenantSiteTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:site`;
 
+export const tenantPagesTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:pages`;
+
+export const tenantPageTag = (tenantId: string, pageId: string) =>
+  `tenant:${normalized(tenantId)}:pages:${pageId.trim()}`;
+
 export const applyCacheTag = (tag: string) => {
   try {
     cacheTag(tag);
