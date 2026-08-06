@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   traefik:
     image: traefik:v3.7.10@sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
@@ -26,8 +24,12 @@ services:
       dockerfile: Dockerfile
     command: sleep infinity
     volumes:
+      # Keep Codex login, configuration, rules, and local state across rebuilds.
+      - codex-data:/home/vscode/.codex
       - gh-config:/home/vscode/.config/gh
       - grok-config:/home/vscode/.grok
+      # Reuse downloaded pnpm packages after rebuilding the container.
+      - pnpm-store:/home/vscode/.local/share/pnpm/store
       - ../..:/workspaces:cached
     depends_on:
       - db
@@ -95,6 +97,8 @@ services:
       - "8025:8025"
 
 volumes:
+  codex-data:
   gh-config:
   grok-config:
+  pnpm-store:
   postgres-data:

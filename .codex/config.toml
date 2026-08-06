@@ -1,0 +1,11 @@
+# Keep routine repository work autonomous while retaining approval gates for
+# writes outside the workspace and other elevated operations.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+# Package installation, documentation lookup, and integration tests commonly
+# require outbound access in this isolated development container.
+network_access = true
+# pnpm's content-addressable cache is a persistent Dev Container volume.
+writable_roots = ["/home/vscode/.local/share/pnpm/store"]

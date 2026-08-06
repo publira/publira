@@ -1,0 +1,29 @@
+# Safe, repository-defined quality commands may run without an approval prompt.
+prefix_rule(
+    pattern = ["pnpm", ["preflight", "check", "typecheck", "typegen", "test"]],
+    decision = "allow",
+    justification = "Allow Publira's checked-in quality scripts.",
+    match = [
+        "pnpm preflight",
+        "pnpm check",
+        "pnpm typecheck",
+        "pnpm typegen",
+        "pnpm test",
+        "pnpm test --filter web-admin",
+    ],
+    not_match = [
+        "pnpm fix",
+        "pnpm install",
+        "pnpm dev",
+    ],
+)
+
+# Formatting is intentionally separate because it modifies workspace files.
+# It remains bounded by the workspace-write sandbox.
+prefix_rule(
+    pattern = ["pnpm", "fix"],
+    decision = "allow",
+    justification = "Allow Publira's checked-in formatter within the workspace.",
+    match = ["pnpm fix"],
+    not_match = ["pnpm install"],
+)
