@@ -16,6 +16,7 @@ const PUBLIC_PATHS = new Set([
   "/login",
   "/logout",
   "/healthz",
+  "/theme.css",
 ]);
 
 const serviceUnavailableResponse = () =>

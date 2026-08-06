@@ -181,3 +181,75 @@ func LabelWithImage(
 	}
 	return label
 }
+
+func TenantThemeFromGetRow(row dbmodels.GetTenantThemeByTenantIDRow) *publirattypesv1.TenantTheme {
+	theme := &publirattypesv1.TenantTheme{
+		PrimaryColor:               row.PrimaryColor,
+		SecondaryColor:             row.SecondaryColor,
+		AccentColor:                row.AccentColor,
+		BackgroundColor:            row.BackgroundColor,
+		ForegroundColor:            row.ForegroundColor,
+		SurfaceColor:               row.SurfaceColor,
+		SurfaceForegroundColor:     row.SurfaceForegroundColor,
+		CardColor:                  row.CardColor,
+		CardForegroundColor:        row.CardForegroundColor,
+		PopoverColor:               row.PopoverColor,
+		PopoverForegroundColor:     row.PopoverForegroundColor,
+		PrimaryForegroundColor:     row.PrimaryForegroundColor,
+		SecondaryForegroundColor:   row.SecondaryForegroundColor,
+		AccentForegroundColor:      row.AccentForegroundColor,
+		MutedColor:                 row.MutedColor,
+		MutedForegroundColor:       row.MutedForegroundColor,
+		BorderColor:                row.BorderColor,
+		InputColor:                 row.InputColor,
+		RingColor:                  row.RingColor,
+		SuccessColor:               row.SuccessColor,
+		SuccessForegroundColor:     row.SuccessForegroundColor,
+		WarningColor:               row.WarningColor,
+		WarningForegroundColor:     row.WarningForegroundColor,
+		DestructiveColor:           row.DestructiveColor,
+		DestructiveForegroundColor: row.DestructiveForegroundColor,
+		InfoColor:                  row.InfoColor,
+		InfoForegroundColor:        row.InfoForegroundColor,
+	}
+	if row.LogoUrl.Valid {
+		theme.LogoUrl = row.LogoUrl.String
+	}
+	return theme
+}
+
+func TenantThemeFromModel(model dbmodels.TenantTheme) *publirattypesv1.TenantTheme {
+	theme := &publirattypesv1.TenantTheme{
+		PrimaryColor:               model.PrimaryColor,
+		SecondaryColor:             model.SecondaryColor,
+		AccentColor:                model.AccentColor,
+		BackgroundColor:            model.BackgroundColor,
+		ForegroundColor:            model.ForegroundColor,
+		SurfaceColor:               model.SurfaceColor,
+		SurfaceForegroundColor:     model.SurfaceForegroundColor,
+		CardColor:                  model.CardColor,
+		CardForegroundColor:        model.CardForegroundColor,
+		PopoverColor:               model.PopoverColor,
+		PopoverForegroundColor:     model.PopoverForegroundColor,
+		PrimaryForegroundColor:     model.PrimaryForegroundColor,
+		SecondaryForegroundColor:   model.SecondaryForegroundColor,
+		AccentForegroundColor:      model.AccentForegroundColor,
+		MutedColor:                 model.MutedColor,
+		MutedForegroundColor:       model.MutedForegroundColor,
+		BorderColor:                model.BorderColor,
+		InputColor:                 model.InputColor,
+		RingColor:                  model.RingColor,
+		SuccessColor:               model.SuccessColor,
+		SuccessForegroundColor:     model.SuccessForegroundColor,
+		WarningColor:               model.WarningColor,
+		WarningForegroundColor:     model.WarningForegroundColor,
+		DestructiveColor:           model.DestructiveColor,
+		DestructiveForegroundColor: model.DestructiveForegroundColor,
+		InfoColor:                  model.InfoColor,
+		InfoForegroundColor:        model.InfoForegroundColor,
+	}
+	if model.LogoUrl.Valid {
+		theme.LogoUrl = model.LogoUrl.String
+	}
+	return theme
+}

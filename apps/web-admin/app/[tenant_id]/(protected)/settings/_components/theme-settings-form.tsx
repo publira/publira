@@ -16,9 +16,10 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
+import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { useActionState, useCallback, useId, useState } from "react";
 
-import type { TenantThemeSettings } from "#lib/theme-settings";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { ThemeSettingsActionState } from "../settings-types";
@@ -28,7 +29,7 @@ interface ThemeSettingsFormProps {
     prevState: ThemeSettingsActionState,
     formData: FormData
   ) => Promise<ThemeSettingsActionState>;
-  initialTheme: TenantThemeSettings;
+  initialTheme: TenantThemeColors;
 }
 
 interface ColorSwatchInputProps {
@@ -77,7 +78,7 @@ const ColorSwatchInput = ({
   );
 };
 
-type ColorKey = keyof TenantThemeSettings;
+type ColorKey = keyof TenantThemeColors;
 
 interface ColorFieldConfig {
   key: ColorKey;
@@ -293,13 +294,24 @@ const colorGroups: {
   },
 ];
 
+const applyThemePreview = (theme: TenantThemeColors) => {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const vars = toPubliraThemeCssVariables(theme);
+  const root = document.documentElement;
+  for (const [property, value] of Object.entries(vars)) {
+    root.style.setProperty(property, value);
+  }
+};
+
 export const ThemeSettingsForm = ({
   action,
   initialTheme,
 }: ThemeSettingsFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const [colors, setColors] = useState<TenantThemeSettings>(initialTheme);
+  const [colors, setColors] = useState<TenantThemeColors>(initialTheme);
   const [prevInitialTheme, setPrevInitialTheme] = useState(initialTheme);
   const [prevState, setPrevState] = useState(state);
 
@@ -317,7 +329,12 @@ export const ThemeSettingsForm = ({
 
   const createHandler = useCallback(
     (key: ColorKey) => (event: React.ChangeEvent<HTMLInputElement>) => {
-      setColors((prev) => ({ ...prev, [key]: event.target.value }));
+      const nextValue = event.target.value;
+      setColors((prev) => {
+        const next = { ...prev, [key]: nextValue };
+        applyThemePreview(next);
+        return next;
+      });
     },
     []
   );

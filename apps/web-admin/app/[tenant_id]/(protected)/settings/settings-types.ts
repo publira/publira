@@ -1,5 +1,6 @@
+import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+
 import type { TenantSmtpSettings } from "#lib/email-settings";
-import type { TenantThemeSettings } from "#lib/theme-settings";
 
 export type SiteSettingsActionState =
   | {
@@ -49,7 +50,7 @@ export type ThemeSettingsActionState =
   | {
       ok: true;
       message: string;
-      theme: TenantThemeSettings;
+      theme: TenantThemeColors;
     }
   | {
       ok: false;

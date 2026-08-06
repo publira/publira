@@ -3,89 +3,19 @@ package adminapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
 	"connectrpc.com/connect"
 
+	"github.com/publira/publira/server/api/protomapper"
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
 var hexColorCodePattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
-
-func tenantThemeFromGetRow(row dbmodels.GetTenantThemeByTenantIDRow) *publirattypesv1.TenantTheme {
-	theme := &publirattypesv1.TenantTheme{
-		PrimaryColor:               row.PrimaryColor,
-		SecondaryColor:             row.SecondaryColor,
-		AccentColor:                row.AccentColor,
-		BackgroundColor:            row.BackgroundColor,
-		ForegroundColor:            row.ForegroundColor,
-		SurfaceColor:               row.SurfaceColor,
-		SurfaceForegroundColor:     row.SurfaceForegroundColor,
-		CardColor:                  row.CardColor,
-		CardForegroundColor:        row.CardForegroundColor,
-		PopoverColor:               row.PopoverColor,
-		PopoverForegroundColor:     row.PopoverForegroundColor,
-		PrimaryForegroundColor:     row.PrimaryForegroundColor,
-		SecondaryForegroundColor:   row.SecondaryForegroundColor,
-		AccentForegroundColor:      row.AccentForegroundColor,
-		MutedColor:                 row.MutedColor,
-		MutedForegroundColor:       row.MutedForegroundColor,
-		BorderColor:                row.BorderColor,
-		InputColor:                 row.InputColor,
-		RingColor:                  row.RingColor,
-		SuccessColor:               row.SuccessColor,
-		SuccessForegroundColor:     row.SuccessForegroundColor,
-		WarningColor:               row.WarningColor,
-		WarningForegroundColor:     row.WarningForegroundColor,
-		DestructiveColor:           row.DestructiveColor,
-		DestructiveForegroundColor: row.DestructiveForegroundColor,
-		InfoColor:                  row.InfoColor,
-		InfoForegroundColor:        row.InfoForegroundColor,
-	}
-	if row.LogoUrl.Valid {
-		theme.LogoUrl = row.LogoUrl.String
-	}
-	return theme
-}
-
-func tenantThemeFromModel(model dbmodels.TenantTheme) *publirattypesv1.TenantTheme {
-	theme := &publirattypesv1.TenantTheme{
-		PrimaryColor:               model.PrimaryColor,
-		SecondaryColor:             model.SecondaryColor,
-		AccentColor:                model.AccentColor,
-		BackgroundColor:            model.BackgroundColor,
-		ForegroundColor:            model.ForegroundColor,
-		SurfaceColor:               model.SurfaceColor,
-		SurfaceForegroundColor:     model.SurfaceForegroundColor,
-		CardColor:                  model.CardColor,
-		CardForegroundColor:        model.CardForegroundColor,
-		PopoverColor:               model.PopoverColor,
-		PopoverForegroundColor:     model.PopoverForegroundColor,
-		PrimaryForegroundColor:     model.PrimaryForegroundColor,
-		SecondaryForegroundColor:   model.SecondaryForegroundColor,
-		AccentForegroundColor:      model.AccentForegroundColor,
-		MutedColor:                 model.MutedColor,
-		MutedForegroundColor:       model.MutedForegroundColor,
-		BorderColor:                model.BorderColor,
-		InputColor:                 model.InputColor,
-		RingColor:                  model.RingColor,
-		SuccessColor:               model.SuccessColor,
-		SuccessForegroundColor:     model.SuccessForegroundColor,
-		WarningColor:               model.WarningColor,
-		WarningForegroundColor:     model.WarningForegroundColor,
-		DestructiveColor:           model.DestructiveColor,
-		DestructiveForegroundColor: model.DestructiveForegroundColor,
-		InfoColor:                  model.InfoColor,
-		InfoForegroundColor:        model.InfoForegroundColor,
-	}
-	if model.LogoUrl.Valid {
-		theme.LogoUrl = model.LogoUrl.String
-	}
-	return theme
-}
 
 func validateHexColorCode(value string, fieldName string) (string, error) {
 	trimmed := strings.TrimSpace(value)
@@ -187,8 +117,15 @@ func (s *adminServer) GetTenantTheme(
 	}
 
 	return connect.NewResponse(&publiraadminv1.GetTenantThemeResponse{
-		Theme: tenantThemeFromGetRow(theme),
+		Theme: protomapper.TenantThemeFromGetRow(theme),
 	}), nil
+}
+
+func themeRevalidateTags(tenantID string) []string {
+	normalizedTenantID := strings.TrimSpace(tenantID)
+	return []string{
+		fmt.Sprintf("tenant:%s:site", normalizedTenantID),
+	}
 }
 
 func (s *adminServer) UpsertTenantTheme(
@@ -217,7 +154,13 @@ func (s *adminServer) UpsertTenantTheme(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, themeRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after theme upsert", "tenant_public_id", tenant.PublicID, "error", err)
+		}
+	}
+
 	return connect.NewResponse(&publiraadminv1.UpsertTenantThemeResponse{
-		Theme: tenantThemeFromModel(updated),
+		Theme: protomapper.TenantThemeFromModel(updated),
 	}), nil
 }
