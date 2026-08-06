@@ -8,8 +8,7 @@
       "version": "29.3.1"
     },
     "ghcr.io/devcontainers/features/node:2.1.0": {
-      "version": "24.19.0",
-      "pnpmVersion": "11.18.0"
+      "version": "24.19.0"
     },
     "ghcr.io/devcontainers/features/github-cli:1.1.0": {
       "version": "2.97.0"

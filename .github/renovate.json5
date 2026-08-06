@@ -1,5 +1,4 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["github>publira/.github//renovate.json5"],
-  ignoreDeps: ["dev.flutter.flutter-plugin-loader"],
 }
