@@ -36,9 +36,13 @@ const LabelsListSkeleton = () => (
   </div>
 );
 
+const TenantSiteLabel = async () => {
+  const tenantId = await getTenantId();
+  return getTenantSiteLabel(tenantId);
+};
+
 const LabelsListData = async () => {
   const tenantId = await getTenantId();
-
   const labels = await listPublishedLabels(tenantId);
 
   if (labels.length === 0) {
@@ -61,7 +65,7 @@ const LabelsListData = async () => {
             <div className="aspect-video overflow-hidden bg-muted">
               <EyeCatchPicture
                 alt={label.name}
-                imgClassName="h-full w-full object-cover"
+                imgClassName="size-full object-cover"
                 variants={label.eyeCatchImageVariants}
               />
             </div>
@@ -91,23 +95,27 @@ const LabelsListData = async () => {
   );
 };
 
-const LabelsPage = async () => {
-  const tenantId = await getTenantId();
-
-  const siteLabel = await getTenantSiteLabel(tenantId);
-
-  return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <h1 className="mb-2 font-serif text-4xl font-bold">レーベル一覧</h1>
-      <p className="mb-8 text-muted-foreground">
-        {siteLabel} のレーベルをご紹介します
-      </p>
-
-      <Suspense fallback={<LabelsListSkeleton />}>
-        <LabelsListData />
+const LabelsPage = () => (
+  <main className="mx-auto max-w-6xl px-6 py-12">
+    <h1 className="mb-2 font-serif text-4xl font-bold">レーベル一覧</h1>
+    <p className="mb-8 text-muted-foreground">
+      <Suspense
+        fallback={
+          <span
+            aria-hidden
+            className="inline-block h-4 w-16 align-middle animate-pulse rounded bg-muted"
+          />
+        }
+      >
+        <TenantSiteLabel />
       </Suspense>
-    </main>
-  );
-};
+      のレーベルをご紹介します
+    </p>
+
+    <Suspense fallback={<LabelsListSkeleton />}>
+      <LabelsListData />
+    </Suspense>
+  </main>
+);
 
 export default LabelsPage;
