@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     },
   },
   output: "standalone",
+  partialPrefetching: true,
 };
 
 export default nextConfig;

@@ -3,8 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   experimental: {
-    // Explicit; also implied by cacheComponents. Enables `next/root-params`.
-    rootParams: true,
     serverActions: {
       bodySizeLimit: "10mb",
     },
@@ -27,6 +25,7 @@ const nextConfig: NextConfig = {
     },
   },
   output: "standalone",
+  partialPrefetching: true,
 };
 
 export default nextConfig;
