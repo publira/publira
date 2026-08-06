@@ -2,12 +2,19 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  cacheHandler: import.meta.resolve("@publira/next-cache-handlers/incremental"),
+  cacheHandlers: {
+    default: import.meta.resolve("@publira/next-cache-handlers/use-cache"),
+    remote: import.meta.resolve("@publira/next-cache-handlers/use-cache"),
+  },
+  cacheMaxMemorySize: 0,
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
     },
   },
   images: {
+    customCacheHandler: true,
     remotePatterns: [
       {
         hostname: "**",

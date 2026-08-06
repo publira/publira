@@ -34,6 +34,10 @@ services:
     depends_on:
       - db
       - mailpit
+      - redis
+    environment:
+      # Shared Next.js server cache (cacheHandler / cacheHandlers)
+      REDIS_URL: redis://redis:6379
     labels:
       # web-host: テナント公開サイト (port 3000)
       - "traefik.enable=true"
@@ -95,6 +99,20 @@ services:
     restart: unless-stopped
     ports:
       - "8025:8025"
+
+  # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
+  # Valkey is Redis-protocol compatible; keep service name / REDIS_URL as redis://...
+  redis:
+    image: valkey/valkey:8.1.4-alpine@sha256:e706d1213aaba6896c162bb6a3a9e1894e1a435f28f8f856d14fab2e10aa098b
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   codex-data:
