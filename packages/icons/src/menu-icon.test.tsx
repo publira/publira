@@ -7,11 +7,11 @@ import { MenuIcon } from "./menu-icon";
 
 describe("MenuIcon", () => {
   it("SVG として描画される", () => {
-    const { container } = render(<MenuIcon aria-label="menu-icon" />);
+    const { container } = render(<MenuIcon aria-label="Menu icon" />);
 
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("aria-label")).toBe("menu-icon");
+    expect(svg?.getAttribute("aria-label")).toBe("Menu icon");
   });
 
   it("size/className/strokeWidth を反映する", () => {

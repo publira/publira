@@ -2,14 +2,14 @@
 
 import { ActionForm } from "@publira/ui-components/action-form";
 import type { FormActionState } from "@publira/ui-components/action-form";
-import * as React from "react";
+import type { ReactNode } from "react";
 
 interface TenantUpdateFormProps {
   action: (
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export const TenantUpdateForm = ({

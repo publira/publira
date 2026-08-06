@@ -7,11 +7,11 @@ import { CloseIcon } from "./close-icon";
 
 describe("CloseIcon", () => {
   it("SVG として描画される", () => {
-    const { container } = render(<CloseIcon aria-label="close-icon" />);
+    const { container } = render(<CloseIcon aria-label="Close icon" />);
 
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("aria-label")).toBe("close-icon");
+    expect(svg?.getAttribute("aria-label")).toBe("Close icon");
   });
 
   it("size/className/strokeWidth を反映する", () => {

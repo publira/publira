@@ -11,8 +11,8 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useRouter } from "next/navigation";
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
+import type { ChangeEvent } from "react";
 
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -53,7 +53,6 @@ const getCardDescription = (isUpdate: boolean): string => {
 
 export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
   const tenantId = useTenantId();
-  const router = useRouter();
   const [state, formAction, isPending] = useActionState(action, null);
   const initialName = initialLabel?.name ?? "";
   const [name, setName] = useState(initialName);
@@ -66,14 +65,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
     setName(initialName);
   }
 
-  useEffect(() => {
-    if (state?.ok && state.mode === "create") {
-      router.push(`/labels/${state.label.publicId}`);
-    }
-  }, [router, state]);
-
+  // Successful create redirects from the server action (see createLabelAction).
   const handleNameChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       setName(event.target.value);
     },
     []

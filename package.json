@@ -16,8 +16,11 @@
     "typegen": "turbo run typegen"
   },
   "devDependencies": {
+    "eslint-plugin-github": "6.1.2",
+    "eslint-plugin-sonarjs": "4.2.0",
     "oxfmt": "0.62.0",
     "oxlint": "1.77.0",
+    "oxlint-plugin-react-doctor": "0.9.5",
     "turbo": "2.10.8",
     "typescript": "catalog:",
     "ultracite": "7.10.0"

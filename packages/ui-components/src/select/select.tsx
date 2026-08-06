@@ -2,10 +2,10 @@
 
 import { Select as BaseSelect } from "@base-ui/react/select";
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ReactNode } from "react";
 
 interface SelectItem {
-  label: React.ReactNode;
+  label: ReactNode;
   value: string;
 }
 
@@ -15,7 +15,7 @@ export type SelectProps = Omit<
 > & {
   className?: string;
   items: readonly SelectItem[];
-  placeholder?: React.ReactNode;
+  placeholder?: ReactNode;
 };
 
 export const Select = ({

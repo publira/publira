@@ -407,16 +407,17 @@ const PaginationControls = ({
 );
 
 const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
-  const tenantItems = await listPlatformTenantFilterOptions();
-
-  const result = await listPlatformEndUsers({
-    createdAfter: filters.createdFromFilter || undefined,
-    createdBefore: endOfDayRfc3339(filters.createdToFilter),
-    limit: filters.limit,
-    offset: filters.offset,
-    status: filters.statusFilter || undefined,
-    tenantId: filters.tenantIdFilter || undefined,
-  });
+  const [tenantItems, result] = await Promise.all([
+    listPlatformTenantFilterOptions(),
+    listPlatformEndUsers({
+      createdAfter: filters.createdFromFilter || undefined,
+      createdBefore: endOfDayRfc3339(filters.createdToFilter),
+      limit: filters.limit,
+      offset: filters.offset,
+      status: filters.statusFilter || undefined,
+      tenantId: filters.tenantIdFilter || undefined,
+    }),
+  ]);
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(

@@ -170,7 +170,7 @@ const applyTagTimestamps = (
  */
 export class RedisIncrementalCacheHandler {
   private readonly config: CacheHandlerConfig;
-  private readonly revalidatedTags: string[];
+  private readonly revalidatedTags: Set<string>;
   /** Per-request tag timestamp mirror; refreshed in revalidateTag / get as needed. */
   private readonly localTagTimestamps = new Map<string, number>();
 
@@ -179,7 +179,9 @@ export class RedisIncrementalCacheHandler {
     configOverrides: Partial<CacheHandlerConfig> = {}
   ) {
     this.config = resolveCacheHandlerConfig(configOverrides);
-    this.revalidatedTags = ctx.revalidatedTags ?? [];
+    this.revalidatedTags = ctx.revalidatedTags
+      ? new Set(ctx.revalidatedTags)
+      : new Set();
   }
 
   resetRequestCache(): void {
@@ -211,7 +213,7 @@ export class RedisIncrementalCacheHandler {
       ]),
     ];
 
-    if (combined.some((tag) => this.revalidatedTags.includes(tag))) {
+    if (combined.some((tag) => this.revalidatedTags.has(tag))) {
       return null;
     }
 

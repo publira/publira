@@ -25,8 +25,8 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import * as React from "react";
-import { useActionState } from "react";
+import type { ChangeEvent } from "react";
+import { useActionState, useCallback, useId, useState } from "react";
 
 import {
   SECRET_UPDATE_MODE_REPLACE,
@@ -66,7 +66,7 @@ export const EmailSettingsForm = ({
   saveAction,
   testAction,
 }: EmailSettingsFormProps) => {
-  const formId = React.useId();
+  const formId = useId();
   const [saveState, saveFormAction, isSaving] = useActionState(
     saveAction,
     null
@@ -75,15 +75,15 @@ export const EmailSettingsForm = ({
     testAction,
     null
   );
-  const [hasStoredPassword, setHasStoredPassword] = React.useState(
+  const [hasStoredPassword, setHasStoredPassword] = useState(
     initialSettings.hasPassword
   );
-  const [isPasswordEditing, setIsPasswordEditing] = React.useState(
+  const [isPasswordEditing, setIsPasswordEditing] = useState(
     !initialSettings.hasPassword
   );
-  const [sendToSelf, setSendToSelf] = React.useState(true);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [prevSaveState, setPrevSaveState] = React.useState(saveState);
+  const [sendToSelf, setSendToSelf] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [prevSaveState, setPrevSaveState] = useState(saveState);
 
   if (saveState !== prevSaveState) {
     setPrevSaveState(saveState);
@@ -93,16 +93,16 @@ export const EmailSettingsForm = ({
     }
   }
 
-  const handleStartPasswordEdit = React.useCallback(() => {
+  const handleStartPasswordEdit = useCallback(() => {
     setIsPasswordEditing(true);
   }, []);
 
-  const handleCancelPasswordEdit = React.useCallback(() => {
+  const handleCancelPasswordEdit = useCallback(() => {
     setIsPasswordEditing(false);
   }, []);
 
-  const handleSendToSelfChange = React.useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSendToSelfChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
       setSendToSelf(event.target.checked);
     },
     []

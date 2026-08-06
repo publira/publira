@@ -126,6 +126,7 @@ const AuthorsListData = async ({
             ) : (
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-primary">
                 <svg
+                  aria-hidden="true"
                   className="h-6 w-6"
                   fill="none"
                   stroke="currentColor"

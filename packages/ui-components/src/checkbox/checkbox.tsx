@@ -2,7 +2,6 @@
 
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
 import { cn } from "@publira/utils";
-import * as React from "react";
 
 export type CheckboxProps = BaseCheckbox.Root.Props;
 

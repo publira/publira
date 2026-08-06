@@ -34,8 +34,10 @@ const EpisodeDetailSkeleton = () => (
 const EpisodeDetailData = async (
   props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
 ) => {
-  const { episode_id, series_id } = await props.params;
-  const tenantId = await getTenantId();
+  const [{ episode_id, series_id }, tenantId] = await Promise.all([
+    props.params,
+    getTenantId(),
+  ]);
   guardPlaceholders({ episode_id, series_id });
 
   let result;

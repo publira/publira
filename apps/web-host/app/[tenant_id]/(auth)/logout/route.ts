@@ -43,4 +43,6 @@ export const POST = async (
   return response;
 };
 
+// Mirrors POST for direct navigation / form GET fallbacks.
+// oxlint-disable-next-line react-doctor/nextjs-no-side-effect-in-get-handler
 export const GET = POST;

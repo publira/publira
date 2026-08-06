@@ -7,11 +7,11 @@ import { DashboardIcon } from "./dashboard-icon";
 
 describe("DashboardIcon", () => {
   it("SVG として描画される", () => {
-    const { container } = render(<DashboardIcon aria-label="dashboard-icon" />);
+    const { container } = render(<DashboardIcon aria-label="Dashboard icon" />);
 
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("aria-label")).toBe("dashboard-icon");
+    expect(svg?.getAttribute("aria-label")).toBe("Dashboard icon");
   });
 
   it("size/className/strokeWidth を反映する", () => {

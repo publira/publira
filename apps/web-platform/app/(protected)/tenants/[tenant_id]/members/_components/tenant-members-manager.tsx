@@ -36,8 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import * as React from "react";
-import { useActionState } from "react";
+import { useActionState, useCallback, useState, useTransition } from "react";
 
 import {
   getTenantRoleLabel,
@@ -161,9 +160,9 @@ const TenantMemberDeleteButton = ({
   tenantId,
   userPublicId,
 }: TenantMemberDeleteButtonProps) => {
-  const [isPending, startTransition] = React.useTransition();
+  const [isPending, startTransition] = useTransition();
 
-  const handleDelete = React.useCallback(() => {
+  const handleDelete = useCallback(() => {
     startTransition(async () => {
       const formData = new FormData();
       formData.set("tenant_id", tenantId);
@@ -200,12 +199,12 @@ const TenantMemberRoleDialog = ({
   tenantId,
   updateRoleAction,
 }: TenantMemberRoleDialogProps) => {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const [updateState, roleFormAction, isRolePending] = useActionState(
     updateRoleAction,
     null
   );
-  const [prevUpdateState, setPrevUpdateState] = React.useState(updateState);
+  const [prevUpdateState, setPrevUpdateState] = useState(updateState);
 
   if (updateState !== prevUpdateState) {
     setPrevUpdateState(updateState);
@@ -345,11 +344,11 @@ const TenantInvitationRow = ({
 }: TenantInvitationRowProps) => {
   const canOperate = invitation.status === "pending";
 
-  const handleResendClick = React.useCallback(() => {
+  const handleResendClick = useCallback(() => {
     onResend(invitation.id);
   }, [invitation.id, onResend]);
 
-  const handleCancelAction = React.useCallback(() => {
+  const handleCancelAction = useCallback(() => {
     onCancel(invitation.id);
   }, [invitation.id, onCancel]);
 
@@ -417,13 +416,13 @@ export const TenantMembersManager = ({
     null
   );
   const [invitationActionState, setInvitationActionState] =
-    React.useState<FormActionState>(null);
-  const [deleteState, setDeleteState] = React.useState<FormActionState>(null);
+    useState<FormActionState>(null);
+  const [deleteState, setDeleteState] = useState<FormActionState>(null);
 
-  const [isResendPending, startResendTransition] = React.useTransition();
-  const [isCancelPending, startCancelTransition] = React.useTransition();
+  const [isResendPending, startResendTransition] = useTransition();
+  const [isCancelPending, startCancelTransition] = useTransition();
 
-  const handleResend = React.useCallback(
+  const handleResend = useCallback(
     (invitationId: string) => {
       startResendTransition(async () => {
         const formData = new FormData();
@@ -436,7 +435,7 @@ export const TenantMembersManager = ({
     [resendInvitationAction, tenantId]
   );
 
-  const handleCancel = React.useCallback(
+  const handleCancel = useCallback(
     (invitationId: string) => {
       startCancelTransition(async () => {
         const formData = new FormData();

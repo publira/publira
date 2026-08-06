@@ -36,8 +36,7 @@ export const generateMetadata = async ({
 }: {
   params: Promise<{ author_id: string; tenant_id: string }>;
 }): Promise<Metadata> => {
-  const { author_id } = await params;
-  const tenantId = await getTenantId();
+  const [{ author_id }, tenantId] = await Promise.all([params, getTenantId()]);
 
   guardPlaceholders({ author_id });
 
@@ -63,8 +62,7 @@ export const generateMetadata = async ({
 const Page = async ({
   params,
 }: PageProps<"/[tenant_id]/authors/[author_id]">) => {
-  const { author_id } = await params;
-  const tenantId = await getTenantId();
+  const [{ author_id }, tenantId] = await Promise.all([params, getTenantId()]);
 
   guardPlaceholders({ author_id });
 

@@ -3,7 +3,7 @@
 import { cn } from "@publira/utils";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
 export const badgeVariants = cva(
   "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium leading-5 whitespace-normal",
@@ -111,8 +111,7 @@ type BadgeVariantOptions = VariantProps<typeof badgeVariants>;
 export type BadgeTone = NonNullable<BadgeVariantOptions["tone"]>;
 export type BadgeVariant = NonNullable<BadgeVariantOptions["variant"]>;
 
-export type BadgeProps = React.ComponentPropsWithoutRef<"span"> &
-  BadgeVariantOptions;
+export type BadgeProps = ComponentPropsWithoutRef<"span"> & BadgeVariantOptions;
 
 export const Badge = ({ className, tone, variant, ...props }: BadgeProps) => (
   <span

@@ -217,6 +217,23 @@ const AuditLogsFilters = ({
   </Form>
 );
 
+const AuditLogsPageControl = ({
+  href,
+  label,
+}: {
+  href?: string;
+  label: string;
+}) =>
+  href ? (
+    <LinkButton render={<Link href={href} />} size="sm" variant="outline">
+      {label}
+    </LinkButton>
+  ) : (
+    <Button disabled size="sm" variant="outline">
+      {label}
+    </Button>
+  );
+
 const AuditLogsPagination = ({
   actionFilter,
   actorFilter,
@@ -233,56 +250,84 @@ const AuditLogsPagination = ({
   nextOffset: number;
   prevOffset: number;
   summaryText: string;
-}) => (
-  <div className="flex items-center justify-between gap-3">
-    <p className="text-xs text-muted-foreground">{summaryText}</p>
-    <div className="flex items-center gap-2">
-      {hasPrev ? (
-        <LinkButton
-          render={
-            <Link
-              href={buildAuditLogsPath({
-                action: actionFilter || undefined,
-                actorUserPublicId: actorFilter || undefined,
-                offset: prevOffset,
-              })}
-            />
-          }
-          size="sm"
-          variant="outline"
-        >
-          前へ
-        </LinkButton>
-      ) : (
-        <Button disabled size="sm" variant="outline">
-          前へ
-        </Button>
-      )}
+}) => {
+  const filterParams = {
+    action: actionFilter || undefined,
+    actorUserPublicId: actorFilter || undefined,
+  };
 
-      {hasNext ? (
-        <LinkButton
-          render={
-            <Link
-              href={buildAuditLogsPath({
-                action: actionFilter || undefined,
-                actorUserPublicId: actorFilter || undefined,
-                offset: nextOffset,
-              })}
-            />
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-xs text-muted-foreground">{summaryText}</p>
+      <div className="flex items-center gap-2">
+        <AuditLogsPageControl
+          href={
+            hasPrev
+              ? buildAuditLogsPath({ ...filterParams, offset: prevOffset })
+              : undefined
           }
-          size="sm"
-          variant="outline"
-        >
-          次へ
-        </LinkButton>
-      ) : (
-        <Button disabled size="sm" variant="outline">
-          次へ
-        </Button>
-      )}
+          label="前へ"
+        />
+        <AuditLogsPageControl
+          href={
+            hasNext
+              ? buildAuditLogsPath({ ...filterParams, offset: nextOffset })
+              : undefined
+          }
+          label="次へ"
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
+  if (log.targetPublicId && isOperatorTargetType(log.targetType)) {
+    return (
+      <Link
+        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        href={`/operators/${log.targetPublicId}`}
+      >
+        {log.targetName || log.targetPublicId}
+      </Link>
+    );
+  }
+
+  if (log.targetPublicId && isUserTargetType(log.targetType)) {
+    return (
+      <Link
+        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        href={`/users/${log.targetPublicId}`}
+      >
+        {log.targetName || log.targetPublicId}
+      </Link>
+    );
+  }
+
+  if (log.tenantId) {
+    return (
+      <Link
+        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        href={`/tenants/${log.tenantId}`}
+      >
+        {log.targetName || log.tenantName || log.tenantId}
+      </Link>
+    );
+  }
+
+  if (log.targetPublicId && isTenantTargetType(log.targetType)) {
+    return (
+      <Link
+        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        href={`/tenants/${log.targetPublicId}`}
+      >
+        {log.targetName || log.targetPublicId}
+      </Link>
+    );
+  }
+
+  return <p>{buildTargetLabel(log.targetType, log.targetId)}</p>;
+};
 
 const AuditLogsTableBody = ({
   hasFilter,
@@ -306,54 +351,6 @@ const AuditLogsTableBody = ({
       </TableBody>
     );
   }
-
-  const renderTarget = (log: PlatformAuditLogSummary) => {
-    if (log.targetPublicId && isOperatorTargetType(log.targetType)) {
-      return (
-        <Link
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          href={`/operators/${log.targetPublicId}`}
-        >
-          {log.targetName || log.targetPublicId}
-        </Link>
-      );
-    }
-
-    if (log.targetPublicId && isUserTargetType(log.targetType)) {
-      return (
-        <Link
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          href={`/users/${log.targetPublicId}`}
-        >
-          {log.targetName || log.targetPublicId}
-        </Link>
-      );
-    }
-
-    if (log.tenantId) {
-      return (
-        <Link
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          href={`/tenants/${log.tenantId}`}
-        >
-          {log.targetName || log.tenantName || log.tenantId}
-        </Link>
-      );
-    }
-
-    if (log.targetPublicId && isTenantTargetType(log.targetType)) {
-      return (
-        <Link
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          href={`/tenants/${log.targetPublicId}`}
-        >
-          {log.targetName || log.targetPublicId}
-        </Link>
-      );
-    }
-
-    return <p>{buildTargetLabel(log.targetType, log.targetId)}</p>;
-  };
 
   return (
     <TableBody>
@@ -399,7 +396,7 @@ const AuditLogsTableBody = ({
           </TableCell>
           <TableCell>
             <div className="grid gap-1">
-              {renderTarget(log)}
+              {renderAuditLogTarget(log)}
               {log.reason ? (
                 <p className="text-xs text-muted-foreground">{log.reason}</p>
               ) : null}

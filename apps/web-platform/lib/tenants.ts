@@ -244,9 +244,12 @@ export const createPlatformTenant = async (
   const name = input.name.trim();
   const domain = input.domain.trim();
   const adminDomain = input.adminDomain?.trim() ?? "";
-  const initialAdminEmails = (input.initialAdminEmails ?? [])
-    .map((email) => email.trim())
-    .filter((email) => email.length > 0);
+  const initialAdminEmails = (input.initialAdminEmails ?? []).flatMap(
+    (email) => {
+      const trimmed = email.trim();
+      return trimmed.length > 0 ? [trimmed] : [];
+    }
+  );
 
   try {
     const response = await apiClient.tenants.createTenant(

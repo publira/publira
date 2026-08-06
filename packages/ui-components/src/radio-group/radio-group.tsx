@@ -5,12 +5,12 @@ import {
   RadioGroup as BaseRadioGroup,
 } from "@base-ui/react";
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ReactNode } from "react";
 
 interface RadioGroupItem {
-  description?: React.ReactNode;
+  description?: ReactNode;
   disabled?: boolean;
-  label: React.ReactNode;
+  label: ReactNode;
   value: string;
 }
 

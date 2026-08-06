@@ -3,8 +3,8 @@
 import type { ReactNode } from "react";
 import { useActionState } from "react";
 
-import { Button } from "../button";
-import type { ButtonProps } from "../button";
+import { Button } from "../button/button";
+import type { ButtonProps } from "../button/button";
 import { FormMessage } from "../form-message";
 
 /**

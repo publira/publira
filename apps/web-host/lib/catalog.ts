@@ -35,8 +35,8 @@ const toEyeCatchImageVariants = (
       }[]
     | undefined
 ): EyeCatchImageVariant[] | undefined => {
-  const mapped = (variants ?? [])
-    .map((variant) => ({
+  const mapped = (variants ?? []).flatMap((variant) => {
+    const mappedVariant = {
       contentType: variant.contentType ?? "",
       fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
       height: variant.height ?? 0,
@@ -44,8 +44,11 @@ const toEyeCatchImageVariants = (
       url: variant.url ?? "",
       variantType: variant.variantType ?? "",
       width: variant.width ?? 0,
-    }))
-    .filter((variant) => variant.label.length > 0 && variant.url.length > 0);
+    };
+    return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+      ? [mappedVariant]
+      : [];
+  });
 
   return mapped.length > 0 ? mapped : undefined;
 };
@@ -138,17 +141,23 @@ export const listPublishedSeries = async (
   });
 
   return (response.series ?? []).map((s) => ({
-    creatorNames: (s.creators ?? [])
-      .map((c) => (c.name ?? "").trim())
-      .filter((n) => n.length > 0),
-    creators: (s.creators ?? [])
-      .map((c) => ({
-        iconImageUrl: c.iconImageUrl?.trim() ?? "",
-        name: (c.name ?? "").trim(),
-        profileText: (c.profileText ?? "").trim(),
-        publicId: c.publicId ?? "",
-      }))
-      .filter((c) => c.name.length > 0),
+    creatorNames: (s.creators ?? []).flatMap((c) => {
+      const name = (c.name ?? "").trim();
+      return name.length > 0 ? [name] : [];
+    }),
+    creators: (s.creators ?? []).flatMap((c) => {
+      const name = (c.name ?? "").trim();
+      return name.length > 0
+        ? [
+            {
+              iconImageUrl: c.iconImageUrl?.trim() ?? "",
+              name,
+              profileText: (c.profileText ?? "").trim(),
+              publicId: c.publicId ?? "",
+            },
+          ]
+        : [];
+    }),
     eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
     eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
     labelName: s.label?.name?.trim() ?? "",
@@ -220,9 +229,10 @@ export const getSeriesDetail = async (
       .toSorted((a, b) => a.orderIndex - b.orderIndex),
     series: response.series
       ? {
-          creatorNames: (response.series.creators ?? [])
-            .map((c) => (c.name ?? "").trim())
-            .filter((n) => n.length > 0),
+          creatorNames: (response.series.creators ?? []).flatMap((c) => {
+            const name = (c.name ?? "").trim();
+            return name.length > 0 ? [name] : [];
+          }),
           eyeCatchImageUpdatedAt:
             response.series.eyeCatchImageUpdatedAt || undefined,
           eyeCatchImageVariants: toEyeCatchImageVariants(

@@ -2,6 +2,15 @@ import type { PageItem, PageVersionItem } from "#lib/page";
 
 export type PageMutationMode = "create" | "update" | "draft";
 
+const pageDateTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  month: "2-digit",
+  timeZone: "UTC",
+  year: "numeric",
+});
+
 export const formatPageDateTime = (value: string): string => {
   if (!value) {
     return "-";
@@ -12,16 +21,7 @@ export const formatPageDateTime = (value: string): string => {
     return value;
   }
 
-  const formatter = new Intl.DateTimeFormat("ja-JP", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-    timeZone: "UTC",
-    year: "numeric",
-  });
-
-  return formatter.format(date);
+  return pageDateTimeFormatter.format(date);
 };
 
 /**

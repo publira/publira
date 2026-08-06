@@ -1,15 +1,15 @@
 "use client";
 
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type DivProps = React.ComponentPropsWithoutRef<"div">;
+type DivProps = ComponentPropsWithoutRef<"div">;
 
 export type EmptyStateProps = DivProps & {
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  icon?: React.ReactNode;
-  actions?: React.ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  icon?: ReactNode;
+  actions?: ReactNode;
 };
 
 export const EmptyState = ({

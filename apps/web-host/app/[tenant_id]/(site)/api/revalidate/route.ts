@@ -3,12 +3,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
-const revalidateRequestSchema = z
-  .object({
-    tags: z.array(z.string().trim().min(1)).min(1),
-    tenantId: z.string().trim().min(1),
-  })
-  .strict();
+const revalidateRequestSchema = z.strictObject({
+  tags: z.array(z.string().trim().min(1)).min(1),
+  tenantId: z.string().trim().min(1),
+});
 
 const normalizeTags = (tags: string[]): string[] => {
   const unique = new Set<string>();

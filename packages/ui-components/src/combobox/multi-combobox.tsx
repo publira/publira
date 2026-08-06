@@ -42,9 +42,13 @@ export const MultiCombobox = ({
   );
 
   const selectedItems = useMemo(
-    () => value.map((valueItem) => itemMap.get(valueItem)).filter(Boolean),
+    () =>
+      value.flatMap((valueItem) => {
+        const item = itemMap.get(valueItem);
+        return item ? [item] : [];
+      }),
     [itemMap, value]
-  ) as MultiComboboxItem[];
+  );
 
   const handleValueChange = useCallback(
     (nextValue: MultiComboboxItem[] | MultiComboboxItem | null) => {

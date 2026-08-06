@@ -18,8 +18,10 @@ export const createNotificationAction = async (
   const audienceTypeRaw = String(formData.get("audience_type") ?? "all").trim();
   const targetUserPublicIds = formData
     .getAll("target_user_public_ids")
-    .map((value) => String(value).trim())
-    .filter((value) => value !== "");
+    .flatMap((value) => {
+      const trimmed = String(value).trim();
+      return trimmed === "" ? [] : [trimmed];
+    });
 
   if (!tenantId) {
     return {

@@ -149,25 +149,34 @@ const mapSeries = (series: {
   }[];
   eyeCatchImageUpdatedAt?: string;
 }): SeriesItem => ({
-  creatorNames: (series.creators ?? [])
-    .map((creator) => creator.name.trim())
-    .filter((name) => name.length > 0),
-  creatorPublicIds: (series.creators ?? [])
-    .map((creator) => creator.publicId.trim())
-    .filter((publicId) => publicId.length > 0),
+  creatorNames: (series.creators ?? []).flatMap((creator) => {
+    const name = creator.name.trim();
+    return name.length > 0 ? [name] : [];
+  }),
+  creatorPublicIds: (series.creators ?? []).flatMap((creator) => {
+    const publicId = creator.publicId.trim();
+    return publicId.length > 0 ? [publicId] : [];
+  }),
   eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt ?? "",
-  eyeCatchImageVariants: (series.eyeCatchImageVariants ?? [])
-    .map((variant) => ({
-      contentType: variant.contentType ?? "",
-      fileSizeBytes:
-        variant.fileSizeBytes === undefined ? 0 : Number(variant.fileSizeBytes),
-      height: variant.height ?? 0,
-      label: variant.label ?? "",
-      url: variant.url ?? "",
-      variantType: variant.variantType ?? "",
-      width: variant.width ?? 0,
-    }))
-    .filter((variant) => variant.label.length > 0 && variant.url.length > 0),
+  eyeCatchImageVariants: (series.eyeCatchImageVariants ?? []).flatMap(
+    (variant) => {
+      const mappedVariant = {
+        contentType: variant.contentType ?? "",
+        fileSizeBytes:
+          variant.fileSizeBytes === undefined
+            ? 0
+            : Number(variant.fileSizeBytes),
+        height: variant.height ?? 0,
+        label: variant.label ?? "",
+        url: variant.url ?? "",
+        variantType: variant.variantType ?? "",
+        width: variant.width ?? 0,
+      };
+      return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+        ? [mappedVariant]
+        : [];
+    }
+  ),
   isPublished: series.isPublished ?? false,
   labelName: series.label?.name?.trim() ?? "",
   labelPublicId: series.label?.publicId?.trim() ?? "",

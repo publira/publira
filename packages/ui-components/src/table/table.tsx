@@ -1,14 +1,14 @@
 "use client";
 
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type TableProps = React.ComponentPropsWithoutRef<"table">;
-type TheadProps = React.ComponentPropsWithoutRef<"thead">;
-type TbodyProps = React.ComponentPropsWithoutRef<"tbody">;
-type TrProps = React.ComponentPropsWithoutRef<"tr">;
-type ThProps = React.ComponentPropsWithoutRef<"th">;
-type TdProps = React.ComponentPropsWithoutRef<"td">;
+type TableProps = ComponentPropsWithoutRef<"table">;
+type TheadProps = ComponentPropsWithoutRef<"thead">;
+type TbodyProps = ComponentPropsWithoutRef<"tbody">;
+type TrProps = ComponentPropsWithoutRef<"tr">;
+type ThProps = ComponentPropsWithoutRef<"th">;
+type TdProps = ComponentPropsWithoutRef<"td">;
 
 export const Table = ({ className, ...props }: TableProps) => (
   <div className="w-full overflow-auto">
@@ -56,7 +56,7 @@ export const TableCell = ({ className, ...props }: TdProps) => (
 
 export interface TableEmptyRowProps {
   colSpan: number;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 export const TableEmptyRow = ({ children, colSpan }: TableEmptyRowProps) => (

@@ -81,21 +81,23 @@ const mapErrorToMessage = (error: unknown): string => {
   return genericListErrorMessage;
 };
 
-const normalizeDateStart = (value?: string): string => {
+const normalizeDateBoundary = (
+  value: string | undefined,
+  time: "00:00:00.000Z" | "23:59:59.999Z"
+): string => {
   const trimmed = value?.trim();
   if (!trimmed) {
     return "";
   }
-  return new Date(`${trimmed}T00:00:00.000Z`).toISOString();
+  return new Date(`${trimmed}T${time}`).toISOString();
 };
 
-const normalizeDateEnd = (value?: string): string => {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return "";
-  }
-  return new Date(`${trimmed}T00:00:00.000Z`).toISOString();
-};
+const normalizeDateStart = (value?: string): string =>
+  normalizeDateBoundary(value, "00:00:00.000Z");
+
+// Inclusive calendar-day end for date-only filters (was identical to start).
+const normalizeDateEnd = (value?: string): string =>
+  normalizeDateBoundary(value, "23:59:59.999Z");
 
 const mapAuditLog = (item: {
   action: string;

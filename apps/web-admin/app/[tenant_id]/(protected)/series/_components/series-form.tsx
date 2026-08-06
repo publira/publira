@@ -196,18 +196,15 @@ const LabelField = ({
 
 interface EyeCatchImageFieldProps {
   clearEyeCatchImage: boolean;
-  initialSeries?: SeriesListItem;
   onImageFileChange: ChangeEventHandler<HTMLInputElement>;
   previewImageUrl: string;
 }
 
 const EyeCatchImageField = ({
   clearEyeCatchImage,
-  initialSeries,
   onImageFileChange,
   previewImageUrl,
 }: EyeCatchImageFieldProps) => {
-  const _variants = initialSeries?.eyeCatchImageVariants ?? [];
   const hasPreviewImage = previewImageUrl.length > 0;
 
   return (
@@ -481,7 +478,6 @@ export const SeriesForm = ({
           {!isUpdate && (
             <EyeCatchImageField
               clearEyeCatchImage={false}
-              initialSeries={initialSeries}
               onImageFileChange={handleEyeCatchImageFileChange}
               previewImageUrl={eyeCatchPreviewUrl}
             />

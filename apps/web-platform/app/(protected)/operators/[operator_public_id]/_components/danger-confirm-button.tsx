@@ -3,8 +3,7 @@
 import { Button } from "@publira/ui-components/button";
 import type { ButtonProps } from "@publira/ui-components/button";
 import { ConfirmDialog } from "@publira/ui-components/dialog";
-import * as React from "react";
-import { useTransition } from "react";
+import { useCallback, useTransition } from "react";
 
 interface DangerConfirmButtonProps<T> {
   actionArg: T;
@@ -29,7 +28,7 @@ export const DangerConfirmButton = ({
 }: DangerConfirmButtonProps<string>) => {
   const [isPending, startTransition] = useTransition();
 
-  const handleAction = React.useCallback(() => {
+  const handleAction = useCallback(() => {
     startTransition(async () => {
       await actionCreator(actionArg);
     });

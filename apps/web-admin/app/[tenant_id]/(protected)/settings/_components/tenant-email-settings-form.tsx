@@ -30,8 +30,8 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
-import * as React from "react";
-import { useActionState } from "react";
+import type { ChangeEvent } from "react";
+import { useActionState, useCallback, useId, useState } from "react";
 
 import {
   SECRET_UPDATE_MODE_REPLACE,
@@ -169,8 +169,8 @@ const SmtpTestDialog = ({
   testState,
   canEdit,
 }: SmtpTestDialogProps) => {
-  const handleSendToSelfChange = React.useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSendToSelfChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
       onSendToSelfChange(event.target.checked);
     },
     [onSendToSelfChange]
@@ -275,7 +275,7 @@ export const TenantEmailSettingsForm = ({
   testAction,
 }: TenantEmailSettingsFormProps) => {
   const tenantId = useTenantId();
-  const formId = React.useId();
+  const formId = useId();
   const [saveState, saveFormAction, isSaving] = useActionState(
     saveAction,
     null
@@ -285,24 +285,24 @@ export const TenantEmailSettingsForm = ({
     null
   );
 
-  const [smtpOverrideEnabled, setSmtpOverrideEnabled] = React.useState(
+  const [smtpOverrideEnabled, setSmtpOverrideEnabled] = useState(
     initialSettings.smtpOverrideEnabled
   );
-  const [hasStoredPassword, setHasStoredPassword] = React.useState(
+  const [hasStoredPassword, setHasStoredPassword] = useState(
     initialSettings.hasPassword
   );
-  const [isPasswordEditing, setIsPasswordEditing] = React.useState(
+  const [isPasswordEditing, setIsPasswordEditing] = useState(
     !initialSettings.hasPassword
   );
-  const [sendToSelf, setSendToSelf] = React.useState(true);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [prevHasPassword, setPrevHasPassword] = React.useState(
+  const [sendToSelf, setSendToSelf] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [prevHasPassword, setPrevHasPassword] = useState(
     initialSettings.hasPassword
   );
-  const [prevSmtpOverrideEnabled, setPrevSmtpOverrideEnabled] = React.useState(
+  const [prevSmtpOverrideEnabled, setPrevSmtpOverrideEnabled] = useState(
     initialSettings.smtpOverrideEnabled
   );
-  const [prevSaveState, setPrevSaveState] = React.useState(saveState);
+  const [prevSaveState, setPrevSaveState] = useState(saveState);
 
   if (
     initialSettings.hasPassword !== prevHasPassword ||
@@ -326,18 +326,18 @@ export const TenantEmailSettingsForm = ({
 
   const fieldsInteractive = canEdit && smtpOverrideEnabled;
 
-  const handleOverrideChange = React.useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOverrideChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
       setSmtpOverrideEnabled(event.target.checked);
     },
     []
   );
 
-  const handleStartPasswordEdit = React.useCallback(() => {
+  const handleStartPasswordEdit = useCallback(() => {
     setIsPasswordEditing(true);
   }, []);
 
-  const handleCancelPasswordEdit = React.useCallback(() => {
+  const handleCancelPasswordEdit = useCallback(() => {
     setIsPasswordEditing(false);
   }, []);
 

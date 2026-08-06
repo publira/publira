@@ -49,8 +49,10 @@ const parseCommonFields = async (formData: FormData) => {
   const publishedAt = parsePublishedAt(publishedAtRaw);
   const creatorPublicIds = formData
     .getAll("creator_public_ids")
-    .map((value) => String(value).trim())
-    .filter((value) => value.length > 0);
+    .flatMap((value) => {
+      const trimmed = String(value).trim();
+      return trimmed.length > 0 ? [trimmed] : [];
+    });
   const readingPeriodHours = Math.trunc(Number(readingPeriodHoursRaw));
 
   const eyeCatchImageFile = formData.get("eye_catch_image");
