@@ -88,7 +88,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: publira
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
 
   mailpit:
     image: axllent/mailpit:v1.30.6@sha256:7f33095f80e901f6ad08028f06ca284aa58fe84942be5496008d041d3b9f4d4d
