@@ -103,7 +103,7 @@ services:
   # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
   # Valkey is Redis-protocol compatible; keep service name / REDIS_URL as redis://...
   redis:
-    image: valkey/valkey:8.1.4-alpine@sha256:e706d1213aaba6896c162bb6a3a9e1894e1a435f28f8f856d14fab2e10aa098b
+    image: valkey/valkey:8.1.9-alpine@sha256:a038175878d66b9d274fbf8be73c0305e93798b83917647f167e18cef3c71eec
     restart: unless-stopped
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
