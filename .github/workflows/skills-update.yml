@@ -1,0 +1,63 @@
+name: Skills Update
+
+env:
+  # renovate: datasource=npm depName=skills
+  SKILLS_VERSION: 1.5.22
+
+on:
+  schedule:
+    # Weekly on Monday 00:00 UTC
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Update agent skills
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 15
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+
+      - name: Update / Project skills
+        run: npx -y "skills@${SKILLS_VERSION}" update -p -y
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(skills): update agent skills"
+          title: "chore(skills): update agent skills"
+          body: |
+            ## Summary
+
+            Automated refresh of project agent skills via `npx skills update -p -y`.
+
+            ## Changes
+
+            - Updated lock-tracked skills under `.agents/skills/` and `skills-lock.json` when upstream changed
+
+            ## How to Test
+
+            - Review the skill file diff for unexpected instruction changes
+
+            ## Checklist
+
+            - [x] I used a Conventional Commits style PR title.
+            - [ ] I tested my changes locally.
+            - [ ] I updated docs if needed.
+          branch: chore/skills-update
+          delete-branch: true
+          labels: area/infra
+          add-paths: |
+            .agents/skills/**
+            skills-lock.json

@@ -10,6 +10,8 @@
 - 一般知識・参考として読むのは可
 - このリポジトリの方針と食い違う場合は **本ファイル（および app 配下の `AGENTS.md`）を優先**
 
+自動更新: `.github/workflows/skills-update.yml` が週次で `npx skills update -p -y` を実行し、差分があれば PR を開きます。
+
 ## React: Effect と useEffectEvent
 
 公式: [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect) / [Separating Events from Effects](https://react.dev/learn/separating-events-from-effects) / [`useEffectEvent`](https://react.dev/reference/react/useEffectEvent)
