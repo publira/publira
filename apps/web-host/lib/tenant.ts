@@ -5,8 +5,6 @@ import { cacheLife } from "next/cache";
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantSiteTag } from "./cache-tags";
 
-export type { TenantThemeColors } from "@publira/utils/theme-css-variables";
-
 export interface TenantSiteInfo {
   copyrightText?: string;
   domain: string;

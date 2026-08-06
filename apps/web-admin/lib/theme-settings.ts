@@ -4,14 +4,12 @@ import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
-export type TenantThemeSettings = TenantThemeColors;
-
-export interface UpdateTenantThemeSettingsInput extends TenantThemeSettings {
+export interface UpdateTenantThemeSettingsInput extends TenantThemeColors {
   tenantId: string;
 }
 
 export type TenantThemeSettingsResult =
-  | { ok: true; theme: TenantThemeSettings }
+  | { ok: true; theme: TenantThemeColors }
   | { ok: false; message: string };
 
 const genericLoadErrorMessage =
@@ -49,8 +47,8 @@ const parseErrorMessage = (error: unknown, fallback: string): string => {
 };
 
 const toTenantTheme = (
-  theme?: Partial<TenantThemeSettings> | null
-): TenantThemeSettings => resolveTenantThemeColors(theme);
+  theme?: Partial<TenantThemeColors> | null
+): TenantThemeColors => resolveTenantThemeColors(theme);
 
 export const getTenantThemeSettings = async (
   tenantId: string

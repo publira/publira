@@ -3,8 +3,6 @@ import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheLife, cacheTag } from "next/cache";
 
-export type { TenantThemeColors } from "@publira/utils/theme-css-variables";
-
 const publicApiClient = createPublicApiClient({
   baseUrl: process.env.PUBLIRA_PUBLIC_GRPC_URL ?? "http://localhost:8100",
   transport: "grpc",
