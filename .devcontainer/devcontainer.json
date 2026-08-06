@@ -29,6 +29,7 @@
         "golang.go",
         "mtxr.sqltools",
         "mtxr.sqltools-driver-pg",
+        "openai.chatgpt",
         "oxc.oxc-vscode"
       ]
     }
