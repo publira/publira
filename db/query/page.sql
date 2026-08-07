@@ -17,9 +17,10 @@ ORDER BY created_at ASC;
 
 -- name: UpdatePage :one
 -- ページのタイトルとフッター表示設定を更新する
+-- display_in_footer は省略時 (NULL) に既存値を保持する
 UPDATE pages
 SET title = sqlc.arg('title'),
-	display_in_footer = sqlc.arg('display_in_footer'),
+	display_in_footer = COALESCE(sqlc.narg('display_in_footer'), display_in_footer),
 	updated_at = NOW()
 WHERE id = sqlc.arg('id') AND tenant_id = sqlc.arg('tenant_id')
 RETURNING *;

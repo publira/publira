@@ -429,20 +429,21 @@ func (q *Queries) SetPagePublishedVersion(ctx context.Context, arg SetPagePublis
 const updatePage = `-- name: UpdatePage :one
 UPDATE pages
 SET title = $1,
-	display_in_footer = $2,
+	display_in_footer = COALESCE($2, display_in_footer),
 	updated_at = NOW()
 WHERE id = $3 AND tenant_id = $4
 RETURNING id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at
 `
 
 type UpdatePageParams struct {
-	Title           string    `json:"title"`
-	DisplayInFooter bool      `json:"display_in_footer"`
-	ID              uuid.UUID `json:"id"`
-	TenantID        uuid.UUID `json:"tenant_id"`
+	Title           string       `json:"title"`
+	DisplayInFooter sql.NullBool `json:"display_in_footer"`
+	ID              uuid.UUID    `json:"id"`
+	TenantID        uuid.UUID    `json:"tenant_id"`
 }
 
 // ページのタイトルとフッター表示設定を更新する
+// display_in_footer は省略時 (NULL) に既存値を保持する
 func (q *Queries) UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error) {
 	row := q.db.QueryRowContext(ctx, updatePage,
 		arg.Title,

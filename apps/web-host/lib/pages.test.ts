@@ -92,10 +92,35 @@ describe("listPublishedPageLinks", () => {
     ]);
   });
 
-  it("空テナントや API 失敗時は空配列を返す", async () => {
+  it("空テナントや API 失敗時は空配列を返す（失敗はキャッシュされない想定）", async () => {
     expect(await listPublishedPageLinks("")).toEqual([]);
+    expect(mockListPublishedPages).not.toHaveBeenCalled();
+
     mockListPublishedPages.mockRejectedValueOnce(new Error("boom"));
     expect(await listPublishedPageLinks("tenant-uuid")).toEqual([]);
+    expect(mockListPublishedPages).toHaveBeenCalledTimes(1);
+
+    // A subsequent success after a soft failure still hits the API (failure was not cached).
+    mockListPublishedPages.mockResolvedValueOnce({
+      pages: [
+        {
+          displayInFooter: true,
+          id: "page-1",
+          slug: "/privacy",
+          title: "プライバシーポリシー",
+        },
+      ],
+    });
+    const links = await listPublishedPageLinks("tenant-uuid");
+    expect(mockListPublishedPages).toHaveBeenCalledTimes(2);
+    expect(links).toEqual([
+      {
+        href: "/privacy",
+        id: "page-1",
+        label: "プライバシーポリシー",
+        slug: "/privacy",
+      },
+    ]);
   });
 });
 

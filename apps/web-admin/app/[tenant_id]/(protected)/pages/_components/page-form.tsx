@@ -37,37 +37,13 @@ interface PageFormProps {
 export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const initialSlug = initialPage?.slug ?? "";
-  const initialTitle = initialPage?.title ?? "";
-  const initialDisplayInFooter = initialPage?.displayInFooter ?? false;
+  // Initial values only; entity switch must remount the form via key on the parent.
   const [contentMarkdown, setContentMarkdown] = useState("");
-  const [slug, setSlug] = useState(initialSlug);
-  const [title, setTitle] = useState(initialTitle);
+  const [slug, setSlug] = useState(initialPage?.slug ?? "");
+  const [title, setTitle] = useState(initialPage?.title ?? "");
   const [displayInFooter, setDisplayInFooter] = useState(
-    initialDisplayInFooter
+    initialPage?.displayInFooter ?? false
   );
-  const [prevInitialSlug, setPrevInitialSlug] = useState(initialSlug);
-  const [prevInitialTitle, setPrevInitialTitle] = useState(initialTitle);
-  const [prevInitialDisplayInFooter, setPrevInitialDisplayInFooter] = useState(
-    initialDisplayInFooter
-  );
-  const [prevMode, setPrevMode] = useState(mode);
-
-  if (
-    initialSlug !== prevInitialSlug ||
-    initialTitle !== prevInitialTitle ||
-    initialDisplayInFooter !== prevInitialDisplayInFooter ||
-    mode !== prevMode
-  ) {
-    setPrevInitialSlug(initialSlug);
-    setPrevInitialTitle(initialTitle);
-    setPrevInitialDisplayInFooter(initialDisplayInFooter);
-    setPrevMode(mode);
-    setContentMarkdown("");
-    setSlug(initialSlug);
-    setTitle(initialTitle);
-    setDisplayInFooter(initialDisplayInFooter);
-  }
 
   const isUpdate = mode === "update";
   const handleSlugBlur = useCallback(() => {

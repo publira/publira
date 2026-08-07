@@ -203,6 +203,7 @@ type Querier interface {
 	UpdateEpisodePublishScheduleByPublicIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByPublicIDForTenantParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
 	// ページのタイトルとフッター表示設定を更新する
+	// display_in_footer は省略時 (NULL) に既存値を保持する
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error)
 	UpdatePlatformUserEmailByID(ctx context.Context, arg UpdatePlatformUserEmailByIDParams) (PlatformUser, error)
 	UpdatePlatformUserPasswordHashByID(ctx context.Context, arg UpdatePlatformUserPasswordHashByIDParams) (PlatformUser, error)

@@ -195,12 +195,17 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queriesFor(ctx).UpdatePage(ctx, dbmodels.UpdatePageParams{
-		ID:              pageID,
-		TenantID:        tenant.ID,
-		Title:           title,
-		DisplayInFooter: req.Msg.DisplayInFooter,
-	})
+	// Only overwrite display_in_footer when the client sets the optional field.
+	// Omitted values stay as the existing row (COALESCE in UpdatePage).
+	params := dbmodels.UpdatePageParams{
+		ID:       pageID,
+		TenantID: tenant.ID,
+		Title:    title,
+	}
+	if req.Msg.DisplayInFooter != nil {
+		params.DisplayInFooter = sql.NullBool{Bool: req.Msg.GetDisplayInFooter(), Valid: true}
+	}
+	page, err := s.queriesFor(ctx).UpdatePage(ctx, params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))

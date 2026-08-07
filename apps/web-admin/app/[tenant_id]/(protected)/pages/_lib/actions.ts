@@ -14,7 +14,11 @@ import {
 import { normalizePageSlugInput } from "../page-types";
 import type { PageFormState } from "../page-types";
 
-const parseDisplayInFooter = (formData: FormData): boolean => {
+const parseDisplayInFooter = (formData: FormData): boolean | undefined => {
+  // Absence means "do not change" on update; create treats undefined as false.
+  if (!formData.has("display_in_footer")) {
+    return undefined;
+  }
   const raw = String(formData.get("display_in_footer") ?? "")
     .trim()
     .toLowerCase();
@@ -67,7 +71,7 @@ export const createPageAction = async (
   }
 
   const result = await createPage({
-    displayInFooter: input.displayInFooter,
+    displayInFooter: input.displayInFooter === true,
     slug: input.slug,
     tenantId: input.tenantId,
     title: input.title,

@@ -317,9 +317,12 @@ export const updatePage = async (input: {
   }
 
   try {
+    // Omit displayInFooter when unset so title-only updates keep the existing value.
     const response = await apiClient.pages.updatePage(
       {
-        displayInFooter: input.displayInFooter === true,
+        ...(input.displayInFooter === undefined
+          ? {}
+          : { displayInFooter: input.displayInFooter }),
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
         title: input.title,

@@ -111,44 +111,58 @@ export const publishedPageHrefFromSlug = (slug: string): string => {
   return normalized || "/";
 };
 
-export const listPublishedPageLinks = async (
+/**
+ * Cached fetch of footer page links. Throws on API failure so the remote cache
+ * does not store a soft-empty result that would hide links until revalidation.
+ */
+const listPublishedPageLinksCached = async (
   tenantId: string
 ): Promise<PublishedPageLink[]> => {
   // Shared public content: remote so multi-instance hosts share entries.
   "use cache: remote";
 
+  applyCacheTag(tenantPagesTag(tenantId));
+
+  const response = await apiClient.pages.listPublishedPages({
+    tenant: { tenantId },
+  });
+
+  const links: PublishedPageLink[] = [];
+  for (const page of response.pages ?? []) {
+    const id = page.id?.trim() ?? "";
+    const slug = page.slug?.trim() ?? "";
+    const title = page.title?.trim() ?? "";
+    if (!id || !slug || !title) {
+      continue;
+    }
+    // API already filters to display_in_footer + published; keep a defensive check.
+    if (page.displayInFooter === false) {
+      continue;
+    }
+    links.push({
+      href: publishedPageHrefFromSlug(slug),
+      id,
+      label: title,
+      slug,
+    });
+  }
+  return links;
+};
+
+/**
+ * Public footer links. Failures resolve to [] outside the cache so a transient
+ * API error is not persisted as an empty remote cache entry.
+ */
+export const listPublishedPageLinks = async (
+  tenantId: string
+): Promise<PublishedPageLink[]> => {
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId) {
     return [];
   }
 
-  applyCacheTag(tenantPagesTag(normalizedTenantId));
-
   try {
-    const response = await apiClient.pages.listPublishedPages({
-      tenant: { tenantId: normalizedTenantId },
-    });
-
-    const links: PublishedPageLink[] = [];
-    for (const page of response.pages ?? []) {
-      const id = page.id?.trim() ?? "";
-      const slug = page.slug?.trim() ?? "";
-      const title = page.title?.trim() ?? "";
-      if (!id || !slug || !title) {
-        continue;
-      }
-      // API already filters to display_in_footer + published; keep a defensive check.
-      if (page.displayInFooter === false) {
-        continue;
-      }
-      links.push({
-        href: publishedPageHrefFromSlug(slug),
-        id,
-        label: title,
-        slug,
-      });
-    }
-    return links;
+    return await listPublishedPageLinksCached(normalizedTenantId);
   } catch {
     // Footer links are non-critical chrome; fail soft so the site shell still renders.
     return [];

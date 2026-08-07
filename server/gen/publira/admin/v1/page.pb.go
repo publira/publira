@@ -135,11 +135,13 @@ func (x *CreatePageResponse) GetPage() *v1.Page {
 }
 
 type UpdatePageRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PageId          string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
-	Title           string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	DisplayInFooter bool                   `protobuf:"varint,4,opt,name=display_in_footer,json=displayInFooter,proto3" json:"display_in_footer,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PageId string                 `protobuf:"bytes,2,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	Title  string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	// optional so title-only updates do not clear an existing true value
+	// (proto3 non-optional bool maps omitted fields to false).
+	DisplayInFooter *bool `protobuf:"varint,4,opt,name=display_in_footer,json=displayInFooter,proto3,oneof" json:"display_in_footer,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -196,8 +198,8 @@ func (x *UpdatePageRequest) GetTitle() string {
 }
 
 func (x *UpdatePageRequest) GetDisplayInFooter() bool {
-	if x != nil {
-		return x.DisplayInFooter
+	if x != nil && x.DisplayInFooter != nil {
+		return *x.DisplayInFooter
 	}
 	return false
 }
@@ -849,12 +851,13 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12*\n" +
 	"\x11display_in_footer\x18\x04 \x01(\bR\x0fdisplayInFooter\"@\n" +
 	"\x12CreatePageResponse\x12*\n" +
-	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xa7\x01\n" +
+	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"\xc2\x01\n" +
 	"\x11UpdatePageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12*\n" +
-	"\x11display_in_footer\x18\x04 \x01(\bR\x0fdisplayInFooter\"@\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12/\n" +
+	"\x11display_in_footer\x18\x04 \x01(\bH\x00R\x0fdisplayInFooter\x88\x01\x01B\x14\n" +
+	"\x12_display_in_footer\"@\n" +
 	"\x12UpdatePageResponse\x12*\n" +
 	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"K\n" +
 	"\x10ListPagesRequest\x127\n" +
@@ -982,6 +985,7 @@ func file_publira_admin_v1_page_proto_init() {
 	if File_publira_admin_v1_page_proto != nil {
 		return
 	}
+	file_publira_admin_v1_page_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
