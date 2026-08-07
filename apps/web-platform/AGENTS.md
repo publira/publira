@@ -8,4 +8,4 @@ Before any Next.js work, find and read the relevant doc in `node_modules/next/di
 
 ## Monorepo conventions
 
-React Effect / `useEffectEvent` の OK・NG はリポジトリルートの [AGENTS.md](../../AGENTS.md) を参照すること。
+For React Effect / `useEffectEvent` OK and NG rules, see the repository root [AGENTS.md](../../AGENTS.md).

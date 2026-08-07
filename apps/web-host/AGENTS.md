@@ -8,6 +8,6 @@ Before any Next.js work, find and read the relevant doc in `node_modules/next/di
 
 ## Monorepo conventions
 
-React Effect / `useEffectEvent` の OK・NG はリポジトリルートの [AGENTS.md](../../AGENTS.md) を参照すること。
+For React Effect / `useEffectEvent` OK and NG rules, see the repository root [AGENTS.md](../../AGENTS.md).
 
-サーバー側キャッシュは Redis（`@publira/next-cache-handlers`）。`cacheHandler`（単数・ISR/image）と `cacheHandlers`（複数形・`"use cache"`）の両方を `next.config` で有効化している。`REDIS_URL` / `NEXT_CACHE_APP` を参照。
+Server-side cache uses Redis (`@publira/next-cache-handlers`). Both `cacheHandler` (singular: ISR/image) and `cacheHandlers` (plural: `"use cache"`) are enabled in `next.config`. See `REDIS_URL` / `NEXT_CACHE_APP`.

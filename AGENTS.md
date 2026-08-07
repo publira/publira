@@ -1,85 +1,89 @@
 # Publira Agent Guide
 
-エージェント向けの**リポジトリ固有**の規約です。実装・レビュー時の正本はここです。
+Repository-specific conventions for agents. This file is the source of truth for implementation and review.
 
-## スキルパッケージについて
+## Output language
 
-`.agents/skills/*` は `skills-lock.json` 経由で外部から取り込む成果物です（`npx skills` 等で上書きされる）。
+Always respond to the user in **Japanese**, even though this guide and other `AGENTS.md` files are written in English. Code, identifiers, commit messages, and quoted technical terms stay as-is; explanations, summaries, and questions to the user must be Japanese.
 
-- **編集しない**（パッチは消える）
-- 一般知識・参考として読むのは可
-- このリポジトリの方針と食い違う場合は **本ファイル（および app 配下の `AGENTS.md`）を優先**
+## Skill packages
 
-自動更新: `.github/workflows/skills-update.yml` が週次で `npx skills update -p -y` を実行し、差分があれば PR を開きます。
+`.agents/skills/*` is vendored via `skills-lock.json` (overwritten by `npx skills` and similar).
 
-## React: Effect と useEffectEvent
+- **Do not edit** (patches will be lost)
+- Reading for general knowledge / reference is fine
+- When this repository's policy conflicts with a skill, **prefer this file (and app-level `AGENTS.md`)**
 
-公式: [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect) / [Separating Events from Effects](https://react.dev/learn/separating-events-from-effects) / [`useEffectEvent`](https://react.dev/reference/react/useEffectEvent)
+Auto-update: `.github/workflows/skills-update.yml` runs weekly `npx skills update -p -y` and opens a PR when there is a diff.
 
-参考スキル（上書き対象・編集禁止）: `vercel-react-best-practices` の derived-state / event-handler 系ルール。詳細な OK/NG は下記を正とする。
+## React: Effects and useEffectEvent
 
-このリポジトリでは oxlint（ultracite プリセット）の `react/react-compiler` と `react-hooks/rules-of-hooks` が上記方針を機械的に強制します。
+Official docs: [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect) / [Separating Events from Effects](https://react.dev/learn/separating-events-from-effects) / [`useEffectEvent`](https://react.dev/reference/react/useEffectEvent)
 
-### 判断フロー
+Reference skill (vendored; do not edit): `vercel-react-best-practices` derived-state / event-handler rules. Detailed OK/NG below is authoritative for this repo.
 
-1. **ユーザー操作が起点か？**（click / submit / drop / change）  
-   → **イベントハンドラ**に書く。`useState` + `useEffect` で「操作を再現」しない。  
-   → `useCallback` や通常の関数。**`useEffectEvent` は使わない**。
-2. **props / state から計算できるだけか？**  
-   → レンダー中に算出する。**state にコピーして `setXxx` しない**。
-3. **props 変更で編集中 state をリセットしたいか？**（別エンティティの編集に切り替わる等）  
-   → **親で `key` を変えて載せ替える**（子は `useState(initial)` だけ）。  
-   → **`useEffect` で `setState` しない**。  
-   → レンダー中に `if (prop !== prev) setXxx(...)` するのも原則避ける（全リセットなら `key`、一部だけなら ID を持つ・派生で表せないか先に検討）。
-4. **外部システムとの同期が必要か？**（DOM / 購読 / タイマー / URL と UI の同期など）  
-   → **正当な `useEffect`**。依存配列は正確に。  
-   → その中で「最新 props/state は読みたいが、それで再購読したくない」部分だけ **`useEffectEvent`**。
+oxlint (ultracite preset) enforces this via `react/react-compiler` and `react-hooks/rules-of-hooks`.
 
-### NG（やらない）
+### Decision flow
+
+1. **Is a user action the trigger?** (click / submit / drop / change)  
+   → Put logic in an **event handler**. Do not recreate the action with `useState` + `useEffect`.  
+   → Use `useCallback` or a plain function. **Do not use `useEffectEvent`.**
+2. **Can it be derived from props / state only?**  
+   → Compute during render. **Do not copy into state with `setXxx`.**
+3. **Do you want to reset edit state when props change?** (switching to another entity, etc.)  
+   → **Remount with a changed `key` on the parent** (child uses `useState(initial)` only).  
+   → **Do not `setState` in `useEffect`.**  
+   → Also avoid bare `if (prop !== prev) setXxx(...)` during render in general (full reset → `key`; partial → own an ID or express as derived state first).
+4. **Do you need to sync with an external system?** (DOM / subscriptions / timers / URL ↔ UI, etc.)  
+   → **Legitimate `useEffect`**. Keep the dependency array accurate.  
+   → Use **`useEffectEvent` only** for the parts that must read latest props/state without re-subscribing.
+
+### NG (do not)
 
 ```tsx
-// NG: props を Effect で state に写す
+// NG: copy props into state via Effect
 useEffect(() => {
   setName(initialName);
 }, [initialName]);
 
-// NG: 同上をレンダー中の裸の setXxx でやる（Effect よりマシだが本筋ではない）
+// NG: same via bare setXxx during render (better than Effect, still not the goal)
 const [prev, setPrev] = useState(initialName);
 if (initialName !== prev) {
   setPrev(initialName);
-  setName(initialName); // フォーム丸ごとリセットなら key を使う
+  setName(initialName); // full form reset → use key
 }
 
-// NG: ユーザー操作を state + Effect で表現する
+// NG: express user action as state + Effect
 useEffect(() => {
   if (submitted) {
     save();
   }
 }, [submitted]);
 
-// NG: useEffectEvent を onClick / onDrop / render props に渡す
+// NG: pass useEffectEvent to onClick / onDrop / render props
 const onClose = useEffectEvent(() => setOpen(false));
 return <Sidebar onClose={onClose} />;
 
-// NG: setState を「免罪」するために useEffectEvent で包むだけ
+// NG: wrap setState in useEffectEvent only to silence lint
 const sync = useEffectEvent(() => setName(initialName));
 useEffect(() => {
   sync();
 }, [initialName]);
 ```
 
-### OK（推奨）
+### OK (preferred)
 
 ```tsx
-// OK: ユーザー操作はハンドラへ
+// OK: user actions in handlers
 const onClose = useCallback(() => setOpen(false), []);
 return <Sidebar onClose={onClose} />;
 
-// OK: 派生値はレンダー中（setXxx 不要）
+// OK: derived values during render (no setXxx)
 const fullName = `${firstName} ${lastName}`;
 const selection = items.find((i) => i.id === selectedId) ?? null;
 
-// OK: エンティティ切り替えで編集 state を捨てる — key で載せ替え
+// OK: drop edit state when entity switches — remount with key
 function EditPage({ recordId, record }: Props) {
   return <EditForm key={recordId} initialName={record.name} />;
 }
@@ -88,7 +92,7 @@ function EditForm({ initialName }: { initialName: string }) {
   return <input value={name} onChange={(e) => setName(e.target.value)} />;
 }
 
-// OK: 正当な Effect + Effect Event（最新値を読みつつ再購読しない）
+// OK: legitimate Effect + Effect Event (read latest values without re-subscribing)
 const onFlash = useEffectEvent(() => {
   add({ title, type: "success" });
 });
@@ -100,26 +104,35 @@ useEffect(() => {
 }, [searchParams, keyName]);
 ```
 
-リポジトリ内の良い例: `apps/web-admin/components/flash-toast.tsx`（`useEffectEvent` は Effect 内からのみ呼び出し）。
+Good in-repo example: `apps/web-admin/components/flash-toast.tsx` (`useEffectEvent` called only from inside Effects).
 
-### 禁止・追跡
+### Forbidden / tracking
 
-- lint を黙らせるために `oxlint-disable` で props→state の Effect を残さない。
-- レンダー中の `prev*` + 裸の `setXxx` は **中間形**でありゴールではない。  
-  本廃止（`key` 載せ替え・Action 側 `redirect` 等）は [#456](https://github.com/publira/publira/issues/456)。
+- Do not leave props→state Effects with `oxlint-disable` just to silence lint.
+- Render-time `prev*` + bare `setXxx` is an **intermediate form**, not the end state.  
+  Full removal (`key` remount, Action-side `redirect`, etc.) is tracked in [#456](https://github.com/publira/publira/issues/456).
 
-## Next.js キャッシュ: `cacheHandler` vs `cacheHandlers`
+## Next.js cache: `cacheHandler` vs `cacheHandlers`
 
-self-host の共有ストアは **Redis**（パッケージ `@publira/next-cache-handlers`）。
+Shared store for self-host is **Redis** (package `@publira/next-cache-handlers`).
 
-| 設定 | 用途 |
+| Setting | Use |
 | --- | --- |
-| **`cacheHandlers`（複数形）** | `"use cache"` / `"use cache: remote"` のバックエンド |
-| **`cacheHandler`（単数）** | ISR・Route Handler・`fetch` / `unstable_cache`、および **`next/image` 最適化画像**（要 `images.customCacheHandler: true`） |
+| **`cacheHandlers` (plural)** | Backend for `"use cache"` / `"use cache: remote"` |
+| **`cacheHandler` (singular)** | ISR, Route Handlers, `fetch` / `unstable_cache`, and **`next/image` optimized images** (requires `images.customCacheHandler: true`) |
 
-両方を配線すること。片方だけだと multi-instance で片系統がローカルのまま残る。詳細は `packages/next-cache-handlers/README.md`。
+Wire **both**. With only one, the other path stays local in multi-instance deploys. Details: `packages/next-cache-handlers/README.md`.
 
-## その他
+## Database
 
-- Next.js 作業前: 各 app の `AGENTS.md` / `node_modules/next/dist/docs/` を確認する
-- 変更後の品質確認: `pnpm preflight`（typegen / typecheck / check / test）
+Schema / migration conventions: see [`db/AGENTS.md`](db/AGENTS.md).
+
+## Server (Go)
+
+Go backend conventions and verification: see [`server/AGENTS.md`](server/AGENTS.md).
+
+## Other
+
+- Before Next.js work: read each app's `AGENTS.md` and `node_modules/next/dist/docs/`
+- After frontend / shared package changes: `pnpm preflight` (typegen / typecheck / check / test)
+- After `server/` changes: follow the verification checklist in `server/AGENTS.md` (`task server:test-short` / `task server:test`, plus `task gen` when proto/SQL change)
