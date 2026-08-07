@@ -463,3 +463,79 @@ func TestListAccessTicketsUserFilterMissingUser(t *testing.T) {
 
 	assertExpectations(t, mock)
 }
+
+func TestListAccessTicketsEpisodeFilterMissingEpisode(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "MISSING_EP").
+		WillReturnError(sql.ErrNoRows)
+
+	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.ListAccessTicketsRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodePublicId: "MISSING_EP",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.ListAccessTickets(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListAccessTickets: %v", err)
+	}
+	if len(resp.Msg.Tickets) != 0 {
+		t.Fatalf("tickets count = %d, want 0", len(resp.Msg.Tickets))
+	}
+
+	assertExpectations(t, mock)
+}
+
+func TestListAccessTicketsActiveOnly(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	memberID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	ticketID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: ListAccessTicketsForTenant :many\n")).
+		WithArgs(tenantID, int32(20), int32(0), uuid.NullUUID{}, uuid.NullUUID{}, true).
+		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
+			ticketID, tenantID, "TICKETACTIVE1", episodeID, "EPISODE001", "Episode 1",
+			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
+			nil, nil, nil, actorID, now,
+		))
+
+	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.ListAccessTicketsRequest{
+		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		ActiveOnly: true,
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.ListAccessTickets(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListAccessTickets: %v", err)
+	}
+	if len(resp.Msg.Tickets) != 1 {
+		t.Fatalf("tickets count = %d, want 1", len(resp.Msg.Tickets))
+	}
+	if resp.Msg.Tickets[0].Status != "active" {
+		t.Fatalf("status = %q, want active", resp.Msg.Tickets[0].Status)
+	}
+
+	assertExpectations(t, mock)
+}
