@@ -44,14 +44,18 @@ reviews:
       instructions: |
         Shared packages. Prioritize breaking API changes, public export semantics,
         and overly wide types. Hand-written api-client code must keep a clear
-        boundary from Connect-generated clients. Flag hand-edits under **/gen/** or **/dist/**.
+        boundary from Connect-generated clients. Do not reimplement or patch
+        generated clients in hand-written sources (packages/**/gen/** and
+        packages/**/dist/** are path-filtered and not reviewed).
 
     - path: "server/**/*.go"
       instructions: |
         Go backend. Rules: server/AGENTS.md.
 
         - Schema-first: change proto/ or db/migrations + db/query first, then task gen.
-          Never hand-edit server/gen/ or sqlc-generated files.
+          Prefer source-side diffs; server/gen/ and sqlc outputs are path-filtered
+          so hand-edits there are not visible to review — flag PRs that change
+          generated-looking code without corresponding proto/SQL sources.
         - Keep cmd/ thin; real logic in api/ and internal/.
         - Emphasize error handling, context propagation, authz (tenant / role).
         - Flag queries or handlers that break multi-tenant isolation.
