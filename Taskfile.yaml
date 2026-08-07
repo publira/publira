@@ -4,6 +4,9 @@ includes:
   db:
     taskfile: ./db/Tafkfile.yaml
     dir: ./db
+  docker:
+    # Keep cwd at repository root so docker build context stays `.`
+    taskfile: ./infra/docker/Taskfile.yaml
   server:
     taskfile: ./server/Taskfile.yaml
     dir: ./server

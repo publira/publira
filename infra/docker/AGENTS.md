@@ -11,7 +11,8 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) |
 | `batch/Dockerfile` | One-shot Go jobs (`server/cmd/*`) |
-| `README.md` | Placement rules, rationale, build examples (source of truth for _where_) |
+| `README.md` | Placement rules, build verification, CI policy, triage (source of truth for humans) |
+| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` (included from repo root) |
 
 Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile).
 
@@ -52,26 +53,27 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 
 ## Verification after Dockerfile changes
 
-From the **repository root**:
+From the **repository root**, prefer Task (same entrypoint as CI):
 
 ```bash
-# Web (example)
-docker build -f infra/docker/web/Dockerfile \
-  --build-arg APP_NAME=web-admin --build-arg PORT=4000 \
-  -t publira/web-admin:local .
+# Role representatives (web-host / api-server / publish-episodes)
+task docker:verify
 
-# API (example)
-docker build -f infra/docker/api/Dockerfile \
-  --build-arg CMD_NAME=api-server --build-arg PORT=8000 \
-  -t publira/api-server:local .
+# Or only what you touched
+task docker:build:web APP_NAME=web-admin PORT=4000
+task docker:build:api CMD_NAME=api-server PORT=8000
+task docker:build:batch CMD_NAME=publish-episodes
 
-# Batch (example)
-docker build -f infra/docker/batch/Dockerfile \
-  --build-arg CMD_NAME=publish-episodes \
-  -t publira/publish-episodes:local .
+# Optional web runtime smoke
+task docker:smoke:web APP_NAME=web-host PORT=3000
 ```
 
-Smoke-check at least one image that you touched (e.g. web: `curl` `/healthz` with `REDIS_URL=disabled` if needed).
+Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
+
+After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and `.github/workflows/ci.yml` Docker full matrix together.
+
+CI policy and failure triage: [`README.md`](./README.md)（ビルド検証 / CI / トリアージ節）.  
+Branch ruleset required check is the final aggregator job name **`Summary`** only (UI: `CI / Summary`).
 
 ## Do not
 

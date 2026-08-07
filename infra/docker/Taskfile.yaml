@@ -1,0 +1,120 @@
+version: "3"
+
+# Production image builds. Always run from the repository root
+# (included from the root Taskfile without dir override).
+#
+# Examples:
+#   task docker:build:web APP_NAME=web-host PORT=3000
+#   task docker:build:api CMD_NAME=api-server PORT=8000
+#   task docker:build:batch CMD_NAME=publish-episodes
+#   task docker:verify
+
+tasks:
+  build:web:
+    desc: Build a Next.js production image (APP_NAME required; PORT optional, default 3000)
+    requires:
+      vars: [APP_NAME]
+    vars:
+      PORT: '{{.PORT | default "3000"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/web/Dockerfile \
+          --build-arg "APP_NAME={{.APP_NAME}}" \
+          --build-arg "PORT={{.PORT}}" \
+          -t "publira/{{.APP_NAME}}:local" \
+          .
+
+  build:api:
+    desc: Build a long-running Go API image (CMD_NAME required; PORT optional, default 8000)
+    requires:
+      vars: [CMD_NAME]
+    vars:
+      PORT: '{{.PORT | default "8000"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/api/Dockerfile \
+          --build-arg "CMD_NAME={{.CMD_NAME}}" \
+          --build-arg "PORT={{.PORT}}" \
+          -t "publira/{{.CMD_NAME}}:local" \
+          .
+
+  build:batch:
+    desc: Build a one-shot Go batch image (CMD_NAME required)
+    requires:
+      vars: [CMD_NAME]
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/batch/Dockerfile \
+          --build-arg "CMD_NAME={{.CMD_NAME}}" \
+          -t "publira/{{.CMD_NAME}}:local" \
+          .
+
+  # Representative set shared by local checks and CI (path-filtered / PR).
+  # Covers each role once: web / api / batch.
+  verify:
+    desc: Build representative images (web-host, api-server, publish-episodes)
+    cmds:
+      - task: build:web
+        vars:
+          APP_NAME: web-host
+          PORT: "3000"
+      - task: build:api
+        vars:
+          CMD_NAME: api-server
+          PORT: "8000"
+      - task: build:batch
+        vars:
+          CMD_NAME: publish-episodes
+
+  # Full matrix used by nightly CI and manual full verification.
+  verify:full:
+    desc: Build all production images documented in infra/docker/README.md
+    cmds:
+      - task: build:web
+        vars: { APP_NAME: web-host, PORT: "3000" }
+      - task: build:web
+        vars: { APP_NAME: web-admin, PORT: "4000" }
+      - task: build:web
+        vars: { APP_NAME: web-platform, PORT: "4100" }
+      - task: build:api
+        vars: { CMD_NAME: api-server, PORT: "8000" }
+      - task: build:api
+        vars: { CMD_NAME: admin-api-server, PORT: "8001" }
+      - task: build:api
+        vars: { CMD_NAME: platform-api-server, PORT: "8002" }
+      - task: build:batch
+        vars: { CMD_NAME: publish-episodes }
+
+  smoke:web:
+    desc: Run a short /healthz smoke check against a built web image (APP_NAME, optional PORT)
+    requires:
+      vars: [APP_NAME]
+    vars:
+      PORT: '{{.PORT | default "3000"}}'
+      CONTAINER_NAME: "publira-{{.APP_NAME}}-smoke"
+    cmds:
+      - |
+        set -euo pipefail
+        # Bind a free host port so local dev servers on :3000 etc. do not collide.
+        host_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')"
+        docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true
+        docker run -d --rm \
+          --name "{{.CONTAINER_NAME}}" \
+          -p "127.0.0.1:${host_port}:{{.PORT}}" \
+          -e REDIS_URL=disabled \
+          "publira/{{.APP_NAME}}:local"
+        cleanup() { docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        for _ in $(seq 1 30); do
+          if curl -fsS "http://127.0.0.1:${host_port}/healthz" | grep -qx 'ok'; then
+            echo "smoke ok: {{.APP_NAME}} /healthz (host port ${host_port})"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "smoke failed: {{.APP_NAME}} /healthz did not become ready" >&2
+        docker logs "{{.CONTAINER_NAME}}" >&2 || true
+        exit 1
