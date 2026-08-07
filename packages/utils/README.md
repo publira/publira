@@ -20,7 +20,7 @@ const className = cn(
 
 ### 日時（テナント TZ）
 
-実行時に `Temporal` が必要です。各アプリは `temporal-polyfill/global` を instrumentation 等で読み込みます。
+実行時に `Temporal` が必要です。各アプリは `temporal-polyfill/global` を instrumentation 等で読み込みます。絶対時刻のパースは `Temporal.Instant.from` のみ（`Z` または数値オフセット必須）。ホストローカルの `Date.parse` は使いません。
 
 ```ts
 import {
@@ -36,6 +36,7 @@ formatDateTime(iso, { timeZone: "America/Los_Angeles", fallback: "-" });
 // 絶対時刻 ↔ datetime-local 壁時計（ホストのローカル TZ に依存しない）
 const local = toDateTimeLocalValue(iso, tenantTimeZone); // "YYYY-MM-DDTHH:mm"
 const absolute = fromDateTimeLocalValue(local, tenantTimeZone); // "...Z"
+// fromDateTimeLocalValue は Z / オフセット / [IANA] 付き文字列を拒否する
 ```
 
 ## ビルド

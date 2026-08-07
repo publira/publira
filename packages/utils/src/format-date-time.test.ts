@@ -48,6 +48,13 @@ describe("formatDateTime", () => {
     expect(formatDateTime("not-a-date", { fallback: "-" })).toBe("-");
     expect(formatDateTime("not-a-date")).toBe("not-a-date");
   });
+
+  it("rejects zone-less timestamps (no host-local Date.parse)", () => {
+    // Without Z/offset, Instant.from fails; must not interpret via host TZ.
+    expect(formatDateTime("2024-03-10T10:00", { fallback: "-" })).toBe("-");
+    expect(formatDateTime("2024-03-10T10:00:00", { fallback: "-" })).toBe("-");
+    expect(formatDateTime("2024-03-10", { fallback: "-" })).toBe("-");
+  });
 });
 
 describe("toDateTimeLocalValue", () => {
@@ -74,6 +81,14 @@ describe("toDateTimeLocalValue", () => {
     expect(toDateTimeLocalValue("bogus", "Asia/Tokyo", { fallback: "—" })).toBe(
       "—"
     );
+  });
+
+  it("rejects zone-less timestamps (no host-local Date.parse)", () => {
+    expect(toDateTimeLocalValue("2024-03-10T10:00", "Asia/Tokyo")).toBe("");
+    expect(toDateTimeLocalValue("2024-03-10T10:00:00", "UTC")).toBe("");
+    expect(
+      toDateTimeLocalValue("2024-03-10T10:00", "UTC", { fallback: "—" })
+    ).toBe("—");
   });
 });
 
@@ -112,6 +127,23 @@ describe("fromDateTimeLocalValue", () => {
     expect(fromDateTimeLocalValue("   ", "Asia/Tokyo")).toBe("");
     expect(fromDateTimeLocalValue("not-a-datetime", "Asia/Tokyo")).toBe("");
     expect(fromDateTimeLocalValue("2024-13-40T99:99", "Asia/Tokyo")).toBe("");
+  });
+
+  it("rejects Z, numeric offsets, and time-zone annotations", () => {
+    // PlainDateTime.from would ignore +09:00 / [Asia/Tokyo]; must not.
+    expect(fromDateTimeLocalValue("2024-03-10T19:00Z", "Asia/Tokyo")).toBe("");
+    expect(fromDateTimeLocalValue("2024-03-10T19:00+09:00", "Asia/Tokyo")).toBe(
+      ""
+    );
+    expect(
+      fromDateTimeLocalValue("2024-03-10T19:00-07:00", "America/Los_Angeles")
+    ).toBe("");
+    expect(
+      fromDateTimeLocalValue("2024-03-10T19:00[Asia/Tokyo]", "Asia/Tokyo")
+    ).toBe("");
+    expect(
+      fromDateTimeLocalValue("2024-03-10T19:00+09:00[Asia/Tokyo]", "Asia/Tokyo")
+    ).toBe("");
   });
 });
 

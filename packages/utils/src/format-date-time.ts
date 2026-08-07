@@ -4,8 +4,10 @@
  * Requires `Temporal` at runtime (`temporal-polyfill/global` installed by apps
  * and by this package's vitest setup; see https://github.com/publira/publira/issues/573).
  *
- * Absolute timestamps are RFC3339 / ISO-8601 instants. Wall-clock strings use the
- * HTML `datetime-local` shape (`YYYY-MM-DDTHH:mm`, optionally with seconds).
+ * Absolute timestamps are RFC3339 / ISO-8601 instants with an explicit offset or
+ * `Z` (parsed only via `Temporal.Instant.from` — no host-local `Date` parsing).
+ * Wall-clock strings use the HTML `datetime-local` shape
+ * (`YYYY-MM-DDTHH:mm`, optionally with seconds / fractional seconds).
  */
 
 /** Default IANA zone when `timeZone` is omitted (gradual migration from fixed JST). */
@@ -25,6 +27,13 @@ export interface ToDateTimeLocalOptions {
   fallback?: string;
 }
 
+/**
+ * HTML `datetime-local` wall clock: date + `T` + time, no offset / `Z` / zone id.
+ * @see https://html.spec.whatwg.org/multipage/common-microsyntaxes.html#local-date-and-time-strings
+ */
+const DATETIME_LOCAL_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/u;
+
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 const getDateTimeFormatter = (timeZone: string): Intl.DateTimeFormat => {
@@ -42,8 +51,10 @@ const getDateTimeFormatter = (timeZone: string): Intl.DateTimeFormat => {
 };
 
 /**
- * Parse an absolute timestamp string to `Temporal.Instant`.
- * Accepts RFC3339 / ISO-8601; falls back to `Date.parse` for lenient legacy values.
+ * Parse an absolute timestamp to `Temporal.Instant`.
+ * Only RFC3339 / ISO-8601 forms accepted by `Temporal.Instant.from`
+ * (must include `Z` or a numeric offset). Zone-less strings are rejected so
+ * results never depend on the host local time zone.
  */
 const tryParseInstant = (value: string): Temporal.Instant | null => {
   if (!value) {
@@ -53,11 +64,7 @@ const tryParseInstant = (value: string): Temporal.Instant | null => {
   try {
     return Temporal.Instant.from(value);
   } catch {
-    const ms = Date.parse(value);
-    if (Number.isNaN(ms)) {
-      return null;
-    }
-    return Temporal.Instant.fromEpochMilliseconds(ms);
+    return null;
   }
 };
 
@@ -104,7 +111,9 @@ export const toDateTimeLocalValue = (
 
 /**
  * `datetime-local` wall clock + IANA zone → absolute ISO-8601 instant (`…Z`).
- * Empty or unparseable input returns `""`.
+ * Empty, non-`datetime-local`, or unparseable input returns `""`.
+ * Values with `Z`, numeric offsets, or time-zone annotations are rejected so
+ * `PlainDateTime.from` cannot silently ignore zone metadata.
  *
  * Ambiguous / non-existent local times (DST) use Temporal's `compatible`
  * disambiguation (same default as `PlainDateTime.toZonedDateTime`).
@@ -114,7 +123,7 @@ export const fromDateTimeLocalValue = (
   timeZone: string
 ): string => {
   const trimmed = value.trim();
-  if (!trimmed) {
+  if (!trimmed || !DATETIME_LOCAL_RE.test(trimmed)) {
     return "";
   }
 
