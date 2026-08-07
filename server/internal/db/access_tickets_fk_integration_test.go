@@ -101,12 +101,8 @@ func mustInsertEpisode(t *testing.T, ctx context.Context, db *sql.DB, tenantID u
 	if err != nil {
 		t.Fatalf("uuid: %v", err)
 	}
-	seriesPublicID := publicID
-	if len(seriesPublicID) > 12 {
-		seriesPublicID = seriesPublicID[:12]
-	}
 	// Distinct series public_id per episode seed (global unique on series.public_id).
-	seriesPublicID = "S" + publicID[1:]
+	seriesPublicID := "S" + publicID[1:]
 	if len(seriesPublicID) > 12 {
 		seriesPublicID = seriesPublicID[:12]
 	}
