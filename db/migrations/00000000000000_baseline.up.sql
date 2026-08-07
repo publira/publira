@@ -561,6 +561,11 @@ ALTER TABLE ONLY episodes
 ALTER TABLE ONLY episodes
     ADD CONSTRAINT episodes_public_id_key UNIQUE (public_id);
 
+-- CONSTRAINT: episodes episodes_tenant_id_id_key
+-- Enables composite FKs that keep child rows on the same tenant as the episode.
+ALTER TABLE ONLY episodes
+    ADD CONSTRAINT episodes_tenant_id_id_key UNIQUE (tenant_id, id);
+
 -- CONSTRAINT: label_image_variants label_image_variants_pkey
 ALTER TABLE ONLY label_image_variants
     ADD CONSTRAINT label_image_variants_pkey PRIMARY KEY (id);
@@ -757,6 +762,12 @@ ALTER TABLE ONLY users
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_public_id_key UNIQUE (public_id);
 
+-- CONSTRAINT: users users_tenant_id_id_key
+-- Enables composite FKs that keep child rows on the same tenant as the user.
+-- tenant_id is nullable on users; rows with NULL tenant_id cannot be referenced by composite FKs.
+ALTER TABLE ONLY users
+    ADD CONSTRAINT users_tenant_id_id_key UNIQUE (tenant_id, id);
+
 -- INDEX: idx_access_tickets_active_user_episode
 -- At most one non-revoked ticket per (tenant, user, episode). Concurrent issue is serialized by this unique partial index.
 CREATE UNIQUE INDEX idx_access_tickets_active_user_episode ON access_tickets USING btree (tenant_id, user_id, episode_id) WHERE (revoked_at IS NULL);
@@ -939,20 +950,23 @@ CREATE UNIQUE INDEX uq_label_image_variants_label_image_type_width ON label_imag
 CREATE UNIQUE INDEX uq_series_image_variants_series_image_type_width ON series_image_variants USING btree (series_image_id, variant_type, width);
 
 -- FK CONSTRAINT: access_tickets access_tickets_created_by_user_id_fkey
+-- Single-column on purpose: multi-column FK with ON DELETE SET NULL would also null tenant_id.
 ALTER TABLE ONLY access_tickets
     ADD CONSTRAINT access_tickets_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL;
-
--- FK CONSTRAINT: access_tickets access_tickets_episode_id_fkey
-ALTER TABLE ONLY access_tickets
-    ADD CONSTRAINT access_tickets_episode_id_fkey FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: access_tickets access_tickets_tenant_id_fkey
 ALTER TABLE ONLY access_tickets
     ADD CONSTRAINT access_tickets_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
--- FK CONSTRAINT: access_tickets access_tickets_user_id_fkey
+-- FK CONSTRAINT: access_tickets access_tickets_tenant_episode_id_fkey
+-- Composite FK prevents referencing an episode that belongs to another tenant.
 ALTER TABLE ONLY access_tickets
-    ADD CONSTRAINT access_tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT access_tickets_tenant_episode_id_fkey FOREIGN KEY (tenant_id, episode_id) REFERENCES episodes(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: access_tickets access_tickets_tenant_user_id_fkey
+-- Composite FK prevents referencing a user that belongs to another tenant.
+ALTER TABLE ONLY access_tickets
+    ADD CONSTRAINT access_tickets_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: audit_logs audit_logs_actor_user_id_fkey
 ALTER TABLE ONLY audit_logs
