@@ -1,0 +1,115 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# Publira repository CodeRabbit config.
+# Inherits Organization Settings; overrides only monorepo-specific paths and rules.
+# Resolved config: comment `@coderabbitai configuration` on a PR.
+inheritance: true
+
+# Review comments to humans stay Japanese; instruction text is English (token-efficient, like AGENTS.md).
+language: ja-JP
+tone_instructions: >-
+  Be concise and technical. No praise. Focus on bugs, security, contract breaks, and policy violations. Skip style nits and anything lint already catches. Keep code identifiers, paths, and commands as-is.
+
+reviews:
+  # Org sets assertive / auto_review off / noise flags. Repo-specific only below.
+  path_filters:
+    # Defaults already drop !**/gen/** etc. Publira-specific generated / noise:
+    - "!server/internal/db/*.sql.go"
+    - "!server/internal/db/db.go"
+    - "!server/internal/db/models.go"
+    - "!server/internal/db/querier.go"
+    - "!packages/**/dist/**"
+    - "!**/*.tsbuildinfo"
+    - "!skills-lock.json"
+    - "!.agents/skills/**"
+    - "!mobile/**/Generated.xcconfig"
+    - "!mobile/ios/Flutter/flutter_export_environment.sh"
+    - "!mobile/android/**/GeneratedPluginRegistrant.*"
+
+  path_instructions:
+    - path: "apps/**/*.{ts,tsx}"
+      instructions: |
+        Next.js App Router monorepo (web-admin / web-host / web-platform).
+        Source of truth: AGENTS.md and apps/AGENTS.md.
+
+        - React: user actions in event handlers only. No props→state via useEffect.
+          Reset edit state on entity switch with parent key remount. useEffectEvent
+          only from inside Effects (never pass to onClick etc.).
+        - Next.js cache: wire both cacheHandler (singular) and cacheHandlers (plural)
+          to Redis via @publira/next-cache-handlers. Flag changes that drop either.
+        - Never leak secrets or server-only env to the client.
+        - Prefer packages/* for shared UI; keep app-only code under apps/*.
+
+    - path: "packages/**/*.{ts,tsx}"
+      instructions: |
+        Shared packages. Prioritize breaking API changes, public export semantics,
+        and overly wide types. Hand-written api-client code must keep a clear
+        boundary from Connect-generated clients. Do not reimplement or patch
+        generated clients in hand-written sources (packages/**/gen/** and
+        packages/**/dist/** are path-filtered and not reviewed).
+
+    - path: "server/**/*.go"
+      instructions: |
+        Go backend. Rules: server/AGENTS.md.
+
+        - Schema-first: change proto/ or db/migrations + db/query first, then task gen.
+          Prefer source-side diffs; server/gen/ and sqlc outputs are path-filtered
+          so hand-edits there are not visible to review — flag PRs that change
+          generated-looking code without corresponding proto/SQL sources.
+        - Keep cmd/ thin; real logic in api/ and internal/.
+        - Emphasize error handling, context propagation, authz (tenant / role).
+        - Flag queries or handlers that break multi-tenant isolation.
+        - Batches are one-shot (run and exit), not long-lived daemons.
+
+    - path: "server/api/**/*.go"
+      instructions: |
+        ConnectRPC handlers. Check input validation, authz, tenant resolution, and
+        audit logging. Suggest moving bloated business logic into internal/.
+
+    - path: "db/**"
+      instructions: |
+        PostgreSQL / sqlc. Rules: db/AGENTS.md.
+
+        - Baseline-only for now: do not add numbered migration files. Fold schema
+          changes into migrations/00000000000000_baseline.{up,down}.sql.
+        - migration = DDL; seed = idempotent DML. Flag mixed responsibilities.
+        - Strongly flag destructive DDL (DROP / TRUNCATE / drop constraints) and RLS disable.
+        - sqlc queries must be parameterized; flag string-concatenated dynamic SQL.
+
+    - path: "proto/**/*.proto"
+      instructions: |
+        Public contracts. Flag field-number reuse/removal, semantic breaks, and
+        incompatible renames/type changes. Remind that task gen is required after edits.
+
+    - path: "mobile/**/*.{dart,kt,swift}"
+      instructions: |
+        Flutter mobile. Check domain/API contract drift vs web, secure storage and
+        auth token handling, and accidental platform-specific leaks.
+
+    - path: "infra/**"
+      instructions: |
+        Production Docker / build. Flag bad build context from repo root, secret COPY,
+        unnecessary root, and pointless cache-busting layers.
+        See infra/docker/README.md and infra/docker/AGENTS.md.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Flag secret exposure, unsafe pull_request_target, excessive permissions,
+        and missing verification steps.
+
+    - path: "**/*.{test,spec}.{ts,tsx,go,dart}"
+      instructions: |
+        Prefer readable names, failure paths, and edge cases. Go DB integration should
+        follow internal/testutil / Testcontainers; flag tests that assume a shared local DB.
+
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: >-
+        Short English Conventional Commits title (e.g. feat(server): ..., fix(web-admin): ...). The PR title becomes the merge commit message.
+    description:
+      mode: warning
+    issue_assessment:
+      mode: off
+    docstrings:
+      mode: off
