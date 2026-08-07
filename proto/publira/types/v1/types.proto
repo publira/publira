@@ -127,6 +127,7 @@ message Page {
   string published_version_id = 4;
   string created_at = 5;
   string updated_at = 6;
+  bool display_in_footer = 7;
 }
 
 message PageVersion {

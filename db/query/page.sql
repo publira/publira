@@ -1,7 +1,7 @@
 -- name: CreatePage :one
 -- ページを新規作成する
-INSERT INTO pages (id, tenant_id, slug, title)
-VALUES (sqlc.arg('id'), sqlc.arg('tenant_id'), sqlc.arg('slug'), sqlc.arg('title'))
+INSERT INTO pages (id, tenant_id, slug, title, display_in_footer)
+VALUES (sqlc.arg('id'), sqlc.arg('tenant_id'), sqlc.arg('slug'), sqlc.arg('title'), sqlc.arg('display_in_footer'))
 RETURNING *;
 
 -- name: GetPageByIDForTenant :one
@@ -15,10 +15,12 @@ SELECT * FROM pages
 WHERE tenant_id = sqlc.arg('tenant_id')
 ORDER BY created_at ASC;
 
--- name: UpdatePageTitle :one
--- ページのタイトルを更新する
+-- name: UpdatePage :one
+-- ページのタイトルとフッター表示設定を更新する
 UPDATE pages
-SET title = sqlc.arg('title'), updated_at = NOW()
+SET title = sqlc.arg('title'),
+	display_in_footer = sqlc.arg('display_in_footer'),
+	updated_at = NOW()
 WHERE id = sqlc.arg('id') AND tenant_id = sqlc.arg('tenant_id')
 RETURNING *;
 
@@ -60,11 +62,12 @@ WHERE id = sqlc.arg('id') AND page_id = sqlc.arg('page_id')
 RETURNING *;
 
 -- name: ListPublishedPagesForTenant :many
--- テナントの公開中ページ一覧を取得する
+-- テナントの公開中かつフッター表示対象のページ一覧を取得する
 SELECT p.*
 FROM pages p
 	JOIN page_versions pv ON pv.id = p.published_version_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
+	AND p.display_in_footer = true
 	AND pv.status = 'published'
 	AND pv.published_at IS NOT NULL
 	AND pv.published_at <= NOW()
@@ -77,6 +80,7 @@ SELECT p.id,
 	p.slug,
 	p.title,
 	p.published_version_id,
+	p.display_in_footer,
 	p.created_at,
 	p.updated_at,
 	pv.id AS version_id,

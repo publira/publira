@@ -27,8 +27,8 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedPagesForTenantQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "slug", "title", "published_version_id", "created_at", "updated_at"}).
-			AddRow(pageID, tenantID, "/privacy", "プライバシーポリシー", versionID, now, now))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at"}).
+			AddRow(pageID, tenantID, "/privacy", "プライバシーポリシー", versionID, true, now, now))
 
 	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
 	resp, err := client.ListPublishedPages(context.Background(), connect.NewRequest(&publirav1.ListPublishedPagesRequest{
@@ -47,6 +47,9 @@ func TestPagesListPublishedPagesSuccess(t *testing.T) {
 	if resp.Msg.Pages[0].PublishedVersionId != versionID.String() {
 		t.Fatalf("published version id = %q, want %q", resp.Msg.Pages[0].PublishedVersionId, versionID.String())
 	}
+	if !resp.Msg.Pages[0].DisplayInFooter {
+		t.Fatalf("display_in_footer = false, want true")
+	}
 
 	assertPublicExpectations(t, mock)
 }
@@ -64,10 +67,10 @@ func TestPagesGetPublishedPageSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
 		WithArgs(tenantID, "/privacy").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "tenant_id", "slug", "title", "published_version_id", "created_at", "updated_at",
+			"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at",
 			"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
 		}).AddRow(
-			pageID, tenantID, "/privacy", "プライバシーポリシー", versionID, now, now,
+			pageID, tenantID, "/privacy", "プライバシーポリシー", versionID, true, now, now,
 			versionID, pageID, int32(2), "# Privacy", nil, "published", nil, now, now,
 		))
 
@@ -113,7 +116,7 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
 			WithArgs(tenantID, "/missing").
 			WillReturnRows(sqlmock.NewRows([]string{
-				"id", "tenant_id", "slug", "title", "published_version_id", "created_at", "updated_at",
+				"id", "tenant_id", "slug", "title", "published_version_id", "display_in_footer", "created_at", "updated_at",
 				"version_id", "page_id", "version_number", "content_markdown", "author_user_id", "status", "publish_at", "version_created_at", "published_at",
 			}))
 
@@ -142,5 +145,8 @@ func TestPagesPublishedQueriesHavePublicationGuards(t *testing.T) {
 		if !strings.Contains(getPublishedPageBySlugQuery, snippet) {
 			t.Fatalf("getPublishedPageBySlugQuery does not contain %q", snippet)
 		}
+	}
+	if !strings.Contains(listPublishedPagesForTenantQuery, "p.display_in_footer = true") {
+		t.Fatalf("listPublishedPagesForTenantQuery must filter display_in_footer")
 	}
 }

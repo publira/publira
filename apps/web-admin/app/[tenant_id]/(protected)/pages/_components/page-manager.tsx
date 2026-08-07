@@ -75,6 +75,7 @@ export const PageManager = ({
                 <TableHead>タイトル</TableHead>
                 <TableHead>slug</TableHead>
                 <TableHead className="w-32">状態</TableHead>
+                <TableHead className="w-28">フッター</TableHead>
                 <TableHead className="w-40">更新日時</TableHead>
                 <TableHead className="w-32">操作</TableHead>
               </TableRow>
@@ -92,6 +93,13 @@ export const PageManager = ({
                     >
                       {page.publishedVersionId.length > 0 ? "公開中" : "下書き"}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {page.displayInFooter ? (
+                      <Badge tone="info">表示</Badge>
+                    ) : (
+                      <Badge tone="muted">非表示</Badge>
+                    )}
                   </TableCell>
                   <TableCell>{formatPageDateTime(page.updatedAt)}</TableCell>
                   <TableCell>

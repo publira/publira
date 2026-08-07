@@ -108,10 +108,7 @@ const EditPagePage = async ({ params }: EditPagePageProps) => {
       title="ページ編集"
     >
       <FlashToast title="ページを作成しました。" />
-      <FlashToast
-        keyName="title_updated"
-        title="ページタイトルを更新しました。"
-      />
+      <FlashToast keyName="updated" title="ページ基本情報を更新しました。" />
       <FlashToast
         keyName="draft_saved"
         title="下書きバージョンを保存しました。"

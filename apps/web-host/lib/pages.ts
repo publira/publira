@@ -19,6 +19,13 @@ export interface PublishedPage {
   versionNumber: number;
 }
 
+export interface PublishedPageLink {
+  href: string;
+  label: string;
+  id: string;
+  slug: string;
+}
+
 /**
  * Normalize a route param or form slug to the storage form used by admin/public APIs.
  * Accepts a string or catch-all segment array.
@@ -92,6 +99,59 @@ const fetchPublishedPageBySlug = async (
     return { ok: true, response };
   } catch (error) {
     return { error, ok: false };
+  }
+};
+
+/**
+ * Build the public site path for a stored page slug.
+ * Storage form is `/privacy` or `/legal/terms`; public href matches that path.
+ */
+export const publishedPageHrefFromSlug = (slug: string): string => {
+  const normalized = normalizePublishedPageSlug(slug);
+  return normalized || "/";
+};
+
+export const listPublishedPageLinks = async (
+  tenantId: string
+): Promise<PublishedPageLink[]> => {
+  // Shared public content: remote so multi-instance hosts share entries.
+  "use cache: remote";
+
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId) {
+    return [];
+  }
+
+  applyCacheTag(tenantPagesTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.pages.listPublishedPages({
+      tenant: { tenantId: normalizedTenantId },
+    });
+
+    const links: PublishedPageLink[] = [];
+    for (const page of response.pages ?? []) {
+      const id = page.id?.trim() ?? "";
+      const slug = page.slug?.trim() ?? "";
+      const title = page.title?.trim() ?? "";
+      if (!id || !slug || !title) {
+        continue;
+      }
+      // API already filters to display_in_footer + published; keep a defensive check.
+      if (page.displayInFooter === false) {
+        continue;
+      }
+      links.push({
+        href: publishedPageHrefFromSlug(slug),
+        id,
+        label: title,
+        slug,
+      });
+    }
+    return links;
+  } catch {
+    // Footer links are non-critical chrome; fail soft so the site shell still renders.
+    return [];
   }
 };
 

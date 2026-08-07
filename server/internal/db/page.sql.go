@@ -14,16 +14,17 @@ import (
 )
 
 const createPage = `-- name: CreatePage :one
-INSERT INTO pages (id, tenant_id, slug, title)
-VALUES ($1, $2, $3, $4)
-RETURNING id, tenant_id, slug, title, published_version_id, created_at, updated_at
+INSERT INTO pages (id, tenant_id, slug, title, display_in_footer)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at
 `
 
 type CreatePageParams struct {
-	ID       uuid.UUID `json:"id"`
-	TenantID uuid.UUID `json:"tenant_id"`
-	Slug     string    `json:"slug"`
-	Title    string    `json:"title"`
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Slug            string    `json:"slug"`
+	Title           string    `json:"title"`
+	DisplayInFooter bool      `json:"display_in_footer"`
 }
 
 // ページを新規作成する
@@ -33,6 +34,7 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, e
 		arg.TenantID,
 		arg.Slug,
 		arg.Title,
+		arg.DisplayInFooter,
 	)
 	var i Page
 	err := row.Scan(
@@ -41,6 +43,7 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, e
 		&i.Slug,
 		&i.Title,
 		&i.PublishedVersionID,
+		&i.DisplayInFooter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -103,7 +106,7 @@ func (q *Queries) GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uu
 }
 
 const getPageByIDForTenant = `-- name: GetPageByIDForTenant :one
-SELECT id, tenant_id, slug, title, published_version_id, created_at, updated_at FROM pages
+SELECT id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at FROM pages
 WHERE id = $1 AND tenant_id = $2
 `
 
@@ -122,6 +125,7 @@ func (q *Queries) GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTe
 		&i.Slug,
 		&i.Title,
 		&i.PublishedVersionID,
+		&i.DisplayInFooter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -163,6 +167,7 @@ SELECT p.id,
 	p.slug,
 	p.title,
 	p.published_version_id,
+	p.display_in_footer,
 	p.created_at,
 	p.updated_at,
 	pv.id AS version_id,
@@ -195,6 +200,7 @@ type GetPublishedPageBySlugForTenantRow struct {
 	Slug               string        `json:"slug"`
 	Title              string        `json:"title"`
 	PublishedVersionID uuid.NullUUID `json:"published_version_id"`
+	DisplayInFooter    bool          `json:"display_in_footer"`
 	CreatedAt          time.Time     `json:"created_at"`
 	UpdatedAt          time.Time     `json:"updated_at"`
 	VersionID          uuid.UUID     `json:"version_id"`
@@ -218,6 +224,7 @@ func (q *Queries) GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPu
 		&i.Slug,
 		&i.Title,
 		&i.PublishedVersionID,
+		&i.DisplayInFooter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VersionID,
@@ -275,7 +282,7 @@ func (q *Queries) ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID
 }
 
 const listPagesForTenant = `-- name: ListPagesForTenant :many
-SELECT id, tenant_id, slug, title, published_version_id, created_at, updated_at FROM pages
+SELECT id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at FROM pages
 WHERE tenant_id = $1
 ORDER BY created_at ASC
 `
@@ -296,6 +303,7 @@ func (q *Queries) ListPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([
 			&i.Slug,
 			&i.Title,
 			&i.PublishedVersionID,
+			&i.DisplayInFooter,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -313,17 +321,18 @@ func (q *Queries) ListPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([
 }
 
 const listPublishedPagesForTenant = `-- name: ListPublishedPagesForTenant :many
-SELECT p.id, p.tenant_id, p.slug, p.title, p.published_version_id, p.created_at, p.updated_at
+SELECT p.id, p.tenant_id, p.slug, p.title, p.published_version_id, p.display_in_footer, p.created_at, p.updated_at
 FROM pages p
 	JOIN page_versions pv ON pv.id = p.published_version_id
 WHERE p.tenant_id = $1
+	AND p.display_in_footer = true
 	AND pv.status = 'published'
 	AND pv.published_at IS NOT NULL
 	AND pv.published_at <= NOW()
 ORDER BY p.created_at ASC
 `
 
-// テナントの公開中ページ一覧を取得する
+// テナントの公開中かつフッター表示対象のページ一覧を取得する
 func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedPagesForTenant, tenantID)
 	if err != nil {
@@ -339,6 +348,7 @@ func (q *Queries) ListPublishedPagesForTenant(ctx context.Context, tenantID uuid
 			&i.Slug,
 			&i.Title,
 			&i.PublishedVersionID,
+			&i.DisplayInFooter,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -390,7 +400,7 @@ const setPagePublishedVersion = `-- name: SetPagePublishedVersion :one
 UPDATE pages
 SET published_version_id = $1, updated_at = NOW()
 WHERE id = $2 AND tenant_id = $3
-RETURNING id, tenant_id, slug, title, published_version_id, created_at, updated_at
+RETURNING id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at
 `
 
 type SetPagePublishedVersionParams struct {
@@ -409,28 +419,37 @@ func (q *Queries) SetPagePublishedVersion(ctx context.Context, arg SetPagePublis
 		&i.Slug,
 		&i.Title,
 		&i.PublishedVersionID,
+		&i.DisplayInFooter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const updatePageTitle = `-- name: UpdatePageTitle :one
+const updatePage = `-- name: UpdatePage :one
 UPDATE pages
-SET title = $1, updated_at = NOW()
-WHERE id = $2 AND tenant_id = $3
-RETURNING id, tenant_id, slug, title, published_version_id, created_at, updated_at
+SET title = $1,
+	display_in_footer = $2,
+	updated_at = NOW()
+WHERE id = $3 AND tenant_id = $4
+RETURNING id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at
 `
 
-type UpdatePageTitleParams struct {
-	Title    string    `json:"title"`
-	ID       uuid.UUID `json:"id"`
-	TenantID uuid.UUID `json:"tenant_id"`
+type UpdatePageParams struct {
+	Title           string    `json:"title"`
+	DisplayInFooter bool      `json:"display_in_footer"`
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
 }
 
-// ページのタイトルを更新する
-func (q *Queries) UpdatePageTitle(ctx context.Context, arg UpdatePageTitleParams) (Page, error) {
-	row := q.db.QueryRowContext(ctx, updatePageTitle, arg.Title, arg.ID, arg.TenantID)
+// ページのタイトルとフッター表示設定を更新する
+func (q *Queries) UpdatePage(ctx context.Context, arg UpdatePageParams) (Page, error) {
+	row := q.db.QueryRowContext(ctx, updatePage,
+		arg.Title,
+		arg.DisplayInFooter,
+		arg.ID,
+		arg.TenantID,
+	)
 	var i Page
 	err := row.Scan(
 		&i.ID,
@@ -438,6 +457,7 @@ func (q *Queries) UpdatePageTitle(ctx context.Context, arg UpdatePageTitleParams
 		&i.Slug,
 		&i.Title,
 		&i.PublishedVersionID,
+		&i.DisplayInFooter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

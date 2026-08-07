@@ -62,30 +62,79 @@ export const SiteLayoutFooterSkeleton = () => (
   </footer>
 );
 
+const normalizeFooterLinks = (
+  items: LayoutLinkItem[] | undefined
+): LayoutLinkItem[] => {
+  if (!items?.length) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const normalized: LayoutLinkItem[] = [];
+
+  for (const item of items) {
+    const href = item.href.trim();
+    const label = item.label.trim();
+    if (!href || !label || seen.has(href)) {
+      continue;
+    }
+    seen.add(href);
+    normalized.push({ href, label });
+  }
+
+  return normalized;
+};
+
 const SiteLayoutFooterContentInner = async ({
   copyrightText,
   footerNote,
+  links,
 }: {
   copyrightText?: string | Promise<string | undefined>;
   footerNote?: string | Promise<string | undefined>;
+  links?: LayoutLinkItem[] | Promise<LayoutLinkItem[] | undefined>;
 }) => {
-  const [resolvedFooterNote, resolvedCopyrightText] = await Promise.all([
-    footerNote,
-    copyrightText,
-  ]);
+  const [resolvedFooterNote, resolvedCopyrightText, resolvedLinks] =
+    await Promise.all([footerNote, copyrightText, links]);
 
   const normalizedFooterNote = normalizeLayoutText(resolvedFooterNote);
   const normalizedCopyrightText = normalizeLayoutText(resolvedCopyrightText);
+  const normalizedLinks = normalizeFooterLinks(resolvedLinks);
 
-  if (!normalizedFooterNote && !normalizedCopyrightText) {
+  if (
+    !normalizedFooterNote &&
+    !normalizedCopyrightText &&
+    normalizedLinks.length === 0
+  ) {
     return null;
   }
 
   return (
     <footer className="border-t border-border/70 bg-surface">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-        {normalizedFooterNote && <p>{normalizedFooterNote}</p>}
-        {normalizedCopyrightText && <p>{normalizedCopyrightText}</p>}
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-6 text-sm text-muted-foreground">
+        {normalizedLinks.length > 0 ? (
+          <nav
+            aria-label="フッターリンク"
+            className="flex flex-wrap items-center gap-x-4 gap-y-2"
+          >
+            {normalizedLinks.map((item) => (
+              // oxlint-disable-next-line nextjs/no-html-link-for-pages
+              <a
+                className="transition-colors hover:text-foreground"
+                href={item.href}
+                key={item.href}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        ) : null}
+        {normalizedFooterNote || normalizedCopyrightText ? (
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            {normalizedFooterNote ? <p>{normalizedFooterNote}</p> : null}
+            {normalizedCopyrightText ? <p>{normalizedCopyrightText}</p> : null}
+          </div>
+        ) : null}
       </div>
     </footer>
   );
@@ -165,14 +214,17 @@ export const SiteLayoutHeaderActions = ({
 export const SiteLayoutFooter = ({
   copyrightText,
   footerNote,
+  links,
 }: {
   copyrightText?: string | Promise<string | undefined>;
   footerNote?: string | Promise<string | undefined>;
+  links?: LayoutLinkItem[] | Promise<LayoutLinkItem[] | undefined>;
 }) => (
   <Suspense fallback={<SiteLayoutFooterSkeleton />}>
     <SiteLayoutFooterContentInner
       copyrightText={copyrightText}
       footerNote={footerNote}
+      links={links}
     />
   </Suspense>
 );

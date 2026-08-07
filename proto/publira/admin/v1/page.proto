@@ -10,6 +10,7 @@ message CreatePageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string slug = 2;
   string title = 3;
+  bool display_in_footer = 4;
 }
 
 message CreatePageResponse {
@@ -20,6 +21,7 @@ message UpdatePageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
   string title = 3;
+  bool display_in_footer = 4;
 }
 
 message UpdatePageResponse {

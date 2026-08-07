@@ -168,6 +168,7 @@ type Page struct {
 	Slug               string        `json:"slug"`
 	Title              string        `json:"title"`
 	PublishedVersionID uuid.NullUUID `json:"published_version_id"`
+	DisplayInFooter    bool          `json:"display_in_footer"`
 	CreatedAt          time.Time     `json:"created_at"`
 	UpdatedAt          time.Time     `json:"updated_at"`
 }
