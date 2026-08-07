@@ -235,6 +235,7 @@ docker build -f infra/docker/web/Dockerfile \
 `server/**` 変更時は api と batch の両方の代表をビルドする（共有モジュールのため）。
 
 実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
+ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Check / Test / Build / Docker 行列を決定）。  
 ローカルと同一コマンド: `task docker:build:web|api|batch`（Web は続けて `task docker:smoke:web`）。
 
 Check / Test / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
@@ -246,12 +247,15 @@ Check / Test / Build / Docker は path filter により個別にスキップさ�
    - `Check` / `Test` / `Build` → ホスト上の依存・型・テスト・`pnpm build` / `go build`
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
 2. **ローカルで同じ Task を再現する**（CI ログの `task docker:build:…` 行をそのまま使う）
+
    ```bash
    task docker:build:web APP_NAME=web-host PORT=3000
    # または
    task docker:verify
    ```
+
 3. **レイヤで切り分ける**
+
    | 症状 | 疑う箇所 |
    | --- | --- |
    | `ERROR: APP_NAME/CMD_NAME is required` | build-arg の渡し忘れ |
@@ -261,6 +265,7 @@ Check / Test / Build / Docker は path filter により個別にスキップさ�
    | `go build` 失敗 | `server/` のコンパイルエラー（先に `task server:build`） |
    | ベース pull 失敗 / digest | レジストリ・digest 更新・Renovate PR の取りこぼし |
    | Web smoke (`/healthz`) のみ失敗 | エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している） |
+
 4. **CI だけ失敗する場合**
    - ランナー arch / Buildx とローカルの差（Go は `TARGETOS`/`TARGETARCH` を既定固定しない）
    - キャッシュ汚れ → ローカルは `docker builder prune`、CI は再実行

@@ -73,6 +73,7 @@ jobs:
               - 'oxlint.config.ts'
               - 'oxfmt.config.ts'
               - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             test:
               - 'apps/**'
               - 'packages/**'
@@ -83,6 +84,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             build:
               - 'apps/**'
               - 'packages/**'
@@ -92,6 +94,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             docker_web:
               - 'apps/**'
               - 'packages/**'
@@ -103,18 +106,21 @@ jobs:
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             docker_api:
               - 'server/**'
               - 'infra/docker/api/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             docker_batch:
               - 'server/**'
               - 'infra/docker/batch/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             docker_core:
               - 'infra/docker/web/**'
               - 'infra/docker/api/**'
@@ -122,6 +128,7 @@ jobs:
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
 
       - name: Plan jobs
         id: plan
@@ -135,150 +142,7 @@ jobs:
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
           FILTER_DOCKER_BATCH: ${{ steps.filter.outputs.docker_batch }}
           FILTER_DOCKER_CORE: ${{ steps.filter.outputs.docker_core }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          import os
-
-          event = os.environ.get("EVENT_NAME", "")
-          docker_mode_input = os.environ.get("DOCKER_MODE_INPUT", "") or "verify"
-
-          def flag(name: str) -> bool:
-              return os.environ.get(name, "") == "true"
-
-          representatives = [
-              {
-                  "role": "web",
-                  "target": "web-host",
-                  "port": "3000",
-                  "task": "docker:build:web",
-                  "arg": "APP_NAME=web-host",
-                  "extra": "PORT=3000",
-              },
-              {
-                  "role": "api",
-                  "target": "api-server",
-                  "port": "8000",
-                  "task": "docker:build:api",
-                  "arg": "CMD_NAME=api-server",
-                  "extra": "PORT=8000",
-              },
-              {
-                  "role": "batch",
-                  "target": "publish-episodes",
-                  "port": "",
-                  "task": "docker:build:batch",
-                  "arg": "CMD_NAME=publish-episodes",
-                  "extra": "",
-              },
-          ]
-          full_docker = [
-              {
-                  "role": "web",
-                  "target": "web-host",
-                  "port": "3000",
-                  "task": "docker:build:web",
-                  "arg": "APP_NAME=web-host",
-                  "extra": "PORT=3000",
-              },
-              {
-                  "role": "web",
-                  "target": "web-admin",
-                  "port": "4000",
-                  "task": "docker:build:web",
-                  "arg": "APP_NAME=web-admin",
-                  "extra": "PORT=4000",
-              },
-              {
-                  "role": "web",
-                  "target": "web-platform",
-                  "port": "4100",
-                  "task": "docker:build:web",
-                  "arg": "APP_NAME=web-platform",
-                  "extra": "PORT=4100",
-              },
-              {
-                  "role": "api",
-                  "target": "api-server",
-                  "port": "8000",
-                  "task": "docker:build:api",
-                  "arg": "CMD_NAME=api-server",
-                  "extra": "PORT=8000",
-              },
-              {
-                  "role": "api",
-                  "target": "admin-api-server",
-                  "port": "8001",
-                  "task": "docker:build:api",
-                  "arg": "CMD_NAME=admin-api-server",
-                  "extra": "PORT=8001",
-              },
-              {
-                  "role": "api",
-                  "target": "platform-api-server",
-                  "port": "8002",
-                  "task": "docker:build:api",
-                  "arg": "CMD_NAME=platform-api-server",
-                  "extra": "PORT=8002",
-              },
-              {
-                  "role": "batch",
-                  "target": "publish-episodes",
-                  "port": "",
-                  "task": "docker:build:batch",
-                  "arg": "CMD_NAME=publish-episodes",
-                  "extra": "",
-              },
-          ]
-
-          if event == "schedule":
-              check = test = build = False
-              docker_matrix = full_docker
-          elif event == "workflow_dispatch":
-              # Manual run: always host CI + selected Docker set
-              check = test = build = True
-              docker_matrix = full_docker if docker_mode_input == "full" else representatives
-          else:
-              check = flag("FILTER_CHECK")
-              test = flag("FILTER_TEST")
-              build = flag("FILTER_BUILD")
-              if flag("FILTER_DOCKER_CORE"):
-                  docker_matrix = full_docker
-              else:
-                  docker_matrix = []
-                  if flag("FILTER_DOCKER_WEB"):
-                      docker_matrix.append(representatives[0])
-                  if flag("FILTER_DOCKER_API"):
-                      docker_matrix.append(representatives[1])
-                  if flag("FILTER_DOCKER_BATCH"):
-                      docker_matrix.append(representatives[2])
-
-          docker_any = len(docker_matrix) > 0
-          # Matrix must be non-empty JSON for fromJson when the job is skipped
-          matrix_payload = docker_matrix if docker_matrix else [
-              {
-                  "role": "none",
-                  "target": "skip",
-                  "port": "",
-                  "task": "skip",
-                  "arg": "",
-                  "extra": "",
-              }
-          ]
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-              fh.write(f"check={str(check).lower()}\n")
-              fh.write(f"test={str(test).lower()}\n")
-              fh.write(f"build={str(build).lower()}\n")
-              fh.write(f"docker_any={str(docker_any).lower()}\n")
-              fh.write(f"docker_matrix={json.dumps(matrix_payload, separators=(',', ':'))}\n")
-
-          print(f"event={event}")
-          print(f"check={check} test={test} build={build} docker_any={docker_any}")
-          for item in docker_matrix:
-              print(f"  docker: {item['role']}/{item['target']}")
-          PY
+        run: bash scripts/ci-plan-jobs.sh
 
   check:
     name: Check
@@ -463,21 +327,27 @@ jobs:
         with:
           version: ${{ env.TASK_VERSION }}
 
-      - name: Setup / Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-
+      # Use the default docker driver so `docker build -t …` loads into the local
+      # image store (docker-container Buildx does not, and smoke needs docker run).
       - name: Build image
+        env:
+          DOCKER_TASK: ${{ matrix.task }}
+          DOCKER_ARG: ${{ matrix.arg }}
+          DOCKER_EXTRA: ${{ matrix.extra }}
         run: |
           set -euo pipefail
-          if [ -n "${{ matrix.extra }}" ]; then
-            task ${{ matrix.task }} ${{ matrix.arg }} ${{ matrix.extra }}
+          if [ -n "${DOCKER_EXTRA}" ]; then
+            task "${DOCKER_TASK}" "${DOCKER_ARG}" "${DOCKER_EXTRA}"
           else
-            task ${{ matrix.task }} ${{ matrix.arg }}
+            task "${DOCKER_TASK}" "${DOCKER_ARG}"
           fi
 
       - name: Smoke / Web /healthz
         if: matrix.role == 'web'
-        run: task docker:smoke:web APP_NAME=${{ matrix.target }} PORT=${{ matrix.port }}
+        env:
+          APP_NAME: ${{ matrix.target }}
+          PORT: ${{ matrix.port }}
+        run: task docker:smoke:web "APP_NAME=${APP_NAME}" "PORT=${PORT}"
 
   # Single required status check for the branch ruleset (shown as "CI / Summary").
   # Intermediate jobs may be skipped when their paths did not change.
