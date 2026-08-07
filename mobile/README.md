@@ -56,8 +56,13 @@ flutter analyze
 
 ```
 mobile/
-├── lib/           # アプリケーションコード
-│   └── main.dart  # エントリポイント
+├── lib/
+│   ├── main.dart                 # エントリポイント
+│   ├── app.dart                  # MaterialApp.router
+│   ├── router.dart               # go_router 定義
+│   ├── data/sample_series.dart   # カタログ用サンプルデータ
+│   ├── models/series_item.dart
+│   └── screens/                  # カタログ / シリーズ詳細 など
 ├── test/          # ウィジェットテスト / ユニットテスト
 ├── android/       # Android 固有ファイル
 ├── ios/           # iOS 固有ファイル
@@ -65,6 +70,17 @@ mobile/
 ├── pubspec.yaml   # 依存関係定義
 └── analysis_options.yaml  # lint / 静的解析設定
 ```
+
+## 画面遷移
+
+`go_router` で以下を定義しています（プレースホルダ UI）。
+
+| パス                | 画面         |
+| ------------------- | ------------ |
+| `/`                 | カタログ一覧 |
+| `/series/:seriesId` | シリーズ詳細 |
+
+公開 API 連携・ビューアは後続 Issue で差し替えます。
 
 ## 環境変数 / フレーバー方針
 
