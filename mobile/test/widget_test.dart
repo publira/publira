@@ -63,6 +63,12 @@ void main() {
     await pumpApp(tester);
 
     expect(find.textContaining('シリーズが見つかりません'), findsOneWidget);
+
+    await tester.tap(find.text('カタログへ戻る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Publira'), findsOneWidget);
+    expect(router.state.uri.path, AppRoutes.catalog);
   });
 
   testWidgets('unknown route shows not-found screen', (tester) async {

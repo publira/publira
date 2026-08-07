@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:publira/data/sample_series.dart';
 import 'package:publira/models/series_item.dart';
 
@@ -16,7 +17,17 @@ class SeriesDetailScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('シリーズ')),
         body: Center(
-          child: Text('シリーズが見つかりません ($seriesId)'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('シリーズが見つかりません ($seriesId)'),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => context.goNamed('catalog'),
+                child: const Text('カタログへ戻る'),
+              ),
+            ],
+          ),
         ),
       );
     }
