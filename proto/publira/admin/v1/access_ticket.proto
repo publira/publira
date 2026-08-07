@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// AdminAccessTicket is a user-bound viewing grant for a single episode.
+// Distinct from purchases (payment); issued and revoked by tenant admins.
+message AdminAccessTicket {
+  string public_id = 1;
+  string episode_public_id = 2;
+  string episode_title = 3;
+  string series_public_id = 4;
+  string series_title = 5;
+  string user_public_id = 6;
+  string user_name = 7;
+  string user_email = 8;
+  // RFC3339; empty when the ticket does not expire.
+  string expires_at = 9;
+  // RFC3339; empty while the ticket is active.
+  string revoked_at = 10;
+  string note = 11;
+  string created_at = 12;
+  // active | expired | revoked
+  string status = 13;
+}
+
+message ListAccessTicketsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  // Optional filters (empty = no filter).
+  string user_public_id = 4;
+  string episode_public_id = 5;
+  // When true, omit revoked tickets from the list.
+  bool active_only = 6;
+}
+
+message ListAccessTicketsResponse {
+  repeated AdminAccessTicket tickets = 1;
+}
+
+message IssueAccessTicketRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // End-user who receives viewing rights (public_id).
+  string user_public_id = 2;
+  string episode_public_id = 3;
+  // RFC3339; empty for no expiry.
+  string expires_at = 4;
+  string note = 5;
+}
+
+message IssueAccessTicketResponse {
+  AdminAccessTicket ticket = 1;
+}
+
+message RevokeAccessTicketRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message RevokeAccessTicketResponse {
+  AdminAccessTicket ticket = 1;
+}
+
+service AdminAccessTicketService {
+  rpc ListAccessTickets(ListAccessTicketsRequest) returns (ListAccessTicketsResponse) {}
+  rpc IssueAccessTicket(IssueAccessTicketRequest) returns (IssueAccessTicketResponse) {}
+  rpc RevokeAccessTicket(RevokeAccessTicketRequest) returns (RevokeAccessTicketResponse) {}
+}

@@ -47,6 +47,10 @@
       "types": "./dist/admin/auth.d.mts",
       "default": "./dist/admin/auth.mjs"
     },
+    "./admin/access-ticket": {
+      "types": "./dist/admin/access-ticket.d.mts",
+      "default": "./dist/admin/access-ticket.mjs"
+    },
     "./admin/series": {
       "types": "./dist/admin/series.d.mts",
       "default": "./dist/admin/series.mjs"

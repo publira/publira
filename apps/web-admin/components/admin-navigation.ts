@@ -40,6 +40,12 @@ export const navigation: NavSection[] = [
         icon: CollectionIcon,
         label: "通知",
       },
+      {
+        description: "限定閲覧チケットの発行と失効",
+        href: "/access-tickets",
+        icon: CollectionIcon,
+        label: "アクセスチケット",
+      },
     ],
     title: "運用",
   },

@@ -4,6 +4,7 @@ import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
+import { AdminAccessTicketService } from "../gen/publira/admin/v1/access_ticket_pb.js";
 import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
@@ -27,6 +28,7 @@ export type AdminApiClientOptions = {
   TenantHeaderOptions;
 
 export interface AdminApiClient {
+  accessTickets: Client<typeof AdminAccessTicketService>;
   audit: Client<typeof AdminAuditLogService>;
   auth: Client<typeof AdminAuthService>;
   creator: Client<typeof AdminCreatorService>;
@@ -72,6 +74,7 @@ export const createAdminApiClient = (
         });
 
   return {
+    accessTickets: createClient(AdminAccessTicketService, transportInstance),
     audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
     creator: createClient(AdminCreatorService, transportInstance),

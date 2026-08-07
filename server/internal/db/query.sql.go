@@ -212,6 +212,68 @@ func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
 	return column_1, err
 }
 
+const createAccessTicket = `-- name: CreateAccessTicket :one
+INSERT INTO access_tickets (
+        id,
+        tenant_id,
+        public_id,
+        episode_id,
+        user_id,
+        expires_at,
+        note,
+        created_by_user_id
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at
+`
+
+type CreateAccessTicketParams struct {
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	ExpiresAt       sql.NullTime   `json:"expires_at"`
+	Note            sql.NullString `json:"note"`
+	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
+}
+
+func (q *Queries) CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error) {
+	row := q.db.QueryRowContext(ctx, createAccessTicket,
+		arg.ID,
+		arg.TenantID,
+		arg.PublicID,
+		arg.EpisodeID,
+		arg.UserID,
+		arg.ExpiresAt,
+		arg.Note,
+		arg.CreatedByUserID,
+	)
+	var i AccessTicket
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.EpisodeID,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.Note,
+		&i.CreatedByUserID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createCreator = `-- name: CreateCreator :one
 INSERT INTO creators (
         id,
@@ -1378,6 +1440,131 @@ func (q *Queries) DeleteUserPasswordResetTokensByUserID(ctx context.Context, use
 	return err
 }
 
+const getAccessTicketByPublicIDForTenant = `-- name: GetAccessTicketByPublicIDForTenant :one
+SELECT at.id,
+    at.tenant_id,
+    at.public_id,
+    at.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    at.user_id,
+    u.public_id AS user_public_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    at.expires_at,
+    at.revoked_at,
+    at.note,
+    at.created_by_user_id,
+    at.created_at
+FROM access_tickets at
+    JOIN episodes e ON e.id = at.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN users u ON u.id = at.user_id
+WHERE at.tenant_id = $1
+    AND at.public_id = $2
+LIMIT 1
+`
+
+type GetAccessTicketByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+type GetAccessTicketByPublicIDForTenantRow struct {
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+	UserID          uuid.UUID      `json:"user_id"`
+	UserPublicID    string         `json:"user_public_id"`
+	UserName        string         `json:"user_name"`
+	UserEmail       string         `json:"user_email"`
+	ExpiresAt       sql.NullTime   `json:"expires_at"`
+	RevokedAt       sql.NullTime   `json:"revoked_at"`
+	Note            sql.NullString `json:"note"`
+	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
+	CreatedAt       time.Time      `json:"created_at"`
+}
+
+func (q *Queries) GetAccessTicketByPublicIDForTenant(ctx context.Context, arg GetAccessTicketByPublicIDForTenantParams) (GetAccessTicketByPublicIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var i GetAccessTicketByPublicIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.EpisodeID,
+		&i.EpisodePublicID,
+		&i.EpisodeTitle,
+		&i.SeriesPublicID,
+		&i.SeriesTitle,
+		&i.UserID,
+		&i.UserPublicID,
+		&i.UserName,
+		&i.UserEmail,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.Note,
+		&i.CreatedByUserID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getActiveAccessTicketForUserEpisode = `-- name: GetActiveAccessTicketForUserEpisode :one
+SELECT id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at
+FROM access_tickets
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND episode_id = $3
+    AND revoked_at IS NULL
+    AND (
+        expires_at IS NULL
+        OR expires_at > NOW()
+    )
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetActiveAccessTicketForUserEpisodeParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+func (q *Queries) GetActiveAccessTicketForUserEpisode(ctx context.Context, arg GetActiveAccessTicketForUserEpisodeParams) (AccessTicket, error) {
+	row := q.db.QueryRowContext(ctx, getActiveAccessTicketForUserEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var i AccessTicket
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.EpisodeID,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.Note,
+		&i.CreatedByUserID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
 SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
@@ -1634,6 +1821,18 @@ SELECT ei.id,
                 AND (
                     p.expires_at IS NULL
                     OR p.expires_at > NOW()
+                )
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM access_tickets at
+            WHERE at.tenant_id = s.tenant_id
+                AND at.user_id = $3
+                AND at.episode_id = e.id
+                AND at.revoked_at IS NULL
+                AND (
+                    at.expires_at IS NULL
+                    OR at.expires_at > NOW()
                 )
         )
     ) AS has_access
@@ -2912,6 +3111,128 @@ func (q *Queries) GetUserPasswordResetTokenByHashForTenant(ctx context.Context, 
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listAccessTicketsForTenant = `-- name: ListAccessTicketsForTenant :many
+SELECT at.id,
+    at.tenant_id,
+    at.public_id,
+    at.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    at.user_id,
+    u.public_id AS user_public_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    at.expires_at,
+    at.revoked_at,
+    at.note,
+    at.created_by_user_id,
+    at.created_at
+FROM access_tickets at
+    JOIN episodes e ON e.id = at.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN users u ON u.id = at.user_id
+WHERE at.tenant_id = $1
+    AND (
+        $4::uuid IS NULL
+        OR at.user_id = $4::uuid
+    )
+    AND (
+        $5::uuid IS NULL
+        OR at.episode_id = $5::uuid
+    )
+    AND (
+        NOT $6::bool
+        OR (
+            at.revoked_at IS NULL
+            AND (
+                at.expires_at IS NULL
+                OR at.expires_at > NOW()
+            )
+        )
+    )
+ORDER BY at.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListAccessTicketsForTenantParams struct {
+	TenantID   uuid.UUID     `json:"tenant_id"`
+	Limit      int32         `json:"limit"`
+	Offset     int32         `json:"offset"`
+	UserID     uuid.NullUUID `json:"user_id"`
+	EpisodeID  uuid.NullUUID `json:"episode_id"`
+	ActiveOnly bool          `json:"active_only"`
+}
+
+type ListAccessTicketsForTenantRow struct {
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+	UserID          uuid.UUID      `json:"user_id"`
+	UserPublicID    string         `json:"user_public_id"`
+	UserName        string         `json:"user_name"`
+	UserEmail       string         `json:"user_email"`
+	ExpiresAt       sql.NullTime   `json:"expires_at"`
+	RevokedAt       sql.NullTime   `json:"revoked_at"`
+	Note            sql.NullString `json:"note"`
+	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
+	CreatedAt       time.Time      `json:"created_at"`
+}
+
+func (q *Queries) ListAccessTicketsForTenant(ctx context.Context, arg ListAccessTicketsForTenantParams) ([]ListAccessTicketsForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAccessTicketsForTenant,
+		arg.TenantID,
+		arg.Limit,
+		arg.Offset,
+		arg.UserID,
+		arg.EpisodeID,
+		arg.ActiveOnly,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAccessTicketsForTenantRow
+	for rows.Next() {
+		var i ListAccessTicketsForTenantRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.UserID,
+			&i.UserPublicID,
+			&i.UserName,
+			&i.UserEmail,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.Note,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listActiveSeries = `-- name: ListActiveSeries :many
@@ -4722,6 +5043,47 @@ WHERE id = $1
 func (q *Queries) MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, markUserPasswordResetTokenCompleted, id)
 	return err
+}
+
+const revokeAccessTicketByPublicIDForTenant = `-- name: RevokeAccessTicketByPublicIDForTenant :one
+UPDATE access_tickets
+SET revoked_at = NOW()
+WHERE tenant_id = $1
+    AND public_id = $2
+    AND revoked_at IS NULL
+RETURNING id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at
+`
+
+type RevokeAccessTicketByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error) {
+	row := q.db.QueryRowContext(ctx, revokeAccessTicketByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var i AccessTicket
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.EpisodeID,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.Note,
+		&i.CreatedByUserID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateCreator = `-- name: UpdateCreator :exec

@@ -248,3 +248,14 @@ SET is_published = (published_at IS NOT NULL),
         updated_at = NOW()
 WHERE title LIKE 'Seed Series %'
     AND is_published IS DISTINCT FROM (published_at IS NOT NULL);
+
+-- Paid episode for access-ticket / purchase testing (Seed Episode 001-10).
+UPDATE episode_listings el
+SET price = 500,
+    reading_period_hours = 72
+FROM episodes e
+JOIN series s ON s.id = e.series_id
+JOIN tenants t ON t.id = s.tenant_id
+WHERE el.episode_id = e.id
+    AND t.domain = 'localhost'
+    AND e.title = 'Seed Episode 001-10';
