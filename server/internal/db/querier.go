@@ -86,6 +86,9 @@ type Querier interface {
 	GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, arg GetMaxEpisodeOrderIndexBySeriesForTenantParams) (int32, error)
 	// ページの最大バージョン番号を取得する（次バージョン番号算出用）
 	GetMaxPageVersionNumberByPageID(ctx context.Context, pageID uuid.UUID) (int32, error)
+	// Non-revoked ticket for a user+episode pair (may already be expired).
+	// Used for idempotent issue under the unique partial index on non-revoked rows.
+	GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	// テナントのページをIDで取得する
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
 	// ページバージョンをIDで取得する

@@ -19,7 +19,8 @@ export const issueAccessTicketAction = async (
   const episodePublicId = String(
     formData.get("episode_public_id") ?? ""
   ).trim();
-  const expiresAtLocal = String(formData.get("expires_at") ?? "").trim();
+  // Browser converts datetime-local to an offset-bearing ISO string on submit.
+  const expiresAt = String(formData.get("expires_at") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
   if (!tenantId) {
@@ -41,9 +42,8 @@ export const issueAccessTicketAction = async (
     };
   }
 
-  let expiresAt = "";
-  if (expiresAtLocal !== "") {
-    const parsed = new Date(expiresAtLocal);
+  if (expiresAt !== "") {
+    const parsed = new Date(expiresAt);
     if (Number.isNaN(parsed.getTime())) {
       return {
         message: "有効期限の形式が正しくありません。",
@@ -56,7 +56,6 @@ export const issueAccessTicketAction = async (
         ok: false,
       };
     }
-    expiresAt = parsed.toISOString();
   }
 
   const result = await issueAccessTicket({

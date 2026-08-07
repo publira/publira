@@ -1895,7 +1895,8 @@ WHERE at.tenant_id = $1
             )
         )
     )
-ORDER BY at.created_at DESC
+ORDER BY at.created_at DESC,
+    at.id DESC
 LIMIT $2 OFFSET $3;
 
 -- name: RevokeAccessTicketByPublicIDForTenant :one
@@ -1914,6 +1915,28 @@ RETURNING id,
     note,
     created_by_user_id,
     created_at;
+
+-- name: GetNonRevokedAccessTicketForUserEpisode :one
+-- Non-revoked ticket for a user+episode pair (may already be expired).
+-- Used for idempotent issue under the unique partial index on non-revoked rows.
+SELECT id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at
+FROM access_tickets
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND episode_id = $3
+    AND revoked_at IS NULL
+ORDER BY created_at DESC,
+    id DESC
+LIMIT 1;
 
 -- name: GetActiveAccessTicketForUserEpisode :one
 SELECT id,
@@ -1935,5 +1958,6 @@ WHERE tenant_id = $1
         expires_at IS NULL
         OR expires_at > NOW()
     )
-ORDER BY created_at DESC
+ORDER BY created_at DESC,
+    id DESC
 LIMIT 1;

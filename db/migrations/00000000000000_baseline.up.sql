@@ -758,7 +758,8 @@ ALTER TABLE ONLY users
     ADD CONSTRAINT users_public_id_key UNIQUE (public_id);
 
 -- INDEX: idx_access_tickets_active_user_episode
-CREATE INDEX idx_access_tickets_active_user_episode ON access_tickets USING btree (tenant_id, user_id, episode_id) WHERE (revoked_at IS NULL);
+-- At most one non-revoked ticket per (tenant, user, episode). Concurrent issue is serialized by this unique partial index.
+CREATE UNIQUE INDEX idx_access_tickets_active_user_episode ON access_tickets USING btree (tenant_id, user_id, episode_id) WHERE (revoked_at IS NULL);
 
 -- INDEX: idx_access_tickets_tenant_created_at
 CREATE INDEX idx_access_tickets_tenant_created_at ON access_tickets USING btree (tenant_id, created_at DESC);

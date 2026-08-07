@@ -11,7 +11,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { useActionState } from "react";
+import { useActionState, useCallback, useRef } from "react";
 
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -27,12 +27,51 @@ interface TicketFormProps {
 export const TicketForm = ({ action }: TicketFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
+  const expiresAtIsoRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      // datetime-local is timezone-free wall time in the browser. Convert to an
+      // offset-bearing ISO string so the server does not reinterpret it in its TZ.
+      const form = event.currentTarget;
+      const localInput = form.elements.namedItem(
+        "expires_at_local"
+      ) as HTMLInputElement | null;
+      const isoInput = expiresAtIsoRef.current;
+      if (!isoInput) {
+        return;
+      }
+      const localValue = localInput?.value?.trim() ?? "";
+      if (localValue === "") {
+        isoInput.value = "";
+        return;
+      }
+      const parsed = new Date(localValue);
+      if (Number.isNaN(parsed.getTime())) {
+        // Leave the empty ISO value so the server action can reject it.
+        isoInput.value = "";
+        return;
+      }
+      isoInput.value = parsed.toISOString();
+    },
+    []
+  );
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <form action={formAction} className="grid gap-5">
+        <form
+          action={formAction}
+          className="grid gap-5"
+          onSubmit={handleSubmit}
+        >
           <input name="tenant_id" type="hidden" value={tenantId} />
+          <input
+            defaultValue=""
+            name="expires_at"
+            ref={expiresAtIsoRef}
+            type="hidden"
+          />
 
           <Field>
             <FieldLabel htmlFor="user_public_id" required>
@@ -71,11 +110,16 @@ export const TicketForm = ({ action }: TicketFormProps) => {
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="expires_at">有効期限</FieldLabel>
+            <FieldLabel htmlFor="expires_at_local">有効期限</FieldLabel>
             <FieldContent>
-              <Input id="expires_at" name="expires_at" type="datetime-local" />
+              <Input
+                id="expires_at_local"
+                name="expires_at_local"
+                type="datetime-local"
+              />
               <FieldDescription>
-                未指定の場合は無期限です。失効操作でいつでも取り消せます。
+                未指定の場合は無期限です。ブラウザのタイムゾーンで解釈し、送信時に
+                ISO 8601（UTC）へ変換します。失効操作でいつでも取り消せます。
               </FieldDescription>
             </FieldContent>
           </Field>

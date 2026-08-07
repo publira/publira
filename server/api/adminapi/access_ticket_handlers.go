@@ -48,40 +48,71 @@ func formatOptionalNote(note sql.NullString) string {
 	return note.String
 }
 
-func mapAccessTicketFromListRow(row dbmodels.ListAccessTicketsForTenantRow, now time.Time) *publiraadminv1.AdminAccessTicket {
+type accessTicketFields struct {
+	publicID        string
+	episodePublicID string
+	episodeTitle    string
+	seriesPublicID  string
+	seriesTitle     string
+	userPublicID    string
+	userName        string
+	userEmail       string
+	expiresAt       sql.NullTime
+	revokedAt       sql.NullTime
+	note            sql.NullString
+	createdAt       time.Time
+}
+
+func mapAccessTicket(fields accessTicketFields, now time.Time) *publiraadminv1.AdminAccessTicket {
 	return &publiraadminv1.AdminAccessTicket{
-		PublicId:        row.PublicID,
-		EpisodePublicId: row.EpisodePublicID,
-		EpisodeTitle:    row.EpisodeTitle,
-		SeriesPublicId:  row.SeriesPublicID,
-		SeriesTitle:     row.SeriesTitle,
-		UserPublicId:    row.UserPublicID,
-		UserName:        row.UserName,
-		UserEmail:       row.UserEmail,
-		ExpiresAt:       formatOptionalTime(row.ExpiresAt),
-		RevokedAt:       formatOptionalTime(row.RevokedAt),
-		Note:            formatOptionalNote(row.Note),
-		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
-		Status:          accessTicketStatus(row.RevokedAt, row.ExpiresAt, now),
+		PublicId:        fields.publicID,
+		EpisodePublicId: fields.episodePublicID,
+		EpisodeTitle:    fields.episodeTitle,
+		SeriesPublicId:  fields.seriesPublicID,
+		SeriesTitle:     fields.seriesTitle,
+		UserPublicId:    fields.userPublicID,
+		UserName:        fields.userName,
+		UserEmail:       fields.userEmail,
+		ExpiresAt:       formatOptionalTime(fields.expiresAt),
+		RevokedAt:       formatOptionalTime(fields.revokedAt),
+		Note:            formatOptionalNote(fields.note),
+		CreatedAt:       fields.createdAt.UTC().Format(time.RFC3339),
+		Status:          accessTicketStatus(fields.revokedAt, fields.expiresAt, now),
 	}
 }
 
+func mapAccessTicketFromListRow(row dbmodels.ListAccessTicketsForTenantRow, now time.Time) *publiraadminv1.AdminAccessTicket {
+	return mapAccessTicket(accessTicketFields{
+		publicID:        row.PublicID,
+		episodePublicID: row.EpisodePublicID,
+		episodeTitle:    row.EpisodeTitle,
+		seriesPublicID:  row.SeriesPublicID,
+		seriesTitle:     row.SeriesTitle,
+		userPublicID:    row.UserPublicID,
+		userName:        row.UserName,
+		userEmail:       row.UserEmail,
+		expiresAt:       row.ExpiresAt,
+		revokedAt:       row.RevokedAt,
+		note:            row.Note,
+		createdAt:       row.CreatedAt,
+	}, now)
+}
+
 func mapAccessTicketFromGetRow(row dbmodels.GetAccessTicketByPublicIDForTenantRow, now time.Time) *publiraadminv1.AdminAccessTicket {
-	return &publiraadminv1.AdminAccessTicket{
-		PublicId:        row.PublicID,
-		EpisodePublicId: row.EpisodePublicID,
-		EpisodeTitle:    row.EpisodeTitle,
-		SeriesPublicId:  row.SeriesPublicID,
-		SeriesTitle:     row.SeriesTitle,
-		UserPublicId:    row.UserPublicID,
-		UserName:        row.UserName,
-		UserEmail:       row.UserEmail,
-		ExpiresAt:       formatOptionalTime(row.ExpiresAt),
-		RevokedAt:       formatOptionalTime(row.RevokedAt),
-		Note:            formatOptionalNote(row.Note),
-		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
-		Status:          accessTicketStatus(row.RevokedAt, row.ExpiresAt, now),
-	}
+	return mapAccessTicket(accessTicketFields{
+		publicID:        row.PublicID,
+		episodePublicID: row.EpisodePublicID,
+		episodeTitle:    row.EpisodeTitle,
+		seriesPublicID:  row.SeriesPublicID,
+		seriesTitle:     row.SeriesTitle,
+		userPublicID:    row.UserPublicID,
+		userName:        row.UserName,
+		userEmail:       row.UserEmail,
+		expiresAt:       row.ExpiresAt,
+		revokedAt:       row.RevokedAt,
+		note:            row.Note,
+		createdAt:       row.CreatedAt,
+	}, now)
 }
 
 func parseOptionalExpiresAt(raw string) (sql.NullTime, error) {
@@ -99,6 +130,27 @@ func parseOptionalExpiresAt(raw string) (sql.NullTime, error) {
 	return sql.NullTime{Time: parsed.UTC(), Valid: true}, nil
 }
 
+func normalizeAccessTicketListLimit(limit int32) int32 {
+	if limit <= 0 {
+		return defaultAccessTicketListLimit
+	}
+	if limit > maxAccessTicketListLimit {
+		return maxAccessTicketListLimit
+	}
+	return limit
+}
+
+func (s *adminServer) loadAccessTicketByPublicID(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	publicID string,
+) (dbmodels.GetAccessTicketByPublicIDForTenantRow, error) {
+	return s.queriesFor(ctx).GetAccessTicketByPublicIDForTenant(ctx, dbmodels.GetAccessTicketByPublicIDForTenantParams{
+		TenantID: tenantID,
+		PublicID: publicID,
+	})
+}
+
 func (s *adminServer) ListAccessTickets(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListAccessTicketsRequest],
@@ -111,10 +163,7 @@ func (s *adminServer) ListAccessTickets(
 		return nil, err
 	}
 
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > maxAccessTicketListLimit {
-		limit = defaultAccessTicketListLimit
-	}
+	limit := normalizeAccessTicketListLimit(req.Msg.Limit)
 	offset := req.Msg.Offset
 	if offset < 0 {
 		offset = 0
@@ -227,18 +276,17 @@ func (s *adminServer) IssueAccessTicket(
 		return nil, err
 	}
 
-	// Idempotent re-issue: return the existing active ticket when one already covers this pair.
-	existing, existingErr := s.queriesFor(ctx).GetActiveAccessTicketForUserEpisode(ctx, dbmodels.GetActiveAccessTicketForUserEpisodeParams{
+	// Idempotent re-issue: return the existing non-revoked ticket when one already
+	// covers this pair. Requested expires_at and note are ignored; revoke and
+	// re-issue to change them. Includes expired-but-not-revoked rows so the
+	// unique partial index on non-revoked (tenant, user, episode) stays consistent.
+	existing, existingErr := s.queriesFor(ctx).GetNonRevokedAccessTicketForUserEpisode(ctx, dbmodels.GetNonRevokedAccessTicketForUserEpisodeParams{
 		TenantID:  tenant.ID,
 		UserID:    userRow.ID,
 		EpisodeID: episode.ID,
 	})
 	if existingErr == nil {
-		// Optionally extend expiry if the new request asks for a later expiry.
-		ticketRow, getErr := s.queriesFor(ctx).GetAccessTicketByPublicIDForTenant(ctx, dbmodels.GetAccessTicketByPublicIDForTenantParams{
-			TenantID: tenant.ID,
-			PublicID: existing.PublicID,
-		})
+		ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, existing.PublicID)
 		if getErr != nil {
 			return nil, connect.NewError(connect.CodeInternal, getErr)
 		}
@@ -268,13 +316,29 @@ func (s *adminServer) IssueAccessTicket(
 		CreatedByUserID: uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
 	})
 	if err != nil {
+		// Concurrent issue: the unique partial index may reject the insert after
+		// both requests observed no non-revoked ticket. Return the winner's row.
+		if isUniqueViolation(err) {
+			winner, getWinnerErr := s.queriesFor(ctx).GetNonRevokedAccessTicketForUserEpisode(ctx, dbmodels.GetNonRevokedAccessTicketForUserEpisodeParams{
+				TenantID:  tenant.ID,
+				UserID:    userRow.ID,
+				EpisodeID: episode.ID,
+			})
+			if getWinnerErr != nil {
+				return nil, connect.NewError(connect.CodeInternal, getWinnerErr)
+			}
+			ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, winner.PublicID)
+			if getErr != nil {
+				return nil, connect.NewError(connect.CodeInternal, getErr)
+			}
+			return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
+				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
+			}), nil
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	ticketRow, err := s.queriesFor(ctx).GetAccessTicketByPublicIDForTenant(ctx, dbmodels.GetAccessTicketByPublicIDForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: created.PublicID,
-	})
+	ticketRow, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, created.PublicID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -314,10 +378,7 @@ func (s *adminServer) RevokeAccessTicket(
 	}
 
 	// Confirm existence first so already-revoked tickets return a clear status.
-	current, err := s.queriesFor(ctx).GetAccessTicketByPublicIDForTenant(ctx, dbmodels.GetAccessTicketByPublicIDForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: publicID,
-	})
+	current, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, publicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
@@ -335,15 +396,24 @@ func (s *adminServer) RevokeAccessTicket(
 		PublicID: publicID,
 	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
+			// Concurrent revoke: another request may have revoked between the
+			// existence check and the conditional update. Re-read and return
+			// the revoked ticket instead of NotFound.
+			ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, publicID)
+			if getErr != nil {
+				if errors.Is(getErr, sql.ErrNoRows) {
+					return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
+				}
+				return nil, connect.NewError(connect.CodeInternal, getErr)
+			}
+			return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
+				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
+			}), nil
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	ticketRow, err := s.queriesFor(ctx).GetAccessTicketByPublicIDForTenant(ctx, dbmodels.GetAccessTicketByPublicIDForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: publicID,
-	})
+	ticketRow, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, publicID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

@@ -1537,7 +1537,8 @@ WHERE tenant_id = $1
         expires_at IS NULL
         OR expires_at > NOW()
     )
-ORDER BY created_at DESC
+ORDER BY created_at DESC,
+    id DESC
 LIMIT 1
 `
 
@@ -2046,6 +2047,53 @@ func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, 
 	var max_order_index int32
 	err := row.Scan(&max_order_index)
 	return max_order_index, err
+}
+
+const getNonRevokedAccessTicketForUserEpisode = `-- name: GetNonRevokedAccessTicketForUserEpisode :one
+SELECT id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at
+FROM access_tickets
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND episode_id = $3
+    AND revoked_at IS NULL
+ORDER BY created_at DESC,
+    id DESC
+LIMIT 1
+`
+
+type GetNonRevokedAccessTicketForUserEpisodeParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// Non-revoked ticket for a user+episode pair (may already be expired).
+// Used for idempotent issue under the unique partial index on non-revoked rows.
+func (q *Queries) GetNonRevokedAccessTicketForUserEpisode(ctx context.Context, arg GetNonRevokedAccessTicketForUserEpisodeParams) (AccessTicket, error) {
+	row := q.db.QueryRowContext(ctx, getNonRevokedAccessTicketForUserEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var i AccessTicket
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.PublicID,
+		&i.EpisodeID,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.Note,
+		&i.CreatedByUserID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getPlatformOperatorByPublicID = `-- name: GetPlatformOperatorByPublicID :one
@@ -3154,7 +3202,8 @@ WHERE at.tenant_id = $1
             )
         )
     )
-ORDER BY at.created_at DESC
+ORDER BY at.created_at DESC,
+    at.id DESC
 LIMIT $2 OFFSET $3
 `
 
