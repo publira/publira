@@ -26,3 +26,4 @@ Next.js アプリの場合:
 ## 注意点
 
 - 設定変更は全パッケージに影響するため、影響範囲の型チェックを実施してください。
+- `base.json` の `lib` には TypeScript 6.0 の `esnext.temporal` を含みます（`Temporal` 型用。runtime の polyfill は各アプリの `instrumentation` / vitest setup で `temporal-polyfill/global` を import）。

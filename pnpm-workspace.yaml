@@ -22,6 +22,7 @@ catalog:
   react-markdown: 10.1.0
   redis: 6.2.0
   tailwindcss: 4.3.3
+  temporal-polyfill: 1.0.3
   tsdown: 0.22.14
   typescript: 6.0.3
   vitest: 4.1.10
