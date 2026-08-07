@@ -96,18 +96,25 @@ const mapLabel = (label: {
   }[];
 }): LabelItem => ({
   eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt ?? "",
-  eyeCatchImageVariants: (label.eyeCatchImageVariants ?? [])
-    .map((variant) => ({
-      contentType: variant.contentType ?? "",
-      fileSizeBytes:
-        variant.fileSizeBytes === undefined ? 0 : Number(variant.fileSizeBytes),
-      height: variant.height ?? 0,
-      label: variant.label ?? "",
-      url: variant.url ?? "",
-      variantType: variant.variantType ?? "",
-      width: variant.width ?? 0,
-    }))
-    .filter((variant) => variant.label.length > 0 && variant.url.length > 0),
+  eyeCatchImageVariants: (label.eyeCatchImageVariants ?? []).flatMap(
+    (variant) => {
+      const mappedVariant = {
+        contentType: variant.contentType ?? "",
+        fileSizeBytes:
+          variant.fileSizeBytes === undefined
+            ? 0
+            : Number(variant.fileSizeBytes),
+        height: variant.height ?? 0,
+        label: variant.label ?? "",
+        url: variant.url ?? "",
+        variantType: variant.variantType ?? "",
+        width: variant.width ?? 0,
+      };
+      return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+        ? [mappedVariant]
+        : [];
+    }
+  ),
   name: label.name,
   publicId: label.publicId,
 });

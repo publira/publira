@@ -91,7 +91,10 @@ const normalizeTenantId = (input: ListPlatformEndUsersInput): string =>
 
 const normalizePublicIds = (input: ListPlatformEndUsersInput): string[] => [
   ...new Set(
-    (input.publicIds ?? []).map((value) => value.trim()).filter(Boolean)
+    (input.publicIds ?? []).flatMap((value) => {
+      const trimmed = value.trim();
+      return trimmed ? [trimmed] : [];
+    })
   ),
 ];
 
@@ -328,13 +331,16 @@ export const listPlatformEndUsers = async (
       buildSessionHeaders(sid)
     );
 
-    const mappedUsers = (response.users ?? [])
-      .map(mapEndUser)
-      .filter((user) =>
-        normalizedTenantId
-          ? (user.tenantIds ?? []).includes(normalizedTenantId)
-          : true
-      );
+    const mappedUsers = (response.users ?? []).flatMap((rawUser) => {
+      const user = mapEndUser(rawUser);
+      if (normalizedTenantId) {
+        const tenantIds = new Set(user.tenantIds);
+        if (!tenantIds.has(normalizedTenantId)) {
+          return [];
+        }
+      }
+      return [user];
+    });
     const { tenantNameMap, users: tenantScopedUsers } =
       await listTenantScopedUsersFallback(sid, input, publicIdsSet);
 

@@ -31,6 +31,9 @@ export const POST = async () => {
   redirect("/login");
 };
 
+// Local cookie clear only (no upstream revoke). Kept for direct navigation /
+// form GET fallbacks; CSRF risk is limited to clearing the browser cookie.
+// oxlint-disable-next-line react-doctor/nextjs-no-side-effect-in-get-handler
 export const GET = async () => {
   await clearSessionCookie();
   redirect("/login");

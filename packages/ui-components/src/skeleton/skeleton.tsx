@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
-type DivProps = React.ComponentPropsWithoutRef<"div">;
+type DivProps = ComponentPropsWithoutRef<"div">;
 
 export const Skeleton = ({ className, ...props }: DivProps) => (
   <div
@@ -35,7 +35,7 @@ export const SkeletonText = ({
   </div>
 );
 
-export type SkeletonCardProps = DivProps;
+export type SkeletonCardProps = ComponentPropsWithoutRef<"div">;
 
 export const SkeletonCard = ({ className, ...props }: SkeletonCardProps) => (
   <div

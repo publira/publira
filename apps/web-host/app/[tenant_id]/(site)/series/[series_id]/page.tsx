@@ -36,8 +36,10 @@ const SeriesDetailSkeleton = () => (
 const SeriesDetailData = async (
   props: PageProps<"/[tenant_id]/series/[series_id]">
 ) => {
-  const { series_id } = await props.params;
-  const tenantId = await getTenantId();
+  const [{ series_id }, tenantId] = await Promise.all([
+    props.params,
+    getTenantId(),
+  ]);
   guardPlaceholders({ series_id });
 
   let result: Awaited<ReturnType<typeof getSeriesDetail>>;

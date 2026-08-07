@@ -99,6 +99,7 @@ export const EyeCatchVariantSelector = ({
                   alt={`生成画像 ${typeKey}`}
                   className="h-full w-full object-cover"
                   fill
+                  sizes="(max-width: 768px) 50vw, 240px"
                   src={localPreviewUrl}
                   unoptimized
                 />
@@ -117,6 +118,8 @@ export const EyeCatchVariantSelector = ({
                       />
                     );
                   })}
+                  {/* blob/remote preview sources; next/image cannot take srcSet art direction */}
+                  {/* oxlint-disable-next-line react-doctor/nextjs-no-img-element */}
                   <img
                     alt={`生成画像 ${typeKey}`}
                     className="h-full w-full object-cover"

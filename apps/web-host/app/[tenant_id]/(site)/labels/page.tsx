@@ -72,6 +72,7 @@ const LabelsListData = async () => {
           ) : (
             <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
               <svg
+                aria-hidden="true"
                 className="h-12 w-12"
                 fill="none"
                 stroke="currentColor"

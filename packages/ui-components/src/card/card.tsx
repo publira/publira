@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
-type DivProps = React.ComponentPropsWithoutRef<"div">;
+type DivProps = ComponentPropsWithoutRef<"div">;
 
 export const Card = ({ className, ...props }: DivProps) => (
   <div

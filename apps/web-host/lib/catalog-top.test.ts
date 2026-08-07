@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type * as CatalogModule from "./catalog";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
@@ -27,8 +26,8 @@ vi.mock("./authors", () => ({
   listPublishedAuthors: mockListPublishedAuthors,
 }));
 
-vi.mock("./catalog", async () => {
-  const original = await vi.importActual<typeof CatalogModule>("./catalog");
+vi.mock("./catalog", async (importOriginal) => {
+  const original = await importOriginal<Record<string, unknown>>();
 
   return {
     ...original,

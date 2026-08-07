@@ -7,11 +7,11 @@ import { SettingsIcon } from "./settings-icon";
 
 describe("SettingsIcon", () => {
   it("SVG として描画される", () => {
-    const { container } = render(<SettingsIcon aria-label="settings-icon" />);
+    const { container } = render(<SettingsIcon aria-label="Settings icon" />);
 
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("aria-label")).toBe("settings-icon");
+    expect(svg?.getAttribute("aria-label")).toBe("Settings icon");
   });
 
   it("size/className/strokeWidth を反映する", () => {

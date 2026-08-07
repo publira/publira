@@ -8,12 +8,12 @@ import { CollectionIcon } from "./collection-icon";
 describe("CollectionIcon", () => {
   it("SVG として描画される", () => {
     const { container } = render(
-      <CollectionIcon aria-label="collection-icon" />
+      <CollectionIcon aria-label="Collection icon" />
     );
 
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("aria-label")).toBe("collection-icon");
+    expect(svg?.getAttribute("aria-label")).toBe("Collection icon");
   });
 
   it("size/className/strokeWidth を反映する", () => {

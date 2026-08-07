@@ -60,11 +60,16 @@ const mapUsers = (
   users: { publicId: string; name: string }[]
 ): NotificationTargetUser[] =>
   users
-    .filter((user) => user.publicId.trim() !== "")
-    .map((user) => ({
-      name: user.name,
-      publicId: user.publicId,
-    }))
+    .flatMap((user) =>
+      user.publicId.trim() === ""
+        ? []
+        : [
+            {
+              name: user.name,
+              publicId: user.publicId,
+            },
+          ]
+    )
     .toSorted((a, b) => a.name.localeCompare(b.name, "ja"));
 
 export const listNotifications = async (

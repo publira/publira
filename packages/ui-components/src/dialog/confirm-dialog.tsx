@@ -2,10 +2,10 @@
 
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ReactElement, ReactNode } from "react";
 
-import { buttonVariants } from "../button";
-import type { ButtonProps } from "../button";
+import { buttonVariants } from "../button/button";
+import type { ButtonProps } from "../button/button";
 import {
   DialogBackdrop,
   DialogDescription,
@@ -18,11 +18,11 @@ import {
 } from "./dialog";
 
 export interface ConfirmDialogProps {
-  trigger: React.ReactElement;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  cancelText?: React.ReactNode;
-  actionText?: React.ReactNode;
+  trigger: ReactElement;
+  title: ReactNode;
+  description?: ReactNode;
+  cancelText?: ReactNode;
+  actionText?: ReactNode;
   actionVariant?: NonNullable<ButtonProps["variant"]>;
   onAction?: () => void;
 }

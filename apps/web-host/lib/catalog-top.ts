@@ -122,15 +122,19 @@ export const getCatalogTopNewEpisodes = async (
 
   return detailRows
     .flatMap((row) =>
-      row.episodes
-        .filter((episode) => episode.publishedAt.trim().length > 0)
-        .map((episode) => ({
-          episodeId: episode.publicId,
-          episodeTitle: episode.title,
-          publishedAt: episode.publishedAt,
-          seriesId: row.publicId,
-          seriesTitle: row.title,
-        }))
+      row.episodes.flatMap((episode) =>
+        episode.publishedAt.trim().length > 0
+          ? [
+              {
+                episodeId: episode.publicId,
+                episodeTitle: episode.title,
+                publishedAt: episode.publishedAt,
+                seriesId: row.publicId,
+                seriesTitle: row.title,
+              },
+            ]
+          : []
+      )
     )
     .toSorted(byNewestDateDesc)
     .slice(0, maxNewEpisodes);
@@ -153,26 +157,27 @@ export const getCatalogTopUpdatedSeries = async (
   );
 
   return detailRows
-    .map((row) => {
+    .flatMap((row) => {
       const [latestEpisode] = row.episodes
         .filter((episode) => episode.publishedAt.trim().length > 0)
         .toSorted(byNewestDateDesc);
 
       if (!latestEpisode) {
-        return null;
+        return [];
       }
 
-      return {
-        creatorNames: row.creatorNames,
-        eyeCatchImageVariants: row.eyeCatchImageVariants,
-        latestEpisodeId: latestEpisode.publicId,
-        latestEpisodeTitle: latestEpisode.title,
-        latestPublishedAt: latestEpisode.publishedAt,
-        seriesId: row.publicId,
-        seriesTitle: row.title,
-      };
+      return [
+        {
+          creatorNames: row.creatorNames,
+          eyeCatchImageVariants: row.eyeCatchImageVariants,
+          latestEpisodeId: latestEpisode.publicId,
+          latestEpisodeTitle: latestEpisode.title,
+          latestPublishedAt: latestEpisode.publishedAt,
+          seriesId: row.publicId,
+          seriesTitle: row.title,
+        },
+      ];
     })
-    .filter((item) => item !== null)
     .toSorted(
       (left, right) =>
         toTimestamp(right.latestPublishedAt) -

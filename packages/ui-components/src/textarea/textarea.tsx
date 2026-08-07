@@ -2,10 +2,10 @@
 
 import { Field as BaseField } from "@base-ui/react/field";
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
 export type TextareaProps = Omit<
-  React.ComponentPropsWithoutRef<"textarea">,
+  ComponentPropsWithoutRef<"textarea">,
   "color"
 > & {
   className?: string;

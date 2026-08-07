@@ -118,7 +118,7 @@ export const PageWorkspace = ({
   const [selectedVersionId, setSelectedVersionId] = useState(
     initialVersions[0]?.id ?? ""
   );
-  const [compareVersionId, setCompareVersionId] = useState(
+  const [compareVersionId, setCompareVersionId] = useState(() =>
     getDefaultComparisonVersionId(
       initialPage.publishedVersionId,
       initialVersions

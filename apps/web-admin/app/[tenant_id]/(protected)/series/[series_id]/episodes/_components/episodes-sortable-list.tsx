@@ -137,10 +137,10 @@ export const EpisodesSortableList = ({
     <div className="grid gap-3">
       {optimisticItems.map((episode) => (
         <div
-          aria-disabled={isPending}
           className="flex cursor-move items-center justify-between rounded-lg border border-border/70 bg-background px-4 py-3"
           data-episode-id={episode.publicId}
-          draggable
+          data-pending={isPending ? "true" : undefined}
+          draggable={!isPending}
           key={episode.publicId}
           onDragEnd={handleDragEnd}
           onDragOver={handleDragOver}

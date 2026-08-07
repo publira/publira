@@ -3,7 +3,7 @@ import type { ParsedUrlQuery } from "node:querystring";
 import { Skeleton } from "@publira/ui-components";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import * as z from "zod";
+import { z } from "zod";
 
 import { LoginForm } from "./_components/login-form";
 

@@ -30,8 +30,10 @@ export const generateStaticParams = () =>
 const EditEpisodePage = async ({
   params,
 }: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">) => {
-  const { episode_id, series_id } = await params;
-  const tenantId = await getTenantId();
+  const [{ episode_id, series_id }, tenantId] = await Promise.all([
+    params,
+    getTenantId(),
+  ]);
   guardPlaceholder(series_id);
   guardPlaceholder(episode_id);
 

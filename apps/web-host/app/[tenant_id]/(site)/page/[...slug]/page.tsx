@@ -42,18 +42,21 @@ const guardCatchAllSlug = (slug: string[] | undefined): void => {
 export const generateMetadata = async (
   props: PageProps<"/[tenant_id]/page/[...slug]">
 ): Promise<Metadata> => {
-  const { slug } = await props.params;
-  const tenantId = await getTenantId();
+  const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
   guardCatchAllSlug(slug);
 
-  const siteLabel = await getTenantSiteLabel(tenantId);
+  const siteLabelPromise = getTenantSiteLabel(tenantId);
 
   try {
-    const page = await getPublishedPage(tenantId, slug);
+    const [siteLabel, page] = await Promise.all([
+      siteLabelPromise,
+      getPublishedPage(tenantId, slug),
+    ]);
     return {
       title: `${page.title} | ${siteLabel}`,
     };
   } catch (error) {
+    const siteLabel = await siteLabelPromise;
     if (isPageNotFoundError(error)) {
       return {
         title: `ページが見つかりません | ${siteLabel}`,
@@ -66,8 +69,7 @@ export const generateMetadata = async (
 };
 
 const Page = async (props: PageProps<"/[tenant_id]/page/[...slug]">) => {
-  const { slug } = await props.params;
-  const tenantId = await getTenantId();
+  const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
   guardCatchAllSlug(slug);
 
   let result:

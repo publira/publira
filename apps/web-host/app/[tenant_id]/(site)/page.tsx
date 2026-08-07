@@ -381,6 +381,7 @@ const FeaturedLabelsSection = async () => {
           ) : (
             <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
               <svg
+                aria-hidden="true"
                 className="h-10 w-10"
                 fill="none"
                 stroke="currentColor"

@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
-export type FormActionsProps = React.ComponentPropsWithoutRef<"div">;
+export type FormActionsProps = ComponentPropsWithoutRef<"div">;
 
 export const FormActions = ({ className, ...props }: FormActionsProps) => (
   <div

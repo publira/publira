@@ -4,7 +4,7 @@ import { Button as BaseButton } from "@base-ui/react/button";
 import { cn } from "@publira/utils";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
 export const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
@@ -34,7 +34,7 @@ export const buttonVariants = cva(
   }
 );
 
-type BaseButtonProps = React.ComponentPropsWithoutRef<typeof BaseButton>;
+type BaseButtonProps = ComponentPropsWithoutRef<typeof BaseButton>;
 
 export type ButtonProps = Omit<BaseButtonProps, "className"> &
   VariantProps<typeof buttonVariants> & {

@@ -43,6 +43,10 @@ export const NotificationForm = ({
     () => users.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
     [users]
   );
+  const selectedUserIdSet = useMemo(
+    () => new Set(selectedUserIds),
+    [selectedUserIds]
+  );
 
   const handleAudienceTypeChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +60,8 @@ export const NotificationForm = ({
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const publicId = event.currentTarget.value;
       setSelectedUserIds((current) => {
-        if (current.includes(publicId)) {
+        const currentSet = new Set(current);
+        if (currentSet.has(publicId)) {
           return current.filter((id) => id !== publicId);
         }
         return [...current, publicId];
@@ -170,7 +175,7 @@ export const NotificationForm = ({
                           key={user.publicId}
                         >
                           <input
-                            checked={selectedUserIds.includes(user.publicId)}
+                            checked={selectedUserIdSet.has(user.publicId)}
                             onChange={handleUserToggle}
                             type="checkbox"
                             value={user.publicId}

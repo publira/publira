@@ -90,9 +90,10 @@ export const withRedis = async <T>(
   try {
     return await Promise.race([
       run(client),
-      delay(config.timeoutMs).then(() => {
+      (async () => {
+        await delay(config.timeoutMs);
         throw new Error(`Redis command timed out after ${config.timeoutMs}ms`);
-      }),
+      })(),
     ]);
   } catch (error) {
     debug("redis command failed", error);

@@ -63,7 +63,8 @@ export const EyeCatchPicture = ({
   const srcSet = best.map((v) => `${v.url} ${v.width}w`).join(", ");
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
+    // Responsive art-direction via srcSet; next/image lacks equivalent for multi-URL variants.
+    // oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element
     <img
       alt={alt}
       className={imgClassName}

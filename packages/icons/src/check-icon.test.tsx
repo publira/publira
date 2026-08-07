@@ -7,11 +7,11 @@ import { CheckIcon } from "./check-icon";
 
 describe("CheckIcon", () => {
   it("SVG として描画される", () => {
-    const { container } = render(<CheckIcon aria-label="check-icon" />);
+    const { container } = render(<CheckIcon aria-label="Check icon" />);
 
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("aria-label")).toBe("check-icon");
+    expect(svg?.getAttribute("aria-label")).toBe("Check icon");
   });
 
   it("size/className/strokeWidth を反映する", () => {

@@ -2,7 +2,7 @@
 
 import { Field as BaseField } from "@base-ui/react/field";
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
 export type FieldProps = BaseField.Root.Props;
 
@@ -29,7 +29,7 @@ export const FieldLabel = ({
   </BaseField.Label>
 );
 
-export type FieldContentProps = React.ComponentPropsWithoutRef<"div">;
+export type FieldContentProps = ComponentPropsWithoutRef<"div">;
 
 export const FieldContent = ({ className, ...props }: FieldContentProps) => (
   <div {...props} className={cn("grid gap-2", className)} />

@@ -2,9 +2,9 @@
 
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { cn } from "@publira/utils";
-import * as React from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
-type DivProps = React.ComponentPropsWithoutRef<"div">;
+type DivProps = ComponentPropsWithoutRef<"div">;
 
 export const Dialog = BaseDialog.Root;
 export const DialogTrigger = BaseDialog.Trigger;

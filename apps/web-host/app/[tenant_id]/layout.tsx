@@ -10,7 +10,7 @@ const TenantRootLayout = ({ children }: { children: ReactNode }) => (
   <html lang="ja">
     <head>
       {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}
-      {/* oxlint-disable-next-line next/no-css-tags -- not a static import; tenant theme route */}
+      {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
       <link href="/theme.css" rel="stylesheet" />
     </head>
     <body className="min-h-dvh bg-background text-foreground antialiased">
