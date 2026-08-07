@@ -1043,7 +1043,7 @@ func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeries
 const createTenant = `-- name: CreateTenant :one
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
 VALUES ($1, $2, $3, $4, $5, 'active')
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 `
 
 type CreateTenantParams struct {
@@ -1073,6 +1073,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -1567,7 +1568,7 @@ func (q *Queries) GetActiveAccessTicketForUserEpisode(ctx context.Context, arg G
 }
 
 const getAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain
+SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
     ON t.admin_domain = candidate.domain
@@ -1592,6 +1593,7 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -2671,7 +2673,7 @@ func (q *Queries) GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, 
 }
 
 const getTenantByDomains = `-- name: GetTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain
+SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
@@ -2691,12 +2693,13 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+		&i.Timezone,
 	)
 	return i, err
 }
 
 const getTenantByID = `-- name: GetTenantByID :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 FROM tenants
 WHERE id = $1
 LIMIT 1
@@ -2714,12 +2717,13 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+		&i.Timezone,
 	)
 	return i, err
 }
 
 const getTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -2737,6 +2741,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -4841,7 +4846,7 @@ func (q *Queries) ListTenantUsers(ctx context.Context, arg ListTenantUsersParams
 }
 
 const listTenants = `-- name: ListTenants :many
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
@@ -4883,6 +4888,7 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 			&i.CreatedAt,
 			&i.Status,
 			&i.AdminDomain,
+			&i.Timezone,
 		); err != nil {
 			return nil, err
 		}
@@ -5471,7 +5477,7 @@ const updateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
 SET name = $1, domain = $2, admin_domain = $3
 WHERE public_id = $4
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 `
 
 type UpdateTenantInfoParams struct {
@@ -5499,6 +5505,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -5507,7 +5514,7 @@ const updateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 `
 
 type UpdateTenantStatusParams struct {
@@ -5528,6 +5535,7 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.CreatedAt,
 		&i.Status,
 		&i.AdminDomain,
+		&i.Timezone,
 	)
 	return i, err
 }
