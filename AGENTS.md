@@ -12,7 +12,7 @@ Always respond to the user in **Japanese**, even though this guide and other `AG
 
 - **Do not edit** (patches will be lost)
 - Reading for general knowledge / reference is fine
-- When this repository's policy conflicts with a skill, **prefer this file (and app-level `AGENTS.md`)**
+- When this repository's policy conflicts with a skill, **prefer this file (and `apps/AGENTS.md` / domain `*/AGENTS.md`)**
 
 Auto-update: `.github/workflows/skills-update.yml` runs weekly `npx skills update -p -y` and opens a PR when there is a diff.
 
@@ -131,8 +131,13 @@ Schema / migration conventions: see [`db/AGENTS.md`](db/AGENTS.md).
 
 Go backend conventions and verification: see [`server/AGENTS.md`](server/AGENTS.md).
 
+## Apps (Next.js)
+
+Shared frontend monorepo conventions: see [`apps/AGENTS.md`](apps/AGENTS.md).  
+Per-app `apps/*/AGENTS.md` files hold only the Next.js-generated rules block.
+
 ## Other
 
-- Before Next.js work: read each app's `AGENTS.md` and `node_modules/next/dist/docs/`
+- Before Next.js work: read `apps/AGENTS.md`, the **target** app's `AGENTS.md`, and that app's `node_modules/next/dist/docs/` (do not load every app's guide)
 - After frontend / shared package changes: `pnpm preflight` (typegen / typecheck / check / test)
 - After `server/` changes: follow the verification checklist in `server/AGENTS.md` (`task server:test-short` / `task server:test`, plus `task gen` when proto/SQL change)

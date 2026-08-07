@@ -18,7 +18,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 
 1. **Schema-first**: change API/DB contracts before handlers.
    - API: edit `proto/`, then `task gen` (repo root).
-   - DB: edit `db/migrations/` baseline and/or `db/query/`, then `task gen`. Early-stage migration policy is in `db/AGENTS.md` (fold into `0000…baseline`, do not add new migration files).
+   - DB: edit `db/migrations/` baseline and/or `db/query/`, then `task gen`. Early-stage migration policy is in `db/AGENTS.md` (fold into `00000000000000_baseline`, do not add new migration files).
 2. Keep `cmd/` thin; put real logic in `api/` / `internal/`.
 3. Batches are one-shot processes (run once and exit), not long-lived daemons.
 4. Never commit hand-edits under `gen/` or `internal/db/`. Regenerate instead.
