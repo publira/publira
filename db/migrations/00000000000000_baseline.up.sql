@@ -1,3 +1,18 @@
+-- TABLE: access_tickets
+-- Admin-issued viewing grants (ticket-style access, separate from purchases).
+CREATE TABLE access_tickets (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    public_id character varying(12) NOT NULL,
+    episode_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    expires_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    note text,
+    created_by_user_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 -- TABLE: audit_logs
 CREATE TABLE audit_logs (
     id uuid NOT NULL,
@@ -494,6 +509,14 @@ CREATE TABLE users (
     CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying, 'inactive'::character varying])::text[])))
 );
 
+-- CONSTRAINT: access_tickets access_tickets_pkey
+ALTER TABLE ONLY access_tickets
+    ADD CONSTRAINT access_tickets_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: access_tickets access_tickets_tenant_public_id_key
+ALTER TABLE ONLY access_tickets
+    ADD CONSTRAINT access_tickets_tenant_public_id_key UNIQUE (tenant_id, public_id);
+
 -- CONSTRAINT: platform_audit_logs admin_audit_logs_pkey
 ALTER TABLE ONLY platform_audit_logs
     ADD CONSTRAINT admin_audit_logs_pkey PRIMARY KEY (id);
@@ -734,6 +757,13 @@ ALTER TABLE ONLY users
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_public_id_key UNIQUE (public_id);
 
+-- INDEX: idx_access_tickets_active_user_episode
+-- At most one non-revoked ticket per (tenant, user, episode). Concurrent issue is serialized by this unique partial index.
+CREATE UNIQUE INDEX idx_access_tickets_active_user_episode ON access_tickets USING btree (tenant_id, user_id, episode_id) WHERE (revoked_at IS NULL);
+
+-- INDEX: idx_access_tickets_tenant_created_at
+CREATE INDEX idx_access_tickets_tenant_created_at ON access_tickets USING btree (tenant_id, created_at DESC);
+
 -- INDEX: idx_audit_logs_actor_user_id
 CREATE INDEX idx_audit_logs_actor_user_id ON audit_logs USING btree (actor_user_id);
 
@@ -907,6 +937,22 @@ CREATE UNIQUE INDEX uq_label_image_variants_label_image_type_width ON label_imag
 
 -- INDEX: uq_series_image_variants_series_image_type_width
 CREATE UNIQUE INDEX uq_series_image_variants_series_image_type_width ON series_image_variants USING btree (series_image_id, variant_type, width);
+
+-- FK CONSTRAINT: access_tickets access_tickets_created_by_user_id_fkey
+ALTER TABLE ONLY access_tickets
+    ADD CONSTRAINT access_tickets_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL;
+
+-- FK CONSTRAINT: access_tickets access_tickets_episode_id_fkey
+ALTER TABLE ONLY access_tickets
+    ADD CONSTRAINT access_tickets_episode_id_fkey FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: access_tickets access_tickets_tenant_id_fkey
+ALTER TABLE ONLY access_tickets
+    ADD CONSTRAINT access_tickets_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: access_tickets access_tickets_user_id_fkey
+ALTER TABLE ONLY access_tickets
+    ADD CONSTRAINT access_tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: audit_logs audit_logs_actor_user_id_fkey
 ALTER TABLE ONLY audit_logs
@@ -1155,6 +1201,12 @@ ALTER TABLE ONLY user_password_reset_tokens
 -- FK CONSTRAINT: users users_tenant_id_fkey
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- ROW SECURITY: access_tickets
+ALTER TABLE access_tickets ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: access_tickets access_tickets_tenant_isolation
+CREATE POLICY access_tickets_tenant_isolation ON access_tickets USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 -- ROW SECURITY: audit_logs
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;

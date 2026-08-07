@@ -9,4 +9,5 @@ BEGIN;
 \ir dev/020_audit_logs.sql
 \ir dev/030_smtp_config.sql
 \ir dev/040_pages.sql
+\ir dev/050_access_tickets.sql
 COMMIT;

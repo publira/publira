@@ -1233,6 +1233,18 @@ SELECT ei.id,
                     OR p.expires_at > NOW()
                 )
         )
+        OR EXISTS (
+            SELECT 1
+            FROM access_tickets at
+            WHERE at.tenant_id = s.tenant_id
+                AND at.user_id = $3
+                AND at.episode_id = e.id
+                AND at.revoked_at IS NULL
+                AND (
+                    at.expires_at IS NULL
+                    OR at.expires_at > NOW()
+                )
+        )
     ) AS has_access
 FROM episode_images ei
 JOIN LATERAL (
@@ -1792,3 +1804,160 @@ UPDATE tenant_config
 SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
 WHERE tenant_id = $1
 RETURNING *;
+
+-- name: CreateAccessTicket :one
+INSERT INTO access_tickets (
+        id,
+        tenant_id,
+        public_id,
+        episode_id,
+        user_id,
+        expires_at,
+        note,
+        created_by_user_id
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at;
+
+-- name: GetAccessTicketByPublicIDForTenant :one
+SELECT at.id,
+    at.tenant_id,
+    at.public_id,
+    at.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    at.user_id,
+    u.public_id AS user_public_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    at.expires_at,
+    at.revoked_at,
+    at.note,
+    at.created_by_user_id,
+    at.created_at
+FROM access_tickets at
+    JOIN episodes e ON e.id = at.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN users u ON u.id = at.user_id
+WHERE at.tenant_id = $1
+    AND at.public_id = $2
+LIMIT 1;
+
+-- name: ListAccessTicketsForTenant :many
+SELECT at.id,
+    at.tenant_id,
+    at.public_id,
+    at.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    at.user_id,
+    u.public_id AS user_public_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    at.expires_at,
+    at.revoked_at,
+    at.note,
+    at.created_by_user_id,
+    at.created_at
+FROM access_tickets at
+    JOIN episodes e ON e.id = at.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN users u ON u.id = at.user_id
+WHERE at.tenant_id = $1
+    AND (
+        sqlc.narg('user_id')::uuid IS NULL
+        OR at.user_id = sqlc.narg('user_id')::uuid
+    )
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR at.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        NOT sqlc.arg('active_only')::bool
+        OR (
+            at.revoked_at IS NULL
+            AND (
+                at.expires_at IS NULL
+                OR at.expires_at > NOW()
+            )
+        )
+    )
+ORDER BY at.created_at DESC,
+    at.id DESC
+LIMIT $2 OFFSET $3;
+
+-- name: RevokeAccessTicketByPublicIDForTenant :one
+UPDATE access_tickets
+SET revoked_at = NOW()
+WHERE tenant_id = $1
+    AND public_id = $2
+    AND revoked_at IS NULL
+RETURNING id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at;
+
+-- name: GetNonRevokedAccessTicketForUserEpisode :one
+-- Non-revoked ticket for a user+episode pair (may already be expired).
+-- Used for idempotent issue under the unique partial index on non-revoked rows.
+SELECT id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at
+FROM access_tickets
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND episode_id = $3
+    AND revoked_at IS NULL
+ORDER BY created_at DESC,
+    id DESC
+LIMIT 1;
+
+-- name: GetActiveAccessTicketForUserEpisode :one
+SELECT id,
+    tenant_id,
+    public_id,
+    episode_id,
+    user_id,
+    expires_at,
+    revoked_at,
+    note,
+    created_by_user_id,
+    created_at
+FROM access_tickets
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND episode_id = $3
+    AND revoked_at IS NULL
+    AND (
+        expires_at IS NULL
+        OR expires_at > NOW()
+    )
+ORDER BY created_at DESC,
+    id DESC
+LIMIT 1;

@@ -1,0 +1,52 @@
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+
+import { AdminPage } from "#components/admin-page";
+import { listAccessTickets } from "#lib/access-ticket";
+import { getTenantId } from "#lib/tenant-id";
+
+import { TicketManager } from "./_components/ticket-manager";
+
+export const metadata: Metadata = {
+  title: "アクセスチケット",
+};
+
+export const generateStaticParams = () =>
+  createPlaceholderStaticParams("tenant_id");
+
+const TicketManagerSkeleton = () => (
+  <div className="rounded-2xl border border-border/70 bg-card p-6">
+    <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
+    <div className="grid gap-3">
+      <div className="h-12 animate-pulse rounded bg-muted/70" />
+      <div className="h-12 animate-pulse rounded bg-muted/70" />
+      <div className="h-12 animate-pulse rounded bg-muted/70" />
+    </div>
+  </div>
+);
+
+const TicketManagerData = async () => {
+  const tenantId = await getTenantId();
+  const listResult = await listAccessTickets(tenantId);
+
+  return (
+    <TicketManager
+      initialListErrorMessage={listResult.ok ? undefined : listResult.message}
+      initialTickets={listResult.tickets}
+    />
+  );
+};
+
+const AccessTicketsPage = () => (
+  <AdminPage
+    description="決済を経由しない限定閲覧チケットの発行と失効を管理します。"
+    title="アクセスチケット"
+  >
+    <Suspense fallback={<TicketManagerSkeleton />}>
+      <TicketManagerData />
+    </Suspense>
+  </AdminPage>
+);
+
+export default AccessTicketsPage;

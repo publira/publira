@@ -12,6 +12,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type AccessTicket struct {
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	ExpiresAt       sql.NullTime   `json:"expires_at"`
+	RevokedAt       sql.NullTime   `json:"revoked_at"`
+	Note            sql.NullString `json:"note"`
+	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
+	CreatedAt       time.Time      `json:"created_at"`
+}
+
 type AuditLog struct {
 	ID          uuid.UUID      `json:"id"`
 	TenantID    uuid.UUID      `json:"tenant_id"`

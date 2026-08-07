@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS access_tickets CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS creator_image_variants CASCADE;
 DROP TABLE IF EXISTS creator_images CASCADE;
