@@ -151,7 +151,7 @@ func TestSuspendTenantSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(integrationUpdateTenantStatusQuery)).
 		WithArgs("ACTIVE01", "suspended").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "ACTIVE01", "active.example.com", "Active Tenant", nil, now, "suspended", nil, "Asia/Tokyo"))
 	expectIntegrationAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
@@ -194,7 +194,7 @@ func TestResumeTenantSuccess(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(integrationUpdateTenantStatusQuery)).
 		WithArgs("SUSP001", "active").
-		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil))
+		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).AddRow(id, "SUSP001", "suspended.example.com", "Suspended Tenant", nil, now, "active", nil, "Asia/Tokyo"))
 	expectIntegrationAuditLogInsert(mock)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)

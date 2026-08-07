@@ -446,7 +446,11 @@ CREATE TABLE tenants (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     status character varying(20) DEFAULT 'active'::character varying NOT NULL,
     admin_domain character varying(255),
-    CONSTRAINT tenants_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying])::text[])))
+    -- IANA time zone name for tenant wall-clock display/input (e.g. Asia/Tokyo, America/Los_Angeles, UTC).
+    -- Strict allow-list validation is enforced at the application/API layer.
+    timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
+    CONSTRAINT tenants_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying])::text[]))),
+    CONSTRAINT tenants_timezone_not_blank_check CHECK ((btrim(timezone) <> ''))
 );
 
 -- TABLE: user_email_change_tokens

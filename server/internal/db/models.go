@@ -324,6 +324,7 @@ type Tenant struct {
 	CreatedAt                 time.Time      `json:"created_at"`
 	Status                    string         `json:"status"`
 	AdminDomain               sql.NullString `json:"admin_domain"`
+	Timezone                  string         `json:"timezone"`
 }
 
 type TenantAdminInvitation struct {

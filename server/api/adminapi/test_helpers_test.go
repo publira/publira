@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	getTenantByIDQuery                             = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
+	getTenantByIDQuery                             = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
 	getUserByPublicIDForTenantQuery                      = "-- name: GetUserByPublicIDForTenant :one\n"
 	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\n"
 	listAuditLogsByTenantQuery                           = "-- name: ListAuditLogsByTenant :many\n"
@@ -103,8 +103,8 @@ var oneByOneJPEG = []byte{
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain"}).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}).
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, "Asia/Tokyo"))
 }
 
 // issueTestAdminToken creates a signed JWT for admin API tests.
