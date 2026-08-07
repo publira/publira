@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "esModuleInterop": true,
-    "lib": ["dom", "es2022"],
+    "lib": ["dom", "es2022", "esnext.temporal"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
