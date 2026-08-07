@@ -1,0 +1,25 @@
+# Dependencies and build outputs (rebuilt inside the image)
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/tsconfig.tsbuildinfo
+**/build
+
+# VCS / editor / local env
+.git
+.github
+.vscode
+.idea
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local noise
+pg.log
+*.log
+
+# Agent tooling (not needed at runtime or build)
+.agents
+skills
+skills-lock.json

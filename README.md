@@ -22,6 +22,8 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 │   ├── gen/            # buf 自動生成コード (Go)
 │   └── internal/
 │       └── db/         # sqlc 自動生成コード (DB/Go)
+├── infra/
+│   └── docker/         # 本番用 Dockerfile（ロール別・ルートからビルド）
 ├── mobile/             # [Flutter] モバイルアプリ (iOS/Android)
 ├── proto/              # Protocol Buffers スキーマ定義
 └── db/                 # PostgreSQL migration/クエリ
@@ -45,6 +47,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 - 共有パッケージ: [packages/README.md](packages/README.md)
 - Go バックエンド: [server/README.md](server/README.md)
 - モバイル: [mobile/README.md](mobile/README.md)
+- Dockerfile 配置規約（本番イメージ）: [infra/docker/README.md](infra/docker/README.md)
 
 ## セットアップ
 
