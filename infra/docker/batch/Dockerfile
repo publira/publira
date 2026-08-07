@@ -22,8 +22,9 @@ COPY server/ ./
 ARG CMD_NAME
 RUN test -n "${CMD_NAME}" || (echo "ERROR: CMD_NAME is required (e.g. publish-episodes)" >&2 && exit 1)
 
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+# Inherit BuildKit automatic platform ARGs (do not set defaults — they override --platform).
+ARG TARGETOS
+ARG TARGETARCH
 
 RUN CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" \
   go build -trimpath -ldflags='-s -w' -o /out/job "./cmd/${CMD_NAME}"
