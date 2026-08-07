@@ -18,6 +18,11 @@ const PUBLIC_PATHS = new Set([
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
+  // Liveness must not depend on backend availability (same as web-host / web-admin).
+  if (pathname === "/healthz") {
+    return NextResponse.next();
+  }
+
   if (pathname === "/setup") {
     return NextResponse.next();
   }

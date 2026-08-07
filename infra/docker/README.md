@@ -1,11 +1,15 @@
-# Dockerfile 配置規約
+# Dockerfile 配置規約とビルド検証
 
-本番・CI で使う実行イメージ用 Dockerfile の置き場とビルド手順を定義する。  
+本番・CI で使う実行イメージ用 Dockerfile の置き場、ビルド手順、検証・CI 連携を定義する。  
 新規サービス追加時は本ドキュメントに従い、配置先が一意に決まるようにする。
 
 エージェント向け実装ルール: [`AGENTS.md`](./AGENTS.md)
 
-関連: [#82](https://github.com/publira/publira/issues/82)（方針策定） / [#83](https://github.com/publira/publira/issues/83)（本規約）
+関連:
+
+- [#82](https://github.com/publira/publira/issues/82)（方針策定・配置）
+- [#83](https://github.com/publira/publira/issues/83)（配置規約）
+- [#87](https://github.com/publira/publira/issues/87)（ビルド検証と CI 連携）
 
 ## 方針（採用）
 
@@ -145,9 +149,136 @@ Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools
 3. **生成物のコミット**  
    テンプレートから各サービスへ Dockerfile をコピーしてコミットする運用は行わない。
 
+## 責務分担（docker build / ローカル開発 / CI）
+
+| 経路 | 用途 | 正とするコマンド |
+| --- | --- | --- |
+| **本番イメージビルド** | デプロイ用イメージの作成・検証 | `task docker:build:*`（中身はルート context の `docker build -f infra/docker/...`） |
+| **ローカル開発** | ホットリロード開発 | Dev Container + `task dev` / `task server:dev` 等（本番 Dockerfile は使わない） |
+| **CI（ホスト + イメージ）** | 変更検知で Check / Test / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
+
+本番イメージと Dev Container は別物である。イメージビルドが通っても `task dev` の代替にはならないし、その逆でもない。
+
+## ローカル検証手順
+
+前提: リポジトリルート、Docker Engine / Buildx が利用可能であること。
+
+### 代表イメージ（日常の確認）
+
+Issue / CI の「主要ビルド経路」は次の 3 本（各ロール 1 つ）とする。
+
+```bash
+# まとめて（web-host / api-server / publish-episodes）
+task docker:verify
+
+# または個別
+task docker:build:web APP_NAME=web-host PORT=3000
+task docker:build:api CMD_NAME=api-server PORT=8000
+task docker:build:batch CMD_NAME=publish-episodes
+```
+
+Web のみ起動確認（distroless・Redis 無し）:
+
+```bash
+task docker:smoke:web APP_NAME=web-host PORT=3000
+```
+
+API / batch のランタイムスモークは DB・ストレージ等の依存があるため、**イメージビルド成功をゲート**とする。起動確認はオーケストレータまたは結合環境で行う。
+
+### 全イメージ（リリース前・Dockerfile 大きな変更時）
+
+```bash
+task docker:verify:full
+```
+
+README のビルド例に載っている全ターゲットを順にビルドする。
+
+### 生の `docker build`（デバッグ用）
+
+Task は次と等価である（トラブルシュート時に Task を挟まず実行してよい）。
+
+```bash
+docker build -f infra/docker/web/Dockerfile \
+  --build-arg APP_NAME=web-host --build-arg PORT=3000 \
+  -t publira/web-host:local .
+```
+
+## CI 実行戦略
+
+### 比較
+
+| 戦略 | 内容 | 利点 | 欠点 |
+| --- | --- | --- | --- |
+| **全イメージ毎回** | PR のたびに全ターゲット | 取りこぼし最小 | 時間・コスト大（特に Web×3） |
+| **変更検知** | 影響ロールの代表だけビルド | PR が速い | ロール外の間接影響を見逃しうる |
+| **Nightly フル** | 定期で全ターゲット | ドリフト検出 | フィードバックが遅い |
+
+### 採用案
+
+**変更検知（ロール代表） + Nightly フル** を採用する。
+
+| トリガ | モード | ビルド対象 |
+| --- | --- | --- |
+| `pull_request` / `push`（main）かつ関連 path | **verify** | 変更ロールの代表のみ（下表） |
+| Dockerfile 本体・Taskfile・`.dockerignore`・`ci.yml` の変更 | **full** | ドキュメント上の全ターゲット |
+| `schedule`（毎日 03:00 UTC） | **full**（Docker のみ） | 全ターゲット（Check / Test / Build はスキップ） |
+| `workflow_dispatch` | verify または full | 手動選択（ホスト CI も実行） |
+
+#### 変更検知のロール対応
+
+| ロール | 代表ターゲット | 監視 path（概要） |
+| --- | --- | --- |
+| web | `web-host` | `apps/**`, `packages/**`, lockfile / turbo, `infra/docker/web/**` |
+| api | `api-server` | `server/**`, `infra/docker/api/**` |
+| batch | `publish-episodes` | `server/**`, `infra/docker/batch/**` |
+
+`server/**` 変更時は api と batch の両方の代表をビルドする（共有モジュールのため）。
+
+実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
+ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Check / Test / Build / Docker 行列を決定）。  
+ローカルと同一コマンド: `task docker:build:web|api|batch`（Web は続けて `task docker:smoke:web`）。
+
+Check / Test / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
+
+## 失敗時のトリアージ
+
+1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）
+   - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`
+   - `Check` / `Test` / `Build` → ホスト上の依存・型・テスト・`pnpm build` / `go build`
+   - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
+2. **ローカルで同じ Task を再現する**（CI ログの `task docker:build:…` 行をそのまま使う）
+
+   ```bash
+   task docker:build:web APP_NAME=web-host PORT=3000
+   # または
+   task docker:verify
+   ```
+
+3. **レイヤで切り分ける**
+
+   | 症状 | 疑う箇所 |
+   | --- | --- |
+   | `ERROR: APP_NAME/CMD_NAME is required` | build-arg の渡し忘れ |
+   | context / file not found | ルート以外での実行、`.dockerignore` の過剰除外 |
+   | `turbo prune` / `pnpm install` 失敗 | lockfile 不整合、workspace 名、`APP_NAME` 誤り |
+   | `pnpm turbo run build` 失敗 | アプリ本体のビルドエラー（先にホストで `pnpm build --filter @publira/<app>`） |
+   | `go build` 失敗 | `server/` のコンパイルエラー（先に `task server:build`） |
+   | ベース pull 失敗 / digest | レジストリ・digest 更新・Renovate PR の取りこぼし |
+   | Web smoke (`/healthz`) のみ失敗 | エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している） |
+
+4. **CI だけ失敗する場合**
+   - ランナー arch / Buildx とローカルの差（Go は `TARGETOS`/`TARGETARCH` を既定固定しない）
+   - キャッシュ汚れ → ローカルは `docker builder prune`、CI は再実行
+   - path filter の取りこぼし懸念 → `workflow_dispatch` で Docker `full`、または Nightly 結果を確認
+5. **直したら**
+   - 代表 3 本（`task docker:verify`）が通ることを確認してから PR を更新する
+   - ロール追加時は README の表・Taskfile の `verify:full`・`ci.yml` の full 行列を同時更新する
+
 ## 変更時のチェックリスト
 
 - [ ] 新ロールなら `infra/docker/<role>/Dockerfile` を追加し、本 README の表・判断フロー・ビルド例を更新した
 - [ ] ベースイメージは digest 固定、ツール版は Renovate 追跡可能な `ARG` にした
-- [ ] ルートからの `docker build -f … .` でビルドできることを確認した
+- [ ] ルートからの `docker build -f … .` および `task docker:build:*` でビルドできることを確認した
+- [ ] 代表検証 `task docker:verify`（必要なら `verify:full`）を通した
+- [ ] 新ターゲットなら [`Taskfile.yaml`](./Taskfile.yaml) の `verify:full` と [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の Docker full 行列を更新した
 - [ ] ルート [README.md](../../README.md) のドキュメント案内から辿れる（本ファイルへのリンクが生きている）

@@ -15,10 +15,139 @@ on:
     branches: [main]
   push:
     branches: [main]
+  schedule:
+    # Nightly Docker full matrix (UTC) — catches cross-service drift missed by path filters
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      docker_mode:
+        description: "Docker images: verify = role representatives; full = all documented images"
+        required: true
+        default: verify
+        type: choice
+        options:
+          - verify
+          - full
+
+# Branch ruleset should require only the final job display name: "Summary"
+# (see job `summary` below). Intermediate jobs may be skipped by path filters.
+
+# Repo default is read-only GITHUB_TOKEN; paths-filter needs PR file list on pull_request.
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubicloud-standard-2
+    outputs:
+      check: ${{ steps.plan.outputs.check }}
+      test: ${{ steps.plan.outputs.test }}
+      build: ${{ steps.plan.outputs.build }}
+      docker_any: ${{ steps.plan.outputs.docker_any }}
+      docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Path filter
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            check:
+              - 'apps/**'
+              - 'packages/**'
+              - 'server/**'
+              - 'db/**'
+              - 'proto/**'
+              - 'sqlc.yaml'
+              - 'buf.yaml'
+              - 'buf.gen.yaml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'oxlint.config.ts'
+              - 'oxfmt.config.ts'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test:
+              - 'apps/**'
+              - 'packages/**'
+              - 'server/**'
+              - 'db/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            build:
+              - 'apps/**'
+              - 'packages/**'
+              - 'server/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_web:
+              - 'apps/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'infra/docker/web/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_api:
+              - 'server/**'
+              - 'infra/docker/api/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_batch:
+              - 'server/**'
+              - 'infra/docker/batch/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            docker_core:
+              - 'infra/docker/web/**'
+              - 'infra/docker/api/**'
+              - 'infra/docker/batch/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+
+      - name: Plan jobs
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DOCKER_MODE_INPUT: ${{ inputs.docker_mode }}
+          FILTER_CHECK: ${{ steps.filter.outputs.check }}
+          FILTER_TEST: ${{ steps.filter.outputs.test }}
+          FILTER_BUILD: ${{ steps.filter.outputs.build }}
+          FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
+          FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
+          FILTER_DOCKER_BATCH: ${{ steps.filter.outputs.docker_batch }}
+          FILTER_DOCKER_CORE: ${{ steps.filter.outputs.docker_core }}
+        run: bash scripts/ci-plan-jobs.sh
+
   check:
     name: Check
+    needs: changes
+    if: needs.changes.outputs.check == 'true'
     runs-on: ubicloud-standard-2
     services:
       postgres:
@@ -103,6 +232,8 @@ jobs:
 
   test:
     name: Test
+    needs: changes
+    if: needs.changes.outputs.test == 'true'
     runs-on: ubicloud-standard-2
     steps:
       - name: Setup / Checkout
@@ -142,6 +273,8 @@ jobs:
 
   build:
     name: Build
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubicloud-standard-2
     steps:
       - name: Setup / Checkout
@@ -174,3 +307,91 @@ jobs:
 
       - name: Build / Server
         run: task server:build
+
+  docker:
+    name: Docker / ${{ matrix.target }}
+    needs: changes
+    if: needs.changes.outputs.docker_any == 'true'
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.changes.outputs.docker_matrix) }}
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      # Use the default docker driver so `docker build -t …` loads into the local
+      # image store (docker-container Buildx does not, and smoke needs docker run).
+      - name: Build image
+        env:
+          DOCKER_TASK: ${{ matrix.task }}
+          DOCKER_ARG: ${{ matrix.arg }}
+          DOCKER_EXTRA: ${{ matrix.extra }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DOCKER_EXTRA}" ]; then
+            task "${DOCKER_TASK}" "${DOCKER_ARG}" "${DOCKER_EXTRA}"
+          else
+            task "${DOCKER_TASK}" "${DOCKER_ARG}"
+          fi
+
+      - name: Smoke / Web /healthz
+        if: matrix.role == 'web'
+        env:
+          APP_NAME: ${{ matrix.target }}
+          PORT: ${{ matrix.port }}
+        run: task docker:smoke:web "APP_NAME=${APP_NAME}" "PORT=${PORT}"
+
+  # Single required status check for the branch ruleset (shown as "CI / Summary").
+  # Intermediate jobs may be skipped when their paths did not change.
+  summary:
+    name: Summary
+    if: always()
+    needs:
+      - changes
+      - check
+      - test
+      - build
+      - docker
+    runs-on: ubicloud-standard-2
+    steps:
+      - name: Aggregate results
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CHECK: ${{ needs.check.result }}
+          TEST: ${{ needs.test.result }}
+          BUILD: ${{ needs.build.result }}
+          DOCKER: ${{ needs.docker.result }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for pair in \
+            "Detect changes=${CHANGES}" \
+            "Check=${CHECK}" \
+            "Test=${TEST}" \
+            "Build=${BUILD}" \
+            "Docker=${DOCKER}"
+          do
+            name="${pair%%=*}"
+            result="${pair#*=}"
+            echo "${name}: ${result}"
+            case "${result}" in
+              success|skipped)
+                ;;
+              *)
+                echo "::error::Job failed: ${name} (${result})"
+                failed=1
+                ;;
+            esac
+          done
+          if [ "${failed}" -ne 0 ]; then
+            exit 1
+          fi
+          echo "All jobs succeeded or were skipped."
