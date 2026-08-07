@@ -63,17 +63,17 @@ describe("toDateTimeLocalValue", () => {
 
   it("does not depend on the host local time zone", () => {
     // Same absolute + same IANA zone must be stable under any process TZ.
-    expect(toDateTimeLocalValue("2024-07-01T00:00:00Z", "Pacific/Auckland")).toBe(
-      "2024-07-01T12:00"
-    );
+    expect(
+      toDateTimeLocalValue("2024-07-01T00:00:00Z", "Pacific/Auckland")
+    ).toBe("2024-07-01T12:00");
   });
 
   it("returns fallback for empty or invalid values", () => {
     expect(toDateTimeLocalValue("", "Asia/Tokyo")).toBe("");
     expect(toDateTimeLocalValue("bogus", "Asia/Tokyo")).toBe("");
-    expect(
-      toDateTimeLocalValue("bogus", "Asia/Tokyo", { fallback: "—" })
-    ).toBe("—");
+    expect(toDateTimeLocalValue("bogus", "Asia/Tokyo", { fallback: "—" })).toBe(
+      "—"
+    );
   });
 });
 
@@ -136,12 +136,12 @@ describe("DST boundaries (America/Los_Angeles)", () => {
 
   it("formats instants correctly on both sides of spring-forward", () => {
     // Just before transition (still PST, UTC-8): 2024-03-10T09:59:00Z → 01:59
-    expect(
-      formatDateTime("2024-03-10T09:59:00Z", { timeZone: zone })
-    ).toBe("2024/03/10 1:59");
+    expect(formatDateTime("2024-03-10T09:59:00Z", { timeZone: zone })).toBe(
+      "2024/03/10 1:59"
+    );
     // Just after (PDT, UTC-7): 2024-03-10T10:00:00Z → 03:00
-    expect(
-      formatDateTime("2024-03-10T10:00:00Z", { timeZone: zone })
-    ).toBe("2024/03/10 3:00");
+    expect(formatDateTime("2024-03-10T10:00:00Z", { timeZone: zone })).toBe(
+      "2024/03/10 3:00"
+    );
   });
 });
