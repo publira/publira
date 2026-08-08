@@ -59,4 +59,5 @@ jobs:
           labels: area/infra
           add-paths: |
             .agents/skills/**
+            .claude/skills/**
             skills-lock.json
