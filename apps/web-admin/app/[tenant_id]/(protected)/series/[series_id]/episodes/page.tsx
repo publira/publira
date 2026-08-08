@@ -15,7 +15,16 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { listEpisodes } from "#lib/episode";
 import { getTenantId } from "#lib/tenant-id";
@@ -42,73 +51,80 @@ const SeriesEpisodesPage = async ({
   });
 
   return (
-    <AdminPage
-      actions={
-        <div className="flex gap-2">
-          <LinkButton
-            render={<Link href={`/series/${series_id}/episodes/new`} />}
-          >
-            新規作成
-          </LinkButton>
-          <LinkButton
-            render={<Link href={`/series/${series_id}`} />}
-            variant="outline"
-          >
-            シリーズへ戻る
-          </LinkButton>
-        </div>
-      }
-      description="シリーズ配下のエピソードを管理します。"
-      eyebrow={`Series ${series_id}`}
-      title="エピソード一覧"
-    >
-      <FlashToast
-        keyName="reordered"
-        title="エピソードの表示順を更新しました。"
-      />
-      <FlashToast
-        keyName="reorder_error"
-        title="エピソードの表示順更新に失敗しました。"
-      />
+    <AdminPage>
+      <AdminPageHeader>
+        <AdminPageHeading>
+          <AdminPageEyebrow>{`Series ${series_id}`}</AdminPageEyebrow>
+          <AdminPageTitle>エピソード一覧</AdminPageTitle>
+          <AdminPageDescription>
+            シリーズ配下のエピソードを管理します。
+          </AdminPageDescription>
+        </AdminPageHeading>
+        <AdminPageActions>
+          <div className="flex gap-2">
+            <LinkButton
+              render={<Link href={`/series/${series_id}/episodes/new`} />}
+            >
+              新規作成
+            </LinkButton>
+            <LinkButton
+              render={<Link href={`/series/${series_id}`} />}
+              variant="outline"
+            >
+              シリーズへ戻る
+            </LinkButton>
+          </div>
+        </AdminPageActions>
+      </AdminPageHeader>
+      <AdminPageContent>
+        <FlashToast
+          keyName="reordered"
+          title="エピソードの表示順を更新しました。"
+        />
+        <FlashToast
+          keyName="reorder_error"
+          title="エピソードの表示順更新に失敗しました。"
+        />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>エピソード管理</CardTitle>
-          <CardDescription>
-            一覧・新規作成・個別編集の導線をこの配下に集約しています。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {result.ok ? null : (
-            <FormMessage variant="destructive">{result.message}</FormMessage>
-          )}
+        <Card>
+          <CardHeader>
+            <CardTitle>エピソード管理</CardTitle>
+            <CardDescription>
+              一覧・新規作成・個別編集の導線をこの配下に集約しています。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {result.ok ? null : (
+              <FormMessage variant="destructive">{result.message}</FormMessage>
+            )}
 
-          {result.episodes.length === 0 ? (
-            <EmptyState
-              actions={
-                <LinkButton
-                  render={<Link href={`/series/${series_id}/episodes/new`} />}
-                >
-                  エピソードを新規作成
-                </LinkButton>
-              }
-              description="まだエピソードがありません。まずは新規作成してください。"
-              title="このシリーズのエピソードは未登録です。"
-            />
-          ) : (
-            <div className="grid gap-3">
-              <p className="text-xs text-muted-foreground">
-                エピソードはカードをドラッグ＆ドロップして並び替えできます。
-              </p>
-              <EpisodesSortableList
-                episodes={result.episodes}
-                reorderAction={reorderEpisodesAction}
-                seriesPublicId={series_id}
+            {result.episodes.length === 0 ? (
+              <EmptyState
+                actions={
+                  <LinkButton
+                    render={<Link href={`/series/${series_id}/episodes/new`} />}
+                  >
+                    エピソードを新規作成
+                  </LinkButton>
+                }
+                description="まだエピソードがありません。まずは新規作成してください。"
+                title="このシリーズのエピソードは未登録です。"
               />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="grid gap-3">
+                <p className="text-xs text-muted-foreground">
+                  エピソードはカードをドラッグ＆ドロップして並び替えできます。
+                </p>
+                <EpisodesSortableList
+                  episodes={result.episodes}
+                  reorderAction={reorderEpisodesAction}
+                  seriesPublicId={series_id}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </AdminPageContent>
     </AdminPage>
   );
 };

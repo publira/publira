@@ -8,7 +8,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getPage, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
@@ -46,7 +55,12 @@ const PageWorkspaceSkeleton = () => (
   </div>
 );
 
-const PageWorkspaceData = async ({ pageId }: { pageId: string }) => {
+const PageWorkspaceData = async ({
+  params,
+}: Pick<EditPagePageProps, "params">) => {
+  const { page_id: pageId } = await params;
+  guardPlaceholder(pageId);
+
   const tenantId = await getTenantId();
   const [pageResult, versionsResult] = await Promise.all([
     getPage({ pageId, tenantId }),
@@ -93,20 +107,24 @@ const PageWorkspaceData = async ({ pageId }: { pageId: string }) => {
   );
 };
 
-const EditPagePage = async ({ params }: EditPagePageProps) => {
-  const { page_id } = await params;
-  guardPlaceholder(page_id);
-
-  return (
-    <AdminPage
-      actions={
+const EditPagePage = ({ params }: EditPagePageProps) => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>ページ編集</AdminPageTitle>
+        <AdminPageDescription>
+          Markdown
+          の編集、プレビュー確認、バージョン比較、公開/ロールバックを行います。管理者のみ実行できます。
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
         <LinkButton render={<Link href="/pages" />} variant="outline">
           一覧へ戻る
         </LinkButton>
-      }
-      description="Markdown の編集、プレビュー確認、バージョン比較、公開/ロールバックを行います。管理者のみ実行できます。"
-      title="ページ編集"
-    >
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
       <FlashToast title="ページを作成しました。" />
       <FlashToast keyName="updated" title="ページ基本情報を更新しました。" />
       <FlashToast
@@ -120,10 +138,10 @@ const EditPagePage = async ({ params }: EditPagePageProps) => {
       />
 
       <Suspense fallback={<PageWorkspaceSkeleton />}>
-        <PageWorkspaceData pageId={page_id} />
+        <PageWorkspaceData params={params} />
       </Suspense>
-    </AdminPage>
-  );
-};
+    </AdminPageContent>
+  </AdminPage>
+);
 
 export default EditPagePage;

@@ -1,4 +1,4 @@
-import { isHealthProbePath } from "@publira/utils";
+import { isHealthProbePath } from "@publira/utils/health";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

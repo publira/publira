@@ -5,6 +5,7 @@ import {
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
+import { io } from "next/cache";
 import { cookies } from "next/headers";
 
 import { PLATFORM_SESSION_COOKIE_NAME } from "./auth-shared";
@@ -46,11 +47,22 @@ const getAccessTokenFromCookie = async (): Promise<string> => {
   return "";
 };
 
-export const resolveAccessToken = (accessToken = ""): Promise<string> => {
+/**
+ * Session token for per-user (uncached) RPC.
+ *
+ * `await io()` marks the caller as I/O so the following gRPC call is excluded
+ * from the static shell. Without it the transport's internal `Date.now()`
+ * (`@connectrpc/connect-node` HTTP/2 session manager) is reported as an
+ * unstable value during prerender. Inside a `"use cache"` scope it is a no-op.
+ * @see https://nextjs.org/docs/app/api-reference/functions/io
+ */
+export const resolveAccessToken = async (accessToken = ""): Promise<string> => {
+  await io();
+
   const token = accessToken.trim();
   if (token) {
-    return Promise.resolve(token);
+    return token;
   }
 
-  return getAccessTokenFromCookie();
+  return await getAccessTokenFromCookie();
 };

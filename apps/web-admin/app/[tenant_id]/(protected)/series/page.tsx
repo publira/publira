@@ -2,7 +2,15 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -39,13 +47,21 @@ const SeriesManagerData = async () => {
 };
 
 const SeriesPage = () => (
-  <AdminPage
-    description="シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。"
-    title="シリーズ"
-  >
-    <Suspense fallback={<SeriesManagerSkeleton />}>
-      <SeriesManagerData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>シリーズ</AdminPageTitle>
+        <AdminPageDescription>
+          シリーズ一覧の確認と、編集・エピソード管理への遷移を行います。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<SeriesManagerSkeleton />}>
+        <SeriesManagerData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

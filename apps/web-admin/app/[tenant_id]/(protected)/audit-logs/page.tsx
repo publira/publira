@@ -22,7 +22,15 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
@@ -93,11 +101,9 @@ const AuditLogsSkeleton = () => (
 
 const AuditLogsContent = async ({
   searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) => {
-  const tenantId = await getTenantId();
-  const filters = parseAuditLogFilters(searchParams, allowedActionValues);
+}: Pick<AuditLogsPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const filters = parseAuditLogFilters(sp, allowedActionValues);
 
   const [result, actorCandidatesResult] = await Promise.all([
     listAuditLogs(tenantId, {
@@ -292,19 +298,23 @@ const AuditLogsContent = async ({
   );
 };
 
-const AuditLogsPage = async ({ searchParams }: AuditLogsPageProps) => {
-  const sp = await searchParams;
-
-  return (
-    <AdminPage
-      description="テナント内の操作履歴を確認し、変更の追跡や説明責任に利用します。"
-      title="監査ログ"
-    >
+const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>監査ログ</AdminPageTitle>
+        <AdminPageDescription>
+          テナント内の操作履歴を確認し、変更の追跡や説明責任に利用します。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
       <Suspense fallback={<AuditLogsSkeleton />}>
-        <AuditLogsContent searchParams={sp} />
+        <AuditLogsContent searchParams={searchParams} />
       </Suspense>
-    </AdminPage>
-  );
-};
+    </AdminPageContent>
+  </AdminPage>
+);
 
 export default AuditLogsPage;

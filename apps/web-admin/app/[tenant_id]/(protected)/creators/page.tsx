@@ -2,7 +2,15 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listCreators } from "#lib/creator";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -39,13 +47,21 @@ const CreatorManagerData = async () => {
 };
 
 const CreatorPage = () => (
-  <AdminPage
-    description="著者一覧の確認と、編集への遷移を行います。"
-    title="著者"
-  >
-    <Suspense fallback={<CreatorManagerSkeleton />}>
-      <CreatorManagerData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>著者</AdminPageTitle>
+        <AdminPageDescription>
+          著者一覧の確認と、編集への遷移を行います。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<CreatorManagerSkeleton />}>
+        <CreatorManagerData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

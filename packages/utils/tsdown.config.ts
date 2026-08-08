@@ -8,6 +8,7 @@ export default defineConfig({
     "src/format-date-time.ts",
     "src/health.ts",
     "src/next-static-params.ts",
+    "src/static-param-placeholder.ts",
     "src/theme-css-variables.ts",
   ],
   format: "esm",

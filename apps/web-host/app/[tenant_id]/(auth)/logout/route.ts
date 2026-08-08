@@ -20,7 +20,7 @@ const clearSessionCookie = (response: NextResponse) => {
 
 export const POST = async (
   request: NextRequest,
-  { params }: { params: Promise<{ tenant_id: string }> }
+  { params }: RouteContext<"/[tenant_id]/logout">
 ) => {
   const { tenant_id: tenantId } = await params;
 

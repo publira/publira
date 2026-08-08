@@ -2,7 +2,15 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -39,13 +47,21 @@ const NotificationManagerData = async () => {
 };
 
 const NotificationsPage = () => (
-  <AdminPage
-    description="通知の作成状況と配信対象を確認できます。"
-    title="通知"
-  >
-    <Suspense fallback={<NotificationManagerSkeleton />}>
-      <NotificationManagerData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>通知</AdminPageTitle>
+        <AdminPageDescription>
+          通知の作成状況と配信対象を確認できます。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<NotificationManagerSkeleton />}>
+        <NotificationManagerData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

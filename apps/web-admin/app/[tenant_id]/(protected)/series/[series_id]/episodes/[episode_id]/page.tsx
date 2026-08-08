@@ -6,7 +6,16 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { listEpisodeImages } from "#lib/episode";
 import { getTenantId } from "#lib/tenant-id";
@@ -43,78 +52,88 @@ const EditEpisodePage = async ({
   });
 
   return (
-    <AdminPage
-      actions={
-        <div className="flex gap-2">
-          <LinkButton
-            render={<Link href={`/series/${series_id}/episodes`} />}
-            variant="outline"
-          >
-            一覧へ戻る
-          </LinkButton>
-          <LinkButton
-            render={<Link href={`/series/${series_id}/episodes/new`} />}
-            variant="outline"
-          >
-            新規作成
-          </LinkButton>
-        </div>
-      }
-      description="エピソードの公開設定とページ画像を編集します。"
-      eyebrow={`Series ${series_id} / Episode ${episode_id}`}
-      title="エピソード編集"
-    >
-      <FlashToast keyName="created" title="エピソードを作成しました。" />
-      <FlashToast
-        keyName="schedule_updated"
-        title="publish_at を更新しました。"
-      />
-      <FlashToast keyName="pages_uploaded" title="ページ画像を追加しました。" />
-      <FlashToast
-        keyName="images_reordered"
-        title="ページ画像の表示順を更新しました。"
-      />
-      <FlashToast
-        keyName="image_reorder_error"
-        title="ページ画像の表示順更新に失敗しました。"
-      />
-
-      <div className="grid gap-6">
-        <EpisodeScheduleForm
-          action={updateEpisodeScheduleAction}
-          episodePublicId={episode_id}
-          seriesPublicId={series_id}
+    <AdminPage>
+      <AdminPageHeader>
+        <AdminPageHeading>
+          <AdminPageEyebrow>{`Series ${series_id} / Episode ${episode_id}`}</AdminPageEyebrow>
+          <AdminPageTitle>エピソード編集</AdminPageTitle>
+          <AdminPageDescription>
+            エピソードの公開設定とページ画像を編集します。
+          </AdminPageDescription>
+        </AdminPageHeading>
+        <AdminPageActions>
+          <div className="flex gap-2">
+            <LinkButton
+              render={<Link href={`/series/${series_id}/episodes`} />}
+              variant="outline"
+            >
+              一覧へ戻る
+            </LinkButton>
+            <LinkButton
+              render={<Link href={`/series/${series_id}/episodes/new`} />}
+              variant="outline"
+            >
+              新規作成
+            </LinkButton>
+          </div>
+        </AdminPageActions>
+      </AdminPageHeader>
+      <AdminPageContent>
+        <FlashToast keyName="created" title="エピソードを作成しました。" />
+        <FlashToast
+          keyName="schedule_updated"
+          title="publish_at を更新しました。"
         />
-        <EpisodePagesForm
-          action={uploadEpisodePagesAction}
-          episodePublicId={episode_id}
-          seriesPublicId={series_id}
+        <FlashToast
+          keyName="pages_uploaded"
+          title="ページ画像を追加しました。"
+        />
+        <FlashToast
+          keyName="images_reordered"
+          title="ページ画像の表示順を更新しました。"
+        />
+        <FlashToast
+          keyName="image_reorder_error"
+          title="ページ画像の表示順更新に失敗しました。"
         />
 
-        <section className="grid gap-3 rounded-lg border border-border/70 p-4">
-          <h2 className="text-sm font-medium">登録済みページ画像</h2>
-          <p className="text-xs text-muted-foreground">
-            画像はドラッグ＆ドロップで並び替えできます。
-          </p>
+        <div className="grid gap-6">
+          <EpisodeScheduleForm
+            action={updateEpisodeScheduleAction}
+            episodePublicId={episode_id}
+            seriesPublicId={series_id}
+          />
+          <EpisodePagesForm
+            action={uploadEpisodePagesAction}
+            episodePublicId={episode_id}
+            seriesPublicId={series_id}
+          />
 
-          {imagesResult.ok ? null : (
-            <p className="text-sm text-destructive">{imagesResult.message}</p>
-          )}
-
-          {imagesResult.images.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              ページ画像はまだ登録されていません。
+          <section className="grid gap-3 rounded-lg border border-border/70 p-4">
+            <h2 className="text-sm font-medium">登録済みページ画像</h2>
+            <p className="text-xs text-muted-foreground">
+              画像はドラッグ＆ドロップで並び替えできます。
             </p>
-          ) : (
-            <EpisodeImagesSortableGrid
-              episodePublicId={episode_id}
-              images={imagesResult.images}
-              reorderAction={reorderEpisodeImagesAction}
-              seriesPublicId={series_id}
-            />
-          )}
-        </section>
-      </div>
+
+            {imagesResult.ok ? null : (
+              <p className="text-sm text-destructive">{imagesResult.message}</p>
+            )}
+
+            {imagesResult.images.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                ページ画像はまだ登録されていません。
+              </p>
+            ) : (
+              <EpisodeImagesSortableGrid
+                episodePublicId={episode_id}
+                images={imagesResult.images}
+                reorderAction={reorderEpisodeImagesAction}
+                seriesPublicId={series_id}
+              />
+            )}
+          </section>
+        </div>
+      </AdminPageContent>
     </AdminPage>
   );
 };

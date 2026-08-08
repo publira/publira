@@ -1,7 +1,15 @@
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { getTenantEmailSettings } from "#lib/email-settings";
 import type { TenantSmtpSettings } from "#lib/email-settings";
@@ -44,27 +52,35 @@ const SettingsEmailPage = async () => {
   ]);
 
   return (
-    <AdminPage
-      description="テナントごとのメール送信設定を管理します。"
-      title="設定"
-    >
-      <div className="grid gap-6">
-        <SettingsTabNav current="email" />
-        <TenantEmailSettingsForm
-          canEdit={isTenantAdminRole(currentUser?.role)}
-          initialSettings={
-            emailSettingsResult.ok
-              ? emailSettingsResult.settings
-              : emptySettings
-          }
-          loadErrorMessage={
-            emailSettingsResult.ok ? undefined : emailSettingsResult.message
-          }
-          saveAction={updateTenantEmailSettingsAction}
-          tenantName={tenant?.name ?? ""}
-          testAction={sendTenantSmtpTestEmailAction}
-        />
-      </div>
+    <AdminPage>
+      <AdminPageHeader>
+        <AdminPageHeading>
+          <AdminPageEyebrow>Console</AdminPageEyebrow>
+          <AdminPageTitle>設定</AdminPageTitle>
+          <AdminPageDescription>
+            テナントごとのメール送信設定を管理します。
+          </AdminPageDescription>
+        </AdminPageHeading>
+      </AdminPageHeader>
+      <AdminPageContent>
+        <div className="grid gap-6">
+          <SettingsTabNav current="email" />
+          <TenantEmailSettingsForm
+            canEdit={isTenantAdminRole(currentUser?.role)}
+            initialSettings={
+              emailSettingsResult.ok
+                ? emailSettingsResult.settings
+                : emptySettings
+            }
+            loadErrorMessage={
+              emailSettingsResult.ok ? undefined : emailSettingsResult.message
+            }
+            saveAction={updateTenantEmailSettingsAction}
+            tenantName={tenant?.name ?? ""}
+            testAction={sendTenantSmtpTestEmailAction}
+          />
+        </div>
+      </AdminPageContent>
     </AdminPage>
   );
 };

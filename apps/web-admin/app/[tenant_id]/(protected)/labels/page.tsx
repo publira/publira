@@ -2,7 +2,15 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listLabels } from "#lib/label";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -39,13 +47,21 @@ const LabelManagerData = async () => {
 };
 
 const LabelPage = () => (
-  <AdminPage
-    description="レーベル一覧の確認と、編集への遷移を行います。"
-    title="レーベル"
-  >
-    <Suspense fallback={<LabelManagerSkeleton />}>
-      <LabelManagerData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>レーベル</AdminPageTitle>
+        <AdminPageDescription>
+          レーベル一覧の確認と、編集への遷移を行います。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<LabelManagerSkeleton />}>
+        <LabelManagerData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

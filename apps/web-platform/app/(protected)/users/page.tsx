@@ -22,7 +22,15 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import {
   listPlatformEndUsers,
@@ -406,7 +414,11 @@ const PaginationControls = ({
   </div>
 );
 
-const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
+const UsersContent = async ({
+  searchParams,
+}: Pick<UsersPageProps, "searchParams">) => {
+  const filters = parseUsersFilters(await searchParams);
+
   const [tenantItems, result] = await Promise.all([
     listPlatformTenantFilterOptions(),
     listPlatformEndUsers({
@@ -481,21 +493,23 @@ const UsersContent = async ({ filters }: { filters: UsersFilters }) => {
   );
 };
 
-const UsersPage = async ({ searchParams }: UsersPageProps) => {
-  const params = await searchParams;
-  const filters = parseUsersFilters(params);
-
-  return (
-    <PlatformPage
-      description="ユーザーの状態確認とアカウント停止・削除を管理します。"
-      eyebrow="Platform Users"
-      title="ユーザー管理"
-    >
+const UsersPage = ({ searchParams }: UsersPageProps) => (
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Users</PlatformPageEyebrow>
+        <PlatformPageTitle>ユーザー管理</PlatformPageTitle>
+        <PlatformPageDescription>
+          ユーザーの状態確認とアカウント停止・削除を管理します。
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+    </PlatformPageHeader>
+    <PlatformPageContent>
       <Suspense fallback={<UsersTableSkeleton />}>
-        <UsersContent filters={filters} />
+        <UsersContent searchParams={searchParams} />
       </Suspense>
-    </PlatformPage>
-  );
-};
+    </PlatformPageContent>
+  </PlatformPage>
+);
 
 export default UsersPage;

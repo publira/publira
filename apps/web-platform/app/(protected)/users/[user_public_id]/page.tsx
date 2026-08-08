@@ -13,7 +13,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import { canManageEndUsers } from "#lib/roles";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
@@ -37,36 +46,38 @@ interface UserDetailPageProps {
 }
 
 const UserDetailSkeleton = () => (
-  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4">
-          <div className="h-12 animate-pulse rounded bg-muted/70" />
-          <div className="h-12 animate-pulse rounded bg-muted/70" />
-          <div className="h-12 animate-pulse rounded bg-muted/70" />
-        </div>
-      </CardContent>
-    </Card>
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-      </CardContent>
-    </Card>
-  </div>
+  <PlatformPageContent>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-16 animate-pulse rounded bg-muted/70" />
+        </CardContent>
+      </Card>
+    </div>
+  </PlatformPageContent>
 );
 
 const UserDetailContent = async ({
-  userPublicId,
-}: {
-  userPublicId: string;
-}) => {
+  params,
+}: Pick<UserDetailPageProps, "params">) => {
+  const { user_public_id: userPublicId } = await params;
+
   const [userResult, currentOperator] = await Promise.all([
     getPlatformEndUser(userPublicId),
     getPlatformCurrentOperator(),
@@ -83,9 +94,16 @@ const UserDetailContent = async ({
   const canDelete = canManage;
 
   return (
-    <PlatformPage
-      actions={
-        <>
+    <>
+      <PlatformPageHeader>
+        <PlatformPageHeading>
+          <PlatformPageEyebrow>Platform Users</PlatformPageEyebrow>
+          <PlatformPageTitle>{`ユーザー詳細: ${user.name || user.publicId}`}</PlatformPageTitle>
+          <PlatformPageDescription>
+            ユーザーの基本情報と所属テナントを確認し、アカウント状態を管理します。
+          </PlatformPageDescription>
+        </PlatformPageHeading>
+        <PlatformPageActions>
           <LinkButton render={<Link href="/users" />} variant="outline">
             一覧へ戻る
           </LinkButton>
@@ -122,89 +140,87 @@ const UserDetailContent = async ({
               triggerLabel="削除"
             />
           ) : null}
-        </>
-      }
-      description="ユーザーの基本情報と所属テナントを確認し、アカウント状態を管理します。"
-      eyebrow="Platform Users"
-      title={`ユーザー詳細: ${user.name || user.publicId}`}
-    >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>基本情報</CardTitle>
-            <CardDescription>
-              ユーザーの登録情報と現在ステータスを表示します。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <Field>
-              <FieldLabel>公開ID</FieldLabel>
-              <p className="font-mono text-xs">{user.publicId}</p>
-            </Field>
-            <Field>
-              <FieldLabel>氏名</FieldLabel>
-              <p className="text-sm">{user.name || "未設定"}</p>
-            </Field>
-            <Field>
-              <FieldLabel>メールアドレス</FieldLabel>
-              <p className="text-sm">{user.email}</p>
-            </Field>
-            <Field>
-              <FieldLabel>登録日</FieldLabel>
-              <p className="text-sm">{user.createdAt || "未設定"}</p>
-            </Field>
-            <Field>
-              <FieldLabel>ステータス</FieldLabel>
-              <p>
-                <Badge tone={getEndUserStatusTone(user.status)}>
-                  {getEndUserStatusLabel(user.status)}
-                </Badge>
-              </p>
-            </Field>
-          </CardContent>
-        </Card>
+        </PlatformPageActions>
+      </PlatformPageHeader>
+      <PlatformPageContent>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
+          <Card>
+            <CardHeader>
+              <CardTitle>基本情報</CardTitle>
+              <CardDescription>
+                ユーザーの登録情報と現在ステータスを表示します。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <Field>
+                <FieldLabel>公開ID</FieldLabel>
+                <p className="font-mono text-xs">{user.publicId}</p>
+              </Field>
+              <Field>
+                <FieldLabel>氏名</FieldLabel>
+                <p className="text-sm">{user.name || "未設定"}</p>
+              </Field>
+              <Field>
+                <FieldLabel>メールアドレス</FieldLabel>
+                <p className="text-sm">{user.email}</p>
+              </Field>
+              <Field>
+                <FieldLabel>登録日</FieldLabel>
+                <p className="text-sm">{user.createdAt || "未設定"}</p>
+              </Field>
+              <Field>
+                <FieldLabel>ステータス</FieldLabel>
+                <p>
+                  <Badge tone={getEndUserStatusTone(user.status)}>
+                    {getEndUserStatusLabel(user.status)}
+                  </Badge>
+                </p>
+              </Field>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>所属テナント</CardTitle>
-            <CardDescription>
-              このユーザーが所属するテナント一覧を表示します。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {user.tenantIds.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                所属テナントはありません。
-              </p>
-            ) : (
-              <ul className="grid gap-2">
-                {user.tenantIds.map((tenantId) => (
-                  <li key={tenantId}>
-                    <Link
-                      className="text-sm text-primary underline-offset-4 hover:underline"
-                      href={`/tenants/${tenantId}`}
-                    >
-                      {tenantId}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </PlatformPage>
+          <Card>
+            <CardHeader>
+              <CardTitle>所属テナント</CardTitle>
+              <CardDescription>
+                このユーザーが所属するテナント一覧を表示します。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {user.tenantIds.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  所属テナントはありません。
+                </p>
+              ) : (
+                <ul className="grid gap-2">
+                  {user.tenantIds.map((tenantId) => (
+                    <li key={tenantId}>
+                      <Link
+                        className="text-sm text-primary underline-offset-4 hover:underline"
+                        href={`/tenants/${tenantId}`}
+                      >
+                        {tenantId}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </PlatformPageContent>
+    </>
   );
 };
 
-const UserDetailPage = async ({ params }: UserDetailPageProps) => {
-  const { user_public_id: userPublicId } = await params;
-
-  return (
+// `PlatformPage` stays in the static shell so the max width and padding are
+// painted before `params` resolves; only the header and body stream in.
+const UserDetailPage = ({ params }: UserDetailPageProps) => (
+  <PlatformPage>
     <Suspense fallback={<UserDetailSkeleton />}>
-      <UserDetailContent userPublicId={userPublicId} />
+      <UserDetailContent params={params} />
     </Suspense>
-  );
-};
+  </PlatformPage>
+);
 
 export default UserDetailPage;

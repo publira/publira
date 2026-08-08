@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { getPlatformEmailSettings } from "#lib/email-settings";
 import type { PlatformSmtpSettings } from "#lib/email-settings";
 
@@ -33,22 +41,29 @@ const PlatformEmailSettingsPage = async () => {
     : emptySettings;
 
   return (
-    <PlatformPage
-      description="プラットフォーム既定の SMTP を管理します。"
-      eyebrow="Platform Settings"
-      title="設定"
-    >
-      <div className="grid gap-6">
-        <SettingsTabNav current="email" />
-        <EmailSettingsForm
-          initialSettings={initialSettings}
-          loadErrorMessage={
-            settingsResult.ok ? undefined : settingsResult.message
-          }
-          saveAction={updatePlatformEmailSettingsAction}
-          testAction={sendPlatformSmtpTestEmailAction}
-        />
-      </div>
+    <PlatformPage>
+      <PlatformPageHeader>
+        <PlatformPageHeading>
+          <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
+          <PlatformPageTitle>設定</PlatformPageTitle>
+          <PlatformPageDescription>
+            プラットフォーム既定の SMTP を管理します。
+          </PlatformPageDescription>
+        </PlatformPageHeading>
+      </PlatformPageHeader>
+      <PlatformPageContent>
+        <div className="grid gap-6">
+          <SettingsTabNav current="email" />
+          <EmailSettingsForm
+            initialSettings={initialSettings}
+            loadErrorMessage={
+              settingsResult.ok ? undefined : settingsResult.message
+            }
+            saveAction={updatePlatformEmailSettingsAction}
+            testAction={sendPlatformSmtpTestEmailAction}
+          />
+        </div>
+      </PlatformPageContent>
     </PlatformPage>
   );
 };

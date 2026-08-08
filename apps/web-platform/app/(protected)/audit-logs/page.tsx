@@ -23,7 +23,15 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { auditActionOptions, getAuditActionLabel } from "#lib/audit-log-labels";
 import { listPlatformAuditLogs } from "#lib/audit-logs";
 import type {
@@ -409,14 +417,13 @@ const AuditLogsTableBody = ({
 };
 
 const AuditLogsContent = async ({
-  actionFilter,
-  actorFilter,
-  offset,
-}: {
-  actionFilter: string;
-  actorFilter: string;
-  offset: number;
-}) => {
+  searchParams,
+}: Pick<AuditLogsPageProps, "searchParams">) => {
+  const params = await searchParams;
+  const actorFilter = params.actor_user_public_id?.trim() ?? "";
+  const actionFilter = params.action?.trim() ?? "";
+  const offset = parseOffset(params.offset);
+
   const hasFilter = Boolean(actorFilter || actionFilter);
 
   const result = await listPlatformAuditLogs({
@@ -479,27 +486,23 @@ const AuditLogsContent = async ({
   );
 };
 
-const AuditLogsPage = async ({ searchParams }: AuditLogsPageProps) => {
-  const params = await searchParams;
-  const actorFilter = params.actor_user_public_id?.trim() ?? "";
-  const actionFilter = params.action?.trim() ?? "";
-  const offset = parseOffset(params.offset);
-
-  return (
-    <PlatformPage
-      description="重要操作を横断的に追跡し、対象リソースの詳細へ遷移できる監査ログ画面です。"
-      eyebrow="Platform Governance"
-      title="監査ログ"
-    >
+const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
+        <PlatformPageTitle>監査ログ</PlatformPageTitle>
+        <PlatformPageDescription>
+          重要操作を横断的に追跡し、対象リソースの詳細へ遷移できる監査ログ画面です。
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+    </PlatformPageHeader>
+    <PlatformPageContent>
       <Suspense fallback={<AuditLogsSkeleton />}>
-        <AuditLogsContent
-          actionFilter={actionFilter}
-          actorFilter={actorFilter}
-          offset={offset}
-        />
+        <AuditLogsContent searchParams={searchParams} />
       </Suspense>
-    </PlatformPage>
-  );
-};
+    </PlatformPageContent>
+  </PlatformPage>
+);
 
 export default AuditLogsPage;

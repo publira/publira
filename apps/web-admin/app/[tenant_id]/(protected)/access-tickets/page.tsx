@@ -2,7 +2,15 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listAccessTickets } from "#lib/access-ticket";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -39,13 +47,21 @@ const TicketManagerData = async () => {
 };
 
 const AccessTicketsPage = () => (
-  <AdminPage
-    description="決済を経由しない限定閲覧チケットの発行と失効を管理します。"
-    title="アクセスチケット"
-  >
-    <Suspense fallback={<TicketManagerSkeleton />}>
-      <TicketManagerData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>アクセスチケット</AdminPageTitle>
+        <AdminPageDescription>
+          決済を経由しない限定閲覧チケットの発行と失効を管理します。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<TicketManagerSkeleton />}>
+        <TicketManagerData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

@@ -64,12 +64,6 @@ const fetchNotifications = async (
   | { ok: false; message: string; notifications: MemberNotificationItem[] }
 > => {
   try {
-    console.info("[web-host] listNotifications request", {
-      hasSessionId: sessionId.length > 0,
-      sessionIdLength: sessionId.length,
-      tenantId,
-    });
-
     const response = await listNotificationsRpc(tenantId, sessionId);
 
     return {

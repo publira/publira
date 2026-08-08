@@ -8,7 +8,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getCreator } from "#lib/creator";
 import { getTenantId } from "#lib/tenant-id";
@@ -41,10 +50,11 @@ interface EditCreatorPageProps {
 }
 
 const EditCreatorFormData = async ({
-  creatorPublicId,
-}: {
-  creatorPublicId: string;
-}) => {
+  params,
+}: Pick<EditCreatorPageProps, "params">) => {
+  const { creator_public_id: creatorPublicId } = await params;
+  guardPlaceholder(creatorPublicId);
+
   const tenantId = await getTenantId();
   const result = await getCreator({
     publicId: creatorPublicId,
@@ -73,26 +83,27 @@ const EditCreatorFormData = async ({
   );
 };
 
-const EditCreatorPage = async ({ params }: EditCreatorPageProps) => {
-  const { creator_public_id } = await params;
-  guardPlaceholder(creator_public_id);
-
-  return (
-    <AdminPage
-      actions={
+const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>著者編集</AdminPageTitle>
+        <AdminPageDescription>著者の情報を編集します。</AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
         <LinkButton render={<Link href="/creators" />} variant="outline">
           一覧へ戻る
         </LinkButton>
-      }
-      description="著者の情報を編集します。"
-      title="著者編集"
-    >
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
       <FlashToast title="著者を作成しました。" />
       <Suspense fallback={<EditCreatorFormSkeleton />}>
-        <EditCreatorFormData creatorPublicId={creator_public_id} />
+        <EditCreatorFormData params={params} />
       </Suspense>
-    </AdminPage>
-  );
-};
+    </AdminPageContent>
+  </AdminPage>
+);
 
 export default EditCreatorPage;

@@ -8,7 +8,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { getLabel } from "#lib/label";
 import { getTenantId } from "#lib/tenant-id";
@@ -44,14 +53,52 @@ const EditLabelFormSkeleton = () => (
   </div>
 );
 
+const resolveActiveTab = async (
+  searchParams: EditLabelPageProps["searchParams"]
+): Promise<"basic" | "eye-catch"> => {
+  const { tab } = await searchParams;
+  return tab === "eye-catch" ? "eye-catch" : "basic";
+};
+
+const EditLabelTitle = async ({
+  searchParams,
+}: Pick<EditLabelPageProps, "searchParams">) => {
+  const activeTab = await resolveActiveTab(searchParams);
+  return activeTab === "eye-catch"
+    ? "レーベルのアイキャッチを編集"
+    : "レーベル編集";
+};
+
+const EditLabelDescription = async ({
+  searchParams,
+}: Pick<EditLabelPageProps, "searchParams">) => {
+  const activeTab = await resolveActiveTab(searchParams);
+  return activeTab === "eye-catch"
+    ? "アイキャッチ画像の差し替え・削除を行います。"
+    : "レーベル情報を編集します。";
+};
+
+const EditLabelTabNav = async ({
+  params,
+  searchParams,
+}: EditLabelPageProps) => {
+  const [{ label_public_id: labelPublicId }, activeTab] = await Promise.all([
+    params,
+    resolveActiveTab(searchParams),
+  ]);
+  guardPlaceholder(labelPublicId);
+
+  return <LabelTabNav current={activeTab} labelId={labelPublicId} />;
+};
+
 const EditLabelFormData = async ({
-  activeTab,
-  labelPublicId,
-}: {
-  activeTab: "basic" | "eye-catch";
-  labelPublicId: string;
-}) => {
-  const tenantId = await getTenantId();
+  params,
+  searchParams,
+}: EditLabelPageProps) => {
+  const [{ label_public_id: labelPublicId }, activeTab, tenantId] =
+    await Promise.all([params, resolveActiveTab(searchParams), getTenantId()]);
+  guardPlaceholder(labelPublicId);
+
   const result = await getLabel({
     publicId: labelPublicId,
     tenantId,
@@ -88,42 +135,47 @@ const EditLabelFormData = async ({
   );
 };
 
-const EditLabelPage = async ({ params, searchParams }: EditLabelPageProps) => {
-  const { label_public_id } = await params;
-  const { tab } = await searchParams;
+const TextLineSkeleton = ({ className }: { className: string }) => (
+  <span
+    aria-hidden
+    className={`inline-block animate-pulse rounded bg-muted align-middle ${className}`}
+  />
+);
 
-  guardPlaceholder(label_public_id);
-
-  const activeTab = tab === "eye-catch" ? "eye-catch" : "basic";
-  const pageTitle =
-    activeTab === "eye-catch" ? "レーベルのアイキャッチを編集" : "レーベル編集";
-  const pageDescription =
-    activeTab === "eye-catch"
-      ? "アイキャッチ画像の差し替え・削除を行います。"
-      : "レーベル情報を編集します。";
-
-  return (
-    <AdminPage
-      actions={
+const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>
+          <Suspense fallback={<TextLineSkeleton className="h-7 w-64" />}>
+            <EditLabelTitle searchParams={searchParams} />
+          </Suspense>
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Suspense fallback={<TextLineSkeleton className="h-4 w-72" />}>
+            <EditLabelDescription searchParams={searchParams} />
+          </Suspense>
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
         <LinkButton render={<Link href="/labels" />} variant="outline">
           一覧へ戻る
         </LinkButton>
-      }
-      description={pageDescription}
-      title={pageTitle}
-    >
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
       <FlashToast title="レーベルを作成しました。" />
       <div className="grid gap-6">
-        <LabelTabNav current={activeTab} labelId={label_public_id} />
+        <Suspense fallback={<TextLineSkeleton className="h-9 w-56" />}>
+          <EditLabelTabNav params={params} searchParams={searchParams} />
+        </Suspense>
         <Suspense fallback={<EditLabelFormSkeleton />}>
-          <EditLabelFormData
-            activeTab={activeTab}
-            labelPublicId={label_public_id}
-          />
+          <EditLabelFormData params={params} searchParams={searchParams} />
         </Suspense>
       </div>
-    </AdminPage>
-  );
-};
+    </AdminPageContent>
+  </AdminPage>
+);
 
 export default EditLabelPage;

@@ -4,7 +4,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 
 import { CreatorForm } from "../_components/creator-form";
 import { createCreatorAction } from "../_lib/actions";
@@ -31,18 +40,24 @@ const NewCreatorFormData = () => (
 );
 
 const NewCreatorPage = () => (
-  <AdminPage
-    actions={
-      <LinkButton render={<Link href="/creators" />} variant="outline">
-        一覧へ戻る
-      </LinkButton>
-    }
-    description="新しい著者を登録します。"
-    title="著者新規作成"
-  >
-    <Suspense fallback={<NewCreatorFormSkeleton />}>
-      <NewCreatorFormData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>著者新規作成</AdminPageTitle>
+        <AdminPageDescription>新しい著者を登録します。</AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/creators" />} variant="outline">
+          一覧へ戻る
+        </LinkButton>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<NewCreatorFormSkeleton />}>
+        <NewCreatorFormData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

@@ -1,22 +1,20 @@
 import { notFound } from "next/navigation";
 
-export const STATIC_PARAM_PLACEHOLDER = "__placeholder__" as const;
+import { isPlaceholderStaticParam } from "./static-param-placeholder";
+import type { PlaceholderParamValue } from "./static-param-placeholder";
 
-type PlaceholderParamValue = string | null | undefined;
+export {
+  createPlaceholderStaticParams,
+  isPlaceholderStaticParam,
+  STATIC_PARAM_PLACEHOLDER,
+} from "./static-param-placeholder";
+export type { PlaceholderParamValue } from "./static-param-placeholder";
 
-export const createPlaceholderStaticParams = <const TParamName extends string>(
-  ...paramNames: readonly TParamName[]
-): Record<TParamName, typeof STATIC_PARAM_PLACEHOLDER>[] => [
-  Object.fromEntries(
-    paramNames.map((paramName) => [paramName, STATIC_PARAM_PLACEHOLDER])
-  ) as Record<TParamName, typeof STATIC_PARAM_PLACEHOLDER>,
-];
-
-export const isPlaceholderStaticParam = (
-  value: PlaceholderParamValue
-): value is typeof STATIC_PARAM_PLACEHOLDER =>
-  value === STATIC_PARAM_PLACEHOLDER;
-
+/**
+ * Server Components only — `notFound()` needs the app-router context, which
+ * Route Handlers do not have. There, compare with `isPlaceholderStaticParam`
+ * from `@publira/utils/static-param-placeholder` and return a `Response`.
+ */
 export const guardPlaceholder = (value: PlaceholderParamValue): void => {
   if (isPlaceholderStaticParam(value)) {
     notFound();

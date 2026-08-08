@@ -1,7 +1,15 @@
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 
 import { EmailChangeForm } from "../_components/email-change-form";
 import { SettingsTabNav } from "../_components/settings-tab-nav";
@@ -15,12 +23,23 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const AccountSettingsPage = () => (
-  <AdminPage description="管理者アカウントの設定を管理します。" title="設定">
-    <div className="grid gap-6">
-      <SettingsTabNav current="account" />
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>設定</AdminPageTitle>
+        <AdminPageDescription>
+          管理者アカウントの設定を管理します。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <div className="grid gap-6">
+        <SettingsTabNav current="account" />
 
-      <EmailChangeForm action={requestEmailChangeAction} />
-    </div>
+        <EmailChangeForm action={requestEmailChangeAction} />
+      </div>
+    </AdminPageContent>
   </AdminPage>
 );
 

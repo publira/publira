@@ -17,8 +17,16 @@ export type {
   ConsoleSidebarProps,
 } from "./console-layout";
 
-export { ConsolePage } from "./console-page";
-export type { ConsolePageProps } from "./console-page";
+export {
+  ConsolePage,
+  ConsolePageActions,
+  ConsolePageContent,
+  ConsolePageDescription,
+  ConsolePageEyebrow,
+  ConsolePageHeader,
+  ConsolePageHeading,
+  ConsolePageTitle,
+} from "./console-page";
 
 export { isCurrentPath } from "../navigation";
 export type { NavItem, NavSection } from "../navigation";

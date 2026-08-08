@@ -19,7 +19,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import {
   getOperatorRoleLabel,
   getOperatorStatusLabel,
@@ -123,19 +132,26 @@ const OperatorsContent = async () => {
 };
 
 const OperatorsPage = () => (
-  <PlatformPage
-    actions={
-      <LinkButton render={<Link href="/operators/new" />}>
-        オペレーターを追加
-      </LinkButton>
-    }
-    description="プラットフォームオペレーターの一覧・ロール確認・有効化／停止を行います。"
-    eyebrow="Platform Governance"
-    title="オペレーター管理"
-  >
-    <Suspense fallback={<OperatorsTableSkeleton />}>
-      <OperatorsContent />
-    </Suspense>
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
+        <PlatformPageTitle>オペレーター管理</PlatformPageTitle>
+        <PlatformPageDescription>
+          プラットフォームオペレーターの一覧・ロール確認・有効化／停止を行います。
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+      <PlatformPageActions>
+        <LinkButton render={<Link href="/operators/new" />}>
+          オペレーターを追加
+        </LinkButton>
+      </PlatformPageActions>
+    </PlatformPageHeader>
+    <PlatformPageContent>
+      <Suspense fallback={<OperatorsTableSkeleton />}>
+        <OperatorsContent />
+      </Suspense>
+    </PlatformPageContent>
   </PlatformPage>
 );
 

@@ -2,7 +2,15 @@ import { EmptyState } from "@publira/ui-components/empty-state";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
@@ -22,35 +30,33 @@ const SettingsThemePage = async () => {
 
   const themeResult = await getTenantThemeSettings(tenantId);
 
-  if (!themeResult.ok) {
-    return (
-      <AdminPage
-        description="テナントごとのテーマカラーを管理します。"
-        title="設定"
-      >
+  return (
+    <AdminPage>
+      <AdminPageHeader>
+        <AdminPageHeading>
+          <AdminPageEyebrow>Console</AdminPageEyebrow>
+          <AdminPageTitle>設定</AdminPageTitle>
+          <AdminPageDescription>
+            テナントごとのテーマカラーを管理します。
+          </AdminPageDescription>
+        </AdminPageHeading>
+      </AdminPageHeader>
+      <AdminPageContent>
         <div className="grid gap-6">
           <SettingsTabNav current="theme" />
-          <EmptyState
-            description={themeResult.message}
-            title="テーマを読み込めませんでした"
-          />
+          {themeResult.ok ? (
+            <ThemeSettingsForm
+              action={updateTenantThemeSettingsAction}
+              initialTheme={themeResult.theme}
+            />
+          ) : (
+            <EmptyState
+              description={themeResult.message}
+              title="テーマを読み込めませんでした"
+            />
+          )}
         </div>
-      </AdminPage>
-    );
-  }
-
-  return (
-    <AdminPage
-      description="テナントごとのテーマカラーを管理します。"
-      title="設定"
-    >
-      <div className="grid gap-6">
-        <SettingsTabNav current="theme" />
-        <ThemeSettingsForm
-          action={updateTenantThemeSettingsAction}
-          initialTheme={themeResult.theme}
-        />
-      </div>
+      </AdminPageContent>
     </AdminPage>
   );
 };
