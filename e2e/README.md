@@ -103,6 +103,8 @@ Host ベース URL は `src/urls.ts` を参照。将来の admin / platform 用�
 - Playwright Chromium のみ、workers=1、CI 時 retries=1
 - 必須ブランチチェックは最終ジョブ **Summary** が集約（他ジョブと同様）
 
+CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/README.md](../.github/workflows/README.md)
+
 ## シナリオの追加手順
 
 1. **（任意）fixture SQL**  

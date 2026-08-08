@@ -11,7 +11,7 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) |
 | `batch/Dockerfile` | One-shot Go jobs (`server/cmd/*`) |
-| `README.md` | Placement rules, build verification, CI policy, triage (source of truth for humans) |
+| `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
 | `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` (included from repo root) |
 
 Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile).
@@ -72,9 +72,10 @@ task docker:smoke:web APP_NAME=web-host PORT=3000
 
 Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
 
-After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and `.github/workflows/ci.yml` Docker full matrix together.
+After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, and the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) together.
 
-CI policy and failure triage: [`README.md`](./README.md)（ビルド検証 / CI / トリアージ節）.  
+Docker CI strategy and build triage: [`README.md`](./README.md)（Docker の CI 実行戦略 / ビルド失敗時のトリアージ節）.  
+Host CI as a whole (jobs, path filters, triage): [`.github/workflows/README.md`](../../.github/workflows/README.md).  
 Branch ruleset required check is the final aggregator job name **`Summary`** only (UI: `CI / Summary`).
 
 ## Do not

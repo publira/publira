@@ -43,12 +43,12 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 ## ドキュメント案内
 
 - エージェント向け規約（Effect / lint など）: [AGENTS.md](AGENTS.md)
-- 全体ロードマップ: [TODO.md](TODO.md)
 - Web アプリ: [apps/README.md](apps/README.md)
 - 共有パッケージ: [packages/README.md](packages/README.md)
 - Go バックエンド: [server/README.md](server/README.md)
 - モバイル: [mobile/README.md](mobile/README.md)
-- Dockerfile 配置規約・ビルド検証 / CI（本番イメージ）: [infra/docker/README.md](infra/docker/README.md)
+- CI ワークフロー全体（ジョブ構成・path filter・トリアージ）: [.github/workflows/README.md](.github/workflows/README.md)
+- Dockerfile 配置規約・ビルド検証（本番イメージ）: [infra/docker/README.md](infra/docker/README.md)
 - E2E（Playwright 基盤・CI）: [e2e/README.md](e2e/README.md)
 
 ## セットアップ
