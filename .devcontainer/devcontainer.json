@@ -12,7 +12,8 @@
     },
     "ghcr.io/devcontainers/features/github-cli:1.1.0": {
       "version": "2.97.0"
-    }
+    },
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
   },
   "customizations": {
     "vscode": {

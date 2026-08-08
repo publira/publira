@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile
     command: sleep infinity
     volumes:
+      # Keep Claude Code login, configuration, and local state across rebuilds.
+      - claude-data:/home/vscode/.claude
       # Keep Codex login, configuration, rules, and local state across rebuilds.
       - codex-data:/home/vscode/.codex
       - gh-config:/home/vscode/.config/gh
@@ -110,6 +112,7 @@ services:
       retries: 5
 
 volumes:
+  claude-data:
   codex-data:
   gh-config:
   grok-config:

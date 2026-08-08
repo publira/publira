@@ -1,5 +1,6 @@
 {
   "recommendations": [
+    "anthropic.claude-code",
     "bradlc.vscode-tailwindcss",
     "bufbuild.vscode-buf",
     "Dart-Code.dart-code",

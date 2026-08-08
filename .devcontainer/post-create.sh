@@ -3,6 +3,7 @@
 set -euo pipefail
 
 sudo chown -R vscode:vscode \
+  /home/vscode/.claude \
   /home/vscode/.codex \
   /home/vscode/.config/gh \
   /home/vscode/.grok \

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm preflight)",
+      "Bash(pnpm preflight *)",
+      "Bash(pnpm check)",
+      "Bash(pnpm check *)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm typegen)",
+      "Bash(pnpm typegen *)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm fix)"
+    ]
+  }
+}
