@@ -1,11 +1,43 @@
 # Scenarios
 
-このディレクトリには、将来的に画面確認・E2E 向けのシナリオ seed を追加します。
+画面確認・E2E 向けのシナリオ seed を置くディレクトリです。  
+baseline / dev seed とは分離し、**必要時のみ**個別に実行します。
 
-例:
+## 方針
+
+- ファイル名: `<nnn>_<slug>.sql` または `<slug>.sql`（例: `010_multi_tenant.sql`）
+- scenario seed は冪等な DML のみを含める。`ON CONFLICT` 等を使用し、共有 dev seed を壊さない ID 帯を使う
+- DDL はここに置かない。現段階のスキーマ変更は `db/migrations/00000000000000_baseline.up.sql` と対応する down migration に置く
+
+## 適用方法
+
+### 手動
+
+```bash
+# E2E compose の Postgres を使う例（ポートは e2e/compose.yaml 既定）
+psql "postgres://postgres:password@127.0.0.1:5433/publira?sslmode=disable" \
+  -v ON_ERROR_STOP=1 \
+  -f db/seeds/scenarios/010_multi_tenant.sql
+```
+
+### E2E（Playwright）から
+
+1. スタック起動後（`task e2e:db` 済み）に、テスト内で:
+
+```ts
+import { applyScenarioSql } from "../src/db";
+
+test.beforeAll(() => {
+  applyScenarioSql("010_multi_tenant"); // → db/seeds/scenarios/010_multi_tenant.sql
+});
+```
+
+2. `PUBLIRA_DB_URL` は e2e スクリプトが設定します。単体で `pnpm exec playwright test` する場合は同 URL を export してください。
+
+詳細な E2E 運用は [e2e/README.md](../../../e2e/README.md) を参照。
+
+## 例（未作成）
 
 - `010_multi_tenant.sql`
 - `020_suspended_tenant.sql`
 - `030_paid_episode.sql`
-
-baseline seed とは分離し、必要時のみ個別に実行してください。

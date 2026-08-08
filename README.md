@@ -15,6 +15,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 │   ├── web-admin/      # 出版社・編集者向け入稿/管理画面
 │   └── web-platform/   # プラットフォーム運営者向け横断運用画面
 ├── packages/           # [Node.js] 共有 UI / ユーティリティ
+├── e2e/                # [Playwright] Web 横断 E2E 基盤
 ├── server/             # [Go] バックエンドシステム (単一モジュール)
 │   ├── cmd/
 │   │   ├── api-server/       # ConnectRPC API サーバー
@@ -48,6 +49,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 - Go バックエンド: [server/README.md](server/README.md)
 - モバイル: [mobile/README.md](mobile/README.md)
 - Dockerfile 配置規約・ビルド検証 / CI（本番イメージ）: [infra/docker/README.md](infra/docker/README.md)
+- E2E（Playwright 基盤・CI）: [e2e/README.md](e2e/README.md)
 
 ## セットアップ
 

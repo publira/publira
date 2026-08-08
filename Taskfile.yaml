@@ -7,6 +7,9 @@ includes:
   docker:
     # Keep cwd at repository root so docker build context stays `.`
     taskfile: ./infra/docker/Taskfile.yaml
+  e2e:
+    # Keep cwd at repository root so scripts can reach server/apps/db paths.
+    taskfile: ./e2e/Taskfile.yaml
   mobile:
     taskfile: ./mobile/Taskfile.yaml
     dir: ./mobile
@@ -27,6 +30,11 @@ tasks:
     deps:
       - task: dev-web
       - task: server:dev
+
+  e2e:
+    desc: Run Playwright E2E (build stack, sample suite, always tear down)
+    cmds:
+      - task: e2e:run
 
   gen:
     desc: Generate SQL and protobuf artifacts

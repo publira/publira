@@ -1,0 +1,72 @@
+version: "3"
+
+# Run from repository root via: task e2e
+# Include is declared in the root Taskfile (cwd stays at repo root).
+
+vars:
+  # Directory of this Taskfile (e2e/), stable whether included or run directly.
+  E2E_DIR: "{{.TASKFILE_DIR}}"
+
+tasks:
+  default:
+    desc: Start E2E deps, run sample Playwright suite, always tear down
+    cmds:
+      - task: run
+
+  run:
+    desc: Full lifecycle (up → db → apps → wait-ready → playwright → down)
+    deps:
+      - task: prepare
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/run.sh
+
+  prepare:
+    desc: Build server binary, web-host, and install Playwright Chromium
+    cmds:
+      - task: :server:build
+      - pnpm build --filter @publira/web-host
+      # CI: install OS libs (--with-deps needs root). Local: browser only
+      # (run `pnpm --dir e2e exec playwright install-deps chromium` once if needed).
+      - |
+        if [ -n "${CI:-}" ]; then
+          pnpm --dir {{.E2E_DIR}} exec playwright install --with-deps chromium
+        else
+          pnpm --dir {{.E2E_DIR}} exec playwright install chromium
+        fi
+
+  test:
+    desc: Run Playwright only (stack must already be ready)
+    dir: "{{.E2E_DIR}}"
+    cmds:
+      # Not wired to package.json "test" so `pnpm test` / turbo unit suite skips E2E.
+      - pnpm exec playwright test {{.CLI_ARGS}}
+
+  up:
+    desc: Start compose dependencies (postgres + redis)
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/up.sh
+
+  down:
+    desc: Stop apps and remove compose project + volumes
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/down.sh
+
+  db:
+    desc: Migrate and apply dev seed against E2E postgres
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/db-setup.sh
+
+  start-apps:
+    desc: Start api-server and web-host (background, logs in e2e/.run/logs)
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/start-apps.sh
+
+  stop-apps:
+    desc: Stop background api-server and web-host
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/stop-apps.sh
+
+  wait-ready:
+    desc: "Poll readiness probes (fails with readiness failed: <name>)"
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/wait-ready.sh
