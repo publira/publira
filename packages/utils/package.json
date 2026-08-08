@@ -30,6 +30,10 @@
     "./health": {
       "types": "./dist/health.d.mts",
       "default": "./dist/health.mjs"
+    },
+    "./static-param-placeholder": {
+      "types": "./dist/static-param-placeholder.d.mts",
+      "default": "./dist/static-param-placeholder.mjs"
     }
   },
   "scripts": {
