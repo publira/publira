@@ -7,10 +7,6 @@ import {
   sessionCookieOptions,
 } from "#lib/admin-auth";
 
-interface RouteContext {
-  params: Promise<{ tenant_id: string }>;
-}
-
 const clearSessionCookie = async () => {
   const cookieStore = await cookies();
   cookieStore.set({
@@ -21,7 +17,10 @@ const clearSessionCookie = async () => {
   });
 };
 
-export const POST = async (_request: Request, { params }: RouteContext) => {
+export const POST = async (
+  _request: Request,
+  { params }: RouteContext<"/[tenant_id]/logout">
+) => {
   // params and the session module load are independent of each other.
   const [{ tenant_id: tenantId }, { getAccessToken }] = await Promise.all([
     params,

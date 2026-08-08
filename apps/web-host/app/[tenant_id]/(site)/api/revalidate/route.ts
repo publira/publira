@@ -23,11 +23,10 @@ const normalizeTags = (tags: string[]): string[] => {
 const isAllowedTenantTag = (tag: string, tenantId: string): boolean =>
   tag.startsWith(`tenant:${tenantId}:`);
 
-interface RouteContext {
-  params: Promise<{ tenant_id: string }>;
-}
-
-export const POST = async (request: NextRequest, { params }: RouteContext) => {
+export const POST = async (
+  request: NextRequest,
+  { params }: RouteContext<"/[tenant_id]/api/revalidate">
+) => {
   const token = process.env.NEXT_REVALIDATE_TOKEN?.trim();
   if (!token) {
     return NextResponse.json(
