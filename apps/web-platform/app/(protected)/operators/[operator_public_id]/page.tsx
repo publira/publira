@@ -52,29 +52,31 @@ interface OperatorDetailPageProps {
 }
 
 const OperatorDetailSkeleton = () => (
-  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4">
-          <div className="h-16 animate-pulse rounded bg-muted/70" />
-          <div className="h-16 animate-pulse rounded bg-muted/70" />
-          <div className="h-16 animate-pulse rounded bg-muted/70" />
-        </div>
-      </CardContent>
-    </Card>
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <div className="h-20 animate-pulse rounded bg-muted/70" />
-      </CardContent>
-    </Card>
-  </div>
+  <PlatformPageContent>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="h-16 animate-pulse rounded bg-muted/70" />
+            <div className="h-16 animate-pulse rounded bg-muted/70" />
+            <div className="h-16 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-20 animate-pulse rounded bg-muted/70" />
+        </CardContent>
+      </Card>
+    </div>
+  </PlatformPageContent>
 );
 
 const OperatorDetailContent = async ({
@@ -100,7 +102,7 @@ const OperatorDetailContent = async ({
     isSuperAdmin && !isSelf && operator.status === "suspended";
 
   return (
-    <PlatformPage>
+    <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
@@ -110,44 +112,42 @@ const OperatorDetailContent = async ({
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
-          <>
-            <LinkButton render={<Link href="/operators" />} variant="outline">
-              一覧へ戻る
-            </LinkButton>
-            {canUnsuspend ? (
-              <DangerConfirmButton
-                actionArg={operator.publicId}
-                actionCreator={unsuspendOperatorAction}
-                actionText="再有効化する"
-                actionVariant="default"
-                description="オペレーターを再有効化します。再有効化後はログインできるようになります。"
-                title="アカウントを再有効化しますか？"
-                triggerLabel="再有効化"
-                triggerVariant="outline"
-              />
-            ) : null}
-            {canSuspend ? (
-              <DangerConfirmButton
-                actionArg={operator.publicId}
-                actionCreator={suspendOperatorAction}
-                actionText="停止する"
-                description="停止中はログインできなくなります。再有効化することで元に戻せます。"
-                title="アカウントを停止しますか？"
-                triggerLabel="停止"
-                triggerVariant="outline"
-              />
-            ) : null}
-            {canModify ? (
-              <DangerConfirmButton
-                actionArg={operator.publicId}
-                actionCreator={deactivateOperatorAction}
-                actionText="無効化する"
-                description="無効化されたアカウントは永久に利用できなくなります。この操作は取り消せません。"
-                title="アカウントを無効化しますか？"
-                triggerLabel="無効化"
-              />
-            ) : null}
-          </>
+          <LinkButton render={<Link href="/operators" />} variant="outline">
+            一覧へ戻る
+          </LinkButton>
+          {canUnsuspend ? (
+            <DangerConfirmButton
+              actionArg={operator.publicId}
+              actionCreator={unsuspendOperatorAction}
+              actionText="再有効化する"
+              actionVariant="default"
+              description="オペレーターを再有効化します。再有効化後はログインできるようになります。"
+              title="アカウントを再有効化しますか？"
+              triggerLabel="再有効化"
+              triggerVariant="outline"
+            />
+          ) : null}
+          {canSuspend ? (
+            <DangerConfirmButton
+              actionArg={operator.publicId}
+              actionCreator={suspendOperatorAction}
+              actionText="停止する"
+              description="停止中はログインできなくなります。再有効化することで元に戻せます。"
+              title="アカウントを停止しますか？"
+              triggerLabel="停止"
+              triggerVariant="outline"
+            />
+          ) : null}
+          {canModify ? (
+            <DangerConfirmButton
+              actionArg={operator.publicId}
+              actionCreator={deactivateOperatorAction}
+              actionText="無効化する"
+              description="無効化されたアカウントは永久に利用できなくなります。この操作は取り消せません。"
+              title="アカウントを無効化しますか？"
+              triggerLabel="無効化"
+            />
+          ) : null}
         </PlatformPageActions>
       </PlatformPageHeader>
       <PlatformPageContent>
@@ -221,14 +221,18 @@ const OperatorDetailContent = async ({
           )}
         </div>
       </PlatformPageContent>
-    </PlatformPage>
+    </>
   );
 };
 
+// `PlatformPage` stays in the static shell so the max width and padding are
+// painted before `params` resolves; only the header and body stream in.
 const OperatorDetailPage = ({ params }: OperatorDetailPageProps) => (
-  <Suspense fallback={<OperatorDetailSkeleton />}>
-    <OperatorDetailContent params={params} />
-  </Suspense>
+  <PlatformPage>
+    <Suspense fallback={<OperatorDetailSkeleton />}>
+      <OperatorDetailContent params={params} />
+    </Suspense>
+  </PlatformPage>
 );
 
 export default OperatorDetailPage;

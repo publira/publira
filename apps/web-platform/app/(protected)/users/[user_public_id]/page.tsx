@@ -46,29 +46,31 @@ interface UserDetailPageProps {
 }
 
 const UserDetailSkeleton = () => (
-  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4">
-          <div className="h-12 animate-pulse rounded bg-muted/70" />
-          <div className="h-12 animate-pulse rounded bg-muted/70" />
-          <div className="h-12 animate-pulse rounded bg-muted/70" />
-        </div>
-      </CardContent>
-    </Card>
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <div className="h-16 animate-pulse rounded bg-muted/70" />
-      </CardContent>
-    </Card>
-  </div>
+  <PlatformPageContent>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+            <div className="h-12 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-16 animate-pulse rounded bg-muted/70" />
+        </CardContent>
+      </Card>
+    </div>
+  </PlatformPageContent>
 );
 
 const UserDetailContent = async ({
@@ -92,7 +94,7 @@ const UserDetailContent = async ({
   const canDelete = canManage;
 
   return (
-    <PlatformPage>
+    <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageEyebrow>Platform Users</PlatformPageEyebrow>
@@ -102,44 +104,42 @@ const UserDetailContent = async ({
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
-          <>
-            <LinkButton render={<Link href="/users" />} variant="outline">
-              一覧へ戻る
-            </LinkButton>
-            {canUnsuspend ? (
-              <DangerConfirmButton
-                actionArg={user.publicId}
-                actionCreator={unsuspendEndUserAction}
-                actionText="停止解除する"
-                actionVariant="default"
-                description="停止中ユーザーのログインを再度許可します。"
-                title="アカウントの停止を解除しますか？"
-                triggerLabel="停止解除"
-                triggerVariant="outline"
-              />
-            ) : null}
-            {canSuspend ? (
-              <DangerConfirmButton
-                actionArg={user.publicId}
-                actionCreator={suspendEndUserAction}
-                actionText="停止する"
-                description="停止中はログインできません。必要に応じて後から停止解除できます。"
-                title="アカウントを停止しますか？"
-                triggerLabel="停止"
-                triggerVariant="outline"
-              />
-            ) : null}
-            {canDelete ? (
-              <DangerConfirmButton
-                actionArg={user.publicId}
-                actionCreator={deleteEndUserAction}
-                actionText="削除する"
-                description="この操作は取り消せません。対象ユーザーのアカウントは完全に削除されます。"
-                title="アカウントを削除しますか？"
-                triggerLabel="削除"
-              />
-            ) : null}
-          </>
+          <LinkButton render={<Link href="/users" />} variant="outline">
+            一覧へ戻る
+          </LinkButton>
+          {canUnsuspend ? (
+            <DangerConfirmButton
+              actionArg={user.publicId}
+              actionCreator={unsuspendEndUserAction}
+              actionText="停止解除する"
+              actionVariant="default"
+              description="停止中ユーザーのログインを再度許可します。"
+              title="アカウントの停止を解除しますか？"
+              triggerLabel="停止解除"
+              triggerVariant="outline"
+            />
+          ) : null}
+          {canSuspend ? (
+            <DangerConfirmButton
+              actionArg={user.publicId}
+              actionCreator={suspendEndUserAction}
+              actionText="停止する"
+              description="停止中はログインできません。必要に応じて後から停止解除できます。"
+              title="アカウントを停止しますか？"
+              triggerLabel="停止"
+              triggerVariant="outline"
+            />
+          ) : null}
+          {canDelete ? (
+            <DangerConfirmButton
+              actionArg={user.publicId}
+              actionCreator={deleteEndUserAction}
+              actionText="削除する"
+              description="この操作は取り消せません。対象ユーザーのアカウントは完全に削除されます。"
+              title="アカウントを削除しますか？"
+              triggerLabel="削除"
+            />
+          ) : null}
         </PlatformPageActions>
       </PlatformPageHeader>
       <PlatformPageContent>
@@ -209,14 +209,18 @@ const UserDetailContent = async ({
           </Card>
         </div>
       </PlatformPageContent>
-    </PlatformPage>
+    </>
   );
 };
 
+// `PlatformPage` stays in the static shell so the max width and padding are
+// painted before `params` resolves; only the header and body stream in.
 const UserDetailPage = ({ params }: UserDetailPageProps) => (
-  <Suspense fallback={<UserDetailSkeleton />}>
-    <UserDetailContent params={params} />
-  </Suspense>
+  <PlatformPage>
+    <Suspense fallback={<UserDetailSkeleton />}>
+      <UserDetailContent params={params} />
+    </Suspense>
+  </PlatformPage>
 );
 
 export default UserDetailPage;

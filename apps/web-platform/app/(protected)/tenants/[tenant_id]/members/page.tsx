@@ -43,21 +43,23 @@ interface TenantMembersPageProps {
 }
 
 const TenantMembersSkeleton = () => (
-  <div className="grid gap-6">
-    <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
-    <Card>
-      <CardHeader>
-        <div className="h-5 w-36 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3">
-          <div className="h-10 animate-pulse rounded bg-muted/70" />
-          <div className="h-10 animate-pulse rounded bg-muted/70" />
-          <div className="h-10 animate-pulse rounded bg-muted/70" />
-        </div>
-      </CardContent>
-    </Card>
-  </div>
+  <PlatformPageContent>
+    <div className="grid gap-6">
+      <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
+      <Card>
+        <CardHeader>
+          <div className="h-5 w-36 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3">
+            <div className="h-10 animate-pulse rounded bg-muted/70" />
+            <div className="h-10 animate-pulse rounded bg-muted/70" />
+            <div className="h-10 animate-pulse rounded bg-muted/70" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </PlatformPageContent>
 );
 
 const TenantMembersContent = async ({
@@ -76,7 +78,7 @@ const TenantMembersContent = async ({
   }
 
   return (
-    <PlatformPage>
+    <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
@@ -108,14 +110,18 @@ const TenantMembersContent = async ({
           />
         </div>
       </PlatformPageContent>
-    </PlatformPage>
+    </>
   );
 };
 
+// `PlatformPage` stays in the static shell so the max width and padding are
+// painted before `params` resolves; only the header and body stream in.
 const TenantMembersPage = ({ params }: TenantMembersPageProps) => (
-  <Suspense fallback={<TenantMembersSkeleton />}>
-    <TenantMembersContent params={params} />
-  </Suspense>
+  <PlatformPage>
+    <Suspense fallback={<TenantMembersSkeleton />}>
+      <TenantMembersContent params={params} />
+    </Suspense>
+  </PlatformPage>
 );
 
 export default TenantMembersPage;

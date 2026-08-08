@@ -49,33 +49,35 @@ interface TenantDetailPageProps {
 }
 
 const TenantDetailSkeleton = () => (
-  <div className="grid gap-6">
-    <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
+  <PlatformPageContent>
     <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div className="h-16 animate-pulse rounded bg-muted/70" />
-            <div className="h-16 animate-pulse rounded bg-muted/70" />
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <div className="h-5 w-32 animate-pulse rounded bg-muted" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div className="h-16 animate-pulse rounded bg-muted/70" />
-            <div className="h-16 animate-pulse rounded bg-muted/70" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="h-10 w-64 animate-pulse rounded bg-muted/70" />
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <div className="h-16 animate-pulse rounded bg-muted/70" />
+              <div className="h-16 animate-pulse rounded bg-muted/70" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <div className="h-5 w-32 animate-pulse rounded bg-muted" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <div className="h-16 animate-pulse rounded bg-muted/70" />
+              <div className="h-16 animate-pulse rounded bg-muted/70" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  </div>
+  </PlatformPageContent>
 );
 
 const TenantDetailContent = async ({
@@ -93,7 +95,7 @@ const TenantDetailContent = async ({
   const tenantStatusTone = getTenantStatusTone(tenant.status);
 
   return (
-    <PlatformPage>
+    <>
       <PlatformPageHeader>
         <PlatformPageHeading>
           <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
@@ -103,34 +105,32 @@ const TenantDetailContent = async ({
           </PlatformPageDescription>
         </PlatformPageHeading>
         <PlatformPageActions>
-          <>
-            <LinkButton render={<Link href="/tenants" />} variant="outline">
-              一覧へ戻る
-            </LinkButton>
-            <LinkButton
-              render={
-                <Link
-                  href={`/audit-logs?tenant_id=${encodeURIComponent(tenant.publicId)}`}
-                />
-              }
-              variant="outline"
-            >
-              監査ログを確認
-            </LinkButton>
-            {tenant.status === "suspended" ? (
-              <form action={resumeTenantAction}>
-                <input name="tenant_id" type="hidden" value={tenant.publicId} />
-                <Button type="submit">再開する</Button>
-              </form>
-            ) : (
-              <form action={suspendTenantAction}>
-                <input name="tenant_id" type="hidden" value={tenant.publicId} />
-                <Button type="submit" variant="destructive">
-                  停止する
-                </Button>
-              </form>
-            )}
-          </>
+          <LinkButton render={<Link href="/tenants" />} variant="outline">
+            一覧へ戻る
+          </LinkButton>
+          <LinkButton
+            render={
+              <Link
+                href={`/audit-logs?tenant_id=${encodeURIComponent(tenant.publicId)}`}
+              />
+            }
+            variant="outline"
+          >
+            監査ログを確認
+          </LinkButton>
+          {tenant.status === "suspended" ? (
+            <form action={resumeTenantAction}>
+              <input name="tenant_id" type="hidden" value={tenant.publicId} />
+              <Button type="submit">再開する</Button>
+            </form>
+          ) : (
+            <form action={suspendTenantAction}>
+              <input name="tenant_id" type="hidden" value={tenant.publicId} />
+              <Button type="submit" variant="destructive">
+                停止する
+              </Button>
+            </form>
+          )}
         </PlatformPageActions>
       </PlatformPageHeader>
       <PlatformPageContent>
@@ -241,14 +241,18 @@ const TenantDetailContent = async ({
           </div>
         </div>
       </PlatformPageContent>
-    </PlatformPage>
+    </>
   );
 };
 
+// `PlatformPage` stays in the static shell so the max width and padding are
+// painted before `params` resolves; only the header and body stream in.
 const TenantDetailPage = ({ params }: TenantDetailPageProps) => (
-  <Suspense fallback={<TenantDetailSkeleton />}>
-    <TenantDetailContent params={params} />
-  </Suspense>
+  <PlatformPage>
+    <Suspense fallback={<TenantDetailSkeleton />}>
+      <TenantDetailContent params={params} />
+    </Suspense>
+  </PlatformPage>
 );
 
 export default TenantDetailPage;

@@ -348,14 +348,12 @@ const Page = () => (
         </PlatformPageDescription>
       </PlatformPageHeading>
       <PlatformPageActions>
-        <>
-          <LinkButton render={<Link href="/audit-logs" />} variant="outline">
-            監査ログを見る
-          </LinkButton>
-          <LinkButton render={<Link href="/tenants" />}>
-            テナント一覧へ
-          </LinkButton>
-        </>
+        <LinkButton render={<Link href="/audit-logs" />} variant="outline">
+          監査ログを見る
+        </LinkButton>
+        <LinkButton render={<Link href="/tenants" />}>
+          テナント一覧へ
+        </LinkButton>
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
