@@ -389,10 +389,14 @@ func (x *GetEpisodeDetailRequest) GetPublicId() string {
 // Episode detail for public viewing.
 // Body/content is represented as ordered images for the reader UI.
 type GetEpisodeDetailResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Episode       *v1.Episode            `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
-	Series        *v1.Series             `protobuf:"bytes,2,opt,name=series,proto3" json:"series,omitempty"`
-	Images        []*v1.EpisodeImage     `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Episode *v1.Episode            `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
+	Series  *v1.Series             `protobuf:"bytes,2,opt,name=series,proto3" json:"series,omitempty"`
+	// Body images. Empty when access is locked (paid, no purchase/ticket).
+	Images []*v1.EpisodeImage `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
+	// Viewer access state for this episode: free | locked | entitled.
+	// free: price is 0 (public body). locked: paid and no valid grant. entitled: purchase or active access ticket.
+	Access        string `protobuf:"bytes,4,opt,name=access,proto3" json:"access,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -448,6 +452,13 @@ func (x *GetEpisodeDetailResponse) GetImages() []*v1.EpisodeImage {
 	return nil
 }
 
+func (x *GetEpisodeDetailResponse) GetAccess() string {
+	if x != nil {
+		return x.Access
+	}
+	return ""
+}
+
 var File_publira_v1_catalog_proto protoreflect.FileDescriptor
 
 const file_publira_v1_catalog_proto_rawDesc = "" +
@@ -474,11 +485,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"o\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xb9\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xd1\x01\n" +
 	"\x18GetEpisodeDetailResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +
-	"\x06images\x18\x03 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images2\xa3\x03\n" +
+	"\x06images\x18\x03 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\x12\x16\n" +
+	"\x06access\x18\x04 \x01(\tR\x06access2\xa3\x03\n" +
 	"\x0eCatalogService\x12h\n" +
 	"\x13ListPublishedLabels\x12&.publira.v1.ListPublishedLabelsRequest\x1a'.publira.v1.ListPublishedLabelsResponse\"\x00\x12h\n" +
 	"\x13ListPublishedSeries\x12&.publira.v1.ListPublishedSeriesRequest\x1a'.publira.v1.ListPublishedSeriesResponse\"\x00\x12\\\n" +

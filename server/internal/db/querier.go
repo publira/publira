@@ -6,6 +6,7 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -237,6 +238,9 @@ type Querier interface {
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 	// ユーザーの通知設定を作成または更新
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
+	// True when the user may view paid body content for the episode via purchase or active access ticket.
+	// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
+	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)
 }
 
 var _ Querier = (*Queries)(nil)

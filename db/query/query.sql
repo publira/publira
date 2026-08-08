@@ -1961,3 +1961,32 @@ WHERE tenant_id = $1
 ORDER BY created_at DESC,
     id DESC
 LIMIT 1;
+
+-- name: UserHasEpisodeContentAccess :one
+-- True when the user may view paid body content for the episode via purchase or active access ticket.
+-- Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
+SELECT (
+        EXISTS (
+            SELECT 1
+            FROM purchases p
+            WHERE p.tenant_id = $1
+                AND p.user_id = $2
+                AND p.episode_id = $3
+                AND (
+                    p.expires_at IS NULL
+                    OR p.expires_at > NOW()
+                )
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM access_tickets at
+            WHERE at.tenant_id = $1
+                AND at.user_id = $2
+                AND at.episode_id = $3
+                AND at.revoked_at IS NULL
+                AND (
+                    at.expires_at IS NULL
+                    OR at.expires_at > NOW()
+                )
+        )
+    ) AS has_access;

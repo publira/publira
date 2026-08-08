@@ -46,7 +46,11 @@ message GetEpisodeDetailRequest {
 message GetEpisodeDetailResponse {
   publira.types.v1.Episode episode = 1;
   publira.types.v1.Series series = 2;
+  // Body images. Empty when access is locked (paid, no purchase/ticket).
   repeated publira.types.v1.EpisodeImage images = 3;
+  // Viewer access state for this episode: free | locked | entitled.
+  // free: price is 0 (public body). locked: paid and no valid grant. entitled: purchase or active access ticket.
+  string access = 4;
 }
 
 service CatalogService {

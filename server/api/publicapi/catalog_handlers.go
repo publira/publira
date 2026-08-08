@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
@@ -314,6 +315,12 @@ func (s *apiServer) GetSeriesDetail(
 	return res, nil
 }
 
+const (
+	episodeAccessFree     = "free"
+	episodeAccessLocked   = "locked"
+	episodeAccessEntitled = "entitled"
+)
+
 func (s *apiServer) GetEpisodeDetail(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetEpisodeDetailRequest],
@@ -329,18 +336,50 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	images, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+
+	access := episodeAccessLocked
+	includeImages := false
+	if row.Price == 0 {
+		access = episodeAccessFree
+		includeImages = true
+	} else if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
+		// Optional auth: invalid session stays locked; only Internal errors fail the RPC.
+		session, authErr := s.authenticateAccessToken(ctx, req.Msg.Tenant, req.Header())
+		if authErr != nil {
+			if connect.CodeOf(authErr) == connect.CodeInternal {
+				return nil, authErr
+			}
+		} else {
+			hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
+				TenantID:  tenant.ID,
+				UserID:    session.User.ID,
+				EpisodeID: row.ID,
+			})
+			if accessErr != nil {
+				return nil, connect.NewError(connect.CodeInternal, accessErr)
+			}
+			if hasAccess.Valid && hasAccess.Bool {
+				access = episodeAccessEntitled
+				includeImages = true
+			}
+		}
 	}
 
 	res := connect.NewResponse(&publirav1.GetEpisodeDetailResponse{
 		Episode: protomapper.EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row),
 		Series:  protomapper.SeriesFromGetPublishedEpisodeByPublicIDForTenantRow(row),
-		Images:  make([]*publirattypesv1.EpisodeImage, 0, len(images)),
+		Images:  make([]*publirattypesv1.EpisodeImage, 0),
+		Access:  access,
 	})
-	for _, image := range images {
-		res.Msg.Images = append(res.Msg.Images, protomapper.EpisodeImageFromEpisodeImage(image))
+	if includeImages {
+		images, listErr := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
+		if listErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, listErr)
+		}
+		res.Msg.Images = make([]*publirattypesv1.EpisodeImage, 0, len(images))
+		for _, image := range images {
+			res.Msg.Images = append(res.Msg.Images, protomapper.EpisodeImageFromEpisodeImage(image))
+		}
 	}
 
 	return res, nil

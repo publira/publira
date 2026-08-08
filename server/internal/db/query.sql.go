@@ -6040,3 +6040,46 @@ func (q *Queries) UpsertUserNotificationSettings(ctx context.Context, arg Upsert
 	err := row.Scan(&i.UserID, &i.EmailNotificationsEnabled, &i.UpdatedAt)
 	return i, err
 }
+
+const userHasEpisodeContentAccess = `-- name: UserHasEpisodeContentAccess :one
+SELECT (
+        EXISTS (
+            SELECT 1
+            FROM purchases p
+            WHERE p.tenant_id = $1
+                AND p.user_id = $2
+                AND p.episode_id = $3
+                AND (
+                    p.expires_at IS NULL
+                    OR p.expires_at > NOW()
+                )
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM access_tickets at
+            WHERE at.tenant_id = $1
+                AND at.user_id = $2
+                AND at.episode_id = $3
+                AND at.revoked_at IS NULL
+                AND (
+                    at.expires_at IS NULL
+                    OR at.expires_at > NOW()
+                )
+        )
+    ) AS has_access
+`
+
+type UserHasEpisodeContentAccessParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// True when the user may view paid body content for the episode via purchase or active access ticket.
+// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
+func (q *Queries) UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error) {
+	row := q.db.QueryRowContext(ctx, userHasEpisodeContentAccess, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var has_access sql.NullBool
+	err := row.Scan(&has_access)
+	return has_access, err
+}
