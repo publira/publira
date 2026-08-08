@@ -2,18 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getPublishedPage,
+  listPublishedPageLinks,
   normalizePublishedPageSlug,
+  publishedPageHrefFromSlug,
   PageNotFoundError,
 } from "./pages";
 
-const { mockGetPublishedPage } = vi.hoisted(() => ({
+const { mockGetPublishedPage, mockListPublishedPages } = vi.hoisted(() => ({
   mockGetPublishedPage: vi.fn(),
+  mockListPublishedPages: vi.fn(),
 }));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     pages: {
       getPublishedPage: mockGetPublishedPage,
+      listPublishedPages: mockListPublishedPages,
     },
   },
 }));
@@ -33,6 +37,90 @@ describe("normalizePublishedPageSlug", () => {
     expect(normalizePublishedPageSlug("//privacy//")).toBe("/privacy");
     expect(normalizePublishedPageSlug("legal/terms")).toBe("/legal/terms");
     expect(normalizePublishedPageSlug(["legal", "terms"])).toBe("/legal/terms");
+  });
+});
+
+describe("publishedPageHrefFromSlug", () => {
+  it("公開 URL は storage slug と同じパスになる", () => {
+    expect(publishedPageHrefFromSlug("/privacy")).toBe("/privacy");
+    expect(publishedPageHrefFromSlug("legal/terms")).toBe("/legal/terms");
+    expect(publishedPageHrefFromSlug("")).toBe("/");
+  });
+});
+
+describe("listPublishedPageLinks", () => {
+  beforeEach(() => {
+    mockListPublishedPages.mockReset();
+  });
+
+  it("公開ページリンクを title と href に整形する", async () => {
+    mockListPublishedPages.mockResolvedValueOnce({
+      pages: [
+        {
+          displayInFooter: true,
+          id: "page-1",
+          slug: "/privacy",
+          title: "プライバシーポリシー",
+        },
+        {
+          displayInFooter: true,
+          id: "page-2",
+          slug: "/terms",
+          title: "利用規約",
+        },
+      ],
+    });
+
+    const links = await listPublishedPageLinks("tenant-uuid");
+
+    expect(mockListPublishedPages).toHaveBeenCalledWith({
+      tenant: { tenantId: "tenant-uuid" },
+    });
+    expect(links).toEqual([
+      {
+        href: "/privacy",
+        id: "page-1",
+        label: "プライバシーポリシー",
+        slug: "/privacy",
+      },
+      {
+        href: "/terms",
+        id: "page-2",
+        label: "利用規約",
+        slug: "/terms",
+      },
+    ]);
+  });
+
+  it("空テナントや API 失敗時は空配列を返す（失敗はキャッシュされない想定）", async () => {
+    expect(await listPublishedPageLinks("")).toEqual([]);
+    expect(mockListPublishedPages).not.toHaveBeenCalled();
+
+    mockListPublishedPages.mockRejectedValueOnce(new Error("boom"));
+    expect(await listPublishedPageLinks("tenant-uuid")).toEqual([]);
+    expect(mockListPublishedPages).toHaveBeenCalledTimes(1);
+
+    // A subsequent success after a soft failure still hits the API (failure was not cached).
+    mockListPublishedPages.mockResolvedValueOnce({
+      pages: [
+        {
+          displayInFooter: true,
+          id: "page-1",
+          slug: "/privacy",
+          title: "プライバシーポリシー",
+        },
+      ],
+    });
+    const links = await listPublishedPageLinks("tenant-uuid");
+    expect(mockListPublishedPages).toHaveBeenCalledTimes(2);
+    expect(links).toEqual([
+      {
+        href: "/privacy",
+        id: "page-1",
+        label: "プライバシーポリシー",
+        slug: "/privacy",
+      },
+    ]);
   });
 });
 

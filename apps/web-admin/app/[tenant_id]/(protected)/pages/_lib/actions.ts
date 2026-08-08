@@ -14,7 +14,19 @@ import {
 import { normalizePageSlugInput } from "../page-types";
 import type { PageFormState } from "../page-types";
 
+const parseDisplayInFooter = (formData: FormData): boolean | undefined => {
+  // Absence means "do not change" on update; create treats undefined as false.
+  if (!formData.has("display_in_footer")) {
+    return undefined;
+  }
+  const raw = String(formData.get("display_in_footer") ?? "")
+    .trim()
+    .toLowerCase();
+  return raw === "1" || raw === "true" || raw === "on";
+};
+
 const parseCommonFields = (formData: FormData) => ({
+  displayInFooter: parseDisplayInFooter(formData),
   pageId: String(formData.get("page_id") ?? "").trim(),
   slug: String(formData.get("slug") ?? "").trim(),
   tenantId: String(formData.get("tenant_id") ?? "").trim(),
@@ -59,6 +71,7 @@ export const createPageAction = async (
   }
 
   const result = await createPage({
+    displayInFooter: input.displayInFooter === true,
     slug: input.slug,
     tenantId: input.tenantId,
     title: input.title,
@@ -120,6 +133,7 @@ export const updatePageAction = async (
   }
 
   const result = await updatePage({
+    displayInFooter: input.displayInFooter,
     pageId: input.pageId,
     tenantId: input.tenantId,
     title: input.title,
@@ -136,7 +150,7 @@ export const updatePageAction = async (
   updateTag(`pages-${input.tenantId}`);
   updateTag(`page-${input.tenantId}-${input.pageId}`);
 
-  redirect(`/pages/${input.pageId}?title_updated=1`);
+  redirect(`/pages/${input.pageId}?updated=1`);
 };
 
 export const createDraftVersionAction = async (

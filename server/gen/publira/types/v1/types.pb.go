@@ -1010,6 +1010,7 @@ type Page struct {
 	PublishedVersionId string                 `protobuf:"bytes,4,opt,name=published_version_id,json=publishedVersionId,proto3" json:"published_version_id,omitempty"`
 	CreatedAt          string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt          string                 `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	DisplayInFooter    bool                   `protobuf:"varint,7,opt,name=display_in_footer,json=displayInFooter,proto3" json:"display_in_footer,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1084,6 +1085,13 @@ func (x *Page) GetUpdatedAt() string {
 		return x.UpdatedAt
 	}
 	return ""
+}
+
+func (x *Page) GetDisplayInFooter() bool {
+	if x != nil {
+		return x.DisplayInFooter
+	}
+	return false
 }
 
 type PageVersion struct {
@@ -1294,7 +1302,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1cdestructive_foreground_color\x18\x1a \x01(\tR\x1adestructiveForegroundColor\x12\x1d\n" +
 	"\n" +
 	"info_color\x18\x1b \x01(\tR\tinfoColor\x122\n" +
-	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColor\"\xb0\x01\n" +
+	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColor\"\xdc\x01\n" +
 	"\x04Page\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
@@ -1303,7 +1311,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\tR\tupdatedAt\"\xa7\x02\n" +
+	"updated_at\x18\x06 \x01(\tR\tupdatedAt\x12*\n" +
+	"\x11display_in_footer\x18\a \x01(\bR\x0fdisplayInFooter\"\xa7\x02\n" +
 	"\vPageVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\x12%\n" +

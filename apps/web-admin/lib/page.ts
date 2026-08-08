@@ -8,6 +8,7 @@ export interface PageItem {
   slug: string;
   title: string;
   publishedVersionId: string;
+  displayInFooter: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -106,10 +107,12 @@ const mapPage = (page: {
   slug: string;
   title: string;
   publishedVersionId?: string;
+  displayInFooter?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }): PageItem => ({
   createdAt: page.createdAt ?? "",
+  displayInFooter: page.displayInFooter === true,
   id: page.id,
   publishedVersionId: page.publishedVersionId ?? "",
   slug: page.slug,
@@ -259,6 +262,7 @@ export const createPage = async (input: {
   tenantId: string;
   slug: string;
   title: string;
+  displayInFooter?: boolean;
 }): Promise<CreatePageResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -271,6 +275,7 @@ export const createPage = async (input: {
   try {
     const response = await apiClient.pages.createPage(
       {
+        displayInFooter: input.displayInFooter === true,
         slug: input.slug,
         tenant: { tenantId: input.tenantId },
         title: input.title,
@@ -301,6 +306,7 @@ export const updatePage = async (input: {
   tenantId: string;
   pageId: string;
   title: string;
+  displayInFooter?: boolean;
 }): Promise<UpdatePageResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -311,8 +317,12 @@ export const updatePage = async (input: {
   }
 
   try {
+    // Omit displayInFooter when unset so title-only updates keep the existing value.
     const response = await apiClient.pages.updatePage(
       {
+        ...(input.displayInFooter === undefined
+          ? {}
+          : { displayInFooter: input.displayInFooter }),
         pageId: input.pageId,
         tenant: { tenantId: input.tenantId },
         title: input.title,

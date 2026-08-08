@@ -67,7 +67,8 @@ WHERE p.slug = '/privacy'
   );
 
 UPDATE pages
-SET published_version_id = '018f1000-0002-7000-8000-000000000001'::uuid
+SET published_version_id = '018f1000-0002-7000-8000-000000000001'::uuid,
+    display_in_footer = true
 WHERE slug = '/privacy'
   AND tenant_id IN (
       SELECT t.id
@@ -143,7 +144,8 @@ WHERE p.slug = '/terms'
   );
 
 UPDATE pages
-SET published_version_id = '018f1000-0004-7000-8000-000000000001'::uuid
+SET published_version_id = '018f1000-0004-7000-8000-000000000001'::uuid,
+    display_in_footer = true
 WHERE slug = '/terms'
   AND tenant_id IN (
       SELECT t.id

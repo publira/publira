@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { listPublishedPageLinks } from "#lib/pages";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -66,6 +67,15 @@ const getFooterNote = async (
   return tenantInfo?.siteDescription?.trim() || undefined;
 };
 
+const getFooterPageLinks = async (): Promise<LayoutLinkItem[]> => {
+  const tenantId = await getTenantId();
+  const links = await listPublishedPageLinks(tenantId);
+  return links.map((link) => ({
+    href: link.href,
+    label: link.label,
+  }));
+};
+
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
 
@@ -101,6 +111,7 @@ const TenantLayout = ({ children }: LayoutProps<"/[tenant_id]">) => {
       <SiteLayoutFooter
         copyrightText={getCopyrightText(tenantInfoPromise)}
         footerNote={getFooterNote(tenantInfoPromise)}
+        links={getFooterPageLinks()}
       />
     </SiteLayout>
   );

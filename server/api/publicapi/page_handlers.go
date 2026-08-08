@@ -15,11 +15,12 @@ import (
 
 func pageFromPublishedModel(p dbmodels.Page) *publirattypesv1.Page {
 	item := &publirattypesv1.Page{
-		Id:        p.ID.String(),
-		Slug:      p.Slug,
-		Title:     p.Title,
-		CreatedAt: p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: p.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		Id:              p.ID.String(),
+		Slug:            p.Slug,
+		Title:           p.Title,
+		CreatedAt:       p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:       p.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		DisplayInFooter: p.DisplayInFooter,
 	}
 	if p.PublishedVersionID.Valid {
 		item.PublishedVersionId = p.PublishedVersionID.UUID.String()
@@ -119,6 +120,7 @@ func (s *apiServer) GetPublishedPage(
 			Slug:               row.Slug,
 			Title:              row.Title,
 			PublishedVersionID: row.PublishedVersionID,
+			DisplayInFooter:    row.DisplayInFooter,
 			CreatedAt:          row.CreatedAt,
 			UpdatedAt:          row.UpdatedAt,
 		}),

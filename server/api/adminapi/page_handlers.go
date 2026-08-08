@@ -23,11 +23,12 @@ const slugMaxLen = 255
 
 func pageFromModel(p dbmodels.Page) *publirattypesv1.Page {
 	proto := &publirattypesv1.Page{
-		Id:        p.ID.String(),
-		Slug:      p.Slug,
-		Title:     p.Title,
-		CreatedAt: p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: p.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		Id:              p.ID.String(),
+		Slug:            p.Slug,
+		Title:           p.Title,
+		CreatedAt:       p.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:       p.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		DisplayInFooter: p.DisplayInFooter,
 	}
 	if p.PublishedVersionID.Valid {
 		proto.PublishedVersionId = p.PublishedVersionID.UUID.String()
@@ -147,10 +148,11 @@ func (s *adminServer) CreatePage(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	page, err := s.queriesFor(ctx).CreatePage(ctx, dbmodels.CreatePageParams{
-		ID:       pageID,
-		TenantID: tenant.ID,
-		Slug:     slug,
-		Title:    title,
+		ID:              pageID,
+		TenantID:        tenant.ID,
+		Slug:            slug,
+		Title:           title,
+		DisplayInFooter: req.Msg.DisplayInFooter,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
@@ -193,11 +195,17 @@ func (s *adminServer) UpdatePage(
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queriesFor(ctx).UpdatePageTitle(ctx, dbmodels.UpdatePageTitleParams{
+	// Only overwrite display_in_footer when the client sets the optional field.
+	// Omitted values stay as the existing row (COALESCE in UpdatePage).
+	params := dbmodels.UpdatePageParams{
 		ID:       pageID,
 		TenantID: tenant.ID,
 		Title:    title,
-	})
+	}
+	if req.Msg.DisplayInFooter != nil {
+		params.DisplayInFooter = sql.NullBool{Bool: req.Msg.GetDisplayInFooter(), Valid: true}
+	}
+	page, err := s.queriesFor(ctx).UpdatePage(ctx, params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
@@ -214,6 +222,17 @@ func (s *adminServer) UpdatePage(
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
+	// Title / display_in_footer can change the public footer link list.
+	if s.reval != nil {
+		tenantID := tenant.ID.String()
+		tags := []string{
+			fmt.Sprintf("tenant:%s:pages", tenantID),
+			fmt.Sprintf("tenant:%s:pages:%s", tenantID, page.ID.String()),
+		}
+		if err := s.reval.RevalidateTags(ctx, tenantID, tenant.Domain, tags); err != nil {
+			s.logger.Warn("failed to request next revalidate after page update", "tenant_public_id", tenant.PublicID, "page_id", pageID, "error", err)
+		}
+	}
 	return connect.NewResponse(&publiraadminv1.UpdatePageResponse{
 		Page: pageFromModel(page),
 	}), nil

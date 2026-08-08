@@ -198,6 +198,7 @@ CREATE TABLE pages (
     slug character varying(255) NOT NULL,
     title text NOT NULL,
     published_version_id uuid,
+    display_in_footer boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );

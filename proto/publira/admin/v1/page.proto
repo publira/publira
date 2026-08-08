@@ -10,6 +10,7 @@ message CreatePageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string slug = 2;
   string title = 3;
+  bool display_in_footer = 4;
 }
 
 message CreatePageResponse {
@@ -20,6 +21,9 @@ message UpdatePageRequest {
   publira.types.v1.TenantContext tenant = 1;
   string page_id = 2;
   string title = 3;
+  // optional so title-only updates do not clear an existing true value
+  // (proto3 non-optional bool maps omitted fields to false).
+  optional bool display_in_footer = 4;
 }
 
 message UpdatePageResponse {

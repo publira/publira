@@ -37,27 +37,13 @@ interface PageFormProps {
 export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const initialSlug = initialPage?.slug ?? "";
-  const initialTitle = initialPage?.title ?? "";
+  // Initial values only; entity switch must remount the form via key on the parent.
   const [contentMarkdown, setContentMarkdown] = useState("");
-  const [slug, setSlug] = useState(initialSlug);
-  const [title, setTitle] = useState(initialTitle);
-  const [prevInitialSlug, setPrevInitialSlug] = useState(initialSlug);
-  const [prevInitialTitle, setPrevInitialTitle] = useState(initialTitle);
-  const [prevMode, setPrevMode] = useState(mode);
-
-  if (
-    initialSlug !== prevInitialSlug ||
-    initialTitle !== prevInitialTitle ||
-    mode !== prevMode
-  ) {
-    setPrevInitialSlug(initialSlug);
-    setPrevInitialTitle(initialTitle);
-    setPrevMode(mode);
-    setContentMarkdown("");
-    setSlug(initialSlug);
-    setTitle(initialTitle);
-  }
+  const [slug, setSlug] = useState(initialPage?.slug ?? "");
+  const [title, setTitle] = useState(initialPage?.title ?? "");
+  const [displayInFooter, setDisplayInFooter] = useState(
+    initialPage?.displayInFooter ?? false
+  );
 
   const isUpdate = mode === "update";
   const handleSlugBlur = useCallback(() => {
@@ -75,6 +61,12 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
     },
     []
   );
+  const handleDisplayInFooterChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setDisplayInFooter(event.target.checked);
+    },
+    []
+  );
   const handleContentMarkdownChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
       setContentMarkdown(event.target.value);
@@ -86,7 +78,7 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
   if (isPending) {
     submitLabel = "送信中...";
   } else if (isUpdate) {
-    submitLabel = "タイトルを更新";
+    submitLabel = "基本情報を更新";
   }
 
   return (
@@ -95,7 +87,7 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
         <CardTitle>{isUpdate ? "ページ基本情報" : "新規ページ"}</CardTitle>
         <CardDescription>
           {isUpdate
-            ? "タイトルを更新します。slug は公開 URL の一部になるため変更できません。"
+            ? "タイトルとフッター表示を更新します。slug は公開 URL の一部になるため変更できません。"
             : "slug とタイトルを設定してページを作成します。"}
         </CardDescription>
       </CardHeader>
@@ -103,6 +95,11 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
         <form action={formAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="page_id" type="hidden" value={initialPage?.id ?? ""} />
+          <input
+            name="display_in_footer"
+            type="hidden"
+            value={displayInFooter ? "true" : "false"}
+          />
 
           <Field>
             <FieldLabel htmlFor="page_slug">slug</FieldLabel>
@@ -139,6 +136,23 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
                 type="text"
                 value={title}
               />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldContent>
+              <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                <input
+                  checked={displayInFooter}
+                  id="page_display_in_footer"
+                  onChange={handleDisplayInFooterChange}
+                  type="checkbox"
+                />
+                フッターに表示する
+              </label>
+              <FieldDescription>
+                公開中のページのみ、公開サイトのフッターにタイトルリンクとして表示されます。既定はオフです。
+              </FieldDescription>
             </FieldContent>
           </Field>
 
