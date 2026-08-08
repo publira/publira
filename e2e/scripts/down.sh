@@ -9,7 +9,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 bash "${E2E_SCRIPTS_DIR}/stop-apps.sh" || true
 
 e2e_log "removing compose project ${COMPOSE_PROJECT_NAME} (containers + volumes)"
-compose down -v --remove-orphans || true
+compose down -v --remove-orphans
 
 # Keep logs for CI artifact upload; callers may rm -rf .run if desired.
 e2e_log "stack stopped"

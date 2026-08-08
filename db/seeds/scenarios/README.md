@@ -6,8 +6,8 @@ baseline / dev seed とは分離し、**必要時のみ**個別に実行しま�
 ## 方針
 
 - ファイル名: `<nnn>_<slug>.sql` または `<slug>.sql`（例: `010_multi_tenant.sql`）
-- 冪等（`ON CONFLICT` 等）を推奨。共有 dev seed を壊さない ID 帯を使う
-- マイグレーション（DDL）はここではなく `db/migrations/` へ
+- scenario seed は冪等な DML のみを含める。`ON CONFLICT` 等を使用し、共有 dev seed を壊さない ID 帯を使う
+- DDL はここに置かない。現段階のスキーマ変更は `db/migrations/00000000000000_baseline.up.sql` と対応する down migration に置く
 
 ## 適用方法
 

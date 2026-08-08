@@ -75,7 +75,7 @@ e2e/
 ```
 
 - **依存 (Compose):** Postgres 18・Valkey（Redis 互換）
-- **アプリ (ホストプロセス):** `server/bin/api-server` + `apps/web-host`（`next start`）
+- **アプリ (ホストプロセス):** `server/bin/api-server` + `apps/web-host`（standalone の `node server.js`）
 - **seed:** 開発用 `task db:setup`（domain `localhost` / テナント名 `Seed Tenant`）
 
 Host ベース URL は `src/urls.ts` を参照。将来の admin / platform 用定数もここにあります。

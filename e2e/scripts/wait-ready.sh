@@ -53,17 +53,21 @@ check_redis_ping() {
 check_http_body() {
   local url="$1"
   local expect="$2"
-  local code body
-  code="$(curl -sS -o /tmp/e2e-ready-body -w '%{http_code}' --max-time 3 "${url}" 2>/dev/null || true)"
-  body="$(cat /tmp/e2e-ready-body 2>/dev/null || true)"
+  local tmpfile code body
+  tmpfile="$(mktemp)"
+  code="$(curl -sS -o "${tmpfile}" -w '%{http_code}' --max-time 3 "${url}" 2>/dev/null || true)"
+  body="$(cat "${tmpfile}" 2>/dev/null || true)"
+  rm -f "${tmpfile}"
   [[ "${code}" == "200" && "${body}" == *"${expect}"* ]]
 }
 
 check_http_json_ok() {
   local url="$1"
-  local code body
-  code="$(curl -sS -o /tmp/e2e-ready-body -w '%{http_code}' --max-time 3 "${url}" 2>/dev/null || true)"
-  body="$(cat /tmp/e2e-ready-body 2>/dev/null || true)"
+  local tmpfile code body
+  tmpfile="$(mktemp)"
+  code="$(curl -sS -o "${tmpfile}" -w '%{http_code}' --max-time 3 "${url}" 2>/dev/null || true)"
+  body="$(cat "${tmpfile}" 2>/dev/null || true)"
+  rm -f "${tmpfile}"
   [[ "${code}" == "200" ]] || return 1
   printf '%s' "${body}" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
 }

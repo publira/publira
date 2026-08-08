@@ -55,18 +55,24 @@ is_pid_running() {
   [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null
 }
 
+# Process start time as a fingerprint to detect PID reuse (see stop_pid_file).
+pid_start_time() {
+  local pid="$1"
+  ps -o lstart= -p "${pid}" 2>/dev/null | xargs || true
+}
+
 read_pid() {
   local name="$1"
   local file="${PID_DIR}/${name}.pid"
   if [[ -f "${file}" ]]; then
-    cat "${file}"
+    sed -n '1p' "${file}"
   fi
 }
 
 write_pid() {
   local name="$1"
   local pid="$2"
-  printf '%s\n' "${pid}" >"${PID_DIR}/${name}.pid"
+  printf '%s\n%s\n' "${pid}" "$(pid_start_time "${pid}")" >"${PID_DIR}/${name}.pid"
 }
 
 stop_pid_file() {
@@ -75,22 +81,31 @@ stop_pid_file() {
   if [[ ! -f "${file}" ]]; then
     return 0
   fi
-  local pid
-  pid="$(cat "${file}" || true)"
-  if is_pid_running "${pid}"; then
-    e2e_log "stopping ${name} (pid ${pid})"
-    kill "${pid}" 2>/dev/null || true
-    local i
-    for i in $(seq 1 30); do
-      if ! is_pid_running "${pid}"; then
-        break
-      fi
-      sleep 0.2
-    done
-    if is_pid_running "${pid}"; then
-      e2e_log "force-killing ${name} (pid ${pid})"
-      kill -9 "${pid}" 2>/dev/null || true
+  local pid recorded_start
+  pid="$(sed -n '1p' "${file}" 2>/dev/null || true)"
+  recorded_start="$(sed -n '2p' "${file}" 2>/dev/null || true)"
+  if ! is_pid_running "${pid}"; then
+    rm -f "${file}"
+    return 0
+  fi
+  # Guard against a reused PID belonging to an unrelated process.
+  if [[ -z "${recorded_start}" || "$(pid_start_time "${pid}")" != "${recorded_start}" ]]; then
+    e2e_log "skipping ${name}: pid ${pid} start time does not match (likely reused)"
+    rm -f "${file}"
+    return 0
+  fi
+  e2e_log "stopping ${name} (pid ${pid})"
+  kill "${pid}" 2>/dev/null || true
+  local _
+  for _ in $(seq 1 30); do
+    if ! is_pid_running "${pid}"; then
+      break
     fi
+    sleep 0.2
+  done
+  if is_pid_running "${pid}"; then
+    e2e_log "force-killing ${name} (pid ${pid})"
+    kill -9 "${pid}" 2>/dev/null || true
   fi
   rm -f "${file}"
 }
