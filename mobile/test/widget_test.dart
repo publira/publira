@@ -36,10 +36,7 @@ void main() {
     expect(find.text(first.title), findsWidgets);
     expect(find.text(first.description), findsOneWidget);
     expect(find.text('${first.episodeCount} 話'), findsOneWidget);
-    expect(
-      find.text('エピソード一覧とビューアは今後の Issue で実装します。'),
-      findsOneWidget,
-    );
+    expect(find.text('エピソード一覧とビューアは今後の Issue で実装します。'), findsOneWidget);
     expect(router.state.uri.path, AppRoutes.seriesDetailPath(first.id));
   });
 
