@@ -300,10 +300,13 @@ jobs:
             arm64) migrate_arch="arm64" ;;
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-${migrate_arch}.tar.gz" -o /tmp/migrate.tgz
-          tar -xzf /tmp/migrate.tgz -C /tmp migrate
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
-          rm -f /tmp/migrate /tmp/migrate.tgz
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
 
       - name: Validate / Migrate Up (empty DB)
         run: |
@@ -426,10 +429,13 @@ jobs:
             arm64) migrate_arch="arm64" ;;
             *) echo "Unsupported architecture: $arch"; exit 1 ;;
           esac
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-${migrate_arch}.tar.gz" -o /tmp/migrate.tgz
-          tar -xzf /tmp/migrate.tgz -C /tmp migrate
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
-          rm -f /tmp/migrate /tmp/migrate.tgz
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
 
       - name: Dependencies / Install
         run: task deps
