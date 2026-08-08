@@ -24,6 +24,12 @@ UPDATE tenants
 SET name = sqlc.arg('name'), domain = sqlc.arg('domain'), admin_domain = sqlc.narg('admin_domain')
 WHERE public_id = sqlc.arg('public_id')
 RETURNING *;
+-- name: UpdateTenantTimezone :one
+-- テナントの表示タイムゾーン (IANA 名) を更新する
+UPDATE tenants
+SET timezone = sqlc.arg('timezone')
+WHERE id = sqlc.arg('id')
+RETURNING *;
 -- name: GetTenantByDomains :one
 -- 候補ホスト名の順序を保ったまま最初に一致したテナントを返す
 SELECT t.*

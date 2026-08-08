@@ -23,13 +23,16 @@ const (
 
 // プラットフォーム管理者向けテナント情報
 type Tenant struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	Domain        string                 `protobuf:"bytes,5,opt,name=domain,proto3" json:"domain,omitempty"`
-	AdminDomain   string                 `protobuf:"bytes,7,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	PublicId    string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Status      string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt   string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Domain      string                 `protobuf:"bytes,5,opt,name=domain,proto3" json:"domain,omitempty"`
+	AdminDomain string                 `protobuf:"bytes,7,opt,name=admin_domain,json=adminDomain,proto3" json:"admin_domain,omitempty"`
+	// IANA time zone name used for tenant wall-clock display (e.g. Asia/Tokyo).
+	// Read-only here; tenant admins change it through the admin API.
+	Timezone      string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -102,6 +105,13 @@ func (x *Tenant) GetDomain() string {
 func (x *Tenant) GetAdminDomain() string {
 	if x != nil {
 		return x.AdminDomain
+	}
+	return ""
+}
+
+func (x *Tenant) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
 	}
 	return ""
 }
@@ -1712,7 +1722,7 @@ var File_publira_platform_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\xb1\x01\n" +
+	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\xcd\x01\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -1720,7 +1730,8 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x16\n" +
 	"\x06domain\x18\x05 \x01(\tR\x06domain\x12!\n" +
-	"\fadmin_domain\x18\a \x01(\tR\vadminDomainJ\x04\b\x06\x10\a\"\x8b\x01\n" +
+	"\fadmin_domain\x18\a \x01(\tR\vadminDomain\x12\x1a\n" +
+	"\btimezone\x18\b \x01(\tR\btimezoneJ\x04\b\x06\x10\a\"\x8b\x01\n" +
 	"\x12ListTenantsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12\x12\n" +

@@ -5540,6 +5540,36 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 	return i, err
 }
 
+const updateTenantTimezone = `-- name: UpdateTenantTimezone :one
+UPDATE tenants
+SET timezone = $1
+WHERE id = $2
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+`
+
+type UpdateTenantTimezoneParams struct {
+	Timezone string    `json:"timezone"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// テナントの表示タイムゾーン (IANA 名) を更新する
+func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, updateTenantTimezone, arg.Timezone, arg.ID)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Name,
+		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+		&i.AdminDomain,
+		&i.Timezone,
+	)
+	return i, err
+}
+
 const updateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users
 SET email = $2

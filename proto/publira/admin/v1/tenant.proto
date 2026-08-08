@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message GetTenantTimezoneRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantTimezoneResponse {
+  // IANA time zone name (e.g. Asia/Tokyo). Never empty; the default is applied when unset.
+  string timezone = 1;
+}
+
+message UpdateTenantTimezoneRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // IANA time zone name (e.g. Asia/Tokyo). Unknown or blank names are rejected.
+  string timezone = 2;
+}
+
+message UpdateTenantTimezoneResponse {
+  string timezone = 1;
+}
+
+// テナント単位の運用設定（サイト文言用の TenantConfig / 配色用の TenantTheme とは別責務）
+service TenantSettingsService {
+  rpc GetTenantTimezone(GetTenantTimezoneRequest) returns (GetTenantTimezoneResponse) {}
+  rpc UpdateTenantTimezone(UpdateTenantTimezoneRequest) returns (UpdateTenantTimezoneResponse) {}
+}

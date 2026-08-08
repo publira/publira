@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 const (
@@ -66,6 +67,7 @@ func tenantToProto(t dbmodels.Tenant) *publirasplatformv1.Tenant {
 		CreatedAt:   t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 		Domain:      t.Domain,
 		AdminDomain: adminDomain,
+		Timezone:    tenanttz.Resolve(t.Timezone),
 	}
 }
 

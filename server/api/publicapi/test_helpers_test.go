@@ -52,10 +52,14 @@ func (p *testStorageProvider) Upload(_ context.Context, req storage.UploadReques
 }
 
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
+	expectTenantLookupWithTimezone(mock, tenantID, publicID, now, "Asia/Tokyo")
+}
+
+func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone string) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone))
 }
 
 func assertPublicExpectations(t *testing.T, mock sqlmock.Sqlmock) {

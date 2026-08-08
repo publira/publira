@@ -75,7 +75,10 @@ type GetTenantResponse struct {
 	SiteDescription string                 `protobuf:"bytes,5,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
 	SiteTagline     string                 `protobuf:"bytes,6,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
 	// Public branding colors (defaults applied when unset).
-	Theme         *v1.TenantTheme `protobuf:"bytes,7,opt,name=theme,proto3" json:"theme,omitempty"`
+	Theme *v1.TenantTheme `protobuf:"bytes,7,opt,name=theme,proto3" json:"theme,omitempty"`
+	// IANA time zone name used to render tenant wall-clock date/time (e.g. Asia/Tokyo).
+	// Never empty; the default is applied when unset.
+	Timezone      string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -159,6 +162,13 @@ func (x *GetTenantResponse) GetTheme() *v1.TenantTheme {
 	return nil
 }
 
+func (x *GetTenantResponse) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
 var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_v1_tenant_proto_rawDesc = "" +
@@ -166,7 +176,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x17publira/v1/tenant.proto\x12\n" +
 	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xad\x02\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xc9\x02\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -175,7 +185,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x0ecopyright_text\x18\x04 \x01(\tR\rcopyrightText\x12)\n" +
 	"\x10site_description\x18\x05 \x01(\tR\x0fsiteDescription\x12!\n" +
 	"\fsite_tagline\x18\x06 \x01(\tR\vsiteTagline\x123\n" +
-	"\x05theme\x18\a \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme2[\n" +
+	"\x05theme\x18\a \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\x12\x1a\n" +
+	"\btimezone\x18\b \x01(\tR\btimezone2[\n" +
 	"\rTenantService\x12J\n" +
 	"\tGetTenant\x12\x1c.publira.v1.GetTenantRequest\x1a\x1d.publira.v1.GetTenantResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 

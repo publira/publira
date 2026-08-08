@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 func tenantTestColumns() []string {
@@ -24,6 +26,33 @@ func tenantScopedUserColumns() []string {
 
 func tenantMemberColumns() []string {
 	return []string{"user_id", "public_id", "name", "email", "role", "status", "created_at"}
+}
+
+func TestTenantToProtoExposesTimezone(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+		want   string
+	}{
+		{name: "configured value", stored: "America/Los_Angeles", want: "America/Los_Angeles"},
+		{name: "blank falls back to default", stored: "", want: tenanttz.Default},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tenantToProto(dbmodels.Tenant{
+				PublicID:  "TENANT001",
+				Name:      "Test Tenant",
+				Status:    tenantStatusActive,
+				Domain:    "tenant.example.com",
+				CreatedAt: time.Now(),
+				Timezone:  tt.stored,
+			})
+			if got.Timezone != tt.want {
+				t.Fatalf("timezone = %q, want %q", got.Timezone, tt.want)
+			}
+		})
+	}
 }
 
 func TestListTenantMembersSuccess(t *testing.T) {

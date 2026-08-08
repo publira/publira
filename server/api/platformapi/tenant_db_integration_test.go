@@ -9,6 +9,7 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 func TestDBListTenantsReturnsEmptyList(t *testing.T) {
@@ -50,6 +51,10 @@ func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 	}
 	if tenant.PublicId == "" {
 		t.Fatal("tenant.public_id is empty")
+	}
+	// Creation applies the tenants.timezone default; there is no unset state.
+	if tenant.Timezone != tenanttz.Default {
+		t.Fatalf("tenant.timezone = %q, want %s", tenant.Timezone, tenanttz.Default)
 	}
 
 	listResp, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{}))

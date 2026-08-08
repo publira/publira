@@ -139,5 +139,66 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	if resp.Msg.Theme.BackgroundColor != "#f6f2e9" {
 		t.Fatalf("theme.background_color = %q, want #f6f2e9", resp.Msg.Theme.BackgroundColor)
 	}
+	if resp.Msg.Timezone != "Asia/Tokyo" {
+		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "America/Los_Angeles")
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.Timezone != "America/Los_Angeles" {
+		t.Fatalf("timezone = %q, want America/Los_Angeles", resp.Msg.Timezone)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookupWithTimezone(mock, tenantID, "TENANT001", now, "")
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.Timezone != "Asia/Tokyo" {
+		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)
+	}
 	assertPublicExpectations(t, mock)
 }

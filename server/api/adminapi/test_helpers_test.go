@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	getTenantByIDQuery                             = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
+	getTenantByIDQuery                                   = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
 	getUserByPublicIDForTenantQuery                      = "-- name: GetUserByPublicIDForTenant :one\n"
 	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\n"
 	listAuditLogsByTenantQuery                           = "-- name: ListAuditLogsByTenant :many\n"
@@ -28,6 +28,7 @@ const (
 	upsertTenantSMTPConfigQuery                          = "-- name: UpsertTenantSMTPConfig :one\n"
 	getTenantThemeByTenantIDQuery                        = "-- name: GetTenantThemeByTenantID :one\n"
 	upsertTenantThemeQuery                               = "-- name: UpsertTenantTheme :one\n"
+	updateTenantTimezoneQuery                            = "-- name: UpdateTenantTimezone :one\n"
 	listSeriesByTenantQuery                              = "-- name: ListSeriesByTenant :many\n"
 	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\n"
 	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\n"
@@ -100,11 +101,19 @@ var oneByOneJPEG = []byte{
 	0x20, 0xff, 0xd9,
 }
 
+func tenantColumns() []string {
+	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}
+}
+
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
+	expectTenantLookupWithTimezone(mock, tenantID, publicID, now, "Asia/Tokyo")
+}
+
+func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone string) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+		WillReturnRows(sqlmock.NewRows(tenantColumns()).
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone))
 }
 
 // issueTestAdminToken creates a signed JWT for admin API tests.

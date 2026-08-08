@@ -55,6 +55,10 @@
       "types": "./dist/admin/series.d.mts",
       "default": "./dist/admin/series.mjs"
     },
+    "./admin/tenant": {
+      "types": "./dist/admin/tenant.d.mts",
+      "default": "./dist/admin/tenant.mjs"
+    },
     "./admin/theme": {
       "types": "./dist/admin/theme.d.mts",
       "default": "./dist/admin/theme.mjs"
