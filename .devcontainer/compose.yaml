@@ -2,15 +2,12 @@ services:
   traefik:
     image: traefik:v3.7.10@sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
     restart: unless-stopped
-    ports:
-      - "3080:80"
-      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command:
       - "--api.insecure=true"
       - "--api.dashboard=true"
-      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.address=:3080"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
     depends_on:
@@ -97,8 +94,6 @@ services:
   mailpit:
     image: axllent/mailpit:v1.30.6@sha256:7f33095f80e901f6ad08028f06ca284aa58fe84942be5496008d041d3b9f4d4d
     restart: unless-stopped
-    ports:
-      - "8025:8025"
 
   # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
   # Valkey is Redis-protocol compatible; keep service name / REDIS_URL as redis://...
