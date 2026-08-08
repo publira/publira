@@ -62,18 +62,37 @@ flutter run -d android
 flutter run -d chrome
 ```
 
-## テスト
+## 品質ゲート（format / analyze / test）
+
+CI と同じ検証はルートから次のコマンドで再現できます。
 
 ```bash
+# 依存解決（clone 直後や pubspec 変更後）
+task mobile:deps
+
+# format チェック + analyze（info も fail）+ flutter test
+task mobile:check
+```
+
+個別に実行する場合:
+
+```bash
+task mobile:format    # dart format --output=none --set-exit-if-changed .
+task mobile:analyze   # flutter analyze --fatal-infos
+task mobile:test      # flutter test
+```
+
+`mobile/` 配下で直接 Flutter を使う場合:
+
+```bash
+cd mobile
+flutter pub get
+dart format --output=none --set-exit-if-changed .
+flutter analyze --fatal-infos
 flutter test
 ```
 
-## 静的解析
-
-```bash
-flutter analyze
-```
-
+PR で `mobile/**` が変更されると CI の `Test / Mobile` ジョブが同じゲートを実行します。
 ## ディレクトリ構成
 
 ```

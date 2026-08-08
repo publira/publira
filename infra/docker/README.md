@@ -155,7 +155,7 @@ Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools
 | --- | --- | --- |
 | **本番イメージビルド** | デプロイ用イメージの作成・検証 | `task docker:build:*`（中身はルート context の `docker build -f infra/docker/...`） |
 | **ローカル開発** | ホットリロード開発 | Dev Container + `task dev` / `task server:dev` 等（本番 Dockerfile は使わない） |
-| **CI（ホスト + イメージ）** | 変更検知で Check / `Test / Go` / `Test / TypeScript` / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
+| **CI（ホスト + イメージ）** | 変更検知で Check / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
 
 本番イメージと Dev Container は別物である。イメージビルドが通っても `task dev` の代替にはならないし、その逆でもない。
 
@@ -249,13 +249,13 @@ Go と TypeScript のテストは **別ジョブ** とし、影響 path が変�
 ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Check / テスト / Build / Docker 行列を決定）。  
 ローカルと同一コマンド: `task docker:build:web|api|batch`（Web は続けて `task docker:smoke:web`）。
 
-Check / `Test / Go` / `Test / TypeScript` / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
+Check / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
 
 ## 失敗時のトリアージ
 
 1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）
    - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`
-   - `Check` / `Test / Go` / `Test / TypeScript` / `Build` → ホスト上の lint・型・`go test` / `pnpm test`・`pnpm build` / `go build`
+   - `Check` / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / `Build` → ホスト上の lint・型・`go test` / `pnpm test` / `task mobile:check`・`pnpm build` / `go build`
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
 2. **ローカルで同じ Task を再現する**（CI ログの `task docker:build:…` 行をそのまま使う）
 
