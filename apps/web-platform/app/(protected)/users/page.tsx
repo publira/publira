@@ -17,6 +17,11 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import {
+  DEFAULT_TIME_ZONE,
+  endOfDayIsoString,
+  startOfDayIsoString,
+} from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
@@ -112,16 +117,19 @@ const buildUsersPath = (params: {
   return query ? `/users?${query}` : "/users";
 };
 
-const endOfDayRfc3339 = (date: string): string | undefined => {
-  if (!date) {
-    return undefined;
-  }
-  const value = new Date(`${date}T23:59:59.999Z`);
-  if (Number.isNaN(value.getTime())) {
-    return undefined;
-  }
-  return value.toISOString();
-};
+/**
+ * The created_from / created_to filters are date-only (`YYYY-MM-DD`), so the
+ * calendar day has to be pinned to a zone before it can become an RFC3339
+ * instant. Platform operators read these screens in JST; tenant zones are a
+ * separate concern (#566 / #567).
+ */
+const usersFilterTimeZone = DEFAULT_TIME_ZONE;
+
+const createdRangeStart = (date: string): string | undefined =>
+  startOfDayIsoString(date, usersFilterTimeZone) || undefined;
+
+const createdRangeEnd = (date: string): string | undefined =>
+  endOfDayIsoString(date, usersFilterTimeZone) || undefined;
 
 interface UsersPageProps {
   searchParams: Promise<{
@@ -422,8 +430,8 @@ const UsersContent = async ({
   const [tenantItems, result] = await Promise.all([
     listPlatformTenantFilterOptions(),
     listPlatformEndUsers({
-      createdAfter: filters.createdFromFilter || undefined,
-      createdBefore: endOfDayRfc3339(filters.createdToFilter),
+      createdAfter: createdRangeStart(filters.createdFromFilter),
+      createdBefore: createdRangeEnd(filters.createdToFilter),
       limit: filters.limit,
       offset: filters.offset,
       status: filters.statusFilter || undefined,

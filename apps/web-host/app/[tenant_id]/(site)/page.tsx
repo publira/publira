@@ -1,4 +1,5 @@
 import { CollectionIcon } from "@publira/icons";
+import { DEFAULT_TIME_ZONE, formatDate } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -248,7 +249,11 @@ const NewEpisodesSection = async () => {
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">
-                {episode.publishedAt.slice(0, 10)}
+                {/* Tenant-facing date: named explicitly so #567 can find it. */}
+                {formatDate(episode.publishedAt, {
+                  fallback: "",
+                  timeZone: DEFAULT_TIME_ZONE,
+                })}
               </span>
             </Link>
           </li>

@@ -16,6 +16,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
+import { DEFAULT_TIME_ZONE, toDateTimeLocalValue } from "@publira/utils";
 import Image from "next/image";
 import {
   useActionState,
@@ -62,19 +63,6 @@ const getSubmitLabel = (
     return "送信中...";
   }
   return mode === "update" ? "シリーズを更新" : "シリーズを作成";
-};
-
-const padTwoDigits = (num: number) => String(num).padStart(2, "0");
-
-const toDateTimeLocalValue = (value: string): string => {
-  if (!value.trim()) {
-    return "";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return `${date.getFullYear()}-${padTwoDigits(date.getMonth() + 1)}-${padTwoDigits(date.getDate())}T${padTwoDigits(date.getHours())}:${padTwoDigits(date.getMinutes())}`;
 };
 
 interface CreatorFieldProps {
@@ -461,15 +449,18 @@ export const SeriesForm = ({
               <FieldLabel htmlFor="series_published_at">公開日時</FieldLabel>
               <FieldContent>
                 <Input
+                  // Wall clock shown in the admin display zone; the action
+                  // resolves it back against the same zone on submit.
                   defaultValue={toDateTimeLocalValue(
-                    initialSeries?.publishedAt ?? ""
+                    initialSeries?.publishedAt ?? "",
+                    DEFAULT_TIME_ZONE
                   )}
                   id="series_published_at"
                   name="published_at"
                   type="datetime-local"
                 />
                 <FieldDescription>
-                  空欄の場合は非公開です。日時を設定するとその時刻以降に公開されます。
+                  空欄の場合は非公開です。日時を設定するとその時刻以降（日本時間）に公開されます。
                 </FieldDescription>
               </FieldContent>
             </Field>

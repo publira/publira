@@ -1,5 +1,10 @@
 "use server";
 
+import {
+  DEFAULT_TIME_ZONE,
+  parseInstant,
+  toInstantIsoString,
+} from "@publira/utils";
 import { redirect } from "next/navigation";
 
 import { createEpisode, listEpisodes, reorderEpisodes } from "#lib/episode";
@@ -85,8 +90,11 @@ const toScheduledAt = (
     return { ok: true, value: "" };
   }
 
-  const parsed = new Date(publishAtRaw);
-  if (Number.isNaN(parsed.getTime())) {
+  // The form posts a `datetime-local` wall clock; read it in the admin UI's
+  // display zone instead of whatever zone the server process happens to run in.
+  const value = toInstantIsoString(publishAtRaw, DEFAULT_TIME_ZONE);
+  const parsed = parseInstant(value);
+  if (!parsed) {
     return {
       message: "publish_at の形式が正しくありません。",
       mode: "create",
@@ -94,7 +102,7 @@ const toScheduledAt = (
     };
   }
 
-  if (parsed.getTime() <= Date.now()) {
+  if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
     return {
       message: "publish_at は現在時刻より未来を指定してください。",
       mode: "create",
@@ -102,10 +110,7 @@ const toScheduledAt = (
     };
   }
 
-  return {
-    ok: true,
-    value: parsed.toISOString(),
-  };
+  return { ok: true, value };
 };
 
 export const createEpisodeAction = async (

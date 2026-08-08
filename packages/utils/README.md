@@ -5,7 +5,8 @@
 ## 提供物
 
 - `cn`: `clsx` + `tailwind-merge` を使った className 結合ヘルパー
-- `formatDateTime` / `toDateTimeLocalValue` / `fromDateTimeLocalValue`: テナントタイムゾーン対応の日時表示・`datetime-local` 相互変換（`Temporal` 前提）
+- `formatDateTime` / `formatDate` / `toDateTimeLocalValue` / `fromDateTimeLocalValue`: テナントタイムゾーン対応の日時・日付表示、`datetime-local` 相互変換（`Temporal` 前提）
+- `parseInstant` / `toInstantIsoString` / `startOfDayIsoString` / `endOfDayIsoString`: 絶対時刻のパース・比較、フォーム値の正規化、date-only フィルタの日境界
 
 ## 使い方
 
@@ -37,6 +38,30 @@ formatDateTime(iso, { timeZone: "America/Los_Angeles", fallback: "-" });
 const local = toDateTimeLocalValue(iso, tenantTimeZone); // "YYYY-MM-DDTHH:mm"
 const absolute = fromDateTimeLocalValue(local, tenantTimeZone); // "...Z"
 // fromDateTimeLocalValue は Z / オフセット / [IANA] 付き文字列を拒否する
+```
+
+### パース・比較・日境界
+
+```ts
+import {
+  endOfDayIsoString,
+  parseInstant,
+  startOfDayIsoString,
+  toInstantIsoString,
+} from "@publira/utils";
+
+// 比較・ソートは Instant で行う（getTime() の連鎖や文字列比較を使わない）
+const at = parseInstant(apiTimestamp); // Temporal.Instant | null
+if (at && Temporal.Instant.compare(at, Temporal.Now.instant()) <= 0) {
+  /* 過去 */
+}
+
+// server action の入力（絶対時刻でも datetime-local 壁時計でも受ける）
+toInstantIsoString(formValue, tenantTimeZone); // "...Z" / 解釈できなければ ""
+
+// date-only フィルタの日境界（UTC 決め打ちにしない）
+startOfDayIsoString("2024-03-10", tenantTimeZone); // その TZ の 00:00
+endOfDayIsoString("2024-03-10", tenantTimeZone); // 同日の終端（inclusive）
 ```
 
 ## ビルド

@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { formatDateTime } from "@publira/utils";
+import { formatDateTime, parseInstant } from "@publira/utils";
 import { useMemo } from "react";
 
 import type { SeriesListItem } from "../series-types";
@@ -51,17 +51,26 @@ export const SeriesManager = ({
   const sortedSeries = useMemo(
     () =>
       initialSeries.toSorted((a, b) => {
-        if (a.publishedAt && b.publishedAt) {
-          const publishedAtDiff =
-            new Date(b.publishedAt).getTime() -
-            new Date(a.publishedAt).getTime();
+        // Absolute-time ordering: the API may express the same instant with
+        // different offsets, so neither string nor local-`Date` comparison is safe.
+        const aPublishedAt = parseInstant(a.publishedAt);
+        const bPublishedAt = parseInstant(b.publishedAt);
+        if (aPublishedAt && bPublishedAt) {
+          const publishedAtDiff = Temporal.Instant.compare(
+            bPublishedAt,
+            aPublishedAt
+          );
           if (publishedAtDiff !== 0) {
             return publishedAtDiff;
           }
         }
 
-        if (a.publishedAt !== b.publishedAt) {
-          return a.publishedAt ? -1 : 1;
+        // "Has a publish date" beats "does not", decided on the parse result:
+        // keying this off the raw strings made two different spellings of the
+        // same instant return -1 in both directions, which is not a valid
+        // comparator.
+        if (Boolean(aPublishedAt) !== Boolean(bPublishedAt)) {
+          return aPublishedAt ? -1 : 1;
         }
 
         if (a.isPublished !== b.isPublished) {

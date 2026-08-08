@@ -1,3 +1,5 @@
+import { parseInstant } from "@publira/utils";
+
 import { listPublishedAuthors } from "./authors";
 import {
   getSeriesDetail,
@@ -44,15 +46,30 @@ interface CatalogTopDataOptions {
   seriesLimit?: number;
 }
 
-const toTimestamp = (value: string): number => {
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : 0;
+/**
+ * Newest first by absolute time. `Date.parse` would fall back to the host zone
+ * for zone-less values; unparseable timestamps sort last instead of silently
+ * becoming the epoch.
+ */
+const compareNewestFirst = (left: string, right: string): number => {
+  const leftAt = parseInstant(left);
+  const rightAt = parseInstant(right);
+  if (!(leftAt || rightAt)) {
+    return 0;
+  }
+  if (!leftAt) {
+    return 1;
+  }
+  if (!rightAt) {
+    return -1;
+  }
+  return Temporal.Instant.compare(rightAt, leftAt);
 };
 
 const byNewestDateDesc = (
   left: { publishedAt: string },
   right: { publishedAt: string }
-) => toTimestamp(right.publishedAt) - toTimestamp(left.publishedAt);
+) => compareNewestFirst(left.publishedAt, right.publishedAt);
 
 interface SeriesDetailRow {
   creatorNames: string[];
@@ -178,10 +195,8 @@ export const getCatalogTopUpdatedSeries = async (
         },
       ];
     })
-    .toSorted(
-      (left, right) =>
-        toTimestamp(right.latestPublishedAt) -
-        toTimestamp(left.latestPublishedAt)
+    .toSorted((left, right) =>
+      compareNewestFirst(left.latestPublishedAt, right.latestPublishedAt)
     )
     .slice(0, maxUpdatedSeries);
 };

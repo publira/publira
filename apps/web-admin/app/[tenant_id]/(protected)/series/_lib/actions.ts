@@ -1,40 +1,20 @@
 "use server";
 
+import { DEFAULT_TIME_ZONE, toInstantIsoString } from "@publira/utils";
 import { redirect } from "next/navigation";
 
 import { createSeries, updateSeries } from "#lib/series";
 
 import type { SeriesActionState } from "../series-types";
 
-const jstOffsetSuffix = "+09:00";
-
-const parsePublishedAt = (value: string): string => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const hasExplicitTimeZone = /(?:Z|[+-]\d{2}:\d{2})$/u.test(trimmed);
-  let normalized = "";
-  if (hasExplicitTimeZone) {
-    normalized = trimmed;
-  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u.test(trimmed)) {
-    normalized = `${trimmed}${jstOffsetSuffix}`;
-  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/u.test(trimmed)) {
-    normalized = `${trimmed}${jstOffsetSuffix}`;
-  }
-
-  if (!normalized) {
-    return "";
-  }
-
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-
-  return parsed.toISOString();
-};
+/**
+ * `published_at` arrives either as an absolute timestamp or as the zone-less
+ * wall clock of a `datetime-local` input. The wall clock is read in the admin
+ * UI's display zone (tenant zones land in #566 / #567) rather than being glued
+ * to a hardcoded `+09:00` or reinterpreted in the server's local zone.
+ */
+const parsePublishedAt = (value: string): string =>
+  toInstantIsoString(value, DEFAULT_TIME_ZONE);
 
 const parseCommonFields = async (formData: FormData) => {
   const tenantId = String(formData.get("tenant_id") ?? "").trim();

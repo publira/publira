@@ -1,28 +1,17 @@
+import { formatDateTime } from "@publira/utils";
+
 import type { PageItem, PageVersionItem } from "#lib/page";
 
 export type PageMutationMode = "create" | "update" | "draft";
 
-const pageDateTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  month: "2-digit",
-  timeZone: "UTC",
-  year: "numeric",
-});
-
-export const formatPageDateTime = (value: string): string => {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return pageDateTimeFormatter.format(date);
-};
+/**
+ * Page timestamps used to be formatted in UTC while every other admin screen
+ * used the display zone; they now go through the shared {@link formatDateTime}.
+ * Unparseable values still fall through as-is so a malformed API response stays
+ * visible instead of turning into a placeholder.
+ */
+export const formatPageDateTime = (value: string): string =>
+  value ? formatDateTime(value) : "-";
 
 /**
  * Canonical page slug for create/update forms and display.

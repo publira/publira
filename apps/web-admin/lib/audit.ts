@@ -1,3 +1,9 @@
+import {
+  DEFAULT_TIME_ZONE,
+  endOfDayIsoString,
+  startOfDayIsoString,
+} from "@publira/utils";
+
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -81,23 +87,21 @@ const mapErrorToMessage = (error: unknown): string => {
   return genericListErrorMessage;
 };
 
-const normalizeDateBoundary = (
-  value: string | undefined,
-  time: "00:00:00.000Z" | "23:59:59.999Z"
-): string => {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return "";
-  }
-  return new Date(`${trimmed}T${time}`).toISOString();
-};
+/**
+ * The `created_from` / `created_to` filters are date-only (`YYYY-MM-DD`) and the
+ * API wants RFC3339 instants, so the calendar day has to be pinned to a zone.
+ * Tenant time zones are not wired up yet (#566 / #567), so the admin UI's own
+ * display zone is used — never UTC, which would shift the day by nine hours
+ * relative to the day the operator picked.
+ */
+const auditFilterTimeZone = DEFAULT_TIME_ZONE;
 
 const normalizeDateStart = (value?: string): string =>
-  normalizeDateBoundary(value, "00:00:00.000Z");
+  startOfDayIsoString(value ?? "", auditFilterTimeZone);
 
 // Inclusive calendar-day end for date-only filters (was identical to start).
 const normalizeDateEnd = (value?: string): string =>
-  normalizeDateBoundary(value, "23:59:59.999Z");
+  endOfDayIsoString(value ?? "", auditFilterTimeZone);
 
 const mapAuditLog = (item: {
   action: string;

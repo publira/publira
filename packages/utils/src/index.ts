@@ -9,9 +9,14 @@
 export { cn } from "./cn";
 export {
   DEFAULT_TIME_ZONE,
+  endOfDayIsoString,
+  formatDate,
   formatDateTime,
   fromDateTimeLocalValue,
+  parseInstant,
+  startOfDayIsoString,
   toDateTimeLocalValue,
+  toInstantIsoString,
   type FormatDateTimeOptions,
   type ToDateTimeLocalOptions,
 } from "./format-date-time";

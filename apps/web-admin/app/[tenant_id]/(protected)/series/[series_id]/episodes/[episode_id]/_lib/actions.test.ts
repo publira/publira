@@ -78,12 +78,51 @@ describe("episode actions", () => {
 
     expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith({
       episodePublicId: "EP001",
-      publishAt: "2099-06-01T10:00:00.000Z",
+      publishAt: "2099-06-01T10:00:00Z",
       tenantId: "TENANT001",
     });
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001/episodes/EP001?schedule_updated=1"
     );
+  });
+
+  it("公開スケジュール更新: datetime-local の壁時計は JST として解釈する", async () => {
+    mockUpdateEpisodePublishSchedule.mockResolvedValueOnce({ ok: true });
+
+    const { updateEpisodeScheduleAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_public_id", "SERIES001");
+    formData.set("episode_public_id", "EP001");
+    // Zone-less wall clock, as posted by <input type="datetime-local">.
+    formData.set("publish_at", "2099-06-01T10:00");
+
+    await updateEpisodeScheduleAction(null, formData);
+
+    // JST (+09:00), never the server process's local zone.
+    expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith({
+      episodePublicId: "EP001",
+      publishAt: "2099-06-01T01:00:00Z",
+      tenantId: "TENANT001",
+    });
+  });
+
+  it("公開スケジュール更新: 日付のみの publish_at は形式エラーにする", async () => {
+    const { updateEpisodeScheduleAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_public_id", "SERIES001");
+    formData.set("episode_public_id", "EP001");
+    formData.set("publish_at", "2099-06-01");
+
+    const result = await updateEpisodeScheduleAction(null, formData);
+
+    expect(result).toEqual({
+      message: "publish_at の形式が正しくありません。",
+      mode: "schedule",
+      ok: false,
+    });
+    expect(mockUpdateEpisodePublishSchedule).not.toHaveBeenCalled();
   });
 
   it("ページ入稿: pages モードでファイル未選択ならエラーを返す", async () => {

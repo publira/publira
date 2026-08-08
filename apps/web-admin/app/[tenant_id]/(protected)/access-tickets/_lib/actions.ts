@@ -1,5 +1,6 @@
 "use server";
 
+import { parseInstant } from "@publira/utils";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -19,7 +20,8 @@ export const issueAccessTicketAction = async (
   const episodePublicId = String(
     formData.get("episode_public_id") ?? ""
   ).trim();
-  // Browser converts datetime-local to an offset-bearing ISO string on submit.
+  // The form already converted the datetime-local wall clock to an absolute
+  // instant, so anything without `Z` / an offset is rejected below.
   const expiresAt = String(formData.get("expires_at") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
@@ -43,14 +45,14 @@ export const issueAccessTicketAction = async (
   }
 
   if (expiresAt !== "") {
-    const parsed = new Date(expiresAt);
-    if (Number.isNaN(parsed.getTime())) {
+    const parsed = parseInstant(expiresAt);
+    if (!parsed) {
       return {
         message: "有効期限の形式が正しくありません。",
         ok: false,
       };
     }
-    if (parsed.getTime() <= Date.now()) {
+    if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
       return {
         message: "有効期限は未来の日時を指定してください。",
         ok: false,
