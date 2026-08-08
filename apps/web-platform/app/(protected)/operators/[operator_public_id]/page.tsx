@@ -13,7 +13,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
 import {
   getOperatorRoleCardDescription,
@@ -69,10 +78,10 @@ const OperatorDetailSkeleton = () => (
 );
 
 const OperatorDetailContent = async ({
-  operatorPublicId,
-}: {
-  operatorPublicId: string;
-}) => {
+  params,
+}: Pick<OperatorDetailPageProps, "params">) => {
+  const { operator_public_id: operatorPublicId } = await params;
+
   const [operator, currentOperator] = await Promise.all([
     getPlatformOperator(operatorPublicId),
     getPlatformCurrentOperator(),
@@ -91,132 +100,135 @@ const OperatorDetailContent = async ({
     isSuperAdmin && !isSelf && operator.status === "suspended";
 
   return (
-    <PlatformPage
-      actions={
-        <>
-          <LinkButton render={<Link href="/operators" />} variant="outline">
-            一覧へ戻る
-          </LinkButton>
-          {canUnsuspend ? (
-            <DangerConfirmButton
-              actionArg={operator.publicId}
-              actionCreator={unsuspendOperatorAction}
-              actionText="再有効化する"
-              actionVariant="default"
-              description="オペレーターを再有効化します。再有効化後はログインできるようになります。"
-              title="アカウントを再有効化しますか？"
-              triggerLabel="再有効化"
-              triggerVariant="outline"
-            />
-          ) : null}
-          {canSuspend ? (
-            <DangerConfirmButton
-              actionArg={operator.publicId}
-              actionCreator={suspendOperatorAction}
-              actionText="停止する"
-              description="停止中はログインできなくなります。再有効化することで元に戻せます。"
-              title="アカウントを停止しますか？"
-              triggerLabel="停止"
-              triggerVariant="outline"
-            />
-          ) : null}
-          {canModify ? (
-            <DangerConfirmButton
-              actionArg={operator.publicId}
-              actionCreator={deactivateOperatorAction}
-              actionText="無効化する"
-              description="無効化されたアカウントは永久に利用できなくなります。この操作は取り消せません。"
-              title="アカウントを無効化しますか？"
-              triggerLabel="無効化"
-            />
-          ) : null}
-        </>
-      }
-      description="オペレーターの基本情報を確認し、ロールの変更や無効化を行います。"
-      eyebrow="Platform Governance"
-      title={`オペレーター詳細: ${operator.name}`}
-    >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>基本情報</CardTitle>
-            <CardDescription>
-              オペレーターのアカウント情報と現在の状態を確認します。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-4">
-              <Field>
-                <FieldLabel>名前</FieldLabel>
-                <p className="text-sm">{operator.name}</p>
-              </Field>
-              <Field>
-                <FieldLabel>メールアドレス</FieldLabel>
-                <p className="text-sm">{operator.email}</p>
-              </Field>
-              <Field>
-                <FieldLabel>現在のロール</FieldLabel>
-                <p>
-                  <Badge tone="info">
-                    {getOperatorRoleLabel(operator.role)}
-                  </Badge>
-                </p>
-              </Field>
-              <Field>
-                <FieldLabel>状態</FieldLabel>
-                <p>
-                  <StatusChip
-                    status={
-                      operator.status === "active" ? "success" : "warning"
-                    }
-                  >
-                    {getOperatorStatusLabel(operator.status)}
-                  </StatusChip>
-                </p>
-              </Field>
-              <Field>
-                <FieldLabel>作成日時</FieldLabel>
-                <p className="text-sm">{operator.createdAt || "未設定"}</p>
-              </Field>
-              <Field>
-                <FieldLabel>最終ログイン</FieldLabel>
-                <p className="text-sm text-muted-foreground">未取得</p>
-              </Field>
-            </div>
-          </CardContent>
-        </Card>
-
-        {isDeactivated ? null : (
+    <PlatformPage>
+      <PlatformPageHeader>
+        <PlatformPageHeading>
+          <PlatformPageEyebrow>Platform Governance</PlatformPageEyebrow>
+          <PlatformPageTitle>{`オペレーター詳細: ${operator.name}`}</PlatformPageTitle>
+          <PlatformPageDescription>
+            オペレーターの基本情報を確認し、ロールの変更や無効化を行います。
+          </PlatformPageDescription>
+        </PlatformPageHeading>
+        <PlatformPageActions>
+          <>
+            <LinkButton render={<Link href="/operators" />} variant="outline">
+              一覧へ戻る
+            </LinkButton>
+            {canUnsuspend ? (
+              <DangerConfirmButton
+                actionArg={operator.publicId}
+                actionCreator={unsuspendOperatorAction}
+                actionText="再有効化する"
+                actionVariant="default"
+                description="オペレーターを再有効化します。再有効化後はログインできるようになります。"
+                title="アカウントを再有効化しますか？"
+                triggerLabel="再有効化"
+                triggerVariant="outline"
+              />
+            ) : null}
+            {canSuspend ? (
+              <DangerConfirmButton
+                actionArg={operator.publicId}
+                actionCreator={suspendOperatorAction}
+                actionText="停止する"
+                description="停止中はログインできなくなります。再有効化することで元に戻せます。"
+                title="アカウントを停止しますか？"
+                triggerLabel="停止"
+                triggerVariant="outline"
+              />
+            ) : null}
+            {canModify ? (
+              <DangerConfirmButton
+                actionArg={operator.publicId}
+                actionCreator={deactivateOperatorAction}
+                actionText="無効化する"
+                description="無効化されたアカウントは永久に利用できなくなります。この操作は取り消せません。"
+                title="アカウントを無効化しますか？"
+                triggerLabel="無効化"
+              />
+            ) : null}
+          </>
+        </PlatformPageActions>
+      </PlatformPageHeader>
+      <PlatformPageContent>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
           <Card>
             <CardHeader>
-              <CardTitle>ロール変更</CardTitle>
+              <CardTitle>基本情報</CardTitle>
               <CardDescription>
-                {getOperatorRoleCardDescription({ isSelf, isSuperAdmin })}
+                オペレーターのアカウント情報と現在の状態を確認します。
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <OperatorRoleForm
-                action={updateOperatorRoleAction}
-                currentRole={operator.role}
-                disabled={!canModify}
-                operatorPublicId={operator.publicId}
-              />
+            <CardContent className="grid gap-4">
+              <div className="grid gap-4">
+                <Field>
+                  <FieldLabel>名前</FieldLabel>
+                  <p className="text-sm">{operator.name}</p>
+                </Field>
+                <Field>
+                  <FieldLabel>メールアドレス</FieldLabel>
+                  <p className="text-sm">{operator.email}</p>
+                </Field>
+                <Field>
+                  <FieldLabel>現在のロール</FieldLabel>
+                  <p>
+                    <Badge tone="info">
+                      {getOperatorRoleLabel(operator.role)}
+                    </Badge>
+                  </p>
+                </Field>
+                <Field>
+                  <FieldLabel>状態</FieldLabel>
+                  <p>
+                    <StatusChip
+                      status={
+                        operator.status === "active" ? "success" : "warning"
+                      }
+                    >
+                      {getOperatorStatusLabel(operator.status)}
+                    </StatusChip>
+                  </p>
+                </Field>
+                <Field>
+                  <FieldLabel>作成日時</FieldLabel>
+                  <p className="text-sm">{operator.createdAt || "未設定"}</p>
+                </Field>
+                <Field>
+                  <FieldLabel>最終ログイン</FieldLabel>
+                  <p className="text-sm text-muted-foreground">未取得</p>
+                </Field>
+              </div>
             </CardContent>
           </Card>
-        )}
-      </div>
+
+          {isDeactivated ? null : (
+            <Card>
+              <CardHeader>
+                <CardTitle>ロール変更</CardTitle>
+                <CardDescription>
+                  {getOperatorRoleCardDescription({ isSelf, isSuperAdmin })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OperatorRoleForm
+                  action={updateOperatorRoleAction}
+                  currentRole={operator.role}
+                  disabled={!canModify}
+                  operatorPublicId={operator.publicId}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </PlatformPageContent>
     </PlatformPage>
   );
 };
 
-const OperatorDetailPage = async ({ params }: OperatorDetailPageProps) => {
-  const { operator_public_id: operatorPublicId } = await params;
-
-  return (
-    <Suspense fallback={<OperatorDetailSkeleton />}>
-      <OperatorDetailContent operatorPublicId={operatorPublicId} />
-    </Suspense>
-  );
-};
+const OperatorDetailPage = ({ params }: OperatorDetailPageProps) => (
+  <Suspense fallback={<OperatorDetailSkeleton />}>
+    <OperatorDetailContent params={params} />
+  </Suspense>
+);
 
 export default OperatorDetailPage;

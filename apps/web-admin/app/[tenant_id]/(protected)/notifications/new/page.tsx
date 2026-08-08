@@ -4,7 +4,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -43,18 +52,26 @@ const NotificationFormData = async () => {
 };
 
 const NewNotificationPage = () => (
-  <AdminPage
-    actions={
-      <LinkButton render={<Link href="/notifications" />} variant="outline">
-        一覧へ戻る
-      </LinkButton>
-    }
-    description="本文・リンク先・配信対象を指定して通知を配信します。"
-    title="通知を作成"
-  >
-    <Suspense fallback={<NotificationFormSkeleton />}>
-      <NotificationFormData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>通知を作成</AdminPageTitle>
+        <AdminPageDescription>
+          本文・リンク先・配信対象を指定して通知を配信します。
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/notifications" />} variant="outline">
+          一覧へ戻る
+        </LinkButton>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<NotificationFormSkeleton />}>
+        <NotificationFormData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

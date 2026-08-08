@@ -8,7 +8,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { listCreators } from "#lib/creator";
 import { listLabels } from "#lib/label";
@@ -51,14 +60,54 @@ interface EditSeriesPageProps {
   }>;
 }
 
+const resolveActiveTab = async (
+  searchParams: EditSeriesPageProps["searchParams"]
+): Promise<"basic" | "eye-catch"> => {
+  const { tab } = await searchParams;
+  return tab === "eye-catch" ? "eye-catch" : "basic";
+};
+
+const EditSeriesTitle = async ({
+  searchParams,
+}: Pick<EditSeriesPageProps, "searchParams">) => {
+  const activeTab = await resolveActiveTab(searchParams);
+  return activeTab === "eye-catch"
+    ? "シリーズのアイキャッチを編集"
+    : "シリーズを編集";
+};
+
+const EditSeriesDescription = async ({
+  searchParams,
+}: Pick<EditSeriesPageProps, "searchParams">) => {
+  const activeTab = await resolveActiveTab(searchParams);
+  return activeTab === "eye-catch"
+    ? "アイキャッチ画像の差し替え・削除を行います。"
+    : "タイトル・概要・公開設定などを編集します。";
+};
+
+const EditSeriesTabs = async ({
+  params,
+  searchParams,
+}: EditSeriesPageProps) => {
+  const [{ series_id: seriesId }, activeTab] = await Promise.all([
+    params,
+    resolveActiveTab(searchParams),
+  ]);
+  guardPlaceholder(seriesId);
+
+  return <SeriesTabNav current={activeTab} seriesId={seriesId} />;
+};
+
 const EditSeriesFormData = async ({
-  activeTab,
-  seriesId,
-}: {
-  activeTab: "basic" | "eye-catch";
-  seriesId: string;
-}) => {
-  const tenantId = await getTenantId();
+  params,
+  searchParams,
+}: EditSeriesPageProps) => {
+  const [{ series_id: seriesId }, activeTab, tenantId] = await Promise.all([
+    params,
+    resolveActiveTab(searchParams),
+    getTenantId(),
+  ]);
+  guardPlaceholder(seriesId);
   if (activeTab === "eye-catch") {
     const result = await getSeries({ publicId: seriesId, tenantId });
     if (!result.ok) {
@@ -116,45 +165,48 @@ const EditSeriesFormData = async ({
   );
 };
 
-const EditSeriesPage = async ({
-  params,
-  searchParams,
-}: EditSeriesPageProps) => {
-  const { series_id } = await params;
-  const { tab } = await searchParams;
+const TextLineSkeleton = ({ className }: { className: string }) => (
+  <span
+    aria-hidden
+    className={`inline-block animate-pulse rounded bg-muted align-middle ${className}`}
+  />
+);
 
-  guardPlaceholder(series_id);
-
-  const activeTab = tab === "eye-catch" ? "eye-catch" : "basic";
-  const pageTitle =
-    activeTab === "eye-catch"
-      ? "シリーズのアイキャッチを編集"
-      : "シリーズを編集";
-  const pageDescription =
-    activeTab === "eye-catch"
-      ? "アイキャッチ画像の差し替え・削除を行います。"
-      : "タイトル・概要・公開設定などを編集します。";
-
-  return (
-    <AdminPage
-      actions={
+const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>
+          <Suspense fallback={<TextLineSkeleton className="h-7 w-64" />}>
+            <EditSeriesTitle searchParams={searchParams} />
+          </Suspense>
+        </AdminPageTitle>
+        <AdminPageDescription>
+          <Suspense fallback={<TextLineSkeleton className="h-4 w-80" />}>
+            <EditSeriesDescription searchParams={searchParams} />
+          </Suspense>
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
         <LinkButton render={<Link href="/series" />} variant="outline">
           一覧へ戻る
         </LinkButton>
-      }
-      description={pageDescription}
-      title={pageTitle}
-    >
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
       <FlashToast title="シリーズを作成しました。" />
       <FlashToast keyName="updated" title="シリーズを更新しました。" />
       <div className="grid gap-6">
-        <SeriesTabNav current={activeTab} seriesId={series_id} />
+        <Suspense fallback={<TextLineSkeleton className="h-9 w-56" />}>
+          <EditSeriesTabs params={params} searchParams={searchParams} />
+        </Suspense>
         <Suspense fallback={<EditSeriesFormSkeleton />}>
-          <EditSeriesFormData activeTab={activeTab} seriesId={series_id} />
+          <EditSeriesFormData params={params} searchParams={searchParams} />
         </Suspense>
       </div>
-    </AdminPage>
-  );
-};
+    </AdminPageContent>
+  </AdminPage>
+);
 
 export default EditSeriesPage;

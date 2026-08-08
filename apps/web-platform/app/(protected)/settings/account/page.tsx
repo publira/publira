@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
 import { requestPlatformEmailChangeAction } from "../_lib/actions";
@@ -11,15 +19,22 @@ export const metadata: Metadata = {
 };
 
 const PlatformAccountSettingsPage = () => (
-  <PlatformPage
-    description="アカウント情報を管理します。"
-    eyebrow="Platform Settings"
-    title="設定"
-  >
-    <div className="grid gap-6">
-      <SettingsTabNav current="account" />
-      <EmailChangeForm action={requestPlatformEmailChangeAction} />
-    </div>
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Settings</PlatformPageEyebrow>
+        <PlatformPageTitle>設定</PlatformPageTitle>
+        <PlatformPageDescription>
+          アカウント情報を管理します。
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+    </PlatformPageHeader>
+    <PlatformPageContent>
+      <div className="grid gap-6">
+        <SettingsTabNav current="account" />
+        <EmailChangeForm action={requestPlatformEmailChangeAction} />
+      </div>
+    </PlatformPageContent>
   </PlatformPage>
 );
 

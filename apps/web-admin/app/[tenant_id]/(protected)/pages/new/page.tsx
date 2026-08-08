@@ -4,7 +4,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 
 import { PageForm } from "../_components/page-form";
 import { createPageAction } from "../_lib/actions";
@@ -31,18 +40,27 @@ const NewPageFormData = () => (
 );
 
 const NewPagePage = () => (
-  <AdminPage
-    actions={
-      <LinkButton render={<Link href="/pages" />} variant="outline">
-        一覧へ戻る
-      </LinkButton>
-    }
-    description="新しい固定ページを作成します。作成後は編集画面で Markdown と公開設定を管理できます。"
-    title="ページ新規作成"
-  >
-    <Suspense fallback={<PageFormSkeleton />}>
-      <NewPageFormData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>ページ新規作成</AdminPageTitle>
+        <AdminPageDescription>
+          新しい固定ページを作成します。作成後は編集画面で Markdown
+          と公開設定を管理できます。
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/pages" />} variant="outline">
+          一覧へ戻る
+        </LinkButton>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<PageFormSkeleton />}>
+        <NewPageFormData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

@@ -15,7 +15,16 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
@@ -69,7 +78,11 @@ const TenantDetailSkeleton = () => (
   </div>
 );
 
-const TenantDetailContent = async ({ tenantId }: { tenantId: string }) => {
+const TenantDetailContent = async ({
+  params,
+}: Pick<TenantDetailPageProps, "params">) => {
+  const { tenant_id: tenantId } = await params;
+
   const tenant = await getPlatformTenant(tenantId);
 
   if (!tenant) {
@@ -80,149 +93,162 @@ const TenantDetailContent = async ({ tenantId }: { tenantId: string }) => {
   const tenantStatusTone = getTenantStatusTone(tenant.status);
 
   return (
-    <PlatformPage
-      actions={
-        <>
-          <LinkButton render={<Link href="/tenants" />} variant="outline">
-            一覧へ戻る
-          </LinkButton>
-          <LinkButton
-            render={
-              <Link
-                href={`/audit-logs?tenant_id=${encodeURIComponent(tenant.publicId)}`}
-              />
-            }
-            variant="outline"
-          >
-            監査ログを確認
-          </LinkButton>
-          {tenant.status === "suspended" ? (
-            <form action={resumeTenantAction}>
-              <input name="tenant_id" type="hidden" value={tenant.publicId} />
-              <Button type="submit">再開する</Button>
-            </form>
-          ) : (
-            <form action={suspendTenantAction}>
-              <input name="tenant_id" type="hidden" value={tenant.publicId} />
-              <Button type="submit" variant="destructive">
-                停止する
-              </Button>
-            </form>
-          )}
-        </>
-      }
-      description="テナントの基本情報とドメイン設定を管理します。"
-      eyebrow="Platform Tenants"
-      title={`テナント詳細: ${tenant.name}`}
-    >
-      <div className="grid gap-6">
-        <TenantSectionNav current="detail" tenantId={tenant.publicId} />
-
+    <PlatformPage>
+      <PlatformPageHeader>
+        <PlatformPageHeading>
+          <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
+          <PlatformPageTitle>{`テナント詳細: ${tenant.name}`}</PlatformPageTitle>
+          <PlatformPageDescription>
+            テナントの基本情報とドメイン設定を管理します。
+          </PlatformPageDescription>
+        </PlatformPageHeading>
+        <PlatformPageActions>
+          <>
+            <LinkButton render={<Link href="/tenants" />} variant="outline">
+              一覧へ戻る
+            </LinkButton>
+            <LinkButton
+              render={
+                <Link
+                  href={`/audit-logs?tenant_id=${encodeURIComponent(tenant.publicId)}`}
+                />
+              }
+              variant="outline"
+            >
+              監査ログを確認
+            </LinkButton>
+            {tenant.status === "suspended" ? (
+              <form action={resumeTenantAction}>
+                <input name="tenant_id" type="hidden" value={tenant.publicId} />
+                <Button type="submit">再開する</Button>
+              </form>
+            ) : (
+              <form action={suspendTenantAction}>
+                <input name="tenant_id" type="hidden" value={tenant.publicId} />
+                <Button type="submit" variant="destructive">
+                  停止する
+                </Button>
+              </form>
+            )}
+          </>
+        </PlatformPageActions>
+      </PlatformPageHeader>
+      <PlatformPageContent>
         <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>基本情報</CardTitle>
-              <CardDescription>
-                テナントの表示名と現在の状態を管理します。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <TenantUpdateForm action={updateTenantNameAction}>
-                <input name="tenant_id" type="hidden" value={tenant.publicId} />
-                <input
-                  name="tenant_current_domain"
-                  type="hidden"
-                  value={tenant.domain}
-                />
-                <div className="grid gap-4">
-                  <Field>
-                    <FieldLabel required>テナント名</FieldLabel>
-                    <Input
-                      key={tenant.name}
-                      defaultValue={tenant.name}
-                      name="tenant_name"
-                      required
-                      type="text"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel>作成日時</FieldLabel>
-                    <p className="text-sm">{tenant.createdAt || "未設定"}</p>
-                  </Field>
-                  <Field>
-                    <FieldLabel>ステータス</FieldLabel>
-                    <p>
-                      <Badge tone={tenantStatusTone}>{tenantStatusLabel}</Badge>
-                    </p>
-                  </Field>
-                </div>
-              </TenantUpdateForm>
-            </CardContent>
-          </Card>
+          <TenantSectionNav current="detail" tenantId={tenant.publicId} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>ドメイン設定</CardTitle>
-              <CardDescription>
-                テナントのドメイン設定を確認します。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <TenantDomainCautions mode="update" />
-              <TenantUpdateForm action={updateTenantDomainAction}>
-                <input name="tenant_id" type="hidden" value={tenant.publicId} />
-                <input
-                  name="tenant_current_name"
-                  type="hidden"
-                  value={tenant.name}
-                />
-                <div className="grid gap-4">
-                  <Field>
-                    <FieldLabel required>ドメイン</FieldLabel>
-                    <Input
-                      key={tenant.domain}
-                      defaultValue={tenant.domain}
-                      id="tenant_domain"
-                      name="tenant_domain"
-                      placeholder="tenant-example.example.com"
-                      required
-                      type="text"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel>管理画面ドメイン</FieldLabel>
-                    <Input
-                      key={tenant.adminDomain}
-                      defaultValue={tenant.adminDomain}
-                      id="tenant_admin_domain"
-                      name="tenant_admin_domain"
-                      placeholder={`admin.${tenant.domain}`}
-                      type="text"
-                    />
-                    <AdminDomainPreview
-                      adminDomain={tenant.adminDomain}
-                      domain={tenant.domain}
-                      showCurrentDomain
-                    />
-                  </Field>
-                </div>
-              </TenantUpdateForm>
-            </CardContent>
-          </Card>
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>基本情報</CardTitle>
+                <CardDescription>
+                  テナントの表示名と現在の状態を管理します。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <TenantUpdateForm action={updateTenantNameAction}>
+                  <input
+                    name="tenant_id"
+                    type="hidden"
+                    value={tenant.publicId}
+                  />
+                  <input
+                    name="tenant_current_domain"
+                    type="hidden"
+                    value={tenant.domain}
+                  />
+                  <div className="grid gap-4">
+                    <Field>
+                      <FieldLabel required>テナント名</FieldLabel>
+                      <Input
+                        key={tenant.name}
+                        defaultValue={tenant.name}
+                        name="tenant_name"
+                        required
+                        type="text"
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel>作成日時</FieldLabel>
+                      <p className="text-sm">{tenant.createdAt || "未設定"}</p>
+                    </Field>
+                    <Field>
+                      <FieldLabel>ステータス</FieldLabel>
+                      <p>
+                        <Badge tone={tenantStatusTone}>
+                          {tenantStatusLabel}
+                        </Badge>
+                      </p>
+                    </Field>
+                  </div>
+                </TenantUpdateForm>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>ドメイン設定</CardTitle>
+                <CardDescription>
+                  テナントのドメイン設定を確認します。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <TenantDomainCautions mode="update" />
+                <TenantUpdateForm action={updateTenantDomainAction}>
+                  <input
+                    name="tenant_id"
+                    type="hidden"
+                    value={tenant.publicId}
+                  />
+                  <input
+                    name="tenant_current_name"
+                    type="hidden"
+                    value={tenant.name}
+                  />
+                  <div className="grid gap-4">
+                    <Field>
+                      <FieldLabel required>ドメイン</FieldLabel>
+                      <Input
+                        key={tenant.domain}
+                        defaultValue={tenant.domain}
+                        id="tenant_domain"
+                        name="tenant_domain"
+                        placeholder="tenant-example.example.com"
+                        required
+                        type="text"
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel>管理画面ドメイン</FieldLabel>
+                      <Input
+                        key={tenant.adminDomain}
+                        defaultValue={tenant.adminDomain}
+                        id="tenant_admin_domain"
+                        name="tenant_admin_domain"
+                        placeholder={`admin.${tenant.domain}`}
+                        type="text"
+                      />
+                      <AdminDomainPreview
+                        adminDomain={tenant.adminDomain}
+                        domain={tenant.domain}
+                        showCurrentDomain
+                      />
+                    </Field>
+                  </div>
+                </TenantUpdateForm>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      </PlatformPageContent>
     </PlatformPage>
   );
 };
 
-const TenantDetailPage = async ({ params }: TenantDetailPageProps) => {
-  const { tenant_id: tenantId } = await params;
-
-  return (
-    <Suspense fallback={<TenantDetailSkeleton />}>
-      <TenantDetailContent tenantId={tenantId} />
-    </Suspense>
-  );
-};
+const TenantDetailPage = ({ params }: TenantDetailPageProps) => (
+  <Suspense fallback={<TenantDetailSkeleton />}>
+    <TenantDetailContent params={params} />
+  </Suspense>
+);
 
 export default TenantDetailPage;

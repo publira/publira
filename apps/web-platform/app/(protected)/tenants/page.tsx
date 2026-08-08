@@ -22,7 +22,16 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { listPlatformTenants } from "#lib/tenants";
 
@@ -62,12 +71,12 @@ interface TenantsPageProps {
 }
 
 const TenantsContent = async ({
-  nameFilter,
-  statusFilter,
-}: {
-  nameFilter: string;
-  statusFilter: string;
-}) => {
+  searchParams,
+}: Pick<TenantsPageProps, "searchParams">) => {
+  const params = await searchParams;
+  const nameFilter = params.name?.trim() ?? "";
+  const statusFilter = params.status?.trim() ?? "";
+
   const result = await listPlatformTenants({
     name: nameFilter || undefined,
     status: statusFilter || undefined,
@@ -176,27 +185,28 @@ const TenantsContent = async ({
   );
 };
 
-const TenantsPage = async ({ searchParams }: TenantsPageProps) => {
-  const params = await searchParams;
-  const nameFilter = params.name?.trim() ?? "";
-  const statusFilter = params.status?.trim() ?? "";
-
-  return (
-    <PlatformPage
-      actions={
+const TenantsPage = ({ searchParams }: TenantsPageProps) => (
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
+        <PlatformPageTitle>テナント一覧</PlatformPageTitle>
+        <PlatformPageDescription>
+          プラットフォーム運営者が横断でテナントの状態を確認し、詳細画面へ遷移するための起点です。
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+      <PlatformPageActions>
         <LinkButton render={<Link href="/tenants/new" />}>
           新規テナント作成
         </LinkButton>
-      }
-      description="プラットフォーム運営者が横断でテナントの状態を確認し、詳細画面へ遷移するための起点です。"
-      eyebrow="Platform Tenants"
-      title="テナント一覧"
-    >
+      </PlatformPageActions>
+    </PlatformPageHeader>
+    <PlatformPageContent>
       <Suspense fallback={<TenantsTableSkeleton />}>
-        <TenantsContent nameFilter={nameFilter} statusFilter={statusFilter} />
+        <TenantsContent searchParams={searchParams} />
       </Suspense>
-    </PlatformPage>
-  );
-};
+    </PlatformPageContent>
+  </PlatformPage>
+);
 
 export default TenantsPage;

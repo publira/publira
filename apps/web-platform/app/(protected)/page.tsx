@@ -20,7 +20,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import { getAuditActionLabel } from "#lib/audit-log-labels";
 import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type {
@@ -329,24 +338,31 @@ const DashboardContent = async () => {
 };
 
 const Page = () => (
-  <PlatformPage
-    actions={
-      <>
-        <LinkButton render={<Link href="/audit-logs" />} variant="outline">
-          監査ログを見る
-        </LinkButton>
-        <LinkButton render={<Link href="/tenants" />}>
-          テナント一覧へ
-        </LinkButton>
-      </>
-    }
-    description="プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。"
-    eyebrow="Platform Dashboard"
-    title="横断オペレーションの基準点"
-  >
-    <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardContent />
-    </Suspense>
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Dashboard</PlatformPageEyebrow>
+        <PlatformPageTitle>横断オペレーションの基準点</PlatformPageTitle>
+        <PlatformPageDescription>
+          プラットフォーム全体のテナント状態、保留件数、直近イベントを最初に確認するためのダッシュボードです。
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+      <PlatformPageActions>
+        <>
+          <LinkButton render={<Link href="/audit-logs" />} variant="outline">
+            監査ログを見る
+          </LinkButton>
+          <LinkButton render={<Link href="/tenants" />}>
+            テナント一覧へ
+          </LinkButton>
+        </>
+      </PlatformPageActions>
+    </PlatformPageHeader>
+    <PlatformPageContent>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent />
+      </Suspense>
+    </PlatformPageContent>
   </PlatformPage>
 );
 

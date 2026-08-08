@@ -4,7 +4,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { listCreators } from "#lib/creator";
 import { listLabels } from "#lib/label";
 import { listSeries } from "#lib/series";
@@ -55,17 +63,23 @@ const NewSeriesFormData = async () => {
 };
 
 const NewSeriesPage = () => (
-  <AdminPage
-    actions={
-      <LinkButton render={<Link href="/series" />} variant="outline">
-        一覧へ戻る
-      </LinkButton>
-    }
-    title="シリーズを新規作成"
-  >
-    <Suspense fallback={<NewSeriesFormSkeleton />}>
-      <NewSeriesFormData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>シリーズを新規作成</AdminPageTitle>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/series" />} variant="outline">
+          一覧へ戻る
+        </LinkButton>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<NewSeriesFormSkeleton />}>
+        <NewSeriesFormData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

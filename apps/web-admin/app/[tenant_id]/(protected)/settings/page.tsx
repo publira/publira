@@ -2,7 +2,15 @@ import { EmptyState } from "@publira/ui-components/empty-state";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 import { getTenantSiteSettings } from "#lib/site-settings";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -24,31 +32,47 @@ const SettingsPage = async () => {
 
   if (!settingsResult.ok) {
     return (
-      <AdminPage
-        description="テナントごとの公開表示設定を管理します。"
-        title="設定"
-      >
-        <EmptyState
-          description={settingsResult.message}
-          title="設定を読み込めませんでした"
-        />
+      <AdminPage>
+        <AdminPageHeader>
+          <AdminPageHeading>
+            <AdminPageEyebrow>Console</AdminPageEyebrow>
+            <AdminPageTitle>設定</AdminPageTitle>
+            <AdminPageDescription>
+              テナントごとの公開表示設定を管理します。
+            </AdminPageDescription>
+          </AdminPageHeading>
+        </AdminPageHeader>
+        <AdminPageContent>
+          <EmptyState
+            description={settingsResult.message}
+            title="設定を読み込めませんでした"
+          />
+        </AdminPageContent>
       </AdminPage>
     );
   }
 
   return (
-    <AdminPage
-      description="テナントごとの公開表示設定を管理します。"
-      title="設定"
-    >
-      <div className="grid gap-6">
-        <SettingsTabNav current="basic" />
+    <AdminPage>
+      <AdminPageHeader>
+        <AdminPageHeading>
+          <AdminPageEyebrow>Console</AdminPageEyebrow>
+          <AdminPageTitle>設定</AdminPageTitle>
+          <AdminPageDescription>
+            テナントごとの公開表示設定を管理します。
+          </AdminPageDescription>
+        </AdminPageHeading>
+      </AdminPageHeader>
+      <AdminPageContent>
+        <div className="grid gap-6">
+          <SettingsTabNav current="basic" />
 
-        <SiteSettingsForm
-          action={updateSiteSettingsAction}
-          initialSettings={settingsResult.settings}
-        />
-      </div>
+          <SiteSettingsForm
+            action={updateSiteSettingsAction}
+            initialSettings={settingsResult.settings}
+          />
+        </div>
+      </AdminPageContent>
     </AdminPage>
   );
 };

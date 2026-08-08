@@ -4,7 +4,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminPage } from "#components/admin-page";
+import {
+  AdminPage,
+  AdminPageActions,
+  AdminPageContent,
+  AdminPageDescription,
+  AdminPageEyebrow,
+  AdminPageHeader,
+  AdminPageHeading,
+  AdminPageTitle,
+} from "#components/admin-page";
 
 import { LabelForm } from "../_components/label-form";
 import { createLabelAction } from "../_lib/actions";
@@ -30,18 +39,26 @@ const NewLabelFormData = () => (
 );
 
 const NewLabelPage = () => (
-  <AdminPage
-    actions={
-      <LinkButton render={<Link href="/labels" />} variant="outline">
-        一覧へ戻る
-      </LinkButton>
-    }
-    description="新しいレーベルを登録します。"
-    title="レーベル新規作成"
-  >
-    <Suspense fallback={<NewLabelFormSkeleton />}>
-      <NewLabelFormData />
-    </Suspense>
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>レーベル新規作成</AdminPageTitle>
+        <AdminPageDescription>
+          新しいレーベルを登録します。
+        </AdminPageDescription>
+      </AdminPageHeading>
+      <AdminPageActions>
+        <LinkButton render={<Link href="/labels" />} variant="outline">
+          一覧へ戻る
+        </LinkButton>
+      </AdminPageActions>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <Suspense fallback={<NewLabelFormSkeleton />}>
+        <NewLabelFormData />
+      </Suspense>
+    </AdminPageContent>
   </AdminPage>
 );
 

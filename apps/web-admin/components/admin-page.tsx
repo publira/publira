@@ -1,2 +1,10 @@
-export { ConsolePage as AdminPage } from "@publira/layouts/admin";
-export type { ConsolePageProps as AdminPageProps } from "@publira/layouts/admin";
+export {
+  ConsolePage as AdminPage,
+  ConsolePageActions as AdminPageActions,
+  ConsolePageContent as AdminPageContent,
+  ConsolePageDescription as AdminPageDescription,
+  ConsolePageEyebrow as AdminPageEyebrow,
+  ConsolePageHeader as AdminPageHeader,
+  ConsolePageHeading as AdminPageHeading,
+  ConsolePageTitle as AdminPageTitle,
+} from "@publira/layouts/admin";

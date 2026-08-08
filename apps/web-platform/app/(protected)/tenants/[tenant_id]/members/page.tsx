@@ -5,7 +5,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PlatformPage } from "#components/platform-page";
+import {
+  PlatformPage,
+  PlatformPageActions,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
 import {
   getPlatformTenant,
   listPlatformTenantAdminInvitations,
@@ -51,7 +60,11 @@ const TenantMembersSkeleton = () => (
   </div>
 );
 
-const TenantMembersContent = async ({ tenantId }: { tenantId: string }) => {
+const TenantMembersContent = async ({
+  params,
+}: Pick<TenantMembersPageProps, "params">) => {
+  const { tenant_id: tenantId } = await params;
+
   const [tenant, members, invitations] = await Promise.all([
     getPlatformTenant(tenantId),
     listPlatformTenantMembers(tenantId),
@@ -63,43 +76,46 @@ const TenantMembersContent = async ({ tenantId }: { tenantId: string }) => {
   }
 
   return (
-    <PlatformPage
-      actions={
-        <LinkButton render={<Link href="/tenants" />} variant="outline">
-          一覧へ戻る
-        </LinkButton>
-      }
-      description="テナントメンバーの追加、ロール変更、削除を行います。"
-      eyebrow="Platform Tenants"
-      title={`メンバー管理: ${tenant.name}`}
-    >
-      <div className="grid gap-6">
-        <TenantSectionNav current="members" tenantId={tenant.publicId} />
+    <PlatformPage>
+      <PlatformPageHeader>
+        <PlatformPageHeading>
+          <PlatformPageEyebrow>Platform Tenants</PlatformPageEyebrow>
+          <PlatformPageTitle>{`メンバー管理: ${tenant.name}`}</PlatformPageTitle>
+          <PlatformPageDescription>
+            テナントメンバーの追加、ロール変更、削除を行います。
+          </PlatformPageDescription>
+        </PlatformPageHeading>
+        <PlatformPageActions>
+          <LinkButton render={<Link href="/tenants" />} variant="outline">
+            一覧へ戻る
+          </LinkButton>
+        </PlatformPageActions>
+      </PlatformPageHeader>
+      <PlatformPageContent>
+        <div className="grid gap-6">
+          <TenantSectionNav current="members" tenantId={tenant.publicId} />
 
-        <TenantMembersManager
-          addAction={addTenantMemberAction}
-          cancelInvitationAction={cancelTenantAdminInvitationAction}
-          createInvitationAction={createTenantAdminInvitationAction}
-          invitations={invitations}
-          members={members}
-          removeAction={removeTenantMemberAction}
-          resendInvitationAction={resendTenantAdminInvitationAction}
-          tenantId={tenant.publicId}
-          updateRoleAction={updateTenantMemberRoleAction}
-        />
-      </div>
+          <TenantMembersManager
+            addAction={addTenantMemberAction}
+            cancelInvitationAction={cancelTenantAdminInvitationAction}
+            createInvitationAction={createTenantAdminInvitationAction}
+            invitations={invitations}
+            members={members}
+            removeAction={removeTenantMemberAction}
+            resendInvitationAction={resendTenantAdminInvitationAction}
+            tenantId={tenant.publicId}
+            updateRoleAction={updateTenantMemberRoleAction}
+          />
+        </div>
+      </PlatformPageContent>
     </PlatformPage>
   );
 };
 
-const TenantMembersPage = async ({ params }: TenantMembersPageProps) => {
-  const { tenant_id: tenantId } = await params;
-
-  return (
-    <Suspense fallback={<TenantMembersSkeleton />}>
-      <TenantMembersContent tenantId={tenantId} />
-    </Suspense>
-  );
-};
+const TenantMembersPage = ({ params }: TenantMembersPageProps) => (
+  <Suspense fallback={<TenantMembersSkeleton />}>
+    <TenantMembersContent params={params} />
+  </Suspense>
+);
 
 export default TenantMembersPage;

@@ -206,32 +206,51 @@ const EpisodeDetailData = async (
   );
 };
 
-const Page = async (
-  props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
+/** Breadcrumb link needs `series_id`, so it streams instead of blocking the shell. */
+const SeriesBreadcrumbLink = async (
+  props: Pick<
+    PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">,
+    "params"
+  >
 ) => {
   const { series_id } = await props.params;
   guardPlaceholders({ series_id });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <nav className="mb-8 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        <Link className="underline-offset-4 hover:underline" href="/series">
-          シリーズ一覧
-        </Link>
-        <span>／</span>
-        <Link
-          className="underline-offset-4 hover:underline"
-          href={`/series/${series_id}`}
-        >
-          シリーズ詳細
-        </Link>
-      </nav>
-
-      <Suspense fallback={<EpisodeDetailSkeleton />}>
-        <EpisodeDetailData {...props} />
-      </Suspense>
-    </main>
+    <Link
+      className="underline-offset-4 hover:underline"
+      href={`/series/${series_id}`}
+    >
+      シリーズ詳細
+    </Link>
   );
 };
+
+const Page = (
+  props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
+) => (
+  <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <nav className="mb-8 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+      <Link className="underline-offset-4 hover:underline" href="/series">
+        シリーズ一覧
+      </Link>
+      <span>／</span>
+      <Suspense
+        fallback={
+          <span
+            aria-hidden
+            className="inline-block h-4 w-20 animate-pulse rounded bg-muted"
+          />
+        }
+      >
+        <SeriesBreadcrumbLink params={props.params} />
+      </Suspense>
+    </nav>
+
+    <Suspense fallback={<EpisodeDetailSkeleton />}>
+      <EpisodeDetailData {...props} />
+    </Suspense>
+  </main>
+);
 
 export default Page;
