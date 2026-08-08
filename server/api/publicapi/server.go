@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
@@ -76,20 +77,9 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, e
 		tokens:    auth.MustTokenManagerFromEnv(),
 	}
 	mux := http.NewServeMux()
-	registerHealthz(mux)
+	health.Register(mux, health.WithDB(db))
 	registerPublicRoutes(mux, server)
 	return mux
-}
-
-func registerHealthz(mux *http.ServeMux) {
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
 }
 
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {

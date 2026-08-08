@@ -165,4 +165,12 @@ ALTER ROLE publira_public   PASSWORD '<secure_password>';
 
 - AuthService を使うには、最低限 `tenants` と `users` のデータが必要です。
 - `users.password_hash` は `bcrypt` ハッシュを利用してください。
-- API 起動確認は `GET /healthz` を利用してください。
+- ヘルス確認（API / image-server / Web アプリ共通）:
+  - `GET /livez` — プロセス生存確認（liveness）。常に `200` + plain `ok`。K8s livenessProbe 向け。
+  - `GET /readyz` — 依存の readiness。正常時 `200`、異常時 `503`。K8s readinessProbe / ロードバランサ向け。
+  - API / image-server: 最低限 DB `Ping`
+  - Web (`web-admin` / `web-host` / `web-platform`): 上流 API `/readyz` + Redis（`REDIS_URL` 無効時は Redis チェックをスキップ）
+  - `/readyz` 応答例（JSON）:
+    - 正常: `{"status":"ok","checks":{"db":{"status":"ok"}}}`
+    - 依存障害: `{"status":"unavailable","checks":{"db":{"status":"error","error":"..."}}}`（HTTP 503）
+    - 起動直後ゲート未開放: `{"status":"starting","checks":{...}}`（HTTP 503）

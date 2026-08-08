@@ -14,6 +14,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/requestmeta"
 )
 
@@ -56,7 +57,7 @@ type Handler struct {
 	tokens          *auth.TokenManager
 }
 
-func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger) http.Handler {
+func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB) http.Handler {
 	h := &Handler{
 		resolverQuerier: resolver,
 		tenantFactory:   tenantFactory,
@@ -65,18 +66,12 @@ func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 		tokens:          auth.MustTokenManagerFromEnv(),
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", h.handleHealthz)
+	health.Register(mux, health.WithDB(db))
 	mux.HandleFunc("GET /images/creators/{media_id}", h.handleGetCreatorImage)
 	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
 	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)
 	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
 	return mux
-}
-
-func (h *Handler) handleHealthz(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
 }
 
 func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) {

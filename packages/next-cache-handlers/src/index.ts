@@ -9,6 +9,7 @@ export {
   type IncrementalCacheHandlerValue,
   type IncrementalSetContext,
 } from "./incremental-cache-handler";
+export { checkRedisReady } from "./ready-check";
 export {
   getRedisClient,
   resetRedisClientsForTests,

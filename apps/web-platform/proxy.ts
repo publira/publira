@@ -1,3 +1,4 @@
+import { isHealthProbePath } from "@publira/utils";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -7,9 +8,10 @@ import { isSetupCompleted } from "./lib/setup";
 const PUBLIC_PATHS = new Set([
   "/confirm-email",
   "/confirm-password",
+  "/livez",
   "/login",
   "/logout",
-  "/healthz",
+  "/readyz",
   "/reset-password",
   "/reset-password/requested",
   "/setup",
@@ -18,8 +20,8 @@ const PUBLIC_PATHS = new Set([
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
-  // Liveness must not depend on backend availability (same as web-host / web-admin).
-  if (pathname === "/healthz") {
+  // Probes must not depend on setup state or backend availability.
+  if (isHealthProbePath(pathname)) {
     return NextResponse.next();
   }
 

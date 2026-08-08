@@ -13,6 +13,8 @@ describe("isReservedTopLevelSegment", () => {
     expect(isReservedTopLevelSegment("page")).toBe(true);
     expect(isReservedTopLevelSegment("api")).toBe(true);
     expect(isReservedTopLevelSegment("theme.css")).toBe(true);
+    expect(isReservedTopLevelSegment("livez")).toBe(true);
+    expect(isReservedTopLevelSegment("readyz")).toBe(true);
   });
 
   it("コンテンツ用 slug は予約ではない", () => {
