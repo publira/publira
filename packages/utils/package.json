@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "@publira/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
     "next": "catalog:",
     "temporal-polyfill": "catalog:",
     "tsdown": "catalog:",
