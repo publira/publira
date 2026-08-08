@@ -21,6 +21,7 @@ Docker イメージの配置規約・ビルド手順・Docker 固有のトリア
 | `Test / DB Migrations` | 空 Postgres に対する `migrate up` → `down -all` → `up` | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`（ビルド → readiness → Playwright → teardown） | [`e2e/README.md`](../../e2e/README.md) |
+| `Test / Bootstrap` | `task e2e:bootstrap`（空 volume → `task setup` → DB 再起動 → `task dev`） | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Build` | `pnpm build`（Web）・`task server:build`（Go） | 本ファイル |
 | `Docker / <target>` | `task docker:build:*`（web は続けて `task docker:smoke:web`） | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | 全ジョブの結果を集約する最終ジョブ | 本ファイル |
@@ -32,10 +33,10 @@ Branch ruleset が要求する必須チェックは最終集約ジョブ **`Summ
 | トリガ | ホスト CI | Docker |
 | --- | --- | --- |
 | `pull_request`（main 宛て） / `push`（main） | path filter で該当ジョブのみ | 変更ロールの代表のみ（`docker_core` に触れた場合は全ターゲット） |
-| `schedule`（毎日 03:00 UTC） | スキップ | 全ターゲット（Nightly フル） |
+| `schedule`（毎日 03:00 UTC） | `Test / Bootstrap` のみ | 全ターゲット（Nightly フル） |
 | `workflow_dispatch` | 全ジョブ実行 | 入力 `docker_mode` で `verify`（代表）/ `full`（全ターゲット）を選択 |
 
-Nightly フルは path filter で拾えないサービス横断のドリフトを検出するためのもので、ホスト CI は回さない。
+Nightly フルは path filter で拾えないサービス横断のドリフトを検出するためのもので、ホスト CI は `Test / Bootstrap` を除き回さない。`Test / Bootstrap` だけは例外で、path filter を構成系の path に絞っているぶん、通常の `server/` / `apps/` 変更由来の開発環境ドリフトを Nightly で拾う。
 
 ## path filter
 
@@ -51,6 +52,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
 | `Test / E2E` | `e2e/**`, `apps/web-host/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
+| `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `server/cmd/**`, `server/Taskfile.yaml`, `apps/*/package.json`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Build` | `apps/**`, `packages/**`, `server/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Docker`（ロール別） | [`infra/docker/README.md`](../../infra/docker/README.md) の「変更検知のロール対応」 |
 
@@ -94,7 +96,7 @@ fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
 
 ### テストを分割している理由
 
-Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
+Go / TypeScript / DB migration / Mobile / E2E / Bootstrap は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
 
 `sqlc diff` は、`sqlc.yaml` の `schema` 設定が指すスキーマファイル（`db/migrations/`）と `queries`（`db/query/`）を読んで生成結果との差分を検証する codegen チェックであり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
 
@@ -126,6 +128,7 @@ Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片
    - `Test / DB Migrations` → `db/migrations/00000000000000_baseline.{up,down}.sql` の SQL（`up` / `down -all` / `up` の往復）
    - `Test / Mobile` → `task mobile:check`（format / analyze / test）
    - `Test / E2E` → readiness 失敗かテスト失敗か（artifact `e2e-artifacts`）
+   - `Test / Bootstrap` → どの phase で落ちたか（artifact `bootstrap-artifacts`）
    - `Build` → `pnpm build` / `go build`
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
 2. **ローカルで同じコマンドを再現する**
@@ -138,6 +141,7 @@ Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片
    | `Test / DB Migrations` | `task db:reset`（`drop` → `migrate` → `seed`）。`down` 単体は `task db:rollback` |
    | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） |
    | `Test / E2E` | `task e2e`（常に teardown する） |
+   | `Test / Bootstrap` | `task e2e:bootstrap`（常に teardown する。`task dev` を止められないときは `BOOTSTRAP_SKIP_DEV=1`） |
    | `Build` | `pnpm build` / `task server:build` |
    | `Docker / <target>` | CI ログの `task docker:build:…` 行をそのまま実行、または `task docker:verify` |
 

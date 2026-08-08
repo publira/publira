@@ -4,7 +4,8 @@
 #
 # Inputs (env):
 #   EVENT_NAME, DOCKER_MODE_INPUT
-#   FILTER_CHECK, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_E2E, FILTER_BUILD
+#   FILTER_CHECK, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_E2E,
+#   FILTER_TEST_BOOTSTRAP, FILTER_BUILD
 #   FILTER_DOCKER_WEB, FILTER_DOCKER_API, FILTER_DOCKER_BATCH, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
 set -euo pipefail
@@ -60,12 +61,16 @@ test_ts=false
 test_db_migrations=false
 test_mobile=false
 test_e2e=false
+test_bootstrap=false
 build=false
 matrix_items=()
 
 case "${event}" in
   schedule)
-    # Nightly: Docker full matrix only.
+    # Nightly: Docker full matrix, plus the bootstrap check. Its path filter is
+    # deliberately narrow (config paths), so a nightly run is what catches dev
+    # environment drift coming from ordinary server/ or apps/ changes.
+    test_bootstrap=true
     matrix_items=(
       "${full_web_host}"
       "${full_web_admin}"
@@ -84,6 +89,7 @@ case "${event}" in
     test_db_migrations=true
     test_mobile=true
     test_e2e=true
+    test_bootstrap=true
     build=true
     if [[ "${docker_mode_input}" == "full" ]]; then
       matrix_items=(
@@ -107,6 +113,7 @@ case "${event}" in
     if flag FILTER_TEST_DB_MIGRATIONS; then test_db_migrations=true; fi
     if flag FILTER_TEST_MOBILE; then test_mobile=true; fi
     if flag FILTER_TEST_E2E; then test_e2e=true; fi
+    if flag FILTER_TEST_BOOTSTRAP; then test_bootstrap=true; fi
     if flag FILTER_BUILD; then build=true; fi
     if flag FILTER_DOCKER_CORE; then
       matrix_items=(
@@ -142,13 +149,14 @@ fi
   echo "test_db_migrations=${test_db_migrations}"
   echo "test_mobile=${test_mobile}"
   echo "test_e2e=${test_e2e}"
+  echo "test_bootstrap=${test_bootstrap}"
   echo "build=${build}"
   echo "docker_any=${docker_any}"
   echo "docker_matrix=${docker_matrix}"
 } >>"${GITHUB_OUTPUT}"
 
 echo "event=${event}"
-echo "check=${check} test_go=${test_go} test_ts=${test_ts} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_e2e=${test_e2e} build=${build} docker_any=${docker_any}"
+echo "check=${check} test_go=${test_go} test_ts=${test_ts} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} build=${build} docker_any=${docker_any}"
 if ((${#matrix_items[@]} > 0)); then
   for item in "${matrix_items[@]}"; do
     # shellcheck disable=SC2001

@@ -30,3 +30,7 @@ Once the schema is treated as production-stable and real rollout history matters
 | `seeds/` | Seed SQL; `baseline/` is environment-common, `dev/` is local data |
 
 Migration vs seed responsibilities: see `seeds/README.md` and the root `README.md` database section.
+
+## Targeting another database
+
+`task db:*` points at the Dev Container `db` service by default. Export `PUBLIRA_DB_URL` to run the same tasks against an ephemeral database — that is how the bootstrap check (`e2e/bootstrap/`) drives `task db:setup` against its own Compose project. Keep the default in `Tafkfile.yaml` as the `db` hostname; do not hardcode a second URL.

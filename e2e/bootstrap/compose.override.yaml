@@ -1,0 +1,32 @@
+# Overlay on ../../.devcontainer/compose.yaml for the bootstrap check (#514).
+#
+# The check must exercise the *real* Dev Container service definitions (image,
+# volume mount) because that is where the regression it guards against happened
+# (#511). Only the two data stores are started; `app` / `traefik` / `mailpit`
+# stay down and `task dev` runs on the host.
+#
+# This file adds the two things a host-side check needs:
+#   - published ports, offset from both Dev Container (5432 / 6379) and
+#     e2e/compose.yaml (5433 / 6380) so a bootstrap run never collides
+#   - a `db` healthcheck, so `compose up --wait` actually waits for Postgres
+#
+# Relative paths in the base file resolve against `.devcontainer/` (the first
+# `-f` wins), so keep this file free of relative paths.
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:${BOOTSTRAP_POSTGRES_PORT:-5434}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d publira"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  redis:
+    # `!override` replaces the base list instead of appending to it; merging
+    # would keep the base `6379:6379` binding and collide with a running Dev
+    # Container stack.
+    ports: !override
+      - "127.0.0.1:${BOOTSTRAP_REDIS_PORT:-6381}:6379"

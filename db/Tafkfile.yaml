@@ -1,7 +1,10 @@
 version: "3"
 
 vars:
-  DB_URL: postgres://postgres:password@db:5432/publira?sslmode=disable
+  # Defaults to the Dev Container `db` service. Export PUBLIRA_DB_URL to point
+  # these tasks at an ephemeral database instead (e2e / bootstrap check), where
+  # the `db` hostname does not resolve.
+  DB_URL: '{{.PUBLIRA_DB_URL | default "postgres://postgres:password@db:5432/publira?sslmode=disable"}}'
   MIGRATE: migrate -path ./migrations -database {{.DB_URL}}
 
 tasks:

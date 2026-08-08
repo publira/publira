@@ -1,0 +1,54 @@
+version: "3"
+
+# Run from repository root via: task e2e:bootstrap
+# Include is declared in e2e/Taskfile.yaml (cwd stays at repo root).
+
+vars:
+  # Directory of this Taskfile (e2e/bootstrap/), stable whether included or not.
+  BOOTSTRAP_DIR: "{{.TASKFILE_DIR}}"
+
+tasks:
+  default:
+    desc: Verify a clean dev environment end to end (setup → restart → task dev)
+    cmds:
+      - task: run
+
+  run:
+    desc: Full bootstrap check (fresh volume → task setup → db restart → task dev), always tears down
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/run.sh
+
+  up:
+    desc: "Phase 1: fresh compose project on an empty Postgres volume"
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/up.sh
+
+  setup:
+    desc: "Phase 2: task setup, then assert migrations and the dev seed"
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/setup.sh
+
+  restart-db:
+    desc: "Phase 3: restart db and assert migrations and seed data persist"
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/restart-db.sh
+
+  dev-up:
+    desc: "Phase 4a: start task dev (background, log in e2e/bootstrap/.run/logs)"
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/dev-up.sh
+
+  dev-wait:
+    desc: "Phase 4b: poll every service health probe"
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/dev-wait.sh
+
+  dev-down:
+    desc: Stop the background task dev process group
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/dev-down.sh
+
+  down:
+    desc: Stop task dev and remove the compose project + volumes
+    cmds:
+      - bash {{.BOOTSTRAP_DIR}}/scripts/down.sh

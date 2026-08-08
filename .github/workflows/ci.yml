@@ -52,6 +52,7 @@ jobs:
       test_db_migrations: ${{ steps.plan.outputs.test_db_migrations }}
       test_mobile: ${{ steps.plan.outputs.test_mobile }}
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
+      test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
       build: ${{ steps.plan.outputs.build }}
       docker_any: ${{ steps.plan.outputs.docker_any }}
       docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
@@ -150,6 +151,21 @@ jobs:
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+            test_bootstrap:
+              - *docs_excluded
+              - '.devcontainer/**'
+              - 'db/**'
+              - 'e2e/bootstrap/**'
+              - 'server/cmd/**'
+              - 'server/Taskfile.yaml'
+              - 'apps/*/package.json'
+              - 'Taskfile.yaml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             build:
               - *docs_excluded
               - 'apps/**'
@@ -211,6 +227,7 @@ jobs:
           FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}
           FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
+          FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
@@ -494,6 +511,69 @@ jobs:
             e2e/.run/logs/
           if-no-files-found: ignore
 
+  test-bootstrap:
+    name: Test / Bootstrap
+    needs: changes
+    if: needs.changes.outputs.test_bootstrap == 'true'
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 45
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache-dependency-path: server/go.sum
+
+      - name: Install Task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      # Installs dependencies itself (`task setup`); no separate deps step.
+      # Always tears the compose project and dev processes down (trap).
+      - name: Bootstrap check
+        run: task e2e:bootstrap
+        env:
+          CI: true
+
+      - name: Upload / Bootstrap artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bootstrap-artifacts
+          path: e2e/bootstrap/.run/logs/
+          if-no-files-found: ignore
+
   build:
     name: Build
     needs: changes
@@ -589,6 +669,7 @@ jobs:
       - test-db-migrations
       - test-mobile
       - test-e2e
+      - test-bootstrap
       - build
       - docker
     runs-on: ubicloud-standard-2
@@ -602,6 +683,7 @@ jobs:
           TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
           TEST_MOBILE: ${{ needs.test-mobile.result }}
           TEST_E2E: ${{ needs.test-e2e.result }}
+          TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
           BUILD: ${{ needs.build.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
@@ -615,6 +697,7 @@ jobs:
             "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \
             "Test / Mobile=${TEST_MOBILE}" \
             "Test / E2E=${TEST_E2E}" \
+            "Test / Bootstrap=${TEST_BOOTSTRAP}" \
             "Build=${BUILD}" \
             "Docker=${DOCKER}"
           do
