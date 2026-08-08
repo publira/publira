@@ -99,7 +99,7 @@ const NotificationsSection = async () => {
           <span
             className={
               unreadCount > 0
-                ? "rounded-full bg-info/15 px-3 py-1 text-xs font-medium text-info"
+                ? "rounded-full bg-info px-3 py-1 text-xs font-medium text-info-foreground"
                 : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
             }
           >
@@ -183,7 +183,7 @@ const NotificationsSection = async () => {
                       className={
                         notification.isRead
                           ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                          : "rounded-full bg-info/15 px-2 py-1 text-xs font-medium text-info"
+                          : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
                       }
                     >
                       {notification.isRead ? "既読" : "未読"}

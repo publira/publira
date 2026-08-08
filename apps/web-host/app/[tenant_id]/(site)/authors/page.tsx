@@ -124,7 +124,7 @@ const AuthorsListData = async ({
                 />
               </div>
             ) : (
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/20 text-accent">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
                 <svg
                   aria-hidden="true"
                   className="h-6 w-6"
