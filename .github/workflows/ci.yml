@@ -311,13 +311,22 @@ jobs:
         with:
           persist-credentials: false
 
-      # cache: true would pull unpinned actions/cache@v5 inside flutter-action,
-      # which violates the repo's required full-length SHA pin policy.
+      # Do not use subosito/flutter-action: its composite steps always declare
+      # unpinned actions/cache@v5, which is rejected by the repo SHA-pin policy
+      # even when cache inputs are false (policy checks uses: before if:).
       - name: Setup / Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
+        run: |
+          set -euo pipefail
+          flutter_root="${RUNNER_TEMP}/flutter"
+          git clone \
+            --depth 1 \
+            --branch "${FLUTTER_VERSION}" \
+            https://github.com/flutter/flutter.git \
+            "${flutter_root}"
+          echo "${flutter_root}/bin" >> "${GITHUB_PATH}"
+          # Bootstrap Dart SDK / tooling for subsequent steps
+          "${flutter_root}/bin/flutter" --version
+          "${flutter_root}/bin/dart" --version
 
       - name: Install Task
         uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
