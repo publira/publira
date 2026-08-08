@@ -24,8 +24,7 @@ Flutter によるエンドユーザー向けモバイルアプリ (iOS / Android
 
 ### Dev Container
 
-リポジトリルートの `task setup`（Dev Container の `postCreate` から実行）に
-`flutter pub get` が含まれます。追加の手動操作は不要です。
+リポジトリルートの `task setup`（Dev Container の `postCreate` から実行）に `flutter pub get` が含まれます。追加の手動操作は不要です。
 
 依存だけ更新する場合:
 
@@ -93,6 +92,7 @@ flutter test
 ```
 
 PR で `mobile/**` が変更されると CI の `Test / Mobile` ジョブが同じゲートを実行します。
+
 ## ディレクトリ構成
 
 ```
