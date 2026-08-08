@@ -2,7 +2,29 @@ version: "3"
 
 tasks:
   # Public tasks are alphabetized; internal tasks are at the bottom.
+  analyze:
+    desc: Run Flutter analyzer (info is treated as failure)
+    cmds:
+      - flutter analyze --fatal-infos
+
+  check:
+    desc: Run format, analyze, and unit tests (CI-equivalent gate)
+    cmds:
+      - task: format
+      - task: analyze
+      - task: test
+
   deps:
     desc: Install Flutter package dependencies for the mobile app
     cmds:
       - flutter pub get
+
+  format:
+    desc: Check Dart formatting (fails if files would change)
+    cmds:
+      - dart format --output=none --set-exit-if-changed .
+
+  test:
+    desc: Run Flutter unit and widget tests
+    cmds:
+      - flutter test

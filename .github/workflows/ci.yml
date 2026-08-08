@@ -9,6 +9,10 @@ env:
   BUF_VERSION: 1.67.0
   # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
   MIGRATE_VERSION: 4.19.1
+  # renovate: datasource=flutter-version depName=flutter
+  FLUTTER_VERSION: 3.41.6
+  # Pinned object for FLUTTER_VERSION tag (flutter/flutter)
+  FLUTTER_COMMIT: db50e20168db8fee486b9abf32fc912de3bc5b6a
 
 on:
   pull_request:
@@ -45,6 +49,7 @@ jobs:
       check: ${{ steps.plan.outputs.check }}
       test_go: ${{ steps.plan.outputs.test_go }}
       test_ts: ${{ steps.plan.outputs.test_ts }}
+      test_mobile: ${{ steps.plan.outputs.test_mobile }}
       build: ${{ steps.plan.outputs.build }}
       docker_any: ${{ steps.plan.outputs.docker_any }}
       docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
@@ -93,6 +98,11 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_mobile:
+              - 'mobile/**'
+              - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             build:
@@ -148,6 +158,7 @@ jobs:
           FILTER_CHECK: ${{ steps.filter.outputs.check }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
+          FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
@@ -292,6 +303,47 @@ jobs:
       - name: Validate / TypeScript Tests
         run: pnpm test
 
+  test-mobile:
+    name: Test / Mobile
+    needs: changes
+    if: needs.changes.outputs.test_mobile == 'true'
+    runs-on: ubicloud-standard-2
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Flutter
+        run: |
+          set -euo pipefail
+          flutter_root="${RUNNER_TEMP}/flutter"
+          git clone \
+            --depth 1 \
+            --branch "${FLUTTER_VERSION}" \
+            https://github.com/flutter/flutter.git \
+            "${flutter_root}"
+          actual="$(git -C "${flutter_root}" rev-parse HEAD)"
+          if [ "${actual}" != "${FLUTTER_COMMIT}" ]; then
+            echo "::error::Flutter commit mismatch: expected ${FLUTTER_COMMIT}, got ${actual}"
+            exit 1
+          fi
+          echo "${flutter_root}/bin" >> "${GITHUB_PATH}"
+          # Bootstrap Dart SDK / tooling for subsequent steps
+          "${flutter_root}/bin/flutter" --version
+          "${flutter_root}/bin/dart" --version
+
+      - name: Install Task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Dependencies / Install
+        run: task mobile:deps
+
+      - name: Validate / Format, Analyze, and Tests
+        run: task mobile:check
+
   build:
     name: Build
     needs: changes
@@ -384,6 +436,7 @@ jobs:
       - check
       - test-go
       - test-ts
+      - test-mobile
       - build
       - docker
     runs-on: ubicloud-standard-2
@@ -394,6 +447,7 @@ jobs:
           CHECK: ${{ needs.check.result }}
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
+          TEST_MOBILE: ${{ needs.test-mobile.result }}
           BUILD: ${{ needs.build.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
@@ -404,6 +458,7 @@ jobs:
             "Check=${CHECK}" \
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
+            "Test / Mobile=${TEST_MOBILE}" \
             "Build=${BUILD}" \
             "Docker=${DOCKER}"
           do
