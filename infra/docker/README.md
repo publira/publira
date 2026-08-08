@@ -280,7 +280,7 @@ docker build -f infra/docker/web/Dockerfile \
    - path filter の取りこぼし懸念 → `workflow_dispatch` で Docker `full`、または Nightly 結果を確認
 5. **直したら**
    - 代表 3 本（`task docker:verify`）が通ることを確認してから PR を更新する
-   - ロール追加時は本 README の表・Taskfile の `verify:full`・`ci.yml` の full 行列を同時更新する
+   - ロール追加時は本 README の表・[`Taskfile.yaml`](./Taskfile.yaml) の `verify:full`・[`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) の Docker full 行列を同時更新する
 
 ## 変更時のチェックリスト
 

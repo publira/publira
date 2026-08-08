@@ -58,7 +58,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 
 Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
 
-`sqlc diff` は `sqlc.yaml` がスキーマファイル（`db/migrations/`）を直接読む codegen 検証であり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
+`sqlc diff` は、`sqlc.yaml` の `schema` 設定が指すスキーマファイル（`db/migrations/`）と `queries`（`db/query/`）を読んで生成結果との差分を検証する codegen チェックであり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
 
 ## Test / DB Migrations（migration の up/down 検証）
 
