@@ -1,0 +1,8 @@
+version: "3"
+
+tasks:
+  # Public tasks are alphabetized; internal tasks are at the bottom.
+  deps:
+    desc: Install Flutter package dependencies for the mobile app
+    cmds:
+      - flutter pub get

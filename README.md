@@ -55,6 +55,9 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 task setup
 ```
 
+`task setup` は依存インストール（`pnpm` / Go / Flutter `pub get`）と DB 初期化を実行します。
+Dev Container では `postCreate` から自動実行されるため、`mobile/` の依存解決も追加操作なしで済みます。
+
 Dev Container では `migrate` CLI (golang-migrate) を同梱しています。DB 変更は `db/migrations/` に `.up.sql` / `.down.sql` で追加してください。
 
 ## ローカル DB 初期化

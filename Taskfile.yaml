@@ -7,6 +7,9 @@ includes:
   docker:
     # Keep cwd at repository root so docker build context stays `.`
     taskfile: ./infra/docker/Taskfile.yaml
+  mobile:
+    taskfile: ./mobile/Taskfile.yaml
+    dir: ./mobile
   server:
     taskfile: ./server/Taskfile.yaml
     dir: ./server
@@ -40,6 +43,7 @@ tasks:
     desc: Run project dependency and database setup
     cmds:
       - task: deps
+      - task: mobile:deps
       - task: db:setup
 
   test:
