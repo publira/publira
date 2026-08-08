@@ -16,9 +16,10 @@ export const getTenantId = async (): Promise<string> => {
     notFound();
   }
   guardPlaceholder(value);
+  const tenantId = value.trim();
   // Only `proxy.ts` writes this segment, and it always writes a UUID.
-  if (!isTenantIdFormat(value)) {
+  if (!isTenantIdFormat(tenantId)) {
     notFound();
   }
-  return value;
+  return tenantId;
 };
