@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { formatDateTime } from "@publira/utils";
+import { formatDateTime, parseInstant } from "@publira/utils";
 import { useMemo } from "react";
 
 import type { SeriesListItem } from "../series-types";
@@ -51,10 +51,15 @@ export const SeriesManager = ({
   const sortedSeries = useMemo(
     () =>
       initialSeries.toSorted((a, b) => {
-        if (a.publishedAt && b.publishedAt) {
-          const publishedAtDiff =
-            new Date(b.publishedAt).getTime() -
-            new Date(a.publishedAt).getTime();
+        // Absolute-time ordering: the API may express the same instant with
+        // different offsets, so neither string nor local-`Date` comparison is safe.
+        const aPublishedAt = parseInstant(a.publishedAt);
+        const bPublishedAt = parseInstant(b.publishedAt);
+        if (aPublishedAt && bPublishedAt) {
+          const publishedAtDiff = Temporal.Instant.compare(
+            bPublishedAt,
+            aPublishedAt
+          );
           if (publishedAtDiff !== 0) {
             return publishedAtDiff;
           }

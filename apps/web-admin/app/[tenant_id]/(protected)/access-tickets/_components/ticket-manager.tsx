@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -46,22 +47,10 @@ const statusLabel = (status: string): string => {
   }
 };
 
-const formatDateTime = (value: string): string => {
-  if (!value) {
-    return "—";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("ja-JP", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
+// Absolute API timestamp → admin display zone. `formatDateTime` falls back to
+// the raw value when it cannot be parsed, so only the empty case is special.
+const formatTicketDateTime = (value: string): string =>
+  value ? formatDateTime(value) : "—";
 
 export const TicketManager = ({
   initialTickets,
@@ -151,8 +140,12 @@ export const TicketManager = ({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>{formatDateTime(ticket.expiresAt)}</TableCell>
-                  <TableCell>{formatDateTime(ticket.createdAt)}</TableCell>
+                  <TableCell>
+                    {formatTicketDateTime(ticket.expiresAt)}
+                  </TableCell>
+                  <TableCell>
+                    {formatTicketDateTime(ticket.createdAt)}
+                  </TableCell>
                   <TableCell>
                     {ticket.status === "active" ? (
                       <RevokeTicketButton publicId={ticket.publicId} />

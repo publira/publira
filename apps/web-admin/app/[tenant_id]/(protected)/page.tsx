@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -154,15 +155,9 @@ const DashboardContent = async () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {item.scheduledAt
-                        ? new Date(item.scheduledAt).toLocaleString("ja-JP", {
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            month: "numeric",
-                            timeZone: "Asia/Tokyo",
-                          })
-                        : "未設定"}
+                      {formatDateTime(item.scheduledAt, {
+                        fallback: "未設定",
+                      })}
                     </TableCell>
                   </TableRow>
                 ))}

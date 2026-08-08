@@ -34,35 +34,52 @@ export interface ToDateTimeLocalOptions {
 const DATETIME_LOCAL_RE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/u;
 
-const formatterCache = new Map<string, Intl.DateTimeFormat>();
+/** Calendar day with no time and no zone (`YYYY-MM-DD`), as emitted by `<input type="date">`. */
+const PLAIN_DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;
 
-const getDateTimeFormatter = (timeZone: string): Intl.DateTimeFormat => {
-  const cached = formatterCache.get(timeZone);
+const dateTimeFormatterCache = new Map<string, Intl.DateTimeFormat>();
+const dateFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+const getCachedFormatter = (
+  cache: Map<string, Intl.DateTimeFormat>,
+  timeZone: string,
+  options: Intl.DateTimeFormatOptions
+): Intl.DateTimeFormat => {
+  const cached = cache.get(timeZone);
   if (cached) {
     return cached;
   }
-  const formatter = new Intl.DateTimeFormat("ja-JP", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone,
-  });
-  formatterCache.set(timeZone, formatter);
+  const formatter = new Intl.DateTimeFormat("ja-JP", { ...options, timeZone });
+  cache.set(timeZone, formatter);
   return formatter;
 };
+
+const getDateTimeFormatter = (timeZone: string): Intl.DateTimeFormat =>
+  getCachedFormatter(dateTimeFormatterCache, timeZone, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+const getDateFormatter = (timeZone: string): Intl.DateTimeFormat =>
+  getCachedFormatter(dateFormatterCache, timeZone, { dateStyle: "medium" });
 
 /**
  * Parse an absolute timestamp to `Temporal.Instant`.
  * Only RFC3339 / ISO-8601 forms accepted by `Temporal.Instant.from`
  * (must include `Z` or a numeric offset). Zone-less strings are rejected so
  * results never depend on the host local time zone.
+ *
+ * Use this instead of `new Date(value)` whenever an API timestamp has to be
+ * compared, sorted, or validated.
  */
-const tryParseInstant = (value: string): Temporal.Instant | null => {
-  if (!value) {
+export const parseInstant = (value: string): Temporal.Instant | null => {
+  const trimmed = value.trim();
+  if (!trimmed) {
     return null;
   }
 
   try {
-    return Temporal.Instant.from(value);
+    return Temporal.Instant.from(trimmed);
   } catch {
     return null;
   }
@@ -81,12 +98,32 @@ export const formatDateTime = (
   const fallback = options?.fallback ?? value;
   const timeZone = options?.timeZone ?? DEFAULT_TIME_ZONE;
 
-  const instant = tryParseInstant(value);
+  const instant = parseInstant(value);
   if (!instant) {
     return fallback;
   }
 
   return getDateTimeFormatter(timeZone).format(instant.epochMilliseconds);
+};
+
+/**
+ * Same as {@link formatDateTime} but date-only, for timestamps whose time part
+ * should not be shown. The calendar day is the one seen in `timeZone`, not the
+ * UTC day — never derive it by slicing the ISO string.
+ */
+export const formatDate = (
+  value: string,
+  options?: FormatDateTimeOptions
+): string => {
+  const fallback = options?.fallback ?? value;
+  const timeZone = options?.timeZone ?? DEFAULT_TIME_ZONE;
+
+  const instant = parseInstant(value);
+  if (!instant) {
+    return fallback;
+  }
+
+  return getDateFormatter(timeZone).format(instant.epochMilliseconds);
 };
 
 /**
@@ -100,7 +137,7 @@ export const toDateTimeLocalValue = (
 ): string => {
   const fallback = options?.fallback ?? "";
 
-  const instant = tryParseInstant(value);
+  const instant = parseInstant(value);
   if (!instant) {
     return fallback;
   }
@@ -133,6 +170,89 @@ export const fromDateTimeLocalValue = (
       disambiguation: "compatible",
     });
     return zoned.toInstant().toString();
+  } catch {
+    return "";
+  }
+};
+
+/**
+ * Normalize a form / query value that may be **either** an absolute timestamp
+ * (`Z` or numeric offset — passed through) **or** a `datetime-local` wall clock
+ * (interpreted in `timeZone`) into an absolute ISO-8601 instant (`…Z`).
+ *
+ * This is the replacement for `new Date(value).toISOString()` in server
+ * actions: `Date` would silently read a zone-less value in the *server's* local
+ * zone, so the same submission meant something different per deployment.
+ * Returns `""` when the value is empty or in neither shape.
+ */
+export const toInstantIsoString = (value: string, timeZone: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  return (
+    parseInstant(trimmed)?.toString() ??
+    fromDateTimeLocalValue(trimmed, timeZone)
+  );
+};
+
+const plainDateOrNull = (value: string): Temporal.PlainDate | null => {
+  const trimmed = value.trim();
+  if (!PLAIN_DATE_RE.test(trimmed)) {
+    return null;
+  }
+
+  try {
+    return Temporal.PlainDate.from(trimmed);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Date-only filter value (`YYYY-MM-DD`) → the first instant of that calendar
+ * day **in `timeZone`**, as an ISO-8601 instant.
+ *
+ * The zone is what makes the boundary meaningful: `` `${date}T00:00:00Z` ``
+ * pins the day to UTC, which is nine hours off from the day the operator
+ * actually picked in a JST-facing UI. Returns `""` for empty / non-date input.
+ */
+export const startOfDayIsoString = (date: string, timeZone: string): string => {
+  const plainDate = plainDateOrNull(date);
+  if (!plainDate) {
+    return "";
+  }
+
+  try {
+    return plainDate.toZonedDateTime(timeZone).toInstant().toString();
+  } catch {
+    return "";
+  }
+};
+
+/**
+ * Date-only filter value (`YYYY-MM-DD`) → the **inclusive** last instant of that
+ * calendar day in `timeZone`, as an ISO-8601 instant.
+ *
+ * Derived as "start of the next day minus one microsecond" so DST transitions
+ * (a day that is 23 or 25 hours long) stay correct; microsecond granularity
+ * matches the storage precision of a Postgres `timestamptz`.
+ * Returns `""` for empty / non-date input.
+ */
+export const endOfDayIsoString = (date: string, timeZone: string): string => {
+  const plainDate = plainDateOrNull(date);
+  if (!plainDate) {
+    return "";
+  }
+
+  try {
+    return plainDate
+      .add({ days: 1 })
+      .toZonedDateTime(timeZone)
+      .toInstant()
+      .subtract({ microseconds: 1 })
+      .toString();
   } catch {
     return "";
   }

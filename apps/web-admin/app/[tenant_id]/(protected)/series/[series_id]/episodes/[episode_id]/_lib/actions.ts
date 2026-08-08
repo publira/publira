@@ -1,5 +1,10 @@
 "use server";
 
+import {
+  DEFAULT_TIME_ZONE,
+  parseInstant,
+  toInstantIsoString,
+} from "@publira/utils";
 import { redirect } from "next/navigation";
 
 import {
@@ -69,8 +74,11 @@ const parsePublishAtToRFC3339 = (
     return { iso: "", ok: true };
   }
 
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
+  // The form posts a `datetime-local` wall clock; read it in the admin UI's
+  // display zone instead of whatever zone the server process happens to run in.
+  const iso = toInstantIsoString(trimmed, DEFAULT_TIME_ZONE);
+  const parsed = parseInstant(iso);
+  if (!parsed) {
     return {
       message: "publish_at の形式が正しくありません。",
       mode: "schedule",
@@ -78,7 +86,7 @@ const parsePublishAtToRFC3339 = (
     };
   }
 
-  if (parsed.getTime() <= Date.now()) {
+  if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
     return {
       message: "publish_at は現在時刻より未来を指定してください。",
       mode: "schedule",
@@ -86,10 +94,7 @@ const parsePublishAtToRFC3339 = (
     };
   }
 
-  return {
-    iso: parsed.toISOString(),
-    ok: true,
-  };
+  return { iso, ok: true };
 };
 
 export const updateEpisodeScheduleAction = async (

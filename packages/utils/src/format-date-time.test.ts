@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_TIME_ZONE,
+  endOfDayIsoString,
+  formatDate,
   formatDateTime,
   fromDateTimeLocalValue,
+  parseInstant,
+  startOfDayIsoString,
   toDateTimeLocalValue,
+  toInstantIsoString,
 } from "./format-date-time";
 
 /** Fixed UTC instant used across multi-zone display tests. */
@@ -54,6 +59,152 @@ describe("formatDateTime", () => {
     expect(formatDateTime("2024-03-10T10:00", { fallback: "-" })).toBe("-");
     expect(formatDateTime("2024-03-10T10:00:00", { fallback: "-" })).toBe("-");
     expect(formatDateTime("2024-03-10", { fallback: "-" })).toBe("-");
+  });
+});
+
+describe("formatDate", () => {
+  it("uses the calendar day of the given zone, not the UTC day", () => {
+    // 2024-03-10T23:00Z is already 2024-03-11 in Tokyo and still 03-10 in LA.
+    const lateInstant = "2024-03-10T23:00:00.000Z";
+    expect(formatDate(lateInstant, { timeZone: "Asia/Tokyo" })).toBe(
+      "2024/03/11"
+    );
+    expect(formatDate(lateInstant, { timeZone: "America/Los_Angeles" })).toBe(
+      "2024/03/10"
+    );
+    expect(formatDate(lateInstant, { timeZone: "UTC" })).toBe("2024/03/10");
+  });
+
+  it("defaults timeZone to Asia/Tokyo when omitted", () => {
+    expect(formatDate(UTC_INSTANT)).toBe("2024/03/10");
+  });
+
+  it("returns fallback for empty or invalid values", () => {
+    expect(formatDate("", { fallback: "-" })).toBe("-");
+    expect(formatDate("not-a-date", { fallback: "-" })).toBe("-");
+    expect(formatDate("2024-03-10", { fallback: "-" })).toBe("-");
+  });
+});
+
+describe("parseInstant", () => {
+  it("parses offset-bearing timestamps to the same instant", () => {
+    const utc = parseInstant(UTC_INSTANT);
+    const jst = parseInstant("2024-03-10T19:00:00+09:00");
+    expect(utc).not.toBeNull();
+    expect(jst).not.toBeNull();
+    expect(
+      Temporal.Instant.compare(utc as Temporal.Instant, jst as Temporal.Instant)
+    ).toBe(0);
+  });
+
+  it("orders instants regardless of the offset they were written with", () => {
+    const earlier = parseInstant(
+      "2024-03-10T19:00:00+09:00"
+    ) as Temporal.Instant;
+    const later = parseInstant("2024-03-10T12:00:00Z") as Temporal.Instant;
+    // Lexicographic string comparison would get this backwards.
+    expect(Temporal.Instant.compare(earlier, later)).toBe(-1);
+  });
+
+  it("returns null for empty, zone-less, or invalid values", () => {
+    expect(parseInstant("")).toBeNull();
+    expect(parseInstant("   ")).toBeNull();
+    expect(parseInstant("not-a-date")).toBeNull();
+    expect(parseInstant("2024-03-10T10:00")).toBeNull();
+    expect(parseInstant("2024-03-10")).toBeNull();
+  });
+});
+
+describe("toInstantIsoString", () => {
+  it("passes absolute timestamps through, normalized to UTC", () => {
+    expect(toInstantIsoString(UTC_INSTANT, "Asia/Tokyo")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+    expect(toInstantIsoString("2024-03-10T19:00:00+09:00", "UTC")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+  });
+
+  it("interprets zone-less wall clocks in the given zone, not the host zone", () => {
+    expect(toInstantIsoString("2024-03-10T19:00", "Asia/Tokyo")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+    expect(toInstantIsoString("2024-03-10T03:00", "America/Los_Angeles")).toBe(
+      "2024-03-10T10:00:00Z"
+    );
+    expect(toInstantIsoString("2024-03-10T19:00:30", "Asia/Tokyo")).toBe(
+      "2024-03-10T10:00:30Z"
+    );
+  });
+
+  it("returns empty string for empty or unparseable values", () => {
+    expect(toInstantIsoString("", "Asia/Tokyo")).toBe("");
+    expect(toInstantIsoString("   ", "Asia/Tokyo")).toBe("");
+    expect(toInstantIsoString("not-a-date", "Asia/Tokyo")).toBe("");
+    expect(toInstantIsoString("2024-03-10", "Asia/Tokyo")).toBe("");
+  });
+});
+
+describe("date-only day boundaries", () => {
+  it("brackets the calendar day of the given zone", () => {
+    expect(startOfDayIsoString("2024-03-10", "Asia/Tokyo")).toBe(
+      "2024-03-09T15:00:00Z"
+    );
+    expect(endOfDayIsoString("2024-03-10", "Asia/Tokyo")).toBe(
+      "2024-03-10T14:59:59.999999Z"
+    );
+    expect(startOfDayIsoString("2024-03-10", "UTC")).toBe(
+      "2024-03-10T00:00:00Z"
+    );
+    expect(endOfDayIsoString("2024-03-10", "UTC")).toBe(
+      "2024-03-10T23:59:59.999999Z"
+    );
+  });
+
+  it("keeps the end strictly after the start on a 23-hour DST day", () => {
+    // 2024-03-10 in America/Los_Angeles loses an hour to spring-forward.
+    const start = startOfDayIsoString("2024-03-10", "America/Los_Angeles");
+    const end = endOfDayIsoString("2024-03-10", "America/Los_Angeles");
+    expect(start).toBe("2024-03-10T08:00:00Z");
+    expect(end).toBe("2024-03-11T06:59:59.999999Z");
+    expect(
+      Temporal.Instant.compare(
+        parseInstant(start) as Temporal.Instant,
+        parseInstant(end) as Temporal.Instant
+      )
+    ).toBe(-1);
+  });
+
+  it("covers the full 25-hour fall-back day", () => {
+    expect(startOfDayIsoString("2024-11-03", "America/Los_Angeles")).toBe(
+      "2024-11-03T07:00:00Z"
+    );
+    expect(endOfDayIsoString("2024-11-03", "America/Los_Angeles")).toBe(
+      "2024-11-04T07:59:59.999999Z"
+    );
+  });
+
+  it("ends the day immediately before the next day starts", () => {
+    const end = parseInstant(
+      endOfDayIsoString("2024-03-10", "Asia/Tokyo")
+    ) as Temporal.Instant;
+    const nextStart = parseInstant(
+      startOfDayIsoString("2024-03-11", "Asia/Tokyo")
+    ) as Temporal.Instant;
+    expect(nextStart.since(end).total({ unit: "microsecond" })).toBe(1);
+  });
+
+  it("returns empty string for empty or non date-only input", () => {
+    for (const input of [
+      "",
+      "   ",
+      "not-a-date",
+      "2024-03-10T00:00",
+      "2024-13-40",
+    ]) {
+      expect(startOfDayIsoString(input, "Asia/Tokyo")).toBe("");
+      expect(endOfDayIsoString(input, "Asia/Tokyo")).toBe("");
+    }
   });
 });
 

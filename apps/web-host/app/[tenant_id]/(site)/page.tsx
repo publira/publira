@@ -1,4 +1,5 @@
 import { CollectionIcon } from "@publira/icons";
+import { formatDate } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -248,7 +249,7 @@ const NewEpisodesSection = async () => {
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">
-                {episode.publishedAt.slice(0, 10)}
+                {formatDate(episode.publishedAt, { fallback: "" })}
               </span>
             </Link>
           </li>

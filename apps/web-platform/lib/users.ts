@@ -1,3 +1,5 @@
+import { parseInstant } from "@publira/utils";
+
 import {
   apiClient,
   buildSessionHeaders,
@@ -55,32 +57,29 @@ const mapEndUser = (user: {
   tenantIds: user.tenantIds ?? [],
 });
 
+/** Inclusive on both ends; `createdAfter` / `createdBefore` are absolute instants. */
 const createdAtInRange = (
   createdAt: string,
   createdAfter?: string,
   createdBefore?: string
 ): boolean => {
-  if (!createdAfter && !createdBefore) {
+  if (!(createdAfter || createdBefore)) {
     return true;
   }
 
-  const timestamp = Date.parse(createdAt);
-  if (Number.isNaN(timestamp)) {
+  const timestamp = parseInstant(createdAt);
+  if (!timestamp) {
     return false;
   }
 
-  if (createdAfter) {
-    const after = Date.parse(createdAfter);
-    if (!Number.isNaN(after) && timestamp < after) {
-      return false;
-    }
+  const after = createdAfter ? parseInstant(createdAfter) : null;
+  if (after && Temporal.Instant.compare(timestamp, after) < 0) {
+    return false;
   }
 
-  if (createdBefore) {
-    const before = Date.parse(createdBefore);
-    if (!Number.isNaN(before) && timestamp > before) {
-      return false;
-    }
+  const before = createdBefore ? parseInstant(createdBefore) : null;
+  if (before && Temporal.Instant.compare(timestamp, before) > 0) {
+    return false;
   }
 
   return true;
