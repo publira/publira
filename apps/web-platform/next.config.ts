@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
     remote: import.meta.resolve("@publira/next-cache-handlers/use-cache"),
   },
   cacheMaxMemorySize: 0,
+  experimental: {
+    turbopackRustReactCompiler: true,
+  },
   images: {
     customCacheHandler: true,
   },
@@ -18,6 +21,7 @@ const nextConfig: NextConfig = {
   },
   output: "standalone",
   partialPrefetching: true,
+  reactCompiler: true,
 };
 
 export default nextConfig;
