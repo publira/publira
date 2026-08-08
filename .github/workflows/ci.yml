@@ -73,8 +73,20 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
+          # 'some-with-excludes': a file matches a filter when it matches at least one
+          # positive pattern and no negated one. The default 'some' would treat
+          # '!**/*.md' as just another alternative and never exclude anything.
+          # Applies to every filter below; all other patterns are positive, so their
+          # behaviour is unchanged.
+          predicate-quantifier: "some-with-excludes"
           filters: |
+            # Documentation-only changes must not start any job (#656). Referenced by
+            # every filter via the YAML anchor so the list stays in one place; as a
+            # filter of its own it is negation-only and therefore always false.
+            docs_excluded: &docs_excluded
+              - '!**/*.md'
             check:
+              - *docs_excluded
               - 'apps/**'
               - 'packages/**'
               - 'e2e/**'
@@ -93,6 +105,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_go:
+              - *docs_excluded
               - 'server/**'
               - 'db/**'
               - 'proto/**'
@@ -102,6 +115,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_ts:
+              - *docs_excluded
               - 'apps/**'
               - 'packages/**'
               - 'package.json'
@@ -111,16 +125,19 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_db_migrations:
+              - *docs_excluded
               - 'db/**'
               - 'sqlc.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_mobile:
+              - *docs_excluded
               - 'mobile/**'
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_e2e:
+              - *docs_excluded
               - 'e2e/**'
               - 'apps/web-host/**'
               - 'packages/**'
@@ -134,6 +151,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             build:
+              - *docs_excluded
               - 'apps/**'
               - 'packages/**'
               - 'server/**'
@@ -144,6 +162,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             docker_web:
+              - *docs_excluded
               - 'apps/**'
               - 'packages/**'
               - 'package.json'
@@ -156,6 +175,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             docker_api:
+              - *docs_excluded
               - 'server/**'
               - 'infra/docker/api/**'
               - 'infra/docker/Taskfile.yaml'
@@ -163,6 +183,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             docker_batch:
+              - *docs_excluded
               - 'server/**'
               - 'infra/docker/batch/**'
               - 'infra/docker/Taskfile.yaml'
@@ -170,6 +191,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             docker_core:
+              - *docs_excluded
               - 'infra/docker/web/**'
               - 'infra/docker/api/**'
               - 'infra/docker/batch/**'
