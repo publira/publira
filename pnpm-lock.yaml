@@ -130,7 +130,7 @@ importers:
         version: 11.5.2
       next:
         specifier: 'catalog:'
-        version: 16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -209,7 +209,7 @@ importers:
         version: 11.5.2
       next:
         specifier: 'catalog:'
-        version: 16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -288,7 +288,7 @@ importers:
         version: link:../../packages/web-session
       next:
         specifier: 'catalog:'
-        version: 16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -327,8 +327,8 @@ importers:
   e2e:
     devDependencies:
       '@playwright/test':
-        specifier: 1.55.1
-        version: 1.55.1
+        specifier: 1.62.1
+        version: 1.62.1
       '@publira/tsconfig':
         specifier: workspace:*
         version: link:../packages/tsconfig
@@ -450,7 +450,7 @@ importers:
         version: 30.0.1
       next:
         specifier: 'catalog:'
-        version: 16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       tsdown:
         specifier: 'catalog:'
         version: 0.22.14(typescript@6.0.3)
@@ -465,7 +465,7 @@ importers:
     dependencies:
       next:
         specifier: ^16.3.0
-        version: 16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       redis:
         specifier: 'catalog:'
         version: 6.2.0
@@ -554,7 +554,7 @@ importers:
         version: 24.13.3
       next:
         specifier: 'catalog:'
-        version: 16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       temporal-polyfill:
         specifier: 'catalog:'
         version: 1.0.3
@@ -575,7 +575,7 @@ importers:
         version: 6.2.8
       next:
         specifier: ^16.3.0
-        version: 16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -1443,9 +1443,9 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  '@playwright/test@1.55.1':
-    resolution: {integrity: sha512-IVAh/nOJaw6W9g+RJVlIQJ6gSiER+ae6mKQ5CX1bERzQgbC1VSeBlwdvczT7pxb0GWiyrxH4TGKbMfDb4Sq/ig==}
-    engines: {node: '>=18'}
+  '@playwright/test@1.62.1':
+    resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
+    engines: {node: '>=20'}
     hasBin: true
 
   '@quansync/fs@1.0.0':
@@ -3384,14 +3384,14 @@ packages:
     resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
     engines: {node: '>=12'}
 
-  playwright-core@1.55.1:
-    resolution: {integrity: sha512-Z6Mh9mkwX+zxSlHqdr5AOcJnfp+xUWLCt9uKV18fhzA8eyxUd8NUWzAjxUh55RZKSYwDGX0cfaySdhZJGMoJ+w==}
-    engines: {node: '>=18'}
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
     hasBin: true
 
-  playwright@1.55.1:
-    resolution: {integrity: sha512-cJW4Xd/G3v5ovXtJJ52MAOclqeac9S/aGGgRzLabuF8TnIb6xHvMzKIa6JmrRzUkeXJgfL1MhukP0NK6l39h3A==}
-    engines: {node: '>=18'}
+  playwright@1.62.1:
+    resolution: {integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==}
+    engines: {node: '>=20'}
     hasBin: true
 
   possible-typed-array-names@1.1.0:
@@ -4625,9 +4625,9 @@ snapshots:
 
   '@pkgr/core@0.3.6': {}
 
-  '@playwright/test@1.55.1':
+  '@playwright/test@1.62.1':
     dependencies:
-      playwright: 1.55.1
+      playwright: 1.62.1
 
   '@quansync/fs@1.0.0':
     dependencies:
@@ -6493,7 +6493,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@16.3.0(@playwright/test@1.55.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  next@16.3.0(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@next/env': 16.3.0
       '@swc/helpers': 0.5.15
@@ -6512,7 +6512,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.3.0
       '@next/swc-win32-arm64-msvc': 16.3.0
       '@next/swc-win32-x64-msvc': 16.3.0
-      '@playwright/test': 1.55.1
+      '@playwright/test': 1.62.1
       sharp: 0.35.3(@types/node@24.13.3)
     transitivePeerDependencies:
       - '@babel/core'
@@ -6715,11 +6715,11 @@ snapshots:
 
   picomatch@4.0.5: {}
 
-  playwright-core@1.55.1: {}
+  playwright-core@1.62.1: {}
 
-  playwright@1.55.1:
+  playwright@1.62.1:
     dependencies:
-      playwright-core: 1.55.1
+      playwright-core: 1.62.1
     optionalDependencies:
       fsevents: 2.3.2
 
