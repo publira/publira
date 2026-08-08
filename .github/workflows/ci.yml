@@ -59,6 +59,13 @@ jobs:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # `push` has no API file list, so paths-filter diffs `github.event.before`..HEAD
+          # locally: the base commit must be present already, because
+          # `persist-credentials: false` leaves no credentials for a fallback `git fetch`.
+          # Other events need no history — `pull_request` uses the API file list, and
+          # `schedule` / `workflow_dispatch` skip the filter step entirely.
+          # Keep `'0'` quoted: a bare 0 is falsy and the `&&`/`||` chain would yield 1.
+          fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
           persist-credentials: false
 
       - name: Path filter
