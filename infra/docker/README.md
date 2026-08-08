@@ -155,7 +155,7 @@ Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools
 | --- | --- | --- |
 | **本番イメージビルド** | デプロイ用イメージの作成・検証 | `task docker:build:*`（中身はルート context の `docker build -f infra/docker/...`） |
 | **ローカル開発** | ホットリロード開発 | Dev Container + `task dev` / `task server:dev` 等（本番 Dockerfile は使わない） |
-| **CI（ホスト + イメージ）** | 変更検知で Check / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
+| **CI（ホスト + イメージ）** | 変更検知で Check / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
 
 本番イメージと Dev Container は別物である。イメージビルドが通っても `task dev` の代替にはならないし、その逆でもない。
 
@@ -226,14 +226,26 @@ docker build -f infra/docker/web/Dockerfile \
 
 #### ホスト CI のテスト分割
 
-Go と TypeScript のテストは **別ジョブ** とし、影響 path が変わったときだけ実行する。
+Go / TypeScript / DB migration のテストは **別ジョブ** とし、影響 path が変わったときだけ実行する。
 
 | ジョブ | コマンド | 監視 path（概要） |
 | --- | --- | --- |
 | **Test / Go** | `go test ./...`（`server/`） | `server/**`, `db/**`, `proto/**`, `sqlc.yaml`, `buf.yaml`, `buf.gen.yaml` |
 | **Test / TypeScript** | `pnpm test`（packages ビルド後） | `apps/**`, `packages/**`, lockfile / turbo / workspace |
+| **Test / DB Migrations** | `migrate up` → `migrate down -all` → `migrate up`（空 Postgres に対して） | `db/**`, `sqlc.yaml` |
 
-`workflow_dispatch` では両方を実行する。`schedule`（Nightly）ではホスト CI はスキップし Docker のみ。
+`workflow_dispatch` では全てを実行する。`schedule`（Nightly）ではホスト CI はスキップし Docker のみ。
+
+#### Test / DB Migrations（migration の up/down 検証）
+
+`db/AGENTS.md` の baseline 単一ファイル運用を前提に、CI 専用の Postgres service（`Check` とは別インスタンス）へ次の順で `golang-migrate` を実行する。
+
+1. `migrate up` — 空 DB へ baseline を適用できること
+2. `migrate down -all` — dirty にならず空 DB まで戻せること（baseline の `down.sql` の健全性）
+3. `migrate up` — down 後に再適用できること（往復の整合性）
+
+いずれかのステップが失敗（dirty 化を含む）すれば `Test / DB Migrations` が落ち、`Summary` が赤くなる。  
+`sqlc diff` は `sqlc.yaml` がスキーマファイル（`db/migrations/`）を直接読む codegen 検証であり、生きた DB 接続を必要としないため、引き続き `Check` に残す（`Check` はこの分離により Postgres service を持たない）。
 
 #### 変更検知のロール対応（Docker）
 
@@ -249,16 +261,18 @@ Go と TypeScript のテストは **別ジョブ** とし、影響 path が変�
 ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Check / テスト / Build / Docker 行列を決定）。  
 ローカルと同一コマンド: `task docker:build:web|api|batch`（Web は続けて `task docker:smoke:web`）。
 
-Check / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
+Check / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
 
 ## 失敗時のトリアージ
 
 1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）
    - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`
    - `Check` / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / `Build` → ホスト上の lint・型・`go test` / `pnpm test` / `task mobile:check`・`pnpm build` / `go build`
+   - `Test / DB Migrations` → `db/migrations/00000000000000_baseline.{up,down}.sql` の SQL（`migrate up` / `down -all` / `up` の往復）
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
 2. **ローカルで同じ Task を再現する**
    - `Test / Mobile`: `task mobile:check`（依存は `task mobile:deps`）
+   - `Test / DB Migrations`: `task db:reset`（`drop` → `migrate` → `seed`）でローカル DB に対して同等の up を再現。`down` 単体を試すなら `task db:rollback`
    - `Docker / <target>`: CI ログの `task docker:build:…` 行をそのまま使う
 
    ```bash
