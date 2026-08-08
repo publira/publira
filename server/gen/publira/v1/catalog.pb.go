@@ -22,6 +22,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Viewer access state for an episode body on GetEpisodeDetail.
+type EpisodeAccess int32
+
+const (
+	EpisodeAccess_EPISODE_ACCESS_UNSPECIFIED EpisodeAccess = 0
+	// price is 0 (public body).
+	EpisodeAccess_EPISODE_ACCESS_FREE EpisodeAccess = 1
+	// paid and no valid purchase/ticket grant.
+	EpisodeAccess_EPISODE_ACCESS_LOCKED EpisodeAccess = 2
+	// valid purchase or active access ticket.
+	EpisodeAccess_EPISODE_ACCESS_ENTITLED EpisodeAccess = 3
+)
+
+// Enum value maps for EpisodeAccess.
+var (
+	EpisodeAccess_name = map[int32]string{
+		0: "EPISODE_ACCESS_UNSPECIFIED",
+		1: "EPISODE_ACCESS_FREE",
+		2: "EPISODE_ACCESS_LOCKED",
+		3: "EPISODE_ACCESS_ENTITLED",
+	}
+	EpisodeAccess_value = map[string]int32{
+		"EPISODE_ACCESS_UNSPECIFIED": 0,
+		"EPISODE_ACCESS_FREE":        1,
+		"EPISODE_ACCESS_LOCKED":      2,
+		"EPISODE_ACCESS_ENTITLED":    3,
+	}
+)
+
+func (x EpisodeAccess) Enum() *EpisodeAccess {
+	p := new(EpisodeAccess)
+	*p = x
+	return p
+}
+
+func (x EpisodeAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EpisodeAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_v1_catalog_proto_enumTypes[0].Descriptor()
+}
+
+func (EpisodeAccess) Type() protoreflect.EnumType {
+	return &file_publira_v1_catalog_proto_enumTypes[0]
+}
+
+func (x EpisodeAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EpisodeAccess.Descriptor instead.
+func (EpisodeAccess) EnumDescriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{0}
+}
+
 type ListPublishedLabelsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -389,10 +445,13 @@ func (x *GetEpisodeDetailRequest) GetPublicId() string {
 // Episode detail for public viewing.
 // Body/content is represented as ordered images for the reader UI.
 type GetEpisodeDetailResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Episode       *v1.Episode            `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
-	Series        *v1.Series             `protobuf:"bytes,2,opt,name=series,proto3" json:"series,omitempty"`
-	Images        []*v1.EpisodeImage     `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Episode *v1.Episode            `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
+	Series  *v1.Series             `protobuf:"bytes,2,opt,name=series,proto3" json:"series,omitempty"`
+	// Body images. Empty when access is locked (paid, no purchase/ticket).
+	Images []*v1.EpisodeImage `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
+	// Viewer access state for this episode.
+	Access        EpisodeAccess `protobuf:"varint,4,opt,name=access,proto3,enum=publira.v1.EpisodeAccess" json:"access,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -448,6 +507,13 @@ func (x *GetEpisodeDetailResponse) GetImages() []*v1.EpisodeImage {
 	return nil
 }
 
+func (x *GetEpisodeDetailResponse) GetAccess() EpisodeAccess {
+	if x != nil {
+		return x.Access
+	}
+	return EpisodeAccess_EPISODE_ACCESS_UNSPECIFIED
+}
+
 var File_publira_v1_catalog_proto protoreflect.FileDescriptor
 
 const file_publira_v1_catalog_proto_rawDesc = "" +
@@ -474,11 +540,17 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"o\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xb9\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\xec\x01\n" +
 	"\x18GetEpisodeDetailResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +
-	"\x06images\x18\x03 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images2\xa3\x03\n" +
+	"\x06images\x18\x03 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\x121\n" +
+	"\x06access\x18\x04 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access*\x80\x01\n" +
+	"\rEpisodeAccess\x12\x1e\n" +
+	"\x1aEPISODE_ACCESS_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13EPISODE_ACCESS_FREE\x10\x01\x12\x19\n" +
+	"\x15EPISODE_ACCESS_LOCKED\x10\x02\x12\x1b\n" +
+	"\x17EPISODE_ACCESS_ENTITLED\x10\x032\xa3\x03\n" +
 	"\x0eCatalogService\x12h\n" +
 	"\x13ListPublishedLabels\x12&.publira.v1.ListPublishedLabelsRequest\x1a'.publira.v1.ListPublishedLabelsResponse\"\x00\x12h\n" +
 	"\x13ListPublishedSeries\x12&.publira.v1.ListPublishedSeriesRequest\x1a'.publira.v1.ListPublishedSeriesResponse\"\x00\x12\\\n" +
@@ -497,47 +569,50 @@ func file_publira_v1_catalog_proto_rawDescGZIP() []byte {
 	return file_publira_v1_catalog_proto_rawDescData
 }
 
+var file_publira_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_v1_catalog_proto_goTypes = []any{
-	(*ListPublishedLabelsRequest)(nil),  // 0: publira.v1.ListPublishedLabelsRequest
-	(*ListPublishedLabelsResponse)(nil), // 1: publira.v1.ListPublishedLabelsResponse
-	(*ListPublishedSeriesRequest)(nil),  // 2: publira.v1.ListPublishedSeriesRequest
-	(*ListPublishedSeriesResponse)(nil), // 3: publira.v1.ListPublishedSeriesResponse
-	(*GetSeriesDetailRequest)(nil),      // 4: publira.v1.GetSeriesDetailRequest
-	(*GetSeriesDetailResponse)(nil),     // 5: publira.v1.GetSeriesDetailResponse
-	(*GetEpisodeDetailRequest)(nil),     // 6: publira.v1.GetEpisodeDetailRequest
-	(*GetEpisodeDetailResponse)(nil),    // 7: publira.v1.GetEpisodeDetailResponse
-	(*v1.TenantContext)(nil),            // 8: publira.types.v1.TenantContext
-	(*v1.Label)(nil),                    // 9: publira.types.v1.Label
-	(*v1.Series)(nil),                   // 10: publira.types.v1.Series
-	(*v1.Episode)(nil),                  // 11: publira.types.v1.Episode
-	(*v1.EpisodeImage)(nil),             // 12: publira.types.v1.EpisodeImage
+	(EpisodeAccess)(0),                  // 0: publira.v1.EpisodeAccess
+	(*ListPublishedLabelsRequest)(nil),  // 1: publira.v1.ListPublishedLabelsRequest
+	(*ListPublishedLabelsResponse)(nil), // 2: publira.v1.ListPublishedLabelsResponse
+	(*ListPublishedSeriesRequest)(nil),  // 3: publira.v1.ListPublishedSeriesRequest
+	(*ListPublishedSeriesResponse)(nil), // 4: publira.v1.ListPublishedSeriesResponse
+	(*GetSeriesDetailRequest)(nil),      // 5: publira.v1.GetSeriesDetailRequest
+	(*GetSeriesDetailResponse)(nil),     // 6: publira.v1.GetSeriesDetailResponse
+	(*GetEpisodeDetailRequest)(nil),     // 7: publira.v1.GetEpisodeDetailRequest
+	(*GetEpisodeDetailResponse)(nil),    // 8: publira.v1.GetEpisodeDetailResponse
+	(*v1.TenantContext)(nil),            // 9: publira.types.v1.TenantContext
+	(*v1.Label)(nil),                    // 10: publira.types.v1.Label
+	(*v1.Series)(nil),                   // 11: publira.types.v1.Series
+	(*v1.Episode)(nil),                  // 12: publira.types.v1.Episode
+	(*v1.EpisodeImage)(nil),             // 13: publira.types.v1.EpisodeImage
 }
 var file_publira_v1_catalog_proto_depIdxs = []int32{
-	8,  // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 1: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
-	8,  // 2: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 3: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	8,  // 4: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 5: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
-	11, // 6: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
-	8,  // 7: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 8: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
-	10, // 9: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
-	12, // 10: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
-	0,  // 11: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
-	2,  // 12: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	4,  // 13: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	6,  // 14: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	1,  // 15: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
-	3,  // 16: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	5,  // 17: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	7,  // 18: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	15, // [15:19] is the sub-list for method output_type
-	11, // [11:15] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	9,  // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10, // 1: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
+	9,  // 2: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 3: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	9,  // 4: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 5: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
+	12, // 6: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
+	9,  // 7: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	12, // 8: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
+	11, // 9: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
+	13, // 10: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
+	0,  // 11: publira.v1.GetEpisodeDetailResponse.access:type_name -> publira.v1.EpisodeAccess
+	1,  // 12: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
+	3,  // 13: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	5,  // 14: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	7,  // 15: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	2,  // 16: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
+	4,  // 17: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	6,  // 18: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	8,  // 19: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }
@@ -550,13 +625,14 @@ func file_publira_v1_catalog_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_catalog_proto_rawDesc), len(file_publira_v1_catalog_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_publira_v1_catalog_proto_goTypes,
 		DependencyIndexes: file_publira_v1_catalog_proto_depIdxs,
+		EnumInfos:         file_publira_v1_catalog_proto_enumTypes,
 		MessageInfos:      file_publira_v1_catalog_proto_msgTypes,
 	}.Build()
 	File_publira_v1_catalog_proto = out.File

@@ -280,8 +280,9 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 		wantCode  connect.Code
 	}{
 		{
+			// Paid episode without session: metadata OK, body locked (no images).
 			episodeID: normalEpisodeID,
-			name:      "normal",
+			name:      "normal-paid-locked",
 			publicID:  "EPISODE001",
 			rows: sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
 				AddRow(normalEpisodeID, "EPISODE001", "Episode Title", int32(1), int32(100), int32(24), "published", nil, time.Now().UTC(), "SERIES001", "Series Title"),
@@ -323,13 +324,6 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
 				WithArgs(tenantID, tc.publicID).
 				WillReturnRows(tc.rows)
-			if tc.wantCode == 0 {
-				rows := sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
-					AddRow(uuid.Must(uuid.NewV7()), tenantID, tc.episodeID, int32(1), now, "image/png", int64(1024), int32(1200), int32(1800))
-				mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
-					WithArgs(tc.episodeID).
-					WillReturnRows(rows)
-			}
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.GetEpisodeDetail(context.Background(), connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
@@ -350,13 +344,134 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 				if resp.Msg.Series == nil || resp.Msg.Series.PublicId != "SERIES001" {
 					t.Fatalf("series public_id = %q, want SERIES001", resp.Msg.Series.GetPublicId())
 				}
-				if len(resp.Msg.Images) != 1 {
-					t.Fatalf("images count = %d, want 1", len(resp.Msg.Images))
+				if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+					t.Fatalf("access = %v, want %v", resp.Msg.Access, publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED)
+				}
+				if len(resp.Msg.Images) != 0 {
+					t.Fatalf("images count = %d, want 0 for locked paid episode", len(resp.Msg.Images))
 				}
 			} else {
 				if connect.CodeOf(err) != tc.wantCode {
 					t.Fatalf("GetEpisodeDetail code = %v, want %v", connect.CodeOf(err), tc.wantCode)
 				}
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
+	tests := []struct {
+		name   string
+		price  int32
+		authed bool
+		// invalidBearer sends Authorization with a non-verifiable token (no auth SQL expected).
+		invalidBearer    bool
+		hasContentAccess bool
+		wantAccess       publirav1.EpisodeAccess
+		wantImageCount   int
+	}{
+		{
+			name:           "free-unauthenticated",
+			price:          0,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_FREE,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-unauthenticated-locked",
+			price:          500,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount: 0,
+		},
+		{
+			name:             "paid-authed-with-ticket-entitled",
+			price:            500,
+			authed:           true,
+			hasContentAccess: true,
+			wantAccess:       publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantImageCount:   1,
+		},
+		{
+			name:             "paid-authed-without-grant-locked",
+			price:            500,
+			authed:           true,
+			hasContentAccess: false,
+			wantAccess:       publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount:   0,
+		},
+		{
+			name:           "paid-invalid-bearer-locked",
+			price:          500,
+			invalidBearer:  true,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount: 0,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			episodeID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(getPublishedEpisodeByPublicIDQuery)).
+				WithArgs(tenantID, "EPISODE001").
+				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title"}).
+					AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), tc.price, int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title"))
+
+			if tc.authed {
+				// authenticateAccessToken looks up tenant again via tenantByContext
+				expectTenantLookup(mock, tenantID, "TENANT", now)
+				expectAuthSession(mock, tenantID, userID, now)
+				mock.ExpectQuery(regexp.QuoteMeta(userHasEpisodeContentAccessQuery)).
+					WithArgs(tenantID, userID, episodeID).
+					WillReturnRows(sqlmock.NewRows([]string{"has_access"}).AddRow(tc.hasContentAccess))
+			} else if tc.invalidBearer {
+				// Token verify fails after tenant re-lookup; no content-access or images queries.
+				expectTenantLookup(mock, tenantID, "TENANT", now)
+			}
+
+			if tc.wantImageCount > 0 {
+				mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
+					WithArgs(episodeID).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
+						AddRow(uuid.Must(uuid.NewV7()), tenantID, episodeID, int32(1), now, "image/png", int64(1024), int32(1200), int32(1800)))
+			}
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			var req *connect.Request[publirav1.GetEpisodeDetailRequest]
+			switch {
+			case tc.authed:
+				req = newAuthedPublicRequest(&publirav1.GetEpisodeDetailRequest{
+					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+					PublicId: "EPISODE001",
+				}, tenantID.String())
+			case tc.invalidBearer:
+				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+					PublicId: "EPISODE001",
+				})
+				req.Header().Set("Authorization", "Bearer not-a-valid-jwt")
+			default:
+				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+					PublicId: "EPISODE001",
+				})
+			}
+
+			resp, err := client.GetEpisodeDetail(context.Background(), req)
+			if err != nil {
+				t.Fatalf("GetEpisodeDetail: %v", err)
+			}
+			if resp.Msg.Access != tc.wantAccess {
+				t.Fatalf("access = %v, want %v", resp.Msg.Access, tc.wantAccess)
+			}
+			if len(resp.Msg.Images) != tc.wantImageCount {
+				t.Fatalf("images count = %d, want %d", len(resp.Msg.Images), tc.wantImageCount)
 			}
 			assertPublicExpectations(t, mock)
 		})
@@ -375,6 +490,21 @@ func TestGetPublishedEpisodeQueryHasPublicationGuards(t *testing.T) {
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(getPublishedEpisodeByPublicIDQuery, snippet) {
 			t.Fatalf("getPublishedEpisodeByPublicIDQuery does not contain %q", snippet)
+		}
+	}
+}
+
+func TestUserHasEpisodeContentAccessQueryCoversPurchasesAndTickets(t *testing.T) {
+	requiredSnippets := []string{
+		"FROM purchases p",
+		"FROM access_tickets at",
+		"at.revoked_at IS NULL",
+		"at.expires_at > NOW()",
+		"p.expires_at > NOW()",
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(userHasEpisodeContentAccessQuery, snippet) {
+			t.Fatalf("userHasEpisodeContentAccessQuery does not contain %q", snippet)
 		}
 	}
 }

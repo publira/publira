@@ -41,12 +41,26 @@ message GetEpisodeDetailRequest {
   string public_id = 2;
 }
 
+// Viewer access state for an episode body on GetEpisodeDetail.
+enum EpisodeAccess {
+  EPISODE_ACCESS_UNSPECIFIED = 0;
+  // price is 0 (public body).
+  EPISODE_ACCESS_FREE = 1;
+  // paid and no valid purchase/ticket grant.
+  EPISODE_ACCESS_LOCKED = 2;
+  // valid purchase or active access ticket.
+  EPISODE_ACCESS_ENTITLED = 3;
+}
+
 // Episode detail for public viewing.
 // Body/content is represented as ordered images for the reader UI.
 message GetEpisodeDetailResponse {
   publira.types.v1.Episode episode = 1;
   publira.types.v1.Series series = 2;
+  // Body images. Empty when access is locked (paid, no purchase/ticket).
   repeated publira.types.v1.EpisodeImage images = 3;
+  // Viewer access state for this episode.
+  EpisodeAccess access = 4;
 }
 
 service CatalogService {
