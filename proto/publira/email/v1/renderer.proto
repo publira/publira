@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package publira.email.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/email/v1;publiraemailv1";
+
+import "google/protobuf/struct.proto";
+
+message RenderEmailRequest {
+  string template = 1;
+  string locale = 2;
+  google.protobuf.Struct data = 3;
+}
+
+message RenderEmailResponse {
+  string subject = 1;
+  string html = 2;
+  string text = 3;
+}
+
+service EmailRendererService {
+  rpc RenderEmail(RenderEmailRequest) returns (RenderEmailResponse) {}
+}
