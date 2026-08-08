@@ -151,9 +151,7 @@ const Page = async ({
                   href={`/series/${series.publicId}`}
                   className="block rounded-2xl border border-border/70 bg-card p-5 transition hover:border-secondary/40 hover:shadow-sm"
                 >
-                  <p className="font-medium text-foreground">
-                    {series.title}
-                  </p>
+                  <p className="font-medium text-foreground">{series.title}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     シリーズ詳細を見る
                   </p>
