@@ -162,7 +162,13 @@ The reason is not style. `new Date("2030-01-01T10:00")` reads a zone-less string
 | Form value that may be either shape | `toInstantIsoString(value, timeZone)` |
 | Date-only filter boundary (`YYYY-MM-DD`) | `startOfDayIsoString` / `endOfDayIsoString` |
 
-Always pass a time zone explicitly. Until tenant time zones are wired up ([#566](https://github.com/publira/publira/issues/566) / [#567](https://github.com/publira/publira/issues/567)), pass `DEFAULT_TIME_ZONE` and say in a comment which zone it stands for ("browser TZ", "tenant TZ", "UTC day boundary"). Never re-add a fixed `+09:00`.
+The zone must always be a decision, never an accident:
+
+- **Conversion helpers** (`toInstantIsoString`, `fromDateTimeLocalValue`, `toDateTimeLocalValue`, `startOfDayIsoString`, `endOfDayIsoString`) take `timeZone` as a **required parameter** — the signature forces the choice. Pass `DEFAULT_TIME_ZONE` and say in a comment which zone it stands in for ("browser TZ", "tenant TZ", "UTC day boundary").
+- **Display helpers** (`formatDateTime`, `formatDate`) default to `DEFAULT_TIME_ZONE`. Per [#564](https://github.com/publira/publira/issues/564) that default is the deliberate migration-era stand-in for the tenant zone, so omitting it is allowed; pass it explicitly whenever the zone is anything else, or where you want the call marked for the tenant-TZ migration.
+- Once tenant time zones are wired up ([#566](https://github.com/publira/publira/issues/566) / [#567](https://github.com/publira/publira/issues/567)), display call sites take a resolved tenant zone and the default stops being the right answer.
+
+Never re-add a fixed `+09:00`.
 
 ### NG (do not)
 
@@ -220,8 +226,9 @@ items.toSorted((a, b) => {
   return Temporal.Instant.compare(right, left);
 });
 
-// OK: shared formatter
-formatDateTime(value, { fallback: "-" });
+// OK: shared formatter. The zone may be omitted to take DEFAULT_TIME_ZONE;
+// naming it marks the call for the tenant-TZ migration.
+formatDateTime(value, { fallback: "-", timeZone: DEFAULT_TIME_ZONE });
 ```
 
 ### The `Date` boundary

@@ -151,13 +151,13 @@ describe("date-only day boundaries", () => {
       "2024-03-09T15:00:00Z"
     );
     expect(endOfDayIsoString("2024-03-10", "Asia/Tokyo")).toBe(
-      "2024-03-10T14:59:59.999999Z"
+      "2024-03-10T14:59:59.999999999Z"
     );
     expect(startOfDayIsoString("2024-03-10", "UTC")).toBe(
       "2024-03-10T00:00:00Z"
     );
     expect(endOfDayIsoString("2024-03-10", "UTC")).toBe(
-      "2024-03-10T23:59:59.999999Z"
+      "2024-03-10T23:59:59.999999999Z"
     );
   });
 
@@ -166,7 +166,7 @@ describe("date-only day boundaries", () => {
     const start = startOfDayIsoString("2024-03-10", "America/Los_Angeles");
     const end = endOfDayIsoString("2024-03-10", "America/Los_Angeles");
     expect(start).toBe("2024-03-10T08:00:00Z");
-    expect(end).toBe("2024-03-11T06:59:59.999999Z");
+    expect(end).toBe("2024-03-11T06:59:59.999999999Z");
     expect(
       Temporal.Instant.compare(
         parseInstant(start) as Temporal.Instant,
@@ -180,7 +180,7 @@ describe("date-only day boundaries", () => {
       "2024-11-03T07:00:00Z"
     );
     expect(endOfDayIsoString("2024-11-03", "America/Los_Angeles")).toBe(
-      "2024-11-04T07:59:59.999999Z"
+      "2024-11-04T07:59:59.999999999Z"
     );
   });
 
@@ -191,7 +191,23 @@ describe("date-only day boundaries", () => {
     const nextStart = parseInstant(
       startOfDayIsoString("2024-03-11", "Asia/Tokyo")
     ) as Temporal.Instant;
-    expect(nextStart.since(end).total({ unit: "microsecond" })).toBe(1);
+    expect(nextStart.since(end).total({ unit: "nanosecond" })).toBe(1);
+  });
+
+  it("includes sub-microsecond instants at the very end of the day", () => {
+    // A coarser end (…:59.999999Z) would drop these; the helper must not assume
+    // the consumer stores only microseconds.
+    const end = parseInstant(
+      endOfDayIsoString("2024-03-10", "UTC")
+    ) as Temporal.Instant;
+    for (const value of [
+      "2024-03-10T23:59:59.999999Z",
+      "2024-03-10T23:59:59.999999001Z",
+      "2024-03-10T23:59:59.999999999Z",
+    ]) {
+      const at = parseInstant(value) as Temporal.Instant;
+      expect(Temporal.Instant.compare(at, end)).toBeLessThanOrEqual(0);
+    }
   });
 
   it("returns empty string for empty or non date-only input", () => {

@@ -235,9 +235,12 @@ export const startOfDayIsoString = (date: string, timeZone: string): string => {
  * Date-only filter value (`YYYY-MM-DD`) → the **inclusive** last instant of that
  * calendar day in `timeZone`, as an ISO-8601 instant.
  *
- * Derived as "start of the next day minus one microsecond" so DST transitions
- * (a day that is 23 or 25 hours long) stay correct; microsecond granularity
- * matches the storage precision of a Postgres `timestamptz`.
+ * Derived as "start of the next day minus one nanosecond" so DST transitions
+ * (a day that is 23 or 25 hours long) stay correct. Nanoseconds rather than the
+ * microsecond precision of a Postgres `timestamptz`: this helper should not
+ * assume the consumer's storage precision, and a value that is too precise is
+ * truncated back into the same day, whereas a value that is too coarse silently
+ * drops rows.
  * Returns `""` for empty / non-date input.
  */
 export const endOfDayIsoString = (date: string, timeZone: string): string => {
@@ -251,7 +254,7 @@ export const endOfDayIsoString = (date: string, timeZone: string): string => {
       .add({ days: 1 })
       .toZonedDateTime(timeZone)
       .toInstant()
-      .subtract({ microseconds: 1 })
+      .subtract({ nanoseconds: 1 })
       .toString();
   } catch {
     return "";

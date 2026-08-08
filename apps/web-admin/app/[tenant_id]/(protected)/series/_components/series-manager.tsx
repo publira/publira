@@ -65,8 +65,12 @@ export const SeriesManager = ({
           }
         }
 
-        if (a.publishedAt !== b.publishedAt) {
-          return a.publishedAt ? -1 : 1;
+        // "Has a publish date" beats "does not", decided on the parse result:
+        // keying this off the raw strings made two different spellings of the
+        // same instant return -1 in both directions, which is not a valid
+        // comparator.
+        if (Boolean(aPublishedAt) !== Boolean(bPublishedAt)) {
+          return aPublishedAt ? -1 : 1;
         }
 
         if (a.isPublished !== b.isPublished) {
