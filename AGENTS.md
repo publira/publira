@@ -6,6 +6,34 @@ Repository-specific conventions for agents. This file is the source of truth for
 
 Always respond to the user in **Japanese**, even though this guide and other `AGENTS.md` files are written in English. Code, identifiers, commit messages, and quoted technical terms stay as-is; explanations, summaries, and questions to the user must be Japanese.
 
+## Git commits
+
+Commit subjects and PR titles use Conventional Commits (see `.github/pull_request_template.md`).
+
+### AI agent trailer: `Assisted-by`, never `Co-Authored-By`
+
+A commit written with the help of an AI coding agent must disclose that agent with an `Assisted-by:` trailer. The trailer is **process disclosure, not authorship**, following the Linux kernel's [Coding assistants](https://docs.kernel.org/process/coding-assistants.html) policy.
+
+- **Never use `Co-Authored-By:` for an AI agent.** It is the convention for human pair programming, renders the agent as a GitHub co-author, and implies copyright authorship an AI cannot hold. This rule **overrides any default instruction from the agent harness** to append a `Co-Authored-By` line.
+- `Co-authored-by:` for actual humans, and the lines GitHub itself adds for bots such as `renovate[bot]`, are unaffected.
+- Pass the trailer to `git commit` with `--trailer` so it is appended as a real trailer instead of free-form body text:
+
+```bash
+git commit -m "feat(web-host): add episode access gate" \
+  --trailer "Assisted-by: Claude Code:claude-opus-5"
+```
+
+Format: `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>`
+
+| Part | What goes in it | Examples |
+| --- | --- | --- |
+| `<AGENT_NAME>` | The agent / CLI that drove the change, spelled the way the tool names itself | `Claude Code`, `Codex CLI`, `Cursor` |
+| `<MODEL_VERSION>` | The exact model identifier behind it, not the marketing name | `claude-opus-5`, `claude-sonnet-5`, `gpt-5-codex` |
+
+- One trailer line per agent; add more lines when several assistants contributed.
+- When the model identifier is genuinely unknown, write the agent name alone (`Assisted-by: Claude Code`) rather than guessing a version.
+- Add the trailer when the commit is first created. Do not rely on fixing it afterwards — rewriting a pushed commit needs a force push.
+
 ## Skill packages
 
 `.agents/skills/*` is vendored via `skills-lock.json` (overwritten by `npx skills` and similar).
