@@ -1,4 +1,5 @@
-import { getTenantDomainCandidates, isHealthProbePath } from "@publira/utils";
+import { getTenantDomainCandidates } from "@publira/utils";
+import { isHealthProbePath } from "@publira/utils/health";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

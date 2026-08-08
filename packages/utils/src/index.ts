@@ -1,3 +1,11 @@
+/**
+ * Client-safe barrel: every re-export here must be usable from a Client
+ * Component. Do **not** re-export `./health` (or anything else importing a
+ * `node:` builtin) — `@publira/ui-components` pulls `cn` from this entry, so a
+ * Node-only module here reaches the browser chunking context and breaks the
+ * build with "does not support external modules". Import Node-only helpers
+ * from their own subpath (`@publira/utils/health`).
+ */
 export { cn } from "./cn";
 export {
   DEFAULT_TIME_ZONE,
@@ -7,22 +15,6 @@ export {
   type FormatDateTimeOptions,
   type ToDateTimeLocalOptions,
 } from "./format-date-time";
-export {
-  checkUpstreamReadyz,
-  createLivezResponse,
-  createReadyzResponse,
-  HEALTH_STATUS_ERROR,
-  HEALTH_STATUS_OK,
-  HEALTH_STATUS_STARTING,
-  HEALTH_STATUS_UNAVAILABLE,
-  isHealthProbePath,
-  type HealthCheck,
-  type HealthCheckResult,
-  type HealthCheckStatus,
-  type HealthOverallStatus,
-  type ReadyzBody,
-  type ReadyzOptions,
-} from "./health";
 export { getTenantDomainCandidates } from "./tenant-domain";
 export {
   DEFAULT_TENANT_THEME_COLORS,
