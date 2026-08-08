@@ -257,9 +257,12 @@ Check / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / Build / Docker は
    - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`
    - `Check` / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / `Build` → ホスト上の lint・型・`go test` / `pnpm test` / `task mobile:check`・`pnpm build` / `go build`
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
-2. **ローカルで同じ Task を再現する**（CI ログの `task docker:build:…` 行をそのまま使う）
+2. **ローカルで同じ Task を再現する**
+   - `Test / Mobile`: `task mobile:check`（依存は `task mobile:deps`）
+   - `Docker / <target>`: CI ログの `task docker:build:…` 行をそのまま使う
 
    ```bash
+   # Docker の例
    task docker:build:web APP_NAME=web-host PORT=3000
    # または
    task docker:verify
