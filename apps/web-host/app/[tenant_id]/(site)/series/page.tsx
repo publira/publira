@@ -80,7 +80,7 @@ const SeriesListData = async () => {
         <Link
           key={item.publicId}
           href={`/series/${item.publicId}`}
-          className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:shadow-md"
+          className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
         >
           {item.eyeCatchImageVariants &&
           item.eyeCatchImageVariants.length > 0 ? (
@@ -93,12 +93,12 @@ const SeriesListData = async () => {
               />
             </div>
           ) : (
-            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
               <CollectionIcon className="h-12 w-12" />
             </div>
           )}
           <div className="px-6 py-5">
-            <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
+            <h2 className="mb-1 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
               {item.title}
             </h2>
             {item.creatorNames.length > 0 && (
@@ -107,7 +107,7 @@ const SeriesListData = async () => {
               </p>
             )}
             {item.labelName && (
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 inline-flex rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-medium text-accent">
                 {item.labelName}
               </p>
             )}

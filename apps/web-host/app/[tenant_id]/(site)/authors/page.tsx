@@ -109,7 +109,7 @@ const AuthorsListData = async ({
           <Link
             key={author.id}
             href={`/authors/${author.id}`}
-            className="group overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm transition hover:shadow-md"
+            className="group overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm transition hover:border-secondary/40 hover:shadow-md"
           >
             {author.iconImageUrl ? (
               <div className="mb-4 h-12 w-12 overflow-hidden rounded-full border border-border/60 bg-muted/20">
@@ -124,7 +124,7 @@ const AuthorsListData = async ({
                 />
               </div>
             ) : (
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-primary">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/20 text-accent">
                 <svg
                   aria-hidden="true"
                   className="h-6 w-6"
@@ -141,7 +141,7 @@ const AuthorsListData = async ({
                 </svg>
               </div>
             )}
-            <h2 className="mb-1 font-serif text-lg font-semibold group-hover:text-primary">
+            <h2 className="mb-1 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
               {author.name}
             </h2>
             <p className="text-sm text-muted-foreground">

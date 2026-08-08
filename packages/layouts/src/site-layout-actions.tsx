@@ -20,7 +20,7 @@ export const SiteLayoutActions = ({
         <a aria-label={secondaryAction.label} href={secondaryAction.href} />
       }
       size="sm"
-      variant="outline"
+      variant="secondary"
       className={secondaryAction.className}
     >
       {secondaryAction.label}

@@ -39,7 +39,10 @@ const SiteLayoutBrandText = async ({
 
   // oxlint-disable-next-line nextjs/no-html-link-for-pages
   return (
-    <a className="font-serif text-lg font-semibold" href={href}>
+    <a
+      className="font-serif text-lg font-semibold text-foreground transition-colors hover:text-primary"
+      href={href}
+    >
       {normalizedLabel}
     </a>
   );
@@ -131,7 +134,11 @@ const SiteLayoutFooterContentInner = async ({
         ) : null}
         {normalizedFooterNote || normalizedCopyrightText ? (
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {normalizedFooterNote ? <p>{normalizedFooterNote}</p> : null}
+            {normalizedFooterNote ? (
+              <p className="border-l-2 border-accent/70 pl-3">
+                {normalizedFooterNote}
+              </p>
+            ) : null}
             {normalizedCopyrightText ? <p>{normalizedCopyrightText}</p> : null}
           </div>
         ) : null}
@@ -153,7 +160,7 @@ export const SiteLayout = ({ children }: { children: ReactNode }) => (
 );
 
 export const SiteLayoutHeader = ({ children }: { children: ReactNode }) => (
-  <header className="border-b border-border/70 bg-card/70 backdrop-blur">
+  <header className="border-b border-border/70 border-t-2 border-t-secondary bg-card/70 backdrop-blur">
     <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
       {children}
     </div>
@@ -180,7 +187,7 @@ export const SiteLayoutNav = ({
   <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
     {items.map((item) => (
       <a
-        className="transition-colors hover:text-foreground"
+        className="transition-colors hover:text-accent"
         href={item.href}
         key={item.href}
       >

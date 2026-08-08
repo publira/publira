@@ -164,7 +164,7 @@ const RecommendedSeriesSection = async () => {
       {recommendedSeries.map((series) => (
         <Link
           key={series.publicId}
-          className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:shadow-md"
+          className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
           href={`/series/${series.publicId}`}
         >
           {series.eyeCatchImageVariants &&
@@ -178,12 +178,12 @@ const RecommendedSeriesSection = async () => {
               />
             </div>
           ) : (
-            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
               <CollectionIcon className="h-10 w-10" />
             </div>
           )}
           <div className="p-5">
-            <h3 className="mb-2 line-clamp-2 font-serif text-lg font-semibold">
+            <h3 className="mb-2 line-clamp-2 font-serif text-lg font-semibold transition-colors group-hover:text-secondary">
               {series.title}
             </h3>
             {series.creatorNames.length > 0 && (
@@ -236,14 +236,16 @@ const NewEpisodesSection = async () => {
         return (
           <li key={`${ids.seriesId}-${ids.episodeId}`}>
             <Link
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-5 py-4 shadow-sm transition hover:shadow-md"
+              className="group flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-5 py-4 shadow-sm transition hover:border-accent/40 hover:shadow-md"
               href={`/series/${ids.seriesId}/episodes/${ids.episodeId}`}
             >
               <div>
                 <p className="text-xs text-muted-foreground">
                   {episode.seriesTitle}
                 </p>
-                <p className="font-medium">{episode.episodeTitle}</p>
+                <p className="font-medium transition-colors group-hover:text-secondary">
+                  {episode.episodeTitle}
+                </p>
               </div>
               <span className="text-xs text-muted-foreground">
                 {episode.publishedAt.slice(0, 10)}
@@ -303,7 +305,7 @@ const UpdatedSeriesSection = async () => {
                   />
                 </div>
               ) : (
-                <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+                <div className="flex aspect-video items-center justify-center bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50">
                   <CollectionIcon className="h-10 w-10" />
                 </div>
               )}
@@ -311,7 +313,7 @@ const UpdatedSeriesSection = async () => {
             <div className="p-5">
               <h3 className="mb-1 font-serif text-lg font-semibold">
                 <Link
-                  className="underline-offset-4 hover:underline"
+                  className="underline-offset-4 transition-colors hover:text-secondary hover:underline"
                   href={`/series/${ids.seriesId}`}
                 >
                   {item.seriesTitle}
@@ -324,7 +326,7 @@ const UpdatedSeriesSection = async () => {
               )}
               <p className="mb-2 text-xs text-muted-foreground">最新更新</p>
               <Link
-                className="font-medium text-primary underline-offset-4 hover:underline"
+                className="font-medium text-accent underline-offset-4 hover:underline"
                 href={`/series/${ids.seriesId}/episodes/${ids.latestEpisodeId}`}
               >
                 {item.latestEpisodeTitle}
@@ -379,7 +381,7 @@ const FeaturedLabelsSection = async () => {
               />
             </div>
           ) : (
-            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-primary/20 to-primary/10 text-primary/40">
+            <div className="flex aspect-video items-center justify-center bg-linear-to-br from-accent/25 via-primary/10 to-secondary/20 text-accent/55">
               <svg
                 aria-hidden="true"
                 className="h-10 w-10"
@@ -433,10 +435,12 @@ const FeaturedAuthorsSection = async () => {
       {featuredAuthors.map((author) => (
         <Link
           key={author.id}
-          className="rounded-lg border border-border/70 bg-card p-5 shadow-sm transition hover:shadow-md"
+          className="group rounded-lg border border-border/70 bg-card p-5 shadow-sm transition hover:border-accent/40 hover:shadow-md"
           href={`/authors/${author.id}`}
         >
-          <p className="mb-1 font-medium">{author.name}</p>
+          <p className="mb-1 font-medium transition-colors group-hover:text-secondary">
+            {author.name}
+          </p>
           <p className="text-sm text-muted-foreground">
             公開中シリーズ {author.seriesCount} 件
           </p>
@@ -465,19 +469,19 @@ const Page = () => (
       </p>
       <div className="flex flex-wrap gap-3">
         <Link
-          className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium hover:bg-muted"
+          className="rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition hover:opacity-90"
           href="/series"
         >
           シリーズ一覧へ
         </Link>
         <Link
-          className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium hover:bg-muted"
+          className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition hover:opacity-90"
           href="/labels"
         >
           レーベル一覧へ
         </Link>
         <Link
-          className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium hover:bg-muted"
+          className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
           href="/authors"
         >
           著者一覧へ
@@ -494,7 +498,7 @@ const Page = () => (
           おすすめ作品
         </h2>
         <Link
-          className="text-sm text-primary underline-offset-4 hover:underline"
+          className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           href="/series"
         >
           すべて見る
@@ -532,7 +536,7 @@ const Page = () => (
           注目のレーベル
         </h2>
         <Link
-          className="text-sm text-primary underline-offset-4 hover:underline"
+          className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           href="/labels"
         >
           レーベル一覧へ
@@ -549,7 +553,7 @@ const Page = () => (
           注目の著者
         </h2>
         <Link
-          className="text-sm text-primary underline-offset-4 hover:underline"
+          className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           href="/authors"
         >
           著者一覧へ
