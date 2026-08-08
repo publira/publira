@@ -41,7 +41,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 
 `Detect changes` が [dorny/paths-filter](https://github.com/dorny/paths-filter) で変更 path を判定し、`scripts/ci-plan-jobs.sh` が実行フラグと Docker 行列に変換する。
 
-**全ジョブ共通**で、`.github/workflows/ci.yml` と `scripts/ci-plan-jobs.sh` の変更は必ずそのジョブを起動する（CI 自体の変更を取りこぼさないため）。以下の表は共通分を除いた監視 path。
+**全ジョブ共通**で、`.github/workflows/ci.yml` と `scripts/ci-plan-jobs.sh` の変更は必ずそのジョブを起動する（CI 自体の変更を取りこぼさないため）。また**全ジョブ共通で Markdown（`**/*.md`）は監視対象から除外**する（後述）。以下の表は共通分を除いた監視 path。
 
 | ジョブ | 監視 path（共通分を除く） |
 | --- | --- |
@@ -53,6 +53,27 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Test / E2E` | `e2e/**`, `apps/web-host/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
 | `Build` | `apps/**`, `packages/**`, `server/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Docker`（ロール別） | [`infra/docker/README.md`](../../infra/docker/README.md) の「変更検知のロール対応」 |
+
+### ドキュメントのみの変更の除外
+
+監視 path は `apps/**` のようにディレクトリ単位で指定しているため、放置すると配下の README / AGENTS.md を直しただけで `Check` や `Test / E2E` まで走る。これを避けるため、全 filter が否定パターン `!**/*.md` を共有する（[#656](https://github.com/publira/publira/issues/656)）。
+
+```yaml
+predicate-quantifier: "some-with-excludes"
+filters: |
+  docs_excluded: &docs_excluded
+    - '!**/*.md'
+  check:
+    - *docs_excluded
+    - 'apps/**'
+    …
+```
+
+- **`predicate-quantifier: "some-with-excludes"` は必須**。既定の `some` は「どれか 1 つの pattern にマッチすれば採用」なので、`!**/*.md` が単なる選択肢の 1 つとして扱われて除外が効かない。`some-with-excludes` では「肯定 pattern に 1 つ以上マッチし、かつ否定 pattern に 1 つもマッチしない」となる。この入力はアクション全体（全 filter）に適用されるが、他の pattern はすべて肯定なので挙動は変わらない。
+- 除外リストは YAML アンカー `&docs_excluded` に 1 箇所だけ定義し、各 filter が `*docs_excluded` で参照する。**filter を追加したらこの行も足す**（書き漏れるとその filter だけ Markdown で起動する）。
+- `docs_excluded` 自体も filter として出力されるが、否定 pattern しか持たない filter は常に false で、`scripts/ci-plan-jobs.sh` も読んでいない。
+- Markdown とコードが混在する PR では、コード側が肯定 pattern にマッチするので従来どおりジョブは起動する。
+- 除外対象は `**/*.md` のみ。ルート直下の `LICENSE` や `.coderabbit.yaml` などはそもそもどの filter の監視 path にも入っていない。
 
 ### `Detect changes` の checkout（push イベントの base 解決）
 
@@ -129,6 +150,7 @@ Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片
 
 - [ ] ジョブを追加・改名したら `Summary` の `needs` と集約ループ（`env` と表示名）に足した
 - [ ] path filter を追加したら `scripts/ci-plan-jobs.sh` の `FILTER_*` 読み取り・出力・`workflow_dispatch` 分岐を更新した
+- [ ] path filter を追加したら先頭に `- *docs_excluded` を入れた（ドキュメントのみの変更で起動しないこと）
 - [ ] 本ファイルの「ジョブ一覧」「path filter」表を更新した
 - [ ] `Detect changes` の checkout を変えた場合、push イベントで base コミットを解決できることを確認した（`fetch-depth` と `persist-credentials` の組み合わせ）
 - [ ] ジョブ表示名を変えた場合、Branch ruleset の必須チェックは `Summary` のままで足りるか確認した
