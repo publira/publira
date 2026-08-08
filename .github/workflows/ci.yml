@@ -50,6 +50,7 @@ jobs:
       test_go: ${{ steps.plan.outputs.test_go }}
       test_ts: ${{ steps.plan.outputs.test_ts }}
       test_mobile: ${{ steps.plan.outputs.test_mobile }}
+      test_e2e: ${{ steps.plan.outputs.test_e2e }}
       build: ${{ steps.plan.outputs.build }}
       docker_any: ${{ steps.plan.outputs.docker_any }}
       docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
@@ -68,6 +69,7 @@ jobs:
             check:
               - 'apps/**'
               - 'packages/**'
+              - 'e2e/**'
               - 'server/**'
               - 'db/**'
               - 'proto/**'
@@ -102,6 +104,19 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
             test_mobile:
               - 'mobile/**'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_e2e:
+              - 'e2e/**'
+              - 'apps/web-host/**'
+              - 'packages/**'
+              - 'server/**'
+              - 'db/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
@@ -159,6 +174,7 @@ jobs:
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
           FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
+          FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
@@ -344,6 +360,79 @@ jobs:
       - name: Validate / Format, Analyze, and Tests
         run: task mobile:check
 
+  test-e2e:
+    name: Test / E2E
+    needs: changes
+    if: needs.changes.outputs.test_e2e == 'true'
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 30
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache-dependency-path: server/go.sum
+
+      - name: Install Task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-${migrate_arch}.tar.gz" -o /tmp/migrate.tgz
+          tar -xzf /tmp/migrate.tgz -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f /tmp/migrate /tmp/migrate.tgz
+
+      - name: Dependencies / Install
+        run: task deps
+
+      - name: Cache / Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Build + Readiness + Playwright
+        # prepare (build + browsers) then full lifecycle. Always tears down
+        # compose/apps (trap). Readiness failures print "readiness failed: …"
+        # and never start Playwright.
+        run: task e2e:run
+        env:
+          CI: true
+
+      - name: Upload / E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-artifacts
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/.run/logs/
+          if-no-files-found: ignore
+
   build:
     name: Build
     needs: changes
@@ -437,6 +526,7 @@ jobs:
       - test-go
       - test-ts
       - test-mobile
+      - test-e2e
       - build
       - docker
     runs-on: ubicloud-standard-2
@@ -448,6 +538,7 @@ jobs:
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
           TEST_MOBILE: ${{ needs.test-mobile.result }}
+          TEST_E2E: ${{ needs.test-e2e.result }}
           BUILD: ${{ needs.build.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
@@ -459,6 +550,7 @@ jobs:
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
             "Test / Mobile=${TEST_MOBILE}" \
+            "Test / E2E=${TEST_E2E}" \
             "Build=${BUILD}" \
             "Docker=${DOCKER}"
           do
