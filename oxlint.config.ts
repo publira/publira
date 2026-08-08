@@ -20,10 +20,51 @@ export default defineConfig({
         "sonarjs/no-wildcard-import": "off",
       },
     },
+    {
+      /**
+       * `Date` boundary modules: these hand a `Date` to an API that demands one
+       * (cookie `expires`, the Next.js cache handler's TTL arithmetic), so the
+       * conversion is the point rather than a slip. Everything else goes
+       * through Temporal — see AGENTS.md "Date and time".
+       *
+       * Adding a path here is a deliberate decision: it must be a real external
+       * API that cannot take an instant, not "Temporal was inconvenient".
+       */
+      files: [
+        // web-session sets cookie `expires`, which is typed as `Date`.
+        "packages/web-session/src/**",
+        // Next.js cache handler revalidation timestamps are epoch millis.
+        "packages/next-cache-handlers/src/**",
+        // Login responses become the session cookie's `expires`.
+        "apps/*/lib/auth.ts",
+        "apps/*/lib/auth.test.ts",
+        "apps/web-admin/lib/admin-auth.ts",
+        // Cookie clearing uses `new Date(0)`.
+        "apps/*/app/**/logout/route.ts",
+        "apps/web-host/app/**/settings/page.tsx",
+      ],
+      rules: {
+        "no-restricted-globals": "off",
+      },
+    },
   ],
   rules: {
     // Monorepo test names use `*.integration.test.ts` etc.
     "github/filenames-match-regex": "off",
+    /**
+     * Date/time must go through Temporal (`@publira/utils`), not `Date`.
+     * `new Date(str)` reads zone-less input in the host zone and `getTime()`
+     * comparisons hide that, so the same value means different instants per
+     * browser and per server. See AGENTS.md "Date and time" (#575).
+     */
+    "no-restricted-globals": [
+      "error",
+      {
+        message:
+          "Use Temporal and the @publira/utils date helpers instead of Date (see AGENTS.md). Only modules feeding an external API that requires a Date are exempt, via an oxlint.config.ts override.",
+        name: "Date",
+      },
+    ],
     // Fires on non-route modules whose path/name contains "page".
     "react-doctor/nextjs-missing-metadata": "off",
     // Large form/workspace components are known debt; not for this enablement.
