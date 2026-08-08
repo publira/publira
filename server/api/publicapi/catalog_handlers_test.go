@@ -344,8 +344,8 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 				if resp.Msg.Series == nil || resp.Msg.Series.PublicId != "SERIES001" {
 					t.Fatalf("series public_id = %q, want SERIES001", resp.Msg.Series.GetPublicId())
 				}
-				if resp.Msg.Access != episodeAccessLocked {
-					t.Fatalf("access = %q, want %q", resp.Msg.Access, episodeAccessLocked)
+				if resp.Msg.Access != publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED {
+					t.Fatalf("access = %v, want %v", resp.Msg.Access, publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED)
 				}
 				if len(resp.Msg.Images) != 0 {
 					t.Fatalf("images count = %d, want 0 for locked paid episode", len(resp.Msg.Images))
@@ -362,23 +362,25 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 
 func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 	tests := []struct {
-		name             string
-		price            int32
-		authed           bool
+		name   string
+		price  int32
+		authed bool
+		// invalidBearer sends Authorization with a non-verifiable token (no auth SQL expected).
+		invalidBearer    bool
 		hasContentAccess bool
-		wantAccess       string
+		wantAccess       publirav1.EpisodeAccess
 		wantImageCount   int
 	}{
 		{
 			name:           "free-unauthenticated",
 			price:          0,
-			wantAccess:     episodeAccessFree,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_FREE,
 			wantImageCount: 1,
 		},
 		{
 			name:           "paid-unauthenticated-locked",
 			price:          500,
-			wantAccess:     episodeAccessLocked,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
 			wantImageCount: 0,
 		},
 		{
@@ -386,7 +388,7 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			price:            500,
 			authed:           true,
 			hasContentAccess: true,
-			wantAccess:       episodeAccessEntitled,
+			wantAccess:       publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
 			wantImageCount:   1,
 		},
 		{
@@ -394,8 +396,15 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			price:            500,
 			authed:           true,
 			hasContentAccess: false,
-			wantAccess:       episodeAccessLocked,
+			wantAccess:       publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
 			wantImageCount:   0,
+		},
+		{
+			name:           "paid-invalid-bearer-locked",
+			price:          500,
+			invalidBearer:  true,
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED,
+			wantImageCount: 0,
 		},
 	}
 
@@ -421,6 +430,9 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta(userHasEpisodeContentAccessQuery)).
 					WithArgs(tenantID, userID, episodeID).
 					WillReturnRows(sqlmock.NewRows([]string{"has_access"}).AddRow(tc.hasContentAccess))
+			} else if tc.invalidBearer {
+				// Token verify fails after tenant re-lookup; no content-access or images queries.
+				expectTenantLookup(mock, tenantID, "TENANT", now)
 			}
 
 			if tc.wantImageCount > 0 {
@@ -432,12 +444,19 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			var req *connect.Request[publirav1.GetEpisodeDetailRequest]
-			if tc.authed {
+			switch {
+			case tc.authed:
 				req = newAuthedPublicRequest(&publirav1.GetEpisodeDetailRequest{
 					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 					PublicId: "EPISODE001",
 				}, tenantID.String())
-			} else {
+			case tc.invalidBearer:
+				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
+					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+					PublicId: "EPISODE001",
+				})
+				req.Header().Set("Authorization", "Bearer not-a-valid-jwt")
+			default:
 				req = connect.NewRequest(&publirav1.GetEpisodeDetailRequest{
 					Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 					PublicId: "EPISODE001",
@@ -449,7 +468,7 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 				t.Fatalf("GetEpisodeDetail: %v", err)
 			}
 			if resp.Msg.Access != tc.wantAccess {
-				t.Fatalf("access = %q, want %q", resp.Msg.Access, tc.wantAccess)
+				t.Fatalf("access = %v, want %v", resp.Msg.Access, tc.wantAccess)
 			}
 			if len(resp.Msg.Images) != tc.wantImageCount {
 				t.Fatalf("images count = %d, want %d", len(resp.Msg.Images), tc.wantImageCount)

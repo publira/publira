@@ -2,8 +2,8 @@
 // @generated from file publira/v1/catalog.proto (package publira.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Episode, EpisodeImage, Label, Series, TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/catalog.proto.
  */
 export const file_publira_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJGChtMaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2USJwoGbGFiZWxzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCJsChpMaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDgoGb2Zmc2V0GAMgASgFIkcKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyJcChZHZXRTZXJpZXNEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkicAoXR2V0U2VyaWVzRGV0YWlsUmVzcG9uc2USKAoGc2VyaWVzGAEgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSKwoIZXBpc29kZXMYAiADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUiXQoXR2V0RXBpc29kZURldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSKwAQoYR2V0RXBpc29kZURldGFpbFJlc3BvbnNlEioKB2VwaXNvZGUYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUSKAoGc2VyaWVzGAIgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSLgoGaW1hZ2VzGAMgAygLMh4ucHVibGlyYS50eXBlcy52MS5FcGlzb2RlSW1hZ2USDgoGYWNjZXNzGAQgASgJMqMDCg5DYXRhbG9nU2VydmljZRJoChNMaXN0UHVibGlzaGVkTGFiZWxzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkTGFiZWxzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZExhYmVsc1Jlc3BvbnNlIgASaAoTTGlzdFB1Ymxpc2hlZFNlcmllcxImLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QaJy5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZSIAElwKD0dldFNlcmllc0RldGFpbBIiLnB1YmxpcmEudjEuR2V0U2VyaWVzRGV0YWlsUmVxdWVzdBojLnB1YmxpcmEudjEuR2V0U2VyaWVzRGV0YWlsUmVzcG9uc2UiABJfChBHZXRFcGlzb2RlRGV0YWlsEiMucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBokLnB1YmxpcmEudjEuR2V0RXBpc29kZURldGFpbFJlc3BvbnNlIgBCPFo6Z2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJGChtMaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2USJwoGbGFiZWxzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCJsChpMaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDgoGb2Zmc2V0GAMgASgFIkcKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyJcChZHZXRTZXJpZXNEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkicAoXR2V0U2VyaWVzRGV0YWlsUmVzcG9uc2USKAoGc2VyaWVzGAEgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSKwoIZXBpc29kZXMYAiADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUiXQoXR2V0RXBpc29kZURldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSLLAQoYR2V0RXBpc29kZURldGFpbFJlc3BvbnNlEioKB2VwaXNvZGUYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUSKAoGc2VyaWVzGAIgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSLgoGaW1hZ2VzGAMgAygLMh4ucHVibGlyYS50eXBlcy52MS5FcGlzb2RlSW1hZ2USKQoGYWNjZXNzGAQgASgOMhkucHVibGlyYS52MS5FcGlzb2RlQWNjZXNzKoABCg1FcGlzb2RlQWNjZXNzEh4KGkVQSVNPREVfQUNDRVNTX1VOU1BFQ0lGSUVEEAASFwoTRVBJU09ERV9BQ0NFU1NfRlJFRRABEhkKFUVQSVNPREVfQUNDRVNTX0xPQ0tFRBACEhsKF0VQSVNPREVfQUNDRVNTX0VOVElUTEVEEAMyowMKDkNhdGFsb2dTZXJ2aWNlEmgKE0xpc3RQdWJsaXNoZWRMYWJlbHMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRMYWJlbHNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2UiABJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.ListPublishedLabelsRequest
@@ -193,12 +193,11 @@ export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailRespo
   images: EpisodeImage[];
 
   /**
-   * Viewer access state for this episode: free | locked | entitled.
-   * free: price is 0 (public body). locked: paid and no valid grant. entitled: purchase or active access ticket.
+   * Viewer access state for this episode.
    *
-   * @generated from field: string access = 4;
+   * @generated from field: publira.v1.EpisodeAccess access = 4;
    */
-  access: string;
+  access: EpisodeAccess;
 };
 
 /**
@@ -207,6 +206,45 @@ export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailRespo
  */
 export const GetEpisodeDetailResponseSchema: GenMessage<GetEpisodeDetailResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_catalog, 7);
+
+/**
+ * Viewer access state for an episode body on GetEpisodeDetail.
+ *
+ * @generated from enum publira.v1.EpisodeAccess
+ */
+export enum EpisodeAccess {
+  /**
+   * @generated from enum value: EPISODE_ACCESS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * price is 0 (public body).
+   *
+   * @generated from enum value: EPISODE_ACCESS_FREE = 1;
+   */
+  FREE = 1,
+
+  /**
+   * paid and no valid purchase/ticket grant.
+   *
+   * @generated from enum value: EPISODE_ACCESS_LOCKED = 2;
+   */
+  LOCKED = 2,
+
+  /**
+   * valid purchase or active access ticket.
+   *
+   * @generated from enum value: EPISODE_ACCESS_ENTITLED = 3;
+   */
+  ENTITLED = 3,
+}
+
+/**
+ * Describes the enum publira.v1.EpisodeAccess.
+ */
+export const EpisodeAccessSchema: GenEnum<EpisodeAccess> = /*@__PURE__*/
+  enumDesc(file_publira_v1_catalog, 0);
 
 /**
  * @generated from service publira.v1.CatalogService

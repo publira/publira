@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"connectrpc.com/connect"
@@ -315,12 +316,6 @@ func (s *apiServer) GetSeriesDetail(
 	return res, nil
 }
 
-const (
-	episodeAccessFree     = "free"
-	episodeAccessLocked   = "locked"
-	episodeAccessEntitled = "entitled"
-)
-
 func (s *apiServer) GetEpisodeDetail(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetEpisodeDetailRequest],
@@ -337,10 +332,10 @@ func (s *apiServer) GetEpisodeDetail(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	access := episodeAccessLocked
+	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
 	includeImages := false
 	if row.Price == 0 {
-		access = episodeAccessFree
+		access = publirav1.EpisodeAccess_EPISODE_ACCESS_FREE
 		includeImages = true
 	} else if _, hasBearer := auth.BearerTokenFromHeader(req.Header()); hasBearer {
 		// Optional auth: invalid session stays locked; only Internal errors fail the RPC.
@@ -349,6 +344,12 @@ func (s *apiServer) GetEpisodeDetail(
 			if connect.CodeOf(authErr) == connect.CodeInternal {
 				return nil, authErr
 			}
+			// Invalid/expired sessions are treated as locked; log for operational tracing.
+			slog.InfoContext(ctx, "episode detail: bearer session rejected, treating as locked",
+				"tenant_id", tenant.ID,
+				"episode_public_id", req.Msg.PublicId,
+				"code", connect.CodeOf(authErr).String(),
+			)
 		} else {
 			hasAccess, accessErr := s.queriesFor(ctx).UserHasEpisodeContentAccess(ctx, dbmodels.UserHasEpisodeContentAccessParams{
 				TenantID:  tenant.ID,
@@ -359,7 +360,7 @@ func (s *apiServer) GetEpisodeDetail(
 				return nil, connect.NewError(connect.CodeInternal, accessErr)
 			}
 			if hasAccess.Valid && hasAccess.Bool {
-				access = episodeAccessEntitled
+				access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
 				includeImages = true
 			}
 		}
