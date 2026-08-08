@@ -89,7 +89,7 @@ tasks:
         vars: { CMD_NAME: publish-episodes }
 
   smoke:web:
-    desc: Run a short /healthz smoke check against a built web image (APP_NAME, optional PORT)
+    desc: Run a short /livez smoke check against a built web image (APP_NAME, optional PORT)
     requires:
       vars: [APP_NAME]
     vars:
@@ -115,12 +115,12 @@ tasks:
           exit 1
         fi
         for _ in $(seq 1 30); do
-          if curl -fsS "http://127.0.0.1:${host_port}/healthz" | grep -qx 'ok'; then
-            echo "smoke ok: {{.APP_NAME}} /healthz (host port ${host_port})"
+          if curl -fsS "http://127.0.0.1:${host_port}/livez" | grep -qx 'ok'; then
+            echo "smoke ok: {{.APP_NAME}} /livez (host port ${host_port})"
             exit 0
           fi
           sleep 1
         done
-        echo "smoke failed: {{.APP_NAME}} /healthz did not become ready" >&2
+        echo "smoke failed: {{.APP_NAME}} /livez did not become ready" >&2
         docker logs "{{.CONTAINER_NAME}}" >&2 || true
         exit 1

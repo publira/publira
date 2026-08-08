@@ -55,6 +55,7 @@ func main() {
 		tenantFactory,
 		objectStore,
 		logger,
+		db,
 	)
 
 	addr := strings.TrimSpace(os.Getenv("ADMIN_IMAGE_SERVER_ADDR"))

@@ -46,7 +46,9 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    ARG TURBO_VERSION=2.10.8
    ```
 
-4. **No Docker `HEALTHCHECK`** on distroless runners (no shell/wget). Document `/healthz` for orchestrator probes.
+4. **No Docker `HEALTHCHECK`** on distroless runners (no shell/wget). Orchestrator probes for API / image-server / Web:
+   - liveness `GET /livez`
+   - readiness `GET /readyz`
 5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`).
 6. **Go**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
 7. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.

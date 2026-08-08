@@ -105,6 +105,8 @@ COPY --from=pack --chown=65532:65532 /pack ./
 
 EXPOSE ${PORT}
 
-# distroless has no shell/wget; configure HTTP probes to /healthz in the orchestrator.
+# distroless has no shell/wget; configure HTTP probes in the orchestrator:
+#   liveness  -> GET /livez
+#   readiness -> GET /readyz
 # Image entrypoint is /nodejs/bin/node; path is normalized to apps/web in the pack stage.
 CMD ["apps/web/server.js"]

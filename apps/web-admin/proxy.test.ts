@@ -57,4 +57,19 @@ describe("web-admin proxy", () => {
       "/tenant_001"
     );
   });
+
+  it.each(["/livez", "/readyz"])(
+    "ヘルス probe %s はテナント解決なしで next する",
+    async (path) => {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("./proxy");
+
+      const response = await proxy(
+        new NextRequest(`https://admin.example.com${path}`)
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockResolveTenantId).not.toHaveBeenCalled();
+    }
+  );
 });

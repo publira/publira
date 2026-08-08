@@ -18,7 +18,7 @@
 
 ### 認証・認可の前提
 
-- `proxy.ts` で `/login`, `/logout`, `/healthz` 以外を保護対象にする
+- `proxy.ts` で `/login`, `/logout`, `/livez`, `/readyz` 以外を保護対象にする
 - セッション Cookie: `publira_platform_session`
 - 初期ロール定義: `platform_owner`, `platform_operator`, `platform_auditor`
 - 画面ガードは `(protected)/layout.tsx` で行う

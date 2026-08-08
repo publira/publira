@@ -1,4 +1,4 @@
-import { getTenantDomainCandidates } from "@publira/utils";
+import { getTenantDomainCandidates, isHealthProbePath } from "@publira/utils";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -13,9 +13,10 @@ const PUBLIC_PATHS = new Set([
   "/confirm-email",
   "/confirm-password",
   "/forgot-password",
+  "/livez",
   "/login",
   "/logout",
-  "/healthz",
+  "/readyz",
   "/theme.css",
 ]);
 
@@ -28,7 +29,8 @@ const serviceUnavailableResponse = () =>
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/healthz") {
+  // Probes must not depend on tenant resolution or backend availability.
+  if (isHealthProbePath(pathname)) {
     return NextResponse.next();
   }
 

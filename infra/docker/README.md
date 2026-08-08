@@ -129,7 +129,7 @@ docker build -f infra/docker/batch/Dockerfile \
 | ツール版（turbo / pnpm 等） | `ARG *_VERSION` + `# renovate: datasource=…`（[`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) と同じ形式） |
 
 Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools/docker) に沿い `turbo prune --docker` で依存を絞る。  
-実行イメージに shell / wget が無いため、**Docker `HEALTHCHECK` は置かない**。オーケストレータ側で `/healthz` 等を probe する。
+実行イメージに shell / wget が無いため、**Docker `HEALTHCHECK` は置かない**。オーケストレータ側で `/livez`（liveness）/ `/readyz`（readiness）を probe する。
 
 ### 実行時に渡す主な環境変数（参考）
 
@@ -275,7 +275,7 @@ Check / `Test / Go` / `Test / TypeScript` / Build / Docker は path filter に�
    | `pnpm turbo run build` 失敗 | アプリ本体のビルドエラー（先にホストで `pnpm build --filter @publira/<app>`） |
    | `go build` 失敗 | `server/` のコンパイルエラー（先に `task server:build`） |
    | ベース pull 失敗 / digest | レジストリ・digest 更新・Renovate PR の取りこぼし |
-   | Web smoke (`/healthz`) のみ失敗 | エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している） |
+   | Web smoke (`/livez`) のみ失敗 | エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している） |
 
 4. **CI だけ失敗する場合**
    - ランナー arch / Buildx とローカルの差（Go は `TARGETOS`/`TARGETARCH` を既定固定しない）

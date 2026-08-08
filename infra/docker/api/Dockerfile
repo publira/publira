@@ -48,8 +48,10 @@ COPY --from=builder /out/server /app/server
 
 EXPOSE ${PORT}
 
-# distroless/static has no shell or wget; configure HTTP probes to /healthz
-# in the orchestrator (K8s liveness/readiness) instead of Docker HEALTHCHECK.
+# distroless/static has no shell or wget; configure HTTP probes in the
+# orchestrator instead of Docker HEALTHCHECK:
+#   liveness  -> GET /livez
+#   readiness -> GET /readyz
 
 USER nonroot
 

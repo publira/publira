@@ -26,6 +26,10 @@
     "./theme-css-variables": {
       "types": "./dist/theme-css-variables.d.mts",
       "default": "./dist/theme-css-variables.mjs"
+    },
+    "./health": {
+      "types": "./dist/health.d.mts",
+      "default": "./dist/health.mjs"
     }
   },
   "scripts": {
