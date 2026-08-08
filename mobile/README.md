@@ -47,7 +47,7 @@ cd mobile
 flutter pub get
 ```
 
-またはルートから `task mobile:deps` / `task deps` でも同様です。
+またはルートから `task mobile:deps` / `task setup` でも同様です。
 
 ## 開発
 

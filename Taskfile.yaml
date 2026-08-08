@@ -21,7 +21,6 @@ tasks:
     cmds:
       - pnpm install
       - task: server:deps
-      - task: mobile:deps
 
   dev:
     desc: Start both web and server development tasks
@@ -44,6 +43,7 @@ tasks:
     desc: Run project dependency and database setup
     cmds:
       - task: deps
+      - task: mobile:deps
       - task: db:setup
 
   test:
