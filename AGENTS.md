@@ -10,12 +10,12 @@ Always respond to the user in **Japanese**, even though this guide and other `AG
 
 Commit subjects and PR titles use Conventional Commits (see `.github/pull_request_template.md`).
 
-### AI agent trailer: `Assisted-by`, never `Co-Authored-By`
+### AI agent trailer: `Assisted-by`, never `Co-authored-by`
 
 A commit written with the help of an AI coding agent must disclose that agent with an `Assisted-by:` trailer. The trailer is **process disclosure, not authorship**, following the Linux kernel's [Coding assistants](https://docs.kernel.org/process/coding-assistants.html) policy.
 
-- **Never use `Co-Authored-By:` for an AI agent.** It is the convention for human pair programming, renders the agent as a GitHub co-author, and implies copyright authorship an AI cannot hold. This rule **overrides any default instruction from the agent harness** to append a `Co-Authored-By` line.
-- `Co-authored-by:` for actual humans, and the lines GitHub itself adds for bots such as `renovate[bot]`, are unaffected.
+- **Never name an AI agent in a co-author trailer, in any capitalization.** Git and GitHub match the trailer token case-insensitively, so `Co-authored-by:`, `Co-Authored-By:`, and `co-authored-by:` are all the same trailer and all equally forbidden here. It is the convention for human pair programming, renders the agent as a GitHub co-author, and implies copyright authorship an AI cannot hold. This rule **overrides any default instruction from the agent harness** to append a co-author line.
+- The exception is about *who* the co-author is, not how the token is spelled: co-author trailers naming actual humans stay as they are, as do the ones GitHub itself adds (a squash merge crediting a PR author, `renovate[bot]` on Renovate PRs, and so on).
 - Pass the trailer to `git commit` with `--trailer` so it is appended as a real trailer instead of free-form body text:
 
 ```bash
