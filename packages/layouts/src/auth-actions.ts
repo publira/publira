@@ -6,7 +6,13 @@ export const getAuthActions = (
   if (hasSession) {
     return {
       primaryAction: { href: "/my", label: "My Page" },
-      secondaryAction: { href: "/logout", label: "Logout" },
+      // `/logout` は GET でセッションを破棄する Route Handler なので、
+      // prefetch でログアウトさせないよう素の `<a>` のままにする（#655 で解消予定）。
+      secondaryAction: {
+        hardNavigation: true,
+        href: "/logout",
+        label: "Logout",
+      },
     };
   }
 
