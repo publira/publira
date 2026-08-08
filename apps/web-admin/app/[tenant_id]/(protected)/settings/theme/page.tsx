@@ -30,31 +30,6 @@ const SettingsThemePage = async () => {
 
   const themeResult = await getTenantThemeSettings(tenantId);
 
-  if (!themeResult.ok) {
-    return (
-      <AdminPage>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageEyebrow>Console</AdminPageEyebrow>
-            <AdminPageTitle>設定</AdminPageTitle>
-            <AdminPageDescription>
-              テナントごとのテーマカラーを管理します。
-            </AdminPageDescription>
-          </AdminPageHeading>
-        </AdminPageHeader>
-        <AdminPageContent>
-          <div className="grid gap-6">
-            <SettingsTabNav current="theme" />
-            <EmptyState
-              description={themeResult.message}
-              title="テーマを読み込めませんでした"
-            />
-          </div>
-        </AdminPageContent>
-      </AdminPage>
-    );
-  }
-
   return (
     <AdminPage>
       <AdminPageHeader>
@@ -69,10 +44,17 @@ const SettingsThemePage = async () => {
       <AdminPageContent>
         <div className="grid gap-6">
           <SettingsTabNav current="theme" />
-          <ThemeSettingsForm
-            action={updateTenantThemeSettingsAction}
-            initialTheme={themeResult.theme}
-          />
+          {themeResult.ok ? (
+            <ThemeSettingsForm
+              action={updateTenantThemeSettingsAction}
+              initialTheme={themeResult.theme}
+            />
+          ) : (
+            <EmptyState
+              description={themeResult.message}
+              title="テーマを読み込めませんでした"
+            />
+          )}
         </div>
       </AdminPageContent>
     </AdminPage>
