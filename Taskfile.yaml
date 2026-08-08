@@ -7,6 +7,9 @@ includes:
   docker:
     # Keep cwd at repository root so docker build context stays `.`
     taskfile: ./infra/docker/Taskfile.yaml
+  mobile:
+    taskfile: ./mobile/Taskfile.yaml
+    dir: ./mobile
   server:
     taskfile: ./server/Taskfile.yaml
     dir: ./server
@@ -18,6 +21,7 @@ tasks:
     cmds:
       - pnpm install
       - task: server:deps
+      - task: mobile:deps
 
   dev:
     desc: Start both web and server development tasks

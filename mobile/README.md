@@ -22,10 +22,32 @@ Flutter によるエンドユーザー向けモバイルアプリ (iOS / Android
 
 ## セットアップ
 
+### Dev Container
+
+リポジトリルートの `task setup`（Dev Container の `postCreate` から実行）に
+`flutter pub get` が含まれます。追加の手動操作は不要です。
+
+依存だけ更新する場合:
+
+```bash
+# リポジトリルートから
+task mobile:deps
+
+# または mobile 配下で
+cd mobile
+flutter pub get
+```
+
+### ローカル（Dev Container 以外）
+
+Flutter SDK を入れたうえで:
+
 ```bash
 cd mobile
 flutter pub get
 ```
+
+またはルートから `task mobile:deps` / `task deps` でも同様です。
 
 ## 開発
 
