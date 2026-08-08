@@ -1,4 +1,5 @@
 import { Skeleton } from "@publira/ui-components/skeleton";
+import Link from "next/link";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
@@ -9,6 +10,11 @@ export interface LayoutLinkItem {
 
 export interface LayoutActionItem extends LayoutLinkItem {
   className?: string;
+  /**
+   * リンク先が Route Handler など「クライアント遷移でも prefetch でも踏ませたくない」
+   * 場合に true。素の `<a>` として描画する。
+   */
+  hardNavigation?: boolean;
 }
 
 export const defaultSiteLayoutNavItems: LayoutLinkItem[] = [
@@ -37,14 +43,13 @@ const SiteLayoutBrandText = async ({
     return null;
   }
 
-  // oxlint-disable-next-line nextjs/no-html-link-for-pages
   return (
-    <a
+    <Link
       className="font-serif text-lg font-semibold text-foreground transition-colors hover:text-primary"
       href={href}
     >
       {normalizedLabel}
-    </a>
+    </Link>
   );
 };
 
@@ -121,14 +126,13 @@ const SiteLayoutFooterContentInner = async ({
             className="flex flex-wrap items-center gap-x-4 gap-y-2"
           >
             {normalizedLinks.map((item) => (
-              // oxlint-disable-next-line nextjs/no-html-link-for-pages
-              <a
+              <Link
                 className="transition-colors hover:text-foreground"
                 href={item.href}
                 key={item.href}
               >
                 {item.label}
-              </a>
+              </Link>
             ))}
           </nav>
         ) : null}
@@ -186,13 +190,13 @@ export const SiteLayoutNav = ({
 }) => (
   <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
     {items.map((item) => (
-      <a
+      <Link
         className="transition-colors hover:text-accent"
         href={item.href}
         key={item.href}
       >
         {item.label}
-      </a>
+      </Link>
     ))}
   </nav>
 );
