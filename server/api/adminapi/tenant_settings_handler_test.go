@@ -172,4 +172,5 @@ func TestUpdateTenantTimezoneRequiresSession(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeUnauthenticated)
 	}
+	assertExpectations(t, mock)
 }
