@@ -4,7 +4,7 @@
 #
 # Inputs (env):
 #   EVENT_NAME, DOCKER_MODE_INPUT
-#   FILTER_CHECK, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_MOBILE, FILTER_TEST_E2E, FILTER_BUILD
+#   FILTER_CHECK, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_E2E, FILTER_BUILD
 #   FILTER_DOCKER_WEB, FILTER_DOCKER_API, FILTER_DOCKER_BATCH, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
 set -euo pipefail
@@ -57,6 +57,7 @@ join_json_array() {
 check=false
 test_go=false
 test_ts=false
+test_db_migrations=false
 test_mobile=false
 test_e2e=false
 build=false
@@ -80,6 +81,7 @@ case "${event}" in
     check=true
     test_go=true
     test_ts=true
+    test_db_migrations=true
     test_mobile=true
     test_e2e=true
     build=true
@@ -102,6 +104,7 @@ case "${event}" in
     if flag FILTER_CHECK; then check=true; fi
     if flag FILTER_TEST_GO; then test_go=true; fi
     if flag FILTER_TEST_TS; then test_ts=true; fi
+    if flag FILTER_TEST_DB_MIGRATIONS; then test_db_migrations=true; fi
     if flag FILTER_TEST_MOBILE; then test_mobile=true; fi
     if flag FILTER_TEST_E2E; then test_e2e=true; fi
     if flag FILTER_BUILD; then build=true; fi
@@ -136,6 +139,7 @@ fi
   echo "check=${check}"
   echo "test_go=${test_go}"
   echo "test_ts=${test_ts}"
+  echo "test_db_migrations=${test_db_migrations}"
   echo "test_mobile=${test_mobile}"
   echo "test_e2e=${test_e2e}"
   echo "build=${build}"
@@ -144,7 +148,7 @@ fi
 } >>"${GITHUB_OUTPUT}"
 
 echo "event=${event}"
-echo "check=${check} test_go=${test_go} test_ts=${test_ts} test_mobile=${test_mobile} test_e2e=${test_e2e} build=${build} docker_any=${docker_any}"
+echo "check=${check} test_go=${test_go} test_ts=${test_ts} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_e2e=${test_e2e} build=${build} docker_any=${docker_any}"
 if ((${#matrix_items[@]} > 0)); then
   for item in "${matrix_items[@]}"; do
     # shellcheck disable=SC2001

@@ -49,6 +49,7 @@ jobs:
       check: ${{ steps.plan.outputs.check }}
       test_go: ${{ steps.plan.outputs.test_go }}
       test_ts: ${{ steps.plan.outputs.test_ts }}
+      test_db_migrations: ${{ steps.plan.outputs.test_db_migrations }}
       test_mobile: ${{ steps.plan.outputs.test_mobile }}
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
       build: ${{ steps.plan.outputs.build }}
@@ -100,6 +101,11 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_db_migrations:
+              - 'db/**'
+              - 'sqlc.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_mobile:
@@ -173,6 +179,7 @@ jobs:
           FILTER_CHECK: ${{ steps.filter.outputs.check }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
+          FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}
           FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
@@ -187,17 +194,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.check == 'true'
     runs-on: ubicloud-standard-2
-    services:
-      postgres:
-        image: postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: publira
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d publira" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -234,26 +230,8 @@ jobs:
           setup_only: true
           version: ${{ env.BUF_VERSION }}
 
-      - name: Setup / Install migrate
-        run: |
-          set -euo pipefail
-          arch="$(dpkg --print-architecture)"
-          case "$arch" in
-            amd64) migrate_arch="amd64" ;;
-            arm64) migrate_arch="arm64" ;;
-            *) echo "Unsupported architecture: $arch"; exit 1 ;;
-          esac
-          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-${migrate_arch}.tar.gz" -o /tmp/migrate.tgz
-          tar -xzf /tmp/migrate.tgz -C /tmp migrate
-          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
-          rm -f /tmp/migrate /tmp/migrate.tgz
-
       - name: Dependencies / Install
         run: task deps
-
-      - name: Validate / DB Migrations
-        run: |
-          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" up
 
       - name: Validate / sqlc Generated Diff
         run: sqlc diff
@@ -290,6 +268,54 @@ jobs:
       - name: Validate / Go Tests
         working-directory: server
         run: go test ./...
+
+  test-db-migrations:
+    name: Test / DB Migrations
+    needs: changes
+    if: needs.changes.outputs.test_db_migrations == 'true'
+    runs-on: ubicloud-standard-2
+    services:
+      postgres:
+        image: postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: publira
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d publira" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-${migrate_arch}.tar.gz" -o /tmp/migrate.tgz
+          tar -xzf /tmp/migrate.tgz -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f /tmp/migrate /tmp/migrate.tgz
+
+      - name: Validate / Migrate Up (empty DB)
+        run: |
+          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" up
+
+      - name: Validate / Migrate Down (round trip back to empty)
+        run: |
+          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" down -all
+
+      - name: Validate / Migrate Up (re-apply after down)
+        run: |
+          migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/publira?sslmode=disable" up
 
   test-ts:
     name: Test / TypeScript
@@ -525,6 +551,7 @@ jobs:
       - check
       - test-go
       - test-ts
+      - test-db-migrations
       - test-mobile
       - test-e2e
       - build
@@ -537,6 +564,7 @@ jobs:
           CHECK: ${{ needs.check.result }}
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
+          TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
           TEST_MOBILE: ${{ needs.test-mobile.result }}
           TEST_E2E: ${{ needs.test-e2e.result }}
           BUILD: ${{ needs.build.result }}
@@ -549,6 +577,7 @@ jobs:
             "Check=${CHECK}" \
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
+            "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \
             "Test / Mobile=${TEST_MOBILE}" \
             "Test / E2E=${TEST_E2E}" \
             "Build=${BUILD}" \
