@@ -125,8 +125,11 @@ func TestReadyzDBFailure(t *testing.T) {
 	if body.Checks["db"].Status != health.StatusError {
 		t.Fatalf("db status = %q", body.Checks["db"].Status)
 	}
-	if body.Checks["db"].Error == "" {
-		t.Fatal("expected non-empty db error")
+	if body.Checks["db"].Error != health.ErrorDependencyFailed {
+		t.Fatalf("db error = %q, want %q", body.Checks["db"].Error, health.ErrorDependencyFailed)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("sqlmock: %v", err)
 	}
 }
 
@@ -157,7 +160,7 @@ func TestReadyzNilDB(t *testing.T) {
 	if body.Status != health.StatusUnavailable {
 		t.Fatalf("status = %q", body.Status)
 	}
-	if body.Checks["db"].Error != "not configured" {
+	if body.Checks["db"].Error != health.ErrorNotConfigured {
 		t.Fatalf("db error = %q", body.Checks["db"].Error)
 	}
 }
@@ -171,7 +174,6 @@ func TestReadyzStarting(t *testing.T) {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	// Ping may still run while starting; allow either 0 or 1 pings depending on order.
 	mock.ExpectPing()
 
 	mux := http.NewServeMux()
@@ -191,6 +193,9 @@ func TestReadyzStarting(t *testing.T) {
 	if body["status"] != health.StatusStarting {
 		t.Fatalf("status = %v, want %q", body["status"], health.StatusStarting)
 	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("sqlmock: %v", err)
+	}
 
 	ready.Store(true)
 	mock.ExpectPing()
@@ -198,6 +203,9 @@ func TestReadyzStarting(t *testing.T) {
 	mux.ServeHTTP(rec2, req)
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("after ready: status = %d body=%s", rec2.Code, rec2.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("sqlmock: %v", err)
 	}
 }
 
@@ -222,8 +230,46 @@ func TestReadyzCustomChecker(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("json: %v", err)
 	}
-	if body.Checks["storage"].Error != "bucket missing" {
-		t.Fatalf("storage error = %q", body.Checks["storage"].Error)
+	if body.Checks["storage"].Error != health.ErrorDependencyFailed {
+		t.Fatalf("storage error = %q, want %q", body.Checks["storage"].Error, health.ErrorDependencyFailed)
+	}
+}
+
+func TestReadyzDuplicateCheckerName(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	health.Register(
+		mux,
+		health.WithChecker(staticChecker{name: "db", err: errors.New("first failed")}),
+		health.WithChecker(staticChecker{name: "db", err: nil}),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusServiceUnavailable, rec.Body.String())
+	}
+	var body struct {
+		Status string `json:"status"`
+		Checks map[string]struct {
+			Status string `json:"status"`
+			Error  string `json:"error"`
+		} `json:"checks"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("json: %v", err)
+	}
+	if body.Status != health.StatusUnavailable {
+		t.Fatalf("status = %q", body.Status)
+	}
+	if body.Checks["db"].Status != health.StatusError {
+		t.Fatalf("db status = %q", body.Checks["db"].Status)
+	}
+	if body.Checks["db"].Error != health.ErrorDuplicateChecker {
+		t.Fatalf("db error = %q, want %q", body.Checks["db"].Error, health.ErrorDuplicateChecker)
 	}
 }
 

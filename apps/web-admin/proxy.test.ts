@@ -1,8 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockResolveTenantId } = vi.hoisted(() => ({
   mockResolveTenantId: vi.fn(),
 }));
+
+beforeEach(() => {
+  mockResolveTenantId.mockReset();
+});
 
 vi.mock("./lib/tenant", () => ({
   resolveTenantId: mockResolveTenantId,

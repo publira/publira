@@ -4,6 +4,8 @@ import {
   checkUpstreamReadyz,
   createLivezResponse,
   createReadyzResponse,
+  HEALTH_ERROR_DEPENDENCY_FAILED,
+  HEALTH_ERROR_TIMEOUT,
   HEALTH_STATUS_ERROR,
   HEALTH_STATUS_OK,
   HEALTH_STATUS_STARTING,
@@ -44,7 +46,7 @@ describe("createReadyzResponse", () => {
     });
   });
 
-  it("returns 503 with error category when a check fails", async () => {
+  it("returns 503 with fixed error category when a check fails", async () => {
     const response = await createReadyzResponse([
       {
         check: () => Promise.reject(new Error("connection refused")),
@@ -55,7 +57,27 @@ describe("createReadyzResponse", () => {
     const body = await response.json();
     expect(body.status).toBe(HEALTH_STATUS_UNAVAILABLE);
     expect(body.checks.api).toEqual({
-      error: "connection refused",
+      error: HEALTH_ERROR_DEPENDENCY_FAILED,
+      status: HEALTH_STATUS_ERROR,
+    });
+  });
+
+  it("returns timeout category when a check ignores AbortSignal", async () => {
+    const response = await createReadyzResponse(
+      [
+        {
+          // Never settles and ignores signal — Promise.race must still finish.
+          check: () => new Promise(() => undefined),
+          name: "hanging",
+        },
+      ],
+      { timeoutMs: 30 }
+    );
+    expect(response.status).toBe(503);
+    const body = await response.json();
+    expect(body.status).toBe(HEALTH_STATUS_UNAVAILABLE);
+    expect(body.checks.hanging).toEqual({
+      error: HEALTH_ERROR_TIMEOUT,
       status: HEALTH_STATUS_ERROR,
     });
   });

@@ -13,12 +13,20 @@
 //   - unavailable — at least one dependency check failed (HTTP 503)
 //   - starting    — process is not yet ready to accept traffic (HTTP 503);
 //     set via WithReady when a readiness gate is closed
+//
+// Public error categories on checks (never raw dependency messages):
+//   - not configured
+//   - timeout
+//   - dependency_failed
+//   - duplicate checker name
 package health
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -28,6 +36,12 @@ const (
 	StatusUnavailable = "unavailable"
 	StatusStarting    = "starting"
 	StatusError       = "error"
+
+	// Public /readyz error categories (stable; no internal host/URL detail).
+	ErrorNotConfigured      = "not configured"
+	ErrorTimeout            = "timeout"
+	ErrorDependencyFailed   = "dependency_failed"
+	ErrorDuplicateChecker   = "duplicate checker name"
 
 	defaultCheckTimeout = 2 * time.Second
 )
@@ -56,7 +70,7 @@ func (c *DBChecker) Check(ctx context.Context) error {
 
 type notConfiguredError struct{}
 
-func (notConfiguredError) Error() string { return "not configured" }
+func (notConfiguredError) Error() string { return ErrorNotConfigured }
 
 var errNotConfigured = notConfiguredError{}
 
@@ -169,16 +183,36 @@ func runChecks(ctx context.Context, o Options) map[string]checkResult {
 	results := make(map[string]checkResult, len(o.Checkers))
 	for _, checker := range o.Checkers {
 		name := checker.Name()
+		if _, exists := results[name]; exists {
+			results[name] = checkResult{Status: StatusError, Error: ErrorDuplicateChecker}
+			continue
+		}
 		checkCtx, cancel := context.WithTimeout(ctx, o.CheckTimeout)
 		err := checker.Check(checkCtx)
 		cancel()
 		if err != nil {
-			results[name] = checkResult{Status: StatusError, Error: err.Error()}
+			slog.Warn("readiness check failed", "check", name, "error", err)
+			results[name] = checkResult{Status: StatusError, Error: publicCheckError(err)}
 			continue
 		}
 		results[name] = checkResult{Status: StatusOK}
 	}
 	return results
+}
+
+// publicCheckError maps internal errors to stable public categories.
+// Never expose raw dependency messages (DB DSNs, hostnames, etc.).
+func publicCheckError(err error) string {
+	if err == nil {
+		return ErrorDependencyFailed
+	}
+	if errors.Is(err, errNotConfigured) {
+		return ErrorNotConfigured
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return ErrorTimeout
+	}
+	return ErrorDependencyFailed
 }
 
 func writeJSON(w http.ResponseWriter, code int, body readyResponse) {

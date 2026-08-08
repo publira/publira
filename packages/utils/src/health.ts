@@ -11,6 +11,10 @@ export const HEALTH_STATUS_UNAVAILABLE = "unavailable" as const;
 export const HEALTH_STATUS_STARTING = "starting" as const;
 export const HEALTH_STATUS_ERROR = "error" as const;
 
+/** Fixed categories exposed on public /readyz (no internal detail). */
+export const HEALTH_ERROR_TIMEOUT = "timeout" as const;
+export const HEALTH_ERROR_DEPENDENCY_FAILED = "dependency_failed" as const;
+
 export type HealthOverallStatus =
   | typeof HEALTH_STATUS_OK
   | typeof HEALTH_STATUS_UNAVAILABLE
@@ -67,6 +71,23 @@ const errorMessage = (error: unknown): string => {
   return "unknown error";
 };
 
+/**
+ * Map internal failures to stable public categories.
+ * Never return raw Error.message (may include upstream URLs / hostnames).
+ */
+const publicErrorCategory = (error: unknown): string => {
+  if (error instanceof Error) {
+    if (
+      error.name === "AbortError" ||
+      error.name === "TimeoutError" ||
+      /timed out/iu.test(error.message)
+    ) {
+      return HEALTH_ERROR_TIMEOUT;
+    }
+  }
+  return HEALTH_ERROR_DEPENDENCY_FAILED;
+};
+
 /** Liveness: process is accepting HTTP. */
 export const createLivezResponse = (): Response =>
   new Response("ok", {
@@ -82,16 +103,24 @@ const runCheck = async (
   timeoutMs: number
 ): Promise<HealthCheckResult> => {
   const controller = new AbortController();
-  const timer = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`health check ${check.name} timed out`));
+    }, timeoutMs);
+  });
   try {
-    await check.check(controller.signal);
+    // Race so checks that ignore AbortSignal still fail closed after timeoutMs.
+    await Promise.race([check.check(controller.signal), timeout]);
     return { status: HEALTH_STATUS_OK };
   } catch (error) {
-    return { error: errorMessage(error), status: HEALTH_STATUS_ERROR };
+    console.error(`health check ${check.name} failed`, error);
+    return { error: publicErrorCategory(error), status: HEALTH_STATUS_ERROR };
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
   }
 };
 
