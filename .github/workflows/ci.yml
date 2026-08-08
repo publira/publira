@@ -311,9 +311,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Do not use subosito/flutter-action: its composite steps always declare
-      # unpinned actions/cache@v5, which is rejected by the repo SHA-pin policy
-      # even when cache inputs are false (policy checks uses: before if:).
       - name: Setup / Flutter
         run: |
           set -euo pipefail
