@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    turbopackRustReactCompiler: true,
   },
   images: {
     customCacheHandler: true,
@@ -33,6 +34,7 @@ const nextConfig: NextConfig = {
   },
   output: "standalone",
   partialPrefetching: true,
+  reactCompiler: true,
 };
 
 export default nextConfig;

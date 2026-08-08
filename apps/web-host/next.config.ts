@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   },
   // Prefer Redis over the default in-process memory tier.
   cacheMaxMemorySize: 0,
+  experimental: {
+    turbopackRustReactCompiler: true,
+  },
   images: {
     customCacheHandler: true,
   },
@@ -21,6 +24,7 @@ const nextConfig: NextConfig = {
   },
   output: "standalone",
   partialPrefetching: true,
+  reactCompiler: true,
 };
 
 export default nextConfig;
