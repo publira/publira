@@ -155,7 +155,7 @@ Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools
 | --- | --- | --- |
 | **本番イメージビルド** | デプロイ用イメージの作成・検証 | `task docker:build:*`（中身はルート context の `docker build -f infra/docker/...`） |
 | **ローカル開発** | ホットリロード開発 | Dev Container + `task dev` / `task server:dev` 等（本番 Dockerfile は使わない） |
-| **CI（ホスト + イメージ）** | 変更検知で Check / Test / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
+| **CI（ホスト + イメージ）** | 変更検知で Check / `Test / Go` / `Test / TypeScript` / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
 
 本番イメージと Dev Container は別物である。イメージビルドが通っても `task dev` の代替にはならないし、その逆でもない。
 
@@ -221,10 +221,21 @@ docker build -f infra/docker/web/Dockerfile \
 | --- | --- | --- |
 | `pull_request` / `push`（main）かつ関連 path | **verify** | 変更ロールの代表のみ（下表） |
 | Dockerfile 本体・Taskfile・`.dockerignore`・`ci.yml` の変更 | **full** | ドキュメント上の全ターゲット |
-| `schedule`（毎日 03:00 UTC） | **full**（Docker のみ） | 全ターゲット（Check / Test / Build はスキップ） |
+| `schedule`（毎日 03:00 UTC） | **full**（Docker のみ） | 全ターゲット（ホスト CI はスキップ） |
 | `workflow_dispatch` | verify または full | 手動選択（ホスト CI も実行） |
 
-#### 変更検知のロール対応
+#### ホスト CI のテスト分割
+
+Go と TypeScript のテストは **別ジョブ** とし、影響 path が変わったときだけ実行する。
+
+| ジョブ | コマンド | 監視 path（概要） |
+| --- | --- | --- |
+| **Test / Go** | `go test ./...`（`server/`） | `server/**`, `db/**`, `proto/**`, `sqlc.yaml`, `buf.yaml`, `buf.gen.yaml` |
+| **Test / TypeScript** | `pnpm test`（packages ビルド後） | `apps/**`, `packages/**`, lockfile / turbo / workspace |
+
+`workflow_dispatch` では両方を実行する。`schedule`（Nightly）ではホスト CI はスキップし Docker のみ。
+
+#### 変更検知のロール対応（Docker）
 
 | ロール | 代表ターゲット | 監視 path（概要） |
 | --- | --- | --- |
@@ -235,16 +246,16 @@ docker build -f infra/docker/web/Dockerfile \
 `server/**` 変更時は api と batch の両方の代表をビルドする（共有モジュールのため）。
 
 実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
-ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Check / Test / Build / Docker 行列を決定）。  
+ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Check / テスト / Build / Docker 行列を決定）。  
 ローカルと同一コマンド: `task docker:build:web|api|batch`（Web は続けて `task docker:smoke:web`）。
 
-Check / Test / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
+Check / `Test / Go` / `Test / TypeScript` / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
 
 ## 失敗時のトリアージ
 
 1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）
    - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`
-   - `Check` / `Test` / `Build` → ホスト上の依存・型・テスト・`pnpm build` / `go build`
+   - `Check` / `Test / Go` / `Test / TypeScript` / `Build` → ホスト上の lint・型・`go test` / `pnpm test`・`pnpm build` / `go build`
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
 2. **ローカルで同じ Task を再現する**（CI ログの `task docker:build:…` 行をそのまま使う）
 

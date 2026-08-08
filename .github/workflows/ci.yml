@@ -43,7 +43,8 @@ jobs:
     runs-on: ubicloud-standard-2
     outputs:
       check: ${{ steps.plan.outputs.check }}
-      test: ${{ steps.plan.outputs.test }}
+      test_go: ${{ steps.plan.outputs.test_go }}
+      test_ts: ${{ steps.plan.outputs.test_ts }}
       build: ${{ steps.plan.outputs.build }}
       docker_any: ${{ steps.plan.outputs.docker_any }}
       docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
@@ -74,11 +75,18 @@ jobs:
               - 'oxfmt.config.ts'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
-            test:
-              - 'apps/**'
-              - 'packages/**'
+            test_go:
               - 'server/**'
               - 'db/**'
+              - 'proto/**'
+              - 'sqlc.yaml'
+              - 'buf.yaml'
+              - 'buf.gen.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_ts:
+              - 'apps/**'
+              - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -136,7 +144,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           DOCKER_MODE_INPUT: ${{ inputs.docker_mode }}
           FILTER_CHECK: ${{ steps.filter.outputs.check }}
-          FILTER_TEST: ${{ steps.filter.outputs.test }}
+          FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
+          FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
@@ -230,10 +239,29 @@ jobs:
       - name: Validate / Typecheck
         run: pnpm typecheck
 
-  test:
-    name: Test
+  test-go:
+    name: Test / Go
     needs: changes
-    if: needs.changes.outputs.test == 'true'
+    if: needs.changes.outputs.test_go == 'true'
+    runs-on: ubicloud-standard-2
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache-dependency-path: server/go.sum
+
+      - name: Validate / Go Tests
+        working-directory: server
+        run: go test ./...
+
+  test-ts:
+    name: Test / TypeScript
+    needs: changes
+    if: needs.changes.outputs.test_ts == 'true'
     runs-on: ubicloud-standard-2
     steps:
       - name: Setup / Checkout
@@ -244,31 +272,16 @@ jobs:
         with:
           node-version: 24.19.0
 
-      - name: Setup / Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.26.5
-          cache-dependency-path: server/go.sum
-
-      - name: Install Task
-        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
-        with:
-          version: ${{ env.TASK_VERSION }}
-
       - name: Setup / pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       - name: Dependencies / Install
-        run: task deps
+        run: pnpm install
 
       - name: Build / Packages
         run: pnpm build --filter "./packages/*"
 
-      - name: Validate / Go Tests
-        working-directory: server
-        run: go test ./...
-
-      - name: Validate / Node.js Tests
+      - name: Validate / TypeScript Tests
         run: pnpm test
 
   build:
@@ -357,7 +370,8 @@ jobs:
     needs:
       - changes
       - check
-      - test
+      - test-go
+      - test-ts
       - build
       - docker
     runs-on: ubicloud-standard-2
@@ -366,7 +380,8 @@ jobs:
         env:
           CHANGES: ${{ needs.changes.result }}
           CHECK: ${{ needs.check.result }}
-          TEST: ${{ needs.test.result }}
+          TEST_GO: ${{ needs.test-go.result }}
+          TEST_TS: ${{ needs.test-ts.result }}
           BUILD: ${{ needs.build.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
@@ -375,7 +390,8 @@ jobs:
           for pair in \
             "Detect changes=${CHANGES}" \
             "Check=${CHECK}" \
-            "Test=${TEST}" \
+            "Test / Go=${TEST_GO}" \
+            "Test / TypeScript=${TEST_TS}" \
             "Build=${BUILD}" \
             "Docker=${DOCKER}"
           do
