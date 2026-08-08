@@ -2,6 +2,8 @@ import { guardPlaceholder } from "@publira/utils/next-static-params";
 import { notFound } from "next/navigation";
 import { tenant_id } from "next/root-params";
 
+import { isTenantIdFormat } from "./tenant-id-format";
+
 /**
  * Resolve the current request's tenant id from the root dynamic segment.
  * Prefer this over prop-drilling `params.tenant_id` in Server Components.
@@ -14,5 +16,9 @@ export const getTenantId = async (): Promise<string> => {
     notFound();
   }
   guardPlaceholder(value);
+  // Only `proxy.ts` writes this segment, and it always writes a UUID.
+  if (!isTenantIdFormat(value)) {
+    notFound();
+  }
   return value;
 };
