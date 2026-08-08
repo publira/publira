@@ -6,6 +6,8 @@
  * - GET /readyz — dependencies healthy (200 / 503 + JSON)
  */
 
+import { setTimeout as delay } from "node:timers/promises";
+
 export const HEALTH_STATUS_OK = "ok" as const;
 export const HEALTH_STATUS_UNAVAILABLE = "unavailable" as const;
 export const HEALTH_STATUS_STARTING = "starting" as const;
@@ -76,14 +78,13 @@ const errorMessage = (error: unknown): string => {
  * Never return raw Error.message (may include upstream URLs / hostnames).
  */
 const publicErrorCategory = (error: unknown): string => {
-  if (error instanceof Error) {
-    if (
-      error.name === "AbortError" ||
+  if (
+    error instanceof Error &&
+    (error.name === "AbortError" ||
       error.name === "TimeoutError" ||
-      /timed out/iu.test(error.message)
-    ) {
-      return HEALTH_ERROR_TIMEOUT;
-    }
+      /timed out/iu.test(error.message))
+  ) {
+    return HEALTH_ERROR_TIMEOUT;
   }
   return HEALTH_ERROR_DEPENDENCY_FAILED;
 };
@@ -98,29 +99,44 @@ export const createLivezResponse = (): Response =>
     status: 200,
   });
 
+/** Swallow late rejections after Promise.race has already settled. */
+const swallowLate = async (task: Promise<unknown>): Promise<void> => {
+  try {
+    await task;
+  } catch {
+    // intentionally empty
+  }
+};
+
 const runCheck = async (
   check: HealthCheck,
   timeoutMs: number
 ): Promise<HealthCheckResult> => {
   const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      reject(new Error(`health check ${check.name} timed out`));
-    }, timeoutMs);
-  });
+  const timeoutGate = new AbortController();
+  const checkTask = check.check(controller.signal);
+  const timeoutTask = (async () => {
+    try {
+      await delay(timeoutMs, undefined, { signal: timeoutGate.signal });
+    } catch {
+      // Check finished first — timer cancelled; resolve harmlessly.
+      return;
+    }
+    controller.abort();
+    throw new Error(`health check ${check.name} timed out`);
+  })();
+  // Prevent unhandledrejection if the loser settles after the race winner.
+  void swallowLate(checkTask);
+  void swallowLate(timeoutTask);
   try {
     // Race so checks that ignore AbortSignal still fail closed after timeoutMs.
-    await Promise.race([check.check(controller.signal), timeout]);
+    await Promise.race([checkTask, timeoutTask]);
     return { status: HEALTH_STATUS_OK };
   } catch (error) {
     console.error(`health check ${check.name} failed`, error);
     return { error: publicErrorCategory(error), status: HEALTH_STATUS_ERROR };
   } finally {
-    if (timer !== undefined) {
-      clearTimeout(timer);
-    }
+    timeoutGate.abort();
   }
 };
 

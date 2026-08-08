@@ -1,3 +1,5 @@
+import { setTimeout as delay } from "node:timers/promises";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -66,8 +68,10 @@ describe("createReadyzResponse", () => {
     const response = await createReadyzResponse(
       [
         {
-          // Never settles and ignores signal — Promise.race must still finish.
-          check: () => new Promise(() => undefined),
+          // Outlasts timeoutMs and ignores AbortSignal — Promise.race must still finish.
+          check: async () => {
+            await delay(60_000);
+          },
           name: "hanging",
         },
       ],
