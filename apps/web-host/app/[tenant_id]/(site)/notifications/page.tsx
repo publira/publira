@@ -96,7 +96,13 @@ const NotificationsSection = async () => {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">通知一覧</h2>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+          <span
+            className={
+              unreadCount > 0
+                ? "rounded-full bg-info px-3 py-1 text-xs font-medium text-info-foreground"
+                : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+            }
+          >
             未読 {unreadCount} 件
           </span>
           {unreadCount > 0 ? (
@@ -177,7 +183,7 @@ const NotificationsSection = async () => {
                       className={
                         notification.isRead
                           ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                          : "rounded-full bg-primary/15 px-2 py-1 text-xs font-medium text-primary"
+                          : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
                       }
                     >
                       {notification.isRead ? "既読" : "未読"}

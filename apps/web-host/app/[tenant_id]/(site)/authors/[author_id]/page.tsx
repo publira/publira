@@ -95,7 +95,7 @@ const Page = async ({
               />
             </div>
           ) : (
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary/15 font-serif text-3xl font-semibold text-primary">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-accent font-serif text-3xl font-semibold text-accent-foreground">
               {authorInitials}
             </div>
           )}
@@ -149,11 +149,9 @@ const Page = async ({
               <li key={series.publicId}>
                 <Link
                   href={`/series/${series.publicId}`}
-                  className="block rounded-2xl border border-border/70 bg-card p-5 transition hover:border-primary/40 hover:shadow-sm"
+                  className="block rounded-2xl border border-border/70 bg-card p-5 transition hover:border-secondary/40 hover:shadow-sm"
                 >
-                  <p className="font-medium text-foreground hover:text-primary">
-                    {series.title}
-                  </p>
+                  <p className="font-medium text-foreground">{series.title}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     シリーズ詳細を見る
                   </p>
@@ -167,7 +165,7 @@ const Page = async ({
       <div className="mt-8">
         <Link
           href="/authors"
-          className="text-sm text-primary underline-offset-4 hover:underline"
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
           著者一覧へ戻る
         </Link>

@@ -83,7 +83,7 @@ const SeriesDetailData = async (
             </div>
           </div>
         ) : (
-          <div className="flex aspect-3/4 items-center justify-center rounded-2xl bg-linear-to-br from-primary/20 to-primary/10 text-primary/40 shadow-sm">
+          <div className="flex aspect-3/4 items-center justify-center rounded-2xl bg-linear-to-br from-secondary/25 via-primary/15 to-accent/20 text-secondary/50 shadow-sm">
             <CollectionIcon className="h-16 w-16" />
           </div>
         )}
@@ -99,7 +99,7 @@ const SeriesDetailData = async (
               </p>
             )}
             {series.labelName && (
-              <span className="inline-block rounded-full bg-muted px-3 py-0.5 text-xs text-muted-foreground">
+              <span className="inline-block rounded-full bg-accent/15 px-3 py-0.5 text-xs font-medium text-accent">
                 {series.labelName}
               </span>
             )}
@@ -127,17 +127,21 @@ const SeriesDetailData = async (
               <li key={ep.publicId}>
                 <Link
                   href={`/series/${series.publicId}/episodes/${ep.publicId}`}
-                  className="group flex items-center gap-4 rounded-lg border border-border/70 bg-card px-5 py-4 shadow-sm transition hover:shadow-md"
+                  className="group flex items-center gap-4 rounded-lg border border-border/70 bg-card px-5 py-4 shadow-sm transition hover:border-accent/40 hover:shadow-md"
                 >
                   <span className="min-w-8 text-center text-sm font-medium tabular-nums text-muted-foreground">
                     {ep.orderIndex}
                   </span>
-                  <span className="flex-1 font-medium group-hover:text-primary">
+                  <span className="flex-1 font-medium transition-colors group-hover:text-secondary">
                     {ep.title}
                   </span>
-                  {ep.price > 0 && (
-                    <span className="text-sm text-muted-foreground">
+                  {ep.price > 0 ? (
+                    <span className="rounded-full bg-warning/15 px-2.5 py-0.5 text-sm font-medium text-warning">
                       ¥{ep.price.toLocaleString("ja-JP")}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-sm font-medium text-success">
+                      無料
                     </span>
                   )}
                 </Link>

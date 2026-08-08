@@ -84,7 +84,15 @@ const EpisodeDetailData = async (
             <span className="rounded-full bg-muted px-3 py-1 font-medium tabular-nums">
               #{episode.orderIndex}
             </span>
-            <span>{priceLabel}</span>
+            <span
+              className={
+                episode.price > 0
+                  ? "rounded-full bg-warning/15 px-3 py-1 font-medium text-warning"
+                  : "rounded-full bg-success/15 px-3 py-1 font-medium text-success"
+              }
+            >
+              {priceLabel}
+            </span>
             <span>
               公開 {formatDateTime(episode.publishedAt, { fallback: "未設定" })}
             </span>
@@ -139,7 +147,7 @@ const EpisodeDetailData = async (
             </h2>
             <Link
               href={`/series/${series.publicId}`}
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              className="text-sm font-medium text-accent underline-offset-4 hover:underline"
             >
               シリーズ詳細へ
             </Link>
@@ -152,7 +160,15 @@ const EpisodeDetailData = async (
             <dl className="space-y-4 text-sm">
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-muted-foreground">価格</dt>
-                <dd className="font-medium">{priceLabel}</dd>
+                <dd
+                  className={
+                    episode.price > 0
+                      ? "font-medium text-warning"
+                      : "font-medium text-success"
+                  }
+                >
+                  {priceLabel}
+                </dd>
               </div>
               <div className="flex items-start justify-between gap-4">
                 <dt className="text-muted-foreground">公開日</dt>

@@ -60,8 +60,8 @@ const FlashMessage = async ({
     <p
       className={`rounded-md border px-4 py-3 text-sm ${
         status === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-destructive/30 bg-destructive/5 text-destructive"
+          ? "border-success/30 bg-success/10 text-success"
+          : "border-destructive/30 bg-destructive/10 text-destructive"
       }`}
       role={status === "success" ? "status" : "alert"}
     >
