@@ -219,6 +219,8 @@ type Querier interface {
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	// テナントの状態 (active / suspended) を更新する
 	UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatusParams) (Tenant, error)
+	// テナントの表示タイムゾーン (IANA 名) を更新する
+	UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error)
 	// ユーザーのメールアドレスをID指定で更新
 	UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error)
 	// ユーザーのメール確認日時を更新

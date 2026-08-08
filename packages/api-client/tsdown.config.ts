@@ -15,6 +15,7 @@ export default defineConfig({
     "src/admin/auth.ts",
     "src/admin/access-ticket.ts",
     "src/admin/series.ts",
+    "src/admin/tenant.ts",
     "src/admin/theme.ts",
     "src/admin/types.ts",
     "src/platform/client.ts",

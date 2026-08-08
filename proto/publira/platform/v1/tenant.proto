@@ -12,6 +12,9 @@ message Tenant {
   string created_at = 4;
   string domain = 5;
   string admin_domain = 7;
+  // IANA time zone name used for tenant wall-clock display (e.g. Asia/Tokyo).
+  // Read-only here; tenant admins change it through the admin API.
+  string timezone = 8;
   reserved 6;
 }
 
