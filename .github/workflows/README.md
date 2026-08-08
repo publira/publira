@@ -54,6 +54,23 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Build` | `apps/**`, `packages/**`, `server/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Docker`（ロール別） | [`infra/docker/README.md`](../../infra/docker/README.md) の「変更検知のロール対応」 |
 
+### `Detect changes` の checkout（push イベントの base 解決）
+
+paths-filter の判定方法はトリガによって異なり、`Detect changes` の checkout はそれに合わせる必要がある。
+
+| トリガ | 判定方法 | 必要な履歴 |
+| --- | --- | --- |
+| `pull_request` | GitHub API から変更ファイル一覧を取得 | 不要（shallow で足りる） |
+| `push` | `github.event.before`..HEAD を **ローカルで git diff** | base コミットがローカルに必要 |
+
+`Detect changes` の checkout は `persist-credentials: false`（ハードニング）なので、base コミットが手元になくても paths-filter のフォールバックの `git fetch` は認証できず exit 128 で落ちる。そのため `push` のときだけ `fetch-depth: 0` にして base をローカルに用意し、`git cat-file -e` で解決できる状態にしている（[#657](https://github.com/publira/publira/issues/657)）。
+
+```yaml
+fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
+```
+
+`'0'` のクォートは必須。GitHub の式では `0` が falsy なので、クォートを外すと `github.event_name == 'push' && 0 || 1` が push 時に `1` へ潰れ、同じ失敗が再発する。
+
 ### テストを分割している理由
 
 Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
@@ -81,6 +98,7 @@ Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片
 
 1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）を見る
    - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`（ログに `Job failed: <名前>` が出る）
+   - `Detect changes` → path filter の base 解決（push イベントの checkout 履歴。上記「`Detect changes` の checkout」を参照）
    - `Check` → lint・フォーマット・型・`sqlc diff`
    - `Test / Go` → `server/` の `go test`
    - `Test / TypeScript` → `pnpm test`
@@ -112,5 +130,6 @@ Go / TypeScript / DB migration / Mobile / E2E は**ジョブを分ける**。片
 - [ ] ジョブを追加・改名したら `Summary` の `needs` と集約ループ（`env` と表示名）に足した
 - [ ] path filter を追加したら `scripts/ci-plan-jobs.sh` の `FILTER_*` 読み取り・出力・`workflow_dispatch` 分岐を更新した
 - [ ] 本ファイルの「ジョブ一覧」「path filter」表を更新した
+- [ ] `Detect changes` の checkout を変えた場合、push イベントで base コミットを解決できることを確認した（`fetch-depth` と `persist-credentials` の組み合わせ）
 - [ ] ジョブ表示名を変えた場合、Branch ruleset の必須チェックは `Summary` のままで足りるか確認した
 - [ ] Docker ターゲットを増やした場合は [`infra/docker/Taskfile.yaml`](../../infra/docker/Taskfile.yaml) の `verify:full` と `scripts/ci-plan-jobs.sh` の full 行列を同時に更新した
