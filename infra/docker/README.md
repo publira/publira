@@ -1,9 +1,10 @@
 # Dockerfile 配置規約とビルド検証
 
-本番・CI で使う実行イメージ用 Dockerfile の置き場、ビルド手順、検証・CI 連携を定義する。  
+本番・CI で使う実行イメージ用 Dockerfile の置き場、ビルド手順、`Docker / <target>` ジョブとの連携を定義する。  
 新規サービス追加時は本ドキュメントに従い、配置先が一意に決まるようにする。
 
-エージェント向け実装ルール: [`AGENTS.md`](./AGENTS.md)
+エージェント向け実装ルール: [`AGENTS.md`](./AGENTS.md)  
+ホスト CI を含む CI 全体（ジョブ構成・path filter・トリアージ）: [`.github/workflows/README.md`](../../.github/workflows/README.md)
 
 関連:
 
@@ -155,9 +156,11 @@ Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools
 | --- | --- | --- |
 | **本番イメージビルド** | デプロイ用イメージの作成・検証 | `task docker:build:*`（中身はルート context の `docker build -f infra/docker/...`） |
 | **ローカル開発** | ホットリロード開発 | Dev Container + `task dev` / `task server:dev` 等（本番 Dockerfile は使わない） |
-| **CI（ホスト + イメージ）** | 変更検知で Check / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / Build / Docker を実行し、最終ジョブ `Summary` で集約 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（イメージは同じ `task docker:build:*`） |
+| **CI（イメージ）** | 変更検知で `Docker / <target>` ジョブを実行 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（ローカルと同じ `task docker:build:*`） |
 
 本番イメージと Dev Container は別物である。イメージビルドが通っても `task dev` の代替にはならないし、その逆でもない。
+
+ホスト CI（`Check` / `Test / *` / `Build` / `Summary`）を含む CI 全体像は [`.github/workflows/README.md`](../../.github/workflows/README.md) を正とする。
 
 ## ローカル検証手順
 
@@ -203,7 +206,9 @@ docker build -f infra/docker/web/Dockerfile \
   -t publira/web-host:local .
 ```
 
-## CI 実行戦略
+## Docker の CI 実行戦略
+
+ここで扱うのは `Docker / <target>` ジョブだけである。ホスト CI 全体（`Check` / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / `Test / E2E` / `Build` / `Summary`）の path filter・実行戦略は [`.github/workflows/README.md`](../../.github/workflows/README.md) を参照。
 
 ### 比較
 
@@ -221,33 +226,10 @@ docker build -f infra/docker/web/Dockerfile \
 | --- | --- | --- |
 | `pull_request` / `push`（main）かつ関連 path | **verify** | 変更ロールの代表のみ（下表） |
 | Dockerfile 本体・Taskfile・`.dockerignore`・`ci.yml` の変更 | **full** | ドキュメント上の全ターゲット |
-| `schedule`（毎日 03:00 UTC） | **full**（Docker のみ） | 全ターゲット（ホスト CI はスキップ） |
-| `workflow_dispatch` | verify または full | 手動選択（ホスト CI も実行） |
+| `schedule`（毎日 03:00 UTC） | **full** | 全ターゲット（ホスト CI はスキップ） |
+| `workflow_dispatch` | verify または full | 手動選択（入力 `docker_mode`） |
 
-#### ホスト CI のテスト分割
-
-Go / TypeScript / DB migration のテストは **別ジョブ** とし、影響 path が変わったときだけ実行する。
-
-| ジョブ | コマンド | 監視 path（概要） |
-| --- | --- | --- |
-| **Test / Go** | `go test ./...`（`server/`） | `server/**`, `db/**`, `proto/**`, `sqlc.yaml`, `buf.yaml`, `buf.gen.yaml` |
-| **Test / TypeScript** | `pnpm test`（packages ビルド後） | `apps/**`, `packages/**`, lockfile / turbo / workspace |
-| **Test / DB Migrations** | `migrate up` → `migrate down -all` → `migrate up`（空 Postgres に対して） | `db/**`, `sqlc.yaml` |
-
-`workflow_dispatch` では全てを実行する。`schedule`（Nightly）ではホスト CI はスキップし Docker のみ。
-
-#### Test / DB Migrations（migration の up/down 検証）
-
-`db/AGENTS.md` の baseline 単一ファイル運用を前提に、CI 専用の Postgres service（`Check` とは別インスタンス）へ次の順で `golang-migrate` を実行する。
-
-1. `migrate up` — 空 DB へ baseline を適用できること
-2. `migrate down -all` — dirty にならず空 DB まで戻せること（baseline の `down.sql` の健全性）
-3. `migrate up` — down 後に再適用できること（往復の整合性）
-
-いずれかのステップが失敗（dirty 化を含む）すれば `Test / DB Migrations` が落ち、`Summary` が赤くなる。  
-`sqlc diff` は `sqlc.yaml` がスキーマファイル（`db/migrations/`）を直接読む codegen 検証であり、生きた DB 接続を必要としないため、引き続き `Check` に残す（`Check` はこの分離により Postgres service を持たない）。
-
-#### 変更検知のロール対応（Docker）
+#### 変更検知のロール対応
 
 | ロール | 代表ターゲット | 監視 path（概要） |
 | --- | --- | --- |
@@ -258,27 +240,25 @@ Go / TypeScript / DB migration のテストは **別ジョブ** とし、影響 
 `server/**` 変更時は api と batch の両方の代表をビルドする（共有モジュールのため）。
 
 実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
-ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Check / テスト / Build / Docker 行列を決定）。  
+ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Docker 行列を決定）。  
 ローカルと同一コマンド: `task docker:build:web|api|batch`（Web は続けて `task docker:smoke:web`）。
 
-Check / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / Build / Docker は path filter により個別にスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
+`Docker / <target>` も他ジョブと同様に path filter でスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
 
-## 失敗時のトリアージ
+## ビルド失敗時のトリアージ
 
-1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）
-   - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`
-   - `Check` / `Test / Go` / `Test / TypeScript` / `Test / Mobile` / `Build` → ホスト上の lint・型・`go test` / `pnpm test` / `task mobile:check`・`pnpm build` / `go build`
-   - `Test / DB Migrations` → `db/migrations/00000000000000_baseline.{up,down}.sql` の SQL（`migrate up` / `down -all` / `up` の往復）
-   - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
+`Docker / <target>` ジョブ、およびローカルの `task docker:build:*` が失敗したときの手順。ホスト CI 側のジョブ（`Check` / `Test / *` / `Build`）については [`.github/workflows/README.md`](../../.github/workflows/README.md) の「失敗時のトリアージ」を参照。
+
+1. **落ちた段階を切り分ける**
+   - イメージビルド → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
+   - Web smoke（`/livez`）のみ → エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している）
 2. **ローカルで同じ Task を再現する**
-   - `Test / Mobile`: `task mobile:check`（依存は `task mobile:deps`）
-   - `Test / DB Migrations`: `task db:reset`（`drop` → `migrate` → `seed`）でローカル DB に対して同等の up を再現。`down` 単体を試すなら `task db:rollback`
-   - `Docker / <target>`: CI ログの `task docker:build:…` 行をそのまま使う
+
+   CI ログの `task docker:build:…` 行をそのまま実行する。
 
    ```bash
-   # Docker の例
    task docker:build:web APP_NAME=web-host PORT=3000
-   # または
+   # または代表 3 本まとめて
    task docker:verify
    ```
 
@@ -300,7 +280,7 @@ Check / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mob
    - path filter の取りこぼし懸念 → `workflow_dispatch` で Docker `full`、または Nightly 結果を確認
 5. **直したら**
    - 代表 3 本（`task docker:verify`）が通ることを確認してから PR を更新する
-   - ロール追加時は README の表・Taskfile の `verify:full`・`ci.yml` の full 行列を同時更新する
+   - ロール追加時は本 README の表・Taskfile の `verify:full`・`ci.yml` の full 行列を同時更新する
 
 ## 変更時のチェックリスト
 
@@ -308,5 +288,5 @@ Check / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mob
 - [ ] ベースイメージは digest 固定、ツール版は Renovate 追跡可能な `ARG` にした
 - [ ] ルートからの `docker build -f … .` および `task docker:build:*` でビルドできることを確認した
 - [ ] 代表検証 `task docker:verify`（必要なら `verify:full`）を通した
-- [ ] 新ターゲットなら [`Taskfile.yaml`](./Taskfile.yaml) の `verify:full` と [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の Docker full 行列を更新した
+- [ ] 新ターゲットなら [`Taskfile.yaml`](./Taskfile.yaml) の `verify:full` と [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) の Docker full 行列を更新した
 - [ ] ルート [README.md](../../README.md) のドキュメント案内から辿れる（本ファイルへのリンクが生きている）

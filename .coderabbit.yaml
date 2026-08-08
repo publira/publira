@@ -94,8 +94,13 @@ reviews:
 
     - path: ".github/workflows/**"
       instructions: |
-        Flag secret exposure, unsafe pull_request_target, excessive permissions,
-        and missing verification steps.
+        CI workflow. Job layout, path filters, and triage: .github/workflows/README.md
+        (source of truth for host CI; infra/docker/README.md covers image builds only).
+
+        - Flag secret exposure, unsafe pull_request_target, excessive permissions,
+          and missing verification steps.
+        - Adding/renaming a job also needs scripts/ci-plan-jobs.sh, the Summary
+          aggregator (needs + env), and .github/workflows/README.md updated together.
 
     - path: "**/*.{test,spec}.{ts,tsx,go,dart}"
       instructions: |

@@ -164,6 +164,11 @@ Go backend conventions and verification: see [`server/AGENTS.md`](server/AGENTS.
 Shared frontend monorepo conventions: see [`apps/AGENTS.md`](apps/AGENTS.md).  
 Per-app `apps/*/AGENTS.md` files hold only the Next.js-generated rules block.
 
+## CI
+
+Job layout, path filters, and failure triage for `.github/workflows/ci.yml`: see [`.github/workflows/README.md`](.github/workflows/README.md).  
+Docker image builds (`infra/docker/README.md`) cover only the `Docker / <target>` job.
+
 ## Other
 
 - Before Next.js work: read `apps/AGENTS.md`, the **target** app's `AGENTS.md`, and that app's `node_modules/next/dist/docs/` (do not load every app's guide)

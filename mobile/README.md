@@ -91,7 +91,8 @@ flutter analyze --fatal-infos
 flutter test
 ```
 
-PR で `mobile/**` が変更されると CI の `Test / Mobile` ジョブが同じゲートを実行します。
+PR で `mobile/**` が変更されると CI の `Test / Mobile` ジョブが同じゲートを実行します。  
+CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/README.md](../.github/workflows/README.md)
 
 ## ディレクトリ構成
 
