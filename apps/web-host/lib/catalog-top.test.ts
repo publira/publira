@@ -209,7 +209,7 @@ describe("catalog-top section loaders", () => {
     ]);
   });
 
-  it("一部シリーズ詳細の取得失敗を無視して継続する", async () => {
+  it("詳細が null のシリーズ (非公開化など) を除外して継続する", async () => {
     mockListPublishedSeries.mockResolvedValue([
       {
         creatorNames: [],
@@ -231,7 +231,7 @@ describe("catalog-top section loaders", () => {
     mockGetSeriesDetail.mockImplementation(
       (_tenantId: string, seriesId: string) => {
         if (seriesId === "SERIES_1") {
-          return Promise.reject(new Error("network"));
+          return Promise.resolve(null);
         }
         return Promise.resolve({
           episodes: [

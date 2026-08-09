@@ -6,11 +6,24 @@ import {
   tenantSeriesListTag,
   tenantSeriesTag,
 } from "./cache-tags";
-import { EpisodeNotFoundError } from "./errors";
-import { SeriesNotFoundError } from "./series-not-found-error";
 
-export { EpisodeNotFoundError } from "./errors";
-export { SeriesNotFoundError } from "./series-not-found-error";
+/**
+ * Missing, unpublished, and other-tenant records all have to read as "not
+ * found" on the public site. Connect surfaces them as `[not_found] …` /
+ * `[permission_denied] …`.
+ *
+ * Detail lookups return `null` instead of throwing: these helpers run inside a
+ * `"use cache"` scope, and an error thrown there is not observable by the
+ * caller's `try` / `catch` — it fails the whole request instead.
+ */
+const isNotFoundError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("not_found") || message.includes("permission_denied");
+};
 
 export interface EyeCatchImageVariant {
   variantType: string;
@@ -189,10 +202,11 @@ export const listPublishedLabels = async (
   }));
 };
 
+/** `null` when the series does not exist, is unpublished, or belongs to another tenant. */
 export const getSeriesDetail = async (
   tenantId: string,
   seriesPublicId: string
-): Promise<{ series: SeriesDetail; episodes: EpisodeItem[] }> => {
+): Promise<{ series: SeriesDetail; episodes: EpisodeItem[] } | null> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -207,11 +221,8 @@ export const getSeriesDetail = async (
       tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
-    if (error instanceof Error) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes("not_found") || msg.includes("permission_denied")) {
-        throw new SeriesNotFoundError();
-      }
+    if (isNotFoundError(error)) {
+      return null;
     }
     throw error;
   }
@@ -248,7 +259,7 @@ export const getSeriesDetail = async (
   };
 
   if (!result.series) {
-    throw new SeriesNotFoundError();
+    return null;
   }
 
   return {
@@ -257,6 +268,7 @@ export const getSeriesDetail = async (
   };
 };
 
+/** `null` when the episode is missing, unpublished, or not part of `seriesPublicId`. */
 export const getEpisodeDetail = async (
   tenantId: string,
   seriesPublicId: string,
@@ -265,18 +277,27 @@ export const getEpisodeDetail = async (
   episode: EpisodeDetail;
   images: EpisodeImageItem[];
   series: EpisodeSeriesSummary;
-}> => {
+} | null> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
   const normalizedSeriesPublicId = seriesPublicId.trim();
+  const normalizedEpisodePublicId = episodePublicId.trim();
   applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
-  const response = await apiClient.catalog.getEpisodeDetail({
-    publicId: episodePublicId,
-    tenant: { tenantId },
-  });
+  let response;
+  try {
+    response = await apiClient.catalog.getEpisodeDetail({
+      publicId: normalizedEpisodePublicId,
+      tenant: { tenantId: normalizedTenantId },
+    });
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return null;
+    }
+    throw error;
+  }
 
   const series = response.series
     ? {
@@ -285,8 +306,12 @@ export const getEpisodeDetail = async (
       }
     : undefined;
 
-  if (!response.episode || !series || series.publicId !== seriesPublicId) {
-    throw new EpisodeNotFoundError();
+  if (
+    !response.episode ||
+    !series ||
+    series.publicId !== normalizedSeriesPublicId
+  ) {
+    return null;
   }
 
   return {

@@ -42,10 +42,9 @@ tasks:
 
   test:
     desc: Run Playwright only (stack must already be ready)
-    dir: "{{.E2E_DIR}}"
     cmds:
       # Not wired to package.json "test" so `pnpm test` / turbo unit suite skips E2E.
-      - pnpm exec playwright test {{.CLI_ARGS}}
+      - bash {{.E2E_DIR}}/scripts/test.sh {{.CLI_ARGS}}
 
   up:
     desc: Start compose dependencies (postgres + redis)

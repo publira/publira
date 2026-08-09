@@ -9,12 +9,6 @@ ensure_run_dirs
 # Avoid double-starts leaving orphan processes.
 bash "${E2E_SCRIPTS_DIR}/stop-apps.sh" || true
 
-api_bin="${REPO_ROOT}/server/bin/api-server"
-if [[ ! -x "${api_bin}" ]]; then
-  e2e_err "api-server binary not found at ${api_bin}; run: task server:build"
-  exit 1
-fi
-
 web_host_dir="${REPO_ROOT}/apps/web-host"
 standalone_server="${web_host_dir}/.next/standalone/apps/web-host/server.js"
 if [[ ! -f "${standalone_server}" ]]; then
@@ -41,18 +35,10 @@ for port in "${E2E_PUBLIC_API_PORT}" "${E2E_PUBLIC_API_GRPC_PORT}" "${E2E_WEB_HO
   fi
 done
 
-e2e_log "starting api-server (connect :${E2E_PUBLIC_API_PORT}, grpc :${E2E_PUBLIC_API_GRPC_PORT})"
-(
-  cd "${REPO_ROOT}/server"
-  env \
-    PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
-    PUBLIC_API_ADDR=":${E2E_PUBLIC_API_PORT}" \
-    PUBLIC_API_GRPC_ADDR=":${E2E_PUBLIC_API_GRPC_PORT}" \
-    STORAGE_BACKEND="${STORAGE_BACKEND}" \
-    LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR}" \
-    "${api_bin}"
-) >"${LOG_DIR}/api-server.log" 2>&1 &
-write_pid "api-server" $!
+# Shared with the outage scenario, which restarts api-server on its own and
+# appends to the same log; truncate here so a run starts from a clean file.
+: >"${LOG_DIR}/api-server.log"
+bash "${E2E_SCRIPTS_DIR}/api-server.sh" start
 
 web_mode="${E2E_WEB_MODE:-start}"
 e2e_log "starting web-host (mode=${web_mode}, port ${E2E_WEB_HOST_PORT})"

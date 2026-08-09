@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { EpisodeNotFoundError, getEpisodeDetail } from "#lib/catalog";
+import { getEpisodeDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
 
 export const generateStaticParams = () =>
@@ -40,27 +40,16 @@ const EpisodeDetailData = async (
   ]);
   guardPlaceholders({ episode_id, series_id });
 
-  let result;
-  try {
-    result = await getEpisodeDetail(tenantId, series_id, episode_id);
-  } catch (error) {
-    const message =
-      error instanceof EpisodeNotFoundError
-        ? "エピソードが見つかりませんでした。"
-        : "エピソードの読み込みに失敗しました。時間をおいて再試行してください。";
+  // Missing / unpublished / other-series / other-tenant episodes resolve to null.
+  const result = await getEpisodeDetail(tenantId, series_id, episode_id);
 
+  if (!result) {
     return (
       <div className="rounded-3xl border border-destructive/30 bg-destructive/10 p-6 text-center sm:p-8">
         <p className="mb-5 text-sm font-medium text-destructive sm:text-base">
-          {message}
+          エピソードが見つかりませんでした。
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href={`/series/${series_id}/episodes/${episode_id}`}
-            className="rounded-full border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition hover:bg-destructive/10"
-          >
-            再読み込み
-          </Link>
           <Link
             href={`/series/${series_id}`}
             className="rounded-full border border-border/70 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
