@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { describe, expect, it, vi } from "vitest";
 
 import { createInitialUser, isSetupCompleted } from "./setup";
@@ -32,7 +33,7 @@ describe("isSetupCompleted", () => {
 
   it("想定内エラー時は null を返す", async () => {
     mockCheckSetupStatus.mockRejectedValueOnce(
-      new Error("failed_precondition: setup not initialized")
+      new ConnectError("setup not initialized", Code.FailedPrecondition)
     );
 
     await expect(isSetupCompleted()).resolves.toBeNull();
@@ -61,12 +62,13 @@ describe("createInitialUser", () => {
 
   it("セットアップ済みエラー時は専用メッセージを返す", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
-      new Error("already_exists: setup already completed")
+      new ConnectError("setup already completed", Code.AlreadyExists)
     );
 
     await expect(
       createInitialUser("管理者", "admin@example.com", "password")
     ).resolves.toEqual({
+      alreadyCompleted: true,
       message:
         "セットアップは既に完了しています。ログイン画面からサインインしてください。",
       ok: false,
@@ -75,36 +77,33 @@ describe("createInitialUser", () => {
 
   it("入力エラー時は入力内容エラーのメッセージを返す", async () => {
     mockCreateInitialUser.mockRejectedValueOnce(
-      new Error("invalid_argument: invalid email")
+      new ConnectError("invalid email", Code.InvalidArgument)
     );
 
     await expect(
       createInitialUser("管理者", "invalid", "password")
     ).resolves.toEqual({
+      alreadyCompleted: false,
       message: "入力内容に誤りがあります。",
       ok: false,
     });
   });
 
-  it("未知の Error は汎用エラーメッセージを返す", async () => {
-    mockCreateInitialUser.mockRejectedValueOnce(new Error("internal error"));
+  it("分類できない RPC エラーは伝播する", async () => {
+    mockCreateInitialUser.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
 
     await expect(
       createInitialUser("管理者", "admin@example.com", "password")
-    ).resolves.toEqual({
-      message: "セットアップに失敗しました。時間をおいて再試行してください。",
-      ok: false,
-    });
+    ).rejects.toThrow("boom");
   });
 
-  it("Error 以外が throw された場合も汎用エラーメッセージを返す", async () => {
+  it("RPC 由来でない例外も伝播する", async () => {
     mockCreateInitialUser.mockRejectedValueOnce("boom");
 
     await expect(
       createInitialUser("管理者", "admin@example.com", "password")
-    ).resolves.toEqual({
-      message: "セットアップに失敗しました。時間をおいて再試行してください。",
-      ok: false,
-    });
+    ).rejects.toBe("boom");
   });
 });

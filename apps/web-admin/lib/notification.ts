@@ -1,3 +1,5 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import type {
@@ -16,24 +18,8 @@ const createErrorMessage =
 const audienceTypeAllUsers = 1;
 const audienceTypeSelectedUsers = 2;
 
-const mapErrorMessage = (error: unknown, fallback: string): string => {
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-
-  const message = error.message.toLowerCase();
-  if (message.includes("permission_denied")) {
-    return "この操作を行う権限がありません。";
-  }
-  if (message.includes("unauthenticated")) {
-    return sessionErrorMessage;
-  }
-  if (message.includes("invalid_argument")) {
-    return "入力内容に誤りがあります。";
-  }
-
-  return fallback;
-};
+const mapErrorMessage = (error: unknown, fallback: string): string =>
+  rpcErrorMessage(error, fallback);
 
 const mapNotification = (item: {
   audienceType: number;
@@ -102,6 +88,7 @@ export const listNotifications = async (
     );
     users = mapUsers(usersResponse.users ?? []);
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     usersErrorMessage = mapErrorMessage(
       error,
       "対象ユーザー一覧の取得に失敗しました。"
@@ -127,6 +114,7 @@ export const listNotifications = async (
       usersErrorMessage,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, listErrorMessage),
       notifications: [],
@@ -178,6 +166,7 @@ export const createNotification = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, createErrorMessage),
       ok: false,

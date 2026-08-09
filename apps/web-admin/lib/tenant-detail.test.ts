@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetSessionId, mockGetTenant } = vi.hoisted(() => ({
@@ -69,7 +70,9 @@ describe("tenant-detail", () => {
   });
 
   it("API エラー時は null を返す", async () => {
-    mockGetTenant.mockRejectedValueOnce(new Error("unauthenticated"));
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("invalid session", Code.Unauthenticated)
+    );
 
     const { getTenantForSession } = await import("./tenant-detail");
 

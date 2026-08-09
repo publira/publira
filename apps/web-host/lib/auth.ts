@@ -1,4 +1,10 @@
 import {
+  isExpectedNullableRpcError,
+  isRejectedRequestRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
+
+import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
@@ -8,22 +14,6 @@ export {
   PUBLIC_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./auth-shared";
-
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied") ||
-    message.includes("invalid_argument") ||
-    message.includes("already_exists") ||
-    message.includes("not_found") ||
-    message.includes("not found")
-  );
-};
 
 export interface PublicCurrentUser {
   name: string;
@@ -63,7 +53,7 @@ export const loginPublic = async (
     }
     return { accessToken, expiresAt: new Date(expiresAt) };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isRejectedRequestRpcError(error)) {
       return null;
     }
     throw error;
@@ -93,7 +83,7 @@ export const signupPublic = async (
       pendingVerification: false,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isRejectedRequestRpcError(error)) {
       return null;
     }
     throw error;
@@ -110,7 +100,8 @@ export const verifyPublicEmail = async (
       token,
     });
     return Boolean(response.verified);
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -134,7 +125,7 @@ export const confirmPublicEmailChange = async (
       pendingConfirmationFor: response.pendingConfirmationFor,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isRejectedRequestRpcError(error)) {
       return null;
     }
     throw error;
@@ -151,7 +142,8 @@ export const requestPublicPasswordReset = async (
       tenant: { tenantId },
     });
     return Boolean(response.requested);
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -168,7 +160,8 @@ export const confirmPublicPasswordReset = async (
       token,
     });
     return Boolean(response.confirmed);
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -215,7 +208,7 @@ export const getPublicCurrentUser = async (
       publicId: user.publicId,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isExpectedNullableRpcError(error)) {
       return null;
     }
     throw error;
@@ -246,7 +239,8 @@ export const requestPublicEmailChange = async (
     );
 
     return Boolean(response.requested);
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -262,7 +256,8 @@ export const getMe = async (
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      // Retry once on transient failures; must stay sequential.
+      // Retried once because a session written moments ago may not be visible
+      // to the first read; must stay sequential.
       // oxlint-disable-next-line no-await-in-loop
       const response = await apiClient.auth.getMe(
         {
@@ -281,7 +276,7 @@ export const getMe = async (
         role: response.user.role,
       };
     } catch (error) {
-      if (!isExpectedNullableError(error)) {
+      if (!isExpectedNullableRpcError(error)) {
         throw error;
       }
       if (attempt === 1) {
@@ -322,7 +317,7 @@ export const updateMe = async (
       role: response.user.role,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isRejectedRequestRpcError(error)) {
       return null;
     }
     throw error;
@@ -349,7 +344,8 @@ export const deleteMe = async (
     );
 
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -375,7 +371,7 @@ export const getNotificationSettings = async (
       emailNotificationsEnabled: response.emailNotificationsEnabled,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isExpectedNullableRpcError(error)) {
       return null;
     }
     throw error;
@@ -405,7 +401,7 @@ export const updateNotificationSettings = async (
       emailNotificationsEnabled: response.emailNotificationsEnabled,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isRejectedRequestRpcError(error)) {
       return null;
     }
     throw error;

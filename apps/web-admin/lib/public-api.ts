@@ -1,3 +1,4 @@
+import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import { createPublicApiClient } from "@publira/api-client/public/client";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
@@ -12,15 +13,6 @@ interface TenantPublicInfo {
   name: string | null;
   theme: TenantThemeColors;
 }
-
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return message.includes("not_found") || message.includes("not found");
-};
 
 const applyTenantSiteCacheTag = (tenantId: string) => {
   try {
@@ -53,7 +45,7 @@ const getTenantPublicInfo = async (
       theme: resolveTenantThemeColors(response.theme),
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isMissingResourceRpcError(error)) {
       return null;
     }
     throw error;

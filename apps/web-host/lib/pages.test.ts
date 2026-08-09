@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -163,7 +164,7 @@ describe("getPublishedPage", () => {
 
   it("API not_found は PageNotFoundError", async () => {
     mockGetPublishedPage.mockRejectedValue(
-      new Error("[not_found] page not found")
+      new ConnectError("page not found", Code.NotFound)
     );
 
     await expect(
@@ -183,7 +184,7 @@ describe("getPublishedPage", () => {
 
   it("先頭スラッシュ付きで not_found のとき legacy slug を試す", async () => {
     mockGetPublishedPage
-      .mockRejectedValueOnce(new Error("[not_found] page not found"))
+      .mockRejectedValueOnce(new ConnectError("page not found", Code.NotFound))
       .mockResolvedValueOnce({
         page: {
           id: "page-1",

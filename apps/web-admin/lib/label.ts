@@ -1,6 +1,9 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -39,47 +42,15 @@ const genericListErrorMessage =
 const genericMutationErrorMessage =
   "レーベルの保存に失敗しました。時間をおいて再試行してください。";
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
-  if (!(error instanceof Error)) {
-    return fallbackMessage;
-  }
+const invalidArgumentMessage = (error: unknown): string =>
+  mentionsImageRejection(error)
+    ? "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。"
+    : "入力内容に誤りがあります。";
 
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  if (
-    message.includes("invalid_argument") ||
-    message.includes("required") ||
-    message.includes("invalid")
-  ) {
-    if (
-      message.includes("eye_catch") ||
-      message.includes("image") ||
-      message.includes("content_type") ||
-      message.includes("10mb") ||
-      message.includes("at least")
-    ) {
-      return "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。";
-    }
-
-    return "入力内容に誤りがあります。";
-  }
-
-  if (
-    message.includes("already_exists") ||
-    message.includes("already exists")
-  ) {
-    return "重複するデータがあるため保存できません。";
-  }
-
-  return fallbackMessage;
-};
+const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+  rpcErrorMessage(error, fallbackMessage, {
+    "invalid-argument": invalidArgumentMessage(error),
+  });
 
 const mapLabel = (label: {
   publicId: string;
@@ -151,6 +122,7 @@ export const listLabels = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       labels: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
@@ -196,6 +168,7 @@ export const createLabel = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -244,6 +217,7 @@ export const updateLabel = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -292,6 +266,7 @@ export const getLabel = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

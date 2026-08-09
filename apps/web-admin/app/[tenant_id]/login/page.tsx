@@ -86,6 +86,8 @@ const loginAction = async (formData: FormData): Promise<void> => {
       value: sealed,
     });
   } catch (error) {
+    // Not an RPC failure — sealing or writing the cookie broke, and the reason
+    // is only visible in the log. Recorded, then reported as a login failure.
     console.error("[web-admin] login cookie seal failed", error);
     redirect(
       buildLoginErrorPath(

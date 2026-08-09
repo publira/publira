@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listPlatformAuditLogs } from "./audit-logs";
@@ -161,12 +162,23 @@ describe("listPlatformAuditLogs", () => {
     expect(mockListAuditLogs).not.toHaveBeenCalled();
   });
 
-  it("API がエラーを返した場合はエラーメッセージを返す", async () => {
-    mockListAuditLogs.mockRejectedValueOnce(new Error("network error"));
+  it("到達不能エラーは共通文言で返す", async () => {
+    mockListAuditLogs.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
 
     await expect(listPlatformAuditLogs({})).resolves.toEqual({
-      message: "network error",
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
     });
+  });
+
+  it("分類できない RPC エラーは伝播する", async () => {
+    mockListAuditLogs.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(listPlatformAuditLogs({})).rejects.toThrow("boom");
   });
 });

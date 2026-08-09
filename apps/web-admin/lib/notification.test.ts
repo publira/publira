@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -79,7 +80,7 @@ describe("notification lib", () => {
 
   it("権限エラーを分かりやすく返す", async () => {
     mockListNotificationsApi.mockRejectedValue(
-      new Error("permission_denied: tenant admin role required")
+      new ConnectError("tenant admin role required", Code.PermissionDenied)
     );
 
     const { listNotifications } = await import("./notification");

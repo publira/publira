@@ -1,3 +1,9 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  Code,
+  isRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 import { unstable_noStore as noStore } from "next/cache";
 
 import {
@@ -15,21 +21,18 @@ export interface MemberNotificationItem {
   createdAt: string;
 }
 
-const mapErrorToMessage = (error: unknown): string => {
-  if (!(error instanceof Error)) {
-    return "通知の取得に失敗しました。";
-  }
+/**
+ * The only argument this call carries besides paging is the session header, so
+ * a rejected one is a session problem rather than bad form input. The caller
+ * sends the reader back through login on this.
+ */
+const isSignInRequiredError = (error: unknown): boolean =>
+  isRpcError(error, Code.Unauthenticated, Code.InvalidArgument);
 
-  const message = error.message.toLowerCase();
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("invalid_argument")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  return "通知の取得に失敗しました。";
-};
+const mapErrorToMessage = (error: unknown): string =>
+  rpcErrorMessage(error, "通知の取得に失敗しました。", {
+    "invalid-argument": "セッションが無効です。再ログインしてください。",
+  });
 
 const mapNotificationItems = (
   response: Awaited<ReturnType<typeof apiClient.auth.listNotifications>>
@@ -56,13 +59,20 @@ const listNotificationsRpc = (
     buildSessionHeaders(sessionId)
   );
 
+export type ListMyNotificationsResult =
+  | { ok: true; notifications: MemberNotificationItem[] }
+  | {
+      ok: false;
+      message: string;
+      notifications: MemberNotificationItem[];
+      /** The reader has to sign in again before this list can be shown. */
+      requiresSignIn: boolean;
+    };
+
 const fetchNotifications = async (
   tenantId: string,
   sessionId: string
-): Promise<
-  | { ok: true; notifications: MemberNotificationItem[] }
-  | { ok: false; message: string; notifications: MemberNotificationItem[] }
-> => {
+): Promise<ListMyNotificationsResult> => {
   try {
     const response = await listNotificationsRpc(tenantId, sessionId);
 
@@ -71,6 +81,7 @@ const fetchNotifications = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     console.warn("[web-host] listNotifications failed", {
       error: error instanceof Error ? error.message : String(error),
       hasSessionId: sessionId.length > 0,
@@ -82,6 +93,7 @@ const fetchNotifications = async (
       message: mapErrorToMessage(error),
       notifications: [],
       ok: false,
+      requiresSignIn: isSignInRequiredError(error),
     };
   }
 };
@@ -89,10 +101,7 @@ const fetchNotifications = async (
 export const listMyNotifications = async (
   tenantId: string,
   sessionId?: string
-): Promise<
-  | { ok: true; notifications: MemberNotificationItem[] }
-  | { ok: false; message: string; notifications: MemberNotificationItem[] }
-> => {
+): Promise<ListMyNotificationsResult> => {
   noStore();
 
   const sid = await resolveAccessToken(sessionId);
@@ -119,7 +128,8 @@ export const markNotificationAsRead = async (
     );
 
     return Boolean(response.marked);
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -142,7 +152,8 @@ export const markAllNotificationsAsRead = async (
     );
 
     return response.markedCount;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return 0;
   }
 };

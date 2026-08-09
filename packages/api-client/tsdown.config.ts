@@ -4,6 +4,8 @@ export default defineConfig({
   dts: true,
   entry: [
     "src/index.ts",
+    "src/errors.ts",
+    "src/error-messages.ts",
     "src/public/index.ts",
     "src/public/client.ts",
     "src/public/auth.ts",

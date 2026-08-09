@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetSessionId, mockGetTenantThemeApi, mockUpsertTenantThemeApi } =
@@ -88,7 +89,10 @@ describe("theme-settings", () => {
 
   it("更新時に invalid_argument エラーをそのまま返す", async () => {
     mockUpsertTenantThemeApi.mockRejectedValueOnce(
-      new Error("invalid_argument: theme.primary_color must be a hex color")
+      new ConnectError(
+        "theme.primary_color must be a hex color",
+        Code.InvalidArgument
+      )
     );
 
     const { updateTenantThemeSettings } = await import("./theme-settings");

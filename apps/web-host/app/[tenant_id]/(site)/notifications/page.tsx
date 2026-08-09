@@ -83,7 +83,7 @@ const NotificationsSection = async () => {
   const sessionId = cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value ?? "";
 
   const result = await listMyNotifications(tenantId, sessionId);
-  if (!result.ok && result.message.includes("セッションが無効")) {
+  if (!result.ok && result.requiresSignIn) {
     redirect("/login?returnTo=%2Fnotifications");
   }
 

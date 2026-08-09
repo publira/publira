@@ -1,3 +1,9 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
+
 import {
   apiClient,
   buildSessionHeaders,
@@ -43,30 +49,22 @@ export const requestPlatformEmailChange = async (
 
     return { ok: true, requested: response.requested };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("invalid credentials") ||
-        message.includes("unauthenticated")
-      ) {
-        return { message: "パスワードが正しくありません。", ok: false };
-      }
-      if (
-        message.includes("invalid_argument") ||
-        message.includes("invalid email") ||
-        message.includes("required")
-      ) {
-        return { message: "入力内容を確認してください。", ok: false };
-      }
-      if (message.includes("already_exists")) {
-        return {
-          message: "このメールアドレスは既に使用されています。",
-          ok: false,
-        };
-      }
-    }
-
-    return { message: genericErrorMessage, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, genericErrorMessage, {
+        conflict: "このメールアドレスは既に使用されています。",
+        "invalid-argument": "入力内容を確認してください。",
+        // Session rejection and a wrong current password share
+        // `unauthenticated`; the server names which one
+        // (`invalid current password`). If that wording ever changes this
+        // degrades to the shared session message rather than lying about the
+        // cause.
+        unauthenticated: rpcErrorMentions(error, "invalid current password")
+          ? "パスワードが正しくありません。"
+          : undefined,
+      }),
+      ok: false,
+    };
   }
 };
 
@@ -80,7 +78,8 @@ export const verifyPlatformEmailChangeToken = async (
   try {
     const response = await apiClient.auth.verifyEmailChangeToken({ token });
     return { valid: response.valid };
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return null;
   }
 };
@@ -101,7 +100,8 @@ export const confirmPlatformEmailChange = async (
       confirmed: response.confirmed,
       pendingConfirmationFor: response.pendingConfirmationFor,
     };
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return null;
   }
 };

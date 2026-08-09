@@ -1,19 +1,7 @@
+import { isExpectedNullableRpcError } from "@publira/api-client/errors";
+
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
-
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied") ||
-    message.includes("not_found") ||
-    message.includes("not found")
-  );
-};
 
 export interface TenantDetail {
   publicId: string;
@@ -54,7 +42,7 @@ export const getTenantForSession = async (
       publicId,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isExpectedNullableRpcError(error)) {
       return null;
     }
     throw error;

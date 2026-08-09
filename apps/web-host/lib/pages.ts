@@ -1,3 +1,5 @@
+import { isMissingResourceRpcError } from "@publira/api-client/errors";
+
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantPageTag, tenantPagesTag } from "./cache-tags";
 import { PageNotFoundError } from "./page-not-found-error";
@@ -51,33 +53,6 @@ export const normalizePublishedPageSlug = (
   }
 
   return `/${normalized}`;
-};
-
-const isNotFoundError = (error: unknown): boolean => {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-
-  const candidate = error as {
-    code?: unknown;
-    message?: unknown;
-    rawMessage?: unknown;
-  };
-
-  // Connect Code.NotFound is 5; string form is "not_found".
-  if (candidate.code === 5 || candidate.code === "not_found") {
-    return true;
-  }
-
-  const message = String(candidate.message ?? "").toLowerCase();
-  const rawMessage = String(candidate.rawMessage ?? "").toLowerCase();
-  return (
-    message.includes("not_found") ||
-    message.includes("not found") ||
-    message.includes("permission_denied") ||
-    rawMessage.includes("not_found") ||
-    rawMessage.includes("not found")
-  );
 };
 
 type GetPublishedPageResponse = Awaited<
@@ -199,7 +174,7 @@ export const getPublishedPage = async (
   let response: GetPublishedPageResponse;
   if (primary.ok) {
     ({ response } = primary);
-  } else if (isNotFoundError(primary.error)) {
+  } else if (isMissingResourceRpcError(primary.error)) {
     const bareSlug = normalizedSlug.slice(1);
     const secondary = await fetchPublishedPageBySlug(
       normalizedTenantId,
@@ -207,7 +182,7 @@ export const getPublishedPage = async (
     );
     if (secondary.ok) {
       ({ response } = secondary);
-    } else if (isNotFoundError(secondary.error)) {
+    } else if (isMissingResourceRpcError(secondary.error)) {
       throw new PageNotFoundError();
     } else {
       throw secondary.error;

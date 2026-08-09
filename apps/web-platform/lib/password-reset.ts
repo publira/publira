@@ -1,3 +1,9 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
+
 import { apiClient } from "./api-client";
 
 const genericPasswordResetRequestErrorMessage =
@@ -47,22 +53,12 @@ export const requestPlatformPasswordReset = async (
       requested: response.requested,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("invalid_argument") ||
-        message.includes("invalid email") ||
-        message.includes("required")
-      ) {
-        return {
-          message: "メールアドレスを確認してください。",
-          ok: false,
-        };
-      }
-    }
-
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: genericPasswordResetRequestErrorMessage,
+      message: rpcErrorMessage(error, genericPasswordResetRequestErrorMessage, {
+        // Email is the only field this call takes.
+        "invalid-argument": "メールアドレスを確認してください。",
+      }),
       ok: false,
     };
   }
@@ -81,7 +77,8 @@ export const verifyPlatformPasswordResetToken = async (
       token: normalizedToken,
     });
     return response.valid;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -121,32 +118,24 @@ export const confirmPlatformPasswordReset = async (
       ok: true,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("failed_precondition") ||
-        message.includes("expired")
-      ) {
-        return {
-          message:
-            "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
-          ok: false,
-          reason: "expired",
-        };
-      }
-      if (
-        message.includes("not_found") ||
-        message.includes("invalid_argument") ||
-        message.includes("required") ||
-        message.includes("user not found")
-      ) {
-        return {
-          message:
-            "再設定リンクが無効です。もう一度メール送信からやり直してください。",
-          ok: false,
-          reason: "invalid",
-        };
-      }
+    rethrowUnclassifiedRpcError(error);
+    const disposition = rpcErrorDisposition(error);
+    if (disposition === "precondition") {
+      return {
+        message:
+          "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+        ok: false,
+        reason: "expired",
+      };
+    }
+    // An unknown token and a malformed one both mean "start over".
+    if (disposition === "not-found" || disposition === "invalid-argument") {
+      return {
+        message:
+          "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+        ok: false,
+        reason: "invalid",
+      };
     }
 
     return {

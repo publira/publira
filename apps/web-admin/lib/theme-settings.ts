@@ -1,3 +1,8 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorRawMessage,
+} from "@publira/api-client/errors";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 
@@ -18,32 +23,17 @@ const genericUpdateErrorMessage =
   "テーマの保存に失敗しました。時間をおいて再試行してください。";
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
 
+/**
+ * Theme validation errors name the offending field ("theme.primary_color must
+ * be a hex color"), so the server's own text is more useful to the operator
+ * than the generic wording. Everything else takes the shared copy.
+ */
 const parseErrorMessage = (error: unknown, fallback: string): string => {
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-
-  const message = error.message.trim();
-  if (!message) {
-    return fallback;
-  }
-
-  const lower = message.toLowerCase();
-  if (
-    lower.includes("unauthenticated") ||
-    lower.includes("permission_denied")
-  ) {
-    return sessionErrorMessage;
-  }
-
-  const prefixes = ["invalid_argument:", "failed_precondition:"] as const;
-  for (const prefix of prefixes) {
-    if (lower.startsWith(prefix)) {
-      return message.slice(prefix.length).trim() || fallback;
-    }
-  }
-
-  return fallback;
+  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+  return rpcErrorMessage(error, fallback, {
+    "invalid-argument": serverMessage,
+    precondition: serverMessage,
+  });
 };
 
 const toTenantTheme = (
@@ -71,6 +61,7 @@ export const getTenantThemeSettings = async (
 
     return { ok: true, theme: toTenantTheme(response.theme) };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: parseErrorMessage(error, genericLoadErrorMessage),
       ok: false,
@@ -126,6 +117,7 @@ export const updateTenantThemeSettings = async (
 
     return { ok: true, theme: toTenantTheme(response.theme) };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: parseErrorMessage(error, genericUpdateErrorMessage),
       ok: false,

@@ -1,3 +1,8 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -51,36 +56,27 @@ export type RevokeAccessTicketResult =
   | { ok: true; ticket: AccessTicketItem }
   | { message: string; ok: false };
 
-const mapErrorMessage = (error: unknown, fallback: string): string => {
-  if (!(error instanceof Error)) {
-    return fallback;
+/**
+ * A ticket names both a user and an episode, so "対象が見つかりません。" is not
+ * actionable. The code says only `not_found`; which of the two is missing comes
+ * from the server's message and degrades to the generic wording if that text
+ * ever changes.
+ */
+const missingTargetMessage = (error: unknown): string => {
+  if (rpcErrorMentions(error, "user")) {
+    return "指定したユーザーが見つかりません。";
   }
-
-  const message = error.message.toLowerCase();
-  if (message.includes("permission_denied")) {
-    return "この操作を行う権限がありません。";
+  if (rpcErrorMentions(error, "episode")) {
+    return "指定したエピソードが見つかりません。";
   }
-  if (message.includes("unauthenticated")) {
-    return sessionErrorMessage;
-  }
-  if (message.includes("not_found")) {
-    if (message.includes("user")) {
-      return "指定したユーザーが見つかりません。";
-    }
-    if (message.includes("episode")) {
-      return "指定したエピソードが見つかりません。";
-    }
-    return "対象が見つかりません。";
-  }
-  if (message.includes("failed_precondition")) {
-    return "対象ユーザーが有効ではありません。";
-  }
-  if (message.includes("invalid_argument")) {
-    return "入力内容に誤りがあります。";
-  }
-
-  return fallback;
+  return "対象が見つかりません。";
 };
+
+const mapErrorMessage = (error: unknown, fallback: string): string =>
+  rpcErrorMessage(error, fallback, {
+    "not-found": missingTargetMessage(error),
+    precondition: "対象ユーザーが有効ではありません。",
+  });
 
 const mapTicket = (item: {
   createdAt: string;
@@ -144,6 +140,7 @@ export const listAccessTickets = async (
       tickets: response.tickets.map(mapTicket),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, listErrorMessage),
       ok: false,
@@ -187,6 +184,7 @@ export const issueAccessTicket = async (
       ticket: mapTicket(response.ticket),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, issueErrorMessage),
       ok: false,
@@ -227,6 +225,7 @@ export const revokeAccessTicket = async (
       ticket: mapTicket(response.ticket),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, revokeErrorMessage),
       ok: false,

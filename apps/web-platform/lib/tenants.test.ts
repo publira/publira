@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -150,13 +151,24 @@ describe("listPlatformTenants", () => {
     expect(mockListTenants).not.toHaveBeenCalled();
   });
 
-  it("API がエラーを返した場合はエラーメッセージを返す", async () => {
-    mockListTenants.mockRejectedValueOnce(new Error("network error"));
+  it("到達不能エラーは共通文言で返す", async () => {
+    mockListTenants.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
 
     await expect(listPlatformTenants({})).resolves.toEqual({
-      message: "network error",
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
     });
+  });
+
+  it("分類できない RPC エラーは伝播する", async () => {
+    mockListTenants.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(listPlatformTenants({})).rejects.toThrow("boom");
   });
 });
 
@@ -207,7 +219,7 @@ describe("createPlatformTenant", () => {
 
   it("ドメイン重複エラーを専用メッセージに変換する", async () => {
     mockCreateTenant.mockRejectedValueOnce(
-      new Error("already_exists: domain already exists")
+      new ConnectError("domain already exists", Code.AlreadyExists)
     );
 
     await expect(
@@ -221,9 +233,42 @@ describe("createPlatformTenant", () => {
     });
   });
 
+  // "admin_domain" contains "domain", so the checks must stay in this order.
+  it("管理画面ドメイン重複を公開ドメイン重複と取り違えない", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("admin_domain already exists", Code.AlreadyExists)
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "管理画面ドメインが既に使用されています。",
+      ok: false,
+    });
+  });
+
+  it("どちらのドメインも名指ししない重複は汎用文言にする", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("duplicate key", Code.AlreadyExists)
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "重複するデータがあるため作成できません。",
+      ok: false,
+    });
+  });
+
   it("入力エラーを入力内容エラーに変換する", async () => {
     mockCreateTenant.mockRejectedValueOnce(
-      new Error("invalid_argument: invalid initial_admin_emails")
+      new ConnectError("invalid initial_admin_emails", Code.InvalidArgument)
     );
 
     await expect(
@@ -351,7 +396,7 @@ describe("createPlatformTenant", () => {
 
   it("対象テナントに該当ユーザーがいない場合は見つからないエラーを返す", async () => {
     mockAddTenantMember.mockRejectedValueOnce(
-      new Error("not_found: member not found")
+      new ConnectError("member not found", Code.NotFound)
     );
 
     await expect(
