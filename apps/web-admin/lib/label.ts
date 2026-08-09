@@ -7,6 +7,7 @@ import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { mentionsImageRejection } from "./image-rejection";
+import { findByPublicId } from "./paged-lookup";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -239,62 +240,6 @@ export const updateLabel = async (input: {
   }
 };
 
-/**
- * The largest page `ListLabels` will serve: the handler falls back to 20 for
- * any `limit` above 100 (`server/api/adminapi/creator_label_handlers.go`).
- */
-const LABEL_PAGE_SIZE = 100;
-
-/**
- * Safety stop for the walk below, in rows. The walk normally ends on the first
- * short page; this only bounds the damage if the server ever stopped honouring
- * `offset`, so that a lookup fails instead of looping forever.
- */
-const LABEL_LOOKUP_MAX_ROWS = 10_000;
-
-/**
- * `label.proto` has no `GetLabel`, so a single label can only be found by
- * walking `ListLabels`. One page is not enough to conclude "not found": the
- * server caps a page at `LABEL_PAGE_SIZE`, and answering `notFound()` from the
- * first page alone would make every label past that point uneditable.
- *
- * A dedicated `GetLabel` RPC would replace the whole walk.
- */
-const findLabelByPublicId = async (
-  tenantId: string,
-  publicId: string,
-  sessionId: string
-): Promise<LabelItem | null> => {
-  for (
-    let offset = 0;
-    offset < LABEL_LOOKUP_MAX_ROWS;
-    offset += LABEL_PAGE_SIZE
-  ) {
-    // Sequential by nature: the next page is only worth asking for once this
-    // one has come back full and without a match.
-    // oxlint-disable-next-line no-await-in-loop -- paging is inherently serial
-    const response = await apiClient.label.listLabels(
-      {
-        limit: LABEL_PAGE_SIZE,
-        offset,
-        tenant: { tenantId },
-      },
-      withSessionHeaders(sessionId)
-    );
-
-    const labels = response.labels ?? [];
-    const match = labels.find((item) => item.publicId === publicId);
-    if (match) {
-      return mapLabel(match);
-    }
-    if (labels.length < LABEL_PAGE_SIZE) {
-      return null;
-    }
-  }
-
-  return null;
-};
-
 export const getLabel = async (input: {
   tenantId: string;
   publicId: string;
@@ -312,17 +257,28 @@ export const getLabel = async (input: {
   }
 
   try {
-    const label = await findLabelByPublicId(
-      input.tenantId,
+    // `label.proto` has no `GetLabel`, so the record has to be found by walking
+    // `ListLabels`; see `findByPublicId`.
+    const label = await findByPublicId(
       input.publicId,
-      sessionId
+      async (offset, limit) => {
+        const response = await apiClient.label.listLabels(
+          {
+            limit,
+            offset,
+            tenant: { tenantId: input.tenantId },
+          },
+          withSessionHeaders(sessionId)
+        );
+        return response.labels ?? [];
+      }
     );
     if (!label) {
       return { notFound: true, ok: false };
     }
 
     return {
-      label,
+      label: mapLabel(label),
       ok: true,
     };
   } catch (error) {
