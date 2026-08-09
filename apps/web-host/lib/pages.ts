@@ -2,14 +2,6 @@ import { isMissingResourceRpcError } from "@publira/api-client/errors";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantPageTag, tenantPagesTag } from "./cache-tags";
-import { PageNotFoundError } from "./page-not-found-error";
-
-export { PageNotFoundError } from "./page-not-found-error";
-
-/** Cached scopes may rehydrate errors so `instanceof` alone is unreliable. */
-export const isPageNotFoundError = (error: unknown): boolean =>
-  error instanceof PageNotFoundError ||
-  (error instanceof Error && error.name === "PageNotFoundError");
 
 export interface PublishedPage {
   id: string;
@@ -144,10 +136,21 @@ export const listPublishedPageLinks = async (
   }
 };
 
+/**
+ * `null` when the page does not exist, is unpublished, or belongs to another
+ * tenant — the server returns `not_found` or `permission_denied` for those and
+ * the public site must not tell them apart.
+ *
+ * Returns `null` rather than throwing because this runs inside a `"use cache"`
+ * scope, where a thrown error is not observable by the caller's `try` / `catch`
+ * and fails the whole request instead (same constraint as `getSeriesDetail`).
+ * It used to throw `PageNotFoundError`, which is exactly how a missing page
+ * answered `500` instead of `404` in a production build.
+ */
 export const getPublishedPage = async (
   tenantId: string,
   slug: string | readonly string[]
-): Promise<PublishedPage> => {
+): Promise<PublishedPage | null> => {
   // Shared public content: remote so multi-instance hosts share entries (#532).
   "use cache: remote";
 
@@ -155,12 +158,12 @@ export const getPublishedPage = async (
   const normalizedSlug = normalizePublishedPageSlug(slug);
 
   if (!normalizedTenantId) {
-    throw new PageNotFoundError();
+    return null;
   }
 
   // Root slug is not served as a content page on the public site.
   if (!normalizedSlug) {
-    throw new PageNotFoundError();
+    return null;
   }
 
   applyCacheTag(tenantPagesTag(normalizedTenantId));
@@ -183,7 +186,7 @@ export const getPublishedPage = async (
     if (secondary.ok) {
       ({ response } = secondary);
     } else if (isMissingResourceRpcError(secondary.error)) {
-      throw new PageNotFoundError();
+      return null;
     } else {
       throw secondary.error;
     }
@@ -193,7 +196,7 @@ export const getPublishedPage = async (
 
   const { page, version } = response;
   if (!page?.id || !version) {
-    throw new PageNotFoundError();
+    return null;
   }
 
   applyCacheTag(tenantPageTag(normalizedTenantId, page.id));

@@ -4,67 +4,50 @@ import {
   guardPlaceholders,
 } from "@publira/utils/next-static-params";
 import Link from "next/link";
-import { Suspense } from "react";
+import { notFound } from "next/navigation";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { getSeriesDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
 
+/**
+ * A missing series must call `notFound()` outside `<Suspense>` so the response
+ * status is HTTP 404 instead of a streamed 200 (same pattern as authors detail
+ * and the published-page route). Instant shell is not used for this segment.
+ */
+export const instant = false;
+
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
 
-const SeriesDetailSkeleton = () => (
-  <div>
-    <div className="mb-10 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
-      <div className="aspect-3/4 animate-pulse rounded-2xl bg-muted" />
-      <div>
-        <div className="mb-4 h-9 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="mb-8 h-5 w-32 animate-pulse rounded bg-muted" />
-        <div className="mb-2 h-4 w-full animate-pulse rounded bg-muted" />
-        <div className="mb-2 h-4 w-full animate-pulse rounded bg-muted" />
-        <div className="mb-2 h-4 w-1/2 animate-pulse rounded bg-muted" />
-      </div>
-    </div>
-    <div className="mt-8 grid gap-3">
-      {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className="h-14 animate-pulse rounded bg-muted/70" />
-      ))}
-    </div>
-  </div>
-);
-
-const SeriesDetailData = async (
-  props: PageProps<"/[tenant_id]/series/[series_id]">
-) => {
+const Page = async (props: PageProps<"/[tenant_id]/series/[series_id]">) => {
   const [{ series_id }, tenantId] = await Promise.all([
     props.params,
     getTenantId(),
   ]);
   guardPlaceholders({ series_id });
 
-  // Missing / unpublished / other-tenant series all resolve to null.
+  // Missing / unpublished / other-tenant series all resolve to null, and the
+  // public site must not tell those apart.
   const result = await getSeriesDetail(tenantId, series_id);
 
   if (!result) {
-    return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
-        <p className="mb-4 text-destructive">
-          シリーズが見つかりませんでした。
-        </p>
-        <Link
-          href="/series"
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
-          シリーズ一覧に戻る
-        </Link>
-      </div>
-    );
+    notFound();
   }
 
-  const { series, episodes } = result;
+  const { episodes, series } = result;
 
   return (
-    <>
+    <main className="mx-auto max-w-5xl px-6 py-12">
+      <nav className="mb-8">
+        <Link
+          href="/series"
+          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          ← シリーズ一覧に戻る
+        </Link>
+      </nav>
+
       <div className="mb-10 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
         {series.eyeCatchImageVariants &&
         series.eyeCatchImageVariants.length > 0 ? (
@@ -147,25 +130,8 @@ const SeriesDetailData = async (
           </ol>
         )}
       </section>
-    </>
+    </main>
   );
 };
-
-const Page = (props: PageProps<"/[tenant_id]/series/[series_id]">) => (
-  <main className="mx-auto max-w-5xl px-6 py-12">
-    <nav className="mb-8">
-      <Link
-        href="/series"
-        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-      >
-        ← シリーズ一覧に戻る
-      </Link>
-    </nav>
-
-    <Suspense fallback={<SeriesDetailSkeleton />}>
-      <SeriesDetailData {...props} />
-    </Suspense>
-  </main>
-);
 
 export default Page;

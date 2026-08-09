@@ -6,7 +6,6 @@ import {
   listPublishedPageLinks,
   normalizePublishedPageSlug,
   publishedPageHrefFromSlug,
-  PageNotFoundError,
 } from "./pages";
 
 const { mockGetPublishedPage, mockListPublishedPages } = vi.hoisted(() => ({
@@ -162,14 +161,14 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("API not_found は PageNotFoundError", async () => {
+  it("API not_found は null（呼び出し側が notFound() に倒す）", async () => {
     mockGetPublishedPage.mockRejectedValue(
       new ConnectError("page not found", Code.NotFound)
     );
 
     await expect(
       getPublishedPage("tenant-uuid", "missing")
-    ).rejects.toBeInstanceOf(PageNotFoundError);
+    ).resolves.toBeNull();
 
     // Leading-slash form first, then bare form for legacy storage.
     expect(mockGetPublishedPage).toHaveBeenCalledWith({
@@ -200,7 +199,7 @@ describe("getPublishedPage", () => {
       });
 
     const result = await getPublishedPage("tenant-uuid", "privacy");
-    expect(result.slug).toBe("privacy");
+    expect(result?.slug).toBe("privacy");
     expect(mockGetPublishedPage).toHaveBeenNthCalledWith(1, {
       slug: "/privacy",
       tenant: { tenantId: "tenant-uuid" },
@@ -211,7 +210,7 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("page または version が欠けている場合は PageNotFoundError", async () => {
+  it("version が欠けている場合は null", async () => {
     mockGetPublishedPage.mockResolvedValueOnce({
       page: { id: "page-1", slug: "/privacy", title: "P" },
       version: undefined,
@@ -219,13 +218,41 @@ describe("getPublishedPage", () => {
 
     await expect(
       getPublishedPage("tenant-uuid", "privacy")
-    ).rejects.toBeInstanceOf(PageNotFoundError);
+    ).resolves.toBeNull();
   });
 
-  it("ルート slug は PageNotFoundError", async () => {
-    await expect(getPublishedPage("tenant-uuid", "/")).rejects.toBeInstanceOf(
-      PageNotFoundError
-    );
+  it("page.id が欠けている場合は null", async () => {
+    mockGetPublishedPage.mockResolvedValueOnce({
+      page: { slug: "/privacy", title: "P" },
+      version: { contentMarkdown: "body", id: "ver-1", versionNumber: 1 },
+    });
+
+    await expect(
+      getPublishedPage("tenant-uuid", "privacy")
+    ).resolves.toBeNull();
+  });
+
+  it("ルート slug は null", async () => {
+    await expect(getPublishedPage("tenant-uuid", "/")).resolves.toBeNull();
     expect(mockGetPublishedPage).not.toHaveBeenCalled();
+  });
+
+  it("空テナント ID は API を呼ばずに null", async () => {
+    await expect(getPublishedPage("  ", "privacy")).resolves.toBeNull();
+    expect(mockGetPublishedPage).not.toHaveBeenCalled();
+  });
+
+  /**
+   * `internal` and friends are not "missing"; they must keep throwing so the
+   * caller renders an error, not a 404.
+   */
+  it("分類できない RPC エラーは throw したまま", async () => {
+    mockGetPublishedPage.mockRejectedValue(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getPublishedPage("tenant-uuid", "privacy")).rejects.toThrow(
+      "boom"
+    );
   });
 });
