@@ -64,8 +64,8 @@ label_seed AS (
 )
 INSERT INTO labels (id, tenant_id, public_id, name)
 SELECT
-    ls.id,
-    ts.id,
+    ls.id AS label_id,
+    ts.id AS tenant_id,
     UPPER(SUBSTRING(REPLACE(ls.id::text, '-', '') FROM 1 FOR 12)),
     'Boundary Label 01'
 FROM label_seed ls
@@ -84,8 +84,8 @@ creator_seed AS (
 )
 INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
 SELECT
-    cs.id,
-    ts.id,
+    cs.id AS creator_id,
+    ts.id AS tenant_id,
     UPPER(SUBSTRING(REPLACE(cs.id::text, '-', '') FROM 1 FOR 12)),
     'Boundary Author 001',
     'Profile text for Boundary Author 001'
@@ -119,16 +119,16 @@ series_seed (id, title, is_published, published_at) AS (
 )
 INSERT INTO series (id, tenant_id, label_id, public_id, title, is_published, published_at)
 SELECT
-    ss.id,
-    ts.id,
-    l.id,
+    ss.id AS series_id,
+    ts.id AS tenant_id,
+    l.id AS label_id,
     UPPER(SUBSTRING(REPLACE(ss.id::text, '-', '') FROM 1 FOR 12)),
     ss.title,
     ss.is_published,
     ss.published_at
 FROM series_seed ss
 CROSS JOIN tenant_scope ts
-JOIN labels l ON l.tenant_id = ts.id AND l.name = 'Boundary Label 01'
+JOIN labels l ON l.id = '018f0f01-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     label_id = EXCLUDED.label_id,
@@ -137,52 +137,43 @@ SET tenant_id = EXCLUDED.tenant_id,
     published_at = EXCLUDED.published_at,
     updated_at = NOW();
 
-WITH tenant_scope AS (
-    SELECT t.id
-    FROM tenants t
-    WHERE t.domain = 'other.localhost'
-)
+-- Fixture UUIDs rather than a title/tenant predicate: another scenario seed
+-- adding rows to this tenant must not be picked up here.
 INSERT INTO series_listings (series_id, synopsis, reading_period_hours, tenant_id)
 SELECT
-    s.id,
+    s.id AS series_id,
     FORMAT('Boundary series synopsis for %s', s.title),
     72,
     s.tenant_id
 FROM series s
-JOIN tenant_scope ts ON ts.id = s.tenant_id
-WHERE s.title LIKE 'Boundary %'
+WHERE s.id IN (
+    '018f0f03-0001-7000-8000-000000000001'::uuid,
+    '018f0f03-0002-7000-8000-000000000002'::uuid
+)
 ON CONFLICT (series_id) DO UPDATE
 SET synopsis = EXCLUDED.synopsis,
     reading_period_hours = EXCLUDED.reading_period_hours,
     tenant_id = EXCLUDED.tenant_id;
 
-WITH tenant_scope AS (
-    SELECT t.id
-    FROM tenants t
-    WHERE t.domain = 'other.localhost'
-)
 INSERT INTO series_creators (series_id, creator_id, role, display_order, tenant_id)
 SELECT
-    s.id,
-    c.id,
+    s.id AS series_id,
+    c.id AS creator_id,
     'author',
     1,
     s.tenant_id
 FROM series s
-JOIN tenant_scope ts ON ts.id = s.tenant_id
-JOIN creators c ON c.tenant_id = ts.id AND c.name = 'Boundary Author 001'
-WHERE s.title LIKE 'Boundary %'
+JOIN creators c ON c.id = '018f0f02-0001-7000-8000-000000000001'::uuid
+WHERE s.id IN (
+    '018f0f03-0001-7000-8000-000000000001'::uuid,
+    '018f0f03-0002-7000-8000-000000000002'::uuid
+)
 ON CONFLICT (series_id, creator_id) DO UPDATE
 SET role = EXCLUDED.role,
     display_order = EXCLUDED.display_order,
     tenant_id = EXCLUDED.tenant_id;
 
-WITH tenant_scope AS (
-    SELECT t.id
-    FROM tenants t
-    WHERE t.domain = 'other.localhost'
-),
-episode_seed (id, title, order_index) AS (
+WITH episode_seed (id, title, order_index) AS (
     VALUES
         ('018f0f04-0001-7000-8000-000000000001'::uuid, 'Boundary Episode 001-01', 1),
         ('018f0f04-0002-7000-8000-000000000002'::uuid, 'Boundary Episode 001-02', 2),
@@ -190,15 +181,14 @@ episode_seed (id, title, order_index) AS (
 )
 INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
 SELECT
-    es.id,
-    s.id,
+    es.id AS episode_id,
+    s.id AS series_id,
     UPPER(SUBSTRING(REPLACE(es.id::text, '-', '') FROM 1 FOR 12)),
     es.title,
     es.order_index,
     s.tenant_id
 FROM episode_seed es
-CROSS JOIN tenant_scope ts
-JOIN series s ON s.tenant_id = ts.id AND s.title = 'Boundary Series 001'
+JOIN series s ON s.id = '018f0f03-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (public_id) DO UPDATE
 SET series_id = EXCLUDED.series_id,
     title = EXCLUDED.title,
@@ -206,29 +196,24 @@ SET series_id = EXCLUDED.series_id,
     tenant_id = EXCLUDED.tenant_id;
 
 -- Episodes 01/02 are published; 90 stays scheduled so the catalog must hide it.
-WITH tenant_scope AS (
-    SELECT t.id
-    FROM tenants t
-    WHERE t.domain = 'other.localhost'
-),
-listing_seed (title, price, status, scheduled_at, published_at) AS (
+WITH listing_seed (episode_id, price, status, scheduled_at, published_at) AS (
     VALUES
         (
-            'Boundary Episode 001-01',
+            '018f0f04-0001-7000-8000-000000000001'::uuid,
             0,
             'published',
             NULL::timestamptz,
             NOW() - INTERVAL '12 hours'
         ),
         (
-            'Boundary Episode 001-02',
+            '018f0f04-0002-7000-8000-000000000002'::uuid,
             0,
             'published',
             NULL::timestamptz,
             NOW() - INTERVAL '6 hours'
         ),
         (
-            'Boundary Episode 001-90',
+            '018f0f04-0003-7000-8000-000000000003'::uuid,
             0,
             'scheduled',
             NOW() + INTERVAL '7 days',
@@ -245,7 +230,7 @@ INSERT INTO episode_listings (
     tenant_id
 )
 SELECT
-    e.id,
+    e.id AS episode_id,
     ls.price,
     72,
     ls.status,
@@ -253,8 +238,7 @@ SELECT
     ls.published_at,
     e.tenant_id
 FROM listing_seed ls
-CROSS JOIN tenant_scope ts
-JOIN episodes e ON e.tenant_id = ts.id AND e.title = ls.title
+JOIN episodes e ON e.id = ls.episode_id
 ON CONFLICT (episode_id) DO UPDATE
 SET price = EXCLUDED.price,
     reading_period_hours = EXCLUDED.reading_period_hours,

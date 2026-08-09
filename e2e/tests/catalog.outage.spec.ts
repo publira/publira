@@ -57,6 +57,11 @@ test.describe("web-host public API outage", () => {
   test("復旧後は同じ導線が通常どおり応答する", async ({ page }) => {
     startApiServer();
 
+    // Another never-resolved Host: 503 → 404 means tenant resolution reached
+    // the API again and got a definitive answer, not a cached one.
+    const resolved = await page.goto(`${uncachedTenantBaseUrl()}/`);
+    expect(resolved?.status(), await page.content()).toBe(404);
+
     const response = await page.goto("/");
     expect(response?.status(), await page.content()).toBe(200);
     await expect(

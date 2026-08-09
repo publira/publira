@@ -4,7 +4,8 @@ import path from "node:path";
 const scriptPath = path.join(import.meta.dirname, "../scripts/api-server.sh");
 
 // Absolute path avoids PATH lookup (oxlint sonarjs/no-os-command-from-path).
-const bashBin = process.env.BASH_BIN?.trim() || "/usr/bin/bash";
+// `/bin/bash` rather than `/usr/bin/bash`: only the former exists on macOS.
+const bashBin = process.env.BASH_BIN?.trim() || "/bin/bash";
 
 const runApiServerScript = (action: "start-wait" | "stop"): void => {
   execFileSync(bashBin, [scriptPath, action], { stdio: "inherit" });

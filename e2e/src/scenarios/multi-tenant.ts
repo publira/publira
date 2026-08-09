@@ -20,6 +20,7 @@ export const OTHER_TENANT = {
       "Boundary Episode 001-02",
     ] as const,
     publicId: "018F0F030001",
+    scheduledEpisodeId: "018F0F040003",
     scheduledEpisodeTitle: "Boundary Episode 001-90",
     synopsis: "Boundary series synopsis for Boundary Series 001",
     title: "Boundary Series 001",

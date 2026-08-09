@@ -121,6 +121,46 @@ describe("catalog.getEpisodeDetail", () => {
     ).resolves.toBeNull();
   });
 
+  // Another tenant's episode comes back as permission_denied, not not_found.
+  it("API が permission_denied を返したら null", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new Error("[permission_denied] episode is not published")
+    );
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+    ).resolves.toBeNull();
+  });
+
+  it("識別子の前後空白を除去して API に渡し所属判定する", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EP_001",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "published",
+        title: "第1話",
+      },
+      images: [],
+      series: { publicId: "SERIES_001", title: "シリーズタイトル" },
+    });
+
+    const result = await getEpisodeDetail(
+      " TENANT_001 ",
+      " SERIES_001 ",
+      " EP_001 "
+    );
+
+    expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
+      publicId: "EP_001",
+      tenant: { tenantId: "TENANT_001" },
+    });
+    expect(result?.episode.title).toBe("第1話");
+  });
+
   it("not_found 以外のエラーは呼び出し元に伝播する", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new Error("[unavailable] connect ECONNREFUSED")

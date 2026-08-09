@@ -36,9 +36,11 @@ start_api_server() {
   fi
 
   e2e_log "starting api-server (connect :${E2E_PUBLIC_API_PORT}, grpc :${E2E_PUBLIC_API_GRPC_PORT})"
+  # `exec`: without it $! can name the subshell, and stopping it would leave the
+  # server holding the port. Bash usually optimizes this away; do not rely on it.
   (
     cd "${REPO_ROOT}/server"
-    env \
+    exec env \
       PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL}" \
       PUBLIC_API_ADDR=":${E2E_PUBLIC_API_PORT}" \
       PUBLIC_API_GRPC_ADDR=":${E2E_PUBLIC_API_GRPC_PORT}" \

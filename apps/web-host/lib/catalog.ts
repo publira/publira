@@ -282,14 +282,15 @@ export const getEpisodeDetail = async (
 
   const normalizedTenantId = tenantId.trim();
   const normalizedSeriesPublicId = seriesPublicId.trim();
+  const normalizedEpisodePublicId = episodePublicId.trim();
   applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   let response;
   try {
     response = await apiClient.catalog.getEpisodeDetail({
-      publicId: episodePublicId,
-      tenant: { tenantId },
+      publicId: normalizedEpisodePublicId,
+      tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
     if (isNotFoundError(error)) {
@@ -305,7 +306,11 @@ export const getEpisodeDetail = async (
       }
     : undefined;
 
-  if (!response.episode || !series || series.publicId !== seriesPublicId) {
+  if (
+    !response.episode ||
+    !series ||
+    series.publicId !== normalizedSeriesPublicId
+  ) {
     return null;
   }
 
