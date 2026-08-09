@@ -158,6 +158,16 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 `catalog.tenant-boundary.spec.ts` は `db/seeds/scenarios/010_multi_tenant.sql` を `beforeAll` で適用します（`applyScenarioSql`）。  
 `catalog.outage.spec.ts` は `src/api-server.ts` 経由で api-server を落として戻すので、単体で走らせる場合も `task e2e:test`（`scripts/test.sh` が `lib.sh` を読み込む）を使ってください。
 
+### 未対応の挙動を先に書いておく
+
+まだ直っていない挙動は、期待する側を `test.skip` で置き、コメントに Issue の URL を書いておきます。修正時に `test.skip` を外すだけで検証できます。
+
+現在の `test.skip`:
+
+| spec | 内容 | Issue |
+| --- | --- | --- |
+| `catalog.outage.spec.ts` | API 障害中のデータ取得失敗が素の 500 になり、フォールバックが表示されない | [#672](https://github.com/publira/publira/issues/672) |
+
 ## 失敗時のトリアージ
 
 1. ログ先頭が `readiness failed:` か `Playwright tests failed` かを見る

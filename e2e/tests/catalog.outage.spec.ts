@@ -31,6 +31,29 @@ test.describe("web-host public API outage", () => {
     expect(response?.headers()["retry-after"]).toBe("30");
   });
 
+  /**
+   * Data fetches degrade far worse than tenant resolution: the helpers run
+   * inside a `"use cache"` scope, so their error is not observable by the
+   * page's try/catch and the route answers a bare `500 Internal Server Error`
+   * body instead of any fallback.
+   *
+   * Enable once https://github.com/publira/publira/issues/672 lands. The final
+   * copy and status code are decided there, so this pins the user-visible
+   * contract only: the site chrome survives and a retry affordance exists.
+   */
+  test.skip("データ取得に失敗してもサイト UI を保ったフォールバックを表示する", async ({
+    page,
+  }) => {
+    // A public_id no other spec requests, so no `"use cache"` entry can
+    // answer it and the render has to reach the unavailable API.
+    await page.goto("/series/OUTAGE000001");
+
+    await expect(
+      page.getByRole("link", { exact: true, name: "Series" })
+    ).toBeVisible();
+    await expect(page.getByText(/再試行|再読み込み/u)).toBeVisible();
+  });
+
   test("復旧後は同じ導線が通常どおり応答する", async ({ page }) => {
     startApiServer();
 
