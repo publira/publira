@@ -129,6 +129,11 @@ const ListSkeleton = ({ count = 4 }: { count?: number }) => (
  * the #645 record-or-throw split — lib helpers rethrow anything they cannot
  * classify, and it stops here. Replacing this with a real error boundary is
  * #647.
+ *
+ * The division of labour with the route-level boundaries added in #643: a
+ * failure that makes the whole route meaningless throws and is caught by
+ * `(site)/error.tsx`; a failure confined to one section stays inline so the
+ * rest of the page survives. Only the second kind belongs here.
  */
 const SectionLoadError = ({ retryHref = "." }: { retryHref?: string }) => (
   <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">

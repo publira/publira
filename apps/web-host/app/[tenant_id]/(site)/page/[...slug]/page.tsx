@@ -6,14 +6,11 @@ import {
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { getPublishedPage, isPageNotFoundError } from "#lib/pages";
+import { getPublishedPage } from "#lib/pages";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
-import {
-  PublishedPageContent,
-  PublishedPageFetchError,
-} from "./_components/published-page-view";
+import { PublishedPageContent } from "./_components/published-page-view";
 
 /**
  * Missing pages must call `notFound()` outside `<Suspense>` so the response
@@ -45,50 +42,29 @@ export const generateMetadata = async (
   const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
   guardCatchAllSlug(slug);
 
-  const siteLabelPromise = getTenantSiteLabel(tenantId);
+  const [siteLabel, page] = await Promise.all([
+    getTenantSiteLabel(tenantId),
+    getPublishedPage(tenantId, slug),
+  ]);
 
-  try {
-    const [siteLabel, page] = await Promise.all([
-      siteLabelPromise,
-      getPublishedPage(tenantId, slug),
-    ]);
-    return {
-      title: `${page.title} | ${siteLabel}`,
-    };
-  } catch (error) {
-    const siteLabel = await siteLabelPromise;
-    if (isPageNotFoundError(error)) {
-      return {
-        title: `ページが見つかりません | ${siteLabel}`,
-      };
-    }
-    return {
-      title: `ページ | ${siteLabel}`,
-    };
-  }
+  return {
+    title: `${page ? page.title : "ページが見つかりません"} | ${siteLabel}`,
+  };
 };
 
 const Page = async (props: PageProps<"/[tenant_id]/page/[...slug]">) => {
   const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
   guardCatchAllSlug(slug);
 
-  let result:
-    | { ok: true; page: Awaited<ReturnType<typeof getPublishedPage>> }
-    | { ok: false; reason: "error" };
-  try {
-    result = { ok: true, page: await getPublishedPage(tenantId, slug) };
-  } catch (error) {
-    if (isPageNotFoundError(error)) {
-      notFound();
-    }
-    result = { ok: false, reason: "error" };
+  // Missing / unpublished / other-tenant pages all resolve to null. A genuine
+  // fetch failure still throws and is caught by `(site)/error.tsx`.
+  const page = await getPublishedPage(tenantId, slug);
+
+  if (!page) {
+    notFound();
   }
 
-  if (!result.ok) {
-    return <PublishedPageFetchError />;
-  }
-
-  return <PublishedPageContent page={result.page} />;
+  return <PublishedPageContent page={page} />;
 };
 
 export default Page;

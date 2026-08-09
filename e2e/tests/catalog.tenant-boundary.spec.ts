@@ -87,14 +87,12 @@ test.describe("web-host tenant boundary", () => {
 
     // Hidden from the list is not enough: the detail URL must not serve it
     // either, to anyone who guesses or leaks the episode_id.
-    await page.goto(
+    const scheduled = await page.goto(
       otherTenantUrl(
         `/series/${OTHER_TENANT.publishedSeries.publicId}/episodes/${OTHER_TENANT.publishedSeries.scheduledEpisodeId}`
       )
     );
-    await expect(
-      page.getByText("エピソードが見つかりませんでした。")
-    ).toBeVisible();
+    expect(scheduled?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.scheduledEpisodeTitle)
     ).toHaveCount(0);
@@ -116,17 +114,17 @@ test.describe("web-host tenant boundary", () => {
   test("他テナントのシリーズは public_id を知っていても見えない", async ({
     page,
   }) => {
-    await page.goto(otherTenantUrl(`/series/${SEED_TENANT.series.publicId}`));
-    await expect(
-      page.getByText("シリーズが見つかりませんでした。")
-    ).toBeVisible();
+    const foreign = await page.goto(
+      otherTenantUrl(`/series/${SEED_TENANT.series.publicId}`)
+    );
+    expect(foreign?.status(), await page.content()).toBe(404);
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
 
     // …and the same in the other direction.
-    await page.goto(`/series/${OTHER_TENANT.publishedSeries.publicId}`);
-    await expect(
-      page.getByText("シリーズが見つかりませんでした。")
-    ).toBeVisible();
+    const reverse = await page.goto(
+      `/series/${OTHER_TENANT.publishedSeries.publicId}`
+    );
+    expect(reverse?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.title)
     ).toHaveCount(0);
@@ -136,39 +134,33 @@ test.describe("web-host tenant boundary", () => {
     page,
   }) => {
     // Valid own-tenant series URL, other tenant's episode_id.
-    await page.goto(
+    const foreign = await page.goto(
       otherTenantUrl(
         `/series/${OTHER_TENANT.publishedSeries.publicId}/episodes/${SEED_TENANT.series.freeEpisodeId}`
       )
     );
-    await expect(
-      page.getByText("エピソードが見つかりませんでした。")
-    ).toBeVisible();
+    expect(foreign?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(SEED_TENANT.series.freeEpisodeTitle)
     ).toHaveCount(0);
 
     // …and the same in the other direction.
     const [otherEpisodeId] = OTHER_TENANT.publishedSeries.episodeIds;
-    await page.goto(
+    const reverse = await page.goto(
       `/series/${SEED_TENANT.series.publicId}/episodes/${otherEpisodeId}`
     );
-    await expect(
-      page.getByText("エピソードが見つかりませんでした。")
-    ).toBeVisible();
+    expect(reverse?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.episodeTitles[0])
     ).toHaveCount(0);
   });
 
   test("未公開シリーズの詳細は見つからない", async ({ page }) => {
-    await page.goto(
+    const response = await page.goto(
       otherTenantUrl(`/series/${OTHER_TENANT.unpublishedSeries.publicId}`)
     );
 
-    await expect(
-      page.getByText("シリーズが見つかりませんでした。")
-    ).toBeVisible();
+    expect(response?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.unpublishedSeries.title)
     ).toHaveCount(0);
