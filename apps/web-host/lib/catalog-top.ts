@@ -93,18 +93,19 @@ const loadSeriesDetailRows = async (
 
   const seriesDetails = await Promise.all(
     seriesForDetails.map(async (seriesItem) => {
-      try {
-        const detail = await getSeriesDetail(tenantId, seriesItem.publicId);
-        return {
-          creatorNames: seriesItem.creatorNames,
-          episodes: detail.episodes,
-          eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
-          publicId: seriesItem.publicId,
-          title: seriesItem.title,
-        };
-      } catch {
+      // Unpublished between the list and detail call → skip the row.
+      const detail = await getSeriesDetail(tenantId, seriesItem.publicId);
+      if (!detail) {
         return null;
       }
+
+      return {
+        creatorNames: seriesItem.creatorNames,
+        episodes: detail.episodes,
+        eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
+        publicId: seriesItem.publicId,
+        title: seriesItem.title,
+      };
     })
   );
 

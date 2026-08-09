@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
-import { getSeriesDetail, SeriesNotFoundError } from "#lib/catalog";
+import { getSeriesDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
 
 export const generateStaticParams = () =>
@@ -42,18 +42,15 @@ const SeriesDetailData = async (
   ]);
   guardPlaceholders({ series_id });
 
-  let result: Awaited<ReturnType<typeof getSeriesDetail>>;
-  try {
-    result = await getSeriesDetail(tenantId, series_id);
-  } catch (error) {
-    const message =
-      error instanceof SeriesNotFoundError
-        ? "シリーズが見つかりませんでした。"
-        : "シリーズ詳細の取得に失敗しました。時間をおいて再試行してください。";
+  // Missing / unpublished / other-tenant series all resolve to null.
+  const result = await getSeriesDetail(tenantId, series_id);
 
+  if (!result) {
     return (
       <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
-        <p className="mb-4 text-destructive">{message}</p>
+        <p className="mb-4 text-destructive">
+          シリーズが見つかりませんでした。
+        </p>
         <Link
           href="/series"
           className="text-sm text-primary underline-offset-4 hover:underline"
