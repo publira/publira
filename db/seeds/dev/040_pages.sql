@@ -2,7 +2,7 @@
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.public_id = '018F0E6A1000'
+    WHERE t.public_id = 'SeedTNNTAAA1'
     LIMIT 1
 )
 INSERT INTO pages (id, tenant_id, slug, title)
@@ -58,7 +58,7 @@ WHERE p.slug = '/privacy'
   AND p.tenant_id IN (
       SELECT t.id
       FROM tenants t
-      WHERE t.public_id = '018F0E6A1000'
+      WHERE t.public_id = 'SeedTNNTAAA1'
   )
   AND NOT EXISTS (
       SELECT 1
@@ -73,13 +73,13 @@ WHERE slug = '/privacy'
   AND tenant_id IN (
       SELECT t.id
       FROM tenants t
-      WHERE t.public_id = '018F0E6A1000'
+      WHERE t.public_id = 'SeedTNNTAAA1'
   );
 
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.public_id = '018F0E6A1000'
+    WHERE t.public_id = 'SeedTNNTAAA1'
     LIMIT 1
 )
 INSERT INTO pages (id, tenant_id, slug, title)
@@ -135,7 +135,7 @@ WHERE p.slug = '/terms'
   AND p.tenant_id IN (
       SELECT t.id
       FROM tenants t
-      WHERE t.public_id = '018F0E6A1000'
+      WHERE t.public_id = 'SeedTNNTAAA1'
   )
   AND NOT EXISTS (
       SELECT 1
@@ -150,14 +150,14 @@ WHERE slug = '/terms'
   AND tenant_id IN (
       SELECT t.id
       FROM tenants t
-      WHERE t.public_id = '018F0E6A1000'
+      WHERE t.public_id = 'SeedTNNTAAA1'
   );
 
 -- Multi-segment slug sample for /legal/terms public URL coverage
 WITH tenant_scope AS (
     SELECT t.id AS tenant_id
     FROM tenants t
-    WHERE t.public_id = '018F0E6A1000'
+    WHERE t.public_id = 'SeedTNNTAAA1'
     LIMIT 1
 )
 INSERT INTO pages (id, tenant_id, slug, title)
@@ -213,7 +213,7 @@ WHERE p.slug = '/legal/terms'
   AND p.tenant_id IN (
       SELECT t.id
       FROM tenants t
-      WHERE t.public_id = '018F0E6A1000'
+      WHERE t.public_id = 'SeedTNNTAAA1'
   )
   AND NOT EXISTS (
       SELECT 1
@@ -227,5 +227,5 @@ WHERE slug = '/legal/terms'
   AND tenant_id IN (
       SELECT t.id
       FROM tenants t
-      WHERE t.public_id = '018F0E6A1000'
+      WHERE t.public_id = 'SeedTNNTAAA1'
   );

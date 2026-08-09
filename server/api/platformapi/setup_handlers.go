@@ -8,26 +8,17 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 const (
 	defaultMembershipStatus = "active"
 )
-
-func generatePublicID() string {
-	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
-	return strings.ToUpper(raw[:12])
-}
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
-}
 
 func (s *platformServer) CheckSetupStatus(
 	ctx context.Context,
@@ -87,15 +78,17 @@ func (s *platformServer) CreateInitialUser(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	user, err := txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
-		ID:           userID,
-		PublicID:     generatePublicID(),
-		Email:        email,
-		PasswordHash: passwordHash,
-		Name:         name,
+	user, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.PlatformUser, error) {
+		return txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
+			ID:           userID,
+			PublicID:     publicID,
+			Email:        email,
+			PasswordHash: passwordHash,
+			Name:         name,
+		})
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
 		}
@@ -108,7 +101,7 @@ func (s *platformServer) CreateInitialUser(
 		Role:           rolePlatformSuperAdmin,
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
 		}

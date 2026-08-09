@@ -71,5 +71,22 @@ task db:seed ENV=prod    # 本番用シード（DBユーザー・ロールのみ
 
 ## ID 仕様
 
-- `public_id`: 12 文字・大文字16進（サーバーの `generatePublicID` に準拠）
+- `public_id`: 12 文字の標準 Base58（サーバーの `server/internal/publicid` と同じ形式）
 - `id` (UUID): UUIDv7 形式に準拠した値を使用
+
+seed の `public_id` は主キー UUID から導出せず、固定値を使います。書式は `Seed` + 種別 4 文字 + 4 桁の連番で、Base58 に `0` が無いため連番の `0` は `A` に置き換えます（`scenarios/` は `Seed` の代わりに `Bndr`）。
+
+| 種別                    | 例                                         |
+| ----------------------- | ------------------------------------------ |
+| tenants                 | `SeedTNNTAAA1`                             |
+| platform_users          | `SeedPFUSAAA1`                             |
+| users（admin / member） | `SeedADMNAAA1` / `SeedMMBRAAA1`            |
+| labels                  | `SeedLABLAAA1` … `SeedLABLAA1A`（10 件）   |
+| creators                | `SeedAUTHAAA1` … `SeedAUTHA1AA`（100 件）  |
+| series                  | `SeedSERSAAA1` … `SeedSERSA1AA`（100 件）  |
+| episodes                | `SeedEPSDAAA1` … `SeedEPSD1AAA`（1000 件） |
+| access_tickets          | `SeedTCKTAAA1`                             |
+
+`public_id` は大文字小文字を区別します。E2E から参照する値は `e2e/src/scenarios/multi-tenant.ts` と対応させてください。
+
+旧形式（UUID 先頭 12 桁の 16 進）で作成済みのローカル DB には、`ON CONFLICT (public_id)` が効かず主キー衝突になります。`task db:reset` で作り直してください。

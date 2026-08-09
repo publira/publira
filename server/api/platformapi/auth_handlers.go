@@ -20,6 +20,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
 )
 
@@ -647,7 +648,7 @@ func (s *platformServer) ConfirmEmailChange(
 		ID:    platformUser.ID,
 		Email: changeToken.NewEmail,
 	}); err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_already_exists")
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}

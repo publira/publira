@@ -1,10 +1,15 @@
+-- public_id is 12 standard Base58 characters, the format server/internal/publicid
+-- generates. Seed rows use a fixed value instead of a random one: `Seed` + a
+-- 4-letter kind + the 4-digit seed number with `0` written as `A`, since Base58
+-- has no `0`. `Seed Series 001` is `SeedSERSAAA1`, episode 1000 is `SeedEPSD1AAA`.
+
 WITH tenant_seed AS (
     SELECT '018f0e6a-1000-7000-8000-000000000001'::uuid AS id
 )
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
 SELECT
     ts.id,
-    UPPER(SUBSTRING(REPLACE(ts.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedTNNTAAA1',
     'localhost',
     'admin.localhost',
     'Seed Tenant',
@@ -41,7 +46,7 @@ WITH platform_user_seed AS (
 INSERT INTO platform_users (id, public_id, email, password_hash, name, status)
 SELECT
     pus.id,
-    UPPER(SUBSTRING(REPLACE(pus.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedPFUSAAA1',
     'platform@example.com',
     '$2a$10$iDBugdGIlP5aTi9E4HjDQeea05pSALsDUkIPq1D2ku/2AWUT40r6i',
     'Platform Operator',
@@ -69,7 +74,7 @@ INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status,
 SELECT
     aus.id,
     t.id,
-    UPPER(SUBSTRING(REPLACE(aus.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedADMNAAA1',
     'admin@example.com',
     '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
     'Tenant Admin',
@@ -102,7 +107,7 @@ INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, status,
 SELECT
     mus.id,
     t.id,
-    UPPER(SUBSTRING(REPLACE(mus.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedMMBRAAA1',
     'member@example.com',
     '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
     'Sample Member',

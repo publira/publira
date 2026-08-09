@@ -25,10 +25,12 @@ func TestCreateOperatorSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
 		WithArgs("new-operator@example.com").
 		WillReturnError(sql.ErrNoRows)
+	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(testCreatePlatformUserQuery)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "new-operator@example.com", sqlmock.AnyArg(), "New Operator").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
 			AddRow(newOperatorID, "PLATNEW001", "new-operator@example.com", "hash", "New Operator", "active", now, int32(1)))
+	expectPublicIDAttemptReleased(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(testListPlatformUserRolesQuery)).
 		WithArgs(newOperatorID).
 		WillReturnRows(sqlmock.NewRows([]string{"role"}))

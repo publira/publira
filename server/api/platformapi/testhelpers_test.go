@@ -1,6 +1,7 @@
 package platformapi
 
 import (
+	"database/sql/driver"
 	"log/slog"
 	"net/http/httptest"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 const (
@@ -222,6 +224,56 @@ func expectIntegrationAuditLogInsert(mock sqlmock.Sqlmock) {
 
 func duplicatePublicIDError() error {
 	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_public_id_key"}
+}
+
+// expectPublicIDAttempt expects the savepoint publicid.InsertTx takes before an
+// insert, followed by its release on success or its rollback on a collision.
+func expectPublicIDAttempt(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectPublicIDAttemptReleased(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^RELEASE SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^ROLLBACK TO SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+// publicIDArgument matches any string argument and records what was passed, so
+// a test can assert on the public IDs the handler generated.
+type publicIDArgument struct {
+	values []string
+}
+
+func (a *publicIDArgument) Match(v driver.Value) bool {
+	value, ok := v.(string)
+	if !ok {
+		return false
+	}
+	a.values = append(a.values, value)
+
+	return true
+}
+
+// assertRetriedWithFreshPublicIDs checks that a retry did not reuse the ID that
+// just collided; reusing it would hit the same unique constraint again.
+func assertRetriedWithFreshPublicIDs(t *testing.T, attempted *publicIDArgument, want int) {
+	t.Helper()
+
+	if len(attempted.values) != want {
+		t.Fatalf("public_id attempts = %v, want %d", attempted.values, want)
+	}
+	seen := make(map[string]struct{}, want)
+	for _, value := range attempted.values {
+		if !publicid.Valid(value) {
+			t.Fatalf("generated public_id %q is not 12 Base58 characters", value)
+		}
+		if _, duplicate := seen[value]; duplicate {
+			t.Fatalf("retry reused public_id %q", value)
+		}
+		seen[value] = struct{}{}
+	}
 }
 
 func duplicateDomainError() error {

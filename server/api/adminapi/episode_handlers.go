@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/episodeimages"
+	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
@@ -188,7 +189,9 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	base, err := s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: generatePublicID(), Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
+	base, err := publicid.Insert(func(publicID string) (dbmodels.Episode, error) {
+		return s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: publicID, Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
+	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

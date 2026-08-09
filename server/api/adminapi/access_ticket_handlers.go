@@ -13,6 +13,8 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 const (
@@ -303,22 +305,22 @@ func (s *adminServer) IssueAccessTicket(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	publicID := generatePublicID()
-
-	created, err := s.queriesFor(ctx).CreateAccessTicket(ctx, dbmodels.CreateAccessTicketParams{
-		ID:              ticketID,
-		TenantID:        tenant.ID,
-		PublicID:        publicID,
-		EpisodeID:       episode.ID,
-		UserID:          userRow.ID,
-		ExpiresAt:       expiresAt,
-		Note:            sql.NullString{String: note, Valid: note != ""},
-		CreatedByUserID: uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
+	created, err := publicid.Insert(func(publicID string) (dbmodels.AccessTicket, error) {
+		return s.queriesFor(ctx).CreateAccessTicket(ctx, dbmodels.CreateAccessTicketParams{
+			ID:              ticketID,
+			TenantID:        tenant.ID,
+			PublicID:        publicID,
+			EpisodeID:       episode.ID,
+			UserID:          userRow.ID,
+			ExpiresAt:       expiresAt,
+			Note:            sql.NullString{String: note, Valid: note != ""},
+			CreatedByUserID: uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true},
+		})
 	})
 	if err != nil {
 		// Concurrent issue: the unique partial index may reject the insert after
 		// both requests observed no non-revoked ticket. Return the winner's row.
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			winner, getWinnerErr := s.queriesFor(ctx).GetNonRevokedAccessTicketForUserEpisode(ctx, dbmodels.GetNonRevokedAccessTicketForUserEpisodeParams{
 				TenantID:  tenant.ID,
 				UserID:    userRow.ID,

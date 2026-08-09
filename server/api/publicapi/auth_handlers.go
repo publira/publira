@@ -14,27 +14,18 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const emailVerificationTokenTTL = 24 * time.Hour
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
-}
-
-func generatePublicID() string {
-	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
-	return strings.ToUpper(raw[:12])
-}
 
 func (s *apiServer) issueAccessToken(
 	tenant dbmodels.Tenant,
@@ -461,16 +452,18 @@ func (s *apiServer) CreateUser(
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_id_generation_failed")
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	user, err := s.queriesFor(ctx).CreateUser(ctx, dbmodels.CreateUserParams{
-		ID:           userID,
-		TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		PublicID:     generatePublicID(),
-		Email:        email,
-		PasswordHash: passwordHash,
-		Name:         name,
+	user, err := publicid.Insert(func(publicID string) (dbmodels.User, error) {
+		return s.queriesFor(ctx).CreateUser(ctx, dbmodels.CreateUserParams{
+			ID:           userID,
+			TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
+			PublicID:     publicID,
+			Email:        email,
+			PasswordHash: passwordHash,
+			Name:         name,
+		})
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "email_already_exists")
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}
@@ -758,7 +751,7 @@ func (s *apiServer) ConfirmEmailChange(
 		ID:    user.ID,
 		Email: changeToken.NewEmail,
 	}); err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}
