@@ -49,4 +49,14 @@ for port in "${BOOTSTRAP_DEV_PORTS[@]}"; do
 done
 bootstrap_log "ok: all ${#BOOTSTRAP_DEV_PORTS[@]} dev ports are listening"
 
+# A green /readyz only proves the apps reached *some* Redis. If REDIS_URL never
+# reaches them they fall back to redis://localhost:6379, which may well be
+# another live instance — so require clients on the bootstrap Redis itself.
+# `connected_clients` counts the redis-cli issuing this query, hence >= 2.
+clients="$(redis_connected_clients)"
+if [[ -z "${clients}" ]] || ((clients < 2)); then
+  bootstrap_fail "no app is connected to the bootstrap Redis (connected_clients=${clients:-unknown}); REDIS_URL is probably not reaching the dev tasks"
+fi
+bootstrap_log "ok: bootstrap Redis has ${clients} connected clients"
+
 bootstrap_log "phase 4 passed"

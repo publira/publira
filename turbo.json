@@ -13,6 +13,12 @@
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
+      // Turbo defaults to strict env mode, which hides every variable the task
+      // did not declare. Without these the dev servers never see the Dev
+      // Container's REDIS_URL and silently fall back to redis://localhost:6379
+      // (and to the default API origins), so the shared cache handler talks to
+      // the wrong Redis — or to none at all.
+      "passThroughEnv": ["PUBLIRA_*", "REDIS_URL"],
       "persistent": true
     },
     "generate:api": {

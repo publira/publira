@@ -42,7 +42,9 @@ export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:${BOOT
 export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export REDIS_URL="redis://127.0.0.1:${BOOTSTRAP_REDIS_PORT}"
 export STORAGE_BACKEND="${STORAGE_BACKEND:-local}"
-export LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR:-${RUN_DIR}/storage}"
+# Not overridable: down.sh deletes this path, so it must never point at a
+# directory the developer cares about.
+export LOCAL_STORAGE_DIR="${RUN_DIR}/storage"
 
 # Readiness budget for `task dev` (Turbopack cold start + `go run` of five cmds).
 BOOTSTRAP_DEV_TIMEOUT_SEC="${BOOTSTRAP_DEV_TIMEOUT_SEC:-600}"
@@ -103,6 +105,13 @@ seed_snapshot() {
   done
 }
 
+# Clients currently attached to the bootstrap Redis (includes the redis-cli
+# that runs this query).
+redis_connected_clients() {
+  compose exec -T redis redis-cli info clients 2>/dev/null |
+    tr -d '\r' | sed -n 's/^connected_clients:\([0-9]\{1,\}\)$/\1/p'
+}
+
 assert_equals() {
   local label="$1" expected="$2" actual="$3"
   if [[ "${expected}" != "${actual}" ]]; then
@@ -133,8 +142,16 @@ web-platform/readyz	http://localhost:4100/readyz	json
 EOF
 }
 
+# Without either tool every port check would silently answer "free", turning
+# the preflight and the listen assertion into no-ops.
+require_port_tool() {
+  command -v ss >/dev/null 2>&1 || command -v netstat >/dev/null 2>&1 ||
+    bootstrap_fail "neither ss nor netstat is available; port checks cannot run"
+}
+
 port_in_use() {
   local port="$1"
+  require_port_tool
   ss -ltn 2>/dev/null | grep -qE ":${port}\\b" ||
     netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"
 }
@@ -157,13 +174,14 @@ check_http_json_ok() {
   printf '%s' "${out}" | tail -n +2 | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
 }
 
-# 200 with `ok` in the plain-text body.
+# 200 with a plain-text body of exactly `ok` — a substring match would also
+# accept bodies like `not ok`.
 check_http_text_ok() {
   local url="$1" out code
   out="$(http_status_body "${url}")"
   code="$(printf '%s' "${out}" | sed -n '1p')"
   [[ "${code}" == "200" ]] || return 1
-  printf '%s' "${out}" | tail -n +2 | grep -q 'ok'
+  printf '%s' "${out}" | tail -n +2 | grep -qx '[[:space:]]*ok[[:space:]]*'
 }
 
 # Compose state + service logs, for a failed run (CI uploads LOG_DIR).
