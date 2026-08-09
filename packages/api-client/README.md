@@ -113,7 +113,7 @@ return {
 ### メッセージ文字列を読む 2 箇所
 
 1. `rpcErrorCode()` は、`ConnectError` の `code` が失われた場合のみ Connect 自身が付ける `[not_found]` 接頭辞を読む。`"use cache"` スコープで投げたエラーは Next.js が `name` と `message` だけから再生成するため、`instanceof` も `code` も残らない
-2. `rpcErrorMentions()` は `domain already exists` と `admin_domain already exists` のようなフィールド差を見分ける。`Code` にフィールド情報は無く、サーバーは `google.rpc.BadRequest` details をまだ付けていない (#642)。**分類済みのカテゴリ内で文言を選ぶ用途に限る**
+2. `rpcErrorMentions()` は `domain already exists` と `admin_domain already exists` のようなフィールド差を見分ける。`Code` にフィールド情報は無く、サーバーは `google.rpc.BadRequest` details をまだ付けていない (#679)。**分類済みのカテゴリ内で文言を選ぶ用途に限る**
 
 どちらも `name === "ConnectError"` を持つ値だけを対象にします。RPC 由来でない `Error` は分類されず (`rpcErrorCode()` は `null`、`rpcErrorMentions()` は `false`)、`new Error("[not_found] …")` のような値が `rethrowUnclassifiedRpcError()` をすり抜けることはありません。
 

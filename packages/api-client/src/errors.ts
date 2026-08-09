@@ -208,7 +208,7 @@ export const rpcErrorRawMessage = (error: unknown): string | null => {
  * Whether the server's error message mentions `token`.
  *
  * Codes carry no field information, and the server does not attach
- * `google.rpc.BadRequest` details yet (#642), so this is the only way to tell
+ * `google.rpc.BadRequest` details yet (#679), so this is the only way to tell
  * "domain already exists" from "admin_domain already exists". Use it **only**
  * to pick nicer copy inside a category that `rpcErrorDisposition` has already
  * decided, never to classify — a wording change on the server must degrade to
