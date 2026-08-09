@@ -1,10 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import {
-  rethrowUnclassifiedRpcError,
-  rpcErrorMentions,
-} from "@publira/api-client/errors";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 
 import { apiClient, withSessionHeaders } from "./api";
+import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
 export interface SeriesItem {
@@ -56,22 +54,8 @@ const genericListErrorMessage =
 const genericMutationErrorMessage =
   "シリーズの保存に失敗しました。時間をおいて再試行してください。";
 
-const imageRejectionHints = [
-  "eye_catch",
-  "image",
-  "content_type",
-  "10mb",
-  "at least",
-] as const;
-
-/**
- * A series form submits its metadata and its eye-catch image together, and the
- * image constraints need spelling out. Both come back as `invalid_argument`, so
- * which field failed is taken from the server's message and degrades to the
- * generic wording if that text changes.
- */
 const invalidArgumentMessage = (error: unknown): string =>
-  imageRejectionHints.some((hint) => rpcErrorMentions(error, hint))
+  mentionsImageRejection(error)
     ? "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・推奨サイズを満たす画像を選び、もう一度お試しください。"
     : "入力内容を確認してください。タイトル・ラベル・作者などの必須項目を見直して、もう一度お試しください。";
 

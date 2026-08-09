@@ -1,11 +1,9 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import {
-  rethrowUnclassifiedRpcError,
-  rpcErrorMentions,
-} from "@publira/api-client/errors";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -44,22 +42,8 @@ const genericListErrorMessage =
 const genericMutationErrorMessage =
   "レーベルの保存に失敗しました。時間をおいて再試行してください。";
 
-const imageRejectionHints = [
-  "eye_catch",
-  "image",
-  "content_type",
-  "10mb",
-  "at least",
-] as const;
-
-/**
- * A label form submits its name and its eye-catch image together, and the
- * image constraints (format / size / dimensions) need spelling out. The code is
- * `invalid_argument` either way, so which field failed comes from the server's
- * message; it degrades to the generic wording if that text changes.
- */
 const invalidArgumentMessage = (error: unknown): string =>
-  imageRejectionHints.some((hint) => rpcErrorMentions(error, hint))
+  mentionsImageRejection(error)
     ? "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・2400x3200px以上の画像を選び、もう一度お試しください。"
     : "入力内容に誤りがあります。";
 

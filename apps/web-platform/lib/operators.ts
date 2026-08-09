@@ -139,13 +139,10 @@ export const getPlatformOperator = async (
   if (!publicId.trim()) {
     return null;
   }
-  try {
-    const operators = await listPlatformOperators();
-    return operators.find((op) => op.publicId === publicId) ?? null;
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    return null;
-  }
+  // `listPlatformOperators` already resolves classified failures to `[]` and
+  // rethrows the rest, so there is nothing left here to catch.
+  const operators = await listPlatformOperators();
+  return operators.find((op) => op.publicId === publicId) ?? null;
 };
 
 export interface UpdatePlatformOperatorRoleInput {

@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
 
 import {
   apiClient,
@@ -51,9 +54,14 @@ export const requestPlatformEmailChange = async (
       message: rpcErrorMessage(error, genericErrorMessage, {
         conflict: "このメールアドレスは既に使用されています。",
         "invalid-argument": "入力内容を確認してください。",
-        // This call re-checks the current password, so a rejected session here
-        // means the password was wrong, not that the login expired.
-        unauthenticated: "パスワードが正しくありません。",
+        // Session rejection and a wrong current password share
+        // `unauthenticated`; the server names which one
+        // (`invalid current password`). If that wording ever changes this
+        // degrades to the shared session message rather than lying about the
+        // cause.
+        unauthenticated: rpcErrorMentions(error, "invalid current password")
+          ? "パスワードが正しくありません。"
+          : undefined,
       }),
       ok: false,
     };

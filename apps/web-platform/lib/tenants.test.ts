@@ -233,6 +233,39 @@ describe("createPlatformTenant", () => {
     });
   });
 
+  // "admin_domain" contains "domain", so the checks must stay in this order.
+  it("管理画面ドメイン重複を公開ドメイン重複と取り違えない", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("admin_domain already exists", Code.AlreadyExists)
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "管理画面ドメインが既に使用されています。",
+      ok: false,
+    });
+  });
+
+  it("どちらのドメインも名指ししない重複は汎用文言にする", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("duplicate key", Code.AlreadyExists)
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "重複するデータがあるため作成できません。",
+      ok: false,
+    });
+  });
+
   it("入力エラーを入力内容エラーに変換する", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("invalid initial_admin_emails", Code.InvalidArgument)

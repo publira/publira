@@ -31,6 +31,7 @@ The same rules apply to all three apps:
 | Any `catch` that turns an error into a message | `rethrowUnclassifiedRpcError(error)` first, then `rpcErrorMessage(error, fallback, overrides?)` |
 
 - Take the wording from `rpcErrorMessage`'s shared table and override only the categories a screen genuinely words differently. Do not build a per-file mapping table.
+- `rpcErrorMentions()` is **not** an exception to the rule above — it does not classify. It only picks between wordings _inside_ a category `rpcErrorDisposition()` has already decided: one `Code` covering several distinct inputs (`invalid_argument` for both a bad slug and a rejected image), or a field name a `Code` cannot carry (`domain` vs `admin_domain`). It returns `false` for anything that is not an RPC error, every branch degrades to that category's generic message when the server rewords, and the call site names the server file its tokens come from.
 - **Never swallow an unclassifiable error** (`internal`, `unimplemented`, or a throw that is not an RPC error at all). A `catch` returning `null` / `false` / `[]` still calls `rethrowUnclassifiedRpcError(error)` first.
 - The exceptions are logout (the cookie must clear either way), non-critical chrome such as footer links, and the top page's per-section degradation. Each one records why in a comment.
 

@@ -1,6 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isExpectedNullableRpcError,
+  isMissingResourceRpcError,
+  isRejectedRequestRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
   rpcErrorMentions,
@@ -231,7 +233,11 @@ export const getTenantAdminInvitationState = async (
       status: response.status,
     };
   } catch (error) {
-    if (isExpectedNullableRpcError(error)) {
+    // No session header is sent here — the invitation link is followed while
+    // logged out. `unauthenticated` would therefore mean the auth wiring or the
+    // API contract broke, not that the invitation is unknown, so it must not be
+    // flattened into "no such invitation".
+    if (isMissingResourceRpcError(error)) {
       return null;
     }
     throw error;
@@ -356,6 +362,7 @@ export const confirmAdminPasswordReset = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     const disposition = rpcErrorDisposition(error);
     if (disposition === "precondition") {
       return {
@@ -427,9 +434,14 @@ export const requestAdminEmailChange = async (
       message: rpcErrorMessage(error, genericEmailChangeRequestErrorMessage, {
         conflict: "このメールアドレスは既に使用されています。",
         "invalid-argument": "入力内容を確認してください。",
-        // This call re-checks the current password, so a rejected session here
-        // means the password was wrong, not that the login expired.
-        unauthenticated: "パスワードが正しくありません。",
+        // Session rejection and a wrong current password share
+        // `unauthenticated`; the server names which one
+        // (`invalid current password`). If that wording ever changes this
+        // degrades to the shared session message rather than lying about the
+        // cause.
+        unauthenticated: rpcErrorMentions(error, "invalid current password")
+          ? "パスワードが正しくありません。"
+          : undefined,
       }),
       ok: false,
     };
@@ -457,7 +469,12 @@ export const confirmAdminEmailChange = async (
       pendingConfirmationFor: response.pendingConfirmationFor,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    return null;
+    // The page renders `null` as "this link is expired or invalid", so only a
+    // rejected token may resolve to it. A transport failure or a broken server
+    // must not be presented to the operator as a dead link.
+    if (isRejectedRequestRpcError(error)) {
+      return null;
+    }
+    throw error;
   }
 };

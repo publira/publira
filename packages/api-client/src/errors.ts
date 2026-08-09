@@ -74,22 +74,32 @@ const codeFromMessagePrefix = (message: string): Code | null => {
 };
 
 /**
+ * An error that crossed a serialization boundary: Next.js re-creates errors
+ * thrown inside a `"use cache"` scope from `name` and `message` only, so `code`
+ * and `rawMessage` are gone and `instanceof ConnectError` no longer holds.
+ *
+ * The name is required, not merely the message shape. Without it any
+ * `new Error("[not_found] …")` would classify as an RPC failure and stop
+ * `rethrowUnclassifiedRpcError()` from doing its job.
+ */
+const isRehydratedConnectError = (error: unknown): error is Error =>
+  error instanceof Error && error.name === "ConnectError";
+
+/**
  * The Connect `Code` behind a caught value, or `null` when it is not an RPC
  * error at all.
  *
  * `ConnectError` implements `Symbol.hasInstance`, so `instanceof` already works
- * across realms and duplicated module instances. It still fails for an error
- * that crossed a serialization boundary — Next.js re-creates errors thrown
- * inside a `"use cache"` scope from `name` and `message` only, dropping `code`.
- * The message prefix is the sole classification signal left in that case, so
- * this function is the one place in the repository that reads it; call sites
- * classify by `Code` and never by message text.
+ * across realms and duplicated module instances; the rehydrated case falls back
+ * to Connect's own `[not_found]` message prefix. This function is the one place
+ * in the repository that reads that prefix — call sites classify by `Code` and
+ * never by message text.
  */
 export const rpcErrorCode = (error: unknown): Code | null => {
   if (error instanceof ConnectError) {
     return error.code;
   }
-  if (error instanceof Error) {
+  if (isRehydratedConnectError(error)) {
     return codeFromMessagePrefix(error.message);
   }
   return null;
@@ -188,7 +198,7 @@ export const rpcErrorRawMessage = (error: unknown): string | null => {
   if (error instanceof ConnectError) {
     return error.rawMessage;
   }
-  if (error instanceof Error && codeFromMessagePrefix(error.message) !== null) {
+  if (isRehydratedConnectError(error)) {
     return error.message.replace(/^\[[a-z_]+\]\s*/u, "");
   }
   return null;
@@ -203,13 +213,13 @@ export const rpcErrorRawMessage = (error: unknown): string | null => {
  * to pick nicer copy inside a category that `rpcErrorDisposition` has already
  * decided, never to classify — a wording change on the server must degrade to
  * the generic message for that category, not to a different category.
+ *
+ * Anything that is not an RPC error returns `false`, so this can never become a
+ * back door for classifying an arbitrary `Error` by its text.
  */
 export const rpcErrorMentions = (error: unknown, token: string): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message =
-    error instanceof ConnectError ? error.rawMessage : error.message;
-  return message.toLowerCase().includes(token.toLowerCase());
+  const message = rpcErrorRawMessage(error);
+  return (
+    message !== null && message.toLowerCase().includes(token.toLowerCase())
+  );
 };

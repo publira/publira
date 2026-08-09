@@ -115,43 +115,26 @@ const mapEpisodeImage = (image: {
   width: image.width,
 });
 
-const mentionsAny = (error: unknown, tokens: readonly string[]): boolean =>
-  tokens.some((token) => rpcErrorMentions(error, token));
-
 /**
  * Every archive rejection is `invalid_argument`, so the code alone cannot say
- * whether the ePub is corrupt, its spine is inconsistent, or a path escapes the
- * archive — and an uploader needs to know which. The distinction comes from the
- * server's message (`server/internal/epubimages`) and degrades to the generic
- * "入力内容に誤りがあります。" if that wording changes.
+ * whether the ePub is unreadable, its spine is inconsistent, or an entry path
+ * escapes the archive — and an uploader needs to know which.
+ *
+ * The tokens mirror the only three messages `server/internal/epubimages`
+ * produces; anything else falls through to the generic wording, as does a
+ * rewording on the server.
  */
 const archiveRejectionMessage = (error: unknown): string | undefined => {
   if (rpcErrorMentions(error, "valid epub file")) {
     return "ePub の解析に失敗しました。壊れていない ePub（.epub）を選択してください。";
   }
-  if (
-    mentionsAny(error, ["spine references unknown asset", "contains no spine"])
-  ) {
+  if (rpcErrorMentions(error, "contains no spine")) {
     return "ePub の本文参照に不整合があります。spine と manifest の参照を確認してください。";
   }
-  if (
-    mentionsAny(error, [
-      "manifest contains invalid path",
-      "invalid path",
-      "traversal",
-      "outside",
-    ])
-  ) {
-    return "ePub 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。";
-  }
-  if (!rpcErrorMentions(error, "zip")) {
-    return undefined;
-  }
-  if (rpcErrorMentions(error, "broken")) {
-    return "ZIP が壊れています。正常な ZIP ファイルを再作成してください。";
-  }
-  return rpcErrorMentions(error, "path")
-    ? "ZIP 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。"
+  // Covers both `epub manifest contains invalid path` and
+  // `archive contains invalid path`.
+  return rpcErrorMentions(error, "invalid path")
+    ? "アーカイブ内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。"
     : undefined;
 };
 
@@ -378,6 +361,7 @@ export const uploadEpisodePages = async (input: {
       uploadedCount: response.images.length,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapEpisodeUploadErrorMessage(error),
       ok: false,

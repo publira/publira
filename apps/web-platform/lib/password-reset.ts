@@ -118,6 +118,7 @@ export const confirmPlatformPasswordReset = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     const disposition = rpcErrorDisposition(error);
     if (disposition === "precondition") {
       return {

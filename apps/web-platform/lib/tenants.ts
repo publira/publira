@@ -1,6 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
-  isExpectedNullableRpcError,
+  isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorMentions,
 } from "@publira/api-client/errors";
@@ -154,7 +154,10 @@ export const getPlatformTenant = async (
     );
     return mapTenant(response.tenant);
   } catch (error) {
-    if (isExpectedNullableRpcError(error)) {
+    // The caller turns `null` into `notFound()`. A rejected session is not a
+    // missing tenant, so it stays an error and can reach a re-authentication
+    // path instead of showing a 404.
+    if (isMissingResourceRpcError(error)) {
       return null;
     }
     throw error;

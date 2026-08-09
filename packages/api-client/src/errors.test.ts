@@ -46,6 +46,17 @@ describe("rpcErrorCode", () => {
     expect(rpcErrorCode(new Error("failed: not_found"))).toBeNull();
   });
 
+  it("ConnectError 以外は接頭辞を持っていても分類しない", () => {
+    // Otherwise any Error could disguise itself as an RPC failure and slip
+    // past rethrowUnclassifiedRpcError().
+    expect(
+      rpcErrorCode(new Error("[not_found] looks like connect"))
+    ).toBeNull();
+    expect(
+      rpcErrorDisposition(new Error("[not_found] looks like connect"))
+    ).toBe("unexpected");
+  });
+
   it("未知の接頭辞は null", () => {
     expect(rpcErrorCode(new Error("[teapot] nope"))).toBeNull();
   });
@@ -126,7 +137,19 @@ describe("rpcErrorMentions", () => {
     expect(rpcErrorMentions(error, "already_exists")).toBe(false);
   });
 
+  it("キャッシュ境界で再生成されたエラーは接頭辞を除いた本文を見る", () => {
+    const rehydrated = new Error(
+      "[already_exists] admin_domain already exists"
+    );
+    rehydrated.name = "ConnectError";
+
+    expect(rpcErrorMentions(rehydrated, "admin_domain")).toBe(true);
+    expect(rpcErrorMentions(rehydrated, "already_exists")).toBe(false);
+  });
+
   it("RPC 由来でない値は false", () => {
     expect(rpcErrorMentions("admin_domain", "admin_domain")).toBe(false);
+    // A plain Error must not become classifiable through this back door.
+    expect(rpcErrorMentions(new Error("canceled"), "canceled")).toBe(false);
   });
 });
