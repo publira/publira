@@ -156,9 +156,11 @@ jobs:
               - '.devcontainer/**'
               - 'db/**'
               - 'e2e/bootstrap/**'
-              - 'server/cmd/**'
-              - 'server/Taskfile.yaml'
-              - 'apps/*/package.json'
+              # task dev starts every app and server, so any of their sources
+              # can break startup — Test / E2E only covers web-host + api-server.
+              - 'apps/**'
+              - 'packages/**'
+              - 'server/**'
               - 'Taskfile.yaml'
               - 'package.json'
               - 'pnpm-lock.yaml'

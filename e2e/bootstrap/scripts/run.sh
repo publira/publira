@@ -33,7 +33,20 @@ cleanup() {
   fi
   bash "${BOOTSTRAP_SCRIPTS_DIR}/down.sh" || true
 }
-trap cleanup EXIT INT TERM
+
+# A signal handler that just returns would let the script resume at the next
+# command — with the stack already torn down. Exit explicitly instead.
+on_signal() {
+  local signal="$1"
+  bootstrap_err "received SIG${signal}; aborting"
+  cleanup
+  trap - EXIT
+  exit $((128 + $(kill -l "${signal}")))
+}
+
+trap cleanup EXIT
+trap 'on_signal INT' INT
+trap 'on_signal TERM' TERM
 
 bootstrap_log "=== bootstrap check start (project=${COMPOSE_PROJECT_NAME}) ==="
 

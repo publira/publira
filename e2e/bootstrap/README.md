@@ -53,11 +53,13 @@ task e2e:bootstrap
 | 1 | 専用 project `publira-bootstrap` で `db` + `redis` を起動 | volume `publira-bootstrap_postgres-data` が `/var/lib/postgresql` にマウントされている / `data_directory` がその配下（PG 18 なら `/var/lib/postgresql/18/docker`）にあり `PG_VERSION` が存在する / `schema_migrations` がまだ無い |
 | 2 | `task setup`（Flutter が無ければ `task deps` + `task db:setup`） | `schema_migrations` が最新 version かつ dirty でない / seed テナント `localhost` がある / 主要テーブルが空でない / `task db:seed` を再実行しても件数が変わらない |
 | 3 | `compose stop db` → `compose up --wait db` | `data_directory`・migration 状態・全 seed 件数が再起動前と一致する / 再度 `task db:setup` しても dirty にならない |
-| 4 | `task dev` | 5 つの Go サーバー（public / admin / platform API の Connect + gRPC 口、image / admin image）と 3 つの Next.js アプリが `/livez`・`/readyz` を 200 で返し、11 ポート全てが listen している |
+| 4 | `task dev` | 5 つの Go サーバー（public / admin / platform API の Connect + gRPC 口、image / admin image）と 3 つの Next.js アプリが `/livez`・`/readyz` を 200 で返し、11 ポート全てが listen している / bootstrap 用 Redis に app からの接続がある |
 
 phase 2 で `task setup` を丸ごと実行するのは Flutter SDK がある環境（Dev Container）のみ。無い環境では `mobile:deps` を除いた `task deps` + `task db:setup` を実行する（モバイル依存は `Test / Mobile` ジョブの担当）。
 
 `task dev` に渡す環境変数（`PUBLIRA_*_DB_URL` / `REDIS_URL` / `STORAGE_BACKEND`）は `scripts/lib.sh` が bootstrap 用スタックを指すよう export する。Go サーバーと Next.js アプリの API 向き先は既定値（`localhost` + 標準ポート）のままなので上書きしない。
+
+phase 4 の最後に bootstrap 用 Redis の `connected_clients` を確認するのは、`/readyz` が 200 でも「別の Redis に繋がっているだけ」の可能性を潰すため。実際 turbo は既定が strict env mode で、`turbo.json` の `dev` に `passThroughEnv` が無いと `REDIS_URL` がアプリに届かず `redis://localhost:6379` へフォールバックする。
 
 ## 構成
 
@@ -84,17 +86,17 @@ e2e/bootstrap/
 3. **phase 3** — データが volume に載っていない。マウント先と `data_directory` の関係を疑う
 4. **phase 4** — `readiness failed: <name>` に出たサービス。`.run/logs/task-dev.log` を見る
 
-失敗時は `.run/logs/` に次を残す（成功時は残さない）。
+`.run/logs/` に次を残す（teardown では消さない）。
 
-- `task-dev.log` — `task dev` の全出力
-- `compose-ps.log` / `compose.log` — Compose の状態とコンテナログ
+- `task-dev.log` — `task dev` の全出力。phase 4 を実行すれば成功時も残る
+- `compose-ps.log` / `compose.log` — Compose の状態とコンテナログ。失敗時のみ生成する
 
 ## CI
 
 ジョブ名: **Test / Bootstrap**（`.github/workflows/ci.yml`）
 
-- path filter: `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `server/cmd/**`, `Taskfile.yaml`, lockfile など構成系のみ
-- 上記に加えて **Nightly（`schedule`）でも実行**する。path filter が狭いぶん、通常の `server/` / `apps/` 変更由来のドリフトは Nightly で拾う
+- path filter: `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, lockfile など。`task dev` は全アプリ・全サーバーを起動するので、いずれのソース変更でも起動が壊れうる
+- 上記に加えて **Nightly（`schedule`）でも実行**する。`.devcontainer/**` は普段の PR でほとんど触られないため
 - 失敗時 artifact: `bootstrap-artifacts`（`.run/logs/`）
 
 ジョブ構成全体: [`.github/workflows/README.md`](../../.github/workflows/README.md)

@@ -36,7 +36,7 @@ Branch ruleset が要求する必須チェックは最終集約ジョブ **`Summ
 | `schedule`（毎日 03:00 UTC） | `Test / Bootstrap` のみ | 全ターゲット（Nightly フル） |
 | `workflow_dispatch` | 全ジョブ実行 | 入力 `docker_mode` で `verify`（代表）/ `full`（全ターゲット）を選択 |
 
-Nightly フルは path filter で拾えないサービス横断のドリフトを検出するためのもので、ホスト CI は `Test / Bootstrap` を除き回さない。`Test / Bootstrap` だけは例外で、path filter を構成系の path に絞っているぶん、通常の `server/` / `apps/` 変更由来の開発環境ドリフトを Nightly で拾う。
+Nightly フルは path filter で拾えないサービス横断のドリフトを検出するためのもので、ホスト CI は `Test / Bootstrap` を除き回さない。`Test / Bootstrap` だけは例外で、`.devcontainer/**` のように普段の PR ではほとんど触られない構成 path を監視対象に含むため、定期実行でも 1 日 1 回は通す。
 
 ## path filter
 
@@ -52,7 +52,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
 | `Test / E2E` | `e2e/**`, `apps/web-host/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
-| `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `server/cmd/**`, `server/Taskfile.yaml`, `apps/*/package.json`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
+| `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Build` | `apps/**`, `packages/**`, `server/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Docker`（ロール別） | [`infra/docker/README.md`](../../infra/docker/README.md) の「変更検知のロール対応」 |
 
