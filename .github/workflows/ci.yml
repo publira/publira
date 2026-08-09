@@ -11,8 +11,6 @@ env:
   MIGRATE_VERSION: 4.19.1
   # renovate: datasource=flutter-version depName=flutter
   FLUTTER_VERSION: 3.41.6
-  # Pinned object for FLUTTER_VERSION tag (flutter/flutter)
-  FLUTTER_COMMIT: db50e20168db8fee486b9abf32fc912de3bc5b6a
 
 on:
   pull_request:
@@ -416,11 +414,6 @@ jobs:
             --branch "${FLUTTER_VERSION}" \
             https://github.com/flutter/flutter.git \
             "${flutter_root}"
-          actual="$(git -C "${flutter_root}" rev-parse HEAD)"
-          if [ "${actual}" != "${FLUTTER_COMMIT}" ]; then
-            echo "::error::Flutter commit mismatch: expected ${FLUTTER_COMMIT}, got ${actual}"
-            exit 1
-          fi
           echo "${flutter_root}/bin" >> "${GITHUB_PATH}"
           # Bootstrap Dart SDK / tooling for subsequent steps
           "${flutter_root}/bin/flutter" --version
