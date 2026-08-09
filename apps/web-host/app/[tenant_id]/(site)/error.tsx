@@ -14,6 +14,14 @@ import { ErrorScreen } from "#components/error-screen";
  * moves to `catchError` boundaries in #647.
  *
  * No `<main>` here: `SiteLayoutMain` already provides one.
+ *
+ * Reach, as measured against the production build: this renders on a client
+ * navigation when the page throws and `(site)/layout.tsx` still succeeds. A
+ * direct hit answers a bare `500 Internal Server Error` instead, and so does a
+ * client navigation when the layout throws too. The cause of that 500 is not
+ * identified. #683 carries it, and
+ * `e2e/tests/catalog.error-boundary.spec.ts` records the measurements and holds
+ * the target assertions.
  */
 const SiteError = ({
   error,

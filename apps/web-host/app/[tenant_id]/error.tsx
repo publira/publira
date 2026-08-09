@@ -15,6 +15,12 @@ import { ErrorScreen } from "#components/error-screen";
  *
  * A failure in `app/[tenant_id]/layout.tsx` (the root layout) is above this
  * boundary and still needs `global-error.tsx` — tracked in #642.
+ *
+ * Same reach limit as `(site)/error.tsx`: a server-side render failure answers
+ * a bare `500 Internal Server Error` before this can render, so in practice
+ * only client navigations reach it. Adding `global-error.tsx` was measured and
+ * does not change that. See `e2e/tests/catalog.error-boundary.spec.ts` and
+ * #683.
  */
 const TenantError = ({
   error,
