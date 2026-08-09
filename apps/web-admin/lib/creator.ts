@@ -210,6 +210,62 @@ export const updateCreator = async (input: {
   }
 };
 
+/**
+ * The largest page `ListCreators` will serve: the handler falls back to 20 for
+ * any `limit` above 100 (`server/api/adminapi/creator_label_handlers.go`).
+ */
+const CREATOR_PAGE_SIZE = 100;
+
+/**
+ * Safety stop for the walk below, in rows. The walk normally ends on the first
+ * short page; this only bounds the damage if the server ever stopped honouring
+ * `offset`, so that a lookup fails instead of looping forever.
+ */
+const CREATOR_LOOKUP_MAX_ROWS = 10_000;
+
+/**
+ * `creator.proto` has no `GetCreator`, so a single creator can only be found by
+ * walking `ListCreators`. One page is not enough to conclude "not found": the
+ * server caps a page at `CREATOR_PAGE_SIZE`, and answering `notFound()` from
+ * the first page alone would make every creator past that point uneditable.
+ *
+ * A dedicated `GetCreator` RPC would replace the whole walk.
+ */
+const findCreatorByPublicId = async (
+  tenantId: string,
+  publicId: string,
+  sessionId: string
+): Promise<CreatorItem | null> => {
+  for (
+    let offset = 0;
+    offset < CREATOR_LOOKUP_MAX_ROWS;
+    offset += CREATOR_PAGE_SIZE
+  ) {
+    // Sequential by nature: the next page is only worth asking for once this
+    // one has come back full and without a match.
+    // oxlint-disable-next-line no-await-in-loop -- paging is inherently serial
+    const response = await apiClient.creator.listCreators(
+      {
+        limit: CREATOR_PAGE_SIZE,
+        offset,
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    const creators = response.creators ?? [];
+    const match = creators.find((item) => item.publicId === publicId);
+    if (match) {
+      return mapCreator(match);
+    }
+    if (creators.length < CREATOR_PAGE_SIZE) {
+      return null;
+    }
+  }
+
+  return null;
+};
+
 export const getCreator = async (input: {
   tenantId: string;
   publicId: string;
@@ -227,17 +283,10 @@ export const getCreator = async (input: {
   }
 
   try {
-    const response = await listCreators(input.tenantId);
-
-    if (!response.ok) {
-      return {
-        message: response.message,
-        ok: false,
-      };
-    }
-
-    const creator = response.creators.find(
-      (c) => c.publicId === input.publicId
+    const creator = await findCreatorByPublicId(
+      input.tenantId,
+      input.publicId,
+      sessionId
     );
     if (!creator) {
       return { notFound: true, ok: false };
