@@ -10,7 +10,7 @@ env:
   # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
   MIGRATE_VERSION: 4.19.1
   # renovate: datasource=flutter-version depName=flutter
-  FLUTTER_VERSION: 3.41.6
+  FLUTTER_VERSION: 3.44.9
 
 on:
   pull_request:
