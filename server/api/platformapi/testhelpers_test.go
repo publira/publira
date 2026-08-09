@@ -224,6 +224,20 @@ func duplicatePublicIDError() error {
 	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_public_id_key"}
 }
 
+// expectPublicIDAttempt expects the savepoint publicid.InsertTx takes before an
+// insert, followed by its release on success or its rollback on a collision.
+func expectPublicIDAttempt(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectPublicIDAttemptReleased(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^RELEASE SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^ROLLBACK TO SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
 func duplicateDomainError() error {
 	return &pgconn.PgError{Code: "23505", ConstraintName: "tenants_domain_key"}
 }

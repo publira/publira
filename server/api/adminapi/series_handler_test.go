@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"regexp"
 	"testing"
 	"time"
@@ -10,10 +11,12 @@ import (
 	"connectrpc.com/connect"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 func TestAdminSeriesRequiresSession(t *testing.T) {
@@ -155,6 +158,85 @@ func TestCreateSeriesSuccess(t *testing.T) {
 		t.Fatalf("series title = %q, want New Series", resp.Msg.Series.Title)
 	}
 	assertExpectations(t, mock)
+}
+
+// A public_id collision never reaches the client: the insert is retried with a
+// freshly generated ID, and only a conflict on another constraint would surface.
+func TestCreateSeriesRetriesDuplicatePublicID(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	attempted := &publicIDArgument{}
+	mock.ExpectQuery("INSERT INTO series").
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series").
+		WillReturnError(&pgconn.PgError{Code: "23505", ConstraintName: "series_public_id_key"})
+	mock.ExpectQuery("INSERT INTO series").
+		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), attempted, "New Series").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id"}).
+			AddRow(seriesID, tenantID, nil, "4ERDqTx5YB8m", "New Series", now, false, nil, now, nil))
+
+	mock.ExpectQuery("INSERT INTO series_listings").
+		WithArgs(tenantID, seriesID, sql.NullString{}, sql.NullInt32{}).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id"}).
+			AddRow(seriesID, nil, nil, nil, nil, tenantID))
+	mock.ExpectExec(regexp.QuoteMeta(updateSeriesPublicationQuery)).
+		WithArgs(seriesID, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectAdminAuditLogInsert(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "4ERDqTx5YB8m").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "eye_catch_image_file_size_bytes"}).
+			AddRow(seriesID, "4ERDqTx5YB8m", "New Series", nil, nil, nil, nil, false, nil, nil, nil, int64(0)))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Title:  "New Series",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.CreateSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	if resp.Msg.Series.PublicId != "4ERDqTx5YB8m" {
+		t.Fatalf("series public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Series.PublicId)
+	}
+	if len(attempted.values) != 2 {
+		t.Fatalf("public_id attempts = %v, want 2", attempted.values)
+	}
+	if attempted.values[0] == attempted.values[1] {
+		t.Fatalf("retry reused public_id %q", attempted.values[0])
+	}
+	for _, value := range attempted.values {
+		if !publicid.Valid(value) {
+			t.Fatalf("generated public_id %q is not 12 Base58 characters", value)
+		}
+	}
+	assertExpectations(t, mock)
+}
+
+// publicIDArgument matches any string argument and records what was passed, so
+// a test can assert on the public IDs the handler generated.
+type publicIDArgument struct {
+	values []string
+}
+
+func (a *publicIDArgument) Match(v driver.Value) bool {
+	value, ok := v.(string)
+	if !ok {
+		return false
+	}
+	a.values = append(a.values, value)
+
+	return true
 }
 
 func TestUpdateSeriesRequiresTitle(t *testing.T) {

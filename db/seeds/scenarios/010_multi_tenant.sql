@@ -9,13 +9,14 @@
 --   - 1 scheduled episode on that series (must stay hidden)
 --   - 1 unpublished series (must stay hidden, detail must 404-equivalent)
 --
--- public_id is derived from the UUID exactly like the dev seed, so the values
--- are stable and can be hard-coded in tests (e2e/src/scenarios/multi-tenant.ts).
---   tenant   018F0F000001
---   label    018F0F010001
---   creator  018F0F020001
---   series   018F0F030001 (published) / 018F0F030002 (unpublished)
---   episodes 018F0F040001 / 018F0F040002 (published), 018F0F040003 (scheduled)
+-- public_id is a fixed Base58 value in the same scheme as the dev seed (`Bndr`
+-- instead of `Seed` for this scenario), so the values are stable and can be
+-- hard-coded in tests (e2e/src/scenarios/multi-tenant.ts).
+--   tenant   BndrTNNTAAA1
+--   label    BndrLABLAAA1
+--   creator  BndrAUTHAAA1
+--   series   BndrSERSAAA1 (published) / BndrSERSAAA2 (unpublished)
+--   episodes BndrEPSDAAA1 / BndrEPSDAAA2 (published), BndrEPSDAAA3 (scheduled)
 
 WITH tenant_seed AS (
     SELECT '018f0f00-0001-7000-8000-000000000001'::uuid AS id
@@ -23,7 +24,7 @@ WITH tenant_seed AS (
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
 SELECT
     ts.id,
-    UPPER(SUBSTRING(REPLACE(ts.id::text, '-', '') FROM 1 FOR 12)),
+    'BndrTNNTAAA1',
     'other.localhost',
     'admin.other.localhost',
     'Boundary Tenant',
@@ -66,7 +67,7 @@ INSERT INTO labels (id, tenant_id, public_id, name)
 SELECT
     ls.id AS label_id,
     ts.id AS tenant_id,
-    UPPER(SUBSTRING(REPLACE(ls.id::text, '-', '') FROM 1 FOR 12)),
+    'BndrLABLAAA1',
     'Boundary Label 01'
 FROM label_seed ls
 CROSS JOIN tenant_scope ts
@@ -86,7 +87,7 @@ INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
 SELECT
     cs.id AS creator_id,
     ts.id AS tenant_id,
-    UPPER(SUBSTRING(REPLACE(cs.id::text, '-', '') FROM 1 FOR 12)),
+    'BndrAUTHAAA1',
     'Boundary Author 001',
     'Profile text for Boundary Author 001'
 FROM creator_seed cs
@@ -102,16 +103,18 @@ WITH tenant_scope AS (
     FROM tenants t
     WHERE t.domain = 'other.localhost'
 ),
-series_seed (id, title, is_published, published_at) AS (
+series_seed (id, public_id, title, is_published, published_at) AS (
     VALUES
         (
             '018f0f03-0001-7000-8000-000000000001'::uuid,
+            'BndrSERSAAA1',
             'Boundary Series 001',
             true,
             NOW() - INTERVAL '1 day'
         ),
         (
             '018f0f03-0002-7000-8000-000000000002'::uuid,
+            'BndrSERSAAA2',
             'Boundary Draft Series 900',
             false,
             NULL::timestamptz
@@ -122,7 +125,7 @@ SELECT
     ss.id AS series_id,
     ts.id AS tenant_id,
     l.id AS label_id,
-    UPPER(SUBSTRING(REPLACE(ss.id::text, '-', '') FROM 1 FOR 12)),
+    ss.public_id,
     ss.title,
     ss.is_published,
     ss.published_at
@@ -173,17 +176,17 @@ SET role = EXCLUDED.role,
     display_order = EXCLUDED.display_order,
     tenant_id = EXCLUDED.tenant_id;
 
-WITH episode_seed (id, title, order_index) AS (
+WITH episode_seed (id, public_id, title, order_index) AS (
     VALUES
-        ('018f0f04-0001-7000-8000-000000000001'::uuid, 'Boundary Episode 001-01', 1),
-        ('018f0f04-0002-7000-8000-000000000002'::uuid, 'Boundary Episode 001-02', 2),
-        ('018f0f04-0003-7000-8000-000000000003'::uuid, 'Boundary Episode 001-90', 90)
+        ('018f0f04-0001-7000-8000-000000000001'::uuid, 'BndrEPSDAAA1', 'Boundary Episode 001-01', 1),
+        ('018f0f04-0002-7000-8000-000000000002'::uuid, 'BndrEPSDAAA2', 'Boundary Episode 001-02', 2),
+        ('018f0f04-0003-7000-8000-000000000003'::uuid, 'BndrEPSDAAA3', 'Boundary Episode 001-90', 90)
 )
 INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
 SELECT
     es.id AS episode_id,
     s.id AS series_id,
-    UPPER(SUBSTRING(REPLACE(es.id::text, '-', '') FROM 1 FOR 12)),
+    es.public_id,
     es.title,
     es.order_index,
     s.tenant_id

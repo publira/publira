@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 func adminInvitationStatus(invitation dbmodels.TenantAdminInvitation, now time.Time) string {
@@ -126,13 +127,15 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		if idErr != nil {
 			return nil, connect.NewError(connect.CodeInternal, idErr)
 		}
-		user, err = s.queriesFor(ctx).CreateUser(ctx, dbmodels.CreateUserParams{
-			ID:           userID,
-			TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			PublicID:     generatePublicID(),
-			Email:        invitation.Email,
-			PasswordHash: passwordHash,
-			Name:         name,
+		user, err = publicid.Insert(func(publicID string) (dbmodels.User, error) {
+			return s.queriesFor(ctx).CreateUser(ctx, dbmodels.CreateUserParams{
+				ID:           userID,
+				TenantID:     uuid.NullUUID{UUID: tenant.ID, Valid: true},
+				PublicID:     publicID,
+				Email:        invitation.Email,
+				PasswordHash: passwordHash,
+				Name:         name,
+			})
 		})
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)

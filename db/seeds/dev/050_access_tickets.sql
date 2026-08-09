@@ -24,7 +24,7 @@ INSERT INTO access_tickets (
 SELECT
     '018f0e80-0001-7000-8000-000000000001'::uuid,
     scope.tenant_id,
-    'TICKETSEED01',
+    'SeedTCKTAAA1',
     scope.episode_id,
     scope.user_id,
     NULL,

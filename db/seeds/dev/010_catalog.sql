@@ -1,3 +1,8 @@
+-- public_id is 12 standard Base58 characters, the format server/internal/publicid
+-- generates. Seed rows use a fixed value instead of a random one: `Seed` + a
+-- 4-letter kind + the 4-digit seed number with `0` written as `A`, since Base58
+-- has no `0`. `Seed Series 001` is `SeedSERSAAA1`, episode 1000 is `SeedEPSD1AAA`.
+
 WITH tenant_scope AS (
     SELECT t.id
     FROM tenants t
@@ -18,7 +23,7 @@ INSERT INTO labels (id, tenant_id, public_id, name)
 SELECT
     ls.id,
     ts.id,
-    UPPER(SUBSTRING(REPLACE(ls.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedLABL' || TRANSLATE(LPAD(ls.n::text, 4, '0'), '0', 'A'),
     FORMAT('Seed Label %s', LPAD(ls.n::text, 2, '0'))
 FROM label_seed ls
 CROSS JOIN tenant_scope ts
@@ -46,7 +51,7 @@ INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
 SELECT
     cs.id,
     ts.id,
-    UPPER(SUBSTRING(REPLACE(cs.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedAUTH' || TRANSLATE(LPAD(cs.n::text, 4, '0'), '0', 'A'),
     FORMAT('Seed Author %s', LPAD(cs.n::text, 3, '0')),
     FORMAT('Profile text for Seed Author %s', LPAD(cs.n::text, 3, '0'))
 FROM creator_seed cs
@@ -64,7 +69,7 @@ WITH tenant_scope AS (
 label_pool AS (
     SELECT
         l.id,
-        ROW_NUMBER() OVER (ORDER BY l.public_id) AS label_no
+        ROW_NUMBER() OVER (ORDER BY l.name) AS label_no
     FROM labels l
     JOIN tenant_scope ts ON ts.id = l.tenant_id
     WHERE l.name LIKE 'Seed Label %'
@@ -86,7 +91,7 @@ SELECT
     ss.id,
     ts.id,
     lp.id,
-    UPPER(SUBSTRING(REPLACE(ss.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedSERS' || TRANSLATE(LPAD(ss.n::text, 4, '0'), '0', 'A'),
     FORMAT('Seed Series %s', LPAD(ss.n::text, 3, '0')),
     true,
     (
@@ -133,7 +138,7 @@ WITH tenant_scope AS (
 seed_series AS (
     SELECT
         s.id AS series_id,
-        ROW_NUMBER() OVER (ORDER BY s.public_id) AS series_no
+        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
     WHERE s.title LIKE 'Seed Series %'
@@ -141,7 +146,7 @@ seed_series AS (
 seed_creators AS (
     SELECT
         c.id AS creator_id,
-        ROW_NUMBER() OVER (ORDER BY c.public_id) AS creator_no
+        ROW_NUMBER() OVER (ORDER BY c.name) AS creator_no
     FROM creators c
     JOIN tenant_scope ts ON ts.id = c.tenant_id
     WHERE c.name LIKE 'Seed Author %'
@@ -169,7 +174,7 @@ WITH tenant_scope AS (
 seed_series AS (
     SELECT
         s.id,
-        ROW_NUMBER() OVER (ORDER BY s.public_id) AS series_no
+        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
     WHERE s.title LIKE 'Seed Series %'
@@ -193,7 +198,7 @@ INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
 SELECT
     es.id,
     es.series_id,
-    UPPER(SUBSTRING(REPLACE(es.id::text, '-', '') FROM 1 FOR 12)),
+    'SeedEPSD' || TRANSLATE(LPAD(es.seq_no::text, 4, '0'), '0', 'A'),
     FORMAT(
         'Seed Episode %s-%s',
         LPAD(es.series_no::text, 3, '0'),

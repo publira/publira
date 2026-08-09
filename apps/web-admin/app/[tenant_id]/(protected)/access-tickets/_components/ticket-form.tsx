@@ -77,7 +77,7 @@ export const TicketForm = ({ action }: TicketFormProps) => {
               <Input
                 id="user_public_id"
                 name="user_public_id"
-                placeholder="例: 018F0E6F1000"
+                placeholder="例: SeedMMBRAAA1"
                 required
                 type="text"
               />
@@ -95,7 +95,7 @@ export const TicketForm = ({ action }: TicketFormProps) => {
               <Input
                 id="episode_public_id"
                 name="episode_public_id"
-                placeholder="例: 018F0E730001"
+                placeholder="例: SeedEPSDAAA1"
                 required
                 type="text"
               />

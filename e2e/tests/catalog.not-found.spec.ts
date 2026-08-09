@@ -49,6 +49,17 @@ test.describe("web-host catalog not found", () => {
     ).toHaveCount(0);
   });
 
+  test("public_id は大文字小文字を区別する", async ({ page }) => {
+    // Base58 uses both cases, so a case-folded lookup would resolve two
+    // different IDs to the same record (#673).
+    const response = await page.goto(
+      `/series/${SEED_TENANT.series.publicId.toUpperCase()}`
+    );
+
+    expect(response?.status(), await page.content()).toBe(404);
+    await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
+  });
+
   test("存在しない著者は 404", async ({ page }) => {
     const response = await page.goto(`/authors/${MISSING_PUBLIC_ID}`);
 

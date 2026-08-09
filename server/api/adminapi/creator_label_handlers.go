@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -383,15 +384,15 @@ func (s *adminServer) CreateCreator(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	publicID := generatePublicID()
-
-	createdBase, err := s.queriesFor(ctx).CreateCreator(ctx, dbmodels.CreateCreatorParams{
-		ID:          creatorID,
-		TenantID:    tenant.ID,
-		PublicID:    publicID,
-		Name:        req.Msg.Name,
-		ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
-		IconImageID: uuid.NullUUID{},
+	createdBase, err := publicid.Insert(func(publicID string) (dbmodels.Creator, error) {
+		return s.queriesFor(ctx).CreateCreator(ctx, dbmodels.CreateCreatorParams{
+			ID:          creatorID,
+			TenantID:    tenant.ID,
+			PublicID:    publicID,
+			Name:        req.Msg.Name,
+			ProfileText: sql.NullString{String: req.Msg.ProfileText, Valid: strings.TrimSpace(req.Msg.ProfileText) != ""},
+			IconImageID: uuid.NullUUID{},
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -531,12 +532,14 @@ func (s *adminServer) CreateLabel(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	createdBase, err := s.queriesFor(ctx).CreateLabel(ctx, dbmodels.CreateLabelParams{
-		ID:              labelID,
-		TenantID:        tenant.ID,
-		PublicID:        generatePublicID(),
-		Name:            req.Msg.Name,
-		EyeCatchImageID: uuid.NullUUID{},
+	createdBase, err := publicid.Insert(func(publicID string) (dbmodels.Label, error) {
+		return s.queriesFor(ctx).CreateLabel(ctx, dbmodels.CreateLabelParams{
+			ID:              labelID,
+			TenantID:        tenant.ID,
+			PublicID:        publicID,
+			Name:            req.Msg.Name,
+			EyeCatchImageID: uuid.NullUUID{},
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

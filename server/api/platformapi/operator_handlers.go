@@ -16,6 +16,8 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 func normalizePlatformOperatorRole(rawRole string) (string, bool) {
@@ -154,15 +156,17 @@ func (s *platformServer) CreateOperator(
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		user, err = txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
-			ID:           userID,
-			PublicID:     generatePublicID(),
-			Email:        email,
-			PasswordHash: passwordHash,
-			Name:         name,
+		user, err = publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.PlatformUser, error) {
+			return txq.CreatePlatformUser(ctx, dbmodels.CreatePlatformUserParams{
+				ID:           userID,
+				PublicID:     publicID,
+				Email:        email,
+				PasswordHash: passwordHash,
+				Name:         name,
+			})
 		})
 		if err != nil {
-			if isUniqueViolation(err) {
+			if dberr.IsUniqueViolation(err) {
 				return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 			}
 			return nil, connect.NewError(connect.CodeInternal, err)
@@ -183,7 +187,7 @@ func (s *platformServer) CreateOperator(
 		Role:           role,
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("operator role already exists"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)

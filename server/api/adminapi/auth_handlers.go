@@ -14,22 +14,17 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
 )
 
 const passwordResetTokenTTL = 24 * time.Hour
 const emailChangeTokenTTL = 24 * time.Hour
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
-}
 
 func adminPasswordResetConfirmationURL(tenant dbmodels.Tenant, token string) (string, error) {
 	domain := strings.TrimSpace(tenant.Domain)
@@ -797,7 +792,7 @@ func (s *adminServer) ConfirmEmailChange(
 		ID:    user.ID,
 		Email: changeToken.NewEmail,
 	}); err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_already_exists")
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}

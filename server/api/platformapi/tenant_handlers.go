@@ -10,12 +10,13 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -28,12 +29,7 @@ const (
 )
 
 func tenantUniqueViolationField(err error) string {
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
-		return ""
-	}
-
-	switch pgErr.ConstraintName {
+	switch dberr.UniqueViolationConstraint(err) {
 	case "tenants_public_id_key":
 		return "public_id"
 	case "tenants_domain_key":
@@ -182,12 +178,14 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenant, err := txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
-		ID:          tenantID,
-		PublicID:    generatePublicID(),
-		Domain:      domain,
-		AdminDomain: adminDomain,
-		Name:        name,
+	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
+		return txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
+			ID:          tenantID,
+			PublicID:    publicID,
+			Domain:      domain,
+			AdminDomain: adminDomain,
+			Name:        name,
+		})
 	})
 	if err != nil {
 		if field := tenantUniqueViolationField(err); field != "" {
@@ -242,7 +240,7 @@ func (s *platformServer) CreateTenant(
 			Role:   auth.RoleTenantAdmin,
 		})
 		if err != nil {
-			if isUniqueViolation(err) {
+			if dberr.IsUniqueViolation(err) {
 				continue
 			}
 			return nil, connect.NewError(connect.CodeInternal, err)
@@ -565,7 +563,7 @@ func (s *platformServer) AddTenantMember(
 		Role:   normalizedRole,
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
+		if dberr.IsUniqueViolation(err) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("user already has this role"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)

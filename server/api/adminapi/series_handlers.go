@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -283,11 +284,6 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 	return items, nil
 }
 
-func generatePublicID() string {
-	raw := strings.ReplaceAll(uuid.NewString(), "-", "")
-	return strings.ToUpper(raw[:12])
-}
-
 func seriesRevalidateTags(tenantID, seriesPublicID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	normalizedSeriesPublicID := strings.TrimSpace(seriesPublicID)
@@ -340,8 +336,10 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	base, err := s.queriesFor(ctx).CreateSeriesBase(ctx, dbmodels.CreateSeriesBaseParams{
-		ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: generatePublicID(), Title: req.Msg.Title,
+	base, err := publicid.Insert(func(publicID string) (dbmodels.Series, error) {
+		return s.queriesFor(ctx).CreateSeriesBase(ctx, dbmodels.CreateSeriesBaseParams{
+			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Msg.Title,
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
