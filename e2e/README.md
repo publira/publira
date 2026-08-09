@@ -5,6 +5,8 @@ Playwright による Web 横断 E2E の共通基盤です。
 
 関連: [#513](https://github.com/publira/publira/issues/513) / Epic [#512](https://github.com/publira/publira/issues/512)
 
+開発環境そのもの（空 DB volume からの `task setup`、`task dev` の全サービス起動）の検証は Playwright を使わない別ライフサイクルで、[`bootstrap/README.md`](./bootstrap/README.md) が正（`task e2e:bootstrap`）。
+
 ## 前提
 
 - Docker（Compose v2）が使えること（Dev Container の DinD 可）
@@ -63,6 +65,7 @@ task e2e:down
 
 ```text
 e2e/
+├── bootstrap/             # 開発環境 bootstrap チェック（Playwright を使わない別ライフサイクル）
 ├── compose.yaml           # postgres + redis（project: publira-e2e）
 ├── playwright.config.ts
 ├── scripts/               # up / db / start / wait-ready / run / down
@@ -136,6 +139,7 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 
 ## 非スコープ
 
-- 各プロダクト領域の業務シナリオ本体（#514–#518, #55, #67）
+- 各プロダクト領域の業務シナリオ本体（#515–#518, #55, #67）
+- 開発環境の bootstrap 検証（#514 → [`bootstrap/`](./bootstrap/README.md)）
 - 負荷試験
 - モバイル integration test（#518）

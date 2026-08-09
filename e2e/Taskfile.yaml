@@ -3,6 +3,12 @@ version: "3"
 # Run from repository root via: task e2e
 # Include is declared in the root Taskfile (cwd stays at repo root).
 
+includes:
+  # Dev-environment bootstrap check (#514). Separate lifecycle: own compose
+  # project, no Playwright.
+  bootstrap:
+    taskfile: ./bootstrap/Taskfile.yaml
+
 vars:
   # Directory of this Taskfile (e2e/), stable whether included or run directly.
   E2E_DIR: "{{.TASKFILE_DIR}}"
