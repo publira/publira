@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/go:2.1.6-1.26-bookworm@sha256:1a3df7e2f24378acfb7c1048b7b018813112f280f011bad4aa9b02fff600481e
 
 # renovate: datasource=github-releases depName=go-task/task versioning=semver-coerced
-ARG TASK_VERSION=3.49.1
+ARG TASK_VERSION=3.52.0
 # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
 ARG SQLC_VERSION=1.30.0
 # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
