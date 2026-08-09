@@ -1,3 +1,5 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { parseInstant } from "@publira/utils";
 
 import {
@@ -355,10 +357,14 @@ export const listPlatformEndUsers = async (
       users: paginateUsers(usersWithTenantInfo, input),
     };
   } catch (error) {
-    console.error("[listPlatformEndUsers] API error:", error);
-    const message =
-      error instanceof Error ? error.message : "不明なエラーが発生しました。";
-    return { message, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        "ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      ok: false,
+    };
   }
 };
 
@@ -408,7 +414,8 @@ export const listPlatformTenantFilterOptions = async (): Promise<
     }
 
     return options;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return [];
   }
 };
@@ -445,10 +452,14 @@ export const getPlatformEndUser = async (
       user: response.user ? mapEndUser(response.user) : null,
     };
   } catch (error) {
-    console.error("[getPlatformEndUser] API error:", error);
-    const message =
-      error instanceof Error ? error.message : "不明なエラーが発生しました。";
-    return { message, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        "ユーザー情報の取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      ok: false,
+    };
   }
 };
 
@@ -471,7 +482,8 @@ export const suspendPlatformEndUser = async (
       buildSessionHeaders(sid)
     );
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -495,7 +507,8 @@ export const unsuspendPlatformEndUser = async (
       buildSessionHeaders(sid)
     );
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -522,7 +535,8 @@ export const deletePlatformEndUser = async (
       buildSessionHeaders(sid)
     );
     return { ok: true };
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return { message: genericErrorMessage, ok: false };
   }
 };

@@ -1,3 +1,8 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -62,45 +67,18 @@ const genericListErrorMessage =
 const genericMutationErrorMessage =
   "ページ情報の保存に失敗しました。時間をおいて再試行してください。";
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
-  if (!(error instanceof Error)) {
-    return fallbackMessage;
-  }
-
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "この操作は管理権限が必要です。再ログインして権限を確認してください。";
-  }
-
-  if (
-    message.includes("already_exists") ||
-    message.includes("already exists")
-  ) {
-    return "同じ slug のページが既に存在します。別の slug を指定してください。";
-  }
-
-  if (message.includes("not_found")) {
-    return "対象のページまたはバージョンが見つかりませんでした。ページを再読み込みしてください。";
-  }
-
-  if (
-    message.includes("invalid_argument") ||
-    message.includes("required") ||
-    message.includes("invalid")
-  ) {
-    if (message.includes("slug")) {
-      return "slug は空欄、または / で始まる半角小文字・数字・ハイフンで入力してください。";
-    }
-
-    return "入力内容を確認してください。";
-  }
-
-  return fallbackMessage;
-};
+const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+  rpcErrorMessage(error, fallbackMessage, {
+    conflict:
+      "同じ slug のページが既に存在します。別の slug を指定してください。",
+    // A page form is slug + title + body; only the slug has a format rule
+    // worth spelling out, and the server names it in the message.
+    "invalid-argument": rpcErrorMentions(error, "slug")
+      ? "slug は空欄、または / で始まる半角小文字・数字・ハイフンで入力してください。"
+      : "入力内容を確認してください。",
+    "not-found":
+      "対象のページまたはバージョンが見つかりませんでした。ページを再読み込みしてください。",
+  });
 
 const mapPage = (page: {
   id: string;
@@ -166,6 +144,7 @@ export const listPages = async (tenantId: string): Promise<ListPagesResult> => {
       pages: (response.pages ?? []).map((page) => mapPage(page)),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
@@ -211,6 +190,7 @@ export const getPage = async (input: {
       page: mapPage(response.page),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
@@ -250,6 +230,7 @@ export const listPageVersions = async (input: {
       ),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
@@ -295,6 +276,7 @@ export const createPage = async (input: {
       page: mapPage(response.page),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -342,6 +324,7 @@ export const updatePage = async (input: {
       page: mapPage(response.page),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -384,6 +367,7 @@ export const createPageVersion = async (input: {
       version: mapPageVersion(response.version),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -426,6 +410,7 @@ export const publishPageVersion = async (input: {
       version: mapPageVersion(response.version),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -468,6 +453,7 @@ export const rollbackPageVersion = async (input: {
       version: mapPageVersion(response.version),
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,

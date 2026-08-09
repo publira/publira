@@ -1,3 +1,6 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+
 import {
   apiClient,
   buildSessionHeaders,
@@ -50,7 +53,8 @@ export const listPlatformOperators = async (): Promise<
       role: normalizePlatformRole(operator.role),
       status: operator.status,
     }));
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return [];
   }
 };
@@ -73,16 +77,13 @@ export const createPlatformOperator = async (
     );
     return { ok: true, publicId: response.operator?.publicId };
   } catch (error) {
-    if (error instanceof Error) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes("already_exists") || msg.includes("already exists")) {
-        return {
-          message: "このメールアドレスはすでに登録されています。",
-          ok: false,
-        };
-      }
-    }
-    return { message: genericErrorMessage, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, genericErrorMessage, {
+        conflict: "このメールアドレスはすでに登録されています。",
+      }),
+      ok: false,
+    };
   }
 };
 
@@ -102,7 +103,8 @@ export const suspendPlatformOperator = async (
       buildSessionHeaders(sessionId)
     );
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -123,7 +125,8 @@ export const unsuspendPlatformOperator = async (
       buildSessionHeaders(sessionId)
     );
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -139,7 +142,8 @@ export const getPlatformOperator = async (
   try {
     const operators = await listPlatformOperators();
     return operators.find((op) => op.publicId === publicId) ?? null;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return null;
   }
 };
@@ -171,16 +175,8 @@ export const updatePlatformOperatorRole = async (
     );
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes("permission_denied") || msg.includes("forbidden")) {
-        return {
-          message: "この操作を行う権限がありません。",
-          ok: false,
-        };
-      }
-    }
-    return { message: genericErrorMessage, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return { message: rpcErrorMessage(error, genericErrorMessage), ok: false };
   }
 };
 
@@ -197,7 +193,8 @@ export const deactivatePlatformOperator = async (
       buildSessionHeaders(sid)
     );
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };

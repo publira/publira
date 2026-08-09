@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -57,7 +58,9 @@ describe("web-host auth", () => {
 
   it("loginPublic: expected error は null を返す", async () => {
     const { loginPublic } = await importAuth();
-    mockLogin.mockRejectedValueOnce(new Error("unauthenticated"));
+    mockLogin.mockRejectedValueOnce(
+      new ConnectError("invalid credentials", Code.Unauthenticated)
+    );
 
     await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toBeNull();
   });
@@ -79,9 +82,18 @@ describe("web-host auth", () => {
 
   it("getPublicCurrentUser: expected error は null", async () => {
     const { getPublicCurrentUser } = await importAuth();
-    mockGetMe.mockRejectedValueOnce(new Error("permission_denied"));
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("forbidden", Code.PermissionDenied)
+    );
 
     await expect(getPublicCurrentUser("TENANT001")).resolves.toBeNull();
+  });
+
+  it("getPublicCurrentUser: 分類できない RPC エラーは伝播する", async () => {
+    const { getPublicCurrentUser } = await importAuth();
+    mockGetMe.mockRejectedValueOnce(new ConnectError("boom", Code.Internal));
+
+    await expect(getPublicCurrentUser("TENANT001")).rejects.toThrow("boom");
   });
 
   it("getPublicCurrentUser: 正常時はユーザー情報を返す", async () => {
@@ -113,7 +125,9 @@ describe("web-host auth", () => {
   it("getMe: expected error 後の2回目成功でユーザーを返す", async () => {
     const { getMe } = await importAuth();
     mockGetMe
-      .mockRejectedValueOnce(new Error("unauthenticated"))
+      .mockRejectedValueOnce(
+        new ConnectError("invalid credentials", Code.Unauthenticated)
+      )
       .mockResolvedValueOnce({
         user: { name: "Alice", publicId: "U001", role: "reader" },
       });
@@ -129,24 +143,39 @@ describe("web-host auth", () => {
   it("getMe: expected error が続く場合は null", async () => {
     const { getMe } = await importAuth();
     mockGetMe
-      .mockRejectedValueOnce(new Error("permission_denied"))
-      .mockRejectedValueOnce(new Error("permission_denied"));
+      .mockRejectedValueOnce(
+        new ConnectError("forbidden", Code.PermissionDenied)
+      )
+      .mockRejectedValueOnce(
+        new ConnectError("forbidden", Code.PermissionDenied)
+      );
 
     await expect(getMe("TENANT001")).resolves.toBeNull();
   });
 
   it("updateMe: expected error は null", async () => {
     const { updateMe } = await importAuth();
-    mockUpdateMe.mockRejectedValueOnce(new Error("invalid_argument"));
+    mockUpdateMe.mockRejectedValueOnce(
+      new ConnectError("name too long", Code.InvalidArgument)
+    );
 
     await expect(updateMe("TENANT001", "NewName")).resolves.toBeNull();
   });
 
-  it("deleteMe: API 失敗時は false", async () => {
+  it("deleteMe: パスワード誤りは false", async () => {
+    const { deleteMe } = await importAuth();
+    mockDeleteMe.mockRejectedValueOnce(
+      new ConnectError("invalid credentials", Code.Unauthenticated)
+    );
+
+    await expect(deleteMe("TENANT001", "pw")).resolves.toBe(false);
+  });
+
+  it("deleteMe: 分類できないエラーは伝播する", async () => {
     const { deleteMe } = await importAuth();
     mockDeleteMe.mockRejectedValueOnce(new Error("network"));
 
-    await expect(deleteMe("TENANT001", "pw")).resolves.toBe(false);
+    await expect(deleteMe("TENANT001", "pw")).rejects.toThrow("network");
   });
 
   it("getNotificationSettings: session 無しなら null", async () => {

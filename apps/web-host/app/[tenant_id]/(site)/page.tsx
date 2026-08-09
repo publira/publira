@@ -122,6 +122,14 @@ const ListSkeleton = ({ count = 4 }: { count?: number }) => (
   </div>
 );
 
+/**
+ * Each section of the top page loads independently, so a failing one is
+ * recorded and degraded to this block rather than rethrown: one dead section
+ * must not take the whole page down. This is the deliberate "record" side of
+ * the #645 record-or-throw split — lib helpers rethrow anything they cannot
+ * classify, and it stops here. Replacing this with a real error boundary is
+ * #647.
+ */
 const SectionLoadError = ({ retryHref = "." }: { retryHref?: string }) => (
   <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
     <p className="mb-4 text-destructive">

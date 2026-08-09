@@ -1,3 +1,10 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  isExpectedNullableRpcError,
+  rethrowUnclassifiedRpcError,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
+
 import {
   apiClient,
   buildSessionHeaders,
@@ -97,10 +104,14 @@ export const listPlatformTenants = async (
       })),
     };
   } catch (error) {
-    console.error("[listPlatformTenants] API error:", error);
-    const message =
-      error instanceof Error ? error.message : "不明なエラーが発生しました。";
-    return { message, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        "テナント一覧の取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      ok: false,
+    };
   }
 };
 
@@ -126,20 +137,6 @@ const mapTenant = (tenant?: {
   };
 };
 
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied") ||
-    message.includes("not_found") ||
-    message.includes("not found")
-  );
-};
-
 export const getPlatformTenant = async (
   publicId: string
 ): Promise<PlatformTenantDetail | null> => {
@@ -157,7 +154,7 @@ export const getPlatformTenant = async (
     );
     return mapTenant(response.tenant);
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isExpectedNullableRpcError(error)) {
       return null;
     }
     throw error;
@@ -187,7 +184,8 @@ export const listPlatformTenantMembers = async (
       status: member.status,
       userPublicId: member.userPublicId,
     }));
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return [];
   }
 };
@@ -206,7 +204,8 @@ export const suspendPlatformTenant = async (
       buildSessionHeaders(sid)
     );
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
 };
@@ -225,9 +224,27 @@ export const resumePlatformTenant = async (
       buildSessionHeaders(sid)
     );
     return true;
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return false;
   }
+};
+
+/**
+ * `already_exists` says a unique constraint was hit but not which one, and the
+ * two domain fields are the only ones an operator can fix. The server names the
+ * column in its message (`server/api/platformapi/tenant_handlers.go`), so this
+ * narrows the copy and degrades to the generic conflict wording if that text
+ * changes.
+ */
+const duplicateDomainMessage = (error: unknown, verb: string): string => {
+  if (rpcErrorMentions(error, "admin_domain")) {
+    return "管理画面ドメインが既に使用されています。";
+  }
+  if (rpcErrorMentions(error, "domain")) {
+    return "ドメインが既に使用されています。";
+  }
+  return `重複するデータがあるため${verb}できません。`;
 };
 
 export const createPlatformTenant = async (
@@ -267,52 +284,13 @@ export const createPlatformTenant = async (
       publicId: response.tenant?.publicId,
     };
   } catch (error) {
-    if (!(error instanceof Error)) {
-      return { message: genericErrorMessage, ok: false };
-    }
-
-    const message = error.message.toLowerCase();
-    if (
-      message.includes("already_exists") ||
-      message.includes("already exists")
-    ) {
-      if (message.includes("admin_domain")) {
-        return {
-          message: "管理画面ドメインが既に使用されています。",
-          ok: false,
-        };
-      }
-      if (message.includes("domain")) {
-        return {
-          message: "ドメインが既に使用されています。",
-          ok: false,
-        };
-      }
-      return {
-        message: "重複するデータがあるため作成できません。",
-        ok: false,
-      };
-    }
-
-    if (
-      message.includes("unauthenticated") ||
-      message.includes("permission_denied")
-    ) {
-      return {
-        message: "セッションが無効です。再ログインしてください。",
-        ok: false,
-      };
-    }
-
-    if (
-      message.includes("invalid_argument") ||
-      message.includes("required") ||
-      message.includes("invalid")
-    ) {
-      return { message: "入力内容に誤りがあります。", ok: false };
-    }
-
-    return { message: genericErrorMessage, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(error, genericErrorMessage, {
+        conflict: duplicateDomainMessage(error, "作成"),
+      }),
+      ok: false,
+    };
   }
 };
 
@@ -390,7 +368,8 @@ export const listPlatformTenantAdminInvitations = async (
     return (response.invitations ?? []).map((invitation) =>
       mapInvitation(invitation)
     );
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return [];
   }
 };
@@ -426,30 +405,16 @@ export const createPlatformTenantAdminInvitation = async (
       roleGrantedImmediately: response.roleGrantedImmediately,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("unauthenticated") ||
-        message.includes("permission_denied")
-      ) {
-        return {
-          message: "この操作を行う権限がありません。",
-          ok: false,
-        };
-      }
-      if (
-        message.includes("invalid_argument") ||
-        message.includes("invalid") ||
-        message.includes("required")
-      ) {
-        return {
-          message: "メールアドレスの形式を確認してください。",
-          ok: false,
-        };
-      }
-    }
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: "招待の作成に失敗しました。時間をおいて再試行してください。",
+      message: rpcErrorMessage(
+        error,
+        "招待の作成に失敗しました。時間をおいて再試行してください。",
+        {
+          // Email is the only free-form field on this call.
+          "invalid-argument": "メールアドレスの形式を確認してください。",
+        }
+      ),
       ok: false,
     };
   }
@@ -485,24 +450,16 @@ export const resendPlatformTenantAdminInvitation = async (
       ok: true,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (message.includes("failed_precondition")) {
-        return {
-          message: "この招待は再送できない状態です。",
-          ok: false,
-        };
-      }
-      if (message.includes("not_found")) {
-        return {
-          message: "対象の招待が見つかりません。",
-          ok: false,
-        };
-      }
-    }
+    rethrowUnclassifiedRpcError(error);
     return {
-      message:
+      message: rpcErrorMessage(
+        error,
         "招待メールの再送に失敗しました。時間をおいて再試行してください。",
+        {
+          "not-found": "対象の招待が見つかりません。",
+          precondition: "この招待は再送できない状態です。",
+        }
+      ),
       ok: false,
     };
   }
@@ -538,23 +495,16 @@ export const cancelPlatformTenantAdminInvitation = async (
       ok: true,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (message.includes("failed_precondition")) {
-        return {
-          message: "この招待は取り消しできない状態です。",
-          ok: false,
-        };
-      }
-      if (message.includes("not_found")) {
-        return {
-          message: "対象の招待が見つかりません。",
-          ok: false,
-        };
-      }
-    }
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: "招待の取り消しに失敗しました。時間をおいて再試行してください。",
+      message: rpcErrorMessage(
+        error,
+        "招待の取り消しに失敗しました。時間をおいて再試行してください。",
+        {
+          "not-found": "対象の招待が見つかりません。",
+          precondition: "この招待は取り消しできない状態です。",
+        }
+      ),
       ok: false,
     };
   }
@@ -595,37 +545,16 @@ export const updatePlatformTenant = async (
     );
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) {
-      const msg = error.message.toLowerCase();
-      if (
-        msg.includes("unauthenticated") ||
-        msg.includes("permission_denied")
-      ) {
-        return {
-          message: "セッションが無効です。再ログインしてください。",
-          ok: false,
-        };
-      }
-      if (msg.includes("not_found")) {
-        return { message: "テナントが見つかりません。", ok: false };
-      }
-      if (msg.includes("already_exists") || msg.includes("already exists")) {
-        if (msg.includes("admin_domain")) {
-          return {
-            message: "管理画面ドメインが既に使用されています。",
-            ok: false,
-          };
-        }
-        if (msg.includes("domain")) {
-          return {
-            message: "ドメインが既に使用されています。",
-            ok: false,
-          };
-        }
-      }
-    }
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: "更新に失敗しました。時間をおいて再試行してください。",
+      message: rpcErrorMessage(
+        error,
+        "更新に失敗しました。時間をおいて再試行してください。",
+        {
+          conflict: duplicateDomainMessage(error, "更新"),
+          "not-found": "テナントが見つかりません。",
+        }
+      ),
       ok: false,
     };
   }
@@ -661,36 +590,16 @@ export const addPlatformTenantMember = async (
     );
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("already_exists") ||
-        message.includes("already exists")
-      ) {
-        return {
-          message: "このユーザーは既にメンバーとして追加されています。",
-          ok: false,
-        };
-      }
-      if (message.includes("not_found")) {
-        return {
-          message: "指定したメールアドレスのユーザーが見つかりません。",
-          ok: false,
-        };
-      }
-      if (
-        message.includes("unauthenticated") ||
-        message.includes("permission_denied")
-      ) {
-        return {
-          message: "この操作を行う権限がありません。",
-          ok: false,
-        };
-      }
-    }
-
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: "メンバー追加に失敗しました。時間をおいて再試行してください。",
+      message: rpcErrorMessage(
+        error,
+        "メンバー追加に失敗しました。時間をおいて再試行してください。",
+        {
+          conflict: "このユーザーは既にメンバーとして追加されています。",
+          "not-found": "指定したメールアドレスのユーザーが見つかりません。",
+        }
+      ),
       ok: false,
     };
   }
@@ -725,27 +634,15 @@ export const updatePlatformTenantMemberRole = async (
 
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (message.includes("not_found")) {
-        return {
-          message: "対象のメンバーが見つかりません。",
-          ok: false,
-        };
-      }
-      if (
-        message.includes("unauthenticated") ||
-        message.includes("permission_denied")
-      ) {
-        return {
-          message: "この操作を行う権限がありません。",
-          ok: false,
-        };
-      }
-    }
-
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: "ロール変更に失敗しました。時間をおいて再試行してください。",
+      message: rpcErrorMessage(
+        error,
+        "ロール変更に失敗しました。時間をおいて再試行してください。",
+        {
+          "not-found": "対象のメンバーが見つかりません。",
+        }
+      ),
       ok: false,
     };
   }
@@ -778,27 +675,15 @@ export const removePlatformTenantMember = async (
 
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (message.includes("not_found")) {
-        return {
-          message: "対象のメンバーが見つかりません。",
-          ok: false,
-        };
-      }
-      if (
-        message.includes("unauthenticated") ||
-        message.includes("permission_denied")
-      ) {
-        return {
-          message: "この操作を行う権限がありません。",
-          ok: false,
-        };
-      }
-    }
-
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: "メンバー削除に失敗しました。時間をおいて再試行してください。",
+      message: rpcErrorMessage(
+        error,
+        "メンバー削除に失敗しました。時間をおいて再試行してください。",
+        {
+          "not-found": "対象のメンバーが見つかりません。",
+        }
+      ),
       ok: false,
     };
   }

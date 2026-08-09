@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getEpisodeDetail } from "./catalog";
@@ -113,8 +114,20 @@ describe("catalog.getEpisodeDetail", () => {
 
   it("API が not_found を返したら null", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
-      new Error("[not_found] episode not found")
+      new ConnectError("episode not found", Code.NotFound)
     );
+
+    await expect(
+      getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
+    ).resolves.toBeNull();
+  });
+
+  // `"use cache"` re-creates a thrown error from name + message, dropping
+  // `code`; classification has to survive on the message prefix alone.
+  it("キャッシュ境界で再生成された ConnectError も null になる", async () => {
+    const rehydrated = new Error("[not_found] episode not found");
+    rehydrated.name = "ConnectError";
+    mockGetEpisodeDetail.mockRejectedValueOnce(rehydrated);
 
     await expect(
       getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
@@ -124,7 +137,7 @@ describe("catalog.getEpisodeDetail", () => {
   // Another tenant's episode comes back as permission_denied, not not_found.
   it("API が permission_denied を返したら null", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
-      new Error("[permission_denied] episode is not published")
+      new ConnectError("episode is not published", Code.PermissionDenied)
     );
 
     await expect(
@@ -163,7 +176,7 @@ describe("catalog.getEpisodeDetail", () => {
 
   it("not_found 以外のエラーは呼び出し元に伝播する", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
-      new Error("[unavailable] connect ECONNREFUSED")
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
 
     await expect(

@@ -1,3 +1,9 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
+
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -65,34 +71,11 @@ const genericEpisodeReorderErrorMessage =
 const genericEpisodeImageReorderErrorMessage =
   "ページ画像の並び順更新に失敗しました。時間をおいて再試行してください。";
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
-  if (!(error instanceof Error)) {
-    return fallbackMessage;
-  }
-
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  if (
-    message.includes("invalid_argument") ||
-    message.includes("required") ||
-    message.includes("invalid")
-  ) {
-    return "入力内容に誤りがあります。";
-  }
-
-  if (message.includes("not_found") || message.includes("not found")) {
-    return "シリーズが見つかりません。画面を再読み込みして再試行してください。";
-  }
-
-  return fallbackMessage;
-};
+const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+  rpcErrorMessage(error, fallbackMessage, {
+    "not-found":
+      "シリーズが見つかりません。画面を再読み込みして再試行してください。",
+  });
 
 const mapEpisode = (episode: {
   publicId: string;
@@ -132,49 +115,51 @@ const mapEpisodeImage = (image: {
   width: image.width,
 });
 
-const mapEpisodeUploadErrorMessage = (error: unknown): string => {
-  if (!(error instanceof Error)) {
-    return mapErrorToMessage(error, genericUploadErrorMessage);
-  }
+const mentionsAny = (error: unknown, tokens: readonly string[]): boolean =>
+  tokens.some((token) => rpcErrorMentions(error, token));
 
-  const message = error.message.toLowerCase();
-
-  if (message.includes("valid epub file")) {
+/**
+ * Every archive rejection is `invalid_argument`, so the code alone cannot say
+ * whether the ePub is corrupt, its spine is inconsistent, or a path escapes the
+ * archive — and an uploader needs to know which. The distinction comes from the
+ * server's message (`server/internal/epubimages`) and degrades to the generic
+ * "入力内容に誤りがあります。" if that wording changes.
+ */
+const archiveRejectionMessage = (error: unknown): string | undefined => {
+  if (rpcErrorMentions(error, "valid epub file")) {
     return "ePub の解析に失敗しました。壊れていない ePub（.epub）を選択してください。";
   }
-
   if (
-    message.includes("spine references unknown asset") ||
-    message.includes("contains no spine") ||
-    message.includes("contains no spine image assets")
+    mentionsAny(error, ["spine references unknown asset", "contains no spine"])
   ) {
     return "ePub の本文参照に不整合があります。spine と manifest の参照を確認してください。";
   }
-
   if (
-    message.includes("manifest contains invalid path") ||
-    message.includes("invalid path") ||
-    message.includes("traversal") ||
-    message.includes("outside")
+    mentionsAny(error, [
+      "manifest contains invalid path",
+      "invalid path",
+      "traversal",
+      "outside",
+    ])
   ) {
     return "ePub 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。";
   }
-
-  if (message.includes("zip") && message.includes("broken")) {
+  if (!rpcErrorMentions(error, "zip")) {
+    return undefined;
+  }
+  if (rpcErrorMentions(error, "broken")) {
     return "ZIP が壊れています。正常な ZIP ファイルを再作成してください。";
   }
-
-  if (
-    message.includes("zip") &&
-    (message.includes("path") ||
-      message.includes("traversal") ||
-      message.includes("outside"))
-  ) {
-    return "ZIP 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。";
-  }
-
-  return mapErrorToMessage(error, genericUploadErrorMessage);
+  return rpcErrorMentions(error, "path")
+    ? "ZIP 内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。"
+    : undefined;
 };
+
+const mapEpisodeUploadErrorMessage = (error: unknown): string =>
+  rpcErrorMessage(error, genericUploadErrorMessage, {
+    "invalid-argument":
+      archiveRejectionMessage(error) ?? "入力内容に誤りがあります。",
+  });
 
 const uploadArchive = async (input: {
   archive: File;
@@ -263,6 +248,7 @@ export const createEpisode = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -297,6 +283,7 @@ export const listEpisodes = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       episodes: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
@@ -340,6 +327,7 @@ export const updateEpisodePublishSchedule = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericScheduleErrorMessage),
       ok: false,
@@ -424,6 +412,7 @@ export const listEpisodeImages = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       images: [],
       message: mapErrorToMessage(error, genericEpisodeImagesErrorMessage),
@@ -467,6 +456,7 @@ export const reorderEpisodes = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericEpisodeReorderErrorMessage),
       ok: false,
@@ -509,6 +499,7 @@ export const reorderEpisodeImages = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericEpisodeImageReorderErrorMessage),
       ok: false,

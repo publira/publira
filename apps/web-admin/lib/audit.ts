@@ -1,3 +1,5 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import {
   DEFAULT_TIME_ZONE,
   endOfDayIsoString,
@@ -62,30 +64,12 @@ export type ListAuditLogsResult =
 const genericListErrorMessage =
   "監査ログの取得に失敗しました。時間をおいて再試行してください。";
 
-const mapErrorToMessage = (error: unknown): string => {
-  if (!(error instanceof Error)) {
-    return genericListErrorMessage;
-  }
-
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  if (
-    message.includes("invalid_argument") ||
-    message.includes("rfc3339") ||
-    message.includes("cursor")
-  ) {
-    return "フィルタ条件に誤りがあります。入力内容を確認してください。";
-  }
-
-  return genericListErrorMessage;
-};
+const mapErrorToMessage = (error: unknown): string =>
+  rpcErrorMessage(error, genericListErrorMessage, {
+    // Every argument this call takes is a filter, so bad input is a bad filter.
+    "invalid-argument":
+      "フィルタ条件に誤りがあります。入力内容を確認してください。",
+  });
 
 /**
  * The `created_from` / `created_to` filters are date-only (`YYYY-MM-DD`) and the
@@ -173,6 +157,7 @@ export const listAuditActorCandidates = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       actors: [],
       message: mapErrorToMessage(error),
@@ -215,6 +200,7 @@ export const listAuditLogs = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       auditLogs: [],
       message: mapErrorToMessage(error),

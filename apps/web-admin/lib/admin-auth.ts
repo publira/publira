@@ -1,3 +1,11 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  isExpectedNullableRpcError,
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
+
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -93,35 +101,12 @@ const genericPasswordResetConfirmErrorMessage =
 const genericEmailChangeRequestErrorMessage =
   "メールアドレス変更リクエストに失敗しました。時間をおいて再試行してください。";
 
-const toErrorMessage = (error: unknown): string => {
-  if (!(error instanceof Error)) {
-    return genericErrorMessage;
-  }
-
-  const message = error.message.toLowerCase();
-  if (
-    message.includes("invalid credentials") ||
-    message.includes("unauthenticated")
-  ) {
-    return loginFailedMessage;
-  }
-
-  return genericErrorMessage;
-};
-
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied") ||
-    message.includes("not_found") ||
-    message.includes("not found")
-  );
-};
+const toErrorMessage = (error: unknown): string =>
+  rpcErrorMessage(error, genericErrorMessage, {
+    // The server answers a wrong email or password with `unauthenticated`;
+    // never say which of the two was wrong.
+    unauthenticated: loginFailedMessage,
+  });
 
 export const loginAdmin = async (
   email: string,
@@ -152,7 +137,7 @@ export const loginAdmin = async (
       ok: true,
     };
   } catch (error) {
-    console.error("[web-admin] loginAdmin failed", error);
+    rethrowUnclassifiedRpcError(error);
     return {
       message: toErrorMessage(error),
       ok: false,
@@ -203,7 +188,7 @@ export const getAdminCurrentUser = async (
       role: response.user?.role?.trim() ?? "",
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isExpectedNullableRpcError(error)) {
       return null;
     }
     throw error;
@@ -246,7 +231,7 @@ export const getTenantAdminInvitationState = async (
       status: response.status,
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isExpectedNullableRpcError(error)) {
       return null;
     }
     throw error;
@@ -281,26 +266,20 @@ export const acceptTenantAdminInvitation = async (
       ok: true,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (message.includes("expired")) {
-        return { message: "招待リンクの有効期限が切れています。", ok: false };
-      }
-      if (message.includes("canceled")) {
-        return { message: "この招待は取り消されています。", ok: false };
-      }
-      if (message.includes("not_found")) {
-        return { message: "招待が見つかりません。", ok: false };
-      }
-      if (
-        message.includes("invalid_argument") ||
-        message.includes("required")
-      ) {
-        return { message: "入力内容に誤りがあります。", ok: false };
-      }
-    }
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: "招待の承諾に失敗しました。時間をおいて再試行してください。",
+      message: rpcErrorMessage(
+        error,
+        "招待の承諾に失敗しました。時間をおいて再試行してください。",
+        {
+          "not-found": "招待が見つかりません。",
+          // Expired and canceled invitations share `failed_precondition`; the
+          // server names which one, and both read as "no longer usable".
+          precondition: rpcErrorMentions(error, "canceled")
+            ? "この招待は取り消されています。"
+            : "招待リンクの有効期限が切れています。",
+        }
+      ),
       ok: false,
     };
   }
@@ -329,22 +308,12 @@ export const requestAdminPasswordReset = async (
       requested: response.requested,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("invalid_argument") ||
-        message.includes("invalid email") ||
-        message.includes("required")
-      ) {
-        return {
-          message: "メールアドレスを確認してください。",
-          ok: false,
-        };
-      }
-    }
-
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: genericPasswordResetRequestErrorMessage,
+      message: rpcErrorMessage(error, genericPasswordResetRequestErrorMessage, {
+        // Email is the only field this call takes.
+        "invalid-argument": "メールアドレスを確認してください。",
+      }),
       ok: false,
     };
   }
@@ -387,32 +356,23 @@ export const confirmAdminPasswordReset = async (
       ok: true,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("failed_precondition") ||
-        message.includes("expired")
-      ) {
-        return {
-          message:
-            "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
-          ok: false,
-          reason: "expired",
-        };
-      }
-      if (
-        message.includes("not_found") ||
-        message.includes("invalid_argument") ||
-        message.includes("required") ||
-        message.includes("user not found")
-      ) {
-        return {
-          message:
-            "再設定リンクが無効です。もう一度メール送信からやり直してください。",
-          ok: false,
-          reason: "invalid",
-        };
-      }
+    const disposition = rpcErrorDisposition(error);
+    if (disposition === "precondition") {
+      return {
+        message:
+          "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+        ok: false,
+        reason: "expired",
+      };
+    }
+    // An unknown token and a malformed one both mean "start over".
+    if (disposition === "not-found" || disposition === "invalid-argument") {
+      return {
+        message:
+          "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+        ok: false,
+        reason: "invalid",
+      };
     }
 
     return {
@@ -462,37 +422,15 @@ export const requestAdminEmailChange = async (
       requested: response.requested,
     };
   } catch (error) {
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes("invalid credentials") ||
-        message.includes("unauthenticated")
-      ) {
-        return {
-          message: "パスワードが正しくありません。",
-          ok: false,
-        };
-      }
-      if (
-        message.includes("invalid_argument") ||
-        message.includes("invalid email") ||
-        message.includes("required")
-      ) {
-        return {
-          message: "入力内容を確認してください。",
-          ok: false,
-        };
-      }
-      if (message.includes("already_exists")) {
-        return {
-          message: "このメールアドレスは既に使用されています。",
-          ok: false,
-        };
-      }
-    }
-
+    rethrowUnclassifiedRpcError(error);
     return {
-      message: genericEmailChangeRequestErrorMessage,
+      message: rpcErrorMessage(error, genericEmailChangeRequestErrorMessage, {
+        conflict: "このメールアドレスは既に使用されています。",
+        "invalid-argument": "入力内容を確認してください。",
+        // This call re-checks the current password, so a rejected session here
+        // means the password was wrong, not that the login expired.
+        unauthenticated: "パスワードが正しくありません。",
+      }),
       ok: false,
     };
   }
@@ -518,7 +456,8 @@ export const confirmAdminEmailChange = async (
       confirmed: response.confirmed,
       pendingConfirmationFor: response.pendingConfirmationFor,
     };
-  } catch {
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return null;
   }
 };

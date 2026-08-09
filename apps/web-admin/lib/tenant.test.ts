@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetTenantByDomain } = vi.hoisted(() => ({
@@ -36,7 +37,9 @@ describe("tenant", () => {
   });
 
   it("未登録ドメインでは null を返す", async () => {
-    mockGetTenantByDomain.mockRejectedValueOnce(new Error("not found"));
+    mockGetTenantByDomain.mockRejectedValueOnce(
+      new ConnectError("tenant not found", Code.NotFound)
+    );
 
     const { resolveTenantId } = await import("./tenant");
 

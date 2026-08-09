@@ -1,37 +1,10 @@
+import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import type { PublicApiClient } from "@publira/api-client/public/client";
 import { LRUCache } from "lru-cache";
 
 interface TenantCacheValue {
   tenantId: string | null;
 }
-
-const isNotFoundError = (error: unknown): boolean => {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-
-  const candidate = error as {
-    code?: unknown;
-    message?: unknown;
-    rawMessage?: unknown;
-  };
-
-  if (candidate.code === 5 || candidate.code === "not_found") {
-    return true;
-  }
-
-  if (
-    typeof candidate.message === "string" &&
-    candidate.message.toLowerCase().includes("not found")
-  ) {
-    return true;
-  }
-
-  return (
-    typeof candidate.rawMessage === "string" &&
-    candidate.rawMessage.toLowerCase().includes("not found")
-  );
-};
 
 export const createTenantIdResolver = (
   publicApiClient: PublicApiClient,
@@ -66,7 +39,9 @@ export const createTenantIdResolver = (
       tenantCache.set(cacheKey, { tenantId });
       return tenantId;
     } catch (error) {
-      if (isNotFoundError(error)) {
+      // Only an unknown domain is cached as "no tenant"; a transient failure
+      // must not pin every request on this host to 404 for the whole TTL.
+      if (isMissingResourceRpcError(error)) {
         tenantCache.set(cacheKey, { tenantId: null });
         return null;
       }

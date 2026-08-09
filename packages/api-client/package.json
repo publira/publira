@@ -11,6 +11,14 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./errors": {
+      "types": "./dist/errors.d.mts",
+      "default": "./dist/errors.mjs"
+    },
+    "./error-messages": {
+      "types": "./dist/error-messages.d.mts",
+      "default": "./dist/error-messages.mjs"
+    },
     "./public": {
       "types": "./dist/public/index.d.mts",
       "default": "./dist/public/index.mjs"

@@ -1,3 +1,6 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+
 import {
   apiClient,
   buildSessionHeaders,
@@ -85,9 +88,13 @@ export const listPlatformAuditLogs = async (
       ok: true,
     };
   } catch (error) {
-    console.error("[listPlatformAuditLogs] API error:", error);
-    const message =
-      error instanceof Error ? error.message : "不明なエラーが発生しました。";
-    return { message, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        "監査ログの取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      ok: false,
+    };
   }
 };

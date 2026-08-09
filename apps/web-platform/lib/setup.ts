@@ -1,17 +1,20 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  Code,
+  isRpcError,
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
+
 import { apiClient } from "./api-client";
 
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("not_found") ||
-    message.includes("not found") ||
-    message.includes("failed_precondition")
-  );
-};
+/**
+ * Setup status is unknown rather than failed when the platform has not been
+ * initialized yet: the RPC answers `not_found` before the first tenant exists
+ * and `failed_precondition` while bootstrap is still running.
+ */
+const isSetupStatusUnknownError = (error: unknown): boolean =>
+  isRpcError(error, Code.NotFound, Code.FailedPrecondition);
 
 export const isSetupCompleted = async (): Promise<boolean | null> => {
   "use cache: private";
@@ -20,14 +23,21 @@ export const isSetupCompleted = async (): Promise<boolean | null> => {
     const response = await apiClient.setup.checkSetupStatus({});
     return response.setupCompleted;
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isSetupStatusUnknownError(error)) {
       return null;
     }
     throw error;
   }
 };
 
-export type SetupResult = { ok: true } | { ok: false; message: string };
+export type SetupResult =
+  | { ok: true }
+  | {
+      ok: false;
+      message: string;
+      /** Setup already ran; the caller sends the operator to login instead. */
+      alreadyCompleted: boolean;
+    };
 
 const genericErrorMessage =
   "セットアップに失敗しました。時間をおいて再試行してください。";
@@ -41,29 +51,16 @@ export const createInitialUser = async (
     await apiClient.setup.createInitialUser({ email, name, password });
     return { ok: true };
   } catch (error) {
-    if (!(error instanceof Error)) {
-      return { message: genericErrorMessage, ok: false };
-    }
-
-    const message = error.message.toLowerCase();
-    if (
-      message.includes("already_exists") ||
-      message.includes("already completed")
-    ) {
-      return {
-        message:
+    rethrowUnclassifiedRpcError(error);
+    return {
+      // `already_exists` is only ever raised here for "setup already completed"
+      // (`server/api/platformapi/setup_handlers.go`).
+      alreadyCompleted: rpcErrorDisposition(error) === "conflict",
+      message: rpcErrorMessage(error, genericErrorMessage, {
+        conflict:
           "セットアップは既に完了しています。ログイン画面からサインインしてください。",
-        ok: false,
-      };
-    }
-    if (
-      message.includes("invalid_argument") ||
-      message.includes("required") ||
-      message.includes("invalid email")
-    ) {
-      return { message: "入力内容に誤りがあります。", ok: false };
-    }
-
-    return { message: genericErrorMessage, ok: false };
+      }),
+      ok: false,
+    };
   }
 };

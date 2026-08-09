@@ -27,7 +27,7 @@ export const setupAction = async (
 
   const result = await createInitialUser(name, email, password);
   if (!result.ok) {
-    if (result.message.includes("既に完了")) {
+    if (result.alreadyCompleted) {
       redirect("/login");
     }
     return { message: result.message, ok: false };

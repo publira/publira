@@ -1,3 +1,5 @@
+import { isMissingResourceRpcError } from "@publira/api-client/errors";
+
 import { apiClient } from "./api-client";
 import {
   applyCacheTag,
@@ -6,24 +8,6 @@ import {
   tenantSeriesListTag,
   tenantSeriesTag,
 } from "./cache-tags";
-
-/**
- * Missing, unpublished, and other-tenant records all have to read as "not
- * found" on the public site. Connect surfaces them as `[not_found] …` /
- * `[permission_denied] …`.
- *
- * Detail lookups return `null` instead of throwing: these helpers run inside a
- * `"use cache"` scope, and an error thrown there is not observable by the
- * caller's `try` / `catch` — it fails the whole request instead.
- */
-const isNotFoundError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return message.includes("not_found") || message.includes("permission_denied");
-};
 
 export interface EyeCatchImageVariant {
   variantType: string;
@@ -202,7 +186,15 @@ export const listPublishedLabels = async (
   }));
 };
 
-/** `null` when the series does not exist, is unpublished, or belongs to another tenant. */
+/**
+ * `null` when the series does not exist, is unpublished, or belongs to another
+ * tenant — the server returns `not_found` or `permission_denied` for those and
+ * the public site must not tell them apart.
+ *
+ * Returns `null` rather than throwing because this runs inside a `"use cache"`
+ * scope, where a thrown error is not observable by the caller's `try` / `catch`
+ * and fails the whole request instead.
+ */
 export const getSeriesDetail = async (
   tenantId: string,
   seriesPublicId: string
@@ -221,7 +213,7 @@ export const getSeriesDetail = async (
       tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
-    if (isNotFoundError(error)) {
+    if (isMissingResourceRpcError(error)) {
       return null;
     }
     throw error;
@@ -268,7 +260,10 @@ export const getSeriesDetail = async (
   };
 };
 
-/** `null` when the episode is missing, unpublished, or not part of `seriesPublicId`. */
+/**
+ * `null` when the episode is missing, unpublished, or not part of
+ * `seriesPublicId`. Same `"use cache"` constraint as `getSeriesDetail`.
+ */
 export const getEpisodeDetail = async (
   tenantId: string,
   seriesPublicId: string,
@@ -293,7 +288,7 @@ export const getEpisodeDetail = async (
       tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
-    if (isNotFoundError(error)) {
+    if (isMissingResourceRpcError(error)) {
       return null;
     }
     throw error;

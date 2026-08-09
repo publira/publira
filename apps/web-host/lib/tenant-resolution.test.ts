@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { describe, expect, it, vi } from "vitest";
 
 import { createTenantIdResolver } from "./tenant-resolution";
@@ -33,8 +34,10 @@ describe("createTenantIdResolver", () => {
     expect(getTenantByDomain).toHaveBeenCalledOnce();
   });
 
-  it("not found エラーは null としてキャッシュする", async () => {
-    const getTenantByDomain = vi.fn().mockRejectedValue({ code: 5 });
+  it("not_found エラーは null としてキャッシュする", async () => {
+    const getTenantByDomain = vi
+      .fn()
+      .mockRejectedValue(new ConnectError("tenant not found", Code.NotFound));
     const resolver = createTenantIdResolver(
       { domain: { getTenantByDomain } } as never,
       { max: 10, ttl: 10_000 }
@@ -44,5 +47,24 @@ describe("createTenantIdResolver", () => {
     await expect(resolver(["unknown.example.com"])).resolves.toBeNull();
 
     expect(getTenantByDomain).toHaveBeenCalledOnce();
+  });
+
+  it("分類できないエラーは伝播し null をキャッシュしない", async () => {
+    const getTenantByDomain = vi
+      .fn()
+      .mockRejectedValue(new ConnectError("upstream down", Code.Unavailable));
+    const resolver = createTenantIdResolver(
+      { domain: { getTenantByDomain } } as never,
+      { max: 10, ttl: 10_000 }
+    );
+
+    await expect(resolver(["flaky.example.com"])).rejects.toThrow(
+      "upstream down"
+    );
+    await expect(resolver(["flaky.example.com"])).rejects.toThrow(
+      "upstream down"
+    );
+
+    expect(getTenantByDomain).toHaveBeenCalledTimes(2);
   });
 });

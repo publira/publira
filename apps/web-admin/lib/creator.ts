@@ -1,3 +1,5 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -33,37 +35,8 @@ const genericListErrorMessage =
 const genericMutationErrorMessage =
   "著者の保存に失敗しました。時間をおいて再試行してください。";
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
-  if (!(error instanceof Error)) {
-    return fallbackMessage;
-  }
-
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  if (
-    message.includes("invalid_argument") ||
-    message.includes("required") ||
-    message.includes("invalid")
-  ) {
-    return "入力内容に誤りがあります。";
-  }
-
-  if (
-    message.includes("already_exists") ||
-    message.includes("already exists")
-  ) {
-    return "重複するデータがあるため保存できません。";
-  }
-
-  return fallbackMessage;
-};
+const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+  rpcErrorMessage(error, fallbackMessage);
 
 const mapCreator = (creator: {
   publicId: string;
@@ -116,6 +89,7 @@ export const listCreators = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       creators: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
@@ -163,6 +137,7 @@ export const createCreator = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -213,6 +188,7 @@ export const updateCreator = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
@@ -261,6 +237,7 @@ export const getCreator = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -61,7 +62,7 @@ describe("loginPlatform", () => {
 
   it("認証失敗 (Unauthenticated エラー) は null を返す", async () => {
     mockLogin.mockRejectedValueOnce(
-      new Error("unauthenticated: invalid credentials")
+      new ConnectError("invalid credentials", Code.Unauthenticated)
     );
 
     await expect(loginPlatform("a@b.com", "wrong")).resolves.toBeNull();
@@ -146,7 +147,7 @@ describe("getPlatformCurrentOperator", () => {
 
   it("セッション無効 (Unauthenticated エラー) は null を返す", async () => {
     mockGetMe.mockRejectedValueOnce(
-      new Error("unauthenticated: invalid session")
+      new ConnectError("invalid session", Code.Unauthenticated)
     );
 
     await expect(getPlatformCurrentOperator()).resolves.toBeNull();

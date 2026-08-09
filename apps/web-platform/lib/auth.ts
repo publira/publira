@@ -1,4 +1,9 @@
 import {
+  isExpectedNullableRpcError,
+  isRejectedRequestRpcError,
+} from "@publira/api-client/errors";
+
+import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
@@ -9,21 +14,6 @@ export {
   PLATFORM_SESSION_COOKIE_NAME,
   sanitizeRedirectPath,
 } from "./auth-shared";
-
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied") ||
-    message.includes("invalid_argument") ||
-    message.includes("not_found") ||
-    message.includes("not found")
-  );
-};
 
 export interface PlatformCurrentOperator {
   name: string;
@@ -46,7 +36,7 @@ export const loginPlatform = async (
     }
     return { accessToken, expiresAt: new Date(expiresAt) };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isRejectedRequestRpcError(error)) {
       return null;
     }
     throw error;
@@ -84,7 +74,7 @@ export const getPlatformCurrentOperator =
         role: normalizePlatformRole(user.role),
       };
     } catch (error) {
-      if (isExpectedNullableError(error)) {
+      if (isExpectedNullableRpcError(error)) {
         return null;
       }
       throw error;

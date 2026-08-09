@@ -1,3 +1,9 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorRawMessage,
+} from "@publira/api-client/errors";
+
 import {
   apiClient,
   buildSessionHeaders,
@@ -50,30 +56,20 @@ const genericErrorMessage =
 
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
 
+/**
+ * SMTP failures carry the detail an operator needs to fix the settings ("dial
+ * tcp: connection refused", "from_address is required"), so validation and
+ * precondition errors pass the server's own text through. Other categories take
+ * the shared copy — a raw `[internal]` message is not something to show. Same
+ * rule as `apps/web-admin/lib/email-settings.ts`.
+ */
 const parseErrorMessage = (error: unknown): string => {
-  if (!(error instanceof Error)) {
-    return genericErrorMessage;
-  }
-
-  const message = error.message.trim();
-  if (!message) {
-    return genericErrorMessage;
-  }
-
-  const prefixes = [
-    "invalid_argument:",
-    "failed_precondition:",
-    "permission_denied:",
-  ] as const;
-
-  const lower = message.toLowerCase();
-  for (const prefix of prefixes) {
-    if (lower.startsWith(prefix)) {
-      return message.slice(prefix.length).trim() || genericErrorMessage;
-    }
-  }
-
-  return message;
+  const serverMessage =
+    rpcErrorRawMessage(error)?.trim() || genericErrorMessage;
+  return rpcErrorMessage(error, genericErrorMessage, {
+    "invalid-argument": serverMessage,
+    precondition: serverMessage,
+  });
 };
 
 const toPlatformSmtpSettings = (settings?: {
@@ -110,6 +106,7 @@ export const getPlatformEmailSettings =
       );
       return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
     } catch (error) {
+      rethrowUnclassifiedRpcError(error);
       return { message: parseErrorMessage(error), ok: false };
     }
   };
@@ -139,6 +136,7 @@ export const updatePlatformEmailSettings = async (
 
     return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }
 };
@@ -170,6 +168,7 @@ export const sendPlatformSmtpTestEmail = async (
 
     return { ok: true, recipientEmail: response.recipientEmail };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }
 };

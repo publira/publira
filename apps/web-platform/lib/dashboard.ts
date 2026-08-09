@@ -1,3 +1,6 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+
 import {
   apiClient,
   buildSessionHeaders,
@@ -70,9 +73,13 @@ export const getPlatformDashboardSummary = async (input?: {
       },
     };
   } catch (error) {
-    console.error("[getPlatformDashboardSummary] API error:", error);
-    const message =
-      error instanceof Error ? error.message : "不明なエラーが発生しました。";
-    return { message, ok: false };
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      ok: false,
+    };
   }
 };

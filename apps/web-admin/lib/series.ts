@@ -1,3 +1,9 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorMentions,
+} from "@publira/api-client/errors";
+
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -50,84 +56,31 @@ const genericListErrorMessage =
 const genericMutationErrorMessage =
   "シリーズの保存に失敗しました。時間をおいて再試行してください。";
 
-const extractErrorText = (error: unknown): string => {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`;
-  }
+const imageRejectionHints = [
+  "eye_catch",
+  "image",
+  "content_type",
+  "10mb",
+  "at least",
+] as const;
 
-  if (typeof error === "object" && error !== null) {
-    const record = error as Record<string, unknown>;
-    const message =
-      (typeof record.message === "string" && record.message) ||
-      (typeof record.rawMessage === "string" && record.rawMessage) ||
-      (typeof record.details === "string" && record.details) ||
-      "";
-    const code =
-      typeof record.code === "string" || typeof record.code === "number"
-        ? String(record.code)
-        : "";
-    const joined = [code, message]
-      .filter((value) => value.length > 0)
-      .join(" ");
-    if (joined.length > 0) {
-      return joined;
-    }
-  }
+/**
+ * A series form submits its metadata and its eye-catch image together, and the
+ * image constraints need spelling out. Both come back as `invalid_argument`, so
+ * which field failed is taken from the server's message and degrades to the
+ * generic wording if that text changes.
+ */
+const invalidArgumentMessage = (error: unknown): string =>
+  imageRejectionHints.some((hint) => rpcErrorMentions(error, hint))
+    ? "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・推奨サイズを満たす画像を選び、もう一度お試しください。"
+    : "入力内容を確認してください。タイトル・ラベル・作者などの必須項目を見直して、もう一度お試しください。";
 
-  return String(error ?? "");
-};
-
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
-  const message = extractErrorText(error).toLowerCase();
-  if (!message) {
-    return fallbackMessage;
-  }
-
-  if (
-    message.includes("module not found") ||
-    message.includes("can't resolve")
-  ) {
-    return "依存パッケージの読み込みに失敗しました。開発サーバーを再起動して再試行してください。";
-  }
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  if (
-    message.includes("invalid_argument") ||
-    message.includes("required") ||
-    message.includes("invalid")
-  ) {
-    if (
-      message.includes("eye_catch") ||
-      message.includes("image") ||
-      message.includes("content_type") ||
-      message.includes("10mb") ||
-      message.includes("at least")
-    ) {
-      return "画像の設定を確認してください。JPEG/PNG/WebP・10MB以下・推奨サイズを満たす画像を選び、もう一度お試しください。";
-    }
-
-    return "入力内容を確認してください。タイトル・ラベル・作者などの必須項目を見直して、もう一度お試しください。";
-  }
-
-  if (
-    message.includes("already_exists") ||
-    message.includes("already exists")
-  ) {
-    return "重複するデータがあるため保存できません。";
-  }
-
-  if (message.includes("not_found")) {
-    return "対象のシリーズが見つかりませんでした。ページを再読み込みして、もう一度お試しください。";
-  }
-
-  return fallbackMessage;
-};
+const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+  rpcErrorMessage(error, fallbackMessage, {
+    "invalid-argument": invalidArgumentMessage(error),
+    "not-found":
+      "対象のシリーズが見つかりませんでした。ページを再読み込みして、もう一度お試しください。",
+  });
 
 const mapSeries = (series: {
   publicId: string;
@@ -220,15 +173,10 @@ export const listSeries = async (
         .toSorted((a, b) => a.title.localeCompare(b.title, "ja")),
     };
   } catch (error) {
-    console.error("[web-admin] listSeries failed", {
-      error,
-      tenantId,
-    });
-
-    const message = mapErrorToMessage(error, genericListErrorMessage);
+    rethrowUnclassifiedRpcError(error);
     return {
       defaultReadingPeriodHours: 0,
-      message,
+      message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
       series: [],
     };
@@ -270,15 +218,9 @@ export const getSeries = async (input: {
       series: mapSeries(response.series),
     };
   } catch (error) {
-    console.error("[web-admin] getSeries failed", {
-      error,
-      publicId: input.publicId,
-      tenantId: input.tenantId,
-    });
-
-    const message = mapErrorToMessage(error, genericListErrorMessage);
+    rethrowUnclassifiedRpcError(error);
     return {
-      message,
+      message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
     };
   }
@@ -336,15 +278,9 @@ export const createSeries = async (input: {
       },
     };
   } catch (error) {
-    const errorText = extractErrorText(error);
-    console.error("[web-admin] createSeries failed", {
-      errorText,
-      input,
-    });
-
-    const message = mapErrorToMessage(error, genericMutationErrorMessage);
+    rethrowUnclassifiedRpcError(error);
     return {
-      message,
+      message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
     };
   }
@@ -406,15 +342,9 @@ export const updateSeries = async (input: {
       },
     };
   } catch (error) {
-    const errorText = extractErrorText(error);
-    console.error("[web-admin] updateSeries failed", {
-      errorText,
-      input,
-    });
-
-    const message = mapErrorToMessage(error, genericMutationErrorMessage);
+    rethrowUnclassifiedRpcError(error);
     return {
-      message,
+      message: mapErrorToMessage(error, genericMutationErrorMessage),
       ok: false,
     };
   }

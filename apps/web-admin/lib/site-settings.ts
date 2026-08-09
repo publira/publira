@@ -1,3 +1,6 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -26,22 +29,8 @@ const genericLoadErrorMessage =
 const genericUpdateErrorMessage =
   "設定の保存に失敗しました。時間をおいて再試行してください。";
 
-const mapErrorToMessage = (error: unknown, fallbackMessage: string): string => {
-  if (!(error instanceof Error)) {
-    return fallbackMessage;
-  }
-
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  return fallbackMessage;
-};
+const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
+  rpcErrorMessage(error, fallbackMessage);
 
 export const getTenantSiteSettings = async (
   tenantId: string
@@ -75,6 +64,7 @@ export const getTenantSiteSettings = async (
       },
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericLoadErrorMessage),
       ok: false,
@@ -118,6 +108,7 @@ export const updateTenantSiteSettings = async (input: {
       },
     };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericUpdateErrorMessage),
       ok: false,

@@ -1,3 +1,6 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -20,22 +23,11 @@ export type GetDashboardResult =
   | { ok: true; stats: DashboardStats; queue: DashboardQueueItem[] }
   | { ok: false; message: string };
 
-const mapErrorToMessage = (error: unknown): string => {
-  if (!(error instanceof Error)) {
-    return "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。";
-  }
+const genericErrorMessage =
+  "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。";
 
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  ) {
-    return "セッションが無効です。再ログインしてください。";
-  }
-
-  return "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。";
-};
+const mapErrorToMessage = (error: unknown): string =>
+  rpcErrorMessage(error, genericErrorMessage);
 
 export const getDashboard = async (
   tenantId: string
@@ -73,6 +65,7 @@ export const getDashboard = async (
 
     return { ok: true, queue, stats };
   } catch (error) {
+    rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error),
       ok: false,

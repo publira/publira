@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -106,7 +107,9 @@ describe("getAdminCurrentUser", () => {
   });
 
   it("想定内エラーは null を返す", async () => {
-    mockGetMe.mockRejectedValueOnce(new Error("permission_denied"));
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("forbidden", Code.PermissionDenied)
+    );
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toBeNull();
   });
@@ -143,7 +146,9 @@ describe("isAdminSessionValid", () => {
   });
 
   it("想定内エラーは false を返す", async () => {
-    mockGetMe.mockRejectedValueOnce(new Error("permission_denied"));
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("forbidden", Code.PermissionDenied)
+    );
     const result = await isAdminSessionValid("tenant_001");
     expect(result).toBe(false);
   });
@@ -210,7 +215,7 @@ describe("tenant admin invitation", () => {
 
   it("期限切れエラーを変換する", async () => {
     mockAcceptTenantAdminInvitation.mockRejectedValueOnce(
-      new Error("failed_precondition: invitation expired")
+      new ConnectError("invitation expired", Code.FailedPrecondition)
     );
 
     await expect(
@@ -233,7 +238,7 @@ describe("admin password reset", () => {
 
   it("再設定メール送信の入力エラーを変換する", async () => {
     mockRequestPasswordReset.mockRejectedValueOnce(
-      new Error("invalid_argument: invalid email address")
+      new ConnectError("invalid email address", Code.InvalidArgument)
     );
 
     await expect(
@@ -254,7 +259,7 @@ describe("admin password reset", () => {
 
   it("期限切れトークンを期限切れ導線に変換する", async () => {
     mockConfirmPasswordReset.mockRejectedValueOnce(
-      new Error("failed_precondition: password reset token expired")
+      new ConnectError("password reset token expired", Code.FailedPrecondition)
     );
 
     await expect(
@@ -269,7 +274,7 @@ describe("admin password reset", () => {
 
   it("不正トークンを無効導線に変換する", async () => {
     mockConfirmPasswordReset.mockRejectedValueOnce(
-      new Error("not_found: password reset token not found")
+      new ConnectError("password reset token not found", Code.NotFound)
     );
 
     await expect(

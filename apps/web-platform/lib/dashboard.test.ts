@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPlatformDashboardSummary } from "./dashboard";
@@ -108,12 +109,23 @@ describe("getPlatformDashboardSummary", () => {
     expect(mockGetDashboardSummary).not.toHaveBeenCalled();
   });
 
-  it("API エラー時はメッセージを返す", async () => {
-    mockGetDashboardSummary.mockRejectedValueOnce(new Error("network error"));
+  it("到達不能エラーは共通文言で返す", async () => {
+    mockGetDashboardSummary.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
 
     await expect(getPlatformDashboardSummary()).resolves.toEqual({
-      message: "network error",
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
     });
+  });
+
+  it("分類できない RPC エラーは伝播する", async () => {
+    mockGetDashboardSummary.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getPlatformDashboardSummary()).rejects.toThrow("boom");
   });
 });

@@ -1,3 +1,4 @@
+import { isExpectedNullableRpcError } from "@publira/api-client/errors";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
@@ -21,20 +22,11 @@ const buildTenantSiteLabel = (tenantName: string): string => {
   return normalizedTenantName || "サイト";
 };
 
-const isExpectedNullableError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("not_found") ||
-    message.includes("not found") ||
-    message.includes("unauthenticated") ||
-    message.includes("permission_denied")
-  );
-};
-
+/**
+ * `null` when the tenant does not exist or is not readable. Anything else —
+ * `invalid_argument` for a malformed tenant id included — propagates, so a
+ * misrouted request surfaces instead of rendering an empty site.
+ */
 export const getTenantSiteInfo = async (
   tenantId: string
 ): Promise<TenantSiteInfo | null> => {
@@ -72,7 +64,7 @@ export const getTenantSiteInfo = async (
       theme: resolveTenantThemeColors(response.theme),
     };
   } catch (error) {
-    if (isExpectedNullableError(error)) {
+    if (isExpectedNullableRpcError(error)) {
       return null;
     }
     throw error;

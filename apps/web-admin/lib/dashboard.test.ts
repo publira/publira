@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetSessionId, mockGetDashboardApi } = vi.hoisted(() => ({
@@ -105,7 +106,9 @@ describe("dashboard", () => {
   });
 
   it("API エラー（未認証）のときはエラーを返す", async () => {
-    mockGetDashboardApi.mockRejectedValueOnce(new Error("unauthenticated"));
+    mockGetDashboardApi.mockRejectedValueOnce(
+      new ConnectError("invalid session", Code.Unauthenticated)
+    );
 
     const { getDashboard } = await import("./dashboard");
 
@@ -117,9 +120,9 @@ describe("dashboard", () => {
     });
   });
 
-  it("API エラーのときは汎用エラーメッセージを返す", async () => {
+  it("到達不能エラーは共通文言で返す", async () => {
     mockGetDashboardApi.mockRejectedValueOnce(
-      new Error("internal_server_error")
+      new ConnectError("upstream down", Code.Unavailable)
     );
 
     const { getDashboard } = await import("./dashboard");
@@ -128,9 +131,19 @@ describe("dashboard", () => {
 
     expect(result).toEqual({
       message:
-        "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。",
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
     });
+  });
+
+  it("分類できない RPC エラーは伝播する", async () => {
+    mockGetDashboardApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getDashboard } = await import("./dashboard");
+
+    await expect(getDashboard("TENANT001")).rejects.toThrow("boom");
   });
 
   it("draft ステータスのエピソードが正しくマップされる", async () => {
