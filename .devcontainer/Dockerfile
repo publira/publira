@@ -5,7 +5,7 @@ ARG TASK_VERSION=3.49.1
 # renovate: datasource=github-releases depName=sqlc-dev/sqlc versioning=semver-coerced
 ARG SQLC_VERSION=1.30.0
 # renovate: datasource=github-releases depName=bufbuild/buf versioning=semver-coerced
-ARG BUF_VERSION=1.67.0
+ARG BUF_VERSION=1.72.0
 # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
 ARG MIGRATE_VERSION=4.19.1
 # renovate: datasource=flutter-version depName=flutter
