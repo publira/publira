@@ -30,12 +30,7 @@ bash "${E2E_SCRIPTS_DIR}/wait-ready.sh"
 
 e2e_log "=== Playwright phase ==="
 set +e
-(
-  cd "${E2E_DIR}"
-  # Re-export so Playwright config/fixtures see the same URLs.
-  export E2E_WEB_HOST_BASE_URL PUBLIRA_DB_URL E2E_PUBLIC_API_BASE_URL
-  pnpm exec playwright test "$@"
-)
+bash "${E2E_SCRIPTS_DIR}/test.sh" "$@"
 test_status=$?
 set -e
 

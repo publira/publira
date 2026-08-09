@@ -36,8 +36,13 @@ test.beforeAll(() => {
 
 詳細な E2E 運用は [e2e/README.md](../../../e2e/README.md) を参照。
 
+## 一覧
+
+| ファイル | 内容 |
+| --- | --- |
+| `010_multi_tenant.sql` | dev seed（`localhost` / `Seed Tenant`）の隣に 2 つ目のテナント `other.localhost` / `Boundary Tenant` を追加する。公開シリーズ 1 本（公開エピソード 2 本 + 未公開の scheduled 1 本）と未公開シリーズ 1 本を持ち、テナント境界と公開判定の検証に使う（`e2e/tests/catalog.tenant-boundary.spec.ts`）。レコードの public_id は `e2e/src/scenarios/multi-tenant.ts` に定数化してある |
+
 ## 例（未作成）
 
-- `010_multi_tenant.sql`
 - `020_suspended_tenant.sql`
 - `030_paid_episode.sql`
