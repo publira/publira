@@ -6,6 +6,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import {
@@ -105,6 +106,12 @@ const EditLabelFormData = async ({
   });
 
   if (!result.ok) {
+    if (result.notFound) {
+      // Missing, or another tenant's label — never told apart. Renders
+      // `(protected)/not-found.tsx` inside the console chrome.
+      notFound();
+    }
+
     return (
       <div className="grid gap-4">
         <FormMessage variant="destructive">{result.message}</FormMessage>

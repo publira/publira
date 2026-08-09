@@ -6,6 +6,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import {
@@ -98,6 +99,17 @@ const EditSeriesTabs = async ({
   return <SeriesTabNav current={activeTab} seriesId={seriesId} />;
 };
 
+const SeriesLoadError = ({ message }: { message: string }) => (
+  <div className="grid gap-4">
+    <FormMessage variant="destructive">{message}</FormMessage>
+    <div>
+      <LinkButton render={<Link href="/series" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    </div>
+  </div>
+);
+
 const EditSeriesFormData = async ({
   params,
   searchParams,
@@ -111,16 +123,12 @@ const EditSeriesFormData = async ({
   if (activeTab === "eye-catch") {
     const result = await getSeries({ publicId: seriesId, tenantId });
     if (!result.ok) {
-      return (
-        <div className="grid gap-4">
-          <FormMessage variant="destructive">{result.message}</FormMessage>
-          <div>
-            <LinkButton render={<Link href="/series" />} variant="outline">
-              一覧へ戻る
-            </LinkButton>
-          </div>
-        </div>
-      );
+      if (result.notFound) {
+        // Missing, or another tenant's series — never told apart. Renders
+        // `(protected)/not-found.tsx` inside the console chrome.
+        notFound();
+      }
+      return <SeriesLoadError message={result.message} />;
     }
     return (
       <SeriesEyeCatchForm
@@ -137,16 +145,10 @@ const EditSeriesFormData = async ({
   ]);
 
   if (!result.ok) {
-    return (
-      <div className="grid gap-4">
-        <FormMessage variant="destructive">{result.message}</FormMessage>
-        <div>
-          <LinkButton render={<Link href="/series" />} variant="outline">
-            一覧へ戻る
-          </LinkButton>
-        </div>
-      </div>
-    );
+    if (result.notFound) {
+      notFound();
+    }
+    return <SeriesLoadError message={result.message} />;
   }
 
   return (

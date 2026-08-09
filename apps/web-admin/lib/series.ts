@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { mentionsImageRejection } from "./image-rejection";
@@ -45,9 +48,20 @@ export type UpdateSeriesResult =
   | { ok: true; series: SeriesItem }
   | { ok: false; message: string };
 
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing series from
+ * another tenant's series would leak whether it exists.
+ *
+ * The flag exists because `getSeries()` runs inside a `"use cache: private"`
+ * scope, where a thrown `notFound()` is not observable by the caller (#672).
+ * The interrupt has to be raised by the caller, outside the cache scope.
+ */
 export type GetSeriesResult =
   | { ok: true; series: SeriesItem }
-  | { ok: false; message: string };
+  | { notFound: true; ok: false }
+  | { message: string; notFound?: false; ok: false };
 
 const genericListErrorMessage =
   "シリーズ一覧の取得に失敗しました。時間をおいて再試行してください。";
@@ -203,6 +217,9 @@ export const getSeries = async (input: {
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    if (isMissingResourceRpcError(error)) {
+      return { notFound: true, ok: false };
+    }
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

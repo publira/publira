@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  Code,
+  isMissingResourceRpcError,
+  isRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorMentions,
 } from "@publira/api-client/errors";
@@ -34,9 +37,20 @@ export type ListPagesResult =
   | { ok: true; pages: PageItem[] }
   | { ok: false; message: string; pages: PageItem[] };
 
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing page from
+ * another tenant's page would leak whether it exists.
+ *
+ * The flag exists because `getPage()` runs inside a `"use cache: private"`
+ * scope, where a thrown `notFound()` is not observable by the caller (#672).
+ * The interrupt has to be raised by the caller, outside the cache scope.
+ */
 export type GetPageResult =
   | { ok: true; page: PageItem }
-  | { ok: false; message: string };
+  | { notFound: true; ok: false }
+  | { message: string; notFound?: false; ok: false };
 
 export type ListPageVersionsResult =
   | { ok: true; versions: PageVersionItem[] }
@@ -179,10 +193,7 @@ export const getPage = async (input: {
     );
 
     if (!response.page?.id?.trim()) {
-      return {
-        message: "ページが見つかりません。",
-        ok: false,
-      };
+      return { notFound: true, ok: false };
     }
 
     return {
@@ -191,6 +202,18 @@ export const getPage = async (input: {
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // `invalid_argument` counts as missing here. This endpoint takes only the
+    // tenant and the `[page_id]` segment, and the tenant is always a UUID
+    // written by `proxy.ts`, so the only input the server can reject is the id
+    // in the URL — "that is not a page id" and "there is no such page" are the
+    // same answer to the operator. (`server/api/adminapi/page_handlers.go`
+    // `parsePageID`.)
+    if (
+      isMissingResourceRpcError(error) ||
+      isRpcError(error, Code.InvalidArgument)
+    ) {
+      return { notFound: true, ok: false };
+    }
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

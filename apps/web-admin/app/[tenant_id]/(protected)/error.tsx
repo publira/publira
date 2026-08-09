@@ -1,0 +1,52 @@
+"use client";
+
+import { LinkButton } from "@publira/ui-components/button";
+import Link from "next/link";
+
+import { ErrorScreen } from "#components/error-screen";
+
+/**
+ * Error boundary for the console pages. It wraps the pages and nested layouts
+ * under `(protected)` but not `(protected)/layout.tsx` itself, so the sidebar
+ * and header keep rendering here; a failure in that layout — tenant
+ * resolution, `getTenantForSession()` — falls through to
+ * `app/[tenant_id]/error.tsx`.
+ *
+ * It catches what the data helpers do not turn into a message:
+ * `rethrowUnclassifiedRpcError()` lets `internal` / `unimplemented` and any
+ * non-RPC throw reach this boundary instead of collapsing into
+ * 「時間をおいて再試行してください。」. Failures a form can act on — invalid
+ * input, conflicts — stay inline as `FormMessage`, and a resource the caller
+ * cannot see is `notFound()` (see `not-found.tsx`).
+ *
+ * No `<main>` here: `ConsoleLayoutMain` already provides one.
+ *
+ * Reach, as measured against `next dev` by throwing from a page body: a direct
+ * hit renders this screen with the sidebar and header intact, after hydration,
+ * with the response status left at 200 (see `not-found.tsx` for why the status
+ * is already committed). The production build was not measured — the equivalent
+ * web-host boundary answers a bare `500 Internal Server Error` there instead,
+ * which #683 is tracking; whatever that turns out to be, this app has the same
+ * root-layout-under-a-dynamic-segment shape and is likely to share it.
+ */
+const ConsoleError = ({
+  error,
+  retry,
+}: {
+  error: Error & { digest?: string };
+  retry: () => void;
+}) => (
+  <ErrorScreen
+    actions={
+      <LinkButton render={<Link href="/" />} variant="outline">
+        ダッシュボードへ戻る
+      </LinkButton>
+    }
+    description="時間をおいて再試行してください。繰り返す場合は、エラー ID を添えて管理者に連絡してください。"
+    digest={error.digest}
+    retry={retry}
+    title="画面を表示できませんでした"
+  />
+);
+
+export default ConsoleError;

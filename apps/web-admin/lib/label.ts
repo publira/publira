@@ -1,5 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -33,9 +36,20 @@ export type UpdateLabelResult =
   | { ok: true; label: LabelItem }
   | { ok: false; message: string };
 
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing label from
+ * another tenant's label would leak whether it exists.
+ *
+ * The flag exists because `getLabel()` runs inside a `"use cache: private"`
+ * scope, where a thrown `notFound()` is not observable by the caller (#672).
+ * The interrupt has to be raised by the caller, outside the cache scope.
+ */
 export type GetLabelResult =
   | { ok: true; label: LabelItem }
-  | { ok: false; message: string };
+  | { notFound: true; ok: false }
+  | { message: string; notFound?: false; ok: false };
 
 const genericListErrorMessage =
   "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。";
@@ -255,10 +269,7 @@ export const getLabel = async (input: {
       (item) => item.publicId === input.publicId
     );
     if (!label) {
-      return {
-        message: "レーベルが見つかりません。",
-        ok: false,
-      };
+      return { notFound: true, ok: false };
     }
 
     return {
@@ -267,6 +278,9 @@ export const getLabel = async (input: {
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    if (isMissingResourceRpcError(error)) {
+      return { notFound: true, ok: false };
+    }
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
