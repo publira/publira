@@ -1,8 +1,12 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import { findByPublicId } from "./paged-lookup";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -26,9 +30,20 @@ export type UpdateCreatorResult =
   | { ok: true; creator: CreatorItem }
   | { ok: false; message: string };
 
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing creator from
+ * another tenant's creator would leak whether it exists.
+ *
+ * The flag exists because `getCreator()` runs inside a `"use cache: private"`
+ * scope, where a thrown `notFound()` is not observable by the caller (#672).
+ * The interrupt has to be raised by the caller, outside the cache scope.
+ */
 export type GetCreatorResult =
   | { ok: true; creator: CreatorItem }
-  | { ok: false; message: string };
+  | { notFound: true; ok: false }
+  | { message: string; notFound?: false; ok: false };
 
 const genericListErrorMessage =
   "著者一覧の取得に失敗しました。時間をおいて再試行してください。";
@@ -213,31 +228,35 @@ export const getCreator = async (input: {
   }
 
   try {
-    const response = await listCreators(input.tenantId);
-
-    if (!response.ok) {
-      return {
-        message: response.message,
-        ok: false,
-      };
-    }
-
-    const creator = response.creators.find(
-      (c) => c.publicId === input.publicId
+    // `creator.proto` has no `GetCreator`, so the record has to be found by
+    // walking `ListCreators`; see `findByPublicId`.
+    const creator = await findByPublicId(
+      input.publicId,
+      async (offset, limit) => {
+        const response = await apiClient.creator.listCreators(
+          {
+            limit,
+            offset,
+            tenant: { tenantId: input.tenantId },
+          },
+          withSessionHeaders(sessionId)
+        );
+        return response.creators ?? [];
+      }
     );
     if (!creator) {
-      return {
-        message: "著者が見つかりません。",
-        ok: false,
-      };
+      return { notFound: true, ok: false };
     }
 
     return {
-      creator,
+      creator: mapCreator(creator),
       ok: true,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    if (isMissingResourceRpcError(error)) {
+      return { notFound: true, ok: false };
+    }
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

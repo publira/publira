@@ -1,9 +1,13 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { mentionsImageRejection } from "./image-rejection";
+import { findByPublicId } from "./paged-lookup";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -33,9 +37,20 @@ export type UpdateLabelResult =
   | { ok: true; label: LabelItem }
   | { ok: false; message: string };
 
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing label from
+ * another tenant's label would leak whether it exists.
+ *
+ * The flag exists because `getLabel()` runs inside a `"use cache: private"`
+ * scope, where a thrown `notFound()` is not observable by the caller (#672).
+ * The interrupt has to be raised by the caller, outside the cache scope.
+ */
 export type GetLabelResult =
   | { ok: true; label: LabelItem }
-  | { ok: false; message: string };
+  | { notFound: true; ok: false }
+  | { message: string; notFound?: false; ok: false };
 
 const genericListErrorMessage =
   "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。";
@@ -242,31 +257,35 @@ export const getLabel = async (input: {
   }
 
   try {
-    const response = await listLabels(input.tenantId);
-
-    if (!response.ok) {
-      return {
-        message: response.message,
-        ok: false,
-      };
-    }
-
-    const label = response.labels.find(
-      (item) => item.publicId === input.publicId
+    // `label.proto` has no `GetLabel`, so the record has to be found by walking
+    // `ListLabels`; see `findByPublicId`.
+    const label = await findByPublicId(
+      input.publicId,
+      async (offset, limit) => {
+        const response = await apiClient.label.listLabels(
+          {
+            limit,
+            offset,
+            tenant: { tenantId: input.tenantId },
+          },
+          withSessionHeaders(sessionId)
+        );
+        return response.labels ?? [];
+      }
     );
     if (!label) {
-      return {
-        message: "レーベルが見つかりません。",
-        ok: false,
-      };
+      return { notFound: true, ok: false };
     }
 
     return {
-      label,
+      label: mapLabel(label),
       ok: true,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    if (isMissingResourceRpcError(error)) {
+      return { notFound: true, ok: false };
+    }
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

@@ -6,6 +6,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import {
@@ -68,6 +69,13 @@ const PageWorkspaceData = async ({
   ]);
 
   if (!pageResult.ok) {
+    if (pageResult.notFound) {
+      // Missing, another tenant's page, or an id the URL could never address —
+      // never told apart. Renders `(protected)/not-found.tsx` inside the
+      // console chrome.
+      notFound();
+    }
+
     return (
       <div className="grid gap-4">
         <FormMessage variant="destructive">{pageResult.message}</FormMessage>
