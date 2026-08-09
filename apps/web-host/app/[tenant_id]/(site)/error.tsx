@@ -15,14 +15,11 @@ import { ErrorScreen } from "#components/error-screen";
  *
  * No `<main>` here: `SiteLayoutMain` already provides one.
  *
- * Reach, as measured against the production build: this renders on a client
- * navigation when the page throws and `(site)/layout.tsx` still succeeds. A
- * direct hit answers a bare `500 Internal Server Error` instead, and so does a
- * client navigation when the layout throws too. `app/[tenant_id]` being the
- * root layout is why Next.js has no document to render error UI into on the
- * server; #646 owns that restructuring, and
- * `e2e/tests/catalog.error-boundary.spec.ts` records the measurements and holds
- * the target assertions.
+ * Reach is narrower than it looks: measured against the production build, this
+ * renders only on a client navigation where the page throws and
+ * `(site)/layout.tsx` still succeeds. A direct hit, and any failure that takes
+ * the layout with it, answer a bare `500 Internal Server Error` first. See #683
+ * before relying on this for anything.
  */
 const SiteError = ({
   error,
