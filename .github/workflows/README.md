@@ -15,7 +15,7 @@ Docker イメージの配置規約・ビルド手順・Docker 固有のトリア
 | ジョブ（表示名） | 内容 | 詳細 |
 | --- | --- | --- |
 | `Detect changes` | path filter を評価し、実行するジョブと Docker 行列を決める | 本ファイル |
-| `Check` | `sqlc diff`・packages ビルド・`pnpm typegen`・`pnpm check`・`pnpm typecheck` | [`AGENTS.md`](../../AGENTS.md) |
+| `Check` | `sqlc diff`・packages ビルド・`pnpm typegen`・`pnpm check`・べた書き `<svg>` の grep・`pnpm typecheck` | [`AGENTS.md`](../../AGENTS.md) |
 | `Test / Go` | `go test ./...`（`server/`） | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | packages ビルド後に `pnpm test` | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / DB Migrations` | 空 Postgres に対する `migrate up` → `down -all` → `up` | [`db/AGENTS.md`](../../db/AGENTS.md) |

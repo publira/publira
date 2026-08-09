@@ -35,6 +35,61 @@ The same rules apply to all three apps:
 - **Never swallow an unclassifiable error** (`internal`, `unimplemented`, or a throw that is not an RPC error at all). A `catch` returning `null` / `false` / `[]` still calls `rethrowUnclassifiedRpcError(error)` first.
 - The exceptions are logout (the cookie must clear either way), non-critical chrome such as footer links, and the top page's per-section degradation. Each one records why in a comment.
 
+## Icons: `@publira/icons`, never inline `<svg>`
+
+Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to (#690).
+
+`pnpm check` fails on a `lucide-react` import (`no-restricted-imports`, with a `packages/icons/src/**` override). CI fails on `<svg>` in JSX, via a `git grep` step in the `Check` job.
+
+The reason is not line count. A hand-written icon is drawn in its own coordinate system and stroke width, so it never matches the lucide icons standing next to it. And a path written into JSX gets copy-pasted instead of imported, so the same glyph drifts between files while the shared component that already covers it goes unused. Neither shows up in review — the markup looks fine on its own.
+
+### NG (do not)
+
+```tsx
+// NG: hand-written icon in JSX
+<svg
+  aria-hidden="true"
+  className="h-6 w-6"
+  fill="none"
+  stroke="currentColor"
+  viewBox="0 0 24 24"
+>
+  <path
+    d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"
+    strokeLinecap="round"
+    strokeWidth={2}
+  />
+</svg>;
+
+// NG: lucide imported straight into app / package code
+import { ChevronDown } from "lucide-react";
+
+// NG: porting a viewBox / strokeWidth off the markup you are replacing
+<CheckIcon strokeWidth={1.5} viewBox="0 0 10 8" />;
+```
+
+### OK (preferred)
+
+```tsx
+// OK: apps import from the barrel
+import { ImageIcon, UserIcon } from "@publira/icons";
+
+// OK: packages/ui-components keeps its subpath imports
+import { CheckIcon } from "@publira/icons/check-icon";
+
+// OK: size via className, everything else left at lucide's defaults
+<UserIcon className="h-6 w-6" />;
+<CheckIcon className="size-3" />;
+```
+
+Barrel vs subpath is existing drift, not a rule — follow whatever the surrounding file does (#690 leaves the split alone).
+
+### Adding and excepting
+
+- **Missing icon** → wrap it in `packages/icons` (component, `exports` subpath, `tsdown` entry, `index.ts` re-export, test). Steps: `packages/icons/README.md`.
+- **Sizing** → lucide is always `viewBox="0 0 24 24"` at `strokeWidth={2}`. Pick a `size-*` / `h-* w-*` class that suits the layout and leave the rest at lucide's defaults. Do not carry dimensions or stroke widths over from markup you are deleting.
+- **A genuine non-icon SVG** (decorative artwork, a chart, a generated image) is a real exception. Add its path to the grep step's exclusions in `.github/workflows/ci.yml`, with a comment saying why — the same way the `Date` boundary is handled in root [AGENTS.md](../AGENTS.md).
+
 ## Before coding in an app
 
 1. Read this file (`apps/AGENTS.md`).

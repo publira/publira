@@ -60,6 +60,17 @@ export default defineConfig({
         "no-restricted-globals": "off",
       },
     },
+    {
+      /**
+       * `packages/icons` is the one place allowed to touch `lucide-react`: it
+       * is the wrapper that gives every icon the same props and the same
+       * import path. See AGENTS.md "Icons" (#690).
+       */
+      files: ["packages/icons/src/**/*.{ts,tsx}"],
+      rules: {
+        "no-restricted-imports": "off",
+      },
+    },
   ],
   rules: {
     // Monorepo test names use `*.integration.test.ts` etc.
@@ -81,6 +92,32 @@ export default defineConfig({
             message:
               "Use Temporal and the @publira/utils date helpers instead of Date (see AGENTS.md). Only modules feeding an external API that requires a Date are exempt, via an oxlint.config.ts override.",
             name: "Date",
+          },
+        ],
+      },
+    ],
+    /**
+     * Icons come from `@publira/icons`, never straight from `lucide-react`.
+     * The wrapper is what keeps one icon set, one prop shape, and one import
+     * path across the apps. See AGENTS.md "Icons" (#690).
+     */
+    "no-restricted-imports": [
+      "error",
+      {
+        paths: [
+          {
+            message:
+              "Import icons from @publira/icons instead of lucide-react. Only packages/icons may wrap lucide, via an oxlint.config.ts override.",
+            name: "lucide-react",
+          },
+        ],
+        // `paths` is an exact match, so the deep entry points lucide also
+        // publishes (`lucide-react/dist/esm/icons/check`) need a pattern.
+        patterns: [
+          {
+            group: ["lucide-react/**"],
+            message:
+              "Import icons from @publira/icons instead of lucide-react. Only packages/icons may wrap lucide, via an oxlint.config.ts override.",
           },
         ],
       },

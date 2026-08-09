@@ -1,6 +1,7 @@
 "use client";
 
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
+import { CheckIcon } from "@publira/icons/check-icon";
 import { cn } from "@publira/utils";
 
 export type CheckboxProps = BaseCheckbox.Root.Props;
@@ -14,21 +15,7 @@ export const Checkbox = ({ className, ...props }: CheckboxProps) => (
     )}
   >
     <BaseCheckbox.Indicator className="flex items-center justify-center text-primary-foreground">
-      <svg
-        aria-hidden="true"
-        fill="none"
-        height="8"
-        viewBox="0 0 10 8"
-        width="10"
-      >
-        <path
-          d="M1 3.5 3.5 6 9 1"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.5"
-        />
-      </svg>
+      <CheckIcon className="size-3" />
     </BaseCheckbox.Indicator>
   </BaseCheckbox.Root>
 );

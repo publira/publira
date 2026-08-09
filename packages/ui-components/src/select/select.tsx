@@ -1,6 +1,8 @@
 "use client";
 
 import { Select as BaseSelect } from "@base-ui/react/select";
+import { CheckIcon } from "@publira/icons/check-icon";
+import { ChevronDownIcon } from "@publira/icons/chevron-down-icon";
 import { cn } from "@publira/utils";
 import type { ReactNode } from "react";
 
@@ -36,21 +38,7 @@ export const Select = ({
       >
         <BaseSelect.Value placeholder={placeholder} />
         <BaseSelect.Icon className="text-muted-foreground">
-          <svg
-            aria-hidden="true"
-            fill="none"
-            height="16"
-            viewBox="0 0 16 16"
-            width="16"
-          >
-            <path
-              d="m4 6 4 4 4-4"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.5"
-            />
-          </svg>
+          <ChevronDownIcon className="size-4" />
         </BaseSelect.Icon>
       </BaseSelect.Trigger>
 
@@ -66,21 +54,7 @@ export const Select = ({
                 >
                   <BaseSelect.ItemText>{item.label}</BaseSelect.ItemText>
                   <BaseSelect.ItemIndicator className="text-primary">
-                    <svg
-                      aria-hidden="true"
-                      fill="none"
-                      height="8"
-                      viewBox="0 0 10 8"
-                      width="10"
-                    >
-                      <path
-                        d="M1 3.5 3.5 6 9 1"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                      />
-                    </svg>
+                    <CheckIcon className="size-3" />
                   </BaseSelect.ItemIndicator>
                 </BaseSelect.Item>
               ))}
