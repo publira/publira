@@ -206,6 +206,43 @@ func TestInsertGivesUpAfterMaxAttempts(t *testing.T) {
 	if attempts != publicid.MaxAttempts {
 		t.Fatalf("attempts = %d, want %d", attempts, publicid.MaxAttempts)
 	}
+	assertCollisionNotUnwrappable(t, err)
+}
+
+func TestInsertTxGivesUpAfterMaxAttempts(t *testing.T) {
+	execer := &recordingExecer{}
+	attempts := 0
+
+	_, err := publicid.InsertTx(context.Background(), execer, func(string) (string, error) {
+		attempts++
+
+		return "", uniqueViolation("tenants_public_id_key")
+	})
+	if !errors.Is(err, publicid.ErrAttemptsExhausted) {
+		t.Fatalf("InsertTx error = %v, want ErrAttemptsExhausted", err)
+	}
+	if attempts != publicid.MaxAttempts {
+		t.Fatalf("attempts = %d, want %d", attempts, publicid.MaxAttempts)
+	}
+	assertCollisionNotUnwrappable(t, err)
+}
+
+// Callers answer a unique violation by naming the conflicting field to the
+// client ("email already exists"). Exhausting the retries is an internal
+// failure, so the collision behind it must not stay reachable by errors.As.
+func assertCollisionNotUnwrappable(t *testing.T, err error) {
+	t.Helper()
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		t.Fatalf("error unwraps to %v, want the collision kept as text", pgErr)
+	}
+	if publicid.IsCollision(err) {
+		t.Fatalf("IsCollision(%v) = true, want false", err)
+	}
+	if !strings.Contains(err.Error(), "23505") {
+		t.Fatalf("error = %q, want the collision reported in the message", err)
+	}
 }
 
 func TestInsertTxWrapsEachAttemptInASavepoint(t *testing.T) {

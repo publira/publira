@@ -46,6 +46,11 @@ const (
 // ErrAttemptsExhausted is returned when every attempt collided with an existing
 // public ID. At 70 bits of entropy this means the random source is broken, not
 // that the ID space is full.
+//
+// The collision that caused it is kept as text, not as a wrapped error: callers
+// react to a unique violation by reporting the conflicting field to the client
+// ("email already exists"), and an unwrappable *pgconn.PgError here would turn
+// an internal failure into that answer.
 var ErrAttemptsExhausted = errors.New("publicid: no unique public_id within the attempt budget")
 
 // space is the number of distinct public IDs, 58^12.
@@ -113,7 +118,7 @@ func Insert[T any](insert func(publicID string) (T, error)) (T, error) {
 		lastErr = err
 	}
 
-	return zero, fmt.Errorf("%w: %w", ErrAttemptsExhausted, lastErr)
+	return zero, fmt.Errorf("%w after %d attempts: %v", ErrAttemptsExhausted, MaxAttempts, lastErr)
 }
 
 // InsertTx is [Insert] for an insert that runs inside an open transaction.
@@ -151,7 +156,7 @@ func InsertTx[T any](ctx context.Context, tx Execer, insert func(publicID string
 		}
 	}
 
-	return zero, fmt.Errorf("%w: %w", ErrAttemptsExhausted, lastErr)
+	return zero, fmt.Errorf("%w after %d attempts: %v", ErrAttemptsExhausted, MaxAttempts, lastErr)
 }
 
 // encode writes value as exactly [Length] Base58 characters, left-padded with

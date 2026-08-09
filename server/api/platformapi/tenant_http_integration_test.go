@@ -14,6 +14,7 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 func TestListTenantsReturnsEmptyList(t *testing.T) {
@@ -80,15 +81,16 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+	attempted := &publicIDArgument{}
 	mock.ExpectBegin()
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
 		WillReturnError(duplicatePublicIDError())
 	expectPublicIDAttemptRolledBack(mock)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
 			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "Asia/Tokyo"))
 	expectPublicIDAttemptReleased(mock)
@@ -103,6 +105,39 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	if resp.Msg.Tenant.PublicId != "4ERDqTx5YB8m" {
 		t.Fatalf("tenant.public_id = %q, want 4ERDqTx5YB8m", resp.Msg.Tenant.PublicId)
 	}
+	assertRetriedWithFreshPublicIDs(t, attempted, 2)
+	assertIntegrationExpectations(t, mock)
+}
+
+// Exhausting the retries is an internal failure, not the "public_id already
+// exists" answer the tenant unique-violation mapping would otherwise produce.
+func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	attempted := &publicIDArgument{}
+	mock.ExpectBegin()
+	for range publicid.MaxAttempts {
+		expectPublicIDAttempt(mock)
+		mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
+			WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
+			WillReturnError(duplicatePublicIDError())
+		expectPublicIDAttemptRolledBack(mock)
+	}
+	mock.ExpectRollback()
+
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+	_, err := client.CreateTenant(context.Background(), newAuthedCreateTenantIntegrationRequest(&publirasplatformv1.CreateTenantRequest{Name: "Duplicate Tenant", Domain: "dup.example.com"}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("CreateTenant code = %v, want internal (err=%v)", connect.CodeOf(err), err)
+	}
+	if strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("CreateTenant error = %v, want an internal failure rather than a conflict", err)
+	}
+	assertRetriedWithFreshPublicIDs(t, attempted, publicid.MaxAttempts)
 	assertIntegrationExpectations(t, mock)
 }
 
