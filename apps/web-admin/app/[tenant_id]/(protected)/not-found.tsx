@@ -44,15 +44,14 @@ import {
  * require the experimental `authInterrupts` flag, but the reason above holds
  * regardless of when that flag stabilises.
  *
- * Known limitation, measured against `next dev`: `(protected)/layout.tsx` wraps
- * the page in `<Suspense>`, so the shell — sidebar, header, skeletons — is
- * flushed with HTTP 200 before any page data is read. By the time `notFound()`
- * runs the status is already committed, and this UI arrives in the flight
- * payload and paints after hydration rather than in the SSR `<body>`. Hoisting
- * the fetch out of the page's own `<Suspense>` would not change that; the
- * boundary that commits the response lives in the layout. The console is behind
- * a login, so no crawler observes the status; composing the 404 above the
- * tenant layout is #646.
+ * The response status stays 200, and that is the specified behaviour, not a
+ * defect awaiting repair. Under Cache Components the static shell — sidebar,
+ * header, skeletons — is prerendered and committed before any dynamic data is
+ * read, so a `notFound()` raised while resolving the resource cannot change the
+ * status: this UI arrives in the flight payload and paints after hydration
+ * rather than in the SSR `<body>`. Do not "fix" it by hoisting the fetch to an
+ * outer boundary. (#646 covers unmatched URLs that never resolve to a tenant,
+ * which is a separate question, not a later fix for this one.)
  */
 const NotFound = () => (
   <AdminPage>
