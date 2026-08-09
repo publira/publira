@@ -15,6 +15,10 @@
       "types": "./dist/check-icon.d.mts",
       "default": "./dist/check-icon.mjs"
     },
+    "./chevron-down-icon": {
+      "types": "./dist/chevron-down-icon.d.mts",
+      "default": "./dist/chevron-down-icon.mjs"
+    },
     "./close-icon": {
       "types": "./dist/close-icon.d.mts",
       "default": "./dist/close-icon.mjs"
@@ -27,6 +31,10 @@
       "types": "./dist/dashboard-icon.d.mts",
       "default": "./dist/dashboard-icon.mjs"
     },
+    "./image-icon": {
+      "types": "./dist/image-icon.d.mts",
+      "default": "./dist/image-icon.mjs"
+    },
     "./menu-icon": {
       "types": "./dist/menu-icon.d.mts",
       "default": "./dist/menu-icon.mjs"
@@ -34,6 +42,10 @@
     "./settings-icon": {
       "types": "./dist/settings-icon.d.mts",
       "default": "./dist/settings-icon.mjs"
+    },
+    "./user-icon": {
+      "types": "./dist/user-icon.d.mts",
+      "default": "./dist/user-icon.mjs"
     }
   },
   "scripts": {

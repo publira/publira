@@ -291,6 +291,14 @@ jobs:
       - name: Validate / Lint and Format
         run: pnpm check
 
+      # packages/icons is the one place a raw <svg> could legitimately live.
+      - name: Validate / No hand-written SVG in JSX
+        run: |
+          if git grep -n '<svg' -- '*.tsx' '*.jsx' ':!packages/icons/src/**'; then
+            echo "::error::Use an icon from @publira/icons instead of writing <svg> in JSX. See apps/AGENTS.md."
+            exit 1
+          fi
+
       - name: Validate / Typecheck
         run: pnpm typecheck
 

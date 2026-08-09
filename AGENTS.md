@@ -265,6 +265,8 @@ Go backend conventions and verification: see [`server/AGENTS.md`](server/AGENTS.
 Shared frontend monorepo conventions: see [`apps/AGENTS.md`](apps/AGENTS.md).  
 Per-app `apps/*/AGENTS.md` files hold only the Next.js-generated rules block.
 
+Icons are covered there too: they come from `@publira/icons`, and neither a hand-written `<svg>` in JSX nor a direct `lucide-react` import is allowed outside `packages/icons` — see the **Icons** section of [`apps/AGENTS.md`](apps/AGENTS.md), enforced by `no-restricted-imports` and a `git grep` step in CI.
+
 ## CI
 
 Job layout, path filters, and failure triage for `.github/workflows/ci.yml`: see [`.github/workflows/README.md`](.github/workflows/README.md).  
