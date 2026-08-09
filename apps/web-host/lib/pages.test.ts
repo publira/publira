@@ -210,7 +210,7 @@ describe("getPublishedPage", () => {
     });
   });
 
-  it("page または version が欠けている場合は null", async () => {
+  it("version が欠けている場合は null", async () => {
     mockGetPublishedPage.mockResolvedValueOnce({
       page: { id: "page-1", slug: "/privacy", title: "P" },
       version: undefined,
@@ -221,8 +221,24 @@ describe("getPublishedPage", () => {
     ).resolves.toBeNull();
   });
 
+  it("page.id が欠けている場合は null", async () => {
+    mockGetPublishedPage.mockResolvedValueOnce({
+      page: { slug: "/privacy", title: "P" },
+      version: { contentMarkdown: "body", id: "ver-1", versionNumber: 1 },
+    });
+
+    await expect(
+      getPublishedPage("tenant-uuid", "privacy")
+    ).resolves.toBeNull();
+  });
+
   it("ルート slug は null", async () => {
     await expect(getPublishedPage("tenant-uuid", "/")).resolves.toBeNull();
+    expect(mockGetPublishedPage).not.toHaveBeenCalled();
+  });
+
+  it("空テナント ID は API を呼ばずに null", async () => {
+    await expect(getPublishedPage("  ", "privacy")).resolves.toBeNull();
     expect(mockGetPublishedPage).not.toHaveBeenCalled();
   });
 

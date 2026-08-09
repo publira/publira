@@ -1,4 +1,4 @@
-import { formatDateTime } from "@publira/utils";
+import { DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
 import {
   createPlaceholderStaticParams,
   guardPlaceholders,
@@ -73,8 +73,12 @@ const Page = async (
                 {priceLabel}
               </span>
               <span>
+                {/* Tenant-facing date: named explicitly so #567 can find it. */}
                 公開{" "}
-                {formatDateTime(episode.publishedAt, { fallback: "未設定" })}
+                {formatDateTime(episode.publishedAt, {
+                  fallback: "未設定",
+                  timeZone: DEFAULT_TIME_ZONE,
+                })}
               </span>
             </div>
             <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight sm:text-4xl">
@@ -153,8 +157,10 @@ const Page = async (
                 <div className="flex items-start justify-between gap-4">
                   <dt className="text-muted-foreground">公開日</dt>
                   <dd className="text-right font-medium">
+                    {/* Tenant-facing date: named explicitly so #567 can find it. */}
                     {formatDateTime(episode.publishedAt, {
                       fallback: "未設定",
+                      timeZone: DEFAULT_TIME_ZONE,
                     })}
                   </dd>
                 </div>
@@ -174,8 +180,10 @@ const Page = async (
                   <div className="flex items-start justify-between gap-4">
                     <dt className="text-muted-foreground">公開予定</dt>
                     <dd className="text-right font-medium">
+                      {/* Tenant-facing date: named explicitly so #567 can find it. */}
                       {formatDateTime(episode.scheduledAt, {
                         fallback: "未設定",
+                        timeZone: DEFAULT_TIME_ZONE,
                       })}
                     </dd>
                   </div>
