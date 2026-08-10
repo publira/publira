@@ -31,12 +31,6 @@
       "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
       "computedHash": "4ed43c1f766872e8322821b5103176cf08d8cd26409ddd80c95af689d59ae74e"
     },
-    "pr-creator": {
-      "source": "google-gemini/gemini-cli",
-      "sourceType": "github",
-      "skillPath": ".gemini/skills/pr-creator/SKILL.md",
-      "computedHash": "fcf4cb453f7108048631bf089ffcc426f2c00601fd97d7784b805de24eb4aa4d"
-    },
     "ultracite": {
       "source": "haydenbleasel/ultracite",
       "sourceType": "github",
