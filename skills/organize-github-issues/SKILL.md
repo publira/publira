@@ -1,6 +1,6 @@
 ---
 name: organize-github-issues
-description: Create, triage, audit, or reorganize GitHub Issues using consistent titles, issue types, fields, labels, epics, Sub-issues, and dependency Relationships. Use when an agent must create Issues, normalize an existing backlog including closed Issues, remove redundant metadata, estimate Priority or Effort, build an issue hierarchy, or make GitHub work tracking easier to search and maintain.
+description: Create, triage, audit, or reorganize GitHub Issues using consistent titles, issue types, Issue fields, labels, epics, Sub-issues, and dependency Relationships. Use when an agent must create Issues, normalize an existing backlog including closed Issues, remove redundant metadata, estimate Priority or Effort, build an issue hierarchy, or make GitHub work tracking easier to search and maintain.
 ---
 
 # Organize GitHub Issues
@@ -19,7 +19,7 @@ Do not mutate GitHub while still discovering the taxonomy. Establish a mapping f
 
 ## Apply the metadata model
 
-### Title
+### [Title](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue)
 
 - State the outcome or work directly.
 - Use the repository's normal language and established technical terms.
@@ -27,7 +27,7 @@ Do not mutate GitHub while still discovering the taxonomy. Establish a mapping f
 - Do not translate identifiers, product names, API names, or conventional technical terms merely to make the title monolingual.
 - Preserve titles managed by automation. Examples include Renovate's `Dependency Dashboard` and configuration-warning Issues. Check the generator's configuration before renaming any bot-authored Issue.
 
-### Issue type
+### [Issue type](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/managing-issue-types-in-an-organization)
 
 Assign one primary kind of work:
 
@@ -37,7 +37,11 @@ Assign one primary kind of work:
 
 Do not create an `Epic` issue type when an Epic can also be a Feature or Task. Represent hierarchy separately with the `epic` label and Sub-issues.
 
-### Fields
+### [Fields](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/adding-and-managing-issue-fields)
+
+These are Issue fields: organization-level typed metadata shown in the Issue sidebar next to assignees, labels, and type. They are not Projects custom fields, which belong to a single Project — see [About issue fields in projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/understanding-fields/about-issue-fields) for how the two differ. An organization owner defines them in organization settings ([Managing issue fields in your organization](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/managing-issue-fields-in-your-organization)).
+
+`Priority` and `Effort` below are organization-defined single-select fields, not built-in ones. Read the actual field names and option sets with `gh api "/orgs/ORG/issue-fields"` before writing values, and map the following meanings onto whatever the organization already defines.
 
 - `Priority` expresses importance or sequencing pressure, not size.
   - `Urgent`: release-, security-, or operation-blocking work.
@@ -52,7 +56,7 @@ Do not create an `Epic` issue type when an Epic can also be a Feature or Task. R
 - Do not retroactively guess Effort for closed Issues unless the history provides credible evidence.
 - Set dates only from an actual plan or commitment; never invent them.
 
-### Labels
+### [Labels](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/managing-labels)
 
 Use labels only for orthogonal facets that types and fields do not express, for example:
 
@@ -68,15 +72,15 @@ Remove or avoid labels such as `type/*`, `priority/*`, `effort/*`, `bug`, or `en
 Use these relationships for distinct purposes:
 
 - `epic` label: mark an Issue that represents a multi-Issue outcome.
-- Sub-issues: enumerate the deliverables that compose the parent outcome.
-- `blocked by` / `blocking`: express a real execution prerequisite.
+- [Sub-issues](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/adding-sub-issues): enumerate the deliverables that compose the parent outcome.
+- [`blocked by` / `blocking`](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-issue-dependencies): express a real execution prerequisite.
 - Plain references: connect related work that does not impose hierarchy or order.
 
 Keep the parent's Type as Feature or Task. Prefer an existing broad outcome as the parent. Create a new Epic Issue only when existing Issues are leaf deliverables or their titles describe narrower work. Avoid turning a design task into a parent merely because it happens first.
 
 An Issue should have only one parent. A parent may still participate in dependency Relationships, but do not duplicate a parent-child relationship as a dependency unless completion order genuinely requires it.
 
-## Create an Issue
+## [Create an Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue)
 
 1. Search for duplicates, bot-managed equivalents, and suitable existing parents.
 2. Write a content-only title.
