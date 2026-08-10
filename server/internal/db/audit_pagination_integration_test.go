@@ -39,6 +39,19 @@ func TestListAuditLogsByTenantPaginatesBothDirections(t *testing.T) {
 	if got := auditLogIDs(firstPage); !slices.Equal(got, ids[:2]) {
 		t.Fatalf("first page IDs = %v, want %v", got, ids[:2])
 	}
+	inclusiveNextPage, err := queries.ListAuditLogsByTenantDesc(ctx, dbmodels.ListAuditLogsByTenantDescParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
+		CursorCreatedAt: sql.NullTime{Time: firstPage[1].CreatedAt, Valid: true},
+		CursorInclusive: true,
+		Limit:           2,
+	})
+	if err != nil {
+		t.Fatalf("ListAuditLogsByTenantDesc inclusive page: %v", err)
+	}
+	if got := auditLogIDs(inclusiveNextPage); !slices.Equal(got, ids[1:3]) {
+		t.Fatalf("inclusive next page IDs = %v, want boundary included %v", got, ids[1:3])
+	}
 
 	secondPage, err := queries.ListAuditLogsByTenantDesc(ctx, dbmodels.ListAuditLogsByTenantDescParams{
 		TenantID:        tenantID,
@@ -65,6 +78,20 @@ func TestListAuditLogsByTenantPaginatesBothDirections(t *testing.T) {
 	wantPreviousScan := []uuid.UUID{ids[1], ids[0]}
 	if got := auditLogIDs(previousPage); !slices.Equal(got, wantPreviousScan) {
 		t.Fatalf("previous page scan IDs = %v, want ascending scan %v", got, wantPreviousScan)
+	}
+	inclusivePreviousPage, err := queries.ListAuditLogsByTenantAsc(ctx, dbmodels.ListAuditLogsByTenantAscParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
+		CursorCreatedAt: sql.NullTime{Time: secondPage[0].CreatedAt, Valid: true},
+		CursorInclusive: true,
+		Limit:           2,
+	})
+	if err != nil {
+		t.Fatalf("ListAuditLogsByTenantAsc inclusive page: %v", err)
+	}
+	wantInclusivePreviousScan := []uuid.UUID{ids[2], ids[1]}
+	if got := auditLogIDs(inclusivePreviousPage); !slices.Equal(got, wantInclusivePreviousScan) {
+		t.Fatalf("inclusive previous page IDs = %v, want boundary included %v", got, wantInclusivePreviousScan)
 	}
 }
 

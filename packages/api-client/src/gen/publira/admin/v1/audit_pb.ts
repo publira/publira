@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/audit.proto.
  */
 export const file_publira_admin_v1_audit: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2F1ZGl0LnByb3RvEhBwdWJsaXJhLmFkbWluLnYxItUBCg1BZG1pbkF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX25hbWUYAiABKAkSEgoKYWN0b3Jfcm9sZRgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEg8KB291dGNvbWUYByABKAkSDgoGcmVhc29uGAggASgJEhEKCWNsaWVudF9pcBgJIAEoCRISCgpjcmVhdGVkX2F0GAogASgJIsUBChRMaXN0QXVkaXRMb2dzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkSHAoUYWN0b3JfdXNlcl9wdWJsaWNfaWQYBCABKAkSDgoGYWN0aW9uGAUgASgJEhQKDGNyZWF0ZWRfZnJvbRgGIAEoCRISCgpjcmVhdGVkX3RvGAcgASgJUgZjdXJzb3IiiwEKFUxpc3RBdWRpdExvZ3NSZXNwb25zZRIzCgphdWRpdF9sb2dzGAEgAygLMh8ucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1ZGl0TG9nEhYKDnByZXZpb3VzX3Rva2VuGAMgASgJEhIKCm5leHRfdG9rZW4YBCABKAlKBAgCEANSC25leHRfY3Vyc29yMnoKFEFkbWluQXVkaXRMb2dTZXJ2aWNlEmIKDUxpc3RBdWRpdExvZ3MSJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RBdWRpdExvZ3NSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5MaXN0QXVkaXRMb2dzUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2F1ZGl0LnByb3RvEhBwdWJsaXJhLmFkbWluLnYxItUBCg1BZG1pbkF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX25hbWUYAiABKAkSEgoKYWN0b3Jfcm9sZRgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEg8KB291dGNvbWUYByABKAkSDgoGcmVhc29uGAggASgJEhEKCWNsaWVudF9pcBgJIAEoCRISCgpjcmVhdGVkX2F0GAogASgJIssBChRMaXN0QXVkaXRMb2dzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSHAoUYWN0b3JfdXNlcl9wdWJsaWNfaWQYBCABKAkSDgoGYWN0aW9uGAUgASgJEhQKDGNyZWF0ZWRfZnJvbRgGIAEoCRISCgpjcmVhdGVkX3RvGAcgASgJEg0KBXRva2VuGAggASgJSgQIAxAEUgZjdXJzb3IiiwEKFUxpc3RBdWRpdExvZ3NSZXNwb25zZRIzCgphdWRpdF9sb2dzGAEgAygLMh8ucHVibGlyYS5hZG1pbi52MS5BZG1pbkF1ZGl0TG9nEhYKDnByZXZpb3VzX3Rva2VuGAMgASgJEhIKCm5leHRfdG9rZW4YBCABKAlKBAgCEANSC25leHRfY3Vyc29yMnoKFEFkbWluQXVkaXRMb2dTZXJ2aWNlEmIKDUxpc3RBdWRpdExvZ3MSJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RBdWRpdExvZ3NSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5MaXN0QXVkaXRMb2dzUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminAuditLog
@@ -91,13 +91,6 @@ export type ListAuditLogsRequest = Message<"publira.admin.v1.ListAuditLogsReques
   limit: number;
 
   /**
-   * Opaque token from a previous response. Empty for the first page.
-   *
-   * @generated from field: string token = 3;
-   */
-  token: string;
-
-  /**
    * @generated from field: string actor_user_public_id = 4;
    */
   actorUserPublicId: string;
@@ -116,6 +109,13 @@ export type ListAuditLogsRequest = Message<"publira.admin.v1.ListAuditLogsReques
    * @generated from field: string created_to = 7;
    */
   createdTo: string;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 8;
+   */
+  token: string;
 };
 
 /**

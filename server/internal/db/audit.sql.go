@@ -123,10 +123,17 @@ WHERE a.tenant_id = $1
     AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
     AND (
         $6::uuid IS NULL
-        OR (a.created_at, a.id) > ($7::timestamptz, $6::uuid)
+        OR (
+            $7::boolean
+            AND (a.created_at, a.id) >= ($8::timestamptz, $6::uuid)
+        )
+        OR (
+            NOT $7::boolean
+            AND (a.created_at, a.id) > ($8::timestamptz, $6::uuid)
+        )
     )
 ORDER BY a.created_at ASC, a.id ASC
-LIMIT $8
+LIMIT $9
 `
 
 type ListAuditLogsByTenantAscParams struct {
@@ -136,6 +143,7 @@ type ListAuditLogsByTenantAscParams struct {
 	FilterCreatedFrom       sql.NullTime   `json:"filter_created_from"`
 	FilterCreatedTo         sql.NullTime   `json:"filter_created_to"`
 	CursorID                uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive         bool           `json:"cursor_inclusive"`
 	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
 	Limit                   int32          `json:"limit"`
 }
@@ -164,6 +172,7 @@ func (q *Queries) ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLog
 		arg.FilterCreatedFrom,
 		arg.FilterCreatedTo,
 		arg.CursorID,
+		arg.CursorInclusive,
 		arg.CursorCreatedAt,
 		arg.Limit,
 	)
@@ -225,10 +234,17 @@ WHERE a.tenant_id = $1
     AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
     AND (
         $6::uuid IS NULL
-        OR (a.created_at, a.id) < ($7::timestamptz, $6::uuid)
+        OR (
+            $7::boolean
+            AND (a.created_at, a.id) <= ($8::timestamptz, $6::uuid)
+        )
+        OR (
+            NOT $7::boolean
+            AND (a.created_at, a.id) < ($8::timestamptz, $6::uuid)
+        )
     )
 ORDER BY a.created_at DESC, a.id DESC
-LIMIT $8
+LIMIT $9
 `
 
 type ListAuditLogsByTenantDescParams struct {
@@ -238,6 +254,7 @@ type ListAuditLogsByTenantDescParams struct {
 	FilterCreatedFrom       sql.NullTime   `json:"filter_created_from"`
 	FilterCreatedTo         sql.NullTime   `json:"filter_created_to"`
 	CursorID                uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive         bool           `json:"cursor_inclusive"`
 	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
 	Limit                   int32          `json:"limit"`
 }
@@ -271,6 +288,7 @@ func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLo
 		arg.FilterCreatedFrom,
 		arg.FilterCreatedTo,
 		arg.CursorID,
+		arg.CursorInclusive,
 		arg.CursorCreatedAt,
 		arg.Limit,
 	)

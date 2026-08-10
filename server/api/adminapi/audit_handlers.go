@@ -18,11 +18,13 @@ import (
 const (
 	defaultAuditLogPageSize = int32(20)
 	maxAuditLogPageSize     = int32(100)
+	auditLogInclusiveKey    = "inclusive"
 )
 
 type auditLogCursorKeys struct {
 	createdAt sql.NullTime
 	id        uuid.NullUUID
+	inclusive bool
 }
 
 type auditLogQueryFilters struct {
@@ -51,9 +53,24 @@ func encodeAuditLogToken(direction pagination.Direction, row auditLogPageRow) st
 	return pagination.Encode(direction, row.createdAt.UTC().Format(time.RFC3339Nano), row.id.String())
 }
 
+// A recovery token includes the boundary once. That keeps the boundary row in
+// the page when rows beyond it were deleted after the original token was issued.
+func encodeAuditLogRecoveryToken(direction pagination.Direction, keys auditLogCursorKeys) string {
+	return pagination.Encode(
+		direction,
+		keys.createdAt.Time.UTC().Format(time.RFC3339Nano),
+		keys.id.UUID.String(),
+		auditLogInclusiveKey,
+	)
+}
+
 func decodeAuditLogTokenKeys(cursor pagination.Cursor) (auditLogCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if len(cursor.Keys) != 2 {
+	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
+		return auditLogCursorKeys{}, invalid
+	}
+	inclusive := len(cursor.Keys) == 3
+	if inclusive && cursor.Keys[2] != auditLogInclusiveKey {
 		return auditLogCursorKeys{}, invalid
 	}
 
@@ -69,6 +86,7 @@ func decodeAuditLogTokenKeys(cursor pagination.Cursor) (auditLogCursorKeys, erro
 	return auditLogCursorKeys{
 		createdAt: sql.NullTime{Time: createdAt.UTC(), Valid: true},
 		id:        uuid.NullUUID{UUID: id, Valid: true},
+		inclusive: inclusive,
 	}, nil
 }
 
@@ -129,6 +147,7 @@ func (s *adminServer) auditLogPage(
 			FilterCreatedTo:         filters.createdTo,
 			CursorID:                keys.id,
 			CursorCreatedAt:         keys.createdAt,
+			CursorInclusive:         keys.inclusive,
 			Limit:                   limit,
 		})
 		if err != nil {
@@ -145,6 +164,7 @@ func (s *adminServer) auditLogPage(
 		FilterCreatedTo:         filters.createdTo,
 		CursorID:                keys.id,
 		CursorCreatedAt:         keys.createdAt,
+		CursorInclusive:         keys.inclusive,
 		Limit:                   limit,
 	})
 	if err != nil {
@@ -259,9 +279,9 @@ func (s *adminServer) ListAuditLogs(
 			res.NextToken = encodeAuditLogToken(pagination.Forward, rows[len(rows)-1])
 		}
 	case cursor.Direction == pagination.Forward:
-		res.PreviousToken = pagination.Encode(pagination.Backward, cursor.Keys...)
+		res.PreviousToken = encodeAuditLogRecoveryToken(pagination.Backward, keys)
 	case cursor.Direction == pagination.Backward:
-		res.NextToken = pagination.Encode(pagination.Forward, cursor.Keys...)
+		res.NextToken = encodeAuditLogRecoveryToken(pagination.Forward, keys)
 	}
 
 	return connect.NewResponse(res), nil

@@ -139,17 +139,17 @@ func (x *AdminAuditLog) GetCreatedAt() string {
 }
 
 type ListAuditLogsRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit  int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Tenant            *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Limit             int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	ActorUserPublicId string                 `protobuf:"bytes,4,opt,name=actor_user_public_id,json=actorUserPublicId,proto3" json:"actor_user_public_id,omitempty"`
+	Action            string                 `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
+	CreatedFrom       string                 `protobuf:"bytes,6,opt,name=created_from,json=createdFrom,proto3" json:"created_from,omitempty"`
+	CreatedTo         string                 `protobuf:"bytes,7,opt,name=created_to,json=createdTo,proto3" json:"created_to,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token             string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
-	ActorUserPublicId string `protobuf:"bytes,4,opt,name=actor_user_public_id,json=actorUserPublicId,proto3" json:"actor_user_public_id,omitempty"`
-	Action            string `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
-	CreatedFrom       string `protobuf:"bytes,6,opt,name=created_from,json=createdFrom,proto3" json:"created_from,omitempty"`
-	CreatedTo         string `protobuf:"bytes,7,opt,name=created_to,json=createdTo,proto3" json:"created_to,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	Token         string `protobuf:"bytes,8,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListAuditLogsRequest) Reset() {
@@ -196,13 +196,6 @@ func (x *ListAuditLogsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListAuditLogsRequest) GetToken() string {
-	if x != nil {
-		return x.Token
-	}
-	return ""
-}
-
 func (x *ListAuditLogsRequest) GetActorUserPublicId() string {
 	if x != nil {
 		return x.ActorUserPublicId
@@ -227,6 +220,13 @@ func (x *ListAuditLogsRequest) GetCreatedFrom() string {
 func (x *ListAuditLogsRequest) GetCreatedTo() string {
 	if x != nil {
 		return x.CreatedTo
+	}
+	return ""
+}
+
+func (x *ListAuditLogsRequest) GetToken() string {
+	if x != nil {
+		return x.Token
 	}
 	return ""
 }
@@ -313,16 +313,16 @@ const file_publira_admin_v1_audit_proto_rawDesc = "" +
 	"\tclient_ip\x18\t \x01(\tR\bclientIp\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\n" +
-	" \x01(\tR\tcreatedAt\"\x8e\x02\n" +
+	" \x01(\tR\tcreatedAt\"\x94\x02\n" +
 	"\x14ListAuditLogsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token\x12/\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12/\n" +
 	"\x14actor_user_public_id\x18\x04 \x01(\tR\x11actorUserPublicId\x12\x16\n" +
 	"\x06action\x18\x05 \x01(\tR\x06action\x12!\n" +
 	"\fcreated_from\x18\x06 \x01(\tR\vcreatedFrom\x12\x1d\n" +
 	"\n" +
-	"created_to\x18\a \x01(\tR\tcreatedToR\x06cursor\"\xb0\x01\n" +
+	"created_to\x18\a \x01(\tR\tcreatedTo\x12\x14\n" +
+	"\x05token\x18\b \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06cursor\"\xb0\x01\n" +
 	"\x15ListAuditLogsResponse\x12>\n" +
 	"\n" +
 	"audit_logs\x18\x01 \x03(\v2\x1f.publira.admin.v1.AdminAuditLogR\tauditLogs\x12%\n" +

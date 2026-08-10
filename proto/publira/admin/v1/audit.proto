@@ -20,16 +20,17 @@ message AdminAuditLog {
 }
 
 message ListAuditLogsRequest {
+  reserved 3;
   reserved "cursor";
 
   publira.types.v1.TenantContext tenant = 1;
   int32 limit = 2;
-  // Opaque token from a previous response. Empty for the first page.
-  string token = 3;
   string actor_user_public_id = 4;
   string action = 5;
   string created_from = 6;
   string created_to = 7;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 8;
 }
 
 message ListAuditLogsResponse {

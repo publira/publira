@@ -96,6 +96,7 @@ func TestListAuditLogsSuccess(t *testing.T) {
 			sql.NullTime{},
 			sql.NullTime{},
 			uuid.NullUUID{},
+			false,
 			sql.NullTime{},
 			int32(21),
 		).
@@ -136,7 +137,7 @@ func TestListAuditLogsFirstPageReportsNextToken(t *testing.T) {
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantDescQuery)).
-		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, uuid.NullUUID{}, sql.NullTime{}, int32(3)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
 		WillReturnRows(addAuditLogRow(
 			addAuditLogRow(
 				addAuditLogRow(auditLogColumns(), ids[0], tenantID, userID, "first", "success", now),
@@ -177,7 +178,7 @@ func TestListAuditLogsFollowsNextToken(t *testing.T) {
 	client, mock, sessionToken := newAuditLogClient(t, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantDescQuery)).
-		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, boundaryAt, int32(3)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAuditLogRow(auditLogColumns(), uuid.Must(uuid.NewV7()), tenantID, userID, "last", "success", now.Add(-2*time.Minute)))
 
 	req := newAuditLogRequest(tenantID, sessionToken)
@@ -207,7 +208,7 @@ func TestListAuditLogsFollowsPreviousTokenBackwards(t *testing.T) {
 	newerID := uuid.Must(uuid.NewV7())
 
 	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantAscQuery)).
-		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, boundaryAt, int32(3)).
+		WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addAuditLogRow(
 			addAuditLogRow(auditLogColumns(), olderID, tenantID, userID, "older", "success", now.Add(-2*time.Minute)),
 			newerID, tenantID, userID, "newer", "success", now.Add(-time.Minute),
@@ -238,14 +239,26 @@ func TestListAuditLogsFollowsPreviousTokenBackwards(t *testing.T) {
 
 func TestListAuditLogsEmptyPageKeepsAWayBack(t *testing.T) {
 	tests := []struct {
-		name         string
-		direction    pagination.Direction
-		wantQuery    string
-		wantPrevious bool
-		wantNext     bool
+		name                 string
+		direction            pagination.Direction
+		wantQuery            string
+		wantRecoveryQuery    string
+		wantRecoveredActions []string
 	}{
-		{name: "forward", direction: pagination.Forward, wantQuery: listAuditLogsByTenantDescQuery, wantPrevious: true},
-		{name: "backward", direction: pagination.Backward, wantQuery: listAuditLogsByTenantAscQuery, wantNext: true},
+		{
+			name:                 "forward",
+			direction:            pagination.Forward,
+			wantQuery:            listAuditLogsByTenantDescQuery,
+			wantRecoveryQuery:    listAuditLogsByTenantAscQuery,
+			wantRecoveredActions: []string{"newer", "boundary"},
+		},
+		{
+			name:                 "backward",
+			direction:            pagination.Backward,
+			wantQuery:            listAuditLogsByTenantAscQuery,
+			wantRecoveryQuery:    listAuditLogsByTenantDescQuery,
+			wantRecoveredActions: []string{"boundary", "older"},
+		},
 	}
 
 	for _, test := range tests {
@@ -256,7 +269,7 @@ func TestListAuditLogsEmptyPageKeepsAWayBack(t *testing.T) {
 			boundaryID := uuid.Must(uuid.NewV7())
 			client, mock, sessionToken := newAuditLogClient(t, tenantID, userID, now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, now, int32(21)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, false, now, int32(21)).
 				WillReturnRows(auditLogColumns())
 
 			req := newAuditLogRequest(tenantID, sessionToken)
@@ -265,11 +278,47 @@ func TestListAuditLogsEmptyPageKeepsAWayBack(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ListAuditLogs: %v", err)
 			}
-			if (resp.Msg.PreviousToken != "") != test.wantPrevious {
-				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, test.wantPrevious)
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
 			}
-			if (resp.Msg.NextToken != "") != test.wantNext {
-				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, test.wantNext)
+			cursor, err := pagination.Decode(recoveryToken)
+			if err != nil {
+				t.Fatalf("decode recovery token: %v", err)
+			}
+			wantKeys := []string{now.Format(time.RFC3339Nano), boundaryID.String(), auditLogInclusiveKey}
+			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
+				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
+			}
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			recoveryRows := auditLogColumns()
+			if test.direction == pagination.Forward {
+				recoveryRows = addAuditLogRow(recoveryRows, boundaryID, tenantID, userID, "boundary", "success", now)
+				recoveryRows = addAuditLogRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, userID, "newer", "success", now.Add(time.Minute))
+			} else {
+				recoveryRows = addAuditLogRow(recoveryRows, boundaryID, tenantID, userID, "boundary", "success", now)
+				recoveryRows = addAuditLogRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, userID, "older", "success", now.Add(-time.Minute))
+			}
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, true, now, int32(21)).
+				WillReturnRows(recoveryRows)
+
+			recoveryReq := newAuditLogRequest(tenantID, sessionToken)
+			recoveryReq.Msg.Token = recoveryToken
+			recovered, err := client.ListAuditLogs(context.Background(), recoveryReq)
+			if err != nil {
+				t.Fatalf("ListAuditLogs recovery: %v", err)
+			}
+			actions := make([]string, 0, len(recovered.Msg.AuditLogs))
+			for _, log := range recovered.Msg.AuditLogs {
+				actions = append(actions, log.Action)
+			}
+			if !slices.Equal(actions, test.wantRecoveredActions) {
+				t.Fatalf("recovered actions = %v, want %v", actions, test.wantRecoveredActions)
 			}
 			assertExpectations(t, mock)
 		})

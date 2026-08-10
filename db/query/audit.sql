@@ -97,7 +97,14 @@ WHERE a.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
-        OR (a.created_at, a.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (a.created_at, a.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (a.created_at, a.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
     )
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT sqlc.arg('limit');
@@ -125,7 +132,14 @@ WHERE a.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
-        OR (a.created_at, a.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (a.created_at, a.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (a.created_at, a.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
     )
 ORDER BY a.created_at ASC, a.id ASC
 LIMIT sqlc.arg('limit');
