@@ -3343,19 +3343,83 @@ WHERE s.tenant_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::text = 'published_at'
+            AND (
+                (
+                    $4::boolean
+                    AND (s.published_at, s.id) < (
+                        $5::timestamptz,
+                        $2::uuid
+                    )
+                )
+                OR (
+                    NOT $4::boolean
+                    AND (s.published_at, s.id) > (
+                        $5::timestamptz,
+                        $2::uuid
+                    )
+                )
+            )
+        )
+        OR (
+            $3::text = 'title'
+            AND (
+                (
+                    $4::boolean
+                    AND (s.title, s.id) < (
+                        $6::text,
+                        $2::uuid
+                    )
+                )
+                OR (
+                    NOT $4::boolean
+                    AND (s.title, s.id) > (
+                        $6::text,
+                        $2::uuid
+                    )
+                )
+            )
+        )
+    )
 GROUP BY s.id,
     sl.series_id,
     sl.synopsis,
     l.public_id,
     l.name
-ORDER BY s.published_at DESC
-LIMIT $2 OFFSET $3
+ORDER BY CASE
+        WHEN $3::text = 'published_at'
+        AND NOT $4::boolean THEN s.published_at
+    END ASC,
+    CASE
+        WHEN $3::text = 'published_at'
+        AND $4::boolean THEN s.published_at
+    END DESC,
+    CASE
+        WHEN $3::text = 'title'
+        AND NOT $4::boolean THEN s.title
+    END ASC,
+    CASE
+        WHEN $3::text = 'title'
+        AND $4::boolean THEN s.title
+    END DESC,
+    CASE
+        WHEN $4::boolean THEN s.id
+    END DESC,
+    s.id ASC
+LIMIT $7
 `
 
 type ListActiveSeriesParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Limit    int32     `json:"limit"`
-	Offset   int32     `json:"offset"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	CursorID          uuid.NullUUID  `json:"cursor_id"`
+	OrderBy           string         `json:"order_by"`
+	Descending        bool           `json:"descending"`
+	CursorPublishedAt sql.NullTime   `json:"cursor_published_at"`
+	CursorTitle       sql.NullString `json:"cursor_title"`
+	Limit             int32          `json:"limit"`
 }
 
 type ListActiveSeriesRow struct {
@@ -3371,8 +3435,22 @@ type ListActiveSeriesRow struct {
 }
 
 // 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
+// 並び替えキーは order_by の列と id の組。id は UUIDv7 なので、published_at や
+// title が同着でも後から作られたシリーズが先に来る形で一意に決まる。
+// descending は「実際に走査する向き」で、並び順と前ページ / 次ページの向きを
+// 呼び出し側が畳んだもの。前ページ方向のとき取得した行は呼び出し側で並べ直す。
+// cursor の共通仕様は proto/README.md を参照。
+// 選ばれなかった枝の CASE は全行 NULL になり、順序に影響しない。
 func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeries, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listActiveSeries,
+		arg.TenantID,
+		arg.CursorID,
+		arg.OrderBy,
+		arg.Descending,
+		arg.CursorPublishedAt,
+		arg.CursorTitle,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

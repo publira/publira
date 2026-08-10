@@ -120,11 +120,23 @@ export interface LabelListItem {
   eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
 
+export interface SeriesListPage {
+  series: SeriesListItem[];
+  /** Token for the previous page. Empty on the first page. */
+  previousToken: string;
+  /** Token for the next page. Empty on the last page. */
+  nextToken: string;
+}
+
+/**
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`. Sort order (`order`) and the page navigation UI are #716.
+ */
 export const listPublishedSeries = async (
   tenantId: string,
-  limit = 50,
-  offset = 0
-): Promise<SeriesListItem[]> => {
+  { limit = 50, token = "" }: { limit?: number; token?: string } = {}
+): Promise<SeriesListPage> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -133,11 +145,11 @@ export const listPublishedSeries = async (
 
   const response = await apiClient.catalog.listPublishedSeries({
     limit,
-    offset,
     tenant: { tenantId },
+    token,
   });
 
-  return (response.series ?? []).map((s) => ({
+  const series = (response.series ?? []).map((s) => ({
     creatorNames: (s.creators ?? []).flatMap((c) => {
       const name = (c.name ?? "").trim();
       return name.length > 0 ? [name] : [];
@@ -163,6 +175,12 @@ export const listPublishedSeries = async (
     synopsis: s.synopsis,
     title: s.title,
   }));
+
+  return {
+    nextToken: response.nextToken ?? "",
+    previousToken: response.previousToken ?? "",
+    series,
+  };
 };
 
 export const listPublishedLabels = async (

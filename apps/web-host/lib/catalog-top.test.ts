@@ -115,7 +115,11 @@ describe("catalog-top section loaders", () => {
   });
 
   it("getCatalogTopRecommendedSeries は公開シリーズの先頭を返す", async () => {
-    mockListPublishedSeries.mockResolvedValue(seriesFixture);
+    mockListPublishedSeries.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      series: seriesFixture,
+    });
 
     const result = await getCatalogTopRecommendedSeries("TENANT_001", {
       maxRecommended: 1,
@@ -126,7 +130,11 @@ describe("catalog-top section loaders", () => {
   });
 
   it("getCatalogTopNewEpisodes は公開日が新しい順に返す", async () => {
-    mockListPublishedSeries.mockResolvedValue(seriesFixture);
+    mockListPublishedSeries.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      series: seriesFixture,
+    });
     mockGetSeriesDetail.mockImplementation(
       (_tenantId: string, seriesId: string) => {
         if (seriesId === "SERIES_1") {
@@ -150,7 +158,11 @@ describe("catalog-top section loaders", () => {
   });
 
   it("getCatalogTopUpdatedSeries は最新エピソード更新順に返す", async () => {
-    mockListPublishedSeries.mockResolvedValue(seriesFixture);
+    mockListPublishedSeries.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      series: seriesFixture,
+    });
     mockGetSeriesDetail.mockImplementation(
       (_tenantId: string, seriesId: string) => {
         if (seriesId === "SERIES_1") {
@@ -210,24 +222,28 @@ describe("catalog-top section loaders", () => {
   });
 
   it("詳細が null のシリーズ (非公開化など) を除外して継続する", async () => {
-    mockListPublishedSeries.mockResolvedValue([
-      {
-        creatorNames: [],
-        creators: [],
-        labelName: "",
-        publicId: "SERIES_1",
-        synopsis: "",
-        title: "シリーズ1",
-      },
-      {
-        creatorNames: [],
-        creators: [],
-        labelName: "",
-        publicId: "SERIES_2",
-        synopsis: "",
-        title: "シリーズ2",
-      },
-    ]);
+    mockListPublishedSeries.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      series: [
+        {
+          creatorNames: [],
+          creators: [],
+          labelName: "",
+          publicId: "SERIES_1",
+          synopsis: "",
+          title: "シリーズ1",
+        },
+        {
+          creatorNames: [],
+          creators: [],
+          labelName: "",
+          publicId: "SERIES_2",
+          synopsis: "",
+          title: "シリーズ2",
+        },
+      ],
+    });
     mockGetSeriesDetail.mockImplementation(
       (_tenantId: string, seriesId: string) => {
         if (seriesId === "SERIES_1") {

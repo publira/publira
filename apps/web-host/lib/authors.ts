@@ -122,23 +122,22 @@ export const listPublishedAuthors = async (
     { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
   >();
 
-  let offset = 0;
+  let token = "";
   let reachedSeriesEnd = false;
 
   while (authorSeriesMap.size < targetEndIndex && !reachedSeriesEnd) {
     // Sequential pagination depends on previous batch results.
     // oxlint-disable-next-line no-await-in-loop
-    const seriesBatch = await listPublishedSeries(
-      tenantId,
-      SERIES_FETCH_BATCH_SIZE,
-      offset
-    );
+    const seriesPage = await listPublishedSeries(tenantId, {
+      limit: SERIES_FETCH_BATCH_SIZE,
+      token,
+    });
 
-    if (seriesBatch.length === 0) {
+    if (seriesPage.series.length === 0) {
       break;
     }
 
-    for (const series of seriesBatch) {
+    for (const series of seriesPage.series) {
       const creatorsInSeries = new Map<string, string>();
       const creatorIconsInSeries = new Map<string, string>();
 
@@ -176,8 +175,8 @@ export const listPublishedAuthors = async (
       }
     }
 
-    reachedSeriesEnd = seriesBatch.length < SERIES_FETCH_BATCH_SIZE;
-    offset += SERIES_FETCH_BATCH_SIZE;
+    reachedSeriesEnd = seriesPage.nextToken.length === 0;
+    token = seriesPage.nextToken;
   }
 
   const allAuthors = [...authorSeriesMap.entries()]
@@ -214,23 +213,22 @@ export const getPublishedAuthorDetail = async (
   let resolvedAuthorIconImageUrl = "";
   let resolvedAuthorProfileText = "";
 
-  let offset = 0;
+  let token = "";
   let reachedSeriesEnd = false;
 
   while (!reachedSeriesEnd) {
     // Sequential pagination depends on previous batch results.
     // oxlint-disable-next-line no-await-in-loop
-    const seriesBatch = await listPublishedSeries(
-      tenantId,
-      SERIES_FETCH_BATCH_SIZE,
-      offset
-    );
+    const seriesPage = await listPublishedSeries(tenantId, {
+      limit: SERIES_FETCH_BATCH_SIZE,
+      token,
+    });
 
-    if (seriesBatch.length === 0) {
+    if (seriesPage.series.length === 0) {
       break;
     }
 
-    for (const series of seriesBatch) {
+    for (const series of seriesPage.series) {
       const matchedCreator = series.creators.find((creator) => {
         const name = normalizeAuthorName(creator.name);
         if (name.length === 0) {
@@ -276,8 +274,8 @@ export const getPublishedAuthorDetail = async (
       }
     }
 
-    reachedSeriesEnd = seriesBatch.length < SERIES_FETCH_BATCH_SIZE;
-    offset += SERIES_FETCH_BATCH_SIZE;
+    reachedSeriesEnd = seriesPage.nextToken.length === 0;
+    token = seriesPage.nextToken;
   }
 
   if (relatedSeries.size === 0) {

@@ -136,6 +136,12 @@ type Querier interface {
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
 	ListAccessTicketsForTenant(ctx context.Context, arg ListAccessTicketsForTenantParams) ([]ListAccessTicketsForTenantRow, error)
 	// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
+	// 並び替えキーは order_by の列と id の組。id は UUIDv7 なので、published_at や
+	// title が同着でも後から作られたシリーズが先に来る形で一意に決まる。
+	// descending は「実際に走査する向き」で、並び順と前ページ / 次ページの向きを
+	// 呼び出し側が畳んだもの。前ページ方向のとき取得した行は呼び出し側で並べ直す。
+	// cursor の共通仕様は proto/README.md を参照。
+	// 選ばれなかった枝の CASE は全行 NULL になり、順序に影響しない。
 	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
 	// テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
 	ListAuditLogsByTenant(ctx context.Context, arg ListAuditLogsByTenantParams) ([]ListAuditLogsByTenantRow, error)

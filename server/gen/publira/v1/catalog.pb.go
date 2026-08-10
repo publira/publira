@@ -22,6 +22,67 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Sort order of a published series list.
+type SeriesOrder int32
+
+const (
+	// Same as SERIES_ORDER_PUBLISHED_AT_DESC.
+	SeriesOrder_SERIES_ORDER_UNSPECIFIED SeriesOrder = 0
+	// Newest published first.
+	SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC SeriesOrder = 1
+	// Oldest published first.
+	SeriesOrder_SERIES_ORDER_PUBLISHED_AT_ASC SeriesOrder = 2
+	// By title, ascending.
+	SeriesOrder_SERIES_ORDER_TITLE_ASC SeriesOrder = 3
+	// By title, descending.
+	SeriesOrder_SERIES_ORDER_TITLE_DESC SeriesOrder = 4
+)
+
+// Enum value maps for SeriesOrder.
+var (
+	SeriesOrder_name = map[int32]string{
+		0: "SERIES_ORDER_UNSPECIFIED",
+		1: "SERIES_ORDER_PUBLISHED_AT_DESC",
+		2: "SERIES_ORDER_PUBLISHED_AT_ASC",
+		3: "SERIES_ORDER_TITLE_ASC",
+		4: "SERIES_ORDER_TITLE_DESC",
+	}
+	SeriesOrder_value = map[string]int32{
+		"SERIES_ORDER_UNSPECIFIED":       0,
+		"SERIES_ORDER_PUBLISHED_AT_DESC": 1,
+		"SERIES_ORDER_PUBLISHED_AT_ASC":  2,
+		"SERIES_ORDER_TITLE_ASC":         3,
+		"SERIES_ORDER_TITLE_DESC":        4,
+	}
+)
+
+func (x SeriesOrder) Enum() *SeriesOrder {
+	p := new(SeriesOrder)
+	*p = x
+	return p
+}
+
+func (x SeriesOrder) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SeriesOrder) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_v1_catalog_proto_enumTypes[0].Descriptor()
+}
+
+func (SeriesOrder) Type() protoreflect.EnumType {
+	return &file_publira_v1_catalog_proto_enumTypes[0]
+}
+
+func (x SeriesOrder) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SeriesOrder.Descriptor instead.
+func (SeriesOrder) EnumDescriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{0}
+}
+
 // Viewer access state for an episode body on GetEpisodeDetail.
 type EpisodeAccess int32
 
@@ -62,11 +123,11 @@ func (x EpisodeAccess) String() string {
 }
 
 func (EpisodeAccess) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_v1_catalog_proto_enumTypes[0].Descriptor()
+	return file_publira_v1_catalog_proto_enumTypes[1].Descriptor()
 }
 
 func (EpisodeAccess) Type() protoreflect.EnumType {
-	return &file_publira_v1_catalog_proto_enumTypes[0]
+	return &file_publira_v1_catalog_proto_enumTypes[1]
 }
 
 func (x EpisodeAccess) Number() protoreflect.EnumNumber {
@@ -75,7 +136,7 @@ func (x EpisodeAccess) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EpisodeAccess.Descriptor instead.
 func (EpisodeAccess) EnumDescriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{0}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{1}
 }
 
 type ListPublishedLabelsRequest struct {
@@ -182,11 +243,18 @@ func (x *ListPublishedLabelsResponse) GetLabels() []*v1.Label {
 	return nil
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListPublishedSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	// Sort order. A token carries the order it was built for; sending it with a
+	// different order is invalid_argument, because the page it points at no
+	// longer exists in the new order. Changing the order restarts at page 1.
+	Order         SeriesOrder `protobuf:"varint,5,opt,name=order,proto3,enum=publira.v1.SeriesOrder" json:"order,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,16 +303,27 @@ func (x *ListPublishedSeriesRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListPublishedSeriesRequest) GetOffset() int32 {
+func (x *ListPublishedSeriesRequest) GetToken() string {
 	if x != nil {
-		return x.Offset
+		return x.Token
 	}
-	return 0
+	return ""
+}
+
+func (x *ListPublishedSeriesRequest) GetOrder() SeriesOrder {
+	if x != nil {
+		return x.Order
+	}
+	return SeriesOrder_SERIES_ORDER_UNSPECIFIED
 }
 
 type ListPublishedSeriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Series        []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Series []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -284,6 +363,20 @@ func (x *ListPublishedSeriesResponse) GetSeries() []*v1.Series {
 		return x.Series
 	}
 	return nil
+}
+
+func (x *ListPublishedSeriesResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListPublishedSeriesResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type GetSeriesDetailRequest struct {
@@ -525,13 +618,17 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\"N\n" +
 	"\x1bListPublishedLabelsResponse\x12/\n" +
-	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\"\x83\x01\n" +
+	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\"\xbe\x01\n" +
 	"\x1aListPublishedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"O\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x12-\n" +
+	"\x05order\x18\x05 \x01(\x0e2\x17.publira.v1.SeriesOrderR\x05orderJ\x04\b\x03\x10\x04R\x06offset\"\x95\x01\n" +
 	"\x1bListPublishedSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\"n\n" +
+	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"n\n" +
 	"\x16GetSeriesDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x82\x01\n" +
@@ -545,7 +642,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +
 	"\x06images\x18\x03 \x03(\v2\x1e.publira.types.v1.EpisodeImageR\x06images\x121\n" +
-	"\x06access\x18\x04 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access*\x80\x01\n" +
+	"\x06access\x18\x04 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access*\xab\x01\n" +
+	"\vSeriesOrder\x12\x1c\n" +
+	"\x18SERIES_ORDER_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eSERIES_ORDER_PUBLISHED_AT_DESC\x10\x01\x12!\n" +
+	"\x1dSERIES_ORDER_PUBLISHED_AT_ASC\x10\x02\x12\x1a\n" +
+	"\x16SERIES_ORDER_TITLE_ASC\x10\x03\x12\x1b\n" +
+	"\x17SERIES_ORDER_TITLE_DESC\x10\x04*\x80\x01\n" +
 	"\rEpisodeAccess\x12\x1e\n" +
 	"\x1aEPISODE_ACCESS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13EPISODE_ACCESS_FREE\x10\x01\x12\x19\n" +
@@ -569,50 +672,52 @@ func file_publira_v1_catalog_proto_rawDescGZIP() []byte {
 	return file_publira_v1_catalog_proto_rawDescData
 }
 
-var file_publira_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_publira_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_v1_catalog_proto_goTypes = []any{
-	(EpisodeAccess)(0),                  // 0: publira.v1.EpisodeAccess
-	(*ListPublishedLabelsRequest)(nil),  // 1: publira.v1.ListPublishedLabelsRequest
-	(*ListPublishedLabelsResponse)(nil), // 2: publira.v1.ListPublishedLabelsResponse
-	(*ListPublishedSeriesRequest)(nil),  // 3: publira.v1.ListPublishedSeriesRequest
-	(*ListPublishedSeriesResponse)(nil), // 4: publira.v1.ListPublishedSeriesResponse
-	(*GetSeriesDetailRequest)(nil),      // 5: publira.v1.GetSeriesDetailRequest
-	(*GetSeriesDetailResponse)(nil),     // 6: publira.v1.GetSeriesDetailResponse
-	(*GetEpisodeDetailRequest)(nil),     // 7: publira.v1.GetEpisodeDetailRequest
-	(*GetEpisodeDetailResponse)(nil),    // 8: publira.v1.GetEpisodeDetailResponse
-	(*v1.TenantContext)(nil),            // 9: publira.types.v1.TenantContext
-	(*v1.Label)(nil),                    // 10: publira.types.v1.Label
-	(*v1.Series)(nil),                   // 11: publira.types.v1.Series
-	(*v1.Episode)(nil),                  // 12: publira.types.v1.Episode
-	(*v1.EpisodeImage)(nil),             // 13: publira.types.v1.EpisodeImage
+	(SeriesOrder)(0),                    // 0: publira.v1.SeriesOrder
+	(EpisodeAccess)(0),                  // 1: publira.v1.EpisodeAccess
+	(*ListPublishedLabelsRequest)(nil),  // 2: publira.v1.ListPublishedLabelsRequest
+	(*ListPublishedLabelsResponse)(nil), // 3: publira.v1.ListPublishedLabelsResponse
+	(*ListPublishedSeriesRequest)(nil),  // 4: publira.v1.ListPublishedSeriesRequest
+	(*ListPublishedSeriesResponse)(nil), // 5: publira.v1.ListPublishedSeriesResponse
+	(*GetSeriesDetailRequest)(nil),      // 6: publira.v1.GetSeriesDetailRequest
+	(*GetSeriesDetailResponse)(nil),     // 7: publira.v1.GetSeriesDetailResponse
+	(*GetEpisodeDetailRequest)(nil),     // 8: publira.v1.GetEpisodeDetailRequest
+	(*GetEpisodeDetailResponse)(nil),    // 9: publira.v1.GetEpisodeDetailResponse
+	(*v1.TenantContext)(nil),            // 10: publira.types.v1.TenantContext
+	(*v1.Label)(nil),                    // 11: publira.types.v1.Label
+	(*v1.Series)(nil),                   // 12: publira.types.v1.Series
+	(*v1.Episode)(nil),                  // 13: publira.types.v1.Episode
+	(*v1.EpisodeImage)(nil),             // 14: publira.types.v1.EpisodeImage
 }
 var file_publira_v1_catalog_proto_depIdxs = []int32{
-	9,  // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 1: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
-	9,  // 2: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 3: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	9,  // 4: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	11, // 5: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
-	12, // 6: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
-	9,  // 7: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 8: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
-	11, // 9: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
-	13, // 10: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
-	0,  // 11: publira.v1.GetEpisodeDetailResponse.access:type_name -> publira.v1.EpisodeAccess
-	1,  // 12: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
-	3,  // 13: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	5,  // 14: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	7,  // 15: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	2,  // 16: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
-	4,  // 17: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	6,  // 18: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	8,  // 19: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	10, // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	11, // 1: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.types.v1.Label
+	10, // 2: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 3: publira.v1.ListPublishedSeriesRequest.order:type_name -> publira.v1.SeriesOrder
+	12, // 4: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	10, // 5: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	12, // 6: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
+	13, // 7: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
+	10, // 8: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 9: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
+	12, // 10: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
+	14, // 11: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
+	1,  // 12: publira.v1.GetEpisodeDetailResponse.access:type_name -> publira.v1.EpisodeAccess
+	2,  // 13: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
+	4,  // 14: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	6,  // 15: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	8,  // 16: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	3,  // 17: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
+	5,  // 18: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	7,  // 19: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	9,  // 20: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	17, // [17:21] is the sub-list for method output_type
+	13, // [13:17] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }
@@ -625,7 +730,7 @@ func file_publira_v1_catalog_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_catalog_proto_rawDesc), len(file_publira_v1_catalog_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,

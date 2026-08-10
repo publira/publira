@@ -49,7 +49,8 @@ const SeriesListData = async () => {
 
   let series;
   try {
-    series = await listPublishedSeries(tenantId);
+    // Page navigation over the returned tokens is #716.
+    ({ series } = await listPublishedSeries(tenantId));
   } catch {
     return (
       <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">

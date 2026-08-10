@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/catalog.proto.
  */
 export const file_publira_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJGChtMaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2USJwoGbGFiZWxzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCJsChpMaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDgoGb2Zmc2V0GAMgASgFIkcKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyJcChZHZXRTZXJpZXNEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkicAoXR2V0U2VyaWVzRGV0YWlsUmVzcG9uc2USKAoGc2VyaWVzGAEgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSKwoIZXBpc29kZXMYAiADKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUiXQoXR2V0RXBpc29kZURldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSLLAQoYR2V0RXBpc29kZURldGFpbFJlc3BvbnNlEioKB2VwaXNvZGUYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGUSKAoGc2VyaWVzGAIgASgLMhgucHVibGlyYS50eXBlcy52MS5TZXJpZXMSLgoGaW1hZ2VzGAMgAygLMh4ucHVibGlyYS50eXBlcy52MS5FcGlzb2RlSW1hZ2USKQoGYWNjZXNzGAQgASgOMhkucHVibGlyYS52MS5FcGlzb2RlQWNjZXNzKoABCg1FcGlzb2RlQWNjZXNzEh4KGkVQSVNPREVfQUNDRVNTX1VOU1BFQ0lGSUVEEAASFwoTRVBJU09ERV9BQ0NFU1NfRlJFRRABEhkKFUVQSVNPREVfQUNDRVNTX0xPQ0tFRBACEhsKF0VQSVNPREVfQUNDRVNTX0VOVElUTEVEEAMyowMKDkNhdGFsb2dTZXJ2aWNlEmgKE0xpc3RQdWJsaXNoZWRMYWJlbHMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRMYWJlbHNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2UiABJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJGChtMaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2USJwoGbGFiZWxzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCKhAQoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJEiYKBW9yZGVyGAUgASgOMhcucHVibGlyYS52MS5TZXJpZXNPcmRlckoECAMQBFIGb2Zmc2V0InMKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlwKFkdldFNlcmllc0RldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJwChdHZXRTZXJpZXNEZXRhaWxSZXNwb25zZRIoCgZzZXJpZXMYASABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIrCghlcGlzb2RlcxgCIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZSJdChdHZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIssBChhHZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2USKgoHZXBpc29kZRgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZRIoCgZzZXJpZXMYAiABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIuCgZpbWFnZXMYAyADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZRIpCgZhY2Nlc3MYBCABKA4yGS5wdWJsaXJhLnYxLkVwaXNvZGVBY2Nlc3MqqwEKC1Nlcmllc09yZGVyEhwKGFNFUklFU19PUkRFUl9VTlNQRUNJRklFRBAAEiIKHlNFUklFU19PUkRFUl9QVUJMSVNIRURfQVRfREVTQxABEiEKHVNFUklFU19PUkRFUl9QVUJMSVNIRURfQVRfQVNDEAISGgoWU0VSSUVTX09SREVSX1RJVExFX0FTQxADEhsKF1NFUklFU19PUkRFUl9USVRMRV9ERVNDEAQqgAEKDUVwaXNvZGVBY2Nlc3MSHgoaRVBJU09ERV9BQ0NFU1NfVU5TUEVDSUZJRUQQABIXChNFUElTT0RFX0FDQ0VTU19GUkVFEAESGQoVRVBJU09ERV9BQ0NFU1NfTE9DS0VEEAISGwoXRVBJU09ERV9BQ0NFU1NfRU5USVRMRUQQAzKjAwoOQ2F0YWxvZ1NlcnZpY2USaAoTTGlzdFB1Ymxpc2hlZExhYmVscxImLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QaJy5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRMYWJlbHNSZXNwb25zZSIAEmgKE0xpc3RQdWJsaXNoZWRTZXJpZXMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRTZXJpZXNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2UiABJcCg9HZXRTZXJpZXNEZXRhaWwSIi5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlc3BvbnNlIgASXwoQR2V0RXBpc29kZURldGFpbBIjLnB1YmxpcmEudjEuR2V0RXBpc29kZURldGFpbFJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXNwb25zZSIAQjxaOmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.ListPublishedLabelsRequest
@@ -59,6 +59,8 @@ export const ListPublishedLabelsResponseSchema: GenMessage<ListPublishedLabelsRe
   messageDesc(file_publira_v1_catalog, 1);
 
 /**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
  * @generated from message publira.v1.ListPublishedSeriesRequest
  */
 export type ListPublishedSeriesRequest = Message<"publira.v1.ListPublishedSeriesRequest"> & {
@@ -68,14 +70,27 @@ export type ListPublishedSeriesRequest = Message<"publira.v1.ListPublishedSeries
   tenant?: TenantContext | undefined;
 
   /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
    * @generated from field: int32 limit = 2;
    */
   limit: number;
 
   /**
-   * @generated from field: int32 offset = 3;
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 4;
    */
-  offset: number;
+  token: string;
+
+  /**
+   * Sort order. A token carries the order it was built for; sending it with a
+   * different order is invalid_argument, because the page it points at no
+   * longer exists in the new order. Changing the order restarts at page 1.
+   *
+   * @generated from field: publira.v1.SeriesOrder order = 5;
+   */
+  order: SeriesOrder;
 };
 
 /**
@@ -93,6 +108,20 @@ export type ListPublishedSeriesResponse = Message<"publira.v1.ListPublishedSerie
    * @generated from field: repeated publira.types.v1.Series series = 1;
    */
   series: Series[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
 };
 
 /**
@@ -208,6 +237,54 @@ export const GetEpisodeDetailResponseSchema: GenMessage<GetEpisodeDetailResponse
   messageDesc(file_publira_v1_catalog, 7);
 
 /**
+ * Sort order of a published series list.
+ *
+ * @generated from enum publira.v1.SeriesOrder
+ */
+export enum SeriesOrder {
+  /**
+   * Same as SERIES_ORDER_PUBLISHED_AT_DESC.
+   *
+   * @generated from enum value: SERIES_ORDER_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Newest published first.
+   *
+   * @generated from enum value: SERIES_ORDER_PUBLISHED_AT_DESC = 1;
+   */
+  PUBLISHED_AT_DESC = 1,
+
+  /**
+   * Oldest published first.
+   *
+   * @generated from enum value: SERIES_ORDER_PUBLISHED_AT_ASC = 2;
+   */
+  PUBLISHED_AT_ASC = 2,
+
+  /**
+   * By title, ascending.
+   *
+   * @generated from enum value: SERIES_ORDER_TITLE_ASC = 3;
+   */
+  TITLE_ASC = 3,
+
+  /**
+   * By title, descending.
+   *
+   * @generated from enum value: SERIES_ORDER_TITLE_DESC = 4;
+   */
+  TITLE_DESC = 4,
+}
+
+/**
+ * Describes the enum publira.v1.SeriesOrder.
+ */
+export const SeriesOrderSchema: GenEnum<SeriesOrder> = /*@__PURE__*/
+  enumDesc(file_publira_v1_catalog, 0);
+
+/**
  * Viewer access state for an episode body on GetEpisodeDetail.
  *
  * @generated from enum publira.v1.EpisodeAccess
@@ -244,7 +321,7 @@ export enum EpisodeAccess {
  * Describes the enum publira.v1.EpisodeAccess.
  */
 export const EpisodeAccessSchema: GenEnum<EpisodeAccess> = /*@__PURE__*/
-  enumDesc(file_publira_v1_catalog, 0);
+  enumDesc(file_publira_v1_catalog, 1);
 
 /**
  * @generated from service publira.v1.CatalogService
