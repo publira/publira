@@ -1206,13 +1206,16 @@ func (x *TenantAdminInvitation) GetCanceledAt() string {
 	return ""
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListTenantAdminInvitationsRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	Limit          int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset         int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListTenantAdminInvitationsRequest) Reset() {
@@ -1259,16 +1262,20 @@ func (x *ListTenantAdminInvitationsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListTenantAdminInvitationsRequest) GetOffset() int32 {
+func (x *ListTenantAdminInvitationsRequest) GetToken() string {
 	if x != nil {
-		return x.Offset
+		return x.Token
 	}
-	return 0
+	return ""
 }
 
 type ListTenantAdminInvitationsResponse struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Invitations   []*TenantAdminInvitation `protobuf:"bytes,1,rep,name=invitations,proto3" json:"invitations,omitempty"`
+	state       protoimpl.MessageState   `protogen:"open.v1"`
+	Invitations []*TenantAdminInvitation `protobuf:"bytes,1,rep,name=invitations,proto3" json:"invitations,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1308,6 +1315,20 @@ func (x *ListTenantAdminInvitationsResponse) GetInvitations() []*TenantAdminInvi
 		return x.Invitations
 	}
 	return nil
+}
+
+func (x *ListTenantAdminInvitationsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListTenantAdminInvitationsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type CreateTenantAdminInvitationRequest struct {
@@ -1802,13 +1823,16 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\vaccepted_at\x18\x06 \x01(\tR\n" +
 	"acceptedAt\x12\x1f\n" +
 	"\vcanceled_at\x18\a \x01(\tR\n" +
-	"canceledAt\"{\n" +
+	"canceledAt\"\x87\x01\n" +
 	"!ListTenantAdminInvitationsRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"r\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\xb8\x01\n" +
 	"\"ListTenantAdminInvitationsResponse\x12L\n" +
-	"\vinvitations\x18\x01 \x03(\v2*.publira.platform.v1.TenantAdminInvitationR\vinvitations\"d\n" +
+	"\vinvitations\x18\x01 \x03(\v2*.publira.platform.v1.TenantAdminInvitationR\vinvitations\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"d\n" +
 	"\"CreateTenantAdminInvitationRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\"\xab\x01\n" +

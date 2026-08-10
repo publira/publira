@@ -363,7 +363,6 @@ export const listPlatformTenantAdminInvitations = async (
     const response = await apiClient.tenants.listTenantAdminInvitations(
       {
         limit: 100,
-        offset: 0,
         tenantId,
       } as never,
       buildSessionHeaders(sid)

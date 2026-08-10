@@ -127,14 +127,25 @@ message TenantAdminInvitation {
   string canceled_at = 7;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 message ListTenantAdminInvitationsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
   string tenant_public_id = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 2;
-  int32 offset = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
 }
 
 message ListTenantAdminInvitationsResponse {
   repeated TenantAdminInvitation invitations = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message CreateTenantAdminInvitationRequest {
