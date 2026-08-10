@@ -3289,7 +3289,7 @@ func (q *Queries) ListAccessTicketsForTenant(ctx context.Context, arg ListAccess
 	return items, nil
 }
 
-const listActiveSeries = `-- name: ListActiveSeries :many
+const listActiveSeriesByIDs = `-- name: ListActiveSeriesByIDs :many
 SELECT s.id,
     s.public_id,
     s.title,
@@ -3340,89 +3340,23 @@ FROM series s
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
 WHERE s.tenant_id = $1
+    AND s.id = ANY($2::uuid [])
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
-    AND (
-        $2::uuid IS NULL
-        OR (
-            $3::text = 'published_at'
-            AND (
-                (
-                    $4::boolean
-                    AND (s.published_at, s.id) < (
-                        $5::timestamptz,
-                        $2::uuid
-                    )
-                )
-                OR (
-                    NOT $4::boolean
-                    AND (s.published_at, s.id) > (
-                        $5::timestamptz,
-                        $2::uuid
-                    )
-                )
-            )
-        )
-        OR (
-            $3::text = 'title'
-            AND (
-                (
-                    $4::boolean
-                    AND (s.title, s.id) < (
-                        $6::text,
-                        $2::uuid
-                    )
-                )
-                OR (
-                    NOT $4::boolean
-                    AND (s.title, s.id) > (
-                        $6::text,
-                        $2::uuid
-                    )
-                )
-            )
-        )
-    )
 GROUP BY s.id,
     sl.series_id,
     sl.synopsis,
     l.public_id,
     l.name
-ORDER BY CASE
-        WHEN $3::text = 'published_at'
-        AND NOT $4::boolean THEN s.published_at
-    END ASC,
-    CASE
-        WHEN $3::text = 'published_at'
-        AND $4::boolean THEN s.published_at
-    END DESC,
-    CASE
-        WHEN $3::text = 'title'
-        AND NOT $4::boolean THEN s.title
-    END ASC,
-    CASE
-        WHEN $3::text = 'title'
-        AND $4::boolean THEN s.title
-    END DESC,
-    CASE
-        WHEN $4::boolean THEN s.id
-    END DESC,
-    s.id ASC
-LIMIT $7
 `
 
-type ListActiveSeriesParams struct {
-	TenantID          uuid.UUID      `json:"tenant_id"`
-	CursorID          uuid.NullUUID  `json:"cursor_id"`
-	OrderBy           string         `json:"order_by"`
-	Descending        bool           `json:"descending"`
-	CursorPublishedAt sql.NullTime   `json:"cursor_published_at"`
-	CursorTitle       sql.NullString `json:"cursor_title"`
-	Limit             int32          `json:"limit"`
+type ListActiveSeriesByIDsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
 }
 
-type ListActiveSeriesRow struct {
+type ListActiveSeriesByIDsRow struct {
 	ID                     uuid.UUID       `json:"id"`
 	PublicID               string          `json:"public_id"`
 	Title                  string          `json:"title"`
@@ -3434,30 +3368,17 @@ type ListActiveSeriesRow struct {
 	LabelInfo              json.RawMessage `json:"label_info"`
 }
 
-// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
-// 並び替えキーは order_by の列と id の組。id は UUIDv7 なので、published_at や
-// title が同着でも後から作られたシリーズが先に来る形で一意に決まる。
-// descending は「実際に走査する向き」で、並び順と前ページ / 次ページの向きを
-// 呼び出し側が畳んだもの。前ページ方向のとき取得した行は呼び出し側で並べ直す。
-// cursor の共通仕様は proto/README.md を参照。
-// 選ばれなかった枝の CASE は全行 NULL になり、順序に影響しない。
-func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSeries,
-		arg.TenantID,
-		arg.CursorID,
-		arg.OrderBy,
-		arg.Descending,
-		arg.CursorPublishedAt,
-		arg.CursorTitle,
-		arg.Limit,
-	)
+// 公開中のシリーズの表示内容を取得する (テナントIDで絞り込み)
+// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveSeriesByIDs, arg.TenantID, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListActiveSeriesRow
+	var items []ListActiveSeriesByIDsRow
 	for rows.Next() {
-		var i ListActiveSeriesRow
+		var i ListActiveSeriesByIDsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,
@@ -3472,6 +3393,235 @@ func (q *Queries) ListActiveSeries(ctx context.Context, arg ListActiveSeriesPara
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveSeriesIDsByPublishedAtAsc = `-- name: ListActiveSeriesIDsByPublishedAtAsc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        $2::uuid IS NULL
+        OR (s.published_at, s.id) > (
+            $3::timestamptz,
+            $2::uuid
+        )
+    )
+ORDER BY s.published_at ASC,
+    s.id ASC
+LIMIT $4
+`
+
+type ListActiveSeriesIDsByPublishedAtAscParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
+	Limit             int32         `json:"limit"`
+}
+
+func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorPublishedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveSeriesIDsByPublishedAtDesc = `-- name: ListActiveSeriesIDsByPublishedAtDesc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        $2::uuid IS NULL
+        OR (s.published_at, s.id) < (
+            $3::timestamptz,
+            $2::uuid
+        )
+    )
+ORDER BY s.published_at DESC,
+    s.id DESC
+LIMIT $4
+`
+
+type ListActiveSeriesIDsByPublishedAtDescParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
+	Limit             int32         `json:"limit"`
+}
+
+// 公開シリーズ一覧の cursor ページネーションは 2 段構えになっている。
+//
+// 1 段目がここに並ぶ 4 本のキーセット走査で、1 ページぶんの id だけを決める。
+// 並び替えキーは (published_at, id) か (title, id)。id は UUIDv7 なので、
+// published_at や title が同着でも一意に決まる。ORDER BY を並び順ごとに
+// 固定した別のクエリに分けてあるのは、CASE で分岐させると索引順に読めなく
+// なり、LIMIT の手前で全件ソートが入るため。それぞれ
+// idx_series_tenant_published_at / idx_series_tenant_title をそのまま辿る。
+// 前ページ方向は、並び順を反転した側のクエリを呼んで呼び出し側で並べ直す。
+//
+// 2 段目が ListActiveSeriesByIDs で、決まった id の表示内容だけを組み立てる。
+//
+// cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorPublishedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveSeriesIDsByTitleAsc = `-- name: ListActiveSeriesIDsByTitleAsc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        $2::uuid IS NULL
+        OR (s.title, s.id) > (
+            $3::text,
+            $2::uuid
+        )
+    )
+ORDER BY s.title ASC,
+    s.id ASC
+LIMIT $4
+`
+
+type ListActiveSeriesIDsByTitleAscParams struct {
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	CursorID    uuid.NullUUID  `json:"cursor_id"`
+	CursorTitle sql.NullString `json:"cursor_title"`
+	Limit       int32          `json:"limit"`
+}
+
+func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveSeriesIDsByTitleDesc = `-- name: ListActiveSeriesIDsByTitleDesc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        $2::uuid IS NULL
+        OR (s.title, s.id) < (
+            $3::text,
+            $2::uuid
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT $4
+`
+
+type ListActiveSeriesIDsByTitleDescParams struct {
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	CursorID    uuid.NullUUID  `json:"cursor_id"`
+	CursorTitle sql.NullString `json:"cursor_title"`
+	Limit       int32          `json:"limit"`
+}
+
+func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

@@ -135,14 +135,26 @@ type Querier interface {
 	// 管理操作監査ログを記録する
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
 	ListAccessTicketsForTenant(ctx context.Context, arg ListAccessTicketsForTenantParams) ([]ListAccessTicketsForTenantRow, error)
-	// 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
-	// 並び替えキーは order_by の列と id の組。id は UUIDv7 なので、published_at や
-	// title が同着でも後から作られたシリーズが先に来る形で一意に決まる。
-	// descending は「実際に走査する向き」で、並び順と前ページ / 次ページの向きを
-	// 呼び出し側が畳んだもの。前ページ方向のとき取得した行は呼び出し側で並べ直す。
+	// 公開中のシリーズの表示内容を取得する (テナントIDで絞り込み)
+	// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+	ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error)
+	ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtAscParams) ([]uuid.UUID, error)
+	// 公開シリーズ一覧の cursor ページネーションは 2 段構えになっている。
+	//
+	// 1 段目がここに並ぶ 4 本のキーセット走査で、1 ページぶんの id だけを決める。
+	// 並び替えキーは (published_at, id) か (title, id)。id は UUIDv7 なので、
+	// published_at や title が同着でも一意に決まる。ORDER BY を並び順ごとに
+	// 固定した別のクエリに分けてあるのは、CASE で分岐させると索引順に読めなく
+	// なり、LIMIT の手前で全件ソートが入るため。それぞれ
+	// idx_series_tenant_published_at / idx_series_tenant_title をそのまま辿る。
+	// 前ページ方向は、並び順を反転した側のクエリを呼んで呼び出し側で並べ直す。
+	//
+	// 2 段目が ListActiveSeriesByIDs で、決まった id の表示内容だけを組み立てる。
+	//
 	// cursor の共通仕様は proto/README.md を参照。
-	// 選ばれなかった枝の CASE は全行 NULL になり、順序に影響しない。
-	ListActiveSeries(ctx context.Context, arg ListActiveSeriesParams) ([]ListActiveSeriesRow, error)
+	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
+	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)
+	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error)
 	// テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
 	ListAuditLogsByTenant(ctx context.Context, arg ListAuditLogsByTenantParams) ([]ListAuditLogsByTenantRow, error)
 	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)

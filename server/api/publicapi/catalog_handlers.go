@@ -25,6 +25,11 @@ const (
 	maxSeriesPageSize     = int32(100)
 )
 
+const (
+	seriesOrderColumnPublishedAt = "published_at"
+	seriesOrderColumnTitle       = "title"
+)
+
 // seriesOrder is a SeriesOrder resolved into what the query needs: the column
 // to sort by, and whether the list runs down or up that column.
 type seriesOrder struct {
@@ -34,11 +39,11 @@ type seriesOrder struct {
 }
 
 var seriesOrders = map[publirav1.SeriesOrder]seriesOrder{
-	publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED:       {name: "published_at_desc", column: "published_at", descending: true},
-	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC: {name: "published_at_desc", column: "published_at", descending: true},
-	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_ASC:  {name: "published_at_asc", column: "published_at"},
-	publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC:         {name: "title_asc", column: "title"},
-	publirav1.SeriesOrder_SERIES_ORDER_TITLE_DESC:        {name: "title_desc", column: "title", descending: true},
+	publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED:       {name: "published_at_desc", column: seriesOrderColumnPublishedAt, descending: true},
+	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC: {name: "published_at_desc", column: seriesOrderColumnPublishedAt, descending: true},
+	publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_ASC:  {name: "published_at_asc", column: seriesOrderColumnPublishedAt},
+	publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC:         {name: "title_asc", column: seriesOrderColumnTitle},
+	publirav1.SeriesOrder_SERIES_ORDER_TITLE_DESC:        {name: "title_desc", column: seriesOrderColumnTitle, descending: true},
 }
 
 func resolveSeriesOrder(requested publirav1.SeriesOrder) (seriesOrder, error) {
@@ -49,47 +54,137 @@ func resolveSeriesOrder(requested publirav1.SeriesOrder) (seriesOrder, error) {
 	return order, nil
 }
 
+// seriesCursorKeys is the decoded cursor, in the shape the keyset queries take.
+type seriesCursorKeys struct {
+	publishedAt sql.NullTime
+	title       sql.NullString
+	id          uuid.NullUUID
+}
+
 // The ListPublishedSeries cursor carries the order it was built for, then the
 // sort keys of the query in order: the sorted column, then the id that breaks
 // its ties. Token rules: proto/README.md.
-func encodeSeriesCursor(direction pagination.Direction, order seriesOrder, row dbmodels.ListActiveSeriesRow) string {
+func encodeSeriesCursor(direction pagination.Direction, order seriesOrder, row dbmodels.ListActiveSeriesByIDsRow) string {
 	sortValue := row.Title
-	if order.column == "published_at" {
+	if order.column == seriesOrderColumnPublishedAt {
 		sortValue = row.PublishedAt.Time.UTC().Format(time.RFC3339Nano)
 	}
 	return pagination.Encode(direction, order.name, sortValue, row.ID.String())
 }
 
-// decodeSeriesCursorKeys fills in the cursor half of the query parameters. A
-// token built for another order is rejected rather than reinterpreted: its keys
-// would point into a page that does not exist in the requested order.
-func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder, params *dbmodels.ListActiveSeriesParams) error {
+// decodeSeriesCursorKeys reads a token into the keyset the query compares
+// against. A token built for another order is rejected rather than
+// reinterpreted: its keys point into a page that does not exist in the
+// requested order.
+func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder) (seriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	if len(cursor.Keys) != 3 {
-		return invalid
+		return seriesCursorKeys{}, invalid
 	}
 	if cursor.Keys[0] != order.name {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order"))
+		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another order"))
 	}
 
 	seriesID, err := uuid.Parse(cursor.Keys[2])
 	if err != nil {
-		return invalid
+		return seriesCursorKeys{}, invalid
 	}
-	params.CursorID = uuid.NullUUID{UUID: seriesID, Valid: true}
+	keys := seriesCursorKeys{id: uuid.NullUUID{UUID: seriesID, Valid: true}}
 
-	if order.column == "title" {
-		params.CursorTitle = sql.NullString{String: cursor.Keys[1], Valid: true}
-		return nil
+	if order.column == seriesOrderColumnTitle {
+		keys.title = sql.NullString{String: cursor.Keys[1], Valid: true}
+		return keys, nil
 	}
 
 	publishedAt, err := time.Parse(time.RFC3339Nano, cursor.Keys[1])
 	if err != nil {
-		return invalid
+		return seriesCursorKeys{}, invalid
 	}
-	params.CursorPublishedAt = sql.NullTime{Time: publishedAt.UTC(), Valid: true}
+	keys.publishedAt = sql.NullTime{Time: publishedAt.UTC(), Valid: true}
 
-	return nil
+	return keys, nil
+}
+
+// activeSeriesPageIDs runs the keyset half of the page. The sort order lives in
+// the query rather than in a parameter so each one reads its index in order and
+// stops at LIMIT; a CASE in ORDER BY would sort the whole tenant first.
+// `descending` is the direction actually scanned: the sort order and the page
+// direction folded together.
+func (s *apiServer) activeSeriesPageIDs(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	order seriesOrder,
+	descending bool,
+	keys seriesCursorKeys,
+	limit int32,
+) ([]uuid.UUID, error) {
+	queries := s.queriesFor(ctx)
+
+	switch {
+	case order.column == seriesOrderColumnTitle && descending:
+		return queries.ListActiveSeriesIDsByTitleDesc(ctx, dbmodels.ListActiveSeriesIDsByTitleDescParams{
+			TenantID:    tenantID,
+			CursorTitle: keys.title,
+			CursorID:    keys.id,
+			Limit:       limit,
+		})
+	case order.column == seriesOrderColumnTitle:
+		return queries.ListActiveSeriesIDsByTitleAsc(ctx, dbmodels.ListActiveSeriesIDsByTitleAscParams{
+			TenantID:    tenantID,
+			CursorTitle: keys.title,
+			CursorID:    keys.id,
+			Limit:       limit,
+		})
+	case descending:
+		return queries.ListActiveSeriesIDsByPublishedAtDesc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtDescParams{
+			TenantID:          tenantID,
+			CursorPublishedAt: keys.publishedAt,
+			CursorID:          keys.id,
+			Limit:             limit,
+		})
+	default:
+		return queries.ListActiveSeriesIDsByPublishedAtAsc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtAscParams{
+			TenantID:          tenantID,
+			CursorPublishedAt: keys.publishedAt,
+			CursorID:          keys.id,
+			Limit:             limit,
+		})
+	}
+}
+
+// activeSeriesRowsInOrder fetches the display rows for a page and puts them back
+// in the order the keyset query decided; the detail query is unordered.
+func (s *apiServer) activeSeriesRowsInOrder(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	ids []uuid.UUID,
+) ([]dbmodels.ListActiveSeriesByIDsRow, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	rows, err := s.queriesFor(ctx).ListActiveSeriesByIDs(ctx, dbmodels.ListActiveSeriesByIDsParams{
+		TenantID: tenantID,
+		Ids:      ids,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	byID := make(map[uuid.UUID]dbmodels.ListActiveSeriesByIDsRow, len(rows))
+	for _, row := range rows {
+		byID[row.ID] = row
+	}
+
+	ordered := make([]dbmodels.ListActiveSeriesByIDsRow, 0, len(ids))
+	for _, id := range ids {
+		// A series unpublished between the two queries simply drops out.
+		if row, ok := byID[id]; ok {
+			ordered = append(ordered, row)
+		}
+	}
+
+	return ordered, nil
 }
 
 type creatorJSON struct {
@@ -223,24 +318,25 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	params := dbmodels.ListActiveSeriesParams{
-		TenantID: tenant.ID,
-		OrderBy:  order.column,
-		// Walking back through the list runs against the sort order.
-		Descending: order.descending != (cursor.Direction == pagination.Backward),
-		// One row past the page: its presence is what says another page exists.
-		Limit: limit + 1,
-	}
+	var keys seriesCursorKeys
 	if !cursor.IsZero() {
-		if decodeErr := decodeSeriesCursorKeys(cursor, order, &params); decodeErr != nil {
-			return nil, decodeErr
+		keys, err = decodeSeriesCursorKeys(cursor, order)
+		if err != nil {
+			return nil, err
 		}
 	}
-	rows, err := s.queriesFor(ctx).ListActiveSeries(ctx, params)
+	// Walking back through the list runs against the sort order.
+	descending := order.descending != (cursor.Direction == pagination.Backward)
+	// One id past the page: its presence is what says another page exists.
+	ids, err := s.activeSeriesPageIDs(ctx, tenant.ID, order, descending, keys, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	items := make([]*publirattypesv1.Series, 0, len(rows))
 	imageIDs := make([]uuid.UUID, 0)
 	for _, row := range rows {
@@ -308,7 +404,8 @@ func (s *apiServer) ListPublishedSeries(
 	}
 
 	res := &publirav1.ListPublishedSeriesResponse{Series: items}
-	if len(rows) > 0 {
+	switch {
+	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
 			res.PreviousToken = encodeSeriesCursor(pagination.Backward, order, rows[0])
@@ -316,6 +413,13 @@ func (s *apiServer) ListPublishedSeries(
 		if hasNext {
 			res.NextToken = encodeSeriesCursor(pagination.Forward, order, rows[len(rows)-1])
 		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page.
+	case cursor.Direction == pagination.Forward:
+		res.PreviousToken = pagination.Encode(pagination.Backward, cursor.Keys...)
+	case cursor.Direction == pagination.Backward:
+		res.NextToken = pagination.Encode(pagination.Forward, cursor.Keys...)
 	}
 	return connect.NewResponse(res), nil
 }

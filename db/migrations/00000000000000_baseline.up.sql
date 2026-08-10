@@ -913,7 +913,13 @@ CREATE INDEX idx_series_tenant_id ON series USING btree (tenant_id);
 CREATE INDEX idx_series_tenant_public_id ON series USING btree (tenant_id, public_id);
 
 -- INDEX: idx_series_tenant_published_at
-CREATE INDEX idx_series_tenant_published_at ON series USING btree (tenant_id, is_published, published_at DESC);
+-- 末尾の id は公開シリーズ一覧の cursor のタイブレーカー。btree は逆順にも走査
+-- できるので、この 1 本で新しい順と古い順の両方が索引順に取り出せる。
+CREATE INDEX idx_series_tenant_published_at ON series USING btree (tenant_id, is_published, published_at DESC, id DESC);
+
+-- INDEX: idx_series_tenant_title
+-- タイトル順の cursor 用。並び替えキーと同じ (title, id) の組で張る。
+CREATE INDEX idx_series_tenant_title ON series USING btree (tenant_id, is_published, title, id);
 
 -- INDEX: idx_tenant_admin_invitations_tenant_created_at
 CREATE INDEX idx_tenant_admin_invitations_tenant_created_at ON tenant_admin_invitations USING btree (tenant_id, created_at DESC);

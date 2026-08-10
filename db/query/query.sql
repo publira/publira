@@ -630,13 +630,90 @@ FROM (
     ) events
 ORDER BY occurred_at DESC
 LIMIT $1;
--- name: ListActiveSeries :many
--- 公開中のシリーズ一覧を取得する (テナントIDで絞り込み)
--- 並び替えキーは order_by の列と id の組。id は UUIDv7 なので、published_at や
--- title が同着でも後から作られたシリーズが先に来る形で一意に決まる。
--- descending は「実際に走査する向き」で、並び順と前ページ / 次ページの向きを
--- 呼び出し側が畳んだもの。前ページ方向のとき取得した行は呼び出し側で並べ直す。
+-- 公開シリーズ一覧の cursor ページネーションは 2 段構えになっている。
+--
+-- 1 段目がここに並ぶ 4 本のキーセット走査で、1 ページぶんの id だけを決める。
+-- 並び替えキーは (published_at, id) か (title, id)。id は UUIDv7 なので、
+-- published_at や title が同着でも一意に決まる。ORDER BY を並び順ごとに
+-- 固定した別のクエリに分けてあるのは、CASE で分岐させると索引順に読めなく
+-- なり、LIMIT の手前で全件ソートが入るため。それぞれ
+-- idx_series_tenant_published_at / idx_series_tenant_title をそのまま辿る。
+-- 前ページ方向は、並び順を反転した側のクエリを呼んで呼び出し側で並べ直す。
+--
+-- 2 段目が ListActiveSeriesByIDs で、決まった id の表示内容だけを組み立てる。
+--
 -- cursor の共通仕様は proto/README.md を参照。
+-- name: ListActiveSeriesIDsByPublishedAtDesc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (s.published_at, s.id) < (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_id')::uuid
+        )
+    )
+ORDER BY s.published_at DESC,
+    s.id DESC
+LIMIT sqlc.arg('limit');
+-- name: ListActiveSeriesIDsByPublishedAtAsc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (s.published_at, s.id) > (
+            sqlc.narg('cursor_published_at')::timestamptz,
+            sqlc.narg('cursor_id')::uuid
+        )
+    )
+ORDER BY s.published_at ASC,
+    s.id ASC
+LIMIT sqlc.arg('limit');
+-- name: ListActiveSeriesIDsByTitleAsc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (s.title, s.id) > (
+            sqlc.narg('cursor_title')::text,
+            sqlc.narg('cursor_id')::uuid
+        )
+    )
+ORDER BY s.title ASC,
+    s.id ASC
+LIMIT sqlc.arg('limit');
+-- name: ListActiveSeriesIDsByTitleDesc :many
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (s.title, s.id) < (
+            sqlc.narg('cursor_title')::text,
+            sqlc.narg('cursor_id')::uuid
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT sqlc.arg('limit');
+-- name: ListActiveSeriesByIDs :many
+-- 公開中のシリーズの表示内容を取得する (テナントIDで絞り込み)
+-- 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
 SELECT s.id,
     s.public_id,
     s.title,
@@ -687,77 +764,15 @@ FROM series s
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.id = ANY(sqlc.arg('ids')::uuid [])
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
-    AND (
-        sqlc.narg('cursor_id')::uuid IS NULL
-        OR (
-            sqlc.arg('order_by')::text = 'published_at'
-            AND (
-                (
-                    sqlc.arg('descending')::boolean
-                    AND (s.published_at, s.id) < (
-                        sqlc.narg('cursor_published_at')::timestamptz,
-                        sqlc.narg('cursor_id')::uuid
-                    )
-                )
-                OR (
-                    NOT sqlc.arg('descending')::boolean
-                    AND (s.published_at, s.id) > (
-                        sqlc.narg('cursor_published_at')::timestamptz,
-                        sqlc.narg('cursor_id')::uuid
-                    )
-                )
-            )
-        )
-        OR (
-            sqlc.arg('order_by')::text = 'title'
-            AND (
-                (
-                    sqlc.arg('descending')::boolean
-                    AND (s.title, s.id) < (
-                        sqlc.narg('cursor_title')::text,
-                        sqlc.narg('cursor_id')::uuid
-                    )
-                )
-                OR (
-                    NOT sqlc.arg('descending')::boolean
-                    AND (s.title, s.id) > (
-                        sqlc.narg('cursor_title')::text,
-                        sqlc.narg('cursor_id')::uuid
-                    )
-                )
-            )
-        )
-    )
 GROUP BY s.id,
     sl.series_id,
     sl.synopsis,
     l.public_id,
-    l.name
--- 選ばれなかった枝の CASE は全行 NULL になり、順序に影響しない。
-ORDER BY CASE
-        WHEN sqlc.arg('order_by')::text = 'published_at'
-        AND NOT sqlc.arg('descending')::boolean THEN s.published_at
-    END ASC,
-    CASE
-        WHEN sqlc.arg('order_by')::text = 'published_at'
-        AND sqlc.arg('descending')::boolean THEN s.published_at
-    END DESC,
-    CASE
-        WHEN sqlc.arg('order_by')::text = 'title'
-        AND NOT sqlc.arg('descending')::boolean THEN s.title
-    END ASC,
-    CASE
-        WHEN sqlc.arg('order_by')::text = 'title'
-        AND sqlc.arg('descending')::boolean THEN s.title
-    END DESC,
-    CASE
-        WHEN sqlc.arg('descending')::boolean THEN s.id
-    END DESC,
-    s.id ASC
-LIMIT sqlc.arg('limit');
+    l.name;
 -- name: CreateEpisodeBase :one
 -- エピソードのBaseレコードを作成する
 INSERT INTO episodes (

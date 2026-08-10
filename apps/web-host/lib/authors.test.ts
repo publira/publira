@@ -14,6 +14,26 @@ vi.mock("./catalog", () => ({
   listPublishedSeries: mockListPublishedSeries,
 }));
 
+const seriesWithAuthor = (
+  seriesId: string,
+  authorId: string,
+  authorName: string
+) => ({
+  creatorNames: [authorName],
+  creators: [
+    {
+      iconImageUrl: "",
+      name: authorName,
+      profileText: "",
+      publicId: authorId,
+    },
+  ],
+  labelName: "",
+  publicId: seriesId,
+  synopsis: "",
+  title: seriesId,
+});
+
 /** One page with nothing after it, which is what these fixtures stand for. */
 const seriesPage = (series: unknown[]) => ({
   nextToken: "",
@@ -148,6 +168,37 @@ describe("authors", () => {
 
     expect(result.authors).toHaveLength(2);
     expect(result.hasNextPage).toBe(true);
+  });
+
+  it("nextToken が返る限り次ページまで辿って集約する", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "TOKEN_PAGE_2",
+      previousToken: "",
+      series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+    });
+    mockListPublishedSeries.mockResolvedValueOnce(
+      seriesPage([seriesWithAuthor("SERIES_2", "CREATOR_B", "著者B")])
+    );
+
+    const result = await listPublishedAuthors("TENANT_1", {
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
+    expect(mockListPublishedSeries).toHaveBeenNthCalledWith(1, "TENANT_1", {
+      limit: 50,
+      token: "",
+    });
+    expect(mockListPublishedSeries).toHaveBeenNthCalledWith(2, "TENANT_1", {
+      limit: 50,
+      token: "TOKEN_PAGE_2",
+    });
+    expect(result.authors.map((author) => author.id)).toEqual([
+      "CREATOR_A",
+      "CREATOR_B",
+    ]);
+    expect(result.hasNextPage).toBe(false);
   });
 
   it("著者IDから著者詳細と関連シリーズを返す", async () => {

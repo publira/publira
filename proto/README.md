@@ -20,6 +20,7 @@ Protobuf の定義と、複数の RPC にまたがる契約上の決めごとを
 
 - 既定値と上限は RPC ごとに定数で持つ。特に理由がなければ既定 20 / 上限 100（`ListAuditLogs` に合わせる）。
 - `previous_token` と `next_token` の有無がそのまま「前へ」「次へ」の出し分けになる。クライアントは件数の合計を知らなくてよい。
+- 境界の行が消えてページが 0 件になったときは、受け取った token を進行方向と逆側の token として返す。両方を空で返すと、クライアントは先頭ページからやり直す以外に戻る手段を失う。
 - 総件数は返さない。`COUNT(*)` は cursor の利点を打ち消すため、必要になった時点で別 RPC として設計する。
 
 ### token の中身
@@ -42,6 +43,9 @@ Go 側の符号化と検証は [`server/internal/pagination`](../server/internal
 - 並び替えキーは**一意に定まる組み合わせ**にする。同着があると、キーセット走査の `WHERE` が同着行をまとめて飛ばすか、同じ行を返し続けるかのどちらかになる。
 - タイブレーカーは主キーの `id` を使う。`id` は UUIDv7 で生成時刻順なので、`published_at` や `created_at` が同着でも「後から作られた方が先」という意味のある順序で決まる。`public_id` は `crypto/rand` の Base58 で順序を持たないため、並び替えキーには使わない。
 - キーセット走査の比較は行値比較で書く。`(a.created_at, a.id) < ($1, $2)` は複合インデックスに乗るが、`a.created_at < $1 OR (a.created_at = $1 AND a.id < $2)` は乗らないことがある。
+- 並び替えキーと同じ組でインデックスを張る。btree は逆順にも走査できるので、昇順・降順で 2 本張る必要はない。
+- **`ORDER BY` を実行時のパラメータで分岐させない。** `CASE WHEN $1 THEN ... END` はインデックスの順序と結び付かないので、`LIMIT` の手前で全件ソートが入り、キーセットにした意味がなくなる。並び順ごとに `ORDER BY` を固定した別のクエリに分ける。
+- 一覧の 1 行が重い（`json_agg` や複数の `LEFT JOIN` を伴う）なら、キーセット走査は id だけを返す軽いクエリにして、表示内容は id で引く 2 段構えにする。並び順ごとのクエリが数行で済み、重い側は 1 本のままになる。`ListPublishedSeries` はこの形（`db/query/query.sql` の `ListActiveSeriesIDsBy*` と `ListActiveSeriesByIDs`）。
 
 ### 並び替えを選べる一覧
 
@@ -58,6 +62,6 @@ cursor に移した RPC からは `offset` を**削除**し、フィールド番
 ### 実装チェックリスト
 
 1. proto に `token` を足し、`offset` を消して `reserved` にする。Response に `previous_token` / `next_token` を足す。
-2. SQL をキーセット走査に書き換える。前ページ方向のために比較と `ORDER BY` を反転できるようにする。
+2. SQL をキーセット走査に書き換える。並び順（と前ページ方向の反転）ごとに `ORDER BY` を固定したクエリを用意し、並び替えキーと同じ組のインデックスを張る。
 3. ハンドラーで `pagination.NormalizeLimit` → `pagination.Decode` → `limit + 1` 件取得 → `pagination.Page` の順に処理し、境界行から token を組み立てる。
 4. `task gen` を実行し、`sqlc diff` が clean であることを確認する。
