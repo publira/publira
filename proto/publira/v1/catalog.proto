@@ -16,14 +16,43 @@ message ListPublishedLabelsResponse {
   repeated publira.types.v1.Label labels = 1;
 }
 
+// Sort order of a published series list.
+enum SeriesOrder {
+  // Same as SERIES_ORDER_PUBLISHED_AT_DESC.
+  SERIES_ORDER_UNSPECIFIED = 0;
+  // Newest published first.
+  SERIES_ORDER_PUBLISHED_AT_DESC = 1;
+  // Oldest published first.
+  SERIES_ORDER_PUBLISHED_AT_ASC = 2;
+  // By title, ascending.
+  SERIES_ORDER_TITLE_ASC = 3;
+  // By title, descending.
+  SERIES_ORDER_TITLE_DESC = 4;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
 message ListPublishedSeriesRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
   publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 2;
-  int32 offset = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+  // Sort order. A token carries the order it was built for; sending it with a
+  // different order is invalid_argument, because the page it points at no
+  // longer exists in the new order. Changing the order restarts at page 1.
+  SeriesOrder order = 5;
 }
 
 message ListPublishedSeriesResponse {
   repeated publira.types.v1.Series series = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message GetSeriesDetailRequest {

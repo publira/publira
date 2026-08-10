@@ -2,7 +2,9 @@ package publicapi
 
 import (
 	"context"
+	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +16,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
@@ -24,9 +27,12 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	seriesImageID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
-		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"}).
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+		WithArgs(tenantID, nil, nil, int32(21)).
+		WillReturnRows(seriesIDRows(seriesID))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, seriesImageID, now, []byte(`[{"public_id":"CREATOR001","name":"Author A","role":"writer","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 	mock.ExpectQuery(regexp.QuoteMeta(listSeriesImageVariantsByImageIDsQuery)).
 		WithArgs(sqlmock.AnyArg()).
@@ -55,24 +61,305 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	if resp.Msg.Series[0].EyeCatchImageVariants[0].Url == "" {
 		t.Fatalf("eye_catch_image_variants url is empty")
 	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every row fits in one page", resp.Msg.NextToken)
+	}
 	assertPublicExpectations(t, mock)
 }
 
-func TestCatalogListPublishedSeriesPaginationUsesRequestValues(t *testing.T) {
+func seriesDetailColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"})
+}
+
+// seriesIDRows is what the keyset half of a page returns: ids only, already in
+// page order.
+func seriesIDRows(ids ...uuid.UUID) *sqlmock.Rows {
+	rows := sqlmock.NewRows([]string{"id"})
+	for _, id := range ids {
+		rows.AddRow(id)
+	}
+	return rows
+}
+
+// seriesDetailRows builds the display rows for `ids`, one second apart starting
+// at `newest`, so the cursor keys of the rows differ.
+func seriesDetailRows(newest time.Time, ids []uuid.UUID) *sqlmock.Rows {
+	rows := seriesDetailColumns()
+	for i, id := range ids {
+		publishedAt := newest.Add(-time.Duration(i) * time.Second)
+		rows.AddRow(id, fmt.Sprintf("SERIES%03d", i), fmt.Sprintf("Series %d", i), nil, publishedAt, nil, nil, []byte(`[]`), []byte(`{}`))
+	}
+	return rows
+}
+
+// newSeriesIDs makes `count` ids in the order a page would return them.
+func newSeriesIDs(count int) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, count)
+	for range count {
+		ids = append(ids, uuid.Must(uuid.NewV7()))
+	}
+	return ids
+}
+
+func TestCatalogListPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
-	now := time.Now()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
-		WithArgs(tenantID, int32(1), int32(2)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}))
+	// The handler asks for one id past the page to learn that a next page exists.
+	ids := newSeriesIDs(3)
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+		WithArgs(tenantID, nil, nil, int32(3)).
+		WillReturnRows(seriesIDRows(ids...))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailRows(now, ids[:2]))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:  2,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	if got := len(resp.Msg.Series); got != 2 {
+		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token for the next page")
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryPublishedAt := now.Add(-time.Second)
+	token := pagination.Encode(pagination.Forward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	ids := newSeriesIDs(1)
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+		WithArgs(tenantID, boundaryID, boundaryPublishedAt, int32(3)).
+		WillReturnRows(seriesIDRows(ids...))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailRows(now.Add(-2*time.Second), ids))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:  2,
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	if got := len(resp.Msg.Series); got != 1 {
+		t.Fatalf("series count = %d, want 1", got)
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryPublishedAt := now.Add(-10 * time.Second)
+	token := pagination.Encode(pagination.Backward, "published_at_desc", boundaryPublishedAt.Format(time.RFC3339Nano), boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	// A backward page scans ascending, so the oldest id of the page comes first.
+	olderID := uuid.Must(uuid.NewV7())
+	newerID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtAscQuery)).
+		WithArgs(tenantID, boundaryID, boundaryPublishedAt, int32(3)).
+		WillReturnRows(seriesIDRows(olderID, newerID))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(olderID, "SERIES_OLD", "Older", nil, now.Add(-2*time.Second), nil, nil, []byte(`[]`), []byte(`{}`)).
+			AddRow(newerID, "SERIES_NEW", "Newer", nil, now.Add(-time.Second), nil, nil, []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Limit:  2,
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("ListPublishedSeries: %v", err)
+	}
+
+	got := make([]string, 0, len(resp.Msg.Series))
+	for _, series := range resp.Msg.Series {
+		got = append(got, series.PublicId)
+	}
+	if !slices.Equal(got, []string{"SERIES_NEW", "SERIES_OLD"}) {
+		t.Fatalf("series = %v, want the backward page flipped back to newest first", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
+	tests := []struct {
+		name         string
+		direction    pagination.Direction
+		wantQuery    string
+		wantPrevious bool
+		wantNext     bool
+	}{
+		{
+			name:         "forward into a page whose rows are gone",
+			direction:    pagination.Forward,
+			wantQuery:    listActiveSeriesIDsByPublishedAtDescQuery,
+			wantPrevious: true,
+		},
+		{
+			name:      "backward into a page whose rows are gone",
+			direction: pagination.Backward,
+			wantQuery: listActiveSeriesIDsByPublishedAtAscQuery,
+			wantNext:  true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			token := pagination.Encode(test.direction, "published_at_desc", now.Format(time.RFC3339Nano), boundaryID.String())
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, boundaryID, now, int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Token:  token,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedSeries: %v", err)
+			}
+
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			}
+			if (resp.Msg.PreviousToken != "") != test.wantPrevious {
+				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, test.wantPrevious)
+			}
+			if (resp.Msg.NextToken != "") != test.wantNext {
+				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, test.wantNext)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogListPublishedSeriesSortsByRequestedOrder(t *testing.T) {
+	tests := []struct {
+		name      string
+		order     publirav1.SeriesOrder
+		wantQuery string
+	}{
+		{
+			name:      "unspecified falls back to newest first",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED,
+			wantQuery: listActiveSeriesIDsByPublishedAtDescQuery,
+		},
+		{
+			name:      "oldest first",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_ASC,
+			wantQuery: listActiveSeriesIDsByPublishedAtAscQuery,
+		},
+		{
+			name:      "title ascending",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+			wantQuery: listActiveSeriesIDsByTitleAscQuery,
+		},
+		{
+			name:      "title descending",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_TITLE_DESC,
+			wantQuery: listActiveSeriesIDsByTitleDescQuery,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, nil, nil, int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Order:  test.order,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedSeries: %v", err)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogListPublishedSeriesTitleTokenCarriesTheTitleKey(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Forward, "title_asc", "Series 001", boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByTitleAscQuery)).
+		WithArgs(tenantID, boundaryID, "Series 001", int32(21)).
+		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Limit:  1,
-		Offset: 2,
+		Order:  publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+		Token:  token,
 	}))
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
@@ -81,21 +368,76 @@ func TestCatalogListPublishedSeriesPaginationUsesRequestValues(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-func TestCatalogListPublishedSeriesPaginationInvalidValuesUseDefault(t *testing.T) {
+func TestCatalogListPublishedSeriesRejectsTokenFromAnotherOrder(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Order:  publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+		Token:  token,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument when the token was built for another order", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesRejectsUnknownOrder(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Order:  publirav1.SeriesOrder(99),
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesRejectsBrokenToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:  "not-a-token",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesLimitOutOfRangeUsesDefault(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
-		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "creators", "label_info"}))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+		WithArgs(tenantID, nil, nil, int32(21)).
+		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  101,
-		Offset: -1,
 	}))
 	if err != nil {
 		t.Fatalf("ListPublishedSeries: %v", err)
@@ -110,16 +452,24 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	tenantAID := uuid.Must(uuid.NewV7())
 	tenantBID := uuid.Must(uuid.NewV7())
 	now := time.Now()
+	seriesAID := uuid.Must(uuid.NewV7())
+	seriesBID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantAID, "TENANT_A", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
-		WithArgs(tenantAID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_A", "Series A", "Synopsis A", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+		WithArgs(tenantAID, nil, nil, int32(21)).
+		WillReturnRows(seriesIDRows(seriesAID))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantAID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
-	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesQuery)).
-		WithArgs(tenantBID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "synopsis", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "creators", "label_info"}).
-			AddRow(uuid.Must(uuid.NewV7()), "SERIES_B", "Series B", "Synopsis B", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+		WithArgs(tenantBID, nil, nil, int32(21)).
+		WillReturnRows(seriesIDRows(seriesBID))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantBID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 	respA, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
@@ -145,15 +495,26 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-func TestListActiveSeriesQueryHasPublicationGuards(t *testing.T) {
+func TestListActiveSeriesQueriesHavePublicationGuards(t *testing.T) {
+	// Both halves of a page filter on their own; neither may lean on the other
+	// to keep unpublished series out.
+	queries := map[string]string{
+		"listActiveSeriesIDsByPublishedAtDesc": listActiveSeriesIDsByPublishedAtDescQuery,
+		"listActiveSeriesIDsByPublishedAtAsc":  listActiveSeriesIDsByPublishedAtAscQuery,
+		"listActiveSeriesIDsByTitleAsc":        listActiveSeriesIDsByTitleAscQuery,
+		"listActiveSeriesIDsByTitleDesc":       listActiveSeriesIDsByTitleDescQuery,
+		"listActiveSeriesByIDs":                listActiveSeriesByIDsQuery,
+	}
 	requiredSnippets := []string{
 		"s.is_published = true",
 		"s.published_at IS NOT NULL",
 		"s.published_at <= NOW()",
 	}
-	for _, snippet := range requiredSnippets {
-		if !strings.Contains(listActiveSeriesQuery, snippet) {
-			t.Fatalf("listActiveSeriesQuery does not contain %q", snippet)
+	for name, query := range queries {
+		for _, snippet := range requiredSnippets {
+			if !strings.Contains(query, snippet) {
+				t.Fatalf("%s does not contain %q", name, snippet)
+			}
 		}
 	}
 }

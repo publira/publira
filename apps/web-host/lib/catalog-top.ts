@@ -88,7 +88,9 @@ const loadSeriesDetailRows = async (
   seriesLimit: number,
   detailFetchLimit: number
 ): Promise<SeriesDetailRow[]> => {
-  const series = await listPublishedSeries(tenantId, seriesLimit, 0);
+  const { series } = await listPublishedSeries(tenantId, {
+    limit: seriesLimit,
+  });
   const seriesForDetails = series.slice(0, detailFetchLimit);
 
   const seriesDetails = await Promise.all(
@@ -118,7 +120,9 @@ export const getCatalogTopRecommendedSeries = async (
 ): Promise<SeriesListItem[]> => {
   "use cache";
 
-  const series = await listPublishedSeries(tenantId, seriesLimit, 0);
+  const { series } = await listPublishedSeries(tenantId, {
+    limit: seriesLimit,
+  });
   return series.slice(0, maxRecommended);
 };
 

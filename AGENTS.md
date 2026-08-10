@@ -259,6 +259,10 @@ Shared store for self-host is **Redis** (package `@publira/next-cache-handlers`)
 
 Wire **both**. With only one, the other path stays local in multi-instance deploys. Details: `packages/next-cache-handlers/README.md`.
 
+## API contracts (proto)
+
+Cross-RPC decisions that live in `proto/` — currently the cursor pagination shape shared by every list RPC (`token` in, `previous_token` / `next_token` out): see [`proto/README.md`](proto/README.md).
+
 ## Database
 
 Schema / migration conventions: see [`db/AGENTS.md`](db/AGENTS.md).
