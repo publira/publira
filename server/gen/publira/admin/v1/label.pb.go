@@ -22,11 +22,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListLabelsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,16 +78,20 @@ func (x *ListLabelsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListLabelsRequest) GetOffset() int32 {
+func (x *ListLabelsRequest) GetToken() string {
 	if x != nil {
-		return x.Offset
+		return x.Token
 	}
-	return 0
+	return ""
 }
 
 type ListLabelsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Labels        []*v1.Label            `protobuf:"bytes,1,rep,name=labels,proto3" json:"labels,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Labels []*v1.Label            `protobuf:"bytes,1,rep,name=labels,proto3" json:"labels,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -124,6 +131,20 @@ func (x *ListLabelsResponse) GetLabels() []*v1.Label {
 		return x.Labels
 	}
 	return nil
+}
+
+func (x *ListLabelsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListLabelsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type CreateLabelRequest struct {
@@ -370,13 +391,16 @@ var File_publira_admin_v1_label_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_label_proto_rawDesc = "" +
 	"\n" +
-	"\x1cpublira/admin/v1/label.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"z\n" +
+	"\x1cpublira/admin/v1/label.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x86\x01\n" +
 	"\x11ListLabelsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"E\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\x8b\x01\n" +
 	"\x12ListLabelsResponse\x12/\n" +
-	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\"\xd2\x01\n" +
+	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd2\x01\n" +
 	"\x12CreateLabelRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +

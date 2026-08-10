@@ -7,7 +7,6 @@ import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { mentionsImageRejection } from "./image-rejection";
-import { findByPublicId } from "./paged-lookup";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -124,7 +123,6 @@ export const listLabels = async (
     const response = await apiClient.label.listLabels(
       {
         limit: 100,
-        offset: 0,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
@@ -257,21 +255,17 @@ export const getLabel = async (input: {
   }
 
   try {
-    // `label.proto` has no `GetLabel`, so the record has to be found by walking
-    // `ListLabels`; see `findByPublicId`.
-    const label = await findByPublicId(
-      input.publicId,
-      async (offset, limit) => {
-        const response = await apiClient.label.listLabels(
-          {
-            limit,
-            offset,
-            tenant: { tenantId: input.tenantId },
-          },
-          withSessionHeaders(sessionId)
-        );
-        return response.labels ?? [];
-      }
+    // `label.proto` has no `GetLabel`. Until #730 implements token handling,
+    // the compatibility handler can only search the first page.
+    const response = await apiClient.label.listLabels(
+      {
+        limit: 100,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    const label = response.labels.find(
+      (item) => item.publicId === input.publicId
     );
     if (!label) {
       return { notFound: true, ok: false };
