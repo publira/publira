@@ -1054,16 +1054,13 @@ func (s *apiServer) ListNotifications(
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
-	}
-
 	rows, err := s.queriesFor(ctx).ListNotificationsForUser(ctx, dbmodels.ListNotificationsForUserParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
 		Limit:    limit,
-		Offset:   offset,
+		// The keyset query and token handling are introduced in #742. Until
+		// then, preserve the current client's first-page behavior.
+		Offset: 0,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

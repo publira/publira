@@ -96,7 +96,6 @@ func TestAuthListNotificationsSuccess(t *testing.T) {
 	resp, err := client.ListNotifications(context.Background(), newAuthedPublicRequest(&publirav1.ListNotificationsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Limit:  -1,
-		Offset: -1,
 	}, tenantID.String()))
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
