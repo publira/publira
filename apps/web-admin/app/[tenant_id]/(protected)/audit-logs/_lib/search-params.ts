@@ -8,16 +8,16 @@ type QueryParamValue = string | string[] | undefined;
 interface ParseAuditLogFiltersInput {
   action?: QueryParamValue;
   actor?: QueryParamValue;
-  cursor?: QueryParamValue;
   from?: QueryParamValue;
+  token?: QueryParamValue;
   to?: QueryParamValue;
 }
 
 export interface AuditLogFilters {
   action: string;
   actor: string;
-  cursor: string;
   from: string;
+  token: string;
   to: string;
 }
 
@@ -50,13 +50,13 @@ const createAuditLogFiltersSchema = (
       value && allowedActionValues.has(value) ? value : ""
     ),
     actor: singleSearchParamSchema,
-    cursor: singleSearchParamSchema,
     from: singleSearchParamSchema.transform((value) =>
       dateParamPattern.test(value) ? value : ""
     ),
     to: singleSearchParamSchema.transform((value) =>
       dateParamPattern.test(value) ? value : ""
     ),
+    token: singleSearchParamSchema,
   });
 
 export const parseAuditLogFilters = (

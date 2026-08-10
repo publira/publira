@@ -100,7 +100,7 @@ func (q *Queries) InsertPlatformAuditLog(ctx context.Context, arg InsertPlatform
 	return err
 }
 
-const listAuditLogsByTenant = `-- name: ListAuditLogsByTenant :many
+const listAuditLogsByTenantAsc = `-- name: ListAuditLogsByTenantAsc :many
 SELECT a.id,
     a.tenant_id,
     a.actor_user_id,
@@ -122,25 +122,25 @@ WHERE a.tenant_id = $1
     AND ($4::timestamptz IS NULL OR a.created_at >= $4::timestamptz)
     AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
     AND (
-        ($6::timestamptz IS NULL AND $7::uuid IS NULL)
-        OR (a.created_at, a.id) < ($6::timestamptz, $7::uuid)
+        $6::uuid IS NULL
+        OR (a.created_at, a.id) > ($7::timestamptz, $6::uuid)
     )
-ORDER BY a.created_at DESC, a.id DESC
+ORDER BY a.created_at ASC, a.id ASC
 LIMIT $8
 `
 
-type ListAuditLogsByTenantParams struct {
+type ListAuditLogsByTenantAscParams struct {
 	TenantID                uuid.UUID      `json:"tenant_id"`
 	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
 	FilterAction            sql.NullString `json:"filter_action"`
 	FilterCreatedFrom       sql.NullTime   `json:"filter_created_from"`
 	FilterCreatedTo         sql.NullTime   `json:"filter_created_to"`
-	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
 	CursorID                uuid.NullUUID  `json:"cursor_id"`
+	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
 	Limit                   int32          `json:"limit"`
 }
 
-type ListAuditLogsByTenantRow struct {
+type ListAuditLogsByTenantAscRow struct {
 	ID            uuid.UUID      `json:"id"`
 	TenantID      uuid.UUID      `json:"tenant_id"`
 	ActorUserID   uuid.UUID      `json:"actor_user_id"`
@@ -156,25 +156,131 @@ type ListAuditLogsByTenantRow struct {
 	ActorName     string         `json:"actor_name"`
 }
 
-// テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
-func (q *Queries) ListAuditLogsByTenant(ctx context.Context, arg ListAuditLogsByTenantParams) ([]ListAuditLogsByTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAuditLogsByTenant,
+func (q *Queries) ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAuditLogsByTenantAsc,
 		arg.TenantID,
 		arg.FilterActorUserPublicID,
 		arg.FilterAction,
 		arg.FilterCreatedFrom,
 		arg.FilterCreatedTo,
-		arg.CursorCreatedAt,
 		arg.CursorID,
+		arg.CursorCreatedAt,
 		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListAuditLogsByTenantRow
+	var items []ListAuditLogsByTenantAscRow
 	for rows.Next() {
-		var i ListAuditLogsByTenantRow
+		var i ListAuditLogsByTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ActorUserID,
+			&i.ActorRole,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.Outcome,
+			&i.Reason,
+			&i.ClientIp,
+			&i.CreatedAt,
+			&i.ActorPublicID,
+			&i.ActorName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAuditLogsByTenantDesc = `-- name: ListAuditLogsByTenantDesc :many
+SELECT a.id,
+    a.tenant_id,
+    a.actor_user_id,
+    a.actor_role,
+    a.action,
+    a.target_type,
+    a.target_id,
+    a.outcome,
+    a.reason,
+    a.client_ip,
+    a.created_at,
+    COALESCE(actor_u.public_id, ''::text) AS actor_public_id,
+    COALESCE(actor_u.name, ''::text) AS actor_name
+FROM audit_logs a
+    LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
+WHERE a.tenant_id = $1
+    AND ($2::text IS NULL OR actor_u.public_id = $2::text)
+    AND ($3::text IS NULL OR a.action = $3::text)
+    AND ($4::timestamptz IS NULL OR a.created_at >= $4::timestamptz)
+    AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
+    AND (
+        $6::uuid IS NULL
+        OR (a.created_at, a.id) < ($7::timestamptz, $6::uuid)
+    )
+ORDER BY a.created_at DESC, a.id DESC
+LIMIT $8
+`
+
+type ListAuditLogsByTenantDescParams struct {
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
+	FilterAction            sql.NullString `json:"filter_action"`
+	FilterCreatedFrom       sql.NullTime   `json:"filter_created_from"`
+	FilterCreatedTo         sql.NullTime   `json:"filter_created_to"`
+	CursorID                uuid.NullUUID  `json:"cursor_id"`
+	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
+	Limit                   int32          `json:"limit"`
+}
+
+type ListAuditLogsByTenantDescRow struct {
+	ID            uuid.UUID      `json:"id"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	ActorUserID   uuid.UUID      `json:"actor_user_id"`
+	ActorRole     string         `json:"actor_role"`
+	Action        string         `json:"action"`
+	TargetType    sql.NullString `json:"target_type"`
+	TargetID      sql.NullString `json:"target_id"`
+	Outcome       string         `json:"outcome"`
+	Reason        sql.NullString `json:"reason"`
+	ClientIp      sql.NullString `json:"client_ip"`
+	CreatedAt     time.Time      `json:"created_at"`
+	ActorPublicID string         `json:"actor_public_id"`
+	ActorName     string         `json:"actor_name"`
+}
+
+// ListAuditLogs は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+// 読めないため、走査方向ごとにクエリを分ける。
+// cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAuditLogsByTenantDesc,
+		arg.TenantID,
+		arg.FilterActorUserPublicID,
+		arg.FilterAction,
+		arg.FilterCreatedFrom,
+		arg.FilterCreatedTo,
+		arg.CursorID,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAuditLogsByTenantDescRow
+	for rows.Next() {
+		var i ListAuditLogsByTenantDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

@@ -111,8 +111,8 @@ const AuditLogsContent = async ({
       actorUserPublicId: filters.actor,
       createdFrom: filters.from,
       createdTo: filters.to,
-      cursor: filters.cursor,
       limit: pageSize,
+      token: filters.token,
     }),
     listAuditActorCandidates(tenantId, {
       limit: 100,
@@ -121,13 +121,22 @@ const AuditLogsContent = async ({
   ]);
 
   const resetHref = buildQueryString({});
-  const nextHref = result.nextCursor
+  const previousHref = result.previousToken
     ? buildQueryString({
         action: filters.action,
         actor: filters.actor,
-        cursor: result.nextCursor,
         from: filters.from,
         to: filters.to,
+        token: result.previousToken,
+      })
+    : "";
+  const nextHref = result.nextToken
+    ? buildQueryString({
+        action: filters.action,
+        actor: filters.actor,
+        from: filters.from,
+        to: filters.to,
+        token: result.nextToken,
       })
     : "";
 
@@ -270,12 +279,9 @@ const AuditLogsContent = async ({
                   1ページあたり {pageSize} 件まで表示します。
                 </p>
                 <div className="flex gap-2">
-                  {filters.cursor ? (
-                    <LinkButton
-                      href={resetHref || `/${tenantId}/audit-logs`}
-                      variant="outline"
-                    >
-                      先頭へ戻る
+                  {previousHref ? (
+                    <LinkButton href={previousHref} variant="outline">
+                      前へ
                     </LinkButton>
                   ) : null}
                   {nextHref ? (

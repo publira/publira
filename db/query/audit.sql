@@ -69,8 +69,12 @@ WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public
 ORDER BY a.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
--- name: ListAuditLogsByTenant :many
--- テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
+-- ListAuditLogs は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+-- 読めないため、走査方向ごとにクエリを分ける。
+-- cursor の共通仕様は proto/README.md を参照。
+-- name: ListAuditLogsByTenantDesc :many
 SELECT a.id,
     a.tenant_id,
     a.actor_user_id,
@@ -92,8 +96,36 @@ WHERE a.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('filter_created_from')::timestamptz IS NULL OR a.created_at >= sqlc.narg('filter_created_from')::timestamptz)
     AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
     AND (
-        (sqlc.narg('cursor_created_at')::timestamptz IS NULL AND sqlc.narg('cursor_id')::uuid IS NULL)
+        sqlc.narg('cursor_id')::uuid IS NULL
         OR (a.created_at, a.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
     )
 ORDER BY a.created_at DESC, a.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListAuditLogsByTenantAsc :many
+SELECT a.id,
+    a.tenant_id,
+    a.actor_user_id,
+    a.actor_role,
+    a.action,
+    a.target_type,
+    a.target_id,
+    a.outcome,
+    a.reason,
+    a.client_ip,
+    a.created_at,
+    COALESCE(actor_u.public_id, ''::text) AS actor_public_id,
+    COALESCE(actor_u.name, ''::text) AS actor_name
+FROM audit_logs a
+    LEFT JOIN users actor_u ON actor_u.id = a.actor_user_id
+WHERE a.tenant_id = sqlc.arg('tenant_id')
+    AND (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_u.public_id = sqlc.narg('filter_actor_user_public_id')::text)
+    AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
+    AND (sqlc.narg('filter_created_from')::timestamptz IS NULL OR a.created_at >= sqlc.narg('filter_created_from')::timestamptz)
+    AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (a.created_at, a.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+ORDER BY a.created_at ASC, a.id ASC
 LIMIT sqlc.arg('limit');

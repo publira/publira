@@ -3,7 +3,6 @@ package adminapi
 import (
 	"context"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 const (
@@ -20,33 +20,137 @@ const (
 	maxAuditLogPageSize     = int32(100)
 )
 
-func encodeAuditLogCursor(createdAt time.Time, id uuid.UUID) string {
-	payload := createdAt.UTC().Format(time.RFC3339Nano) + "|" + id.String()
-	return base64.RawURLEncoding.EncodeToString([]byte(payload))
+type auditLogCursorKeys struct {
+	createdAt sql.NullTime
+	id        uuid.NullUUID
 }
 
-func decodeAuditLogCursor(raw string) (time.Time, uuid.UUID, error) {
-	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+type auditLogQueryFilters struct {
+	tenantID          uuid.UUID
+	actorUserPublicID sql.NullString
+	action            sql.NullString
+	createdFrom       sql.NullTime
+	createdTo         sql.NullTime
+}
+
+type auditLogPageRow struct {
+	id            uuid.UUID
+	actorPublicID string
+	actorName     string
+	actorRole     string
+	action        string
+	targetType    sql.NullString
+	targetID      sql.NullString
+	outcome       string
+	reason        sql.NullString
+	clientIP      sql.NullString
+	createdAt     time.Time
+}
+
+func encodeAuditLogToken(direction pagination.Direction, row auditLogPageRow) string {
+	return pagination.Encode(direction, row.createdAt.UTC().Format(time.RFC3339Nano), row.id.String())
+}
+
+func decodeAuditLogTokenKeys(cursor pagination.Cursor) (auditLogCursorKeys, error) {
+	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	if len(cursor.Keys) != 2 {
+		return auditLogCursorKeys{}, invalid
+	}
+
+	createdAt, err := time.Parse(time.RFC3339Nano, cursor.Keys[0])
 	if err != nil {
-		return time.Time{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cursor is invalid"))
+		return auditLogCursorKeys{}, invalid
 	}
-
-	parts := strings.Split(string(decoded), "|")
-	if len(parts) != 2 {
-		return time.Time{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cursor is invalid"))
-	}
-
-	createdAt, err := time.Parse(time.RFC3339Nano, parts[0])
+	id, err := uuid.Parse(cursor.Keys[1])
 	if err != nil {
-		return time.Time{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cursor is invalid"))
+		return auditLogCursorKeys{}, invalid
 	}
 
-	id, err := uuid.Parse(parts[1])
+	return auditLogCursorKeys{
+		createdAt: sql.NullTime{Time: createdAt.UTC(), Valid: true},
+		id:        uuid.NullUUID{UUID: id, Valid: true},
+	}, nil
+}
+
+func mapAuditLogDescRows(rows []dbmodels.ListAuditLogsByTenantDescRow) []auditLogPageRow {
+	mapped := make([]auditLogPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, auditLogPageRow{
+			id:            row.ID,
+			actorPublicID: row.ActorPublicID,
+			actorName:     row.ActorName,
+			actorRole:     row.ActorRole,
+			action:        row.Action,
+			targetType:    row.TargetType,
+			targetID:      row.TargetID,
+			outcome:       row.Outcome,
+			reason:        row.Reason,
+			clientIP:      row.ClientIp,
+			createdAt:     row.CreatedAt,
+		})
+	}
+	return mapped
+}
+
+func mapAuditLogAscRows(rows []dbmodels.ListAuditLogsByTenantAscRow) []auditLogPageRow {
+	mapped := make([]auditLogPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, auditLogPageRow{
+			id:            row.ID,
+			actorPublicID: row.ActorPublicID,
+			actorName:     row.ActorName,
+			actorRole:     row.ActorRole,
+			action:        row.Action,
+			targetType:    row.TargetType,
+			targetID:      row.TargetID,
+			outcome:       row.Outcome,
+			reason:        row.Reason,
+			clientIP:      row.ClientIp,
+			createdAt:     row.CreatedAt,
+		})
+	}
+	return mapped
+}
+
+func (s *adminServer) auditLogPage(
+	ctx context.Context,
+	filters auditLogQueryFilters,
+	keys auditLogCursorKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]auditLogPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListAuditLogsByTenantAsc(ctx, dbmodels.ListAuditLogsByTenantAscParams{
+			TenantID:                filters.tenantID,
+			FilterActorUserPublicID: filters.actorUserPublicID,
+			FilterAction:            filters.action,
+			FilterCreatedFrom:       filters.createdFrom,
+			FilterCreatedTo:         filters.createdTo,
+			CursorID:                keys.id,
+			CursorCreatedAt:         keys.createdAt,
+			Limit:                   limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapAuditLogAscRows(rows), nil
+	}
+
+	rows, err := queries.ListAuditLogsByTenantDesc(ctx, dbmodels.ListAuditLogsByTenantDescParams{
+		TenantID:                filters.tenantID,
+		FilterActorUserPublicID: filters.actorUserPublicID,
+		FilterAction:            filters.action,
+		FilterCreatedFrom:       filters.createdFrom,
+		FilterCreatedTo:         filters.createdTo,
+		CursorID:                keys.id,
+		CursorCreatedAt:         keys.createdAt,
+		Limit:                   limit,
+	})
 	if err != nil {
-		return time.Time{}, uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cursor is invalid"))
+		return nil, err
 	}
-
-	return createdAt.UTC(), id, nil
+	return mapAuditLogDescRows(rows), nil
 }
 
 func parseAuditLogTimeFilter(name, value string) (sql.NullTime, error) {
@@ -72,9 +176,17 @@ func (s *adminServer) ListAuditLogs(
 		return nil, err
 	}
 
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > maxAuditLogPageSize {
-		limit = defaultAuditLogPageSize
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAuditLogPageSize, maxAuditLogPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys auditLogCursorKeys
+	if !cursor.IsZero() {
+		keys, err = decodeAuditLogTokenKeys(cursor)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	createdFrom, err := parseAuditLogTimeFilter("created_from", req.Msg.CreatedFrom)
@@ -91,69 +203,66 @@ func (s *adminServer) ListAuditLogs(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("created_from must be before created_to"))
 	}
 
-	params := dbmodels.ListAuditLogsByTenantParams{
-		TenantID: tenant.ID,
-		FilterActorUserPublicID: sql.NullString{
+	filters := auditLogQueryFilters{
+		tenantID: tenant.ID,
+		actorUserPublicID: sql.NullString{
 			String: strings.TrimSpace(req.Msg.ActorUserPublicId),
 			Valid:  strings.TrimSpace(req.Msg.ActorUserPublicId) != "",
 		},
-		FilterAction: sql.NullString{
+		action: sql.NullString{
 			String: strings.TrimSpace(req.Msg.Action),
 			Valid:  strings.TrimSpace(req.Msg.Action) != "",
 		},
-		FilterCreatedFrom: createdFrom,
-		FilterCreatedTo:   createdTo,
-		Limit:             limit + 1,
+		createdFrom: createdFrom,
+		createdTo:   createdTo,
 	}
 
-	if cursor := strings.TrimSpace(req.Msg.Cursor); cursor != "" {
-		cursorCreatedAt, cursorID, err := decodeAuditLogCursor(cursor)
-		if err != nil {
-			return nil, err
-		}
-		params.CursorCreatedAt = sql.NullTime{Time: cursorCreatedAt, Valid: true}
-		params.CursorID = uuid.NullUUID{UUID: cursorID, Valid: true}
-	}
-
-	rows, err := s.queriesFor(ctx).ListAuditLogsByTenant(ctx, params)
+	rows, err := s.auditLogPage(ctx, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-
-	nextCursor := ""
-	if len(rows) > int(limit) {
-		last := rows[limit-1]
-		nextCursor = encodeAuditLogCursor(last.CreatedAt, last.ID)
-		rows = rows[:limit]
-	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	auditLogs := make([]*publiraadminv1.AdminAuditLog, 0, len(rows))
 	for _, row := range rows {
 		item := &publiraadminv1.AdminAuditLog{
-			ActorUserPublicId: row.ActorPublicID,
-			ActorName:         row.ActorName,
-			ActorRole:         row.ActorRole,
-			Action:            row.Action,
-			Outcome:           row.Outcome,
-			CreatedAt:         row.CreatedAt.UTC().Format(time.RFC3339),
+			ActorUserPublicId: row.actorPublicID,
+			ActorName:         row.actorName,
+			ActorRole:         row.actorRole,
+			Action:            row.action,
+			Outcome:           row.outcome,
+			CreatedAt:         row.createdAt.UTC().Format(time.RFC3339),
 		}
-		if row.TargetType.Valid {
-			item.TargetType = row.TargetType.String
+		if row.targetType.Valid {
+			item.TargetType = row.targetType.String
 		}
-		if row.TargetID.Valid {
-			item.TargetId = row.TargetID.String
+		if row.targetID.Valid {
+			item.TargetId = row.targetID.String
 		}
-		if row.Reason.Valid {
-			item.Reason = row.Reason.String
+		if row.reason.Valid {
+			item.Reason = row.reason.String
 		}
-		if row.ClientIp.Valid {
-			item.ClientIp = row.ClientIp.String
+		if row.clientIP.Valid {
+			item.ClientIp = row.clientIP.String
 		}
 		auditLogs = append(auditLogs, item)
 	}
 
-	return connect.NewResponse(&publiraadminv1.ListAuditLogsResponse{
-		AuditLogs:  auditLogs,
-		NextCursor: nextCursor,
-	}), nil
+	res := &publiraadminv1.ListAuditLogsResponse{AuditLogs: auditLogs}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = encodeAuditLogToken(pagination.Backward, rows[0])
+		}
+		if hasNext {
+			res.NextToken = encodeAuditLogToken(pagination.Forward, rows[len(rows)-1])
+		}
+	case cursor.Direction == pagination.Forward:
+		res.PreviousToken = pagination.Encode(pagination.Backward, cursor.Keys...)
+	case cursor.Direction == pagination.Backward:
+		res.NextToken = pagination.Encode(pagination.Forward, cursor.Keys...)
+	}
+
+	return connect.NewResponse(res), nil
 }
