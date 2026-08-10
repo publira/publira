@@ -53,7 +53,6 @@ const listNotificationsRpc = (
   apiClient.auth.listNotifications(
     {
       limit: 100,
-      offset: 0,
       tenant: { tenantId },
     },
     buildSessionHeaders(sessionId)
