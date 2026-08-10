@@ -36,13 +36,20 @@ Format: `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>`
 
 ## Skill packages
 
-`.agents/skills/*` is vendored via `skills-lock.json` (overwritten by `npx skills` and similar).
+Entries in `.agents/skills/*` listed in `skills-lock.json` are vendored (overwritten by `npx skills` and similar).
 
 - **Do not edit** (patches will be lost)
 - Reading for general knowledge / reference is fine
 - When this repository's policy conflicts with a skill, **prefer this file (and `apps/AGENTS.md` / domain `*/AGENTS.md`)**
 
 Auto-update: `.github/workflows/skills-update.yml` runs weekly `npx skills update -p -y` and opens a PR when there is a diff.
+
+Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.claude/skills/*` reach them through relative symlinks. Edit the canonical copy under `skills/`, and keep its links relative so both paths resolve. In-repo skills:
+
+| Skill | Purpose |
+| --- | --- |
+| `skills/create-pr` | Open a pull request following this repository's branch, staging, verification, and template rules |
+| `skills/organize-github-issues` | Create and normalize GitHub Issues with consistent types, fields, labels, and hierarchy |
 
 ## React: Effects and useEffectEvent
 
