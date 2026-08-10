@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"net/http"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
@@ -31,7 +33,94 @@ import (
 const (
 	creatorIconMaxUploadBytes = 10 << 20
 	creatorIconMinDimension   = 256
+	defaultLabelPageSize      = int32(20)
+	maxLabelPageSize          = int32(100)
+	labelInclusiveKey         = "inclusive"
 )
+
+type labelCursorKeys struct {
+	createdAt sql.NullTime
+	id        uuid.NullUUID
+	inclusive bool
+}
+
+type labelPageRow struct {
+	id                     uuid.UUID
+	publicID               string
+	name                   string
+	createdAt              time.Time
+	eyeCatchImageID        uuid.NullUUID
+	eyeCatchImageUpdatedAt sql.NullTime
+}
+
+func encodeLabelToken(direction pagination.Direction, row labelPageRow) string {
+	return pagination.Encode(direction, row.createdAt.UTC().Format(time.RFC3339Nano), row.id.String())
+}
+
+func encodeLabelRecoveryToken(direction pagination.Direction, keys labelCursorKeys) string {
+	return pagination.Encode(
+		direction,
+		keys.createdAt.Time.UTC().Format(time.RFC3339Nano),
+		keys.id.UUID.String(),
+		labelInclusiveKey,
+	)
+}
+
+func decodeLabelTokenKeys(cursor pagination.Cursor) (labelCursorKeys, error) {
+	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
+		return labelCursorKeys{}, invalid
+	}
+	inclusive := len(cursor.Keys) == 3
+	if inclusive && cursor.Keys[2] != labelInclusiveKey {
+		return labelCursorKeys{}, invalid
+	}
+
+	createdAt, err := time.Parse(time.RFC3339Nano, cursor.Keys[0])
+	if err != nil {
+		return labelCursorKeys{}, invalid
+	}
+	id, err := uuid.Parse(cursor.Keys[1])
+	if err != nil {
+		return labelCursorKeys{}, invalid
+	}
+
+	return labelCursorKeys{
+		createdAt: sql.NullTime{Time: createdAt.UTC(), Valid: true},
+		id:        uuid.NullUUID{UUID: id, Valid: true},
+		inclusive: inclusive,
+	}, nil
+}
+
+func mapLabelDescRows(rows []dbmodels.ListLabelsByTenantDescRow) []labelPageRow {
+	mapped := make([]labelPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, labelPageRow{
+			id:                     row.ID,
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			createdAt:              row.CreatedAt,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		})
+	}
+	return mapped
+}
+
+func mapLabelAscRows(rows []dbmodels.ListLabelsByTenantAscRow) []labelPageRow {
+	mapped := make([]labelPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, labelPageRow{
+			id:                     row.ID,
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			createdAt:              row.CreatedAt,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		})
+	}
+	return mapped
+}
 
 type normalizedCreatorIconImage struct {
 	ContentType string
@@ -286,6 +375,41 @@ func (s *adminServer) labelEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
+func (s *adminServer) labelPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys labelCursorKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]labelPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListLabelsByTenantAsc(ctx, dbmodels.ListLabelsByTenantAscParams{
+			TenantID:        tenantID,
+			CursorID:        keys.id,
+			CursorInclusive: keys.inclusive,
+			CursorCreatedAt: keys.createdAt,
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapLabelAscRows(rows), nil
+	}
+
+	rows, err := queries.ListLabelsByTenantDesc(ctx, dbmodels.ListLabelsByTenantDescParams{
+		TenantID:        tenantID,
+		CursorID:        keys.id,
+		CursorInclusive: keys.inclusive,
+		CursorCreatedAt: keys.createdAt,
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapLabelDescRows(rows), nil
+}
+
 func (s *adminServer) ListCreators(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListCreatorsRequest],
@@ -328,29 +452,34 @@ func (s *adminServer) ListLabels(
 	if err != nil {
 		return nil, err
 	}
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > 100 {
-		limit = 20
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultLabelPageSize, maxLabelPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	rows, err := s.queriesFor(ctx).ListLabelsByTenant(ctx, dbmodels.ListLabelsByTenantParams{
-		TenantID: tenant.ID,
-		Limit:    limit,
-		// The keyset query and token handling are introduced in #730. Until
-		// then, preserve the current client's first-page behavior.
-		Offset: 0,
-	})
+	var keys labelCursorKeys
+	if !cursor.IsZero() {
+		keys, err = decodeLabelTokenKeys(cursor)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	rows, err := s.labelPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
 	items := make([]*publirattypesv1.Label, 0, len(rows))
 	imageIDs := make([]uuid.UUID, 0, len(rows))
 	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Label, len(rows))
 	for _, row := range rows {
-		item := protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, nil)
+		item := protomapper.LabelWithImage(row.publicID, row.name, row.eyeCatchImageUpdatedAt, nil)
 		items = append(items, item)
-		if row.EyeCatchImageID.Valid {
-			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
-			itemByImageID[row.EyeCatchImageID.UUID] = item
+		if row.eyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
+			itemByImageID[row.eyeCatchImageID.UUID] = item
 		}
 	}
 	variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
@@ -362,7 +491,24 @@ func (s *adminServer) ListLabels(
 			item.EyeCatchImageVariants = variants
 		}
 	}
-	return connect.NewResponse(&publiraadminv1.ListLabelsResponse{Labels: items}), nil
+
+	res := &publiraadminv1.ListLabelsResponse{Labels: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = encodeLabelToken(pagination.Backward, rows[0])
+		}
+		if hasNext {
+			res.NextToken = encodeLabelToken(pagination.Forward, rows[len(rows)-1])
+		}
+	case cursor.Direction == pagination.Forward:
+		res.PreviousToken = encodeLabelRecoveryToken(pagination.Backward, keys)
+	case cursor.Direction == pagination.Backward:
+		res.NextToken = encodeLabelRecoveryToken(pagination.Forward, keys)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *adminServer) CreateCreator(

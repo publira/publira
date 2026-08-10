@@ -172,7 +172,13 @@ type Querier interface {
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
+	// ListPublishedLabels はまだ offset pagination を使用する。
 	ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error)
+	ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error)
+	// Admin ListLabels は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
 	// テナント管理画面向け通知一覧を取得
 	ListNotificationsForTenant(ctx context.Context, arg ListNotificationsForTenantParams) ([]ListNotificationsForTenantRow, error)
 	// 通知一覧を取得（既読状態付き）
