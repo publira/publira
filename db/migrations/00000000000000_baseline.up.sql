@@ -783,11 +783,8 @@ CREATE INDEX idx_access_tickets_tenant_created_at ON access_tickets USING btree 
 -- INDEX: idx_audit_logs_actor_user_id
 CREATE INDEX idx_audit_logs_actor_user_id ON audit_logs USING btree (actor_user_id);
 
--- INDEX: idx_audit_logs_created_at
-CREATE INDEX idx_audit_logs_created_at ON audit_logs USING btree (created_at DESC);
-
--- INDEX: idx_audit_logs_tenant_id
-CREATE INDEX idx_audit_logs_tenant_id ON audit_logs USING btree (tenant_id);
+-- INDEX: idx_audit_logs_tenant_created_at
+CREATE INDEX idx_audit_logs_tenant_created_at ON audit_logs USING btree (tenant_id, created_at DESC, id DESC);
 
 -- INDEX: idx_creator_image_variants_creator_image_id
 CREATE INDEX idx_creator_image_variants_creator_image_id ON creator_image_variants USING btree (creator_image_id);
@@ -1394,4 +1391,3 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: users users_tenant_isolation
 CREATE POLICY users_tenant_isolation ON users USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
-

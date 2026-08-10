@@ -155,8 +155,13 @@ type Querier interface {
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error)
-	// テナント操作監査ログ一覧取得（フィルタ・カーソル対応）
-	ListAuditLogsByTenant(ctx context.Context, arg ListAuditLogsByTenantParams) ([]ListAuditLogsByTenantRow, error)
+	ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error)
+	// ListAuditLogs は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+	// 読めないため、走査方向ごとにクエリを分ける。
+	// cursor の共通仕様は proto/README.md を参照。
+	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
 	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)
 	ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]ListCreatorsByTenantRow, error)
 	// エンドユーザー（tenant_user_roles未保持）の一覧取得

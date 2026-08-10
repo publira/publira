@@ -27,8 +27,8 @@ export interface AuditLogFilters {
   actorUserPublicId?: string;
   createdFrom?: string;
   createdTo?: string;
-  cursor?: string;
   limit?: number;
+  token?: string;
 }
 
 export interface AuditActorCandidate {
@@ -52,13 +52,15 @@ export type ListAuditLogsResult =
   | {
       ok: true;
       auditLogs: AuditLogItem[];
-      nextCursor: string;
+      nextToken: string;
+      previousToken: string;
     }
   | {
       ok: false;
       auditLogs: AuditLogItem[];
       message: string;
-      nextCursor: string;
+      nextToken: string;
+      previousToken: string;
     };
 
 const genericListErrorMessage =
@@ -175,8 +177,9 @@ export const listAuditLogs = async (
     return {
       auditLogs: [],
       message: "セッションが無効です。再ログインしてください。",
-      nextCursor: "",
+      nextToken: "",
       ok: false,
+      previousToken: "",
     };
   }
 
@@ -187,25 +190,27 @@ export const listAuditLogs = async (
         actorUserPublicId: filters.actorUserPublicId?.trim() ?? "",
         createdFrom: normalizeDateStart(filters.createdFrom),
         createdTo: normalizeDateEnd(filters.createdTo),
-        cursor: filters.cursor?.trim() ?? "",
         limit: filters.limit ?? 20,
         tenant: { tenantId },
+        token: filters.token?.trim() ?? "",
       },
       withSessionHeaders(sessionId)
     );
 
     return {
       auditLogs: (response.auditLogs ?? []).map((item) => mapAuditLog(item)),
-      nextCursor: response.nextCursor ?? "",
+      nextToken: response.nextToken ?? "",
       ok: true,
+      previousToken: response.previousToken ?? "",
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
       auditLogs: [],
       message: mapErrorToMessage(error),
-      nextCursor: "",
+      nextToken: "",
       ok: false,
+      previousToken: "",
     };
   }
 };

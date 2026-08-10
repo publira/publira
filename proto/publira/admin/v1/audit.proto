@@ -20,18 +20,28 @@ message AdminAuditLog {
 }
 
 message ListAuditLogsRequest {
+  reserved 3;
+  reserved "cursor";
+
   publira.types.v1.TenantContext tenant = 1;
   int32 limit = 2;
-  string cursor = 3;
   string actor_user_public_id = 4;
   string action = 5;
   string created_from = 6;
   string created_to = 7;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 8;
 }
 
 message ListAuditLogsResponse {
+  reserved 2;
+  reserved "next_cursor";
+
   repeated AdminAuditLog audit_logs = 1;
-  string next_cursor = 2;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 3;
+  // Token for the next page. Empty on the last page.
+  string next_token = 4;
 }
 
 service AdminAuditLogService {
