@@ -1,6 +1,6 @@
 # GitHub Issue CLI and API reference
 
-Prefer dedicated `gh issue` commands. They accept Issue numbers or URLs, expose intent clearly, and avoid REST database-ID handling. Use `gh api` only for structured fields, inventory that the CLI cannot return, or a feature missing from the installed CLI.
+Prefer dedicated [`gh issue`](https://cli.github.com/manual/gh_issue) commands. They accept Issue numbers or URLs, expose intent clearly, and avoid REST database-ID handling. Use `gh api` only for structured fields, inventory that the CLI cannot return, or a feature missing from the installed CLI.
 
 Check the installed version and flags rather than assuming the online manual matches the environment:
 
@@ -11,7 +11,7 @@ gh issue edit --help
 gh issue view --help
 ```
 
-## Create with native commands
+## [Create with native commands](https://cli.github.com/manual/gh_issue_create)
 
 Use `gh issue create` for the Issue and all metadata it supports:
 
@@ -29,7 +29,7 @@ Use `--blocking` when the new Issue blocks existing work. Both dependency flags 
 
 After creation, use the API only to add field values such as Priority and Effort because `gh issue create` does not provide field-value flags.
 
-## Edit with native commands
+## [Edit with native commands](https://cli.github.com/manual/gh_issue_edit)
 
 Use `gh issue edit` for existing types, hierarchy, and dependencies:
 
@@ -47,7 +47,9 @@ The corresponding removal flags include `--remove-type`, `--remove-parent`, `--r
 
 Do not express the same hierarchy twice with both `--parent` and `--add-sub-issue`; either direction creates the same parent-child relationship.
 
-## Use the API for Issue fields
+## [Use the API for Issue fields](https://docs.github.com/en/rest/issues/issue-field-values)
+
+Issue fields are organization-level metadata on the Issue itself, not Projects custom fields. The organization-level definitions live under [REST API endpoints for organization issue fields](https://docs.github.com/en/rest/orgs/issue-fields); per-Issue values live under [REST API endpoints for issue field values](https://docs.github.com/en/rest/issues/issue-field-values).
 
 List organization fields and existing Issue values:
 
@@ -67,7 +69,7 @@ gh api --method POST \
 
 Use `PUT` only when intentionally replacing all field values.
 
-## Use the API for complete inventory
+## [Use the API for complete inventory](https://docs.github.com/en/rest/issues/issues)
 
 The API remains useful for repository-wide audits and machine-readable values:
 
