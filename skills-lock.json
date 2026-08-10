@@ -11,19 +11,19 @@
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-adoption/SKILL.md",
-      "computedHash": "28dbee9d2c2773fca3447de97f5b36b60be9398b7d4e914c79ca92b7d004ca21"
+      "computedHash": "48828a610ff29005390597d6baca6e92016efabe19733144fb3d0e7c7bbb9327"
     },
     "next-cache-components-optimizer": {
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
-      "computedHash": "f67b08843bfc4e9cde4ac4bfe8b14aa0d2d9d2694611be077fa333bad2605a65"
+      "computedHash": "925bfb94017293b94586bc8deb92fd18de8664352c56ab0bee8c5b2e9135fc74"
     },
     "next-dev-loop": {
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-dev-loop/SKILL.md",
-      "computedHash": "1fb1b47ed7186737df086aa198f86961f72691539f1c4507f60bbedf60a128be"
+      "computedHash": "5b567d2e521056db6b8b37c46c6b2b9c72de5192c0daeb351c966d61e0702630"
     },
     "next-partial-prefetching-adoption": {
       "source": "vercel/next.js",
