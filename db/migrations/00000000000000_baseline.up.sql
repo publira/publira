@@ -831,6 +831,9 @@ CREATE INDEX idx_label_images_label_id ON label_images USING btree (label_id);
 -- INDEX: idx_label_images_tenant_id
 CREATE INDEX idx_label_images_tenant_id ON label_images USING btree (tenant_id);
 
+-- INDEX: idx_labels_tenant_created_at
+CREATE INDEX idx_labels_tenant_created_at ON labels USING btree (tenant_id, created_at DESC, id DESC);
+
 -- INDEX: idx_notification_reads_user_notification
 CREATE INDEX idx_notification_reads_user_notification ON notification_reads USING btree (user_id, notification_id);
 

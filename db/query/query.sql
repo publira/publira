@@ -1622,6 +1622,7 @@ ORDER BY label_image_id,
     variant_type,
     width;
 
+-- ListPublishedLabels はまだ offset pagination を使用する。
 -- name: ListLabelsByTenant :many
 SELECT labels.id,
     labels.tenant_id,
@@ -1635,6 +1636,59 @@ LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
 WHERE labels.tenant_id = $1
 ORDER BY labels.created_at DESC
 LIMIT $2 OFFSET $3;
+
+-- Admin ListLabels は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListLabelsByTenantDesc :many
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY labels.created_at DESC, labels.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListLabelsByTenantAsc :many
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (labels.created_at, labels.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY labels.created_at ASC, labels.id ASC
+LIMIT sqlc.arg('limit');
 -- name: CreateLabel :one
 INSERT INTO labels (
         id,

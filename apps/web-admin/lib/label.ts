@@ -7,7 +7,7 @@ import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { mentionsImageRejection } from "./image-rejection";
-import { findByPublicId } from "./paged-lookup";
+import { findByPublicIdWithToken } from "./paged-lookup";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {
@@ -124,7 +124,6 @@ export const listLabels = async (
     const response = await apiClient.label.listLabels(
       {
         limit: 100,
-        offset: 0,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
@@ -257,20 +256,23 @@ export const getLabel = async (input: {
   }
 
   try {
-    // `label.proto` has no `GetLabel`, so the record has to be found by walking
-    // `ListLabels`; see `findByPublicId`.
-    const label = await findByPublicId(
+    // `label.proto` has no `GetLabel`, so walk the cursor pages until the
+    // requested record is found.
+    const label = await findByPublicIdWithToken(
       input.publicId,
-      async (offset, limit) => {
+      async (token, limit) => {
         const response = await apiClient.label.listLabels(
           {
             limit,
-            offset,
             tenant: { tenantId: input.tenantId },
+            token,
           },
           withSessionHeaders(sessionId)
         );
-        return response.labels ?? [];
+        return {
+          items: response.labels,
+          nextToken: response.nextToken,
+        };
       }
     );
     if (!label) {

@@ -4223,6 +4223,7 @@ type ListLabelsByTenantRow struct {
 	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
+// ListPublishedLabels はまだ offset pagination を使用する。
 func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listLabelsByTenant, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
@@ -4232,6 +4233,171 @@ func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenant
 	var items []ListLabelsByTenantRow
 	for rows.Next() {
 		var i ListLabelsByTenantRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLabelsByTenantAsc = `-- name: ListLabelsByTenantAsc :many
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (labels.created_at, labels.id) >= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (labels.created_at, labels.id) > ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY labels.created_at ASC, labels.id ASC
+LIMIT $5
+`
+
+type ListLabelsByTenantAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListLabelsByTenantAscRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	TenantID               uuid.UUID     `json:"tenant_id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+func (q *Queries) ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLabelsByTenantAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLabelsByTenantAscRow
+	for rows.Next() {
+		var i ListLabelsByTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLabelsByTenantDesc = `-- name: ListLabelsByTenantDesc :many
+SELECT labels.id,
+    labels.tenant_id,
+    labels.public_id,
+    labels.name,
+    labels.created_at,
+    labels.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at
+FROM labels
+LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
+WHERE labels.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (labels.created_at, labels.id) <= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (labels.created_at, labels.id) < ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY labels.created_at DESC, labels.id DESC
+LIMIT $5
+`
+
+type ListLabelsByTenantDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListLabelsByTenantDescRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	TenantID               uuid.UUID     `json:"tenant_id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	CreatedAt              time.Time     `json:"created_at"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+}
+
+// Admin ListLabels は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLabelsByTenantDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLabelsByTenantDescRow
+	for rows.Next() {
+		var i ListLabelsByTenantDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

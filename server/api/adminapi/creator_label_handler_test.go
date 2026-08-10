@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -14,7 +15,55 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/pagination"
 )
+
+const (
+	listLabelsByTenantAscQuery  = "-- name: ListLabelsByTenantAsc :many\n"
+	listLabelsByTenantDescQuery = "-- name: ListLabelsByTenantDesc :many\n"
+)
+
+func labelColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id",
+		"tenant_id",
+		"public_id",
+		"name",
+		"created_at",
+		"eye_catch_image_id",
+		"eye_catch_image_updated_at",
+	})
+}
+
+func addLabelRow(
+	rows *sqlmock.Rows,
+	id, tenantID uuid.UUID,
+	publicID, name string,
+	createdAt time.Time,
+) *sqlmock.Rows {
+	return rows.AddRow(id, tenantID, publicID, name, createdAt, nil, nil)
+}
+
+func newLabelClient(
+	t *testing.T,
+	tenantID, userID uuid.UUID,
+	now time.Time,
+) (publiraadminv1connect.AdminLabelServiceClient, sqlmock.Sqlmock, string) {
+	t.Helper()
+	testServer, mock := newTestAdminServer(t)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	return publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+}
+
+func newLabelRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListLabelsRequest] {
+	req := connect.NewRequest(&publiraadminv1.ListLabelsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	return req
+}
 
 func TestListCreatorsSuccess(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
@@ -175,27 +224,16 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 }
 
 func TestListLabelsSuccess(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
 
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery("FROM labels").
-		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(addLabelRow(labelColumns(), uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now))
 
-	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListLabelsRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-
-	resp, err := client.ListLabels(context.Background(), req)
+	resp, err := client.ListLabels(context.Background(), newLabelRequest(tenantID, sessionToken))
 	if err != nil {
 		t.Fatalf("ListLabels: %v", err)
 	}
@@ -204,6 +242,224 @@ func TestListLabelsSuccess(t *testing.T) {
 	}
 	if resp.Msg.Labels[0].PublicId != "LABEL001" {
 		t.Fatalf("label public_id = %q, want LABEL001", resp.Msg.Labels[0].PublicId)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListLabelsFirstPageReportsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+
+	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WillReturnRows(addLabelRow(
+			addLabelRow(
+				addLabelRow(labelColumns(), ids[0], tenantID, "LABEL001", "First", now),
+				ids[1], tenantID, "LABEL002", "Second", now.Add(-time.Minute),
+			),
+			ids[2], tenantID, "LABEL003", "Third", now.Add(-2*time.Minute),
+		))
+
+	req := newLabelRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	resp, err := client.ListLabels(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListLabels: %v", err)
+	}
+	if len(resp.Msg.Labels) != 2 {
+		t.Fatalf("labels count = %d, want the over-fetched row dropped", len(resp.Msg.Labels))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListLabelsFollowsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addLabelRow(labelColumns(), uuid.Must(uuid.NewV7()), tenantID, "LABEL003", "Last", now.Add(-2*time.Minute)))
+
+	req := newLabelRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListLabels(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListLabels: %v", err)
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListLabelsFollowsPreviousTokenBackwards(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-10 * time.Minute)
+	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
+	olderID := uuid.Must(uuid.NewV7())
+	newerID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantAscQuery)).
+		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addLabelRow(
+			addLabelRow(labelColumns(), olderID, tenantID, "LABEL002", "Older", now.Add(-2*time.Minute)),
+			newerID, tenantID, "LABEL001", "Newer", now.Add(-time.Minute),
+		))
+
+	req := newLabelRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListLabels(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListLabels: %v", err)
+	}
+	publicIDs := make([]string, 0, len(resp.Msg.Labels))
+	for _, label := range resp.Msg.Labels {
+		publicIDs = append(publicIDs, label.PublicId)
+	}
+	if !slices.Equal(publicIDs, []string{"LABEL001", "LABEL002"}) {
+		t.Fatalf("public_ids = %v, want backward page restored to descending order", publicIDs)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListLabelsEmptyPageKeepsAWayBack(t *testing.T) {
+	tests := []struct {
+		name                string
+		direction           pagination.Direction
+		wantQuery           string
+		wantRecoveryQuery   string
+		wantRecoveredLabels []string
+	}{
+		{
+			name:                "forward",
+			direction:           pagination.Forward,
+			wantQuery:           listLabelsByTenantDescQuery,
+			wantRecoveryQuery:   listLabelsByTenantAscQuery,
+			wantRecoveredLabels: []string{"LABEL001", "LABEL002"},
+		},
+		{
+			name:                "backward",
+			direction:           pagination.Backward,
+			wantQuery:           listLabelsByTenantAscQuery,
+			wantRecoveryQuery:   listLabelsByTenantDescQuery,
+			wantRecoveredLabels: []string{"LABEL002", "LABEL003"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, boundaryID, false, now, int32(21)).
+				WillReturnRows(labelColumns())
+
+			req := newLabelRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListLabels(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListLabels: %v", err)
+			}
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
+			}
+			cursor, err := pagination.Decode(recoveryToken)
+			if err != nil {
+				t.Fatalf("decode recovery token: %v", err)
+			}
+			wantKeys := []string{now.Format(time.RFC3339Nano), boundaryID.String(), labelInclusiveKey}
+			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
+				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
+			}
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			recoveryRows := labelColumns()
+			if test.direction == pagination.Forward {
+				recoveryRows = addLabelRow(recoveryRows, boundaryID, tenantID, "LABEL002", "Boundary", now)
+				recoveryRows = addLabelRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Newer", now.Add(time.Minute))
+			} else {
+				recoveryRows = addLabelRow(recoveryRows, boundaryID, tenantID, "LABEL002", "Boundary", now)
+				recoveryRows = addLabelRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "LABEL003", "Older", now.Add(-time.Minute))
+			}
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
+				WithArgs(tenantID, boundaryID, true, now, int32(21)).
+				WillReturnRows(recoveryRows)
+
+			recoveryReq := newLabelRequest(tenantID, sessionToken)
+			recoveryReq.Msg.Token = recoveryToken
+			recovered, err := client.ListLabels(context.Background(), recoveryReq)
+			if err != nil {
+				t.Fatalf("ListLabels recovery: %v", err)
+			}
+			publicIDs := make([]string, 0, len(recovered.Msg.Labels))
+			for _, label := range recovered.Msg.Labels {
+				publicIDs = append(publicIDs, label.PublicId)
+			}
+			if !slices.Equal(publicIDs, test.wantRecoveredLabels) {
+				t.Fatalf("recovered public_ids = %v, want %v", publicIDs, test.wantRecoveredLabels)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestListLabelsInvalidToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newLabelClient(t, tenantID, userID, now)
+	req := newLabelRequest(tenantID, sessionToken)
+	req.Msg.Token = "not-a-valid-token"
+
+	_, err := client.ListLabels(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListLabels code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("error = %q, want token internals hidden", err)
 	}
 	assertExpectations(t, mock)
 }
