@@ -213,10 +213,6 @@ func (s *platformServer) ListTenantAdminInvitations(
 	if limit > maxListLimit {
 		limit = maxListLimit
 	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
-	}
 
 	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
 	if err != nil {
@@ -229,7 +225,9 @@ func (s *platformServer) ListTenantAdminInvitations(
 	rows, err := s.queriesFor(ctx).ListTenantAdminInvitations(ctx, dbmodels.ListTenantAdminInvitationsParams{
 		TenantID: tenant.ID,
 		Limit:    limit,
-		Offset:   offset,
+		// The keyset query and token handling are introduced in #746. Until
+		// then, preserve the current client's first-page behavior.
+		Offset: 0,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
