@@ -410,16 +410,52 @@ WHERE tenant_id = $1
     AND id = $2
 RETURNING *;
 
--- name: ListTenantAdminInvitations :many
+-- Platform ListTenantAdminInvitations は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListTenantAdminInvitationsDesc :many
 SELECT *
 FROM tenant_admin_invitations
-WHERE tenant_id = $1
+WHERE tenant_id = sqlc.arg('tenant_id')
     AND (
         accepted_at IS NULL
         OR accepted_at >= NOW() - INTERVAL '7 days'
     )
-ORDER BY created_at DESC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (created_at, id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (created_at, id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantAdminInvitationsAsc :many
+SELECT *
+FROM tenant_admin_invitations
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND (
+        accepted_at IS NULL
+        OR accepted_at >= NOW() - INTERVAL '7 days'
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (created_at, id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (created_at, id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY created_at ASC, id ASC
+LIMIT sqlc.arg('limit');
 -- name: BumpUserCredentialsVersion :one
 UPDATE users
 SET credentials_version = credentials_version + 1

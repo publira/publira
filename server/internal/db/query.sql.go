@@ -5368,7 +5368,7 @@ func (q *Queries) ListSeriesImageVariantsByImageIDs(ctx context.Context, imageId
 	return items, nil
 }
 
-const listTenantAdminInvitations = `-- name: ListTenantAdminInvitations :many
+const listTenantAdminInvitationsAsc = `-- name: ListTenantAdminInvitationsAsc :many
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations
 WHERE tenant_id = $1
@@ -5376,18 +5376,110 @@ WHERE tenant_id = $1
         accepted_at IS NULL
         OR accepted_at >= NOW() - INTERVAL '7 days'
     )
-ORDER BY created_at DESC
-LIMIT $3 OFFSET $2
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (created_at, id) >= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (created_at, id) > ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY created_at ASC, id ASC
+LIMIT $5
 `
 
-type ListTenantAdminInvitationsParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Offset   int32     `json:"offset"`
-	Limit    int32     `json:"limit"`
+type ListTenantAdminInvitationsAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
 }
 
-func (q *Queries) ListTenantAdminInvitations(ctx context.Context, arg ListTenantAdminInvitationsParams) ([]TenantAdminInvitation, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantAdminInvitations, arg.TenantID, arg.Offset, arg.Limit)
+func (q *Queries) ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTenantAdminInvitationsAscParams) ([]TenantAdminInvitation, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantAdminInvitationsAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TenantAdminInvitation
+	for rows.Next() {
+		var i TenantAdminInvitation
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Email,
+			&i.TokenHash,
+			&i.ExpiresAt,
+			&i.AcceptedAt,
+			&i.CanceledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantAdminInvitationsDesc = `-- name: ListTenantAdminInvitationsDesc :many
+SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
+FROM tenant_admin_invitations
+WHERE tenant_id = $1
+    AND (
+        accepted_at IS NULL
+        OR accepted_at >= NOW() - INTERVAL '7 days'
+    )
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (created_at, id) <= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (created_at, id) < ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY created_at DESC, id DESC
+LIMIT $5
+`
+
+type ListTenantAdminInvitationsDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+// Platform ListTenantAdminInvitations は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantAdminInvitationsDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

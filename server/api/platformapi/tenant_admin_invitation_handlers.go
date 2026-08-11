@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 const tenantAdminInvitationTTL = 24 * time.Hour
@@ -197,6 +198,33 @@ func ensureTenantAdminRole(ctx context.Context, txq *dbmodels.Queries, userID uu
 	return err
 }
 
+func (s *platformServer) tenantAdminInvitationPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]dbmodels.TenantAdminInvitation, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		return queries.ListTenantAdminInvitationsAsc(ctx, dbmodels.ListTenantAdminInvitationsAscParams{
+			TenantID:        tenantID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			Limit:           limit,
+		})
+	}
+
+	return queries.ListTenantAdminInvitationsDesc(ctx, dbmodels.ListTenantAdminInvitationsDescParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		Limit:           limit,
+	})
+}
+
 func (s *platformServer) ListTenantAdminInvitations(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListTenantAdminInvitationsRequest],
@@ -206,12 +234,17 @@ func (s *platformServer) ListTenantAdminInvitations(
 		return nil, err
 	}
 
-	limit := req.Msg.Limit
-	if limit <= 0 {
-		limit = defaultListLimit
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	if limit > maxListLimit {
-		limit = maxListLimit
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
 
 	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
@@ -222,16 +255,11 @@ func (s *platformServer) ListTenantAdminInvitations(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	rows, err := s.queriesFor(ctx).ListTenantAdminInvitations(ctx, dbmodels.ListTenantAdminInvitationsParams{
-		TenantID: tenant.ID,
-		Limit:    limit,
-		// The keyset query and token handling are introduced in #746. Until
-		// then, preserve the current client's first-page behavior.
-		Offset: 0,
-	})
+	rows, err := s.tenantAdminInvitationPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	now := time.Now()
 	items := make([]*publirasplatformv1.TenantAdminInvitation, len(rows))
@@ -239,7 +267,24 @@ func (s *platformServer) ListTenantAdminInvitations(
 		items[index] = tenantAdminInvitationToProto(invitation, now)
 	}
 
-	return connect.NewResponse(&publirasplatformv1.ListTenantAdminInvitationsResponse{Invitations: items}), nil
+	res := &publirasplatformv1.ListTenantAdminInvitationsResponse{Invitations: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+		}
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *platformServer) CreateTenantAdminInvitation(
