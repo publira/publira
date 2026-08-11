@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -13,7 +14,13 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/tenanttz"
+)
+
+const (
+	listTenantsAscQuery  = "-- name: ListTenantsAsc :many\n"
+	listTenantsDescQuery = "-- name: ListTenantsDesc :many\n"
 )
 
 func tenantTestColumns() []string {
@@ -26,6 +33,10 @@ func tenantScopedUserColumns() []string {
 
 func tenantMemberColumns() []string {
 	return []string{"user_id", "public_id", "name", "email", "role", "status", "created_at"}
+}
+
+func addTenantRow(rows *sqlmock.Rows, id uuid.UUID, publicID, name string, createdAt time.Time) *sqlmock.Rows {
+	return rows.AddRow(id, publicID, publicID+".example.com", name, nil, createdAt, tenantStatusActive, nil, tenanttz.Default)
 }
 
 func TestTenantToProtoExposesTimezone(t *testing.T) {
@@ -52,6 +63,208 @@ func TestTenantToProtoExposesTimezone(t *testing.T) {
 				t.Fatalf("timezone = %q, want %q", got.Timezone, tt.want)
 			}
 		})
+	}
+}
+
+func TestListTenantsFirstPageReportsNextToken(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsDescQuery)).
+		WithArgs(
+			sql.NullString{String: "Acme", Valid: true},
+			sql.NullString{String: "TENANT", Valid: true},
+			sql.NullString{String: tenantStatusActive, Valid: true},
+			uuid.NullUUID{}, false, sql.NullTime{}, int32(3),
+		).
+		WillReturnRows(addTenantRow(
+			addTenantRow(
+				addTenantRow(sqlmock.NewRows(tenantTestColumns()), ids[0], "TENANT001", "Acme One", now),
+				ids[1], "TENANT002", "Acme Two", now.Add(-time.Minute),
+			),
+			ids[2], "TENANT003", "Acme Three", now.Add(-2*time.Minute),
+		))
+
+	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+		Limit:    2,
+		Name:     " Acme ",
+		PublicId: " TENANT ",
+		Status:   " active ",
+	}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	if len(resp.Msg.Tenants) != 2 {
+		t.Fatalf("tenant count = %d, want the over-fetched row dropped", len(resp.Msg.Tenants))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListTenantsFollowsNextToken(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsDescQuery)).
+		WithArgs(
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			boundaryID, false, boundaryAt, int32(3),
+		).
+		WillReturnRows(addTenantRow(
+			sqlmock.NewRows(tenantTestColumns()), uuid.Must(uuid.NewV7()), "TENANT003", "Third", now.Add(-2*time.Minute),
+		))
+
+	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+		Limit: 2,
+		Token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+	}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the previous page")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListTenantsFollowsPreviousTokenBackwards(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-10 * time.Minute)
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsAscQuery)).
+		WithArgs(
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			boundaryID, false, boundaryAt, int32(3),
+		).
+		WillReturnRows(addTenantRow(
+			addTenantRow(sqlmock.NewRows(tenantTestColumns()), uuid.Must(uuid.NewV7()), "TENANT002", "Older", now.Add(-2*time.Minute)),
+			uuid.Must(uuid.NewV7()), "TENANT001", "Newer", now.Add(-time.Minute),
+		))
+
+	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+		Limit: 2,
+		Token: pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID),
+	}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	publicIDs := []string{resp.Msg.Tenants[0].PublicId, resp.Msg.Tenants[1].PublicId}
+	if !slices.Equal(publicIDs, []string{"TENANT001", "TENANT002"}) {
+		t.Fatalf("public IDs = %v, want backward page restored to descending order", publicIDs)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListTenantsEmptyPageReturnsOneRecoveryToken(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction pagination.Direction
+		query     string
+	}{
+		{name: "forward", direction: pagination.Forward, query: listTenantsDescQuery},
+		{name: "backward", direction: pagination.Backward, query: listTenantsAscQuery},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			mock.ExpectQuery(regexp.QuoteMeta(test.query)).
+				WithArgs(
+					sql.NullString{String: "", Valid: true},
+					sql.NullString{String: "", Valid: true},
+					sql.NullString{String: "", Valid: true},
+					boundaryID, false, now, int32(21),
+				).
+				WillReturnRows(sqlmock.NewRows(tenantTestColumns()))
+
+			resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+				Token: pagination.EncodeTimeUUID(test.direction, now, boundaryID),
+			}))
+			if err != nil {
+				t.Fatalf("ListTenants: %v", err)
+			}
+			if test.direction == pagination.Forward {
+				want := pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
+				if resp.Msg.PreviousToken != want || resp.Msg.NextToken != "" {
+					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				}
+			} else {
+				want := pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID)
+				if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != want {
+					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				}
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
+}
+
+func TestListTenantsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsDescQuery)).
+		WithArgs(
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			boundaryID, true, now, int32(21),
+		).
+		WillReturnRows(sqlmock.NewRows(tenantTestColumns()))
+
+	resp, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{
+		Token: pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID),
+	}))
+	if err != nil {
+		t.Fatalf("ListTenants: %v", err)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListTenantsRejectsInvalidToken(t *testing.T) {
+	tests := []string{
+		"not-base64",
+		pagination.Encode(pagination.Forward, "not-a-time", uuid.Must(uuid.NewV7()).String()),
+		pagination.Encode(pagination.Forward, time.Now().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String(), "not-inclusive"),
+	}
+
+	for _, token := range tests {
+		server, mock := newOperatorHandlerTestServer(t)
+		_, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{Token: token}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("ListTenants code = %v, want invalid_argument", connect.CodeOf(err))
+		}
+		assertOperatorHandlerExpectations(t, mock)
 	}
 }
 

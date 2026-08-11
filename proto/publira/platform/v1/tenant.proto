@@ -19,16 +19,26 @@ message Tenant {
 }
 
 message ListTenantsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 2;
+  reserved "offset";
+
+  // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 1;
-  int32 offset = 2;
   // フィルタ条件
   string name = 3;
   string public_id = 4;
   string status = 5;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 6;
 }
 
 message ListTenantsResponse {
   repeated Tenant tenants = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message GetTenantRequest {

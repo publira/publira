@@ -5624,31 +5624,120 @@ func (q *Queries) ListTenantUsers(ctx context.Context, arg ListTenantUsersParams
 	return items, nil
 }
 
-const listTenants = `-- name: ListTenants :many
+const listTenantsAsc = `-- name: ListTenantsAsc :many
 SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
   AND ($3::text = '' OR status = $3::text)
-ORDER BY created_at DESC
-LIMIT $5 OFFSET $4
+  AND (
+    $4::uuid IS NULL
+    OR (
+      $5::boolean
+      AND (created_at, id) >= ($6::timestamptz, $4::uuid)
+    )
+    OR (
+      NOT $5::boolean
+      AND (created_at, id) > ($6::timestamptz, $4::uuid)
+    )
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT $7
 `
 
-type ListTenantsParams struct {
-	FilterName     sql.NullString `json:"filter_name"`
-	FilterPublicID sql.NullString `json:"filter_public_id"`
-	FilterStatus   sql.NullString `json:"filter_status"`
-	Offset         int32          `json:"offset"`
-	Limit          int32          `json:"limit"`
+type ListTenantsAscParams struct {
+	FilterName      sql.NullString `json:"filter_name"`
+	FilterPublicID  sql.NullString `json:"filter_public_id"`
+	FilterStatus    sql.NullString `json:"filter_status"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
 }
 
-// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
-func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error) {
-	rows, err := q.db.QueryContext(ctx, listTenants,
+func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantsAsc,
 		arg.FilterName,
 		arg.FilterPublicID,
 		arg.FilterStatus,
-		arg.Offset,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tenant
+	for rows.Next() {
+		var i Tenant
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Domain,
+			&i.Name,
+			&i.DefaultReadingPeriodHours,
+			&i.CreatedAt,
+			&i.Status,
+			&i.AdminDomain,
+			&i.Timezone,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantsDesc = `-- name: ListTenantsDesc :many
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+FROM tenants
+WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
+  AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
+  AND ($3::text = '' OR status = $3::text)
+  AND (
+    $4::uuid IS NULL
+    OR (
+      $5::boolean
+      AND (created_at, id) <= ($6::timestamptz, $4::uuid)
+    )
+    OR (
+      NOT $5::boolean
+      AND (created_at, id) < ($6::timestamptz, $4::uuid)
+    )
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $7
+`
+
+type ListTenantsDescParams struct {
+	FilterName      sql.NullString `json:"filter_name"`
+	FilterPublicID  sql.NullString `json:"filter_public_id"`
+	FilterStatus    sql.NullString `json:"filter_status"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
+}
+
+// ListTenants は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantsDesc,
+		arg.FilterName,
+		arg.FilterPublicID,
+		arg.FilterStatus,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
 		arg.Limit,
 	)
 	if err != nil {

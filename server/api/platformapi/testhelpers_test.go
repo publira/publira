@@ -140,7 +140,7 @@ func assertOperatorHandlerExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 
 // Constants for HTTP integration tests (Connect RPC via NewHandler)
 const (
-	integrationListTenantsQuery              = "-- name: ListTenants :many\n"
+	integrationListTenantsQuery              = "-- name: ListTenantsDesc :many\n"
 	integrationCreateTenantQuery             = "-- name: CreateTenant :one\n"
 	integrationUpdateTenantStatusQuery       = "-- name: UpdateTenantStatus :one\n"
 	integrationListPlatformOperatorsQuery    = "-- name: ListPlatformOperators :many\n"
