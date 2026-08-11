@@ -323,8 +323,7 @@ describe("getCreator", () => {
     expect(mockListCreators).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
       creators: [],
-      message:
-        "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
+      message: "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
       nextToken: "",
       ok: false,
       previousToken: "",
