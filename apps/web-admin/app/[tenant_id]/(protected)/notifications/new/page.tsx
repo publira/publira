@@ -14,7 +14,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
-import { listNotifications } from "#lib/notification";
+import { listAllNotificationTargetUsers } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 
 import { NotificationForm } from "../_components/notification-form";
@@ -40,13 +40,13 @@ const NotificationFormSkeleton = () => (
 
 const NotificationFormData = async () => {
   const tenantId = await getTenantId();
-  const listResult = await listNotifications(tenantId);
+  const usersResult = await listAllNotificationTargetUsers(tenantId);
 
   return (
     <NotificationForm
       action={createNotificationAction}
-      users={listResult.users}
-      usersErrorMessage={listResult.usersErrorMessage}
+      users={usersResult.users}
+      usersErrorMessage={usersResult.ok ? undefined : usersResult.message}
     />
   );
 };

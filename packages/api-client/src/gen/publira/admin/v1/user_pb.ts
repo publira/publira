@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/user.proto.
  */
 export const file_publira_admin_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkiZwoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUiSwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlcjJ8ChBBZG1pblVzZXJTZXJ2aWNlEmgKD0xpc3RUZW5hbnRVc2VycxIoLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkidgoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkidwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJMnwKEEFkbWluVXNlclNlcnZpY2USaAoPTGlzdFRlbmFudFVzZXJzEigucHVibGlyYS5hZG1pbi52MS5MaXN0VGVuYW50VXNlcnNSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5MaXN0VGVuYW50VXNlcnNSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminTenantUser
@@ -59,6 +59,11 @@ export type ListTenantUsersRequest = Message<"publira.admin.v1.ListTenantUsersRe
    * @generated from field: int32 limit = 3;
    */
   limit: number;
+
+  /**
+   * @generated from field: string token = 4;
+   */
+  token: string;
 };
 
 /**
@@ -76,6 +81,16 @@ export type ListTenantUsersResponse = Message<"publira.admin.v1.ListTenantUsersR
    * @generated from field: repeated publira.admin.v1.AdminTenantUser users = 1;
    */
   users: AdminTenantUser[];
+
+  /**
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
 };
 
 /**

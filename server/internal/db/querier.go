@@ -253,6 +253,15 @@ type Querier interface {
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	// テナントに所属する管理・編集ユーザー一覧を取得する
 	ListTenantUsers(ctx context.Context, arg ListTenantUsersParams) ([]ListTenantUsersRow, error)
+	// テナントに所属する管理・編集ユーザー一覧（前ページ方向）
+	ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error)
+	// Admin ListTenantUsers は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	// 絞り込みは SQL 側で行う。handler で取得済みの 1 ページ分だけを突き合わせると、
+	// その先のページにいる該当ユーザーが検索結果から丸ごと落ちる。
+	// テナントに所属する管理・編集ユーザー一覧（次ページ方向）
+	ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDescParams) ([]ListTenantUsersDescRow, error)
 	ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error)
 	// ListTenants は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ

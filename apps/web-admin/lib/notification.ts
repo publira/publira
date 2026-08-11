@@ -1,9 +1,11 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import type {
   ListNotificationsResult,
+  ListNotificationTargetUsersResult,
   NotificationItem,
   NotificationTargetUser,
 } from "../app/[tenant_id]/(protected)/notifications/notification-types";
@@ -21,6 +23,7 @@ const listErrorMessage =
   "通知一覧の取得に失敗しました。時間をおいて再試行してください。";
 const createErrorMessage =
   "通知の配信に失敗しました。時間をおいて再試行してください。";
+const targetUsersErrorMessage = "対象ユーザー一覧の取得に失敗しました。";
 const audienceTypeAllUsers = 1;
 const audienceTypeSelectedUsers = 2;
 
@@ -48,21 +51,87 @@ const mapNotification = (item: {
   title: item.title,
 });
 
-const mapUsers = (
-  users: { publicId: string; name: string }[]
-): NotificationTargetUser[] =>
-  users
-    .flatMap((user) =>
-      user.publicId.trim() === ""
-        ? []
-        : [
-            {
-              name: user.name,
-              publicId: user.publicId,
-            },
-          ]
-    )
-    .toSorted((a, b) => a.name.localeCompare(b.name, "ja"));
+const mapUser = (user: {
+  publicId: string;
+  name: string;
+}): NotificationTargetUser => ({
+  name: user.name,
+  publicId: user.publicId,
+});
+
+/**
+ * Every user a notification can be addressed to.
+ *
+ * Walks `ListTenantUsers` cursor pages so the create form offers members past
+ * the first page too. Sorted by name once the whole set is in hand; sorting a
+ * single page would only order the rows that page happened to hold.
+ *
+ * Deliberately uncached: nothing in this app invalidates a tenant's member
+ * list, so a cache tag here would keep a newly added member out of the picker
+ * until the entry expired.
+ */
+export const listAllNotificationTargetUsers = async (
+  tenantId: string
+): Promise<ListNotificationTargetUsersResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      message: sessionErrorMessage,
+      ok: false,
+      users: [],
+    };
+  }
+
+  try {
+    const users: NotificationTargetUser[] = [];
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.users.listTenantUsers(
+          {
+            limit,
+            query: "",
+            tenant: { tenantId },
+            token,
+          },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.users ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          if (item.publicId.trim() !== "") {
+            users.push(mapUser(item));
+          }
+        }
+      }
+    );
+
+    // Match the series pickers: a partial walk must not surface a half-built
+    // option list that operators read as the whole tenant.
+    if (walkStop !== "completed") {
+      return {
+        message: targetUsersErrorMessage,
+        ok: false,
+        users: [],
+      };
+    }
+
+    return {
+      ok: true,
+      users: users.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: mapErrorMessage(error, targetUsersErrorMessage),
+      ok: false,
+      users: [],
+    };
+  }
+};
 
 /**
  * One page of the tenant's notifications, newest first.
@@ -70,9 +139,6 @@ const mapUsers = (
  * The rows keep the server's keyset order (`created_at`, `id` descending).
  * Sorting them here would only sort the rows that happen to share a page, which
  * reads as a broken order as soon as the list spans more than one page.
- *
- * Target users for the create form ride along so `/notifications/new` can reuse
- * this call; the list screen ignores them.
  */
 export const listNotifications = async (
   tenantId: string,
@@ -88,29 +154,7 @@ export const listNotifications = async (
       message: sessionErrorMessage,
       notifications: [],
       ok: false,
-      users: [],
     };
-  }
-
-  let users: NotificationTargetUser[] = [];
-  let usersErrorMessage: string | undefined;
-
-  try {
-    const usersResponse = await apiClient.users.listTenantUsers(
-      {
-        limit: 200,
-        query: "",
-        tenant: { tenantId },
-      },
-      withSessionHeaders(sessionId)
-    );
-    users = mapUsers(usersResponse.users ?? []);
-  } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    usersErrorMessage = mapErrorMessage(
-      error,
-      "対象ユーザー一覧の取得に失敗しました。"
-    );
   }
 
   try {
@@ -128,8 +172,6 @@ export const listNotifications = async (
         mapNotification(item)
       ),
       ok: true,
-      users,
-      usersErrorMessage,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -138,8 +180,6 @@ export const listNotifications = async (
       message: mapErrorMessage(error, listErrorMessage),
       notifications: [],
       ok: false,
-      users,
-      usersErrorMessage,
     };
   }
 };

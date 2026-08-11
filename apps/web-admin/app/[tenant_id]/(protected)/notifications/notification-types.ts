@@ -21,17 +21,25 @@ export type ListNotificationsResult = CursorPageTokens &
     | {
         ok: true;
         notifications: NotificationItem[];
-        users: NotificationTargetUser[];
-        usersErrorMessage?: string;
       }
     | {
         ok: false;
         message: string;
         notifications: NotificationItem[];
-        users: NotificationTargetUser[];
-        usersErrorMessage?: string;
       }
   );
+
+/** Every user the create form can address, or the reason none could be read. */
+export type ListNotificationTargetUsersResult =
+  | {
+      ok: true;
+      users: NotificationTargetUser[];
+    }
+  | {
+      ok: false;
+      message: string;
+      users: NotificationTargetUser[];
+    };
 
 export type CreateNotificationActionState =
   | {
