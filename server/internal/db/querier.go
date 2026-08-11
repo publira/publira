@@ -197,8 +197,11 @@ type Querier interface {
 	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
 	// ページのバージョン一覧を新しい順に取得する
 	ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error)
-	// テナントのページ一覧を取得する（作成日昇順）
-	ListPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
+	// Admin ListPages は (created_at, id) の昇順で表示する。
+	// 次ページは昇順、前ページは降順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error)
+	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error)
 	// 管理操作監査ログ一覧取得（フィルタ対応）
 	ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error)
 	ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatformOperatorsAscParams) ([]ListPlatformOperatorsAscRow, error)

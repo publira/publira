@@ -855,8 +855,9 @@ CREATE INDEX idx_page_versions_tenant_id ON page_versions USING btree (tenant_id
 -- INDEX: idx_pages_published_version_id
 CREATE INDEX idx_pages_published_version_id ON pages USING btree (published_version_id);
 
--- INDEX: idx_pages_tenant_id
-CREATE INDEX idx_pages_tenant_id ON pages USING btree (tenant_id);
+-- INDEX: idx_pages_tenant_created_at
+-- 末尾の id は ListPages の cursor のタイブレーカー。
+CREATE INDEX idx_pages_tenant_created_at ON pages USING btree (tenant_id, created_at, id);
 
 -- INDEX: idx_platform_audit_logs_actor
 CREATE INDEX idx_platform_audit_logs_actor ON platform_audit_logs USING btree (actor_platform_user_id);

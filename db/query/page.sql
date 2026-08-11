@@ -9,11 +9,42 @@ RETURNING *;
 SELECT * FROM pages
 WHERE id = sqlc.arg('id') AND tenant_id = sqlc.arg('tenant_id');
 
--- name: ListPagesForTenant :many
--- テナントのページ一覧を取得する（作成日昇順）
+-- Admin ListPages は (created_at, id) の昇順で表示する。
+-- 次ページは昇順、前ページは降順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListPagesForTenantAsc :many
 SELECT * FROM pages
 WHERE tenant_id = sqlc.arg('tenant_id')
-ORDER BY created_at ASC;
+	AND (
+		sqlc.narg('cursor_id')::uuid IS NULL
+		OR (
+			sqlc.arg('cursor_inclusive')::boolean
+			AND (created_at, id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+		)
+		OR (
+			NOT sqlc.arg('cursor_inclusive')::boolean
+			AND (created_at, id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+		)
+	)
+ORDER BY created_at ASC, id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPagesForTenantDesc :many
+SELECT * FROM pages
+WHERE tenant_id = sqlc.arg('tenant_id')
+	AND (
+		sqlc.narg('cursor_id')::uuid IS NULL
+		OR (
+			sqlc.arg('cursor_inclusive')::boolean
+			AND (created_at, id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+		)
+		OR (
+			NOT sqlc.arg('cursor_inclusive')::boolean
+			AND (created_at, id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+		)
+	)
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('limit');
 
 -- name: UpdatePage :one
 -- ページのタイトルとフッター表示設定を更新する

@@ -281,15 +281,107 @@ func (q *Queries) ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID
 	return items, nil
 }
 
-const listPagesForTenant = `-- name: ListPagesForTenant :many
+const listPagesForTenantAsc = `-- name: ListPagesForTenantAsc :many
 SELECT id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at FROM pages
 WHERE tenant_id = $1
-ORDER BY created_at ASC
+	AND (
+		$2::uuid IS NULL
+		OR (
+			$3::boolean
+			AND (created_at, id) >= ($4::timestamptz, $2::uuid)
+		)
+		OR (
+			NOT $3::boolean
+			AND (created_at, id) > ($4::timestamptz, $2::uuid)
+		)
+	)
+ORDER BY created_at ASC, id ASC
+LIMIT $5
 `
 
-// テナントのページ一覧を取得する（作成日昇順）
-func (q *Queries) ListPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error) {
-	rows, err := q.db.QueryContext(ctx, listPagesForTenant, tenantID)
+type ListPagesForTenantAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+// Admin ListPages は (created_at, id) の昇順で表示する。
+// 次ページは昇順、前ページは降順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error) {
+	rows, err := q.db.QueryContext(ctx, listPagesForTenantAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Page
+	for rows.Next() {
+		var i Page
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Slug,
+			&i.Title,
+			&i.PublishedVersionID,
+			&i.DisplayInFooter,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPagesForTenantDesc = `-- name: ListPagesForTenantDesc :many
+SELECT id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at FROM pages
+WHERE tenant_id = $1
+	AND (
+		$2::uuid IS NULL
+		OR (
+			$3::boolean
+			AND (created_at, id) <= ($4::timestamptz, $2::uuid)
+		)
+		OR (
+			NOT $3::boolean
+			AND (created_at, id) < ($4::timestamptz, $2::uuid)
+		)
+	)
+ORDER BY created_at DESC, id DESC
+LIMIT $5
+`
+
+type ListPagesForTenantDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+func (q *Queries) ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error) {
+	rows, err := q.db.QueryContext(ctx, listPagesForTenantDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
