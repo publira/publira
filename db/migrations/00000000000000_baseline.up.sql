@@ -904,7 +904,7 @@ CREATE INDEX idx_series_images_tenant_id ON series_images USING btree (tenant_id
 CREATE INDEX idx_series_listings_tenant_id ON series_listings USING btree (tenant_id);
 
 -- INDEX: idx_series_tenant_created_at
-CREATE INDEX idx_series_tenant_created_at ON series USING btree (tenant_id, created_at DESC);
+CREATE INDEX idx_series_tenant_created_at ON series USING btree (tenant_id, created_at DESC, id DESC);
 
 -- INDEX: idx_series_tenant_id
 CREATE INDEX idx_series_tenant_id ON series USING btree (tenant_id);

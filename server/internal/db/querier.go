@@ -204,7 +204,12 @@ type Querier interface {
 	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)
-	ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error)
+	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
+	// Admin ListSeries は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を
+	// 走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
+	// が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+	ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error)
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
 	ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error)
 	ListTenantAdminInvitations(ctx context.Context, arg ListTenantAdminInvitationsParams) ([]TenantAdminInvitation, error)

@@ -5041,7 +5041,7 @@ func (q *Queries) ListRecentPlatformEvents(ctx context.Context, limit int32) ([]
 	return items, nil
 }
 
-const listSeriesByTenant = `-- name: ListSeriesByTenant :many
+const listSeriesByTenantAsc = `-- name: ListSeriesByTenantAsc :many
 SELECT s.id,
     s.public_id,
     s.title,
@@ -5051,6 +5051,7 @@ SELECT s.id,
     sl.reading_period_hours,
     s.is_published,
     s.published_at,
+    s.created_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
@@ -5066,17 +5067,30 @@ FROM series s
         LIMIT 1
     ) siv ON true
 WHERE s.tenant_id = $1
-ORDER BY s.created_at DESC
-LIMIT $2 OFFSET $3
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (s.created_at, s.id) >= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (s.created_at, s.id) > ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY s.created_at ASC, s.id ASC
+LIMIT $5
 `
 
-type ListSeriesByTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Limit    int32     `json:"limit"`
-	Offset   int32     `json:"offset"`
+type ListSeriesByTenantAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
 }
 
-type ListSeriesByTenantRow struct {
+type ListSeriesByTenantAscRow struct {
 	ID                         uuid.UUID      `json:"id"`
 	PublicID                   string         `json:"public_id"`
 	Title                      string         `json:"title"`
@@ -5086,20 +5100,27 @@ type ListSeriesByTenantRow struct {
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
 	IsPublished                bool           `json:"is_published"`
 	PublishedAt                sql.NullTime   `json:"published_at"`
+	CreatedAt                  time.Time      `json:"created_at"`
 	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
 	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
 }
 
-func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenantParams) ([]ListSeriesByTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSeriesByTenant, arg.TenantID, arg.Limit, arg.Offset)
+func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSeriesByTenantAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListSeriesByTenantRow
+	var items []ListSeriesByTenantAscRow
 	for rows.Next() {
-		var i ListSeriesByTenantRow
+		var i ListSeriesByTenantAscRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,
@@ -5110,6 +5131,119 @@ func (q *Queries) ListSeriesByTenant(ctx context.Context, arg ListSeriesByTenant
 			&i.ReadingPeriodHours,
 			&i.IsPublished,
 			&i.PublishedAt,
+			&i.CreatedAt,
+			&i.EyeCatchImageID,
+			&i.EyeCatchImageUpdatedAt,
+			&i.EyeCatchImageFileSizeBytes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSeriesByTenantDesc = `-- name: ListSeriesByTenantDesc :many
+SELECT s.id,
+    s.public_id,
+    s.title,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
+    sl.synopsis,
+    sl.reading_period_hours,
+    s.is_published,
+    s.published_at,
+    s.created_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
+WHERE s.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (s.created_at, s.id) <= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (s.created_at, s.id) < ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY s.created_at DESC, s.id DESC
+LIMIT $5
+`
+
+type ListSeriesByTenantDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListSeriesByTenantDescRow struct {
+	ID                         uuid.UUID      `json:"id"`
+	PublicID                   string         `json:"public_id"`
+	Title                      string         `json:"title"`
+	LabelPublicID              sql.NullString `json:"label_public_id"`
+	LabelName                  sql.NullString `json:"label_name"`
+	Synopsis                   sql.NullString `json:"synopsis"`
+	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	IsPublished                bool           `json:"is_published"`
+	PublishedAt                sql.NullTime   `json:"published_at"`
+	CreatedAt                  time.Time      `json:"created_at"`
+	EyeCatchImageID            uuid.NullUUID  `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt     sql.NullTime   `json:"eye_catch_image_updated_at"`
+	EyeCatchImageFileSizeBytes int64          `json:"eye_catch_image_file_size_bytes"`
+}
+
+// Admin ListSeries は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を
+// 走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
+// が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSeriesByTenantDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSeriesByTenantDescRow
+	for rows.Next() {
+		var i ListSeriesByTenantDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Title,
+			&i.LabelPublicID,
+			&i.LabelName,
+			&i.Synopsis,
+			&i.ReadingPeriodHours,
+			&i.IsPublished,
+			&i.PublishedAt,
+			&i.CreatedAt,
 			&i.EyeCatchImageID,
 			&i.EyeCatchImageUpdatedAt,
 			&i.EyeCatchImageFileSizeBytes,

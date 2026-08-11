@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,8 +17,72 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 )
+
+func seriesColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id",
+		"public_id",
+		"title",
+		"label_public_id",
+		"label_name",
+		"synopsis",
+		"reading_period_hours",
+		"is_published",
+		"published_at",
+		"created_at",
+		"eye_catch_image_id",
+		"eye_catch_image_updated_at",
+		"eye_catch_image_file_size_bytes",
+	})
+}
+
+func addSeriesRow(
+	rows *sqlmock.Rows,
+	id uuid.UUID,
+	publicID, title string,
+	createdAt time.Time,
+) *sqlmock.Rows {
+	return rows.AddRow(id, publicID, title, nil, nil, "Synopsis", nil, true, createdAt, createdAt, nil, nil, int64(0))
+}
+
+// Every non-empty page reads the creators of the series it returned.
+func expectSeriesCreatorsLookup(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery("FROM series_creators").
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
+}
+
+func newSeriesClient(
+	t *testing.T,
+	tenantID, userID uuid.UUID,
+	now time.Time,
+) (publiraadminv1connect.AdminSeriesServiceClient, sqlmock.Sqlmock, string) {
+	t.Helper()
+	testServer, mock := newTestAdminServer(t)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	return publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+}
+
+func newListSeriesRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListSeriesRequest] {
+	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	return req
+}
+
+func seriesPublicIDs(items []*publirattypesv1.Series) []string {
+	publicIDs := make([]string, 0, len(items))
+	for _, item := range items {
+		publicIDs = append(publicIDs, item.PublicId)
+	}
+	return publicIDs
+}
 
 func TestAdminSeriesRequiresSession(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
@@ -40,29 +105,18 @@ func TestAdminSeriesRequiresSession(t *testing.T) {
 }
 
 func TestAdminSeriesAllowsValidSession(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	seriesID := uuid.Must(uuid.NewV7())
-	now := time.Now()
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantQuery)).
-		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "eye_catch_image_file_size_bytes"}).
-			AddRow(seriesID, "SERIES001", "Series Title", nil, nil, "Synopsis", nil, true, now, nil, nil, int64(0)))
-	mock.ExpectQuery("FROM series_creators").
-		WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role", "display_order"}))
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
 
-	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListSeriesRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-	resp, err := client.ListSeries(context.Background(), req)
+	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(addSeriesRow(seriesColumns(), seriesID, "SERIES001", "Series Title", now))
+	expectSeriesCreatorsLookup(mock)
+
+	resp, err := client.ListSeries(context.Background(), newListSeriesRequest(tenantID, sessionToken))
 	if err != nil {
 		t.Fatalf("ListSeries: %v", err)
 	}
@@ -74,6 +128,269 @@ func TestAdminSeriesAllowsValidSession(t *testing.T) {
 	}
 	if !resp.Msg.Series[0].IsPublished {
 		t.Fatalf("series is_published = %v, want true", resp.Msg.Series[0].IsPublished)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesFirstPageReportsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+
+	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WillReturnRows(addSeriesRow(
+			addSeriesRow(
+				addSeriesRow(seriesColumns(), ids[0], "SERIES001", "First", now),
+				ids[1], "SERIES002", "Second", now.Add(-time.Minute),
+			),
+			ids[2], "SERIES003", "Third", now.Add(-2*time.Minute),
+		))
+	expectSeriesCreatorsLookup(mock)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	resp, err := client.ListSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if len(resp.Msg.Series) != 2 {
+		t.Fatalf("series count = %d, want the over-fetched row dropped", len(resp.Msg.Series))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+	assertExpectations(t, mock)
+}
+
+// The last page is reachable by following next_token, without an offset.
+func TestListSeriesFollowsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantDescQuery)).
+		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES003", "Last", now.Add(-2*time.Minute)))
+	expectSeriesCreatorsLookup(mock)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES003"}) {
+		t.Fatalf("public_ids = %v, want the page after the boundary row", seriesPublicIDs(resp.Msg.Series))
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesFollowsPreviousTokenBackwards(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-10 * time.Minute)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listSeriesByTenantAscQuery)).
+		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addSeriesRow(
+			addSeriesRow(seriesColumns(), uuid.Must(uuid.NewV7()), "SERIES002", "Older", now.Add(-2*time.Minute)),
+			uuid.Must(uuid.NewV7()), "SERIES001", "Newer", now.Add(-time.Minute),
+		))
+	expectSeriesCreatorsLookup(mock)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListSeries(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListSeries: %v", err)
+	}
+	if !slices.Equal(seriesPublicIDs(resp.Msg.Series), []string{"SERIES001", "SERIES002"}) {
+		t.Fatalf("public_ids = %v, want backward page restored to descending order", seriesPublicIDs(resp.Msg.Series))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListSeriesEmptyPageKeepsAWayBack(t *testing.T) {
+	tests := []struct {
+		name                string
+		direction           pagination.Direction
+		wantQuery           string
+		wantRecoveryQuery   string
+		wantRecoveredSeries []string
+	}{
+		{
+			name:                "forward",
+			direction:           pagination.Forward,
+			wantQuery:           listSeriesByTenantDescQuery,
+			wantRecoveryQuery:   listSeriesByTenantAscQuery,
+			wantRecoveredSeries: []string{"SERIES001", "SERIES002"},
+		},
+		{
+			name:                "backward",
+			direction:           pagination.Backward,
+			wantQuery:           listSeriesByTenantAscQuery,
+			wantRecoveryQuery:   listSeriesByTenantDescQuery,
+			wantRecoveredSeries: []string{"SERIES002", "SERIES003"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, boundaryID, false, now, int32(21)).
+				WillReturnRows(seriesColumns())
+
+			req := newListSeriesRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListSeries(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListSeries: %v", err)
+			}
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
+			}
+			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
+			if recoveryToken != wantRecoveryToken {
+				t.Fatalf("recovery token = %q, want %q", recoveryToken, wantRecoveryToken)
+			}
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			recoveryRows := addSeriesRow(seriesColumns(), boundaryID, "SERIES002", "Boundary", now)
+			if test.direction == pagination.Forward {
+				recoveryRows = addSeriesRow(recoveryRows, uuid.Must(uuid.NewV7()), "SERIES001", "Newer", now.Add(time.Minute))
+			} else {
+				recoveryRows = addSeriesRow(recoveryRows, uuid.Must(uuid.NewV7()), "SERIES003", "Older", now.Add(-time.Minute))
+			}
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
+				WithArgs(tenantID, boundaryID, true, now, int32(21)).
+				WillReturnRows(recoveryRows)
+			expectSeriesCreatorsLookup(mock)
+
+			recoveryReq := newListSeriesRequest(tenantID, sessionToken)
+			recoveryReq.Msg.Token = recoveryToken
+			recovered, err := client.ListSeries(context.Background(), recoveryReq)
+			if err != nil {
+				t.Fatalf("ListSeries recovery: %v", err)
+			}
+			if !slices.Equal(seriesPublicIDs(recovered.Msg.Series), test.wantRecoveredSeries) {
+				t.Fatalf("recovered public_ids = %v, want %v", seriesPublicIDs(recovered.Msg.Series), test.wantRecoveredSeries)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+// Recovery happens once. When the boundary row itself is gone the recovery
+// query is empty too, and both tokens stay empty so the client falls back to
+// the first page instead of bouncing between empty pages.
+func TestListSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction pagination.Direction
+		wantQuery string
+	}{
+		{
+			name:      "recovering backward",
+			direction: pagination.Backward,
+			wantQuery: listSeriesByTenantAscQuery,
+		},
+		{
+			name:      "recovering forward",
+			direction: pagination.Forward,
+			wantQuery: listSeriesByTenantDescQuery,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, boundaryID, true, now, int32(21)).
+				WillReturnRows(seriesColumns())
+
+			req := newListSeriesRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
+			resp, err := client.ListSeries(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListSeries: %v", err)
+			}
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %d rows, want an empty page", len(resp.Msg.Series))
+			}
+			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+				t.Fatalf(
+					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
+					resp.Msg.PreviousToken, resp.Msg.NextToken,
+				)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestListSeriesInvalidToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newSeriesClient(t, tenantID, userID, now)
+
+	req := newListSeriesRequest(tenantID, sessionToken)
+	req.Msg.Token = "not-a-valid-token"
+	_, err := client.ListSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("ListSeries error = %v, want invalid_argument token is invalid", err)
 	}
 	assertExpectations(t, mock)
 }
