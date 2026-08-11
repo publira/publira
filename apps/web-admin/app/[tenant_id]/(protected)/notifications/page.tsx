@@ -11,10 +11,17 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 
 import { NotificationManager } from "./_components/notification-manager";
+
+type NotificationsPageProps = PageProps<"/[tenant_id]/notifications">;
 
 export const metadata: Metadata = {
   title: "通知",
@@ -34,19 +41,24 @@ const NotificationManagerSkeleton = () => (
   </div>
 );
 
-const NotificationManagerData = async () => {
-  const tenantId = await getTenantId();
-  const listResult = await listNotifications(tenantId);
+const NotificationManagerData = async ({
+  searchParams,
+}: Pick<NotificationsPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const { token } = parseCursorSearchParams(sp);
+  const listResult = await listNotifications(tenantId, { token });
 
   return (
     <NotificationManager
-      initialListErrorMessage={listResult.ok ? undefined : listResult.message}
-      initialNotifications={listResult.notifications}
+      {...cursorPageHrefs(listResult)}
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      notifications={listResult.notifications}
+      pageSize={DEFAULT_PAGE_SIZE}
     />
   );
 };
 
-const NotificationsPage = () => (
+const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -59,7 +71,7 @@ const NotificationsPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<NotificationManagerSkeleton />}>
-        <NotificationManagerData />
+        <NotificationManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>
   </AdminPage>

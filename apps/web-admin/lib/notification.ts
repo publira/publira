@@ -8,6 +8,12 @@ import type {
   NotificationTargetUser,
 } from "../app/[tenant_id]/(protected)/notifications/notification-types";
 import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
 import { getAccessToken } from "./session";
 
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
@@ -58,8 +64,19 @@ const mapUsers = (
     )
     .toSorted((a, b) => a.name.localeCompare(b.name, "ja"));
 
+/**
+ * One page of the tenant's notifications, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ *
+ * Target users for the create form ride along so `/notifications/new` can reuse
+ * this call; the list screen ignores them.
+ */
 export const listNotifications = async (
-  tenantId: string
+  tenantId: string,
+  options: CursorPageOptions = {}
 ): Promise<ListNotificationsResult> => {
   "use cache: private";
   cacheTag(`notifications-${tenantId}`);
@@ -67,6 +84,7 @@ export const listNotifications = async (
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
+      ...emptyCursorPageTokens,
       message: sessionErrorMessage,
       notifications: [],
       ok: false,
@@ -98,13 +116,14 @@ export const listNotifications = async (
   try {
     const response = await apiClient.notification.listNotifications(
       {
-        limit: 100,
+        ...cursorPageRequest(options),
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
     return {
+      ...cursorPageTokens(response),
       notifications: (response.notifications ?? []).map((item) =>
         mapNotification(item)
       ),
@@ -115,6 +134,7 @@ export const listNotifications = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
+      ...emptyCursorPageTokens,
       message: mapErrorMessage(error, listErrorMessage),
       notifications: [],
       ok: false,
