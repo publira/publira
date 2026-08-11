@@ -12,9 +12,16 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { listAccessTickets } from "#lib/access-ticket";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { getTenantId } from "#lib/tenant-id";
 
 import { TicketManager } from "./_components/ticket-manager";
+
+type AccessTicketsPageProps = PageProps<"/[tenant_id]/access-tickets">;
 
 export const metadata: Metadata = {
   title: "アクセスチケット",
@@ -34,19 +41,24 @@ const TicketManagerSkeleton = () => (
   </div>
 );
 
-const TicketManagerData = async () => {
-  const tenantId = await getTenantId();
-  const listResult = await listAccessTickets(tenantId);
+const TicketManagerData = async ({
+  searchParams,
+}: Pick<AccessTicketsPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const { token } = parseCursorSearchParams(sp);
+  const listResult = await listAccessTickets(tenantId, { token });
 
   return (
     <TicketManager
-      initialListErrorMessage={listResult.ok ? undefined : listResult.message}
-      initialTickets={listResult.tickets}
+      {...cursorPageHrefs(listResult)}
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      pageSize={DEFAULT_PAGE_SIZE}
+      tickets={listResult.tickets}
     />
   );
 };
 
-const AccessTicketsPage = () => (
+const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -59,7 +71,7 @@ const AccessTicketsPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<TicketManagerSkeleton />}>
-        <TicketManagerData />
+        <TicketManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>
   </AdminPage>

@@ -1,5 +1,3 @@
-"use client";
-
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -8,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -20,15 +17,20 @@ import {
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
-import { useMemo } from "react";
+
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
 
 import type { AccessTicketItem } from "../ticket-types";
 import { RevokeTicketButton } from "./revoke-ticket-button";
 
-interface TicketManagerProps {
-  initialListErrorMessage?: string;
-  initialTickets: AccessTicketItem[];
-}
+type TicketManagerProps = CursorPageHrefs & {
+  listErrorMessage?: string;
+  pageSize: number;
+  tickets: AccessTicketItem[];
+};
 
 const statusLabel = (status: string): string => {
   switch (status) {
@@ -52,17 +54,103 @@ const statusLabel = (status: string): string => {
 const formatTicketDateTime = (value: string): string =>
   value ? formatDateTime(value) : "—";
 
-export const TicketManager = ({
-  initialTickets,
-  initialListErrorMessage,
-}: TicketManagerProps) => {
-  const tickets = useMemo(
-    () =>
-      initialTickets.toSorted((a, b) =>
-        b.createdAt.localeCompare(a.createdAt, "ja")
-      ),
-    [initialTickets]
+const TicketListBody = ({
+  hasPageLinks,
+  listErrorMessage,
+  tickets,
+}: {
+  hasPageLinks: boolean;
+  listErrorMessage?: string;
+  tickets: AccessTicketItem[];
+}) => {
+  if (listErrorMessage) {
+    return <FormMessage variant="destructive">{listErrorMessage}</FormMessage>;
+  }
+
+  if (tickets.length === 0) {
+    return (
+      <CursorPageEmptyState
+        description="チケット発行からユーザーにエピソード閲覧権を付与してください。"
+        hasPageLinks={hasPageLinks}
+        itemLabel="チケット"
+        title="チケットがまだありません。"
+      />
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-40">状態</TableHead>
+          <TableHead>ユーザー</TableHead>
+          <TableHead>エピソード</TableHead>
+          <TableHead className="w-44">有効期限</TableHead>
+          <TableHead className="w-44">作成日時</TableHead>
+          <TableHead className="w-28">操作</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {tickets.map((ticket) => (
+          <TableRow key={ticket.publicId}>
+            <TableCell>
+              <div className="grid gap-0.5">
+                <span className="font-medium">
+                  {statusLabel(ticket.status)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {ticket.publicId}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="grid gap-0.5">
+                <span className="font-medium">
+                  {ticket.userName || ticket.userPublicId}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {ticket.userEmail || ticket.userPublicId}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="grid gap-0.5">
+                <span className="font-medium">
+                  {ticket.episodeTitle || ticket.episodePublicId}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {ticket.seriesTitle
+                    ? `${ticket.seriesTitle} / ${ticket.episodePublicId}`
+                    : ticket.episodePublicId}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell>{formatTicketDateTime(ticket.expiresAt)}</TableCell>
+            <TableCell>{formatTicketDateTime(ticket.createdAt)}</TableCell>
+            <TableCell>
+              {ticket.status === "active" ? (
+                <RevokeTicketButton publicId={ticket.publicId} />
+              ) : (
+                <span className="text-sm text-muted-foreground">—</span>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
+};
+
+export const TicketManager = ({
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  previousHref,
+  tickets,
+}: TicketManagerProps) => {
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  const showPagination =
+    !listErrorMessage && (tickets.length > 0 || hasPageLinks);
 
   return (
     <Card>
@@ -81,83 +169,21 @@ export const TicketManager = ({
         </LinkButton>
       </CardHeader>
 
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
-        ) : null}
+      <CardContent className="grid gap-4">
+        <TicketListBody
+          hasPageLinks={hasPageLinks}
+          listErrorMessage={listErrorMessage}
+          tickets={tickets}
+        />
 
-        {tickets.length === 0 ? (
-          <EmptyState
-            description="チケット発行からユーザーにエピソード閲覧権を付与してください。"
-            title="チケットがまだありません。"
+        {showPagination ? (
+          <PaginationFooter
+            ariaLabel="アクセスチケット一覧のページ送り"
+            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
           />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-40">状態</TableHead>
-                <TableHead>ユーザー</TableHead>
-                <TableHead>エピソード</TableHead>
-                <TableHead className="w-44">有効期限</TableHead>
-                <TableHead className="w-44">作成日時</TableHead>
-                <TableHead className="w-28">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tickets.map((ticket) => (
-                <TableRow key={ticket.publicId}>
-                  <TableCell>
-                    <div className="grid gap-0.5">
-                      <span className="font-medium">
-                        {statusLabel(ticket.status)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {ticket.publicId}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="grid gap-0.5">
-                      <span className="font-medium">
-                        {ticket.userName || ticket.userPublicId}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {ticket.userEmail || ticket.userPublicId}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="grid gap-0.5">
-                      <span className="font-medium">
-                        {ticket.episodeTitle || ticket.episodePublicId}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {ticket.seriesTitle
-                          ? `${ticket.seriesTitle} / ${ticket.episodePublicId}`
-                          : ticket.episodePublicId}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {formatTicketDateTime(ticket.expiresAt)}
-                  </TableCell>
-                  <TableCell>
-                    {formatTicketDateTime(ticket.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    {ticket.status === "active" ? (
-                      <RevokeTicketButton publicId={ticket.publicId} />
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

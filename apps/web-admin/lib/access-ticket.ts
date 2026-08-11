@@ -6,6 +6,12 @@ import {
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
 import { getAccessToken } from "./session";
 
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
@@ -34,11 +40,15 @@ export interface AccessTicketItem {
   userPublicId: string;
 }
 
-export interface ListAccessTicketsResult {
+export type ListAccessTicketsOptions = CursorPageOptions & {
+  activeOnly?: boolean;
+};
+
+export type ListAccessTicketsResult = CursorPageTokens & {
   message?: string;
   ok: boolean;
   tickets: AccessTicketItem[];
-}
+};
 
 export interface IssueAccessTicketInput {
   episodePublicId: string;
@@ -108,9 +118,16 @@ const mapTicket = (item: {
   userPublicId: item.userPublicId,
 });
 
+/**
+ * One page of the tenant's access tickets, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
 export const listAccessTickets = async (
   tenantId: string,
-  options?: { activeOnly?: boolean }
+  options: ListAccessTicketsOptions = {}
 ): Promise<ListAccessTicketsResult> => {
   "use cache: private";
   cacheTag(`access-tickets-${tenantId}`);
@@ -118,6 +135,7 @@ export const listAccessTickets = async (
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
+      ...emptyCursorPageTokens,
       message: sessionErrorMessage,
       ok: false,
       tickets: [],
@@ -127,20 +145,22 @@ export const listAccessTickets = async (
   try {
     const response = await apiClient.accessTickets.listAccessTickets(
       {
-        activeOnly: options?.activeOnly ?? false,
-        limit: 100,
+        ...cursorPageRequest(options),
+        activeOnly: options.activeOnly ?? false,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
     return {
+      ...cursorPageTokens(response),
       ok: true,
       tickets: response.tickets.map(mapTicket),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
+      ...emptyCursorPageTokens,
       message: mapErrorMessage(error, listErrorMessage),
       ok: false,
       tickets: [],
