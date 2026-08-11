@@ -21,8 +21,10 @@ export interface PlatformTenantSummary {
 }
 
 export interface ListPlatformTenantsInput {
+  limit?: number;
   name?: string;
   status?: string;
+  token?: string;
 }
 
 export interface PlatformTenantDetail {
@@ -68,8 +70,19 @@ const genericErrorMessage =
   "テナント作成に失敗しました。時間をおいて再試行してください。";
 
 export type ListPlatformTenantsResult =
-  | { ok: true; tenants: PlatformTenantSummary[] }
-  | { ok: false; message: string };
+  | {
+      nextToken: string;
+      ok: true;
+      previousToken: string;
+      tenants: PlatformTenantSummary[];
+    }
+  | {
+      message: string;
+      nextToken: string;
+      ok: false;
+      previousToken: string;
+      tenants: PlatformTenantSummary[];
+    };
 
 export const listPlatformTenants = async (
   input: ListPlatformTenantsInput
@@ -80,20 +93,28 @@ export const listPlatformTenants = async (
   if (!sid) {
     return {
       message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
+      tenants: [],
     };
   }
 
   try {
     const response = await apiClient.tenants.listTenants(
       {
+        limit: input.limit ?? 20,
         name: input.name ?? "",
+        publicId: "",
         status: input.status ?? "",
-      } as never,
+        token: input.token ?? "",
+      },
       buildSessionHeaders(sid)
     );
     return {
+      nextToken: response.nextToken ?? "",
       ok: true,
+      previousToken: response.previousToken ?? "",
       tenants: (response.tenants ?? []).map((tenant) => ({
         adminDomain: tenant.adminDomain,
         createdAt: tenant.createdAt,
@@ -110,7 +131,10 @@ export const listPlatformTenants = async (
         error,
         "テナント一覧の取得に失敗しました。時間をおいて再試行してください。"
       ),
+      nextToken: "",
       ok: false,
+      previousToken: "",
+      tenants: [],
     };
   }
 };

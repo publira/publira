@@ -35,6 +35,8 @@ import {
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { listPlatformTenants } from "#lib/tenants";
 
+import { buildTenantsPath, parseTenantFilters } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "テナント一覧",
 };
@@ -44,6 +46,11 @@ const statusSelectItems = [
   { label: "トライアル", value: "trial" },
   { label: "停止中", value: "suspended" },
 ] as const;
+
+const allowedStatusValues = new Set(
+  statusSelectItems.map(({ value }) => value)
+);
+const pageSize = 20;
 
 const TenantsTableSkeleton = () => (
   <Card>
@@ -66,21 +73,49 @@ const TenantsTableSkeleton = () => (
   </Card>
 );
 
-interface TenantsPageProps {
-  searchParams: Promise<{ name?: string; status?: string }>;
-}
+type TenantsPageProps = PageProps<"/tenants">;
+
+const TenantsPageControl = ({
+  href,
+  label,
+}: {
+  href?: string;
+  label: string;
+}) =>
+  href ? (
+    <LinkButton render={<Link href={href} />} size="sm" variant="outline">
+      {label}
+    </LinkButton>
+  ) : (
+    <Button disabled size="sm" variant="outline">
+      {label}
+    </Button>
+  );
 
 const TenantsContent = async ({
   searchParams,
 }: Pick<TenantsPageProps, "searchParams">) => {
-  const params = await searchParams;
-  const nameFilter = params.name?.trim() ?? "";
-  const statusFilter = params.status?.trim() ?? "";
+  const filters = parseTenantFilters(await searchParams, allowedStatusValues);
 
   const result = await listPlatformTenants({
-    name: nameFilter || undefined,
-    status: statusFilter || undefined,
+    limit: pageSize,
+    name: filters.name || undefined,
+    status: filters.status || undefined,
+    token: filters.token || undefined,
   });
+
+  const previousHref = result.previousToken
+    ? buildTenantsPath({
+        ...filters,
+        token: result.previousToken,
+      })
+    : undefined;
+  const nextHref = result.nextToken
+    ? buildTenantsPath({
+        ...filters,
+        token: result.nextToken,
+      })
+    : undefined;
 
   return (
     <Card>
@@ -96,31 +131,31 @@ const TenantsContent = async ({
         <Form
           action="/tenants"
           className="flex flex-wrap gap-3"
-          key={`${nameFilter}::${statusFilter}`}
+          key={`${filters.name}::${filters.status}`}
         >
           <Input
             className="w-64"
-            defaultValue={nameFilter}
+            defaultValue={filters.name}
             name="name"
             placeholder="テナント名・IDで検索"
             type="search"
           />
           <Select
             className="w-44"
-            defaultValue={statusFilter || undefined}
+            defaultValue={filters.status || undefined}
             items={statusSelectItems}
             name="status"
             placeholder="すべての状態"
           />
           <Button type="submit">絞り込む</Button>
-          {(nameFilter || statusFilter) && (
+          {filters.name || filters.status ? (
             <Link
               className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
               href="/tenants"
             >
               クリア
             </Link>
-          )}
+          ) : null}
         </Form>
 
         {!result.ok && (
@@ -142,7 +177,7 @@ const TenantsContent = async ({
             {result.ok && result.tenants.length === 0 ? (
               <TableRow>
                 <TableCell className="text-muted-foreground" colSpan={4}>
-                  {nameFilter || statusFilter
+                  {filters.name || filters.status
                     ? "条件に一致するテナントが見つかりませんでした。"
                     : "テナントはまだ登録されていません。"}
                 </TableCell>
@@ -180,6 +215,14 @@ const TenantsContent = async ({
               ))}
           </TableBody>
         </Table>
+
+        <nav
+          aria-label="テナント一覧のページ送り"
+          className="flex justify-end gap-2"
+        >
+          <TenantsPageControl href={previousHref} label="前へ" />
+          <TenantsPageControl href={nextHref} label="次へ" />
+        </nav>
       </CardContent>
     </Card>
   );
