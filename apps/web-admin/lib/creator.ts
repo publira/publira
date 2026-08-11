@@ -3,7 +3,10 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import { findByPublicIdWithToken } from "@publira/api-client/pagination";
+import {
+  findByPublicIdWithToken,
+  forEachPageWithToken,
+} from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -110,6 +113,72 @@ export const listCreators = async (
       ...cursorPageTokens(response),
       // Keep the server's keyset order; client re-sorting would break paging.
       creators: (response.creators ?? []).map((item) => mapCreator(item)),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      ...emptyCursorPageTokens,
+      creators: [],
+      message: mapErrorToMessage(error, genericListErrorMessage),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Every creator in the tenant for combobox pickers (series form, etc.).
+ *
+ * Walks `ListCreators` cursor pages so the client-side Combobox can search
+ * beyond a single RPC page. The `/creators` list keeps {@link listCreators}
+ * (one page) so list paging stays independent of picker loading.
+ *
+ * Sorted by name for readable search results. Rows past the shared walk budget
+ * (`forEachPageWithToken` defaults) are not included.
+ */
+export const listAllCreators = async (
+  tenantId: string
+): Promise<ListCreatorsResult> => {
+  "use cache: private";
+  cacheTag(`creators-${tenantId}`);
+
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      ...emptyCursorPageTokens,
+      creators: [],
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const creators: CreatorItem[] = [];
+    await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.creator.listCreators(
+          {
+            limit,
+            tenant: { tenantId },
+            token,
+          },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.creators ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          creators.push(mapCreator(item));
+        }
+      }
+    );
+
+    return {
+      ...emptyCursorPageTokens,
+      creators: creators.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
       ok: true,
     };
   } catch (error) {

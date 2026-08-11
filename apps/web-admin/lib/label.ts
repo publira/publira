@@ -3,7 +3,10 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import { findByPublicIdWithToken } from "@publira/api-client/pagination";
+import {
+  findByPublicIdWithToken,
+  forEachPageWithToken,
+} from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -149,6 +152,72 @@ export const listLabels = async (
     return {
       ...cursorPageTokens(response),
       labels: (response.labels ?? []).map((item) => mapLabel(item)),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      ...emptyCursorPageTokens,
+      labels: [],
+      message: mapErrorToMessage(error, genericListErrorMessage),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Every label in the tenant for combobox pickers (series form, etc.).
+ *
+ * Walks `ListLabels` cursor pages so the client-side Combobox can search
+ * beyond a single RPC page. The `/labels` list keeps {@link listLabels}
+ * (one page) so list paging stays independent of picker loading.
+ *
+ * Sorted by name for readable search results. Rows past the shared walk budget
+ * (`forEachPageWithToken` defaults) are not included.
+ */
+export const listAllLabels = async (
+  tenantId: string
+): Promise<ListLabelsResult> => {
+  "use cache: private";
+  cacheTag(`labels-${tenantId}`);
+
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      ...emptyCursorPageTokens,
+      labels: [],
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const labels: LabelItem[] = [];
+    await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.label.listLabels(
+          {
+            limit,
+            tenant: { tenantId },
+            token,
+          },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.labels ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          labels.push(mapLabel(item));
+        }
+      }
+    );
+
+    return {
+      ...emptyCursorPageTokens,
+      labels: labels.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
       ok: true,
     };
   } catch (error) {
