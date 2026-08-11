@@ -57,6 +57,11 @@ tasks:
     desc: Run the platform API server in development mode
     cmds: [{ task: run, vars: { NAME: platform-api-server } }]
 
+  lint:
+    desc: Run golangci-lint over the server module
+    cmds:
+      - golangci-lint run ./...
+
   run:
     desc: Run a specific server command by name
     cmds:

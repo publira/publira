@@ -42,8 +42,16 @@ task server:dev-admin-api
 task server:dev-platform-api
 task server:tidy
 task server:build
+task server:lint
 task server:test
 ```
+
+## Lint
+
+- `task server:lint`（= `golangci-lint run ./...`）で静的解析を実行します。CI の `Lint / Go` ジョブと同じ設定・同じバージョンです。
+- ルールセットは [`.golangci.yml`](.golangci.yml)。golangci-lint 既定の `standard` セット（`errcheck` / `govet` / `ineffassign` / `staticcheck` / `unused`）を有効にしています。
+- `golangci-lint` は devcontainer にバージョン固定で入っています（[`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile) の `GOLANGCI_LINT_VERSION`）。devcontainer 外で実行する場合は同じバージョンを入れてください。
+- 生成コード（`gen/**`、`internal/db/*.sql.go` など）は `DO NOT EDIT.` ヘッダで自動的に除外されます。`internal/db/` の手書き統合テストは対象のままです。
 
 ## テスト
 

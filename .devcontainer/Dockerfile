@@ -8,6 +8,8 @@ ARG SQLC_VERSION=1.31.1
 ARG BUF_VERSION=1.72.0
 # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
 ARG MIGRATE_VERSION=4.19.1
+# renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver-coerced
+ARG GOLANGCI_LINT_VERSION=2.12.2
 # renovate: datasource=flutter-version depName=flutter
 ARG FLUTTER_VERSION=3.44.9
 
@@ -34,7 +36,12 @@ RUN set -eux; \
 	curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-${migrate_arch}.tar.gz" -o /tmp/migrate.tgz; \
 	tar -xzf /tmp/migrate.tgz -C /tmp migrate; \
 	install -m 0755 /tmp/migrate /usr/local/bin/migrate; \
-	rm -f /tmp/migrate /tmp/migrate.tgz
+	rm -f /tmp/migrate /tmp/migrate.tgz; \
+	golangci_lint_dir="golangci-lint-${GOLANGCI_LINT_VERSION}-linux-${arch}"; \
+	curl -fsSL "https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/${golangci_lint_dir}.tar.gz" \
+		| tar -xz -C /tmp "${golangci_lint_dir}/golangci-lint"; \
+	install -m 0755 "/tmp/${golangci_lint_dir}/golangci-lint" /usr/local/bin/golangci-lint; \
+	rm -rf "/tmp/${golangci_lint_dir}"
 
 # Install Flutter SDK
 ENV FLUTTER_HOME=/usr/local/flutter
