@@ -7,6 +7,12 @@ import { findByPublicIdWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -18,9 +24,11 @@ export interface CreatorItem {
   iconImageUpdatedAt: string;
 }
 
-export type ListCreatorsResult =
-  | { ok: true; creators: CreatorItem[] }
-  | { ok: false; message: string; creators: CreatorItem[] };
+export type ListCreatorsResult = CursorPageTokens &
+  (
+    | { ok: true; creators: CreatorItem[] }
+    | { ok: false; message: string; creators: CreatorItem[] }
+  );
 
 export type CreateCreatorResult =
   | { ok: true; creator: CreatorItem }
@@ -73,7 +81,8 @@ const mapCreator = (creator: {
 });
 
 export const listCreators = async (
-  tenantId: string
+  tenantId: string,
+  options: CursorPageOptions = {}
 ): Promise<ListCreatorsResult> => {
   "use cache: private";
   cacheTag(`creators-${tenantId}`);
@@ -81,6 +90,7 @@ export const listCreators = async (
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
+      ...emptyCursorPageTokens,
       creators: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -90,21 +100,22 @@ export const listCreators = async (
   try {
     const response = await apiClient.creator.listCreators(
       {
-        limit: 100,
+        ...cursorPageRequest(options),
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
     return {
-      creators: (response.creators ?? [])
-        .map((item) => mapCreator(item))
-        .toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
+      ...cursorPageTokens(response),
+      // Keep the server's keyset order; client re-sorting would break paging.
+      creators: (response.creators ?? []).map((item) => mapCreator(item)),
       ok: true,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
+      ...emptyCursorPageTokens,
       creators: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

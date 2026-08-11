@@ -141,7 +141,9 @@ const EditSeriesFormData = async ({
 
   const [result, creatorsResult, labelsResult] = await Promise.all([
     getSeries({ publicId: seriesId, tenantId }),
-    listCreators(tenantId),
+    // Series author multi-select still needs a single full-ish page until
+    // #706 adds a searchable picker; keep the previous 100-row ceiling.
+    listCreators(tenantId, { limit: 100 }),
     listLabels(tenantId),
   ]);
 

@@ -1,5 +1,3 @@
-"use client";
-
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -8,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -20,14 +17,19 @@ import {
 } from "@publira/ui-components/table";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo } from "react";
+
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
 
 import type { CreatorListItem } from "../creator-types";
 
-interface CreatorManagerProps {
-  initialCreators: CreatorListItem[];
-  initialListErrorMessage?: string;
-}
+type CreatorManagerProps = CursorPageHrefs & {
+  creators: CreatorListItem[];
+  listErrorMessage?: string;
+  pageSize: number;
+};
 
 const excerpt = (text: string, max = 56) => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
@@ -39,14 +41,14 @@ const excerpt = (text: string, max = 56) => {
 };
 
 export const CreatorManager = ({
-  initialCreators,
-  initialListErrorMessage,
+  creators,
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  previousHref,
 }: CreatorManagerProps) => {
-  const sortedCreators = useMemo(
-    () =>
-      initialCreators.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
-    [initialCreators]
-  );
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  const showPagination = creators.length > 0 || hasPageLinks;
 
   return (
     <Card>
@@ -61,16 +63,16 @@ export const CreatorManager = ({
           著者を新規作成
         </LinkButton>
       </CardHeader>
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
+      <CardContent className="grid gap-4">
+        {listErrorMessage ? (
+          <FormMessage variant="destructive">{listErrorMessage}</FormMessage>
         ) : null}
 
-        {sortedCreators.length === 0 ? (
-          <EmptyState
+        {creators.length === 0 ? (
+          <CursorPageEmptyState
             description="新規作成ページから著者を作成してください。"
+            hasPageLinks={hasPageLinks}
+            itemLabel="著者"
             title="著者がまだ登録されていません。"
           />
         ) : (
@@ -84,7 +86,7 @@ export const CreatorManager = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedCreators.map((creator) => (
+              {creators.map((creator) => (
                 <TableRow key={creator.publicId}>
                   <TableCell>
                     {creator.iconImageUrl ? (
@@ -119,6 +121,15 @@ export const CreatorManager = ({
             </TableBody>
           </Table>
         )}
+
+        {showPagination ? (
+          <PaginationFooter
+            ariaLabel="著者一覧のページ送り"
+            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );

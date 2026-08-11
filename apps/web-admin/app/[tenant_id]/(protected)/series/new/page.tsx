@@ -46,7 +46,9 @@ const NewSeriesFormData = async () => {
     // tenant rather than the page, so the smallest page the API allows is
     // enough.
     listSeries(tenantId, { limit: 1 }),
-    listCreators(tenantId),
+    // Series author multi-select still needs a single full-ish page until
+    // #706 adds a searchable picker; keep the previous 100-row ceiling.
+    listCreators(tenantId, { limit: 100 }),
     listLabels(tenantId),
   ]);
 
