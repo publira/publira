@@ -360,7 +360,7 @@ func (s *adminServer) labelEyeCatchVariantsByImageIDs(
 
 	rows, err := s.queriesFor(ctx).ListLabelImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list label image variants", err)
 	}
 
 	byImageID := make(map[uuid.UUID][]dbmodels.ListLabelImageVariantsByImageIDsRow, len(imageIDs))
@@ -469,7 +469,7 @@ func (s *adminServer) ListCreators(
 
 	rows, err := s.creatorPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list creators", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -528,7 +528,7 @@ func (s *adminServer) ListLabels(
 
 	rows, err := s.labelPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list labels", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 

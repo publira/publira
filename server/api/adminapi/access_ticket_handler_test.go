@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -807,5 +808,25 @@ func TestListAccessTicketsInvalidToken(t *testing.T) {
 		t.Fatalf("ListAccessTickets error = %v, want invalid_argument token is invalid", err)
 	}
 
+	assertExpectations(t, mock)
+}
+
+func TestListAccessTicketsDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(errors.New(`pq: relation "access_tickets" does not exist`))
+
+	_, err := client.ListAccessTickets(context.Background(), newListAccessTicketsRequest(tenantID, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListAccessTickets code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
 	assertExpectations(t, mock)
 }

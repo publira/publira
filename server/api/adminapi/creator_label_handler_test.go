@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -353,6 +354,26 @@ func TestListCreatorsRejectsInvalidToken(t *testing.T) {
 			assertExpectations(t, mock)
 		})
 	}
+}
+
+func TestListCreatorsDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
+
+	_, err := client.ListCreators(context.Background(), newCreatorRequest(tenantID, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListCreators code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
 }
 
 func TestListCreatorsLimitOutOfRangeUsesDefault(t *testing.T) {

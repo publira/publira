@@ -161,7 +161,7 @@ func (s *adminServer) seriesEyeCatchVariantsByImageIDs(
 
 	rows, err := s.queriesFor(ctx).ListSeriesImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list series image variants", err)
 	}
 
 	byImageID := make(map[uuid.UUID][]dbmodels.ListSeriesImageVariantsByImageIDsRow, len(imageIDs))
@@ -272,7 +272,7 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 	}
 	rows, err := s.queriesFor(ctx).ListSeriesCreatorsBySeriesIDs(ctx, seriesIDs)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list series creators", err)
 	}
 	items := make(map[uuid.UUID][]*publirattypesv1.Creator, len(seriesIDs))
 	for _, row := range rows {
@@ -663,7 +663,7 @@ func (s *adminServer) ListSeries(
 	// One row past the page: its presence is what says another page exists.
 	rows, err := s.seriesPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list series", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 

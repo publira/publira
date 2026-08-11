@@ -38,7 +38,7 @@ func (s *adminServer) ListTenantUsers(
 		Limit:    maxTenantUserListLimit,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list tenant users", err, "tenant_id", tenant.ID.String())
 	}
 
 	users := make([]*publiraadminv1.AdminTenantUser, 0, len(rows))

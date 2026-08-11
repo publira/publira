@@ -162,7 +162,7 @@ func (s *adminServer) ListNotifications(
 
 	rows, err := s.notificationPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list notifications", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 

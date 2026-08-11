@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -510,6 +511,26 @@ func TestListNotificationsInvalidToken(t *testing.T) {
 	}
 	if err.Error() != "invalid_argument: token is invalid" {
 		t.Fatalf("error = %q, want token internals hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListNotificationsDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(errors.New(`pq: relation "notifications" does not exist`))
+
+	_, err := client.ListNotifications(context.Background(), newNotificationRequest(tenantID, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListNotifications code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertExpectations(t, mock)
 }
