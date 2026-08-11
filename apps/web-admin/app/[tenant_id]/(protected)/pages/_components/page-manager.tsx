@@ -1,5 +1,3 @@
-"use client";
-
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -9,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -20,28 +17,102 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
+
 import type { PageListItem } from "../page-types";
 import { formatPageDateTime, formatPagePath } from "../page-types";
 
-interface PageManagerProps {
-  initialListErrorMessage?: string;
-  initialPages: PageListItem[];
-}
+type PageManagerProps = CursorPageHrefs & {
+  listErrorMessage?: string;
+  pageSize: number;
+  pages: PageListItem[];
+};
+
+const PageListBody = ({
+  hasPageLinks,
+  listErrorMessage,
+  pages,
+}: {
+  hasPageLinks: boolean;
+  listErrorMessage?: string;
+  pages: PageListItem[];
+}) => {
+  // A failed fetch still hands an empty `pages` array; do not show the empty
+  // list state alongside the error or operators will read it as "no pages".
+  if (listErrorMessage) {
+    return <FormMessage variant="destructive">{listErrorMessage}</FormMessage>;
+  }
+
+  if (pages.length === 0) {
+    return (
+      <CursorPageEmptyState
+        description="新規作成ページから固定ページを登録してください。"
+        hasPageLinks={hasPageLinks}
+        itemLabel="ページ"
+        title="ページはまだ登録されていません。"
+      />
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>タイトル</TableHead>
+          <TableHead>slug</TableHead>
+          <TableHead className="w-32">状態</TableHead>
+          <TableHead className="w-28">フッター</TableHead>
+          <TableHead className="w-40">更新日時</TableHead>
+          <TableHead className="w-32">操作</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {pages.map((page) => (
+          <TableRow key={page.id}>
+            <TableCell className="font-medium">{page.title}</TableCell>
+            <TableCell>{formatPagePath(page.slug)}</TableCell>
+            <TableCell>
+              <Badge
+                tone={page.publishedVersionId.length > 0 ? "info" : "muted"}
+              >
+                {page.publishedVersionId.length > 0 ? "公開中" : "下書き"}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {page.displayInFooter ? (
+                <Badge tone="info">表示</Badge>
+              ) : (
+                <Badge tone="muted">非表示</Badge>
+              )}
+            </TableCell>
+            <TableCell>{formatPageDateTime(page.updatedAt)}</TableCell>
+            <TableCell>
+              <LinkButton href={`/pages/${page.id}`} variant="outline">
+                編集
+              </LinkButton>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
 
 export const PageManager = ({
-  initialListErrorMessage,
-  initialPages,
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  pages,
+  previousHref,
 }: PageManagerProps) => {
-  const sortedPages = initialPages.toSorted((left, right) => {
-    const leftPublished = left.publishedVersionId.length > 0;
-    const rightPublished = right.publishedVersionId.length > 0;
-
-    if (leftPublished !== rightPublished) {
-      return leftPublished ? -1 : 1;
-    }
-
-    return left.slug.localeCompare(right.slug, "ja");
-  });
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  // Hide the pager on a failed fetch: tokens are empty then, and a bare
+  // "previous/next" chrome next to the error looks like the list exists.
+  const showPagination =
+    !listErrorMessage && (pages.length > 0 || hasPageLinks);
 
   return (
     <Card>
@@ -56,62 +127,21 @@ export const PageManager = ({
           ページを新規作成
         </LinkButton>
       </CardHeader>
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
-        ) : null}
+      <CardContent className="grid gap-4">
+        <PageListBody
+          hasPageLinks={hasPageLinks}
+          listErrorMessage={listErrorMessage}
+          pages={pages}
+        />
 
-        {sortedPages.length === 0 ? (
-          <EmptyState
-            description="新規作成ページから固定ページを登録してください。"
-            title="ページはまだ登録されていません。"
+        {showPagination ? (
+          <PaginationFooter
+            ariaLabel="ページ一覧のページ送り"
+            description={`作成順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
           />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>タイトル</TableHead>
-                <TableHead>slug</TableHead>
-                <TableHead className="w-32">状態</TableHead>
-                <TableHead className="w-28">フッター</TableHead>
-                <TableHead className="w-40">更新日時</TableHead>
-                <TableHead className="w-32">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedPages.map((page) => (
-                <TableRow key={page.id}>
-                  <TableCell className="font-medium">{page.title}</TableCell>
-                  <TableCell>{formatPagePath(page.slug)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      tone={
-                        page.publishedVersionId.length > 0 ? "info" : "muted"
-                      }
-                    >
-                      {page.publishedVersionId.length > 0 ? "公開中" : "下書き"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {page.displayInFooter ? (
-                      <Badge tone="info">表示</Badge>
-                    ) : (
-                      <Badge tone="muted">非表示</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatPageDateTime(page.updatedAt)}</TableCell>
-                  <TableCell>
-                    <LinkButton href={`/pages/${page.id}`} variant="outline">
-                      編集
-                    </LinkButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

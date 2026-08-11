@@ -9,6 +9,12 @@ import {
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
 import { getAccessToken } from "./session";
 
 export interface PageItem {
@@ -33,9 +39,11 @@ export interface PageVersionItem {
   publishedAt: string;
 }
 
-export type ListPagesResult =
-  | { ok: true; pages: PageItem[] }
-  | { ok: false; message: string; pages: PageItem[] };
+export type ListPagesResult = CursorPageTokens &
+  (
+    | { ok: true; pages: PageItem[] }
+    | { ok: false; message: string; pages: PageItem[] }
+  );
 
 /**
  * `notFound: true` is the "there is nothing to show here" failure the edit
@@ -134,13 +142,24 @@ const mapPageVersion = (version: {
   versionNumber: version.versionNumber,
 });
 
-export const listPages = async (tenantId: string): Promise<ListPagesResult> => {
+/**
+ * One page of the tenant's fixed pages, oldest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` ascending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
+export const listPages = async (
+  tenantId: string,
+  options: CursorPageOptions = {}
+): Promise<ListPagesResult> => {
   "use cache: private";
   cacheTag(`pages-${tenantId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
+      ...emptyCursorPageTokens,
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
       pages: [],
@@ -149,17 +168,22 @@ export const listPages = async (tenantId: string): Promise<ListPagesResult> => {
 
   try {
     const response = await apiClient.pages.listPages(
-      { tenant: { tenantId } },
+      {
+        ...cursorPageRequest(options),
+        tenant: { tenantId },
+      },
       withSessionHeaders(sessionId)
     );
 
     return {
+      ...cursorPageTokens(response),
       ok: true,
       pages: (response.pages ?? []).map((page) => mapPage(page)),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
+      ...emptyCursorPageTokens,
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
       pages: [],

@@ -11,10 +11,17 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { listPages } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 
 import { PageManager } from "./_components/page-manager";
+
+type PagesPageProps = PageProps<"/[tenant_id]/pages">;
 
 export const metadata: Metadata = {
   title: "ページ",
@@ -34,19 +41,24 @@ const PageManagerSkeleton = () => (
   </div>
 );
 
-const PageManagerData = async () => {
-  const tenantId = await getTenantId();
-  const result = await listPages(tenantId);
+const PageManagerData = async ({
+  searchParams,
+}: Pick<PagesPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const { token } = parseCursorSearchParams(sp);
+  const listResult = await listPages(tenantId, { token });
 
   return (
     <PageManager
-      initialListErrorMessage={result.ok ? undefined : result.message}
-      initialPages={result.pages}
+      {...cursorPageHrefs(listResult)}
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      pageSize={DEFAULT_PAGE_SIZE}
+      pages={listResult.pages}
     />
   );
 };
 
-const PagesPage = () => (
+const PagesPage = ({ searchParams }: PagesPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -59,7 +71,7 @@ const PagesPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<PageManagerSkeleton />}>
-        <PageManagerData />
+        <PageManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>
   </AdminPage>
