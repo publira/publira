@@ -268,17 +268,31 @@ test.describe("platform tenant operations", () => {
       timeout: 30_000,
     });
 
-    await page.goto(platformUrl("/audit-logs"));
-    await expect(page.getByRole("heading", { name: "監査ログ" })).toBeVisible();
+    // Pin each action to this tenant's UUID (target_id). Action labels alone
+    // can match leftover rows from earlier runs because cleanup does not
+    // delete platform_audit_logs.
+    // public_id is Base58 from the server — safe for a single-quoted literal.
+    const auditActionCount = (action: string): string =>
+      querySql(`
+        SELECT COUNT(*)::text
+        FROM platform_audit_logs pal
+        JOIN tenants t ON pal.target_id = t.id::text
+        WHERE t.public_id = '${tenantId}'
+          AND pal.target_type = 'tenant'
+          AND pal.action = '${action}'
+          AND pal.outcome = 'success'
+      `);
 
-    // Recent platform actions for this run should appear as Japanese labels.
-    await expect(page.getByText("テナントを作成").first()).toBeVisible();
-    await expect(page.getByText("テナント情報を更新").first()).toBeVisible();
-    await expect(page.getByText("テナントを停止").first()).toBeVisible();
-    await expect(page.getByText("テナントを再開").first()).toBeVisible();
+    expect(auditActionCount("tenant_created"), "tenant_created").toBe("1");
+    expect(auditActionCount("tenant_info_updated"), "tenant_info_updated").toBe(
+      "1"
+    );
+    expect(auditActionCount("tenant_suspended"), "tenant_suspended").toBe("1");
+    expect(auditActionCount("tenant_resumed"), "tenant_resumed").toBe("1");
 
-    // Filter by action to pin a specific event type.
+    // UI still surfaces the Japanese labels for the same event types.
     await page.goto(platformUrl("/audit-logs?action=tenant_created"));
+    await expect(page.getByRole("heading", { name: "監査ログ" })).toBeVisible();
     await expect(page.getByText("テナントを作成").first()).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible();
 
