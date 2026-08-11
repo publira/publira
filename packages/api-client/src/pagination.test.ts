@@ -54,4 +54,42 @@ describe("findByPublicIdWithToken", () => {
     ).resolves.toBeNull();
     expect(fetchPage).toHaveBeenCalledTimes(3);
   });
+
+  it("maxRows が pageSize より小さいとき limit を残り件数に抑える", async () => {
+    const fetchPage = vi.fn().mockResolvedValue({
+      items: Array.from({ length: 50 }, (_, index) => ({
+        publicId: `item-${index}`,
+      })),
+      nextToken: "page-2",
+    });
+
+    await expect(
+      findByPublicIdWithToken("target", fetchPage, {
+        maxRows: 50,
+        pageSize: 100,
+      })
+    ).resolves.toBeNull();
+    expect(fetchPage).toHaveBeenCalledWith("", 50);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("limit を超える応答があっても maxRows 以降の一致は返さない", async () => {
+    const fetchPage = vi.fn().mockResolvedValue({
+      items: [
+        { publicId: "first" },
+        { publicId: "second" },
+        { publicId: "target" },
+      ],
+      nextToken: "page-2",
+    });
+
+    await expect(
+      findByPublicIdWithToken("target", fetchPage, {
+        maxRows: 2,
+        pageSize: 100,
+      })
+    ).resolves.toBeNull();
+    expect(fetchPage).toHaveBeenCalledWith("", 2);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
 });

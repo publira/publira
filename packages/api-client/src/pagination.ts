@@ -43,16 +43,23 @@ export const findByPublicIdWithToken = <T extends { publicId: string }>(
     }
     visitedTokens.add(token);
 
-    const { items, nextToken } = await fetchPage(token, pageSize);
-    const match = items.find((item) => item.publicId === publicId);
+    // Cap the request and the search window by remaining budget so maxRows is a
+    // hard ceiling even when the caller sets pageSize higher, or a bad response
+    // returns more items than the requested limit.
+    const remainingRows = maxRows - rowsRead;
+    const limit = Math.min(pageSize, remainingRows);
+    const { items, nextToken } = await fetchPage(token, limit);
+    const pageItems = items.slice(0, remainingRows);
+    const match = pageItems.find((item) => item.publicId === publicId);
     if (match) {
       return match;
     }
-    if (!nextToken) {
+    const nextRowsRead = rowsRead + pageItems.length;
+    if (!nextToken || nextRowsRead >= maxRows) {
       return null;
     }
 
-    return fromToken(nextToken, pagesRead + 1, rowsRead + items.length);
+    return fromToken(nextToken, pagesRead + 1, nextRowsRead);
   };
 
   return fromToken("", 0, 0);
