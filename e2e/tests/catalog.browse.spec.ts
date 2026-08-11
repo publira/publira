@@ -2,6 +2,9 @@ import { expect, test } from "@playwright/test";
 
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 
+/** Keep in sync with `SERIES_PAGE_SIZE` in the web-host series list page. */
+const SERIES_PAGE_SIZE = 24;
+
 /**
  * Main public catalog journeys for the dev-seed tenant (Host `localhost`):
  * catalog top → series list → series detail → episode, plus the label and
@@ -106,6 +109,61 @@ test.describe("web-host catalog browsing", () => {
     await expect(
       page.getByRole("link", { name: "シリーズ詳細へ" })
     ).toBeVisible();
+  });
+
+  test("シリーズ一覧を cursor でページ送りできる", async ({ page }) => {
+    const response = await page.goto("/series");
+    expect(response?.status(), await page.content()).toBe(200);
+
+    // db/seeds/dev/010_catalog.sql publishes more series than one page holds.
+    // `:not([href*="/episodes/"])`: a series detail page stays mounted while
+    // the next route streams in, and its episode links share the prefix.
+    const seriesCards = page.locator(
+      'a[href^="/series/"]:not([href*="/episodes/"])'
+    );
+    await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
+    const firstPageHrefs = await seriesCards.evaluateAll((links) =>
+      links.map((link) => link.getAttribute("href"))
+    );
+
+    const pagination = page.getByRole("navigation", {
+      name: "シリーズ一覧ページング",
+    });
+    // The first page has nothing before it, so only "次のページ" is a link.
+    await expect(
+      pagination.getByRole("link", { name: "前のページ" })
+    ).toHaveCount(0);
+    await pagination.getByRole("link", { name: "次のページ" }).click();
+
+    await expect(page).toHaveURL(/\/series\?token=/u);
+    await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
+    const secondPageHrefs = await seriesCards.evaluateAll((links) =>
+      links.map((link) => link.getAttribute("href"))
+    );
+    // Keyset paging must not repeat a row across the page boundary.
+    expect(
+      secondPageHrefs.filter((href) => firstPageHrefs.includes(href))
+    ).toEqual([]);
+
+    // Every page keeps the detail entry point.
+    const [secondPageHref] = secondPageHrefs;
+    await seriesCards.first().click();
+    await expect(page).toHaveURL(new RegExp(`${secondPageHref}$`, "u"));
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+    await page.goBack();
+    await pagination.getByRole("link", { name: "前のページ" }).click();
+
+    // Back on the first page: nothing before it, and the same rows as before.
+    await expect(
+      pagination.getByRole("link", { name: "前のページ" })
+    ).toHaveCount(0);
+    await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
+    await expect(
+      seriesCards.evaluateAll((links) =>
+        links.map((link) => link.getAttribute("href"))
+      )
+    ).resolves.toEqual(firstPageHrefs);
   });
 
   test("レーベル一覧が seed レーベルを表示する", async ({ page }) => {

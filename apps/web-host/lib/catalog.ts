@@ -131,7 +131,8 @@ export interface SeriesListPage {
 /**
  * Cursor pagination: `token` is whatever the previous response returned as
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
- * `proto/README.md`. Sort order (`order`) and the page navigation UI are #716.
+ * `proto/README.md`. Sort order (`order`) is left at the server default — the
+ * public list does not offer a sort control yet.
  */
 export const listPublishedSeries = async (
   tenantId: string,
