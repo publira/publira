@@ -3,6 +3,7 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -52,8 +53,23 @@ func (s *platformServer) queriesFor(_ context.Context) Querier {
 	return s.queries
 }
 
+// resolveTenantPublicID resolves the tenant public_id from the request body or
+// the tenant header. Platform APIs address tenants by their human-facing
+// public_id, so this stays a platform-local helper rather than reusing the UUID
+// resolvers in rpcmiddleware.
 func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (string, error) {
-	return rpcmiddleware.ResolveTenantPublicIDValue(strings.TrimSpace(reqTenantPublicID), headers)
+	body := strings.TrimSpace(reqTenantPublicID)
+	header := rpcmiddleware.TenantIDFromHeader(headers)
+	if body != "" && header != "" && body != header {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id header and request body must match"))
+	}
+	if body != "" {
+		return body, nil
+	}
+	if header != "" {
+		return header, nil
+	}
+	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
 }
 
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。

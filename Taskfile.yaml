@@ -43,9 +43,10 @@ tasks:
       - buf generate
 
   lint:
-    desc: Run frontend and shared lint checks
+    desc: Run frontend, shared, and server lint checks
     cmds:
       - pnpm check
+      - task: server:lint
 
   setup:
     desc: Run project dependency and database setup

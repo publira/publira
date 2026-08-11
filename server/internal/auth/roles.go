@@ -46,8 +46,11 @@ func ResolveTenantRole(roles []string) string {
 	bestRole := ""
 	for _, role := range roles {
 		normalized := strings.TrimSpace(role)
-		priority := -1
-		resolvedRole := ""
+		// Every branch below assigns, default included, so no initial value is read.
+		var (
+			priority     int
+			resolvedRole string
+		)
 		switch normalized {
 		case RoleTenantAdmin:
 			priority = 3

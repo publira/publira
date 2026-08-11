@@ -16,6 +16,7 @@ Docker イメージの配置規約・ビルド手順・Docker 固有のトリア
 | --- | --- | --- |
 | `Detect changes` | path filter を評価し、実行するジョブと Docker 行列を決める | 本ファイル |
 | `Check` | `sqlc diff`・packages ビルド・`pnpm typegen`・`pnpm check`・べた書き `<svg>` の grep・`pnpm typecheck` | [`AGENTS.md`](../../AGENTS.md) |
+| `Lint / Go` | `golangci-lint run ./...`（`server/`、設定は `server/.golangci.yml`） | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...`（`server/`） | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | packages ビルド後に `pnpm test` | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / DB Migrations` | 空 Postgres に対する `migrate up` → `down -all` → `up` | [`db/AGENTS.md`](../../db/AGENTS.md) |
@@ -47,6 +48,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | ジョブ | 監視 path（共通分を除く） |
 | --- | --- |
 | `Check` | `apps/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, `sqlc.yaml`, `buf.yaml`, `buf.gen.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `oxlint.config.ts`, `oxfmt.config.ts` |
+| `Lint / Go` | `server/**` |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, `sqlc.yaml`, `buf.yaml`, `buf.gen.yaml` |
 | `Test / TypeScript` | `apps/**`, `packages/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
@@ -99,6 +101,14 @@ fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
 Go / TypeScript / DB migration / Mobile / E2E / Bootstrap は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
 
 `sqlc diff` は、`sqlc.yaml` の `schema` 設定が指すスキーマファイル（`db/migrations/`）と `queries`（`db/query/`）を読んで生成結果との差分を検証する codegen チェックであり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
+
+## Lint / Go（golangci-lint）
+
+フロントの lint が `Check` に入っているのと対称に、Go の静的解析は独立ジョブ `Lint / Go` で回す（[#587](https://github.com/publira/publira/issues/587)）。`Test / Go` と分けているのは、Testcontainers を伴う Go テストの完了を待たずに lint 結果が出るため、および `Check` の広い path filter（`apps/**` など）でフロントだけの PR に golangci-lint を走らせないため。
+
+- ルールセットとバージョン: [`server/.golangci.yml`](../../server/.golangci.yml) と `ci.yml` の `GOLANGCI_LINT_VERSION`（devcontainer の同名 `ARG` と揃える。どちらも Renovate 管理）
+- ローカル等価コマンド: `task server:lint`
+- path filter は `Test / Go` より狭い `server/**` のみ。golangci-lint が読むのは Go ソースと `server/.golangci.yml` だけで、`task gen` の出力先も `server/` 配下なので、`db/**` や `proto/**` だけの変更で結果が変わることはない。
 
 ## Test / DB Migrations（migration の up/down 検証）
 

@@ -9,6 +9,8 @@ env:
   BUF_VERSION: 1.72.0
   # renovate: datasource=github-releases depName=golang-migrate/migrate versioning=semver-coerced
   MIGRATE_VERSION: 4.19.1
+  # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver-coerced
+  GOLANGCI_LINT_VERSION: 2.12.2
   # renovate: datasource=flutter-version depName=flutter
   FLUTTER_VERSION: 3.44.9
 
@@ -45,6 +47,7 @@ jobs:
     runs-on: ubicloud-standard-2
     outputs:
       check: ${{ steps.plan.outputs.check }}
+      lint_go: ${{ steps.plan.outputs.lint_go }}
       test_go: ${{ steps.plan.outputs.test_go }}
       test_ts: ${{ steps.plan.outputs.test_ts }}
       test_db_migrations: ${{ steps.plan.outputs.test_db_migrations }}
@@ -101,6 +104,15 @@ jobs:
               - 'turbo.json'
               - 'oxlint.config.ts'
               - 'oxfmt.config.ts'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            # Narrower than test_go on purpose: golangci-lint only reads Go
+            # sources and server/.golangci.yml, and `task gen` writes its output
+            # under server/, so a db/ or proto/ edit cannot change the result
+            # without also touching server/**.
+            lint_go:
+              - *docs_excluded
+              - 'server/**'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_go:
@@ -222,6 +234,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           DOCKER_MODE_INPUT: ${{ inputs.docker_mode }}
           FILTER_CHECK: ${{ steps.filter.outputs.check }}
+          FILTER_LINT_GO: ${{ steps.filter.outputs.lint_go }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
           FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}
@@ -301,6 +314,32 @@ jobs:
 
       - name: Validate / Typecheck
         run: pnpm typecheck
+
+  lint-go:
+    name: Lint / Go
+    needs: changes
+    if: needs.changes.outputs.lint_go == 'true'
+    runs-on: ubicloud-standard-2
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache-dependency-path: server/go.sum
+
+      # The action installs the pinned binary and caches the analysis results;
+      # the rule set itself lives in server/.golangci.yml, so this runs exactly
+      # what `task server:lint` runs locally.
+      - name: Validate / golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v${{ env.GOLANGCI_LINT_VERSION }}
+          working-directory: server
 
   test-go:
     name: Test / Go
@@ -667,6 +706,7 @@ jobs:
     needs:
       - changes
       - check
+      - lint-go
       - test-go
       - test-ts
       - test-db-migrations
@@ -681,6 +721,7 @@ jobs:
         env:
           CHANGES: ${{ needs.changes.result }}
           CHECK: ${{ needs.check.result }}
+          LINT_GO: ${{ needs.lint-go.result }}
           TEST_GO: ${{ needs.test-go.result }}
           TEST_TS: ${{ needs.test-ts.result }}
           TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
@@ -695,6 +736,7 @@ jobs:
           for pair in \
             "Detect changes=${CHANGES}" \
             "Check=${CHECK}" \
+            "Lint / Go=${LINT_GO}" \
             "Test / Go=${TEST_GO}" \
             "Test / TypeScript=${TEST_TS}" \
             "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \

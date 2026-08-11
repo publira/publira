@@ -39,7 +39,7 @@ func main() {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck
 
 	objectStore, err := newObjectStore(context.Background(), cfg.Storage)
 	if err != nil {

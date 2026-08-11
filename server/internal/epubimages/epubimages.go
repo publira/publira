@@ -70,14 +70,6 @@ type referencedAsset struct {
 	asset *epub.Asset
 }
 
-func assetIsImage(ref referencedAsset) bool {
-	mimeType := strings.ToLower(strings.TrimSpace(ref.asset.MimeType))
-	if strings.HasPrefix(mimeType, "image/") {
-		return true
-	}
-	return entryIsImage(ref.href)
-}
-
 func readAssetData(ref referencedAsset) ([]byte, error) {
 	rc, err := ref.asset.Open()
 	if err != nil {
@@ -110,11 +102,6 @@ func normalizeEntryPath(name string) (string, error) {
 		return "", fmt.Errorf("archive contains invalid path %q", name)
 	}
 	return cleaned, nil
-}
-
-func entryIsImage(name string) bool {
-	ext := strings.ToLower(name)
-	return strings.HasSuffix(ext, ".png") || strings.HasSuffix(ext, ".jpg") || strings.HasSuffix(ext, ".jpeg") || strings.HasSuffix(ext, ".gif")
 }
 
 func entryContentType(name string) string {

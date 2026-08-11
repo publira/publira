@@ -49,7 +49,7 @@ func main() {
 		logger.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck
 
 	interval := resolveInterval()
 	maxRetries := resolveMaxRetries()

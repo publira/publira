@@ -328,7 +328,7 @@ func runMigrations(postgresURL string) error {
 	if err != nil {
 		return fmt.Errorf("migrate.New: %w", err)
 	}
-	defer m.Close()
+	defer m.Close() //nolint:errcheck
 
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("migrate up: %w", err)

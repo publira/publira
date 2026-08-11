@@ -4,7 +4,7 @@
 #
 # Inputs (env):
 #   EVENT_NAME, DOCKER_MODE_INPUT
-#   FILTER_CHECK, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_E2E,
+#   FILTER_CHECK, FILTER_LINT_GO, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_E2E,
 #   FILTER_TEST_BOOTSTRAP, FILTER_BUILD
 #   FILTER_DOCKER_WEB, FILTER_DOCKER_API, FILTER_DOCKER_BATCH, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
@@ -56,6 +56,7 @@ join_json_array() {
 }
 
 check=false
+lint_go=false
 test_go=false
 test_ts=false
 test_db_migrations=false
@@ -84,6 +85,7 @@ case "${event}" in
   workflow_dispatch)
     # Manual: always host CI + selected Docker set.
     check=true
+    lint_go=true
     test_go=true
     test_ts=true
     test_db_migrations=true
@@ -108,6 +110,7 @@ case "${event}" in
   *)
     # pull_request / push: path-filter driven.
     if flag FILTER_CHECK; then check=true; fi
+    if flag FILTER_LINT_GO; then lint_go=true; fi
     if flag FILTER_TEST_GO; then test_go=true; fi
     if flag FILTER_TEST_TS; then test_ts=true; fi
     if flag FILTER_TEST_DB_MIGRATIONS; then test_db_migrations=true; fi
@@ -144,6 +147,7 @@ fi
 
 {
   echo "check=${check}"
+  echo "lint_go=${lint_go}"
   echo "test_go=${test_go}"
   echo "test_ts=${test_ts}"
   echo "test_db_migrations=${test_db_migrations}"
@@ -156,7 +160,7 @@ fi
 } >>"${GITHUB_OUTPUT}"
 
 echo "event=${event}"
-echo "check=${check} test_go=${test_go} test_ts=${test_ts} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} build=${build} docker_any=${docker_any}"
+echo "check=${check} lint_go=${lint_go} test_go=${test_go} test_ts=${test_ts} test_db_migrations=${test_db_migrations} test_mobile=${test_mobile} test_e2e=${test_e2e} test_bootstrap=${test_bootstrap} build=${build} docker_any=${docker_any}"
 if ((${#matrix_items[@]} > 0)); then
   for item in "${matrix_items[@]}"; do
     # shellcheck disable=SC2001

@@ -19,11 +19,6 @@ import (
 	"github.com/publira/publira/server/internal/secretcrypto"
 )
 
-const (
-	testCreatePlatformSessionQuery = "-- name: CreatePlatformSession :one\n"
-	testRevokePlatformSessionQuery = "-- name: RevokePlatformSession :exec\n"
-)
-
 type passwordResetMailerStub struct {
 	recipient string
 	subject   string

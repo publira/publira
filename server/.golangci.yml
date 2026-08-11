@@ -1,0 +1,28 @@
+# golangci-lint configuration for the `server` Go module.
+# Run it with `task server:lint`; CI runs the same version and this same file
+# in the `Lint / Go` job.
+version: "2"
+
+linters:
+  # `standard` is golangci-lint's own default set: errcheck, govet, ineffassign,
+  # staticcheck, unused. Deliberately conservative for the initial rollout —
+  # enabling more linters is a separate, reviewable change, not a silent drift.
+  default: standard
+
+  exclusions:
+    # sqlc output (`internal/db/*.sql.go`, `models.go`, …) and buf output
+    # (`gen/**`) all carry the canonical `Code generated … DO NOT EDIT.` header,
+    # so this keeps them out of the report. Preferred over excluding those paths:
+    # `internal/db/` also holds hand-written `*_integration_test.go` files, which
+    # must stay linted.
+    #
+    # `strict` (the default) matches only that canonical header. Do not relax it
+    # to `lax`, which matches "do not edit" anywhere in a file's leading comments
+    # and would silently skip a hand-written file that merely says so in prose.
+    generated: strict
+
+issues:
+  # Report every finding. The defaults truncate at 50 per linter and 3 per
+  # identical message, which hides work and makes a green run ambiguous.
+  max-issues-per-linter: 0
+  max-same-issues: 0
