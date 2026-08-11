@@ -22,8 +22,8 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { listCreators } from "#lib/creator";
-import { listLabels } from "#lib/label";
+import { listAllCreators } from "#lib/creator";
+import { listAllLabels } from "#lib/label";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -143,11 +143,9 @@ const EditSeriesFormData = async ({
 
   const [result, creatorsResult, labelsResult] = await Promise.all([
     getSeries({ publicId: seriesId, tenantId }),
-    // Series author multi-select still needs a single full-ish page until
-    // #706 adds a searchable picker; keep the previous 100-row ceiling.
-    listCreators(tenantId, { limit: 100 }),
-    // Same ceiling for the label picker until a searchable picker lands.
-    listLabels(tenantId, { limit: 100 }),
+    // Walk every cursor page so the Combobox can search past the first 100.
+    listAllCreators(tenantId),
+    listAllLabels(tenantId),
   ]);
 
   if (!result.ok) {

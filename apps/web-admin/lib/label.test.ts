@@ -175,4 +175,99 @@ describe("getLabel", () => {
       ok: true,
     });
   });
+
+  it("listAllLabels は cursor をたどって101件目以降も含める", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      name: `Label ${String(index + 1).padStart(3, "0")}`,
+      publicId: `LABEL${String(index + 1).padStart(3, "0")}`,
+    }));
+    mockListLabels
+      .mockResolvedValueOnce({
+        labels: firstPage,
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        labels: [
+          { name: "Zebra", publicId: "LABEL101" },
+          { name: "Alpha", publicId: "LABEL102" },
+        ],
+        nextToken: "",
+      });
+
+    const { listAllLabels } = await import("./label");
+    const result = await listAllLabels("TENANT001");
+
+    expect(mockListLabels).toHaveBeenNthCalledWith(
+      1,
+      {
+        limit: 100,
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockListLabels).toHaveBeenNthCalledWith(
+      2,
+      {
+        limit: 100,
+        tenant: { tenantId: "TENANT001" },
+        token: "page-2",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.labels).toHaveLength(102);
+    expect(result.labels.at(0)?.publicId).toBe("LABEL102");
+    expect(result.labels.at(-1)?.publicId).toBe("LABEL101");
+    expect(result.labels.some((label) => label.publicId === "LABEL101")).toBe(
+      true
+    );
+  });
+
+  it("listAllLabels はセッションがない場合RPCを呼ばない", async () => {
+    mockGetAccessToken.mockResolvedValue(null);
+
+    const { listAllLabels } = await import("./label");
+    const result = await listAllLabels("TENANT001");
+
+    expect(mockListLabels).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      labels: [],
+      message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
+
+  it("listAllLabels は nextToken が繰り返されたら部分結果を返さない", async () => {
+    mockListLabels
+      .mockResolvedValueOnce({
+        labels: Array.from({ length: 100 }, (_, index) => ({
+          name: `Label ${index + 1}`,
+          publicId: `LABEL${String(index + 1).padStart(3, "0")}`,
+        })),
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        labels: [{ name: "Partial", publicId: "LABEL101" }],
+        nextToken: "page-2",
+      });
+
+    const { listAllLabels } = await import("./label");
+    const result = await listAllLabels("TENANT001");
+
+    expect(mockListLabels).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      labels: [],
+      message:
+        "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
 });

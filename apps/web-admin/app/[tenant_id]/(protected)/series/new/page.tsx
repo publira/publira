@@ -13,8 +13,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
-import { listCreators } from "#lib/creator";
-import { listLabels } from "#lib/label";
+import { listAllCreators } from "#lib/creator";
+import { listAllLabels } from "#lib/label";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -46,11 +46,9 @@ const NewSeriesFormData = async () => {
     // tenant rather than the page, so the smallest page the API allows is
     // enough.
     listSeries(tenantId, { limit: 1 }),
-    // Series author multi-select still needs a single full-ish page until
-    // #706 adds a searchable picker; keep the previous 100-row ceiling.
-    listCreators(tenantId, { limit: 100 }),
-    // Same ceiling for the label picker until a searchable picker lands.
-    listLabels(tenantId, { limit: 100 }),
+    // Walk every cursor page so the Combobox can search past the first 100.
+    listAllCreators(tenantId),
+    listAllLabels(tenantId),
   ]);
 
   return (

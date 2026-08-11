@@ -240,4 +240,93 @@ describe("getCreator", () => {
     expect(mockListCreators).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ notFound: true, ok: false });
   });
+
+  it("listAllCreators は cursor をたどって101件目以降も含める", async () => {
+    mockListCreators
+      .mockResolvedValueOnce({
+        creators: creatorPage(100),
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        creators: [
+          { name: "Zebra", profileText: "", publicId: "CREATOR101" },
+          { name: "Alpha", profileText: "", publicId: "CREATOR102" },
+        ],
+        nextToken: "",
+      });
+
+    const { listAllCreators } = await import("./creator");
+    const result = await listAllCreators("TENANT001");
+
+    expect(mockListCreators).toHaveBeenNthCalledWith(
+      1,
+      {
+        limit: 100,
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockListCreators).toHaveBeenNthCalledWith(
+      2,
+      {
+        limit: 100,
+        tenant: { tenantId: "TENANT001" },
+        token: "page-2",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.creators).toHaveLength(102);
+    expect(result.creators.at(0)?.publicId).toBe("CREATOR102");
+    expect(result.creators.at(-1)?.publicId).toBe("CREATOR101");
+    expect(
+      result.creators.some((creator) => creator.publicId === "CREATOR101")
+    ).toBe(true);
+  });
+
+  it("listAllCreators はセッションがない場合RPCを呼ばない", async () => {
+    mockGetAccessToken.mockResolvedValue(null);
+
+    const { listAllCreators } = await import("./creator");
+    const result = await listAllCreators("TENANT001");
+
+    expect(mockListCreators).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      creators: [],
+      message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
+
+  it("listAllCreators は nextToken が繰り返されたら部分結果を返さない", async () => {
+    mockListCreators
+      .mockResolvedValueOnce({
+        creators: creatorPage(100),
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        creators: [
+          { name: "Partial", profileText: "", publicId: "CREATOR101" },
+        ],
+        nextToken: "page-2",
+      });
+
+    const { listAllCreators } = await import("./creator");
+    const result = await listAllCreators("TENANT001");
+
+    expect(mockListCreators).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      creators: [],
+      message: "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
 });
