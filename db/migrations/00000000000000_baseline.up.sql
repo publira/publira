@@ -967,6 +967,9 @@ CREATE INDEX idx_user_password_reset_tokens_tenant_token ON user_password_reset_
 -- INDEX: idx_user_password_reset_tokens_user_id
 CREATE INDEX idx_user_password_reset_tokens_user_id ON user_password_reset_tokens USING btree (user_id);
 
+-- INDEX: idx_users_tenant_created_at
+CREATE INDEX idx_users_tenant_created_at ON users USING btree (tenant_id, created_at DESC, id DESC);
+
 -- INDEX: idx_users_tenant_id_email
 CREATE UNIQUE INDEX idx_users_tenant_id_email ON users USING btree (tenant_id, email) WHERE (tenant_id IS NOT NULL);
 

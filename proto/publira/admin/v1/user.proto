@@ -16,10 +16,13 @@ message ListTenantUsersRequest {
   publira.types.v1.TenantContext tenant = 1;
   string query = 2;
   int32 limit = 3;
+  string token = 4;
 }
 
 message ListTenantUsersResponse {
   repeated AdminTenantUser users = 1;
+  string previous_token = 2;
+  string next_token = 3;
 }
 
 service AdminUserService {

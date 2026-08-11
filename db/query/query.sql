@@ -1750,6 +1750,110 @@ WHERE u.tenant_id = $1
     )
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- Admin ListTenantUsers は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- 絞り込みは SQL 側で行う。handler で取得済みの 1 ページ分だけを突き合わせると、
+-- その先のページにいる該当ユーザーが検索結果から丸ごと落ちる。
+-- name: ListTenantUsersDesc :many
+-- テナントに所属する管理・編集ユーザー一覧（次ページ方向）
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.public_id), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantUsersAsc :many
+-- テナントに所属する管理・編集ユーザー一覧（前ページ方向）
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('query')::text IS NULL
+        OR strpos(lower(u.public_id), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.name), lower(sqlc.narg('query')::text)) > 0
+        OR strpos(lower(u.email), lower(sqlc.narg('query')::text)) > 0
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
+
 -- Admin ListCreators は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 -- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
