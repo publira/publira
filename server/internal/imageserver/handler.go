@@ -158,7 +158,8 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		if !(publicAccess.IsPublished.Valid && publicAccess.IsPublished.Bool) || !publicAccess.HasPublicAccess {
+		isPublished := publicAccess.IsPublished.Valid && publicAccess.IsPublished.Bool
+		if !isPublished || !publicAccess.HasPublicAccess {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -176,7 +177,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	defer object.Body.Close()
+	defer object.Body.Close() //nolint:errcheck
 
 	contentType := strings.TrimSpace(contentTypeFromDB)
 	if contentType == "" {
@@ -256,7 +257,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	defer object.Body.Close()
+	defer object.Body.Close() //nolint:errcheck
 
 	contentType := "application/octet-stream"
 	if strings.TrimSpace(imageRow.ContentType) != "" {
@@ -344,7 +345,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	defer object.Body.Close()
+	defer object.Body.Close() //nolint:errcheck
 
 	contentType := "application/octet-stream"
 	if strings.TrimSpace(imageRow.ContentType) != "" {
@@ -432,7 +433,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	defer object.Body.Close()
+	defer object.Body.Close() //nolint:errcheck
 
 	contentType := "application/octet-stream"
 	if strings.TrimSpace(imageRow.ContentType) != "" {

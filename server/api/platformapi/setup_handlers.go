@@ -16,10 +16,6 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 )
 
-const (
-	defaultMembershipStatus = "active"
-)
-
 func (s *platformServer) CheckSetupStatus(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CheckSetupStatusRequest],

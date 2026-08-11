@@ -87,32 +87,6 @@ func tenantEmailSettingsFromTestRequest(req *publiraadminv1.SendTenantSmtpTestEm
 	}
 }
 
-func tenantEmailSettingsFromRow(config dbmodels.TenantSmtpConfig) emailsettings.SMTPSettings {
-	settings := emailsettings.SMTPSettings{}
-	if config.Host.Valid {
-		settings.Host = config.Host.String
-	}
-	if config.Port.Valid {
-		settings.Port = config.Port.Int32
-	}
-	if config.Username.Valid {
-		settings.Username = config.Username.String
-	}
-	if config.Encryption.Valid {
-		settings.Encryption = config.Encryption.String
-	}
-	if config.FromName.Valid {
-		settings.FromName = config.FromName.String
-	}
-	if config.FromAddress.Valid {
-		settings.FromAddress = config.FromAddress.String
-	}
-	if config.ReplyTo.Valid {
-		settings.ReplyTo = config.ReplyTo.String
-	}
-	return settings
-}
-
 func platformEmailSettingsFromRow(config dbmodels.PlatformSmtpConfig, password string) emailsettings.SMTPSettings {
 	settings := emailsettings.SMTPSettings{
 		Host:        config.Host,

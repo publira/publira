@@ -52,17 +52,3 @@ func TestResolveTenantID_InvalidUUID(t *testing.T) {
 		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
 }
-
-func TestResolveTenantPublicIDValue_FromTenantIDAliasHeader(t *testing.T) {
-	// Platform-style string resolve still accepts non-UUID strings for public_id style values.
-	headers := http.Header{}
-	headers.Set(rpcmiddleware.TenantPublicIDHeaderName, "TENANT001")
-
-	got, err := rpcmiddleware.ResolveTenantPublicIDValue("", headers)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != "TENANT001" {
-		t.Fatalf("value = %q, want TENANT001", got)
-	}
-}

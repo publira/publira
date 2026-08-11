@@ -8,12 +8,6 @@ import (
 
 const testEncryptionKey = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE"
 
-func setValidEncryptionEnv(t *testing.T) {
-	t.Helper()
-	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
-	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
-}
-
 func setenv(t *testing.T, key, value string) {
 	t.Helper()
 	oldValue, existed := os.LookupEnv(key)

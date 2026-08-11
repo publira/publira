@@ -110,7 +110,7 @@ func (c *Client) sendRequest(ctx context.Context, endpoint, tenantID, tenantDoma
 	if err != nil {
 		return fmt.Errorf("send revalidate request: %w", err)
 	}
-	defer res.Body.Close()
+	defer res.Body.Close() //nolint:errcheck
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(res.Body, 4096))

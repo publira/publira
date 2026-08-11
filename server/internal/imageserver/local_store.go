@@ -43,7 +43,7 @@ func (s *LocalStore) GetObject(_ context.Context, key string) (ObjectResult, err
 
 	info, err := file.Stat()
 	if err != nil {
-		file.Close()
+		_ = file.Close()
 		return ObjectResult{}, fmt.Errorf("stat local object: %w", err)
 	}
 

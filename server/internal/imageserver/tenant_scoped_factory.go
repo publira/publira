@@ -24,7 +24,7 @@ func (f *DBTenantScopedFactory) ForTenant(ctx context.Context, tenantID uuid.UUI
 	}
 
 	if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_tenant_id', $1, false)", tenantID.String()); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, func() {}, err
 	}
 

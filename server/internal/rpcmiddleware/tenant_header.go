@@ -19,7 +19,11 @@ const (
 	TenantPublicIDHeaderName = "X-Publira-Tenant-Public-Id"
 )
 
-func tenantIDFromHeader(headers http.Header) string {
+// TenantIDFromHeader returns the tenant identifier carried by the request
+// headers, preferring TenantIDHeaderName over the legacy alias. Callers that
+// resolve their own identifier shape (platform public_id, for example) use this
+// so the set of accepted header names stays defined in one place.
+func TenantIDFromHeader(headers http.Header) string {
 	if headers == nil {
 		return ""
 	}
@@ -38,7 +42,7 @@ func ResolveTenantID(tenantCtx *publirattypesv1.TenantContext, headers http.Head
 	if tenantCtx != nil {
 		bodyTenantID = strings.TrimSpace(tenantCtx.TenantId)
 	}
-	headerTenantID := tenantIDFromHeader(headers)
+	headerTenantID := TenantIDFromHeader(headers)
 
 	if bodyTenantID != "" && headerTenantID != "" && bodyTenantID != headerTenantID {
 		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id header and request body must match"))
@@ -66,7 +70,7 @@ func ResolveTenantID(tenantCtx *publirattypesv1.TenantContext, headers http.Head
 // it is for internal UUID wiring only.
 func ResolveTenantIDValue(fieldValue string, headers http.Header) (uuid.UUID, error) {
 	bodyTenantID := strings.TrimSpace(fieldValue)
-	headerTenantID := tenantIDFromHeader(headers)
+	headerTenantID := TenantIDFromHeader(headers)
 
 	if bodyTenantID != "" && headerTenantID != "" && bodyTenantID != headerTenantID {
 		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id header and request body must match"))
@@ -85,30 +89,4 @@ func ResolveTenantIDValue(fieldValue string, headers http.Header) (uuid.UUID, er
 		return uuid.Nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_id must be a valid UUID"))
 	}
 	return id, nil
-}
-
-// Deprecated: use ResolveTenantID.
-func ResolveTenantPublicID(tenantCtx *publirattypesv1.TenantContext, headers http.Header) (string, error) {
-	id, err := ResolveTenantID(tenantCtx, headers)
-	if err != nil {
-		return "", err
-	}
-	return id.String(), nil
-}
-
-// Deprecated: use ResolveTenantIDValue for UUID fields.
-// Platform handlers that resolve public_id should keep their own helpers.
-func ResolveTenantPublicIDValue(fieldValue string, headers http.Header) (string, error) {
-	body := strings.TrimSpace(fieldValue)
-	header := tenantIDFromHeader(headers)
-	if body != "" && header != "" && body != header {
-		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id header and request body must match"))
-	}
-	if body != "" {
-		return body, nil
-	}
-	if header != "" {
-		return header, nil
-	}
-	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("tenant_public_id is required"))
 }

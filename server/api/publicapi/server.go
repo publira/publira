@@ -131,12 +131,12 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInternal, err)
 			}
-			defer conn.Close()
+			defer conn.Close() //nolint:errcheck
 
 			if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_tenant_id', $1, false)", tenant.ID.String()); err != nil {
 				return nil, connect.NewError(connect.CodeInternal, err)
 			}
-			defer conn.ExecContext(context.Background(), "SELECT set_config('app.current_tenant_id', '', false)")
+			defer conn.ExecContext(context.Background(), "SELECT set_config('app.current_tenant_id', '', false)") //nolint:errcheck
 
 			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
