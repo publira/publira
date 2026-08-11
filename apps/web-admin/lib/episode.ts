@@ -499,7 +499,8 @@ const reorderEpisodes = async (input: {
  * The check is against the order this request read back, so it closes the
  * window the page was on screen for, not the one between that read and the
  * write. Closing that last one needs `ReorderEpisodes` to take a revision and
- * verify it in the same transaction, which is a proto and server change.
+ * verify it in the same transaction, which is a proto and server change and is
+ * tracked in #805.
  */
 export const mergeEpisodeOrder = (
   seriesPublicIds: readonly string[],
