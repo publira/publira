@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -1085,4 +1086,24 @@ func TestListEpisodesInvalidToken(t *testing.T) {
 			assertExpectations(t, mock)
 		})
 	}
+}
+
+func TestListEpisodesDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantAscQuery)).
+		WithArgs(tenantID, "SERIES001", uuid.NullUUID{}, false, sql.NullInt32{}, int32(21)).
+		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
+
+	_, err := client.ListEpisodes(context.Background(), newListEpisodesRequest(tenantID, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListEpisodes code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
 }

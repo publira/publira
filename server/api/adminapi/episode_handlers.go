@@ -248,7 +248,8 @@ func (s *adminServer) ListEpisodes(
 	// One row past the page: its presence is what says another page exists.
 	rows, err := s.episodePage(ctx, tenant.ID, req.Msg.SeriesPublicId, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to list episodes", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -493,11 +494,13 @@ func (s *adminServer) ListEpisodeImages(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to get episode for list episode images", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 	rows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to list episode images", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 
 	images := make([]*publirattypesv1.EpisodeImage, 0, len(rows))

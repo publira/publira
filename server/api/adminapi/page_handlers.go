@@ -442,11 +442,13 @@ func (s *adminServer) ListVersions(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to get page for list versions", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 	rows, err := s.queriesFor(ctx).ListPageVersionsByPageID(ctx, pageID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to list page versions", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 	versions := make([]*publirattypesv1.PageVersion, 0, len(rows))
 	for _, v := range rows {

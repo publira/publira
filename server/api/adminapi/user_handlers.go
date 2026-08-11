@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -38,7 +39,8 @@ func (s *adminServer) ListTenantUsers(
 		Limit:    maxTenantUserListLimit,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to list tenant users", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 
 	users := make([]*publiraadminv1.AdminTenantUser, 0, len(rows))

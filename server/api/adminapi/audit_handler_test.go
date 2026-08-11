@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -387,6 +388,36 @@ func TestListAuditLogsInvalidToken(t *testing.T) {
 	}
 	if err.Error() != "invalid_argument: token is invalid" {
 		t.Fatalf("error = %q, want token internals hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListAuditLogsDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newAuditLogClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAuditLogsByTenantDescQuery)).
+		WithArgs(
+			tenantID,
+			sql.NullString{},
+			sql.NullString{},
+			sql.NullTime{},
+			sql.NullTime{},
+			uuid.NullUUID{},
+			false,
+			sql.NullTime{},
+			int32(21),
+		).
+		WillReturnError(errors.New(`pq: relation "audit_logs" does not exist`))
+
+	_, err := client.ListAuditLogs(context.Background(), newAuditLogRequest(tenantID, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListAuditLogs code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertExpectations(t, mock)
 }

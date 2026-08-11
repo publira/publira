@@ -191,7 +191,8 @@ func (s *adminServer) ListAuditLogs(
 
 	rows, err := s.auditLogPage(ctx, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to list audit logs", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 

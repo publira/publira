@@ -277,7 +277,8 @@ func (s *adminServer) ListAccessTickets(
 					Tickets: []*publiraadminv1.AdminAccessTicket{},
 				}), nil
 			}
-			return nil, connect.NewError(connect.CodeInternal, getUserErr)
+			s.logger.Error("failed to resolve user for list access tickets", "error", getUserErr, "tenant_id", tenant.ID.String())
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 		}
 		filter.userID = uuid.NullUUID{UUID: userRow.ID, Valid: true}
 	}
@@ -293,7 +294,8 @@ func (s *adminServer) ListAccessTickets(
 					Tickets: []*publiraadminv1.AdminAccessTicket{},
 				}), nil
 			}
-			return nil, connect.NewError(connect.CodeInternal, getEpisodeErr)
+			s.logger.Error("failed to resolve episode for list access tickets", "error", getEpisodeErr, "tenant_id", tenant.ID.String())
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 		}
 		filter.episodeID = uuid.NullUUID{UUID: episode.ID, Valid: true}
 	}
@@ -301,7 +303,8 @@ func (s *adminServer) ListAccessTickets(
 	// One row past the page: its presence is what says another page exists.
 	rows, err := s.accessTicketPage(ctx, filter, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		s.logger.Error("failed to list access tickets", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
