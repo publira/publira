@@ -42,6 +42,16 @@ test.describe("web-host public API outage", () => {
    * `"use cache"` scope reaches that boundary is the open question, and it is
    * measured in https://github.com/publira/publira/issues/672.
    *
+   * Unlike its neighbours this one navigates the default Host, and that is
+   * load-bearing: `stopApiServer()` breaks tenant resolution too, and `proxy`
+   * answers 503 for a Host it cannot resolve — which would end the request
+   * before any section renders. The default Host survives only because an
+   * earlier spec already resolved it into the `createTenantIdResolver` LRU
+   * (`max: 500`, `ttl: 300_000`), so the outage reaches the catalog read and
+   * nothing else. Whoever enables this should not rely on that by accident:
+   * either assert the tenant still resolves first, or give #672 a fault
+   * injection that fails the catalog read alone.
+   *
    * Enable once that lands. The final copy and status code are decided there,
    * so this pins the user-visible contract only: the site chrome survives and
    * a retry affordance exists.

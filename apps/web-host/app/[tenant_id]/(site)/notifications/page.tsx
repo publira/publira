@@ -223,13 +223,20 @@ const NotificationsSection = async ({
         />
       )}
 
-      {result.notifications.length === 0 ? (
+      {/*
+        A failed read hands back an empty `notifications`, so the empty state
+        stays behind `result.ok` — otherwise the page says the list could not
+        be read and that there is nothing to read, one after the other.
+      */}
+      {result.ok && result.notifications.length === 0 ? (
         <NotificationsEmptyState
           nextToken={nextToken}
           previousToken={previousToken}
           token={token}
         />
-      ) : (
+      ) : null}
+
+      {result.notifications.length > 0 ? (
         <div className="grid gap-3">
           {result.notifications.map((notification) => {
             const linkAction = (() => {
@@ -319,7 +326,7 @@ const NotificationsSection = async ({
             );
           })}
         </div>
-      )}
+      ) : null}
 
       {result.notifications.length > 0 ? (
         <NotificationsPagination
