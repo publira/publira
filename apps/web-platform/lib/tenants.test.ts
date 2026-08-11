@@ -92,6 +92,8 @@ beforeEach(() => {
 describe("listPlatformTenants", () => {
   it("正常系: テナント一覧を返す", async () => {
     mockListTenants.mockResolvedValueOnce({
+      nextToken: "next-page",
+      previousToken: "",
       tenants: [
         {
           adminDomain: "admin.example.com",
@@ -105,7 +107,9 @@ describe("listPlatformTenants", () => {
     });
 
     await expect(listPlatformTenants({})).resolves.toEqual({
+      nextToken: "next-page",
       ok: true,
+      previousToken: "",
       tenants: [
         {
           adminDomain: "admin.example.com",
@@ -119,23 +123,39 @@ describe("listPlatformTenants", () => {
     });
 
     expect(mockListTenants).toHaveBeenCalledWith(
-      { name: "", status: "" },
+      { limit: 20, name: "", status: "", token: "" },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
-  it("name / status フィルターを API に渡す", async () => {
-    mockListTenants.mockResolvedValueOnce({ tenants: [] });
+  it("ページング引数とフィルターを API に渡す", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "previous-page",
+      tenants: [],
+    });
 
     await expect(
       listPlatformTenants({
+        limit: 50,
         name: "テスト",
         status: "active",
+        token: "current-page",
       })
-    ).resolves.toEqual({ ok: true, tenants: [] });
+    ).resolves.toEqual({
+      nextToken: "",
+      ok: true,
+      previousToken: "previous-page",
+      tenants: [],
+    });
 
     expect(mockListTenants).toHaveBeenCalledWith(
-      { name: "テスト", status: "active" },
+      {
+        limit: 50,
+        name: "テスト",
+        status: "active",
+        token: "current-page",
+      },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
@@ -145,7 +165,10 @@ describe("listPlatformTenants", () => {
 
     await expect(listPlatformTenants({})).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
+      tenants: [],
     });
 
     expect(mockListTenants).not.toHaveBeenCalled();
@@ -159,7 +182,10 @@ describe("listPlatformTenants", () => {
     await expect(listPlatformTenants({})).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
+      tenants: [],
     });
   });
 
