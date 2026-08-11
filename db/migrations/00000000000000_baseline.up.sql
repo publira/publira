@@ -778,7 +778,7 @@ ALTER TABLE ONLY users
 CREATE UNIQUE INDEX idx_access_tickets_active_user_episode ON access_tickets USING btree (tenant_id, user_id, episode_id) WHERE (revoked_at IS NULL);
 
 -- INDEX: idx_access_tickets_tenant_created_at
-CREATE INDEX idx_access_tickets_tenant_created_at ON access_tickets USING btree (tenant_id, created_at DESC);
+CREATE INDEX idx_access_tickets_tenant_created_at ON access_tickets USING btree (tenant_id, created_at DESC, id DESC);
 
 -- INDEX: idx_audit_logs_actor_user_id
 CREATE INDEX idx_audit_logs_actor_user_id ON audit_logs USING btree (actor_user_id);

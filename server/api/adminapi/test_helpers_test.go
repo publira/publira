@@ -30,6 +30,8 @@ const (
 	getTenantThemeByTenantIDQuery                        = "-- name: GetTenantThemeByTenantID :one\n"
 	upsertTenantThemeQuery                               = "-- name: UpsertTenantTheme :one\n"
 	updateTenantTimezoneQuery                            = "-- name: UpdateTenantTimezone :one\n"
+	listAccessTicketsForTenantAscQuery                   = "-- name: ListAccessTicketsForTenantAsc :many\n"
+	listAccessTicketsForTenantDescQuery                  = "-- name: ListAccessTicketsForTenantDesc :many\n"
 	listSeriesByTenantAscQuery                           = "-- name: ListSeriesByTenantAsc :many\n"
 	listSeriesByTenantDescQuery                          = "-- name: ListSeriesByTenantDesc :many\n"
 	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\n"

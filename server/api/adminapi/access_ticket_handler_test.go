@@ -3,7 +3,9 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 func ticketDetailColumns() []string {
@@ -355,35 +358,70 @@ func TestRevokeAccessTicketAlreadyRevoked(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestListAccessTicketsSuccess(t *testing.T) {
+func newAccessTicketClient(
+	t *testing.T,
+	tenantID, actorID uuid.UUID,
+	now time.Time,
+) (publiraadminv1connect.AdminAccessTicketServiceClient, sqlmock.Sqlmock, string) {
+	t.Helper()
 	testServer, mock := newTestAdminServer(t)
-
-	tenantID := uuid.Must(uuid.NewV7())
-	actorID := uuid.Must(uuid.NewV7())
-	memberID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
-	ticketID := uuid.Must(uuid.NewV7())
-	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
-
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+	return publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+}
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: ListAccessTicketsForTenant :many\n")).
-		WithArgs(tenantID, int32(20), int32(0), uuid.NullUUID{}, uuid.NullUUID{}, false).
-		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
-			ticketID, tenantID, "TICKET000001", episodeID, "EPISODE001", "Episode 1",
-			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
-			nil, nil, "reviewer grant", actorID, now,
-		))
-
-	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
+func newListAccessTicketsRequest(
+	tenantID uuid.UUID,
+	sessionToken string,
+) *connect.Request[publiraadminv1.ListAccessTicketsRequest] {
 	req := connect.NewRequest(&publiraadminv1.ListAccessTicketsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	return req
+}
 
-	resp, err := client.ListAccessTickets(context.Background(), req)
+func addTicketRow(
+	rows *sqlmock.Rows,
+	id uuid.UUID,
+	publicID, note string,
+	createdAt time.Time,
+) *sqlmock.Rows {
+	var noteValue driver.Value
+	if note != "" {
+		noteValue = note
+	}
+	return rows.AddRow(
+		id, uuid.Must(uuid.NewV7()), publicID, uuid.Must(uuid.NewV7()), "EPISODE001", "Episode 1",
+		"SERIES001", "Series 1", uuid.Must(uuid.NewV7()), "MEMBER001", "Sample Member", "member@example.com",
+		nil, nil, noteValue, uuid.Must(uuid.NewV7()), createdAt,
+	)
+}
+
+func ticketPublicIDs(tickets []*publiraadminv1.AdminAccessTicket) []string {
+	publicIDs := make([]string, 0, len(tickets))
+	for _, ticket := range tickets {
+		publicIDs = append(publicIDs, ticket.PublicId)
+	}
+	return publicIDs
+}
+
+func TestListAccessTicketsSuccess(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	ticketID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(addTicketRow(
+			sqlmock.NewRows(ticketDetailColumns()),
+			ticketID, "TICKET000001", "reviewer grant", now,
+		))
+
+	resp, err := client.ListAccessTickets(context.Background(), newListAccessTicketsRequest(tenantID, sessionToken))
 	if err != nil {
 		t.Fatalf("ListAccessTickets: %v", err)
 	}
@@ -393,33 +431,27 @@ func TestListAccessTicketsSuccess(t *testing.T) {
 	if resp.Msg.Tickets[0].Note != "reviewer grant" {
 		t.Fatalf("note = %q, want reviewer grant", resp.Msg.Tickets[0].Note)
 	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
 
 	assertExpectations(t, mock)
 }
 
-func TestListAccessTicketsClampsOversizedLimit(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
+func TestListAccessTicketsFallsBackForOversizedLimit(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-
-	// Oversized limit should clamp to max (100), not fall back to default (20).
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: ListAccessTicketsForTenant :many\n")).
-		WithArgs(tenantID, int32(100), int32(0), uuid.NullUUID{}, uuid.NullUUID{}, false).
+	// An out-of-range limit falls back to the default (20), plus the one
+	// over-fetched row that reports whether another page follows.
+	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()))
 
-	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListAccessTicketsRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Limit:  500,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.Limit = 500
 	resp, err := client.ListAccessTickets(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListAccessTickets: %v", err)
@@ -432,27 +464,17 @@ func TestListAccessTicketsClampsOversizedLimit(t *testing.T) {
 }
 
 func TestListAccessTicketsUserFilterMissingUser(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetUserByPublicIDForTenant :one\n")).
+	mock.ExpectQuery(regexp.QuoteMeta(getUserByPublicIDForTenantQuery)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, "MISSING").
 		WillReturnError(sql.ErrNoRows)
 
-	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListAccessTicketsRequest{
-		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		UserPublicId: "MISSING",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.UserPublicId = "MISSING"
 	resp, err := client.ListAccessTickets(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListAccessTickets: %v", err)
@@ -465,27 +487,17 @@ func TestListAccessTicketsUserFilterMissingUser(t *testing.T) {
 }
 
 func TestListAccessTicketsEpisodeFilterMissingEpisode(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
-
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "MISSING_EP").
 		WillReturnError(sql.ErrNoRows)
 
-	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListAccessTicketsRequest{
-		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		EpisodePublicId: "MISSING_EP",
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.EpisodePublicId = "MISSING_EP"
 	resp, err := client.ListAccessTickets(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListAccessTickets: %v", err)
@@ -498,34 +510,21 @@ func TestListAccessTicketsEpisodeFilterMissingEpisode(t *testing.T) {
 }
 
 func TestListAccessTicketsActiveOnly(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
-	memberID := uuid.Must(uuid.NewV7())
-	episodeID := uuid.Must(uuid.NewV7())
 	ticketID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
 
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: ListAccessTicketsForTenant :many\n")).
-		WithArgs(tenantID, int32(20), int32(0), uuid.NullUUID{}, uuid.NullUUID{}, true).
-		WillReturnRows(sqlmock.NewRows(ticketDetailColumns()).AddRow(
-			ticketID, tenantID, "TICKETACTIVE1", episodeID, "EPISODE001", "Episode 1",
-			"SERIES001", "Series 1", memberID, "MEMBER001", "Sample Member", "member@example.com",
-			nil, nil, nil, actorID, now,
+	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, true, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(addTicketRow(
+			sqlmock.NewRows(ticketDetailColumns()),
+			ticketID, "TICKETACTIVE1", "", now,
 		))
 
-	client := publiraadminv1connect.NewAdminAccessTicketServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListAccessTicketsRequest{
-		Tenant:     &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		ActiveOnly: true,
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.ActiveOnly = true
 	resp, err := client.ListAccessTickets(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ListAccessTickets: %v", err)
@@ -535,6 +534,277 @@ func TestListAccessTicketsActiveOnly(t *testing.T) {
 	}
 	if resp.Msg.Tickets[0].Status != "active" {
 		t.Fatalf("status = %q, want active", resp.Msg.Tickets[0].Status)
+	}
+
+	assertExpectations(t, mock)
+}
+
+func TestListAccessTicketsFirstPageReportsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WillReturnRows(addTicketRow(
+			addTicketRow(
+				addTicketRow(sqlmock.NewRows(ticketDetailColumns()), ids[0], "TICKET000001", "", now),
+				ids[1], "TICKET000002", "", now.Add(-time.Minute),
+			),
+			ids[2], "TICKET000003", "", now.Add(-2*time.Minute),
+		))
+
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	resp, err := client.ListAccessTickets(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListAccessTickets: %v", err)
+	}
+	if len(resp.Msg.Tickets) != 2 {
+		t.Fatalf("tickets count = %d, want the over-fetched row dropped", len(resp.Msg.Tickets))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+
+	assertExpectations(t, mock)
+}
+
+// The last page is reachable by following next_token, without an offset.
+func TestListAccessTicketsFollowsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addTicketRow(
+			sqlmock.NewRows(ticketDetailColumns()),
+			uuid.Must(uuid.NewV7()), "TICKET000003", "", now.Add(-2*time.Minute),
+		))
+
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListAccessTickets(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListAccessTickets: %v", err)
+	}
+	if !slices.Equal(ticketPublicIDs(resp.Msg.Tickets), []string{"TICKET000003"}) {
+		t.Fatalf("public_ids = %v, want the page after the boundary row", ticketPublicIDs(resp.Msg.Tickets))
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+
+	assertExpectations(t, mock)
+}
+
+func TestListAccessTicketsFollowsPreviousTokenBackwards(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-10 * time.Minute)
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listAccessTicketsForTenantAscQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addTicketRow(
+			addTicketRow(
+				sqlmock.NewRows(ticketDetailColumns()),
+				uuid.Must(uuid.NewV7()), "TICKET000002", "", now.Add(-2*time.Minute),
+			),
+			uuid.Must(uuid.NewV7()), "TICKET000001", "", now.Add(-time.Minute),
+		))
+
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
+	resp, err := client.ListAccessTickets(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListAccessTickets: %v", err)
+	}
+	if !slices.Equal(ticketPublicIDs(resp.Msg.Tickets), []string{"TICKET000001", "TICKET000002"}) {
+		t.Fatalf("public_ids = %v, want backward page restored to descending order", ticketPublicIDs(resp.Msg.Tickets))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+
+	assertExpectations(t, mock)
+}
+
+func TestListAccessTicketsEmptyPageKeepsAWayBack(t *testing.T) {
+	tests := []struct {
+		name                 string
+		direction            pagination.Direction
+		wantQuery            string
+		wantRecoveryQuery    string
+		wantRecoveredTickets []string
+	}{
+		{
+			name:                 "forward",
+			direction:            pagination.Forward,
+			wantQuery:            listAccessTicketsForTenantDescQuery,
+			wantRecoveryQuery:    listAccessTicketsForTenantAscQuery,
+			wantRecoveredTickets: []string{"TICKET000001", "TICKET000002"},
+		},
+		{
+			name:                 "backward",
+			direction:            pagination.Backward,
+			wantQuery:            listAccessTicketsForTenantAscQuery,
+			wantRecoveryQuery:    listAccessTicketsForTenantDescQuery,
+			wantRecoveredTickets: []string{"TICKET000002", "TICKET000003"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			actorID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, boundaryID, false, now, int32(21)).
+				WillReturnRows(sqlmock.NewRows(ticketDetailColumns()))
+
+			req := newListAccessTicketsRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
+			resp, err := client.ListAccessTickets(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListAccessTickets: %v", err)
+			}
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
+			}
+			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
+			if recoveryToken != wantRecoveryToken {
+				t.Fatalf("recovery token = %q, want %q", recoveryToken, wantRecoveryToken)
+			}
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+			recoveryRows := addTicketRow(sqlmock.NewRows(ticketDetailColumns()), boundaryID, "TICKET000002", "", now)
+			if test.direction == pagination.Forward {
+				recoveryRows = addTicketRow(recoveryRows, uuid.Must(uuid.NewV7()), "TICKET000001", "", now.Add(time.Minute))
+			} else {
+				recoveryRows = addTicketRow(recoveryRows, uuid.Must(uuid.NewV7()), "TICKET000003", "", now.Add(-time.Minute))
+			}
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
+				WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, boundaryID, true, now, int32(21)).
+				WillReturnRows(recoveryRows)
+
+			recoveryReq := newListAccessTicketsRequest(tenantID, sessionToken)
+			recoveryReq.Msg.Token = recoveryToken
+			recovered, err := client.ListAccessTickets(context.Background(), recoveryReq)
+			if err != nil {
+				t.Fatalf("ListAccessTickets recovery: %v", err)
+			}
+			if !slices.Equal(ticketPublicIDs(recovered.Msg.Tickets), test.wantRecoveredTickets) {
+				t.Fatalf(
+					"recovered public_ids = %v, want %v",
+					ticketPublicIDs(recovered.Msg.Tickets), test.wantRecoveredTickets,
+				)
+			}
+
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+// Recovery happens once. When the boundary row itself is gone the recovery
+// query is empty too, and both tokens stay empty so the client falls back to
+// the first page instead of bouncing between empty pages.
+func TestListAccessTicketsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction pagination.Direction
+		wantQuery string
+	}{
+		{
+			name:      "recovering backward",
+			direction: pagination.Backward,
+			wantQuery: listAccessTicketsForTenantAscQuery,
+		},
+		{
+			name:      "recovering forward",
+			direction: pagination.Forward,
+			wantQuery: listAccessTicketsForTenantDescQuery,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			actorID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, uuid.NullUUID{}, uuid.NullUUID{}, false, boundaryID, true, now, int32(21)).
+				WillReturnRows(sqlmock.NewRows(ticketDetailColumns()))
+
+			req := newListAccessTicketsRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
+			resp, err := client.ListAccessTickets(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListAccessTickets: %v", err)
+			}
+			if len(resp.Msg.Tickets) != 0 {
+				t.Fatalf("tickets = %d rows, want an empty page", len(resp.Msg.Tickets))
+			}
+			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+				t.Fatalf(
+					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
+					resp.Msg.PreviousToken, resp.Msg.NextToken,
+				)
+			}
+
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestListAccessTicketsInvalidToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	actorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newAccessTicketClient(t, tenantID, actorID, now)
+
+	req := newListAccessTicketsRequest(tenantID, sessionToken)
+	req.Msg.Token = "not-a-valid-token"
+	_, err := client.ListAccessTickets(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListAccessTickets code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("ListAccessTickets error = %v, want invalid_argument token is invalid", err)
 	}
 
 	assertExpectations(t, mock)

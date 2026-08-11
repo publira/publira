@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 )
 
@@ -83,21 +84,60 @@ func mapAccessTicket(fields accessTicketFields, now time.Time) *publiraadminv1.A
 	}
 }
 
-func mapAccessTicketFromListRow(row dbmodels.ListAccessTicketsForTenantRow, now time.Time) *publiraadminv1.AdminAccessTicket {
-	return mapAccessTicket(accessTicketFields{
-		publicID:        row.PublicID,
-		episodePublicID: row.EpisodePublicID,
-		episodeTitle:    row.EpisodeTitle,
-		seriesPublicID:  row.SeriesPublicID,
-		seriesTitle:     row.SeriesTitle,
-		userPublicID:    row.UserPublicID,
-		userName:        row.UserName,
-		userEmail:       row.UserEmail,
-		expiresAt:       row.ExpiresAt,
-		revokedAt:       row.RevokedAt,
-		note:            row.Note,
-		createdAt:       row.CreatedAt,
-	}, now)
+// accessTicketPageRow is one row of an access ticket page, shared by the
+// descending and ascending keyset queries so the handler reads a single shape.
+// The id is the cursor tiebreaker and is not part of the response.
+type accessTicketPageRow struct {
+	id     uuid.UUID
+	fields accessTicketFields
+}
+
+func mapAccessTicketDescRows(rows []dbmodels.ListAccessTicketsForTenantDescRow) []accessTicketPageRow {
+	mapped := make([]accessTicketPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, accessTicketPageRow{
+			id: row.ID,
+			fields: accessTicketFields{
+				publicID:        row.PublicID,
+				episodePublicID: row.EpisodePublicID,
+				episodeTitle:    row.EpisodeTitle,
+				seriesPublicID:  row.SeriesPublicID,
+				seriesTitle:     row.SeriesTitle,
+				userPublicID:    row.UserPublicID,
+				userName:        row.UserName,
+				userEmail:       row.UserEmail,
+				expiresAt:       row.ExpiresAt,
+				revokedAt:       row.RevokedAt,
+				note:            row.Note,
+				createdAt:       row.CreatedAt,
+			},
+		})
+	}
+	return mapped
+}
+
+func mapAccessTicketAscRows(rows []dbmodels.ListAccessTicketsForTenantAscRow) []accessTicketPageRow {
+	mapped := make([]accessTicketPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, accessTicketPageRow{
+			id: row.ID,
+			fields: accessTicketFields{
+				publicID:        row.PublicID,
+				episodePublicID: row.EpisodePublicID,
+				episodeTitle:    row.EpisodeTitle,
+				seriesPublicID:  row.SeriesPublicID,
+				seriesTitle:     row.SeriesTitle,
+				userPublicID:    row.UserPublicID,
+				userName:        row.UserName,
+				userEmail:       row.UserEmail,
+				expiresAt:       row.ExpiresAt,
+				revokedAt:       row.RevokedAt,
+				note:            row.Note,
+				createdAt:       row.CreatedAt,
+			},
+		})
+	}
+	return mapped
 }
 
 func mapAccessTicketFromGetRow(row dbmodels.GetAccessTicketByPublicIDForTenantRow, now time.Time) *publiraadminv1.AdminAccessTicket {
@@ -132,14 +172,57 @@ func parseOptionalExpiresAt(raw string) (sql.NullTime, error) {
 	return sql.NullTime{Time: parsed.UTC(), Valid: true}, nil
 }
 
-func normalizeAccessTicketListLimit(limit int32) int32 {
-	if limit <= 0 {
-		return defaultAccessTicketListLimit
+// accessTicketPageFilter is the part of a page query that stays the same while
+// the client walks pages: the tenant and the optional list filters.
+type accessTicketPageFilter struct {
+	tenantID   uuid.UUID
+	userID     uuid.NullUUID
+	episodeID  uuid.NullUUID
+	activeOnly bool
+}
+
+// accessTicketPage runs the keyset query for one page. The list reads newest
+// first, so a backward page is scanned by the ascending query and put back into
+// display order by pagination.Page.
+func (s *adminServer) accessTicketPage(
+	ctx context.Context,
+	filter accessTicketPageFilter,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]accessTicketPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListAccessTicketsForTenantAsc(ctx, dbmodels.ListAccessTicketsForTenantAscParams{
+			TenantID:        filter.tenantID,
+			UserID:          filter.userID,
+			EpisodeID:       filter.episodeID,
+			ActiveOnly:      filter.activeOnly,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapAccessTicketAscRows(rows), nil
 	}
-	if limit > maxAccessTicketListLimit {
-		return maxAccessTicketListLimit
+
+	rows, err := queries.ListAccessTicketsForTenantDesc(ctx, dbmodels.ListAccessTicketsForTenantDescParams{
+		TenantID:        filter.tenantID,
+		UserID:          filter.userID,
+		EpisodeID:       filter.episodeID,
+		ActiveOnly:      filter.activeOnly,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
 	}
-	return limit
+	return mapAccessTicketDescRows(rows), nil
 }
 
 func (s *adminServer) loadAccessTicketByPublicID(
@@ -165,17 +248,22 @@ func (s *adminServer) ListAccessTickets(
 		return nil, err
 	}
 
-	limit := normalizeAccessTicketListLimit(req.Msg.Limit)
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAccessTicketListLimit, maxAccessTicketListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
 
-	params := dbmodels.ListAccessTicketsForTenantParams{
-		TenantID:   tenant.ID,
-		Limit:      limit,
-		Offset:     offset,
-		ActiveOnly: req.Msg.ActiveOnly,
+	filter := accessTicketPageFilter{
+		tenantID:   tenant.ID,
+		activeOnly: req.Msg.ActiveOnly,
 	}
 
 	if userPublicID := strings.TrimSpace(req.Msg.UserPublicId); userPublicID != "" {
@@ -191,7 +279,7 @@ func (s *adminServer) ListAccessTickets(
 			}
 			return nil, connect.NewError(connect.CodeInternal, getUserErr)
 		}
-		params.UserID = uuid.NullUUID{UUID: userRow.ID, Valid: true}
+		filter.userID = uuid.NullUUID{UUID: userRow.ID, Valid: true}
 	}
 
 	if episodePublicID := strings.TrimSpace(req.Msg.EpisodePublicId); episodePublicID != "" {
@@ -207,23 +295,45 @@ func (s *adminServer) ListAccessTickets(
 			}
 			return nil, connect.NewError(connect.CodeInternal, getEpisodeErr)
 		}
-		params.EpisodeID = uuid.NullUUID{UUID: episode.ID, Valid: true}
+		filter.episodeID = uuid.NullUUID{UUID: episode.ID, Valid: true}
 	}
 
-	rows, err := s.queriesFor(ctx).ListAccessTicketsForTenant(ctx, params)
+	// One row past the page: its presence is what says another page exists.
+	rows, err := s.accessTicketPage(ctx, filter, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	now := time.Now()
 	tickets := make([]*publiraadminv1.AdminAccessTicket, 0, len(rows))
 	for _, row := range rows {
-		tickets = append(tickets, mapAccessTicketFromListRow(row, now))
+		tickets = append(tickets, mapAccessTicket(row.fields, now))
 	}
 
-	return connect.NewResponse(&publiraadminv1.ListAccessTicketsResponse{
-		Tickets: tickets,
-	}), nil
+	res := &publiraadminv1.ListAccessTicketsResponse{Tickets: tickets}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].fields.createdAt, rows[0].id)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.fields.createdAt, last.id)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *adminServer) IssueAccessTicket(

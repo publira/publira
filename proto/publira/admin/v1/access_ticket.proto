@@ -27,19 +27,30 @@ message AdminAccessTicket {
   string status = 13;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 message ListAccessTicketsRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
   publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 2;
-  int32 offset = 3;
   // Optional filters (empty = no filter).
   string user_public_id = 4;
   string episode_public_id = 5;
   // When true, omit revoked tickets from the list.
   bool active_only = 6;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 7;
 }
 
 message ListAccessTicketsResponse {
   repeated AdminAccessTicket tickets = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message IssueAccessTicketRequest {

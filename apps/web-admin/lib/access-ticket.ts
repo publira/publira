@@ -129,7 +129,6 @@ export const listAccessTickets = async (
       {
         activeOnly: options?.activeOnly ?? false,
         limit: 100,
-        offset: 0,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
