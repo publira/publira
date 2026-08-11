@@ -31,7 +31,6 @@ const (
 
 	defaultNotificationPageSize = int32(20)
 	maxNotificationPageSize     = int32(100)
-	notificationInclusiveKey    = "inclusive"
 )
 
 func (s *apiServer) issueAccessToken(
@@ -1048,12 +1047,6 @@ func (s *apiServer) UpdateNotificationSettings(
 	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
 }
 
-type notificationCursorKeys struct {
-	createdAt sql.NullTime
-	id        uuid.NullUUID
-	inclusive bool
-}
-
 type notificationPageRow struct {
 	id               uuid.UUID
 	notificationType string
@@ -1063,47 +1056,6 @@ type notificationPageRow struct {
 	isRead           bool
 	readAt           sql.NullTime
 	createdAt        time.Time
-}
-
-func encodeNotificationToken(direction pagination.Direction, row notificationPageRow) string {
-	return pagination.Encode(direction, row.createdAt.UTC().Format(time.RFC3339Nano), row.id.String())
-}
-
-// A recovery token includes the boundary once. That keeps the boundary row in
-// the page when rows beyond it were deleted after the original token was issued.
-func encodeNotificationRecoveryToken(direction pagination.Direction, keys notificationCursorKeys) string {
-	return pagination.Encode(
-		direction,
-		keys.createdAt.Time.UTC().Format(time.RFC3339Nano),
-		keys.id.UUID.String(),
-		notificationInclusiveKey,
-	)
-}
-
-func decodeNotificationTokenKeys(cursor pagination.Cursor) (notificationCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
-		return notificationCursorKeys{}, invalid
-	}
-	inclusive := len(cursor.Keys) == 3
-	if inclusive && cursor.Keys[2] != notificationInclusiveKey {
-		return notificationCursorKeys{}, invalid
-	}
-
-	createdAt, err := time.Parse(time.RFC3339Nano, cursor.Keys[0])
-	if err != nil {
-		return notificationCursorKeys{}, invalid
-	}
-	id, err := uuid.Parse(cursor.Keys[1])
-	if err != nil {
-		return notificationCursorKeys{}, invalid
-	}
-
-	return notificationCursorKeys{
-		createdAt: sql.NullTime{Time: createdAt.UTC(), Valid: true},
-		id:        uuid.NullUUID{UUID: id, Valid: true},
-		inclusive: inclusive,
-	}, nil
 }
 
 // is_read comes back as an untyped SQL boolean expression, so it lands in an
@@ -1150,7 +1102,7 @@ func mapNotificationAscRows(rows []dbmodels.ListNotificationsForUserAscRow) []no
 func (s *apiServer) notificationPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
-	keys notificationCursorKeys,
+	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
 ) ([]notificationPageRow, error) {
@@ -1159,9 +1111,9 @@ func (s *apiServer) notificationPage(
 		rows, err := queries.ListNotificationsForUserAsc(ctx, dbmodels.ListNotificationsForUserAscParams{
 			TenantID:        tenantID,
 			UserID:          userID,
-			CursorID:        keys.id,
-			CursorCreatedAt: keys.createdAt,
-			CursorInclusive: keys.inclusive,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
 			Limit:           limit,
 		})
 		if err != nil {
@@ -1173,9 +1125,9 @@ func (s *apiServer) notificationPage(
 	rows, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
-		CursorID:        keys.id,
-		CursorCreatedAt: keys.createdAt,
-		CursorInclusive: keys.inclusive,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
 		Limit:           limit,
 	})
 	if err != nil {
@@ -1198,11 +1150,11 @@ func (s *apiServer) ListNotifications(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys notificationCursorKeys
+	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = decodeNotificationTokenKeys(cursor)
+		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, err
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 		}
 	}
 
@@ -1235,20 +1187,21 @@ func (s *apiServer) ListNotifications(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeNotificationToken(pagination.Backward, rows[0])
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
-			res.NextToken = encodeNotificationToken(pagination.Forward, rows[len(rows)-1])
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
 	// out is not to start over from the first page. A recovery token that comes
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
-	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeNotificationRecoveryToken(pagination.Backward, keys)
-	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeNotificationRecoveryToken(pagination.Forward, keys)
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil

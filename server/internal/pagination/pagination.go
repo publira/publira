@@ -18,6 +18,9 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 // Direction is which way the token moves through the sorted result.
@@ -31,6 +34,7 @@ const (
 
 	tokenVersion = "v1"
 	separator    = "|"
+	inclusiveKey = "inclusive"
 )
 
 // ErrInvalidToken is returned for a token that was not produced by Encode.
@@ -41,6 +45,15 @@ var ErrInvalidToken = errors.New("pagination: invalid token")
 type Cursor struct {
 	Direction Direction
 	Keys      []string
+}
+
+// TimeUUIDKeys is a decoded (time.Time, uuid.UUID) keyset boundary. Its zero
+// value means that no boundary was supplied.
+type TimeUUIDKeys struct {
+	Time      time.Time
+	ID        uuid.UUID
+	Inclusive bool
+	Valid     bool
 }
 
 // IsZero reports whether the request carried no token.
@@ -58,6 +71,16 @@ func Encode(direction Direction, keys ...string) string {
 		parts = append(parts, url.QueryEscape(key))
 	}
 	return base64.RawURLEncoding.EncodeToString([]byte(strings.Join(parts, separator)))
+}
+
+// EncodeTimeUUID builds a token for a (time.Time, uuid.UUID) keyset boundary.
+func EncodeTimeUUID(direction Direction, at time.Time, id uuid.UUID) string {
+	return Encode(direction, at.UTC().Format(time.RFC3339Nano), id.String())
+}
+
+// EncodeTimeUUIDRecovery builds a token that includes its boundary row once.
+func EncodeTimeUUIDRecovery(direction Direction, at time.Time, id uuid.UUID) string {
+	return Encode(direction, at.UTC().Format(time.RFC3339Nano), id.String(), inclusiveKey)
 }
 
 // Decode parses a token. An empty token is the first page, not an error.
@@ -92,6 +115,35 @@ func Decode(raw string) (Cursor, error) {
 	}
 
 	return Cursor{Direction: direction, Keys: keys}, nil
+}
+
+// DecodeTimeUUID parses the keys of a (time.Time, uuid.UUID) cursor. Both
+// regular boundary tokens and inclusive recovery tokens are accepted.
+func DecodeTimeUUID(cursor Cursor) (TimeUUIDKeys, error) {
+	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
+		return TimeUUIDKeys{}, ErrInvalidToken
+	}
+
+	inclusive := len(cursor.Keys) == 3
+	if inclusive && cursor.Keys[2] != inclusiveKey {
+		return TimeUUIDKeys{}, ErrInvalidToken
+	}
+
+	at, err := time.Parse(time.RFC3339Nano, cursor.Keys[0])
+	if err != nil {
+		return TimeUUIDKeys{}, ErrInvalidToken
+	}
+	id, err := uuid.Parse(cursor.Keys[1])
+	if err != nil {
+		return TimeUUIDKeys{}, ErrInvalidToken
+	}
+
+	return TimeUUIDKeys{
+		Time:      at.UTC(),
+		ID:        id,
+		Inclusive: inclusive,
+		Valid:     true,
+	}, nil
 }
 
 // NormalizeLimit clamps a requested page size. Anything out of range falls back

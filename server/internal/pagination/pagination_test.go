@@ -4,6 +4,9 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/pagination"
 )
@@ -55,6 +58,82 @@ func TestDecodeRejectsBrokenTokens(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if _, err := pagination.Decode(token); !errors.Is(err, pagination.ErrInvalidToken) {
 				t.Fatalf("Decode(%q) error = %v, want ErrInvalidToken", token, err)
+			}
+		})
+	}
+}
+
+func TestEncodeTimeUUIDKeepsExistingTokenFormat(t *testing.T) {
+	at := time.Date(2026, time.March, 18, 9, 10, 11, 123_456_789, time.FixedZone("test", 9*60*60))
+	id := uuid.MustParse("019d008d-184d-7d31-a78a-89728a746e38")
+
+	// These are tokens produced by the pre-extraction handler implementation.
+	wantBoundary := "djF8ZnwyMDI2LTAzLTE4VDAwJTNBMTAlM0ExMS4xMjM0NTY3ODlafDAxOWQwMDhkLTE4NGQtN2QzMS1hNzhhLTg5NzI4YTc0NmUzOA"
+	if got := pagination.EncodeTimeUUID(pagination.Forward, at, id); got != wantBoundary {
+		t.Fatalf("EncodeTimeUUID() = %q, want %q", got, wantBoundary)
+	}
+
+	wantRecovery := "djF8ZnwyMDI2LTAzLTE4VDAwJTNBMTAlM0ExMS4xMjM0NTY3ODlafDAxOWQwMDhkLTE4NGQtN2QzMS1hNzhhLTg5NzI4YTc0NmUzOHxpbmNsdXNpdmU"
+	if got := pagination.EncodeTimeUUIDRecovery(pagination.Forward, at, id); got != wantRecovery {
+		t.Fatalf("EncodeTimeUUIDRecovery() = %q, want %q", got, wantRecovery)
+	}
+}
+
+func TestDecodeTimeUUID(t *testing.T) {
+	at := time.Date(2026, time.March, 18, 9, 10, 11, 123_456_789, time.FixedZone("test", 9*60*60))
+	id := uuid.MustParse("019d008d-184d-7d31-a78a-89728a746e38")
+
+	tests := []struct {
+		name      string
+		token     string
+		inclusive bool
+	}{
+		{
+			name:  "boundary",
+			token: pagination.Encode(pagination.Backward, at.Format(time.RFC3339Nano), id.String()),
+		},
+		{
+			name:      "inclusive recovery",
+			token:     pagination.Encode(pagination.Backward, at.Format(time.RFC3339Nano), id.String(), "inclusive"),
+			inclusive: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cursor, err := pagination.Decode(test.token)
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			keys, err := pagination.DecodeTimeUUID(cursor)
+			if err != nil {
+				t.Fatalf("DecodeTimeUUID: %v", err)
+			}
+			if !keys.Valid || !keys.Time.Equal(at.UTC()) || keys.ID != id || keys.Inclusive != test.inclusive {
+				t.Fatalf("keys = %+v, want time %v, ID %v, inclusive %t, valid", keys, at, id, test.inclusive)
+			}
+			if keys.Time.Location() != time.UTC {
+				t.Fatalf("time location = %v, want UTC", keys.Time.Location())
+			}
+		})
+	}
+}
+
+func TestDecodeTimeUUIDRejectsInvalidKeys(t *testing.T) {
+	at := "2026-03-18T00:10:11.123456789Z"
+	id := "019d008d-184d-7d31-a78a-89728a746e38"
+	tests := map[string]pagination.Cursor{
+		"too few keys":   {Keys: []string{at}},
+		"too many keys":  {Keys: []string{at, id, "inclusive", "extra"}},
+		"unknown marker": {Keys: []string{at, id, "exclusive"}},
+		"invalid time":   {Keys: []string{"not-a-time", id}},
+		"invalid UUID":   {Keys: []string{at, "not-a-uuid"}},
+	}
+
+	for name, cursor := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, err := pagination.DecodeTimeUUID(cursor); !errors.Is(err, pagination.ErrInvalidToken) {
+				t.Fatalf("DecodeTimeUUID(%+v) error = %v, want ErrInvalidToken", cursor, err)
 			}
 		})
 	}
