@@ -7,7 +7,7 @@ import {
 } from "@publira/utils";
 import { redirect } from "next/navigation";
 
-import { createEpisode, reorderEpisodes } from "#lib/episode";
+import { createEpisode, reorderEpisodePage } from "#lib/episode";
 
 import type { EpisodeActionState } from "../episode-types";
 
@@ -152,6 +152,17 @@ export const createEpisodeAction = async (
   );
 };
 
+const parseEpisodeIdList = (raw: string): string[] => {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+};
+
 export const reorderEpisodesAction = async (formData: FormData) => {
   "use server";
 
@@ -160,23 +171,28 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   const orderedEpisodeIdsRaw = String(
     formData.get("ordered_episode_public_ids") ?? ""
   ).trim();
+  // The order the page was showing before the drag, so the merge can tell a
+  // stale page from one the series still agrees with.
+  const currentEpisodeIdsRaw = String(
+    formData.get("current_episode_public_ids") ?? ""
+  ).trim();
 
-  if (!tenantId || !seriesPublicId || !orderedEpisodeIdsRaw) {
+  if (
+    !(
+      tenantId &&
+      seriesPublicId &&
+      orderedEpisodeIdsRaw &&
+      currentEpisodeIdsRaw
+    )
+  ) {
     return {
       message: "並び順の更新に必要な情報が不足しています。",
       ok: false,
     };
   }
 
-  let orderedEpisodeIds: string[];
-  try {
-    const parsed = JSON.parse(orderedEpisodeIdsRaw);
-    orderedEpisodeIds = Array.isArray(parsed)
-      ? parsed.filter((value): value is string => typeof value === "string")
-      : [];
-  } catch {
-    orderedEpisodeIds = [];
-  }
+  const orderedEpisodeIds = parseEpisodeIdList(orderedEpisodeIdsRaw);
+  const currentEpisodeIds = parseEpisodeIdList(currentEpisodeIdsRaw);
 
   if (orderedEpisodeIds.length === 0) {
     return {
@@ -185,7 +201,17 @@ export const reorderEpisodesAction = async (formData: FormData) => {
     };
   }
 
-  const reordered = await reorderEpisodes({
+  if (currentEpisodeIds.length !== orderedEpisodeIds.length) {
+    return {
+      message: "並び順の更新に必要な情報が不足しています。",
+      ok: false,
+    };
+  }
+
+  // The list screen posts the order of the page that was dragged on, not of the
+  // whole series; the merge back into the series' order happens in the lib.
+  const reordered = await reorderEpisodePage({
+    currentEpisodePublicIds: currentEpisodeIds,
     episodePublicIds: orderedEpisodeIds,
     seriesPublicId,
     tenantId,

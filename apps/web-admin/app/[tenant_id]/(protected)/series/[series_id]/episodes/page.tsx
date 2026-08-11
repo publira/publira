@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   createPlaceholderStaticParams,
@@ -25,7 +24,15 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { FlashToast } from "#components/flash-toast";
+import { PaginationFooter } from "#components/pagination-controls";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  hasCursorPageLinks,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { listEpisodes } from "#lib/episode";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -41,14 +48,23 @@ export const generateStaticParams = () =>
 
 const SeriesEpisodesPage = async ({
   params,
+  searchParams,
 }: PageProps<"/[tenant_id]/series/[series_id]/episodes">) => {
-  const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
+  const [{ series_id }, sp, tenantId] = await Promise.all([
+    params,
+    searchParams,
+    getTenantId(),
+  ]);
   guardPlaceholder(series_id);
 
+  const { token } = parseCursorSearchParams(sp);
   const result = await listEpisodes({
     seriesPublicId: series_id,
     tenantId,
+    token,
   });
+  const pageHrefs = cursorPageHrefs(result);
+  const hasPageLinks = hasCursorPageLinks(pageHrefs);
 
   return (
     <AdminPage>
@@ -93,13 +109,13 @@ const SeriesEpisodesPage = async ({
               一覧・新規作成・個別編集の導線をこの配下に集約しています。
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-4">
             {result.ok ? null : (
               <FormMessage variant="destructive">{result.message}</FormMessage>
             )}
 
             {result.episodes.length === 0 ? (
-              <EmptyState
+              <CursorPageEmptyState
                 actions={
                   <LinkButton
                     render={<Link href={`/series/${series_id}/episodes/new`} />}
@@ -108,12 +124,17 @@ const SeriesEpisodesPage = async ({
                   </LinkButton>
                 }
                 description="まだエピソードがありません。まずは新規作成してください。"
+                hasPageLinks={hasPageLinks}
+                itemLabel="エピソード"
                 title="このシリーズのエピソードは未登録です。"
               />
             ) : (
               <div className="grid gap-3">
                 <p className="text-xs text-muted-foreground">
                   エピソードはカードをドラッグ＆ドロップして並び替えできます。
+                  {hasPageLinks
+                    ? "並び替えはこのページ内で行えます。ページをまたぐ移動はできません。"
+                    : null}
                 </p>
                 <EpisodesSortableList
                   episodes={result.episodes}
@@ -122,6 +143,14 @@ const SeriesEpisodesPage = async ({
                 />
               </div>
             )}
+
+            {result.episodes.length > 0 || hasPageLinks ? (
+              <PaginationFooter
+                {...pageHrefs}
+                ariaLabel="エピソード一覧のページ送り"
+                description={`表示順に、1ページあたり ${DEFAULT_PAGE_SIZE} 件まで表示します。`}
+              />
+            ) : null}
           </CardContent>
         </Card>
       </AdminPageContent>

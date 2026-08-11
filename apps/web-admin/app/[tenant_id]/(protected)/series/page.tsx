@@ -11,16 +11,15 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 
 import { SeriesManager } from "./_components/series-manager";
-import {
-  buildSeriesPageHref,
-  parseSeriesSearchParams,
-} from "./_lib/search-params";
-
-const pageSize = 20;
 
 type SeriesPageProps = PageProps<"/[tenant_id]/series">;
 
@@ -46,23 +45,14 @@ const SeriesManagerData = async ({
   searchParams,
 }: Pick<SeriesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
-  const { token } = parseSeriesSearchParams(sp);
-  const listResult = await listSeries(tenantId, { limit: pageSize, token });
+  const { token } = parseCursorSearchParams(sp);
+  const listResult = await listSeries(tenantId, { token });
 
   return (
     <SeriesManager
+      {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
-      nextHref={
-        listResult.nextToken
-          ? buildSeriesPageHref({ token: listResult.nextToken })
-          : undefined
-      }
-      pageSize={pageSize}
-      previousHref={
-        listResult.previousToken
-          ? buildSeriesPageHref({ token: listResult.previousToken })
-          : undefined
-      }
+      pageSize={DEFAULT_PAGE_SIZE}
       series={listResult.series}
     />
   );

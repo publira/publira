@@ -55,10 +55,16 @@ export const EpisodesSortableList = ({
   const draggingEpisodeIdRef = useRef<string | null>(null);
 
   const submitReorder = useCallback(
-    async (nextItems: EpisodeItem[]) => {
+    async (currentItems: EpisodeItem[], nextItems: EpisodeItem[]) => {
       const formData = new FormData();
       formData.set("tenant_id", tenantId);
       formData.set("series_public_id", seriesPublicId);
+      // Both orders go up: the server merges the new one into the series, and
+      // refuses when the series no longer matches the old one.
+      formData.set(
+        "current_episode_public_ids",
+        JSON.stringify(currentItems.map((episode) => episode.publicId))
+      );
       formData.set(
         "ordered_episode_public_ids",
         JSON.stringify(nextItems.map((episode) => episode.publicId))
@@ -111,10 +117,16 @@ export const EpisodesSortableList = ({
         return;
       }
 
+      // A drag permutes the rows of this page only, so the page's own order
+      // indexes are handed back out in ascending slot order. Numbering from 1
+      // would be wrong on every page but the first.
+      const pageOrderIndexes = optimisticItems
+        .map((item) => item.orderIndex)
+        .toSorted((a, b) => a - b);
       const nextItems = reorderItems(optimisticItems, activeId, targetId).map(
         (item, index) => ({
           ...item,
-          orderIndex: index + 1,
+          orderIndex: pageOrderIndexes[index] ?? item.orderIndex,
         })
       );
 
@@ -122,7 +134,9 @@ export const EpisodesSortableList = ({
         setOptimisticItems(nextItems);
       });
       const executeReorder = async () => {
-        await submitReorder(nextItems);
+        // The pre-drag order goes up as well, so a stale page is refused
+        // instead of merged.
+        await submitReorder(optimisticItems, nextItems);
       };
       executeReorder();
       draggingEpisodeIdRef.current = null;

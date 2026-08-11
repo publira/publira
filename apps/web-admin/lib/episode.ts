@@ -3,8 +3,15 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorMentions,
 } from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
 
 import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
 import { getAccessToken } from "./session";
 
 export interface EpisodeItem {
@@ -32,9 +39,11 @@ export type CreateEpisodeResult =
   | { ok: true; episode: EpisodeItem }
   | { ok: false; message: string };
 
-export type ListEpisodesResult =
-  | { ok: true; episodes: EpisodeItem[] }
-  | { ok: false; message: string; episodes: EpisodeItem[] };
+export type ListEpisodesResult = CursorPageTokens &
+  (
+    | { ok: true; episodes: EpisodeItem[] }
+    | { ok: false; message: string; episodes: EpisodeItem[] }
+  );
 
 export type UpdateEpisodePublishScheduleResult =
   | { ok: true; episode: EpisodeItem }
@@ -55,6 +64,12 @@ export type ReorderEpisodesResult =
 export type ReorderEpisodeImagesResult =
   | { ok: true; images: EpisodeImageItem[] }
   | { ok: false; message: string };
+
+/**
+ * Page size for the order-index scan a reorder needs. The RPC caps `limit` at
+ * 100, so this is the fewest round trips a series can be read in.
+ */
+const reorderScanPageSize = 100;
 
 const genericMutationErrorMessage =
   "エピソードの入稿に失敗しました。時間をおいて再試行してください。";
@@ -238,13 +253,23 @@ export const createEpisode = async (input: {
   }
 };
 
-export const listEpisodes = async (input: {
-  tenantId: string;
-  seriesPublicId: string;
-}): Promise<ListEpisodesResult> => {
+/**
+ * One page of a series' episodes, in the order the series displays them.
+ *
+ * The rows keep the server's keyset order (`order_index`, `id` ascending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the series spans more than one page.
+ */
+export const listEpisodes = async (
+  input: {
+    tenantId: string;
+    seriesPublicId: string;
+  } & CursorPageOptions
+): Promise<ListEpisodesResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
+      ...emptyCursorPageTokens,
       episodes: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -254,6 +279,7 @@ export const listEpisodes = async (input: {
   try {
     const response = await apiClient.series.listEpisodes(
       {
+        ...cursorPageRequest(input),
         seriesPublicId: input.seriesPublicId,
         tenant: { tenantId: input.tenantId },
       },
@@ -261,12 +287,14 @@ export const listEpisodes = async (input: {
     );
 
     return {
+      ...cursorPageTokens(response),
       episodes: (response.episodes ?? []).map((episode) => mapEpisode(episode)),
       ok: true,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
+      ...emptyCursorPageTokens,
       episodes: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
@@ -404,7 +432,7 @@ export const listEpisodeImages = async (input: {
   }
 };
 
-export const reorderEpisodes = async (input: {
+const reorderEpisodes = async (input: {
   tenantId: string;
   seriesPublicId: string;
   episodePublicIds: string[];
@@ -445,6 +473,195 @@ export const reorderEpisodes = async (input: {
       ok: false,
     };
   }
+};
+
+/**
+ * Slot the new order of one page back into the series' current order.
+ *
+ * A drag only ever permutes the rows of the page it happened on, so every other
+ * episode keeps its position and the page's rows are refilled, in their new
+ * order, into the slots that page already occupied.
+ *
+ * `currentPagePublicIds` is the order the page was showing when the drag
+ * started, and it is checked against the series before anything is written: the
+ * page's rows must still sit in one unbroken run of slots, in exactly that
+ * order. Comparing ids alone is not enough. If someone else moves an episode
+ * into the middle of the page — `[C, D]` on screen while the series becomes
+ * `[C, A, B, D]` — the ids all still exist, and dropping `[D, C]` into the two
+ * slots those ids now occupy would write `[D, A, B, C]`, moving rows the user
+ * never touched.
+ *
+ * Returns `null` whenever the page no longer lines up with the series that way,
+ * including a duplicate id or an id the series does not have because it was
+ * created or deleted while the page was on screen. The order is then left alone
+ * and the screen reloads instead of writing a guess.
+ *
+ * The check is against the order this request read back, so it closes the
+ * window the page was on screen for, not the one between that read and the
+ * write. Closing that last one needs `ReorderEpisodes` to take a revision and
+ * verify it in the same transaction, which is a proto and server change and is
+ * tracked in #805.
+ */
+export const mergeEpisodeOrder = (
+  seriesPublicIds: readonly string[],
+  currentPagePublicIds: readonly string[],
+  nextPagePublicIds: readonly string[]
+): string[] | null => {
+  if (
+    nextPagePublicIds.length === 0 ||
+    currentPagePublicIds.length !== nextPagePublicIds.length
+  ) {
+    return null;
+  }
+
+  const pagePublicIdSet = new Set(nextPagePublicIds);
+  if (pagePublicIdSet.size !== nextPagePublicIds.length) {
+    return null;
+  }
+
+  const slots: number[] = [];
+  for (const [index, publicId] of seriesPublicIds.entries()) {
+    if (pagePublicIdSet.has(publicId)) {
+      slots.push(index);
+    }
+  }
+
+  if (slots.length !== nextPagePublicIds.length) {
+    return null;
+  }
+
+  // One unbroken run of slots, holding exactly the order the page was showing.
+  const [firstSlot = 0] = slots;
+  const lastSlot = slots.at(-1) ?? 0;
+  if (lastSlot - firstSlot !== slots.length - 1) {
+    return null;
+  }
+
+  if (
+    slots.some(
+      (slot, index) => seriesPublicIds[slot] !== currentPagePublicIds[index]
+    )
+  ) {
+    return null;
+  }
+
+  const merged = [...seriesPublicIds];
+  for (const [index, slot] of slots.entries()) {
+    merged[slot] = nextPagePublicIds[index];
+  }
+
+  return merged;
+};
+
+const listSeriesEpisodePublicIds = async (input: {
+  sessionId: string;
+  tenantId: string;
+  seriesPublicId: string;
+}): Promise<string[] | null> => {
+  const publicIds: string[] = [];
+
+  const stop = await forEachPageWithToken<string>(
+    async (token, limit) => {
+      const response = await apiClient.series.listEpisodes(
+        {
+          limit,
+          seriesPublicId: input.seriesPublicId,
+          tenant: { tenantId: input.tenantId },
+          token,
+        },
+        withSessionHeaders(input.sessionId)
+      );
+
+      return {
+        items: (response.episodes ?? []).map((episode) => episode.publicId),
+        nextToken: response.nextToken ?? "",
+      };
+    },
+    (items) => {
+      publicIds.push(...items);
+    },
+    { pageSize: reorderScanPageSize }
+  );
+
+  // A walk that stopped on a bound saw only part of the series, and a partial
+  // order would move every episode it never read. Better to give up.
+  return stop === "completed" ? publicIds : null;
+};
+
+/**
+ * Apply the new order of one episode list page.
+ *
+ * `ReorderEpisodes` takes the whole series in one request — it renumbers
+ * `order_index` from the list it is given and rejects anything shorter — but a
+ * paginated screen only holds one page of it. So the series' current order is
+ * read back here and the page is merged into it before the RPC is called.
+ *
+ * `currentEpisodePublicIds` is the page's order as the screen was showing it,
+ * and the merge writes nothing unless the series still agrees with it — see
+ * `mergeEpisodeOrder`.
+ */
+export const reorderEpisodePage = async (input: {
+  tenantId: string;
+  seriesPublicId: string;
+  currentEpisodePublicIds: string[];
+  episodePublicIds: string[];
+}): Promise<ReorderEpisodesResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  if (input.episodePublicIds.length === 0) {
+    return {
+      message: "並び替え対象のエピソードがありません。",
+      ok: false,
+    };
+  }
+
+  let seriesPublicIds: string[] | null;
+  try {
+    seriesPublicIds = await listSeriesEpisodePublicIds({
+      seriesPublicId: input.seriesPublicId,
+      sessionId,
+      tenantId: input.tenantId,
+    });
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: mapErrorToMessage(error, genericEpisodeReorderErrorMessage),
+      ok: false,
+    };
+  }
+
+  if (!seriesPublicIds) {
+    return {
+      message:
+        "エピソードが多すぎて並び順を更新できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    };
+  }
+
+  const episodePublicIds = mergeEpisodeOrder(
+    seriesPublicIds,
+    input.currentEpisodePublicIds,
+    input.episodePublicIds
+  );
+  if (!episodePublicIds) {
+    return {
+      message:
+        "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。",
+      ok: false,
+    };
+  }
+
+  return await reorderEpisodes({
+    episodePublicIds,
+    seriesPublicId: input.seriesPublicId,
+    tenantId: input.tenantId,
+  });
 };
 
 export const reorderEpisodeImages = async (input: {
