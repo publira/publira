@@ -1681,7 +1681,10 @@ WHERE u.tenant_id = $1
     )
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
--- name: ListCreatorsByTenant :many
+-- Admin ListCreators は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListCreatorsByTenantDesc :many
 SELECT c.id,
     c.tenant_id,
     c.public_id,
@@ -1702,9 +1705,56 @@ LEFT JOIN LATERAL (
     ORDER BY width DESC
     LIMIT 1
 ) civ ON true
-WHERE c.tenant_id = $1
-ORDER BY c.created_at DESC
-LIMIT $2 OFFSET $3;
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY c.created_at DESC, c.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListCreatorsByTenantAsc :many
+SELECT c.id,
+    c.tenant_id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.created_at,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    COALESCE(civ.width, 0)::int4 AS icon_image_width,
+    COALESCE(civ.height, 0)::int4 AS icon_image_height
+FROM creators c
+LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+LEFT JOIN LATERAL (
+    SELECT file_size_bytes, width, height
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE c.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (c.created_at, c.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY c.created_at ASC, c.id ASC
+LIMIT sqlc.arg('limit');
 -- name: CreateCreator :one
 INSERT INTO creators (
         id,

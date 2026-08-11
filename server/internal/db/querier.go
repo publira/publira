@@ -168,7 +168,11 @@ type Querier interface {
 	// cursor の共通仕様は proto/README.md を参照。
 	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
 	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)
-	ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]ListCreatorsByTenantRow, error)
+	ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsByTenantAscParams) ([]ListCreatorsByTenantAscRow, error)
+	// Admin ListCreators は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
 	// エンドユーザー（tenant_user_roles未保持）の一覧取得
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)

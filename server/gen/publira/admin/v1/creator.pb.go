@@ -22,11 +22,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListCreatorsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,16 +78,20 @@ func (x *ListCreatorsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListCreatorsRequest) GetOffset() int32 {
+func (x *ListCreatorsRequest) GetToken() string {
 	if x != nil {
-		return x.Offset
+		return x.Token
 	}
-	return 0
+	return ""
 }
 
 type ListCreatorsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Creators      []*v1.Creator          `protobuf:"bytes,1,rep,name=creators,proto3" json:"creators,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Creators []*v1.Creator          `protobuf:"bytes,1,rep,name=creators,proto3" json:"creators,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -124,6 +131,20 @@ func (x *ListCreatorsResponse) GetCreators() []*v1.Creator {
 		return x.Creators
 	}
 	return nil
+}
+
+func (x *ListCreatorsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListCreatorsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type CreateCreatorRequest struct {
@@ -386,13 +407,16 @@ var File_publira_admin_v1_creator_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_creator_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/creator.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"|\n" +
+	"\x1epublira/admin/v1/creator.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x88\x01\n" +
 	"\x13ListCreatorsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"M\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\x93\x01\n" +
 	"\x14ListCreatorsResponse\x125\n" +
-	"\bcreators\x18\x01 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\"\xe5\x01\n" +
+	"\bcreators\x18\x01 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xe5\x01\n" +
 	"\x14CreateCreatorRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +

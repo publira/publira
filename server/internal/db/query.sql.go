@@ -3893,7 +3893,7 @@ func (q *Queries) ListCreatorsByPublicIDsForTenant(ctx context.Context, arg List
 	return items, nil
 }
 
-const listCreatorsByTenant = `-- name: ListCreatorsByTenant :many
+const listCreatorsByTenantAsc = `-- name: ListCreatorsByTenantAsc :many
 SELECT c.id,
     c.tenant_id,
     c.public_id,
@@ -3915,17 +3915,30 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) civ ON true
 WHERE c.tenant_id = $1
-ORDER BY c.created_at DESC
-LIMIT $2 OFFSET $3
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (c.created_at, c.id) >= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (c.created_at, c.id) > ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY c.created_at ASC, c.id ASC
+LIMIT $5
 `
 
-type ListCreatorsByTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Limit    int32     `json:"limit"`
-	Offset   int32     `json:"offset"`
+type ListCreatorsByTenantAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
 }
 
-type ListCreatorsByTenantRow struct {
+type ListCreatorsByTenantAscRow struct {
 	ID                     uuid.UUID      `json:"id"`
 	TenantID               uuid.UUID      `json:"tenant_id"`
 	PublicID               string         `json:"public_id"`
@@ -3939,15 +3952,124 @@ type ListCreatorsByTenantRow struct {
 	IconImageHeight        int32          `json:"icon_image_height"`
 }
 
-func (q *Queries) ListCreatorsByTenant(ctx context.Context, arg ListCreatorsByTenantParams) ([]ListCreatorsByTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCreatorsByTenant, arg.TenantID, arg.Limit, arg.Offset)
+func (q *Queries) ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsByTenantAscParams) ([]ListCreatorsByTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCreatorsByTenantAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListCreatorsByTenantRow
+	var items []ListCreatorsByTenantAscRow
 	for rows.Next() {
-		var i ListCreatorsByTenantRow
+		var i ListCreatorsByTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Name,
+			&i.ProfileText,
+			&i.CreatedAt,
+			&i.IconImageID,
+			&i.IconImageUpdatedAt,
+			&i.IconImageFileSizeBytes,
+			&i.IconImageWidth,
+			&i.IconImageHeight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCreatorsByTenantDesc = `-- name: ListCreatorsByTenantDesc :many
+SELECT c.id,
+    c.tenant_id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.created_at,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    COALESCE(civ.width, 0)::int4 AS icon_image_width,
+    COALESCE(civ.height, 0)::int4 AS icon_image_height
+FROM creators c
+LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+LEFT JOIN LATERAL (
+    SELECT file_size_bytes, width, height
+    FROM creator_image_variants
+    WHERE creator_image_id = ci.id
+    ORDER BY width DESC
+    LIMIT 1
+) civ ON true
+WHERE c.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (c.created_at, c.id) <= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (c.created_at, c.id) < ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY c.created_at DESC, c.id DESC
+LIMIT $5
+`
+
+type ListCreatorsByTenantDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListCreatorsByTenantDescRow struct {
+	ID                     uuid.UUID      `json:"id"`
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	ProfileText            sql.NullString `json:"profile_text"`
+	CreatedAt              time.Time      `json:"created_at"`
+	IconImageID            uuid.NullUUID  `json:"icon_image_id"`
+	IconImageUpdatedAt     sql.NullTime   `json:"icon_image_updated_at"`
+	IconImageFileSizeBytes int64          `json:"icon_image_file_size_bytes"`
+	IconImageWidth         int32          `json:"icon_image_width"`
+	IconImageHeight        int32          `json:"icon_image_height"`
+}
+
+// Admin ListCreators は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCreatorsByTenantDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCreatorsByTenantDescRow
+	for rows.Next() {
+		var i ListCreatorsByTenantDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

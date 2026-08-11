@@ -12,9 +12,11 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/creator.proto.
  */
 export const file_publira_admin_v1_creator: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NyZWF0b3IucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiZQoTTGlzdENyZWF0b3JzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDgoGb2Zmc2V0GAMgASgFIkMKFExpc3RDcmVhdG9yc1Jlc3BvbnNlEisKCGNyZWF0b3JzGAEgAygLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yIqUBChRDcmVhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFwoPaWNvbl9pbWFnZV9kYXRhGAQgASgMEh8KF2ljb25faW1hZ2VfY29udGVudF90eXBlGAUgASgJIkMKFUNyZWF0ZUNyZWF0b3JSZXNwb25zZRIqCgdjcmVhdG9yGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yItIBChRVcGRhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMcHJvZmlsZV90ZXh0GAQgASgJEhcKD2ljb25faW1hZ2VfZGF0YRgFIAEoDBIfChdpY29uX2ltYWdlX2NvbnRlbnRfdHlwZRgGIAEoCRIYChBjbGVhcl9pY29uX2ltYWdlGAcgASgIIkMKFVVwZGF0ZUNyZWF0b3JSZXNwb25zZRIqCgdjcmVhdG9yGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yMr4CChNBZG1pbkNyZWF0b3JTZXJ2aWNlEl8KDExpc3RDcmVhdG9ycxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVzcG9uc2UiABJiCg1DcmVhdGVDcmVhdG9yEiYucHVibGlyYS5hZG1pbi52MS5DcmVhdGVDcmVhdG9yUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQ3JlYXRvclJlc3BvbnNlIgASYgoNVXBkYXRlQ3JlYXRvchImLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ3JlYXRvclJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNyZWF0b3JSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NyZWF0b3IucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEicgoTTGlzdENyZWF0b3JzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCJvChRMaXN0Q3JlYXRvcnNSZXNwb25zZRIrCghjcmVhdG9ycxgBIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIqUBChRDcmVhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFwoPaWNvbl9pbWFnZV9kYXRhGAQgASgMEh8KF2ljb25faW1hZ2VfY29udGVudF90eXBlGAUgASgJIkMKFUNyZWF0ZUNyZWF0b3JSZXNwb25zZRIqCgdjcmVhdG9yGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yItIBChRVcGRhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMcHJvZmlsZV90ZXh0GAQgASgJEhcKD2ljb25faW1hZ2VfZGF0YRgFIAEoDBIfChdpY29uX2ltYWdlX2NvbnRlbnRfdHlwZRgGIAEoCRIYChBjbGVhcl9pY29uX2ltYWdlGAcgASgIIkMKFVVwZGF0ZUNyZWF0b3JSZXNwb25zZRIqCgdjcmVhdG9yGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yMr4CChNBZG1pbkNyZWF0b3JTZXJ2aWNlEl8KDExpc3RDcmVhdG9ycxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVzcG9uc2UiABJiCg1DcmVhdGVDcmVhdG9yEiYucHVibGlyYS5hZG1pbi52MS5DcmVhdGVDcmVhdG9yUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQ3JlYXRvclJlc3BvbnNlIgASYgoNVXBkYXRlQ3JlYXRvchImLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ3JlYXRvclJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNyZWF0b3JSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
  * @generated from message publira.admin.v1.ListCreatorsRequest
  */
 export type ListCreatorsRequest = Message<"publira.admin.v1.ListCreatorsRequest"> & {
@@ -24,14 +26,18 @@ export type ListCreatorsRequest = Message<"publira.admin.v1.ListCreatorsRequest"
   tenant?: TenantContext | undefined;
 
   /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
    * @generated from field: int32 limit = 2;
    */
   limit: number;
 
   /**
-   * @generated from field: int32 offset = 3;
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 4;
    */
-  offset: number;
+  token: string;
 };
 
 /**
@@ -49,6 +55,20 @@ export type ListCreatorsResponse = Message<"publira.admin.v1.ListCreatorsRespons
    * @generated from field: repeated publira.types.v1.Creator creators = 1;
    */
   creators: Creator[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
 };
 
 /**
