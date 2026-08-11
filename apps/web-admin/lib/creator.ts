@@ -133,8 +133,9 @@ export const listCreators = async (
  * beyond a single RPC page. The `/creators` list keeps {@link listCreators}
  * (one page) so list paging stays independent of picker loading.
  *
- * Sorted by name for readable search results. Rows past the shared walk budget
- * (`forEachPageWithToken` defaults) are not included.
+ * Sorted by name for readable search results. An incomplete walk (budget
+ * exhausted or a repeated token) fails with an empty list rather than a
+ * partial option set that would hide creators beyond the rows already read.
  */
 export const listAllCreators = async (
   tenantId: string
@@ -154,7 +155,7 @@ export const listAllCreators = async (
 
   try {
     const creators: CreatorItem[] = [];
-    await forEachPageWithToken(
+    const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.creator.listCreators(
           {
@@ -175,6 +176,17 @@ export const listAllCreators = async (
         }
       }
     );
+
+    // Match episode reorder: a partial walk must not surface a half-built
+    // option list that operators treat as complete.
+    if (walkStop !== "completed") {
+      return {
+        ...emptyCursorPageTokens,
+        creators: [],
+        message: genericListErrorMessage,
+        ok: false,
+      };
+    }
 
     return {
       ...emptyCursorPageTokens,

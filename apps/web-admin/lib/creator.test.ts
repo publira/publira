@@ -303,4 +303,31 @@ describe("getCreator", () => {
       previousToken: "",
     });
   });
+
+  it("listAllCreators は nextToken が繰り返されたら部分結果を返さない", async () => {
+    mockListCreators
+      .mockResolvedValueOnce({
+        creators: creatorPage(100),
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        creators: [
+          { name: "Partial", profileText: "", publicId: "CREATOR101" },
+        ],
+        nextToken: "page-2",
+      });
+
+    const { listAllCreators } = await import("./creator");
+    const result = await listAllCreators("TENANT001");
+
+    expect(mockListCreators).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      creators: [],
+      message:
+        "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
 });

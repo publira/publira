@@ -242,4 +242,30 @@ describe("getLabel", () => {
       previousToken: "",
     });
   });
+
+  it("listAllLabels は nextToken が繰り返されたら部分結果を返さない", async () => {
+    mockListLabels
+      .mockResolvedValueOnce({
+        labels: Array.from({ length: 100 }, (_, index) => ({
+          name: `Label ${index + 1}`,
+          publicId: `LABEL${String(index + 1).padStart(3, "0")}`,
+        })),
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        labels: [{ name: "Partial", publicId: "LABEL101" }],
+        nextToken: "page-2",
+      });
+
+    const { listAllLabels } = await import("./label");
+    const result = await listAllLabels("TENANT001");
+
+    expect(mockListLabels).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      labels: [],
+      message:
+        "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    });
+  });
 });

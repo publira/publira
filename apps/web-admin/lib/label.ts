@@ -172,8 +172,9 @@ export const listLabels = async (
  * beyond a single RPC page. The `/labels` list keeps {@link listLabels}
  * (one page) so list paging stays independent of picker loading.
  *
- * Sorted by name for readable search results. Rows past the shared walk budget
- * (`forEachPageWithToken` defaults) are not included.
+ * Sorted by name for readable search results. An incomplete walk (budget
+ * exhausted or a repeated token) fails with an empty list rather than a
+ * partial option set that would hide labels beyond the rows already read.
  */
 export const listAllLabels = async (
   tenantId: string
@@ -193,7 +194,7 @@ export const listAllLabels = async (
 
   try {
     const labels: LabelItem[] = [];
-    await forEachPageWithToken(
+    const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.label.listLabels(
           {
@@ -214,6 +215,16 @@ export const listAllLabels = async (
         }
       }
     );
+
+    // Match listAllCreators / episode reorder: never hand the form a partial
+    // option list that looks complete.
+    if (walkStop !== "completed") {
+      return {
+        labels: [],
+        message: genericListErrorMessage,
+        ok: false,
+      };
+    }
 
     return {
       ...emptyCursorPageTokens,
