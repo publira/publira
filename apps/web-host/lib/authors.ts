@@ -1,7 +1,24 @@
+import { forEachPageWithToken } from "@publira/api-client/pagination";
+
 import { applyCacheTag, tenantAuthorsTag } from "./cache-tags";
 import { listPublishedSeries } from "./catalog";
+import type { SeriesListItem } from "./catalog";
 
 const SERIES_FETCH_BATCH_SIZE = 50;
+/**
+ * Series walk ceiling. Match `forEachPageWithToken` default `maxRows` so the
+ * row budget is the binding limit (not a lower page count at batch size 50).
+ * Temporary until author detail is a server-side API (#799).
+ */
+const SERIES_SCAN_MAX_ROWS = 10_000;
+const SERIES_SCAN_MAX_PAGES = Math.ceil(
+  SERIES_SCAN_MAX_ROWS / SERIES_FETCH_BATCH_SIZE
+);
+const SERIES_SCAN_OPTIONS = {
+  maxPages: SERIES_SCAN_MAX_PAGES,
+  maxRows: SERIES_SCAN_MAX_ROWS,
+  pageSize: SERIES_FETCH_BATCH_SIZE,
+} as const;
 const FALLBACK_AUTHOR_ID_PREFIX = "name_";
 
 export interface PublishedAuthorListItem {
@@ -101,6 +118,66 @@ const addAuthorContribution = (
   });
 };
 
+const fetchPublishedSeriesPage = async (
+  tenantId: string,
+  token: string,
+  limit: number
+): Promise<{ items: readonly SeriesListItem[]; nextToken: string }> => {
+  const seriesPage = await listPublishedSeries(tenantId, {
+    limit,
+    token,
+  });
+  return {
+    items: seriesPage.series,
+    nextToken: seriesPage.nextToken,
+  };
+};
+
+const collectAuthorsFromSeries = (
+  authorSeriesMap: Map<
+    string,
+    { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
+  >,
+  seriesList: readonly SeriesListItem[]
+) => {
+  for (const series of seriesList) {
+    const creatorsInSeries = new Map<string, string>();
+    const creatorIconsInSeries = new Map<string, string>();
+
+    for (const creator of series.creators) {
+      const name = normalizeAuthorName(creator.name);
+      if (name.length === 0) {
+        continue;
+      }
+
+      const creatorId = creator.publicId.trim() || encodeFallbackAuthorId(name);
+      creatorsInSeries.set(creatorId, name);
+      creatorIconsInSeries.set(creatorId, creator.iconImageUrl.trim());
+    }
+
+    if (creatorsInSeries.size === 0) {
+      for (const creatorName of series.creatorNames) {
+        const name = normalizeAuthorName(creatorName);
+        if (name.length === 0) {
+          continue;
+        }
+        creatorsInSeries.set(encodeFallbackAuthorId(name), name);
+      }
+    }
+
+    for (const [creatorId, creatorName] of creatorsInSeries.entries()) {
+      addAuthorContribution(
+        authorSeriesMap,
+        creatorId,
+        creatorName,
+        creatorIconsInSeries.get(creatorId) ?? "",
+        series.publicId,
+        series.title
+      );
+    }
+  }
+};
+
 export const listPublishedAuthors = async (
   tenantId: string,
   {
@@ -122,62 +199,16 @@ export const listPublishedAuthors = async (
     { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
   >();
 
-  let token = "";
-  let reachedSeriesEnd = false;
-
-  while (authorSeriesMap.size < targetEndIndex && !reachedSeriesEnd) {
-    // Sequential pagination depends on previous batch results.
-    // oxlint-disable-next-line no-await-in-loop
-    const seriesPage = await listPublishedSeries(tenantId, {
-      limit: SERIES_FETCH_BATCH_SIZE,
-      token,
-    });
-
-    if (seriesPage.series.length === 0) {
-      break;
-    }
-
-    for (const series of seriesPage.series) {
-      const creatorsInSeries = new Map<string, string>();
-      const creatorIconsInSeries = new Map<string, string>();
-
-      for (const creator of series.creators) {
-        const name = normalizeAuthorName(creator.name);
-        if (name.length === 0) {
-          continue;
-        }
-
-        const creatorId =
-          creator.publicId.trim() || encodeFallbackAuthorId(name);
-        creatorsInSeries.set(creatorId, name);
-        creatorIconsInSeries.set(creatorId, creator.iconImageUrl.trim());
-      }
-
-      if (creatorsInSeries.size === 0) {
-        for (const creatorName of series.creatorNames) {
-          const name = normalizeAuthorName(creatorName);
-          if (name.length === 0) {
-            continue;
-          }
-          creatorsInSeries.set(encodeFallbackAuthorId(name), name);
-        }
-      }
-
-      for (const [creatorId, creatorName] of creatorsInSeries.entries()) {
-        addAuthorContribution(
-          authorSeriesMap,
-          creatorId,
-          creatorName,
-          creatorIconsInSeries.get(creatorId) ?? "",
-          series.publicId,
-          series.title
-        );
-      }
-    }
-
-    reachedSeriesEnd = seriesPage.nextToken.length === 0;
-    token = seriesPage.nextToken;
-  }
+  // Aggregation needs every series page until enough unique authors exist for
+  // the requested window; infinite-scan bounds live in forEachPageWithToken.
+  await forEachPageWithToken(
+    (token, limit) => fetchPublishedSeriesPage(tenantId, token, limit),
+    (seriesList) => {
+      collectAuthorsFromSeries(authorSeriesMap, seriesList);
+      return authorSeriesMap.size < targetEndIndex;
+    },
+    SERIES_SCAN_OPTIONS
+  );
 
   const allAuthors = [...authorSeriesMap.entries()]
     .map(([id, value]) => ({
@@ -213,70 +244,60 @@ export const getPublishedAuthorDetail = async (
   let resolvedAuthorIconImageUrl = "";
   let resolvedAuthorProfileText = "";
 
-  let token = "";
-  let reachedSeriesEnd = false;
+  // Author detail is embedded in series creators; walk all series pages and
+  // collect matches. Explicit maxRows/maxPages so pageSize 50 does not cap the
+  // walk below the row budget (default maxPages alone would stop at 5_000).
+  await forEachPageWithToken(
+    (token, limit) => fetchPublishedSeriesPage(tenantId, token, limit),
+    (seriesList) => {
+      for (const series of seriesList) {
+        const matchedCreator = series.creators.find((creator) => {
+          const name = normalizeAuthorName(creator.name);
+          if (name.length === 0) {
+            return false;
+          }
 
-  while (!reachedSeriesEnd) {
-    // Sequential pagination depends on previous batch results.
-    // oxlint-disable-next-line no-await-in-loop
-    const seriesPage = await listPublishedSeries(tenantId, {
-      limit: SERIES_FETCH_BATCH_SIZE,
-      token,
-    });
+          if (isFallbackAuthor) {
+            return name === fallbackAuthorName;
+          }
 
-    if (seriesPage.series.length === 0) {
-      break;
-    }
+          return creator.publicId.trim() === authorId;
+        });
 
-    for (const series of seriesPage.series) {
-      const matchedCreator = series.creators.find((creator) => {
-        const name = normalizeAuthorName(creator.name);
-        if (name.length === 0) {
-          return false;
+        if (!matchedCreator) {
+          if (
+            isFallbackAuthor &&
+            series.creatorNames.some(
+              (name) => normalizeAuthorName(name) === fallbackAuthorName
+            )
+          ) {
+            resolvedAuthorName = fallbackAuthorName;
+            relatedSeries.set(series.publicId, series.title);
+          }
+          continue;
         }
 
-        if (isFallbackAuthor) {
-          return name === fallbackAuthorName;
+        if (!resolvedAuthorName) {
+          resolvedAuthorName = normalizeAuthorName(matchedCreator.name);
         }
 
-        return creator.publicId.trim() === authorId;
-      });
+        if (!resolvedAuthorProfileText) {
+          resolvedAuthorProfileText = normalizeAuthorProfileText(
+            matchedCreator.profileText
+          );
+        }
 
-      if (!matchedCreator) {
-        if (
-          isFallbackAuthor &&
-          series.creatorNames.some(
-            (name) => normalizeAuthorName(name) === fallbackAuthorName
-          )
-        ) {
-          resolvedAuthorName = fallbackAuthorName;
+        if (!resolvedAuthorIconImageUrl) {
+          resolvedAuthorIconImageUrl = matchedCreator.iconImageUrl.trim();
+        }
+
+        if (resolvedAuthorName.length > 0) {
           relatedSeries.set(series.publicId, series.title);
         }
-        continue;
       }
-
-      if (!resolvedAuthorName) {
-        resolvedAuthorName = normalizeAuthorName(matchedCreator.name);
-      }
-
-      if (!resolvedAuthorProfileText) {
-        resolvedAuthorProfileText = normalizeAuthorProfileText(
-          matchedCreator.profileText
-        );
-      }
-
-      if (!resolvedAuthorIconImageUrl) {
-        resolvedAuthorIconImageUrl = matchedCreator.iconImageUrl.trim();
-      }
-
-      if (resolvedAuthorName.length > 0) {
-        relatedSeries.set(series.publicId, series.title);
-      }
-    }
-
-    reachedSeriesEnd = seriesPage.nextToken.length === 0;
-    token = seriesPage.nextToken;
-  }
+    },
+    SERIES_SCAN_OPTIONS
+  );
 
   if (relatedSeries.size === 0) {
     return null;
