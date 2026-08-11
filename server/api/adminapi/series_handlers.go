@@ -548,11 +548,13 @@ func (s *adminServer) ListSeries(
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
-	}
-	rows, err := s.queriesFor(ctx).ListSeriesByTenant(ctx, dbmodels.ListSeriesByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+	rows, err := s.queriesFor(ctx).ListSeriesByTenant(ctx, dbmodels.ListSeriesByTenantParams{
+		TenantID: tenant.ID,
+		Limit:    limit,
+		// The keyset query and token handling are introduced in #732. Until
+		// then, preserve the current client's first-page behavior.
+		Offset: 0,
+	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

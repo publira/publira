@@ -157,7 +157,6 @@ export const listSeries = async (
     const response = await apiClient.series.listSeries(
       {
         limit: 100,
-        offset: 0,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
