@@ -502,9 +502,14 @@ func (s *adminServer) ListLabels(
 		if hasNext {
 			res.NextToken = encodeLabelToken(pagination.Forward, rows[len(rows)-1])
 		}
-	case cursor.Direction == pagination.Forward:
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.inclusive:
 		res.PreviousToken = encodeLabelRecoveryToken(pagination.Backward, keys)
-	case cursor.Direction == pagination.Backward:
+	case cursor.Direction == pagination.Backward && !keys.inclusive:
 		res.NextToken = encodeLabelRecoveryToken(pagination.Forward, keys)
 	}
 
