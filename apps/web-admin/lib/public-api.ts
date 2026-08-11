@@ -1,5 +1,6 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import { createPublicApiClient } from "@publira/api-client/public/client";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 import { cacheLife, cacheTag } from "next/cache";
@@ -45,10 +46,16 @@ const getTenantPublicInfo = async (
       theme: resolveTenantThemeColors(response.theme),
     };
   } catch (error) {
-    if (isMissingResourceRpcError(error)) {
-      return null;
+    if (!isMissingResourceRpcError(error)) {
+      // Console chrome only — the tenant name in `<title>` and the theme
+      // colours. Both are resolved before a static shell exists, where a throw
+      // from a `"use cache"` fill answers a bare 500 for the whole route
+      // instead of reaching any boundary (#672). The entry is dropped, so the
+      // real name and theme come back as soon as the public API does.
+      console.warn("[web-admin] getTenantPublicInfo failed", error);
+      dropFailedCacheEntry();
     }
-    throw error;
+    return null;
   }
 };
 

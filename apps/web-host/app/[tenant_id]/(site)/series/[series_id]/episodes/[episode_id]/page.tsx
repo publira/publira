@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageLoadError } from "#components/page-load-error";
 import { getEpisodeDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -30,14 +31,20 @@ const Page = async (
   guardPlaceholders({ episode_id, series_id });
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to
-  // null, and the public site must not tell those apart.
+  // `null`, and the public site must not tell those apart. A failed read is a
+  // value as well: this page awaits before anything is flushed, so a throw
+  // would answer a bare 500 that no boundary can reach (#672).
   const result = await getEpisodeDetail(tenantId, series_id, episode_id);
 
-  if (!result) {
+  if (!result.ok) {
+    return <PageLoadError description={result.message} />;
+  }
+
+  if (!result.value) {
     notFound();
   }
 
-  const { episode, images, series } = result;
+  const { episode, images, series } = result.value;
   const priceLabel =
     episode.price > 0 ? `¥${episode.price.toLocaleString("ja-JP")}` : "無料";
 

@@ -20,6 +20,9 @@ export const generateMetadata = async (): Promise<Metadata> => {
   }
   guardPlaceholder(tenantId);
 
+  // `getTenantName` degrades to `null` when the public API is unavailable, so
+  // an outage leaves the console titled 「管理画面」 instead of failing every
+  // route (#672).
   const tenantName = await getTenantName(tenantId);
   const base = tenantName ? `${tenantName} 管理画面` : "管理画面";
 

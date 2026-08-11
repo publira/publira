@@ -7,6 +7,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { PageLoadError } from "#components/page-load-error";
 import { getSeriesDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -27,15 +28,21 @@ const Page = async (props: PageProps<"/[tenant_id]/series/[series_id]">) => {
   ]);
   guardPlaceholders({ series_id });
 
-  // Missing / unpublished / other-tenant series all resolve to null, and the
-  // public site must not tell those apart.
+  // Missing / unpublished / other-tenant series all resolve to `null`, and the
+  // public site must not tell those apart. A failed read is a value as well:
+  // this page awaits before anything is flushed, so a throw would answer a bare
+  // 500 that no boundary can reach (#672).
   const result = await getSeriesDetail(tenantId, series_id);
 
-  if (!result) {
+  if (!result.ok) {
+    return <PageLoadError description={result.message} />;
+  }
+
+  if (!result.value) {
     notFound();
   }
 
-  const { episodes, series } = result;
+  const { episodes, series } = result.value;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">

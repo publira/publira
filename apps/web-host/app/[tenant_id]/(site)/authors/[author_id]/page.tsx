@@ -7,9 +7,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageLoadError } from "#components/page-load-error";
 import { getPublishedAuthorDetail } from "#lib/authors";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+
+/**
+ * A missing author must call `notFound()` outside `<Suspense>` so the response
+ * status is HTTP 404 instead of a streamed 200 (same pattern as series detail
+ * and the published-page route). Instant shell is not used for this segment,
+ * and without this the runtime static-shell validation fails the route with a
+ * bare 500 instead (#672).
+ */
+export const instant = false;
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "author_id");
@@ -40,10 +50,14 @@ export const generateMetadata = async ({
 
   guardPlaceholders({ author_id });
 
-  const [siteLabel, author] = await Promise.all([
+  const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
     getPublishedAuthorDetail(tenantId, author_id),
   ]);
+
+  // An unavailable author reads as "not found" for the `<title>` alone; the
+  // page body below says what actually happened.
+  const author = result.ok ? result.value : null;
 
   if (!author) {
     return {
@@ -66,10 +80,19 @@ const Page = async ({
 
   guardPlaceholders({ author_id });
 
-  const [siteLabel, author] = await Promise.all([
+  // This page awaits outside `<Suspense>` so that a missing author answers a
+  // real 404 — which also means a throw would have no boundary in reach and
+  // would answer a bare 500, so the read reports its failure as a value (#672).
+  const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
     getPublishedAuthorDetail(tenantId, author_id),
   ]);
+
+  if (!result.ok) {
+    return <PageLoadError description={result.message} />;
+  }
+
+  const author = result.value;
 
   if (!author) {
     notFound();

@@ -1,4 +1,10 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import {
+  cachedReadFailure,
+  dropFailedCacheEntry,
+} from "@publira/utils/cached-read";
+import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantPageTag, tenantPagesTag } from "./cache-tags";
@@ -79,8 +85,12 @@ export const publishedPageHrefFromSlug = (slug: string): string => {
 };
 
 /**
- * Cached fetch of footer page links. Throws on API failure so the remote cache
- * does not store a soft-empty result that would hide links until revalidation.
+ * Cached fetch of footer page links.
+ *
+ * A failure resolves to `[]` — the footer is non-critical chrome and is
+ * resolved in the site layout, where a throw would take every route down with
+ * a bare 500 (#672) — and drops the entry, so the links come back as soon as
+ * the API does instead of a soft-empty result sticking until revalidation.
  */
 const listPublishedPageLinksCached = async (
   tenantId: string
@@ -90,9 +100,16 @@ const listPublishedPageLinksCached = async (
 
   applyCacheTag(tenantPagesTag(tenantId));
 
-  const response = await apiClient.pages.listPublishedPages({
-    tenant: { tenantId },
-  });
+  let response: Awaited<ReturnType<typeof apiClient.pages.listPublishedPages>>;
+  try {
+    response = await apiClient.pages.listPublishedPages({
+      tenant: { tenantId },
+    });
+  } catch (error) {
+    console.warn("[web-host] listPublishedPages failed", error);
+    dropFailedCacheEntry();
+    return [];
+  }
 
   const links: PublishedPageLink[] = [];
   for (const page of response.pages ?? []) {
@@ -116,10 +133,7 @@ const listPublishedPageLinksCached = async (
   return links;
 };
 
-/**
- * Public footer links. Failures resolve to [] outside the cache so a transient
- * API error is not persisted as an empty remote cache entry.
- */
+/** Public footer links. */
 export const listPublishedPageLinks = async (
   tenantId: string
 ): Promise<PublishedPageLink[]> => {
@@ -128,29 +142,28 @@ export const listPublishedPageLinks = async (
     return [];
   }
 
-  try {
-    return await listPublishedPageLinksCached(normalizedTenantId);
-  } catch {
-    // Footer links are non-critical chrome; fail soft so the site shell still renders.
-    return [];
-  }
+  return await listPublishedPageLinksCached(normalizedTenantId);
 };
 
+/** Shared wording for a published page that could not be fetched. */
+const PAGE_LOAD_ERROR_MESSAGE =
+  "ページの内容を取得できませんでした。時間をおいて再試行してください。";
+
 /**
- * `null` when the page does not exist, is unpublished, or belongs to another
- * tenant — the server returns `not_found` or `permission_denied` for those and
- * the public site must not tell them apart.
+ * `ok: true` with a `null` value when the page does not exist, is unpublished,
+ * or belongs to another tenant — the server returns `not_found` or
+ * `permission_denied` for those and the public site must not tell them apart.
  *
- * Returns `null` rather than throwing because this runs inside a `"use cache"`
- * scope, where a thrown error is not observable by the caller's `try` / `catch`
- * and fails the whole request instead (same constraint as `getSeriesDetail`).
- * It used to throw `PageNotFoundError`, which is exactly how a missing page
- * answered `500` instead of `404` in a production build.
+ * `ok: false` when the fetch itself failed. It is a value rather than a throw
+ * because this runs inside a `"use cache"` scope, and a cache fill that throws
+ * fails the whole request — the caller's `try` / `catch` never gets the chance
+ * to render anything (#672). The failed entry is dropped, so a recovered API
+ * serves the page again on the next request.
  */
 export const getPublishedPage = async (
   tenantId: string,
   slug: string | readonly string[]
-): Promise<PublishedPage | null> => {
+): Promise<CachedReadResult<PublishedPage | null>> => {
   // Shared public content: remote so multi-instance hosts share entries (#532).
   "use cache: remote";
 
@@ -158,12 +171,12 @@ export const getPublishedPage = async (
   const normalizedSlug = normalizePublishedPageSlug(slug);
 
   if (!normalizedTenantId) {
-    return null;
+    return { ok: true, value: null };
   }
 
   // Root slug is not served as a content page on the public site.
   if (!normalizedSlug) {
-    return null;
+    return { ok: true, value: null };
   }
 
   applyCacheTag(tenantPagesTag(normalizedTenantId));
@@ -186,28 +199,35 @@ export const getPublishedPage = async (
     if (secondary.ok) {
       ({ response } = secondary);
     } else if (isMissingResourceRpcError(secondary.error)) {
-      return null;
+      return { ok: true, value: null };
     } else {
-      throw secondary.error;
+      return cachedReadFailure(
+        rpcErrorMessage(secondary.error, PAGE_LOAD_ERROR_MESSAGE)
+      );
     }
   } else {
-    throw primary.error;
+    return cachedReadFailure(
+      rpcErrorMessage(primary.error, PAGE_LOAD_ERROR_MESSAGE)
+    );
   }
 
   const { page, version } = response;
-  if (!page?.id || !version) {
-    return null;
+  if (!(page?.id && version)) {
+    return { ok: true, value: null };
   }
 
   applyCacheTag(tenantPageTag(normalizedTenantId, page.id));
 
   return {
-    contentMarkdown: version.contentMarkdown ?? "",
-    id: page.id,
-    publishedAt: version.publishedAt ?? "",
-    slug: page.slug ?? normalizedSlug,
-    title: page.title?.trim() || "ページ",
-    versionId: version.id ?? "",
-    versionNumber: version.versionNumber ?? 0,
+    ok: true,
+    value: {
+      contentMarkdown: version.contentMarkdown ?? "",
+      id: page.id,
+      publishedAt: version.publishedAt ?? "",
+      slug: page.slug ?? normalizedSlug,
+      title: page.title?.trim() || "ページ",
+      versionId: version.id ?? "",
+      versionNumber: version.versionNumber ?? 0,
+    },
   };
 };

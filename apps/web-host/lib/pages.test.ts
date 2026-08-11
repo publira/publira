@@ -151,13 +151,16 @@ describe("getPublishedPage", () => {
       tenant: { tenantId: "tenant-uuid" },
     });
     expect(result).toEqual({
-      contentMarkdown: "# 見出し\n\n本文",
-      id: "page-1",
-      publishedAt: "2026-04-01T00:00:00Z",
-      slug: "/privacy",
-      title: "プライバシーポリシー",
-      versionId: "ver-1",
-      versionNumber: 2,
+      ok: true,
+      value: {
+        contentMarkdown: "# 見出し\n\n本文",
+        id: "page-1",
+        publishedAt: "2026-04-01T00:00:00Z",
+        slug: "/privacy",
+        title: "プライバシーポリシー",
+        versionId: "ver-1",
+        versionNumber: 2,
+      },
     });
   });
 
@@ -166,9 +169,10 @@ describe("getPublishedPage", () => {
       new ConnectError("page not found", Code.NotFound)
     );
 
-    await expect(
-      getPublishedPage("tenant-uuid", "missing")
-    ).resolves.toBeNull();
+    await expect(getPublishedPage("tenant-uuid", "missing")).resolves.toEqual({
+      ok: true,
+      value: null,
+    });
 
     // Leading-slash form first, then bare form for legacy storage.
     expect(mockGetPublishedPage).toHaveBeenCalledWith({
@@ -199,7 +203,7 @@ describe("getPublishedPage", () => {
       });
 
     const result = await getPublishedPage("tenant-uuid", "privacy");
-    expect(result?.slug).toBe("privacy");
+    expect(result.ok && result.value?.slug).toBe("privacy");
     expect(mockGetPublishedPage).toHaveBeenNthCalledWith(1, {
       slug: "/privacy",
       tenant: { tenantId: "tenant-uuid" },
@@ -216,9 +220,10 @@ describe("getPublishedPage", () => {
       version: undefined,
     });
 
-    await expect(
-      getPublishedPage("tenant-uuid", "privacy")
-    ).resolves.toBeNull();
+    await expect(getPublishedPage("tenant-uuid", "privacy")).resolves.toEqual({
+      ok: true,
+      value: null,
+    });
   });
 
   it("page.id が欠けている場合は null", async () => {
@@ -227,32 +232,42 @@ describe("getPublishedPage", () => {
       version: { contentMarkdown: "body", id: "ver-1", versionNumber: 1 },
     });
 
-    await expect(
-      getPublishedPage("tenant-uuid", "privacy")
-    ).resolves.toBeNull();
+    await expect(getPublishedPage("tenant-uuid", "privacy")).resolves.toEqual({
+      ok: true,
+      value: null,
+    });
   });
 
   it("ルート slug は null", async () => {
-    await expect(getPublishedPage("tenant-uuid", "/")).resolves.toBeNull();
+    await expect(getPublishedPage("tenant-uuid", "/")).resolves.toEqual({
+      ok: true,
+      value: null,
+    });
     expect(mockGetPublishedPage).not.toHaveBeenCalled();
   });
 
   it("空テナント ID は API を呼ばずに null", async () => {
-    await expect(getPublishedPage("  ", "privacy")).resolves.toBeNull();
+    await expect(getPublishedPage("  ", "privacy")).resolves.toEqual({
+      ok: true,
+      value: null,
+    });
     expect(mockGetPublishedPage).not.toHaveBeenCalled();
   });
 
   /**
-   * `internal` and friends are not "missing"; they must keep throwing so the
-   * caller renders an error, not a 404.
+   * `internal` and friends are not "missing": the page must render a failure,
+   * not a 404. It comes back as a value because a `"use cache"` fill that
+   * throws fails the whole request before the page can render either (#672).
    */
-  it("分類できない RPC エラーは throw したまま", async () => {
+  it("分類できない RPC エラーは throw せず失敗の値を返す", async () => {
     mockGetPublishedPage.mockRejectedValue(
       new ConnectError("boom", Code.Internal)
     );
 
-    await expect(getPublishedPage("tenant-uuid", "privacy")).rejects.toThrow(
-      "boom"
-    );
+    await expect(getPublishedPage("tenant-uuid", "privacy")).resolves.toEqual({
+      message:
+        "ページの内容を取得できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
   });
 });

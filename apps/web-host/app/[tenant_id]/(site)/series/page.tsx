@@ -1,4 +1,5 @@
 import { CollectionIcon } from "@publira/icons";
+import { SectionError } from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import {
 } from "./_lib/search-params";
 
 const SERIES_PAGE_SIZE = 24;
+const SECTION_TITLE = "シリーズ一覧を表示できませんでした";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -98,13 +100,16 @@ const SeriesListData = async ({
   ]);
   const { token } = parseSeriesListSearchParams(resolvedSearchParams);
 
-  const { nextToken, previousToken, series } = await listPublishedSeries(
-    tenantId,
-    {
-      limit: SERIES_PAGE_SIZE,
-      token,
-    }
-  );
+  const result = await listPublishedSeries(tenantId, {
+    limit: SERIES_PAGE_SIZE,
+    token,
+  });
+
+  if (!result.ok) {
+    return <SectionError description={result.message} title={SECTION_TITLE} />;
+  }
+
+  const { nextToken, previousToken, series } = result.value;
 
   if (series.length === 0) {
     if (!token) {
@@ -210,7 +215,7 @@ const SeriesPage = ({ searchParams }: PageProps<"/[tenant_id]/series">) => (
       に登録されているシリーズをご紹介します
     </p>
 
-    <SectionErrorBoundary title="シリーズ一覧を表示できませんでした">
+    <SectionErrorBoundary title={SECTION_TITLE}>
       <Suspense fallback={<SeriesListSkeleton />}>
         <SeriesListData searchParams={searchParams} />
       </Suspense>

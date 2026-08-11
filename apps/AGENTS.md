@@ -105,7 +105,7 @@ The same rules apply to all three apps:
 - Take the wording from `rpcErrorMessage`'s shared table and override only the categories a screen genuinely words differently. Do not build a per-file mapping table.
 - `rpcErrorMentions()` is **not** an exception to the rule above — it does not classify. It only picks between wordings _inside_ a category `rpcErrorDisposition()` has already decided: one `Code` covering several distinct inputs (`invalid_argument` for both a bad slug and a rejected image), or a field name a `Code` cannot carry (`domain` vs `admin_domain`). It returns `false` for anything that is not an RPC error, every branch degrades to that category's generic message when the server rewords, and the call site names the server file its tokens come from.
 - **Never swallow an unclassifiable error** (`internal`, `unimplemented`, or a throw that is not an RPC error at all). A `catch` returning `null` / `false` / `[]` still calls `rethrowUnclassifiedRpcError(error)` first.
-- The exceptions are logout (the cookie must clear either way) and non-critical chrome such as footer links. Each one records why in a comment. Per-section degradation is **not** an exception any more — it is a boundary, not a `catch` (see below).
+- The exceptions are logout (the cookie must clear either way), non-critical chrome such as footer links, and every `catch` inside a `"use cache"` scope — that one cannot rethrow, because the fill would fail the whole request (see **A `"use cache"` function must not throw** below). Each one records why in a comment.
 
 ## Failure display: `SectionError` and `SectionErrorBoundary`
 
@@ -113,9 +113,9 @@ A failure that only kills part of a page must not be hand-rolled into that page.
 
 | What the screen has | Use |
 | --- | --- |
-| A throw it never sees — anything the lib layer re-threw as unclassifiable | Wrap the section's `<Suspense>` in that app's `SectionErrorBoundary` (`components/section-error-boundary.tsx`) |
-| A classified `ok: false` result with a message | Render `SectionError` from `@publira/ui-components/section-error` with that message as `description` |
-| A failure that makes the whole route meaningless | Let it throw; the route's `error.tsx` takes it |
+| A classified `ok: false` result with a message | Render `SectionError` from `@publira/ui-components/section-error` with that message as `description` — this is the normal case, because a cached read reports failure as a value (see below) |
+| An `ok: false` on a route that awaits **before** the shell is flushed (`instant = false` page body, `generateMetadata`) | Render that app's `PageLoadError` — a boundary cannot reach it there |
+| A throw it never sees — a bug, or an uncached read that failed | Wrap the section's `<Suspense>` in that app's `SectionErrorBoundary` (`components/section-error-boundary.tsx`) |
 | A submission the server rejected | `FormMessage` next to the control — unchanged |
 | Nothing to show yet | `EmptyState` — unchanged |
 
@@ -158,7 +158,50 @@ This covers the failure displays that pages own. A list or form component that r
 
 The `catchError` call itself stays in each app's `components/section-error-boundary.tsx` rather than in `@publira/ui-components`: `tsdown` drops the `"use client"` directive when it bundles the package, and `catchError` cannot run in the server graph. The fallback body is shared from the package; only the four-line wiring is per app, the same split the route-level `error.tsx` bodies already use.
 
-Reaching the boundary at all is a separate question for reads inside a `"use cache"` scope — a throw there was not observable from the awaiting caller, which is what made the old `catch` blocks dead code in production ([#672](https://github.com/publira/publira/issues/672)).
+## A `"use cache"` function must not throw
+
+Measured against the production build under Cache Components ([#672](https://github.com/publira/publira/issues/672)): **when a cache fill throws, Next.js fails the request that triggered it.** An awaiting `try` / `catch` does not save it, and neither does an outer cached function catching an inner one — both were measured returning a perfectly good element while the response was still a bare `500 Internal Server Error` document. The failure is only recoverable when a static shell has already been committed, and then only by a client error boundary (`SectionErrorBoundary`), which is why the catalog's `<Suspense>` sections survived an outage while its detail routes answered 500.
+
+Every route in these apps sits under a dynamic `[tenant_id]` root segment, so "has a committed shell" is not something a `lib/` helper can assume: the same read is awaited by a section inside `<Suspense>` and by `generateMetadata` or an `instant = false` page body, which run before anything is flushed. So the rule is unconditional.
+
+| Inside a `"use cache"` function | Do |
+| --- | --- |
+| The record is missing / not visible | Return the "nothing" value (`null`, `[]`) — that is an answer, and it is cacheable |
+| The fetch failed | `return cachedReadFailure(rpcErrorMessage(error, fallback))` from `@publira/utils/cached-read` |
+| The fetch failed and the caller has nothing to say about it (site chrome) | `dropFailedCacheEntry()`, then return the default (`null`) |
+| Anything at all | Never `throw`, and never `notFound()` — raise those in the caller, outside the cache scope |
+
+`cachedReadFailure` marks the entry unstorable (`cacheLife({ expire: 0, revalidate: 0, stale: 0 })`), so the **failure is never cached**: a recovered API serves real content on the very next request instead of a fallback pinned for the cache's lifetime. Full API and rationale: `packages/utils/README.md`.
+
+Classification stays inside the cache scope for a second reason. Next.js re-creates an error that crossed a `"use cache"` boundary from its name and message, and production replaces the message with a digest — so `Code`, and with it `rpcErrorDisposition()` / `rpcErrorMessage()`, is gone by the time an outside `catch` runs. Build the message where the `ConnectError` is still intact.
+
+### NG (do not)
+
+```ts
+// NG: a throw inside a cache scope — the request 500s before any fallback runs
+export const getSeriesDetail = async (tenantId: string, publicId: string) => {
+  "use cache";
+  try {
+    return await apiClient.catalog.getSeriesDetail({
+      publicId,
+      tenant: { tenantId },
+    });
+  } catch (error) {
+    if (isMissingResourceRpcError(error)) {
+      return null;
+    }
+    throw error; // ← fails the whole request, caller's catch never runs
+  }
+};
+
+// NG: catching outside the cache scope. The fill already failed the request,
+// and the error arrives digest-only, so it cannot be classified here either.
+try {
+  return await getSeriesDetail(tenantId, publicId);
+} catch {
+  return { message: "取得できませんでした。", ok: false };
+}
+```
 
 ## Icons: `@publira/icons`, never inline `<svg>`
 
