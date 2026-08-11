@@ -46,38 +46,60 @@ const mapNotificationItems = (
     title: item.title,
   }));
 
+/**
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`.
+ */
+export interface ListMyNotificationsOptions {
+  limit?: number;
+  token?: string;
+}
+
 const listNotificationsRpc = (
   tenantId: string,
-  sessionId: string
+  sessionId: string,
+  { limit = 20, token = "" }: ListMyNotificationsOptions
 ): Promise<Awaited<ReturnType<typeof apiClient.auth.listNotifications>>> =>
   apiClient.auth.listNotifications(
     {
-      limit: 100,
+      limit,
       tenant: { tenantId },
+      token,
     },
     buildSessionHeaders(sessionId)
   );
 
+interface MyNotificationsPage {
+  notifications: MemberNotificationItem[];
+  /** Token for the previous page. Empty on the first page. */
+  previousToken: string;
+  /** Token for the next page. Empty on the last page. */
+  nextToken: string;
+}
+
 export type ListMyNotificationsResult =
-  | { ok: true; notifications: MemberNotificationItem[] }
-  | {
+  | ({ ok: true } & MyNotificationsPage)
+  | ({
       ok: false;
       message: string;
-      notifications: MemberNotificationItem[];
       /** The reader has to sign in again before this list can be shown. */
       requiresSignIn: boolean;
-    };
+    } & MyNotificationsPage);
 
 const fetchNotifications = async (
   tenantId: string,
-  sessionId: string
+  sessionId: string,
+  options: ListMyNotificationsOptions
 ): Promise<ListMyNotificationsResult> => {
   try {
-    const response = await listNotificationsRpc(tenantId, sessionId);
+    const response = await listNotificationsRpc(tenantId, sessionId, options);
 
     return {
+      nextToken: response.nextToken ?? "",
       notifications: mapNotificationItems(response),
       ok: true,
+      previousToken: response.previousToken ?? "",
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -90,8 +112,10 @@ const fetchNotifications = async (
 
     return {
       message: mapErrorToMessage(error),
+      nextToken: "",
       notifications: [],
       ok: false,
+      previousToken: "",
       requiresSignIn: isSignInRequiredError(error),
     };
   }
@@ -99,12 +123,13 @@ const fetchNotifications = async (
 
 export const listMyNotifications = async (
   tenantId: string,
-  sessionId?: string
+  sessionId?: string,
+  options: ListMyNotificationsOptions = {}
 ): Promise<ListMyNotificationsResult> => {
   noStore();
 
   const sid = await resolveAccessToken(sessionId);
-  return fetchNotifications(tenantId, sid);
+  return fetchNotifications(tenantId, sid, options);
 };
 
 export const markNotificationAsRead = async (
