@@ -5,6 +5,20 @@ import { listPublishedSeries } from "./catalog";
 import type { SeriesListItem } from "./catalog";
 
 const SERIES_FETCH_BATCH_SIZE = 50;
+/**
+ * Series walk ceiling. Match `forEachPageWithToken` default `maxRows` so the
+ * row budget is the binding limit (not a lower page count at batch size 50).
+ * Temporary until author detail is a server-side API (#799).
+ */
+const SERIES_SCAN_MAX_ROWS = 10_000;
+const SERIES_SCAN_MAX_PAGES = Math.ceil(
+  SERIES_SCAN_MAX_ROWS / SERIES_FETCH_BATCH_SIZE
+);
+const SERIES_SCAN_OPTIONS = {
+  maxPages: SERIES_SCAN_MAX_PAGES,
+  maxRows: SERIES_SCAN_MAX_ROWS,
+  pageSize: SERIES_FETCH_BATCH_SIZE,
+} as const;
 const FALLBACK_AUTHOR_ID_PREFIX = "name_";
 
 export interface PublishedAuthorListItem {
@@ -193,7 +207,7 @@ export const listPublishedAuthors = async (
       collectAuthorsFromSeries(authorSeriesMap, seriesList);
       return authorSeriesMap.size < targetEndIndex;
     },
-    { pageSize: SERIES_FETCH_BATCH_SIZE }
+    SERIES_SCAN_OPTIONS
   );
 
   const allAuthors = [...authorSeriesMap.entries()]
@@ -231,7 +245,8 @@ export const getPublishedAuthorDetail = async (
   let resolvedAuthorProfileText = "";
 
   // Author detail is embedded in series creators; walk all series pages and
-  // collect matches. Bounds against runaway pagination are shared.
+  // collect matches. Explicit maxRows/maxPages so pageSize 50 does not cap the
+  // walk below the row budget (default maxPages alone would stop at 5_000).
   await forEachPageWithToken(
     (token, limit) => fetchPublishedSeriesPage(tenantId, token, limit),
     (seriesList) => {
@@ -281,7 +296,7 @@ export const getPublishedAuthorDetail = async (
         }
       }
     },
-    { pageSize: SERIES_FETCH_BATCH_SIZE }
+    SERIES_SCAN_OPTIONS
   );
 
   if (relatedSeries.size === 0) {

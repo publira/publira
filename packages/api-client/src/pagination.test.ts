@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { findByPublicIdWithToken, forEachPageWithToken } from "./pagination";
 
 describe("forEachPageWithToken", () => {
-  it("token を順に辿って各ページを onPage に渡す", async () => {
+  it("token を順に辿って各ページを onPage に渡し completed を返す", async () => {
     const fetchPage = vi
       .fn()
       .mockResolvedValueOnce({
@@ -16,7 +16,9 @@ describe("forEachPageWithToken", () => {
       });
     const onPage = vi.fn();
 
-    await forEachPageWithToken(fetchPage, onPage);
+    await expect(forEachPageWithToken(fetchPage, onPage)).resolves.toBe(
+      "completed"
+    );
 
     expect(fetchPage).toHaveBeenNthCalledWith(1, "", 100);
     expect(fetchPage).toHaveBeenNthCalledWith(2, "page-2", 100);
@@ -24,33 +26,36 @@ describe("forEachPageWithToken", () => {
     expect(onPage).toHaveBeenNthCalledWith(2, [{ id: "b" }]);
   });
 
-  it("onPage が false を返したら次ページを取らない", async () => {
+  it("onPage が false を返したら stopped-by-callback で止まる", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: [{ id: "a" }],
       nextToken: "page-2",
     });
     const onPage = vi.fn().mockReturnValue(false);
 
-    await forEachPageWithToken(fetchPage, onPage);
+    await expect(forEachPageWithToken(fetchPage, onPage)).resolves.toBe(
+      "stopped-by-callback"
+    );
 
     expect(fetchPage).toHaveBeenCalledTimes(1);
     expect(onPage).toHaveBeenCalledTimes(1);
   });
 
-  it("同じ token が返された場合は走査を停止する", async () => {
+  it("同じ token が返された場合は repeated-token で止まる", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       items: [{ id: "a" }],
       nextToken: "page-2",
     });
     const onPage = vi.fn();
 
-    await forEachPageWithToken(fetchPage, onPage);
-
+    await expect(forEachPageWithToken(fetchPage, onPage)).resolves.toBe(
+      "repeated-token"
+    );
     expect(fetchPage).toHaveBeenCalledTimes(2);
     expect(onPage).toHaveBeenCalledTimes(2);
   });
 
-  it("ページ上限で走査を停止する", async () => {
+  it("ページ上限で max-pages を返す", async () => {
     let page = 0;
     const fetchPage = vi.fn().mockImplementation(() => {
       page += 1;
@@ -58,8 +63,9 @@ describe("forEachPageWithToken", () => {
     });
     const onPage = vi.fn();
 
-    await forEachPageWithToken(fetchPage, onPage, { maxPages: 3 });
-
+    await expect(
+      forEachPageWithToken(fetchPage, onPage, { maxPages: 3 })
+    ).resolves.toBe("max-pages");
     expect(fetchPage).toHaveBeenCalledTimes(3);
     expect(onPage).toHaveBeenCalledTimes(3);
   });
@@ -73,10 +79,12 @@ describe("forEachPageWithToken", () => {
     });
     const onPage = vi.fn();
 
-    await forEachPageWithToken(fetchPage, onPage, {
-      maxRows: 50,
-      pageSize: 100,
-    });
+    await expect(
+      forEachPageWithToken(fetchPage, onPage, {
+        maxRows: 50,
+        pageSize: 100,
+      })
+    ).resolves.toBe("max-rows");
 
     expect(fetchPage).toHaveBeenCalledWith("", 50);
     expect(fetchPage).toHaveBeenCalledTimes(1);
@@ -90,10 +98,12 @@ describe("forEachPageWithToken", () => {
     });
     const onPage = vi.fn();
 
-    await forEachPageWithToken(fetchPage, onPage, {
-      maxRows: 2,
-      pageSize: 100,
-    });
+    await expect(
+      forEachPageWithToken(fetchPage, onPage, {
+        maxRows: 2,
+        pageSize: 100,
+      })
+    ).resolves.toBe("max-rows");
 
     expect(fetchPage).toHaveBeenCalledWith("", 2);
     expect(onPage).toHaveBeenCalledWith([{ id: "1" }, { id: "2" }]);

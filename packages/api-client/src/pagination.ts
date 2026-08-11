@@ -20,6 +20,21 @@ export type FetchCursorPage<T> = (
 export type CursorPageVisitResult = boolean | undefined;
 
 /**
+ * Why {@link forEachPageWithToken} stopped.
+ *
+ * - `completed`: the list ended (`nextToken` empty).
+ * - `stopped-by-callback`: `onPage` returned `false`.
+ * - `max-pages` / `max-rows`: budget exhausted; more data may exist.
+ * - `repeated-token`: the same cursor reappeared (malformed pagination).
+ */
+export type CursorWalkStop =
+  | "completed"
+  | "max-pages"
+  | "max-rows"
+  | "stopped-by-callback"
+  | "repeated-token";
+
+/**
  * Visit each page of a cursor-paginated list RPC in order.
  *
  * Pages are sequential because each request depends on the token from the
@@ -29,6 +44,10 @@ export type CursorPageVisitResult = boolean | undefined;
  * Return `false` from `onPage` to stop early (for example after finding a
  * match or after collecting enough rows for the caller). Any other return
  * value continues to the next page while budget remains.
+ *
+ * The resolved {@link CursorWalkStop} tells the caller whether the walk
+ * finished the list or hit a bound. Budget stops (`max-pages`, `max-rows`)
+ * and `repeated-token` mean more rows may exist beyond what was visited.
  */
 export const forEachPageWithToken = async <T>(
   fetchPage: FetchCursorPage<T>,
@@ -40,7 +59,7 @@ export const forEachPageWithToken = async <T>(
     maxRows = defaultMaxRows,
     pageSize = defaultPageSize,
   }: CursorPageOptions = {}
-): Promise<undefined> => {
+): Promise<CursorWalkStop> => {
   const visitedTokens = new Set<string>();
   let token = "";
   let pagesRead = 0;
@@ -59,28 +78,40 @@ export const forEachPageWithToken = async <T>(
     const remainingRows = maxRows - rowsRead;
     const limit = Math.min(pageSize, remainingRows);
     // Sequential: each page depends on the previous response's nextToken.
-    // oxlint-disable-next-line no-await-in-loop -- cursor pages cannot be fetched in parallel
     const { items, nextToken } = await fetchPage(token, limit);
     const pageItems = items.slice(0, remainingRows);
-    // oxlint-disable-next-line no-await-in-loop -- onPage may be async; still sequential
     const shouldContinue = await onPage(pageItems);
     if (shouldContinue === false) {
-      return;
+      return "stopped-by-callback";
     }
 
     rowsRead += pageItems.length;
     pagesRead += 1;
-    if (!nextToken || rowsRead >= maxRows) {
-      return;
+    if (!nextToken) {
+      return "completed";
+    }
+    if (rowsRead >= maxRows) {
+      return "max-rows";
     }
     token = nextToken;
   }
+
+  if (visitedTokens.has(token)) {
+    return "repeated-token";
+  }
+  if (pagesRead >= maxPages) {
+    return "max-pages";
+  }
+  return "max-rows";
 };
 
 /**
  * Find one record by `publicId` across a cursor-paginated list RPC.
  *
  * Built on {@link forEachPageWithToken}; stops at the first match.
+ * Returns `null` when no match is found **or** when the walk stops early on a
+ * budget / repeated-token bound — callers cannot tell those apart from a
+ * missing record. Prefer a dedicated `Get*` RPC when correctness matters.
  */
 export const findByPublicIdWithToken = async <T extends { publicId: string }>(
   publicId: string,

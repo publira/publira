@@ -15,8 +15,11 @@ export default defineConfig({
   overrides: [
     {
       // Generated protobuf re-exports intentionally use `export *`.
+      // Cursor pagination helpers must await each page sequentially (token
+      // depends on the previous response); parallel Promise.all is wrong there.
       files: ["packages/api-client/src/**/*.{ts,tsx}"],
       rules: {
+        "no-await-in-loop": "off",
         "sonarjs/no-wildcard-import": "off",
       },
     },

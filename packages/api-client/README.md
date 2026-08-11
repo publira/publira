@@ -49,9 +49,13 @@ import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/aut
 
 cursor 一覧 RPC をアプリ側で順に辿るときは、共有 helper を使います。ページは token の依存関係に従って逐次取得し、同じ token の再出現とページ数・行数の上限で不正なレスポンスによる無限走査を防ぎます。
 
+既定の上限は `pageSize = 100`、`maxPages = 100`、`maxRows = 10_000` です。上限や繰り返し token に達すると例外は出さず静かに止まります。`findByPublicIdWithToken` はその場合も `null` を返すため、「レコードが無い」と区別できません。単体取得の正規手段はサーバー側の `Get*` RPC です（#799）。
+
+`forEachPageWithToken` は停止理由を返します: `completed` / `stopped-by-callback` / `max-pages` / `max-rows` / `repeated-token`。
+
 ### 単体検索
 
-単体取得 RPC がないリソースを `publicId` で探す場合:
+単体取得 RPC がないリソースを `publicId` で探す場合（暫定）:
 
 ```ts
 import { findByPublicIdWithToken } from "@publira/api-client/pagination";
@@ -60,6 +64,7 @@ const item = await findByPublicIdWithToken(publicId, async (token, limit) => {
   const response = await client.listItems({ limit, token });
   return { items: response.items, nextToken: response.nextToken };
 });
+// item が null でも「未存在」とは限らない（走査上限の可能性）
 ```
 
 ### 集約・途中打ち切り
@@ -69,7 +74,7 @@ const item = await findByPublicIdWithToken(publicId, async (token, limit) => {
 ```ts
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 
-await forEachPageWithToken(
+const stop = await forEachPageWithToken(
   async (token, limit) => {
     const response = await client.listItems({ limit, token });
     return { items: response.items, nextToken: response.nextToken };
@@ -80,6 +85,7 @@ await forEachPageWithToken(
   },
   { pageSize: 50 }
 );
+// stop === "max-pages" | "max-rows" なら一覧が途中までしか読めていない
 ```
 
 ## テナントヘッダー
