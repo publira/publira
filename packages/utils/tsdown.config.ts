@@ -5,9 +5,12 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/cn.ts",
+    "src/field-errors.ts",
+    "src/form-data.ts",
     "src/format-date-time.ts",
     "src/health.ts",
     "src/next-static-params.ts",
+    "src/search-params.ts",
     "src/static-param-placeholder.ts",
     "src/theme-css-variables.ts",
   ],

@@ -66,7 +66,15 @@ Choose failure handling at the boundary:
 - **`searchParams`:** normalize optional filter, sort, and pagination values to explicit safe defaults when the page still has a meaningful default view. Call `notFound()` when an invalid value makes the requested URL/resource meaningless instead of silently showing different content.
 - **Dynamic segments and Route Handler bodies:** reject an invalid resource identifier with `notFound()` where existence must not be disclosed; return the handler's documented 4xx response for an invalid request body.
 
-Shared schemas for normalizing `searchParams` and `FormData`, including repeated and file fields, belong in `@publira/utils` as tracked by [#662](https://github.com/publira/publira/issues/662). Until those helpers exist, keep the boundary schema local rather than falling back to unchecked coercion.
+The normalization every boundary needs lives in `@publira/utils`, so a screen writes the rules that are actually its own and nothing else. Full API and examples: `packages/utils/README.md`.
+
+| Boundary | Use |
+| --- | --- |
+| `searchParams` | `@publira/utils/search-params`: `searchParamString` / `searchParamStringArray` / `searchParamEnum` / `searchParamNumber` / `searchParamBoolean` / `searchParamDate` |
+| `FormData` | `@publira/utils/form-data`: `toFormDataInput(formData, fields)`, declaring each field as `value` / `values` / `file` / `files` |
+| `safeParse` failure → Action state | `@publira/utils/field-errors`: `toFieldErrors`, `toFormErrorMessage`, `VALIDATION_ERROR_MESSAGE` |
+
+The `searchParams` factories encode the failure decision above in one place: passing `fallback` gives a schema that never fails and resolves to that explicit safe default, and omitting it gives a schema that reports an issue so the page can `notFound()`. Do not re-add a local `z.preprocess` that only trims and length-checks — extend the shared schema instead, and keep genuinely screen-specific rules (which action values exist, which sort keys a table has) at the call site.
 
 Frontend validation is for typed application flow and prompt user feedback. It does **not** replace validation and authorization in the Go server; every RPC input must still be validated at the server's own trust boundary.
 

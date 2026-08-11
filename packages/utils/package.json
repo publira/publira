@@ -34,6 +34,18 @@
     "./static-param-placeholder": {
       "types": "./dist/static-param-placeholder.d.mts",
       "default": "./dist/static-param-placeholder.mjs"
+    },
+    "./search-params": {
+      "types": "./dist/search-params.d.mts",
+      "default": "./dist/search-params.mjs"
+    },
+    "./form-data": {
+      "types": "./dist/form-data.d.mts",
+      "default": "./dist/form-data.mjs"
+    },
+    "./field-errors": {
+      "types": "./dist/field-errors.d.mts",
+      "default": "./dist/field-errors.mjs"
     }
   },
   "scripts": {
@@ -52,9 +64,11 @@
     "temporal-polyfill": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   },
   "peerDependencies": {
-    "next": "^16.3.0"
+    "next": "^16.3.0",
+    "zod": "^4.4.3"
   }
 }
