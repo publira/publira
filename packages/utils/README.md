@@ -10,6 +10,7 @@
 - `@publira/utils/search-params`: `searchParams`（`string | string[] | undefined`）を zod で検証するためのスキーマ生成関数
 - `@publira/utils/form-data`: `FormData` を zod の検証対象オブジェクトへ変換するヘルパー
 - `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー
+- `@publira/utils/cached-read`: `"use cache"` の読み取りで失敗を「値」として返し、その失敗をキャッシュに残さないためのヘルパー
 
 ## 使い方
 
@@ -133,6 +134,48 @@ if (!parsed.success) {
 - `value` はファイルが送られてきても文字列化せず `undefined`（`String(formData.get(...))` が `"[object File]"` を作る事故を防ぐ）
 - 未入力の `<input type="file">` は 0 バイトのエントリを送るため、ファイル系は空ファイルを落とす
 - ActionState にフィールド単位の枠がない画面は `toFormErrorMessage(parsed.error)` で 1 本のメッセージにする
+
+## `"use cache"` の失敗（`cached-read`）
+
+Cache Components 下の production ビルドで実測（[#672](https://github.com/publira/publira/issues/672)）: **`"use cache"` のキャッシュ充填が throw すると、そのリクエスト自体が失敗する。** 呼び出し側の `try` / `catch` でも、外側のキャッシュ関数で受けても救えず、static shell が commit 済みのときだけクライアント側のエラーバウンダリが拾える。したがって cached read は **throw せず、失敗を値として返す**。
+
+```ts
+import {
+  cachedReadFailure,
+  dropFailedCacheEntry,
+} from "@publira/utils/cached-read";
+import type { CachedReadResult } from "@publira/utils/cached-read";
+
+export const getSeriesDetail = async (
+  tenantId: string,
+  publicId: string
+): Promise<CachedReadResult<SeriesDetail | null>> => {
+  "use cache";
+  try {
+    const response = await apiClient.catalog.getSeriesDetail({
+      publicId,
+      tenant: { tenantId },
+    });
+    return { ok: true, value: toSeriesDetail(response) };
+  } catch (error) {
+    if (isMissingResourceRpcError(error)) {
+      // 「無い」は答えであり、キャッシュしてよい
+      return { ok: true, value: null };
+    }
+    return cachedReadFailure(
+      rpcErrorMessage(error, "シリーズを取得できませんでした。")
+    );
+  }
+};
+
+// 見せるメッセージが無い chrome 用の読み取りは、既定値に落として entry だけ捨てる
+dropFailedCacheEntry();
+return null;
+```
+
+- `cachedReadFailure` / `dropFailedCacheEntry` は `cacheLife({ expire: 0, revalidate: 0, stale: 0 })` を設定し、**失敗をキャッシュに載せない**（`@publira/next-cache-handlers` の `set` は `expire === 0` を保存せず、仮に保存されても `revalidate: 0` で次回 miss になる）。復旧後の再読み込みは即座に通常の内容を返す
+- エラーの分類はキャッシュスコープの**内側**で行う。`"use cache"` 境界を越えたエラーは production で message が digest に置き換わり、`Code`（`rpcErrorDisposition()` / `rpcErrorMessage()`）が失われる
+- 呼び出し側は `ok: false` を `SectionError` / `PageLoadError` として描画する。画面側の使い分けは `apps/AGENTS.md`
 
 ## ビルド
 

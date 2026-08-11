@@ -4,6 +4,7 @@ export default defineConfig({
   dts: true,
   entry: [
     "src/index.ts",
+    "src/cached-read.ts",
     "src/cn.ts",
     "src/field-errors.ts",
     "src/form-data.ts",
