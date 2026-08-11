@@ -3,11 +3,11 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { findByPublicIdWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { mentionsImageRejection } from "./image-rejection";
-import { findByPublicIdWithToken } from "./paged-lookup";
 import { getAccessToken } from "./session";
 
 export interface LabelItem {

@@ -22,6 +22,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -74,23 +75,6 @@ const TenantsTableSkeleton = () => (
 );
 
 type TenantsPageProps = PageProps<"/tenants">;
-
-const TenantsPageControl = ({
-  href,
-  label,
-}: {
-  href?: string;
-  label: string;
-}) =>
-  href ? (
-    <LinkButton render={<Link href={href} />} size="sm" variant="outline">
-      {label}
-    </LinkButton>
-  ) : (
-    <Button disabled size="sm" variant="outline">
-      {label}
-    </Button>
-  );
 
 const TenantsContent = async ({
   searchParams,
@@ -216,13 +200,11 @@ const TenantsContent = async ({
           </TableBody>
         </Table>
 
-        <nav
-          aria-label="テナント一覧のページ送り"
-          className="flex justify-end gap-2"
-        >
-          <TenantsPageControl href={previousHref} label="前へ" />
-          <TenantsPageControl href={nextHref} label="次へ" />
-        </nav>
+        <PaginationControls
+          ariaLabel="テナント一覧のページ送り"
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
       </CardContent>
     </Card>
   );

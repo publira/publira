@@ -19,6 +19,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformPage,
   PlatformPageActions,
@@ -35,9 +36,16 @@ import {
 } from "#lib/operator-labels";
 import { listPlatformOperators } from "#lib/operators";
 
+import {
+  buildOperatorsPath,
+  parseOperatorsSearchParams,
+} from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "オペレーター管理",
 };
+
+const pageSize = 20;
 
 const OperatorsTableSkeleton = () => (
   <Card>
@@ -55,8 +63,19 @@ const OperatorsTableSkeleton = () => (
   </Card>
 );
 
-const OperatorsContent = async () => {
-  const operators = await listPlatformOperators();
+type OperatorsPageProps = PageProps<"/operators">;
+
+const OperatorsContent = async ({
+  searchParams,
+}: Pick<OperatorsPageProps, "searchParams">) => {
+  const { token } = parseOperatorsSearchParams(await searchParams);
+  const result = await listPlatformOperators({ limit: pageSize, token });
+  const previousHref = result.previousToken
+    ? buildOperatorsPath({ token: result.previousToken })
+    : undefined;
+  const nextHref = result.nextToken
+    ? buildOperatorsPath({ token: result.nextToken })
+    : undefined;
 
   return (
     <Card>
@@ -67,7 +86,13 @@ const OperatorsContent = async () => {
           監査担当の優先順でロールを付与します。停止中のオペレーターはログインできません。
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-4">
+        {result.ok ? null : (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            オペレーター一覧の取得に失敗しました: {result.message}
+          </p>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -79,59 +104,66 @@ const OperatorsContent = async () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {operators.length === 0 ? (
+            {result.ok && result.operators.length === 0 ? (
               <TableRow>
                 <TableCell className="text-muted-foreground" colSpan={5}>
                   オペレーターはまだ登録されていません。
                 </TableCell>
               </TableRow>
             ) : null}
-            {operators.map((operator) => (
-              <TableRow key={operator.publicId || operator.email}>
-                <TableCell>
-                  <div className="grid gap-1">
-                    <p className="font-medium text-foreground">
-                      {operator.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {operator.publicId}
-                    </p>
-                  </div>
-                </TableCell>
-                <TableCell>{operator.email}</TableCell>
-                <TableCell>
-                  <Badge tone="info">
-                    {getOperatorRoleLabel(operator.role)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <StatusChip
-                    status={
-                      operator.status === "active" ? "success" : "warning"
-                    }
-                  >
-                    {getOperatorStatusLabel(operator.status)}
-                  </StatusChip>
-                </TableCell>
-                <TableCell>
-                  <LinkButton
-                    render={<Link href={`/operators/${operator.publicId}`} />}
-                    size="sm"
-                    variant="outline"
-                  >
-                    詳細
-                  </LinkButton>
-                </TableCell>
-              </TableRow>
-            ))}
+            {result.ok &&
+              result.operators.map((operator) => (
+                <TableRow key={operator.publicId || operator.email}>
+                  <TableCell>
+                    <div className="grid gap-1">
+                      <p className="font-medium text-foreground">
+                        {operator.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {operator.publicId}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>{operator.email}</TableCell>
+                  <TableCell>
+                    <Badge tone="info">
+                      {getOperatorRoleLabel(operator.role)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <StatusChip
+                      status={
+                        operator.status === "active" ? "success" : "warning"
+                      }
+                    >
+                      {getOperatorStatusLabel(operator.status)}
+                    </StatusChip>
+                  </TableCell>
+                  <TableCell>
+                    <LinkButton
+                      render={<Link href={`/operators/${operator.publicId}`} />}
+                      size="sm"
+                      variant="outline"
+                    >
+                      詳細
+                    </LinkButton>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
+
+        <PaginationControls
+          ariaLabel="オペレーター一覧のページ送り"
+          nextHref={nextHref}
+          previousHref={previousHref}
+        />
       </CardContent>
     </Card>
   );
 };
 
-const OperatorsPage = () => (
+const OperatorsPage = ({ searchParams }: OperatorsPageProps) => (
   <PlatformPage>
     <PlatformPageHeader>
       <PlatformPageHeading>
@@ -149,7 +181,7 @@ const OperatorsPage = () => (
     </PlatformPageHeader>
     <PlatformPageContent>
       <Suspense fallback={<OperatorsTableSkeleton />}>
-        <OperatorsContent />
+        <OperatorsContent searchParams={searchParams} />
       </Suspense>
     </PlatformPageContent>
   </PlatformPage>

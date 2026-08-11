@@ -1,5 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { findByPublicIdWithToken } from "@publira/api-client/pagination";
 
 import {
   apiClient,
@@ -17,6 +18,11 @@ export interface PlatformOperatorSummary {
   status: string;
 }
 
+export interface ListPlatformOperatorsInput {
+  limit?: number;
+  token?: string;
+}
+
 export interface CreatePlatformOperatorInput {
   email: string;
   name: string;
@@ -30,32 +36,79 @@ export type CreatePlatformOperatorResult =
 const genericErrorMessage =
   "処理に失敗しました。時間をおいて再試行してください。";
 
-export const listPlatformOperators = async (): Promise<
-  PlatformOperatorSummary[]
-> => {
+export type ListPlatformOperatorsResult =
+  | {
+      nextToken: string;
+      ok: true;
+      operators: PlatformOperatorSummary[];
+      previousToken: string;
+    }
+  | {
+      message: string;
+      nextToken: string;
+      ok: false;
+      operators: PlatformOperatorSummary[];
+      previousToken: string;
+    };
+
+const mapOperator = (operator: {
+  createdAt: string;
+  email: string;
+  name: string;
+  publicId: string;
+  role: string;
+  status: string;
+}): PlatformOperatorSummary => ({
+  createdAt: operator.createdAt,
+  email: operator.email,
+  name: operator.name,
+  publicId: operator.publicId,
+  role: normalizePlatformRole(operator.role),
+  status: operator.status,
+});
+
+export const listPlatformOperators = async (
+  input: ListPlatformOperatorsInput
+): Promise<ListPlatformOperatorsResult> => {
   "use cache: private";
 
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
-    return [];
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+    };
   }
 
   try {
     const response = await apiClient.operators.listOperators(
-      {},
+      {
+        limit: input.limit ?? 20,
+        token: input.token ?? "",
+      },
       buildSessionHeaders(sessionId)
     );
-    return (response.operators ?? []).map((operator) => ({
-      createdAt: operator.createdAt,
-      email: operator.email,
-      name: operator.name,
-      publicId: operator.publicId,
-      role: normalizePlatformRole(operator.role),
-      status: operator.status,
-    }));
+    return {
+      nextToken: response.nextToken ?? "",
+      ok: true,
+      operators: (response.operators ?? []).map(mapOperator),
+      previousToken: response.previousToken ?? "",
+    };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    return [];
+    return {
+      message: rpcErrorMessage(
+        error,
+        "オペレーター一覧の取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      nextToken: "",
+      ok: false,
+      operators: [],
+      previousToken: "",
+    };
   }
 };
 
@@ -136,13 +189,31 @@ export const getPlatformOperator = async (
 ): Promise<PlatformOperatorSummary | null> => {
   "use cache: private";
 
-  if (!publicId.trim()) {
+  const sessionId = await resolveAccessToken();
+  if (!publicId.trim() || !sessionId) {
     return null;
   }
-  // `listPlatformOperators` already resolves classified failures to `[]` and
-  // rethrows the rest, so there is nothing left here to catch.
-  const operators = await listPlatformOperators();
-  return operators.find((op) => op.publicId === publicId) ?? null;
+
+  try {
+    const operator = await findByPublicIdWithToken(
+      publicId,
+      async (token, limit) => {
+        const response = await apiClient.operators.listOperators(
+          { limit, token },
+          buildSessionHeaders(sessionId)
+        );
+        return {
+          items: response.operators ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      }
+    );
+    return operator ? mapOperator(operator) : null;
+  } catch (error) {
+    // Classified RPC failures mean "no operator to show"; unexpected ones rethrow.
+    rethrowUnclassifiedRpcError(error);
+    return null;
+  }
 };
 
 export interface UpdatePlatformOperatorRoleInput {
