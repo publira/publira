@@ -167,8 +167,6 @@ describe("notification lib", () => {
       notifications: [],
       ok: false,
       previousToken: "",
-      users: [],
-      usersErrorMessage: undefined,
     });
   });
 
@@ -205,6 +203,87 @@ describe("notification lib", () => {
       ok: false,
       previousToken: "",
     });
+  });
+
+  it("一覧取得では対象ユーザーを読まない", async () => {
+    mockListNotificationsApi.mockResolvedValue({ notifications: [] });
+
+    const { listNotifications } = await import("./notification");
+    await listNotifications("TENANT001");
+
+    // 対象ユーザーは作成画面だけが要るので、一覧のたびに引かない。
+    expect(mockListTenantUsersApi).not.toHaveBeenCalled();
+  });
+
+  it("対象ユーザーは cursor をたどって全ページ集める", async () => {
+    mockListTenantUsersApi
+      .mockResolvedValueOnce({
+        nextToken: "page-2",
+        users: [{ name: "ヤマダ", publicId: "USER001" }],
+      })
+      .mockResolvedValueOnce({
+        nextToken: "",
+        users: [{ name: "アオキ", publicId: "USER002" }],
+      });
+
+    const { listAllNotificationTargetUsers } = await import("./notification");
+    const result = await listAllNotificationTargetUsers("TENANT001");
+
+    expect(mockListTenantUsersApi).toHaveBeenNthCalledWith(
+      1,
+      {
+        limit: 100,
+        query: "",
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockListTenantUsersApi).toHaveBeenNthCalledWith(
+      2,
+      {
+        limit: 100,
+        query: "",
+        tenant: { tenantId: "TENANT001" },
+        token: "page-2",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    // 2 ページ目の候補まで選択肢に載り、全体を名前順に並べ替える。
+    expect(result).toEqual({
+      ok: true,
+      users: [
+        { name: "アオキ", publicId: "USER002" },
+        { name: "ヤマダ", publicId: "USER001" },
+      ],
+    });
+  });
+
+  it("対象ユーザーを全ページ読めなければ選択肢を出さない", async () => {
+    // 同じ token が返り続ける壊れた応答。途中まで集めた候補を「全員」として
+    // 見せると、載っていない相手を選べないことに気付けない。
+    mockListTenantUsersApi.mockResolvedValue({
+      nextToken: "same-token",
+      users: [{ name: "ヤマダ", publicId: "USER001" }],
+    });
+
+    const { listAllNotificationTargetUsers } = await import("./notification");
+    const result = await listAllNotificationTargetUsers("TENANT001");
+
+    expect(result.ok).toBe(false);
+    expect(result.users).toEqual([]);
+  });
+
+  it("対象ユーザーの取得に失敗したらメッセージを返す", async () => {
+    mockListTenantUsersApi.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listAllNotificationTargetUsers } = await import("./notification");
+    const result = await listAllNotificationTargetUsers("TENANT001");
+
+    expect(result.ok).toBe(false);
+    expect(result.users).toEqual([]);
   });
 
   it("通知作成成功時に件数を返す", async () => {
