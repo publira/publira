@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"net/mail"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -17,8 +19,46 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 )
+
+const (
+	defaultOperatorListLimit = 20
+	maxOperatorListLimit     = 100
+)
+
+type operatorPageRow struct {
+	ID        uuid.UUID
+	PublicID  string
+	Email     string
+	Name      string
+	Role      string
+	Status    string
+	CreatedAt time.Time
+}
+
+func toOperatorPage[T any](rows []T, convert func(T) operatorPageRow) []operatorPageRow {
+	page := make([]operatorPageRow, len(rows))
+	for index, row := range rows {
+		page[index] = convert(row)
+	}
+	return page
+}
+
+func operatorPageFromAsc(row dbmodels.ListPlatformOperatorsAscRow) operatorPageRow {
+	return operatorPageRow{
+		ID: row.ID, PublicID: row.PublicID, Email: row.Email, Name: row.Name,
+		Role: row.Role, Status: row.Status, CreatedAt: row.CreatedAt,
+	}
+}
+
+func operatorPageFromDesc(row dbmodels.ListPlatformOperatorsDescRow) operatorPageRow {
+	return operatorPageRow{
+		ID: row.ID, PublicID: row.PublicID, Email: row.Email, Name: row.Name,
+		Role: row.Role, Status: row.Status, CreatedAt: row.CreatedAt,
+	}
+}
 
 func normalizePlatformOperatorRole(rawRole string) (string, bool) {
 	role := strings.TrimSpace(rawRole)
@@ -45,7 +85,7 @@ func operatorToProto(publicID, name, email, role, status string, createdAt strin
 	}
 }
 
-func listOperatorRowToProto(row dbmodels.ListPlatformOperatorsRow) *publirasplatformv1.PlatformOperator {
+func listOperatorRowToProto(row operatorPageRow) *publirasplatformv1.PlatformOperator {
 	return operatorToProto(
 		row.PublicID,
 		row.Name,
@@ -89,17 +129,83 @@ func (s *platformServer) ListOperators(
 	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
 		return nil, err
 	}
-	rows, err := s.queriesFor(ctx).ListPlatformOperators(ctx)
+
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultOperatorListLimit, maxOperatorListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+	}
+
+	rows, err := s.operatorPage(ctx, keys, cursor.Direction, limit+1)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to list platform operators", "error", err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list operators"))
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
 	resp := &publirasplatformv1.ListOperatorsResponse{
 		Operators: make([]*publirasplatformv1.PlatformOperator, len(rows)),
 	}
 	for index, row := range rows {
 		resp.Operators[index] = listOperatorRowToProto(row)
 	}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+		}
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		resp.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
 	return connect.NewResponse(resp), nil
+}
+
+func (s *platformServer) operatorPage(
+	ctx context.Context,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]operatorPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListPlatformOperatorsAsc(ctx, dbmodels.ListPlatformOperatorsAscParams{
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return toOperatorPage(rows, operatorPageFromAsc), nil
+	}
+
+	rows, err := queries.ListPlatformOperatorsDesc(ctx, dbmodels.ListPlatformOperatorsDescParams{
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toOperatorPage(rows, operatorPageFromDesc), nil
 }
 
 func (s *platformServer) CreateOperator(

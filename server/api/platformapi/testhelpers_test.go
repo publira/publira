@@ -143,7 +143,7 @@ const (
 	integrationListTenantsQuery              = "-- name: ListTenantsDesc :many\n"
 	integrationCreateTenantQuery             = "-- name: CreateTenant :one\n"
 	integrationUpdateTenantStatusQuery       = "-- name: UpdateTenantStatus :one\n"
-	integrationListPlatformOperatorsQuery    = "-- name: ListPlatformOperators :many\n"
+	integrationListPlatformOperatorsQuery    = "-- name: ListPlatformOperatorsDesc :many\n"
 	integrationCountAllTenantsQuery          = "-- name: CountAllTenants :one\n"
 	integrationCountActiveTenantsQuery       = "-- name: CountActiveTenants :one\n"
 	integrationCountSuspendedTenantsQuery    = "-- name: CountSuspendedTenants :one\n"
@@ -159,7 +159,7 @@ func integrationTenantColumns() []string {
 }
 
 func integrationOperatorColumns() []string {
-	return []string{"public_id", "email", "name", "role", "status", "created_at"}
+	return []string{"id", "public_id", "email", "name", "role", "status", "created_at"}
 }
 
 func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {

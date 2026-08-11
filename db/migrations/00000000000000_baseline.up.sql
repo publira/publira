@@ -867,6 +867,11 @@ CREATE INDEX idx_platform_audit_logs_created_at ON platform_audit_logs USING btr
 -- INDEX: idx_platform_audit_logs_target
 CREATE INDEX idx_platform_audit_logs_target ON platform_audit_logs USING btree (target_type, target_id);
 
+-- INDEX: idx_platform_users_created_at
+-- 末尾の id はオペレーター一覧の cursor のタイブレーカー。btree は逆順にも
+-- 走査できるので、この 1 本で次ページと前ページの両方を索引順に取り出せる。
+CREATE INDEX idx_platform_users_created_at ON platform_users USING btree (created_at DESC, id DESC);
+
 -- INDEX: idx_platform_user_email_change_tokens_current_token
 CREATE INDEX idx_platform_user_email_change_tokens_current_token ON platform_user_email_change_tokens USING btree (current_email_token_hash);
 
