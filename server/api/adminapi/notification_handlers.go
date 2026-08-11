@@ -14,6 +14,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 const (
@@ -32,22 +33,106 @@ func isValidNotificationLinkURL(raw string) bool {
 	return strings.HasPrefix(raw, "https://") || strings.HasPrefix(raw, "http://")
 }
 
-func mapAdminNotificationFromRow(row dbmodels.ListNotificationsForTenantRow) *publiraadminv1.AdminNotification {
+type notificationPageRow struct {
+	id                 uuid.UUID
+	targetUserID       uuid.NullUUID
+	title              string
+	body               string
+	linkURL            sql.NullString
+	targetUserPublicID sql.NullString
+	targetUserName     sql.NullString
+	createdAt          time.Time
+}
+
+func mapNotificationDescRows(rows []dbmodels.ListNotificationsForTenantDescRow) []notificationPageRow {
+	mapped := make([]notificationPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, notificationPageRow{
+			id:                 row.ID,
+			targetUserID:       row.TargetUserID,
+			title:              row.Title,
+			body:               row.Body,
+			linkURL:            row.LinkUrl,
+			targetUserPublicID: row.TargetUserPublicID,
+			targetUserName:     row.TargetUserName,
+			createdAt:          row.CreatedAt,
+		})
+	}
+	return mapped
+}
+
+func mapNotificationAscRows(rows []dbmodels.ListNotificationsForTenantAscRow) []notificationPageRow {
+	mapped := make([]notificationPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, notificationPageRow{
+			id:                 row.ID,
+			targetUserID:       row.TargetUserID,
+			title:              row.Title,
+			body:               row.Body,
+			linkURL:            row.LinkUrl,
+			targetUserPublicID: row.TargetUserPublicID,
+			targetUserName:     row.TargetUserName,
+			createdAt:          row.CreatedAt,
+		})
+	}
+	return mapped
+}
+
+func mapAdminNotificationFromRow(row notificationPageRow) *publiraadminv1.AdminNotification {
 	audienceType := publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_ALL_USERS
-	if row.TargetUserID.Valid {
+	if row.targetUserID.Valid {
 		audienceType = publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS
 	}
 
 	return &publiraadminv1.AdminNotification{
-		Id:                 row.ID.String(),
-		Title:              row.Title,
-		Body:               row.Body,
-		LinkUrl:            row.LinkUrl.String,
+		Id:                 row.id.String(),
+		Title:              row.title,
+		Body:               row.body,
+		LinkUrl:            row.linkURL.String,
 		AudienceType:       audienceType,
-		TargetUserPublicId: row.TargetUserPublicID.String,
-		TargetUserName:     row.TargetUserName.String,
-		CreatedAt:          row.CreatedAt.UTC().Format(time.RFC3339),
+		TargetUserPublicId: row.targetUserPublicID.String,
+		TargetUserName:     row.targetUserName.String,
+		CreatedAt:          row.createdAt.UTC().Format(time.RFC3339),
 	}
+}
+
+// notificationPage loads one over-fetched page. Admin ListNotifications is
+// sorted (created_at, id) DESC. Forward uses the DESC query; backward uses ASC
+// so the index can be scanned in reverse. pagination.Page flips ASC rows back
+// into display order.
+func (s *adminServer) notificationPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]notificationPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListNotificationsForTenantAsc(ctx, dbmodels.ListNotificationsForTenantAscParams{
+			TenantID:        tenantID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapNotificationAscRows(rows), nil
+	}
+
+	rows, err := queries.ListNotificationsForTenantDesc(ctx, dbmodels.ListNotificationsForTenantDescParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapNotificationDescRows(rows), nil
 }
 
 func (s *adminServer) ListNotifications(
@@ -62,32 +147,53 @@ func (s *adminServer) ListNotifications(
 		return nil, err
 	}
 
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > maxNotificationListLimit {
-		limit = defaultNotificationListLimit
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultNotificationListLimit, maxNotificationListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
 
-	rows, err := s.queriesFor(ctx).ListNotificationsForTenant(ctx, dbmodels.ListNotificationsForTenantParams{
-		TenantID: tenant.ID,
-		Limit:    limit,
-		Offset:   offset,
-	})
+	rows, err := s.notificationPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	items := make([]*publiraadminv1.AdminNotification, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, mapAdminNotificationFromRow(row))
 	}
 
-	return connect.NewResponse(&publiraadminv1.ListNotificationsResponse{
-		Notifications: items,
-	}), nil
+	res := &publiraadminv1.ListNotificationsResponse{Notifications: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *adminServer) CreateNotification(

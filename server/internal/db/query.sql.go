@@ -4625,7 +4625,7 @@ func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTe
 	return items, nil
 }
 
-const listNotificationsForTenant = `-- name: ListNotificationsForTenant :many
+const listNotificationsForTenantAsc = `-- name: ListNotificationsForTenantAsc :many
 SELECT
     n.id,
     n.tenant_id,
@@ -4641,17 +4641,30 @@ SELECT
 FROM notifications n
     LEFT JOIN users u ON u.id = n.target_user_id
 WHERE n.tenant_id = $1
-ORDER BY n.created_at DESC
-LIMIT $2 OFFSET $3
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (n.created_at, n.id) >= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (n.created_at, n.id) > ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY n.created_at ASC, n.id ASC
+LIMIT $5
 `
 
-type ListNotificationsForTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Limit    int32     `json:"limit"`
-	Offset   int32     `json:"offset"`
+type ListNotificationsForTenantAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
 }
 
-type ListNotificationsForTenantRow struct {
+type ListNotificationsForTenantAscRow struct {
 	ID                 uuid.UUID       `json:"id"`
 	TenantID           uuid.UUID       `json:"tenant_id"`
 	TargetUserID       uuid.NullUUID   `json:"target_user_id"`
@@ -4665,16 +4678,122 @@ type ListNotificationsForTenantRow struct {
 	TargetUserName     sql.NullString  `json:"target_user_name"`
 }
 
-// テナント管理画面向け通知一覧を取得
-func (q *Queries) ListNotificationsForTenant(ctx context.Context, arg ListNotificationsForTenantParams) ([]ListNotificationsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listNotificationsForTenant, arg.TenantID, arg.Limit, arg.Offset)
+// テナント管理画面向け通知一覧（前ページ方向）
+func (q *Queries) ListNotificationsForTenantAsc(ctx context.Context, arg ListNotificationsForTenantAscParams) ([]ListNotificationsForTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listNotificationsForTenantAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListNotificationsForTenantRow
+	var items []ListNotificationsForTenantAscRow
 	for rows.Next() {
-		var i ListNotificationsForTenantRow
+		var i ListNotificationsForTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.TargetUserID,
+			&i.NotificationType,
+			&i.Title,
+			&i.Body,
+			&i.LinkUrl,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.TargetUserPublicID,
+			&i.TargetUserName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNotificationsForTenantDesc = `-- name: ListNotificationsForTenantDesc :many
+SELECT
+    n.id,
+    n.tenant_id,
+    n.target_user_id,
+    n.notification_type,
+    n.title,
+    n.body,
+    n.link_url,
+    n.metadata,
+    n.created_at,
+    u.public_id AS target_user_public_id,
+    u.name AS target_user_name
+FROM notifications n
+    LEFT JOIN users u ON u.id = n.target_user_id
+WHERE n.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (n.created_at, n.id) <= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (n.created_at, n.id) < ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY n.created_at DESC, n.id DESC
+LIMIT $5
+`
+
+type ListNotificationsForTenantDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListNotificationsForTenantDescRow struct {
+	ID                 uuid.UUID       `json:"id"`
+	TenantID           uuid.UUID       `json:"tenant_id"`
+	TargetUserID       uuid.NullUUID   `json:"target_user_id"`
+	NotificationType   string          `json:"notification_type"`
+	Title              string          `json:"title"`
+	Body               string          `json:"body"`
+	LinkUrl            sql.NullString  `json:"link_url"`
+	Metadata           json.RawMessage `json:"metadata"`
+	CreatedAt          time.Time       `json:"created_at"`
+	TargetUserPublicID sql.NullString  `json:"target_user_public_id"`
+	TargetUserName     sql.NullString  `json:"target_user_name"`
+}
+
+// Admin ListNotifications は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで idx_notifications_tenant_created_at を
+// 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
+// 索引順に読めないため、走査方向ごとにクエリを分ける。
+// cursor の共通仕様は proto/README.md を参照。
+// テナント管理画面向け通知一覧（次ページ方向）
+func (q *Queries) ListNotificationsForTenantDesc(ctx context.Context, arg ListNotificationsForTenantDescParams) ([]ListNotificationsForTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listNotificationsForTenantDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNotificationsForTenantDescRow
+	for rows.Next() {
+		var i ListNotificationsForTenantDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

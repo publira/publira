@@ -99,7 +99,6 @@ export const listNotifications = async (
     const response = await apiClient.notification.listNotifications(
       {
         limit: 100,
-        offset: 0,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)

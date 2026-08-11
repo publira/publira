@@ -171,11 +171,14 @@ func (x *AdminNotification) GetCreatedAt() string {
 	return ""
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListNotificationsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -224,16 +227,20 @@ func (x *ListNotificationsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListNotificationsRequest) GetOffset() int32 {
+func (x *ListNotificationsRequest) GetToken() string {
 	if x != nil {
-		return x.Offset
+		return x.Token
 	}
-	return 0
+	return ""
 }
 
 type ListNotificationsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Notifications []*AdminNotification   `protobuf:"bytes,1,rep,name=notifications,proto3" json:"notifications,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -273,6 +280,20 @@ func (x *ListNotificationsResponse) GetNotifications() []*AdminNotification {
 		return x.Notifications
 	}
 	return nil
+}
+
+func (x *ListNotificationsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListNotificationsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type CreateNotificationRequest struct {
@@ -417,13 +438,16 @@ const file_publira_admin_v1_notification_proto_rawDesc = "" +
 	"\x15target_user_public_id\x18\x06 \x01(\tR\x12targetUserPublicId\x12(\n" +
 	"\x10target_user_name\x18\a \x01(\tR\x0etargetUserName\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"\x81\x01\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"\x8d\x01\n" +
 	"\x18ListNotificationsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"f\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\xac\x01\n" +
 	"\x19ListNotificationsResponse\x12I\n" +
-	"\rnotifications\x18\x01 \x03(\v2#.publira.admin.v1.AdminNotificationR\rnotifications\"\x9f\x02\n" +
+	"\rnotifications\x18\x01 \x03(\v2#.publira.admin.v1.AdminNotificationR\rnotifications\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x9f\x02\n" +
 	"\x19CreateNotificationRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +

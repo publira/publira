@@ -2044,8 +2044,13 @@ INSERT INTO notifications (
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
--- name: ListNotificationsForTenant :many
--- テナント管理画面向け通知一覧を取得
+-- Admin ListNotifications は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで idx_notifications_tenant_created_at を
+-- 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
+-- 索引順に読めないため、走査方向ごとにクエリを分ける。
+-- cursor の共通仕様は proto/README.md を参照。
+-- name: ListNotificationsForTenantDesc :many
+-- テナント管理画面向け通知一覧（次ページ方向）
 SELECT
     n.id,
     n.tenant_id,
@@ -2060,9 +2065,51 @@ SELECT
     u.name AS target_user_name
 FROM notifications n
     LEFT JOIN users u ON u.id = n.target_user_id
-WHERE n.tenant_id = $1
-ORDER BY n.created_at DESC
-LIMIT $2 OFFSET $3;
+WHERE n.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY n.created_at DESC, n.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListNotificationsForTenantAsc :many
+-- テナント管理画面向け通知一覧（前ページ方向）
+SELECT
+    n.id,
+    n.tenant_id,
+    n.target_user_id,
+    n.notification_type,
+    n.title,
+    n.body,
+    n.link_url,
+    n.metadata,
+    n.created_at,
+    u.public_id AS target_user_public_id,
+    u.name AS target_user_name
+FROM notifications n
+    LEFT JOIN users u ON u.id = n.target_user_id
+WHERE n.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY n.created_at ASC, n.id ASC
+LIMIT sqlc.arg('limit');
 
 -- 公開サイトの ListNotifications は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
