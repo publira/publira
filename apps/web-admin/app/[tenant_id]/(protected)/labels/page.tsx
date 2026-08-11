@@ -11,10 +11,17 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { listLabels } from "#lib/label";
 import { getTenantId } from "#lib/tenant-id";
 
 import { LabelManager } from "./_components/label-manager";
+
+type LabelPageProps = PageProps<"/[tenant_id]/labels">;
 
 export const metadata: Metadata = {
   title: "レーベル",
@@ -34,19 +41,24 @@ const LabelManagerSkeleton = () => (
   </div>
 );
 
-const LabelManagerData = async () => {
-  const tenantId = await getTenantId();
-  const listResult = await listLabels(tenantId);
+const LabelManagerData = async ({
+  searchParams,
+}: Pick<LabelPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const { token } = parseCursorSearchParams(sp);
+  const listResult = await listLabels(tenantId, { token });
 
   return (
     <LabelManager
-      initialLabels={listResult.labels}
-      initialListErrorMessage={listResult.ok ? undefined : listResult.message}
+      {...cursorPageHrefs(listResult)}
+      labels={listResult.labels}
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      pageSize={DEFAULT_PAGE_SIZE}
     />
   );
 };
 
-const LabelPage = () => (
+const LabelPage = ({ searchParams }: LabelPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -59,7 +71,7 @@ const LabelPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<LabelManagerSkeleton />}>
-        <LabelManagerData />
+        <LabelManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>
   </AdminPage>
