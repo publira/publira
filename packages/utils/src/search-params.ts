@@ -105,19 +105,25 @@ export interface SearchParamDateOptions {
 }
 
 /**
- * Unwrap the single value of a query key. A key repeated with different values
- * is not something a link in this app produces, so rather than guessing which
- * one the visitor meant (`URLSearchParams.get` would silently take the first),
- * it is treated as invalid and resolves to the fallback.
+ * Unwrap the single value of a query key. A key repeated with *conflicting*
+ * values is not something a link in this app produces, so rather than guessing
+ * which one the visitor meant (`URLSearchParams.get` would silently take the
+ * first), it is treated as invalid and resolves to the fallback. Repeating the
+ * same value is unambiguous and passes through.
  */
 const singleValue = (value: unknown): string | undefined => {
   if (typeof value === "string") {
     return value;
   }
 
-  if (Array.isArray(value) && value.length === 1) {
-    const [only] = value as unknown[];
-    return typeof only === "string" ? only : undefined;
+  if (Array.isArray(value) && value.length > 0) {
+    const [first, ...rest] = value as unknown[];
+    if (typeof first !== "string") {
+      return undefined;
+    }
+
+    // Repeating a key with one and the same value asks nothing ambiguous.
+    return rest.every((entry) => entry === first) ? first : undefined;
   }
 
   return undefined;

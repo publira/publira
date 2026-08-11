@@ -19,10 +19,20 @@ describe("searchParamString", () => {
     expect(searchParamString().parse(["only"])).toBe("only");
   });
 
-  it("falls back for a repeated key rather than guessing which value won", () => {
+  it("falls back for a conflicting repeated key rather than guessing which value won", () => {
     expect(searchParamString({ fallback: "" }).parse(["first", "second"])).toBe(
       ""
     );
+  });
+
+  it("accepts a repeated key that carries the same value every time", () => {
+    expect(searchParamString().parse(["same", "same", "same"])).toBe("same");
+  });
+
+  it("falls back when a repeated key mixes a string with a non-string", () => {
+    const schema = searchParamString({ fallback: "" });
+    expect(schema.parse(["same", 42])).toBe("");
+    expect(schema.parse([42, "same"])).toBe("");
   });
 
   it("falls back for absent, empty, and non-string values", () => {
