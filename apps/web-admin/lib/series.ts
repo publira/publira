@@ -5,6 +5,12 @@ import {
 } from "@publira/api-client/errors";
 
 import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
 import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
@@ -31,27 +37,20 @@ export interface SeriesItem {
   eyeCatchImageUpdatedAt: string;
 }
 
-export interface ListSeriesOptions {
-  limit?: number;
-  token?: string;
-}
-
-export type ListSeriesResult =
-  | {
-      ok: true;
-      series: SeriesItem[];
-      defaultReadingPeriodHours: number;
-      nextToken: string;
-      previousToken: string;
-    }
-  | {
-      ok: false;
-      message: string;
-      series: SeriesItem[];
-      defaultReadingPeriodHours: number;
-      nextToken: string;
-      previousToken: string;
-    };
+export type ListSeriesResult = CursorPageTokens &
+  (
+    | {
+        ok: true;
+        series: SeriesItem[];
+        defaultReadingPeriodHours: number;
+      }
+    | {
+        ok: false;
+        message: string;
+        series: SeriesItem[];
+        defaultReadingPeriodHours: number;
+      }
+  );
 
 export type CreateSeriesResult =
   | { ok: true; series: SeriesItem }
@@ -160,18 +159,17 @@ const mapSeries = (series: {
  */
 export const listSeries = async (
   tenantId: string,
-  options: ListSeriesOptions = {}
+  options: CursorPageOptions = {}
 ): Promise<ListSeriesResult> => {
   "use cache: private";
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
+      ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
       message: "セッションが無効です。再ログインしてください。",
-      nextToken: "",
       ok: false,
-      previousToken: "",
       series: [],
     };
   }
@@ -179,28 +177,25 @@ export const listSeries = async (
   try {
     const response = await apiClient.series.listSeries(
       {
-        limit: options.limit ?? 20,
+        ...cursorPageRequest(options),
         tenant: { tenantId },
-        token: options.token ?? "",
       },
       withSessionHeaders(sessionId)
     );
 
     return {
+      ...cursorPageTokens(response),
       defaultReadingPeriodHours: response.defaultReadingPeriodHours ?? 0,
-      nextToken: response.nextToken ?? "",
       ok: true,
-      previousToken: response.previousToken ?? "",
       series: (response.series ?? []).map((item) => mapSeries(item)),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
+      ...emptyCursorPageTokens,
       defaultReadingPeriodHours: 0,
       message: mapErrorToMessage(error, genericListErrorMessage),
-      nextToken: "",
       ok: false,
-      previousToken: "",
       series: [],
     };
   }

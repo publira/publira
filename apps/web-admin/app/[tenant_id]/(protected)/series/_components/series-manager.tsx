@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -19,17 +18,18 @@ import {
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 
-import { PaginationControls } from "#components/pagination-controls";
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
 
 import type { SeriesListItem } from "../series-types";
 
-interface SeriesManagerProps {
+type SeriesManagerProps = CursorPageHrefs & {
   series: SeriesListItem[];
   listErrorMessage?: string;
-  nextHref?: string;
   pageSize: number;
-  previousHref?: string;
-}
+};
 
 const getStatusTone = (isPublished: boolean) =>
   isPublished ? ("info" as const) : ("muted" as const);
@@ -53,15 +53,7 @@ export const SeriesManager = ({
   pageSize,
   previousHref,
 }: SeriesManagerProps) => {
-  /*
-   * Page links stay up even on an empty page: the server hands back a recovery
-   * token when the row a token pointed at is gone, and hiding the links would
-   * leave that page with no way back into the list. That page is also the
-   * reason the empty state is worded twice — an empty page one means the tenant
-   * has no series, while an empty page with links only means this page lost the
-   * rows it pointed at.
-   */
-  const hasPageLinks = Boolean(previousHref) || Boolean(nextHref);
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination = series.length > 0 || hasPageLinks;
 
   return (
@@ -83,17 +75,11 @@ export const SeriesManager = ({
         ) : null}
 
         {series.length === 0 ? (
-          <EmptyState
-            description={
-              hasPageLinks
-                ? "表示中に他の操作で削除された可能性があります。前後のページへ移動してください。"
-                : "新規作成ページからシリーズを作成してください。"
-            }
-            title={
-              hasPageLinks
-                ? "このページに表示できるシリーズはありません。"
-                : "シリーズがまだ登録されていません。"
-            }
+          <CursorPageEmptyState
+            description="新規作成ページからシリーズを作成してください。"
+            hasPageLinks={hasPageLinks}
+            itemLabel="シリーズ"
+            title="シリーズがまだ登録されていません。"
           />
         ) : (
           <Table>
@@ -146,16 +132,12 @@ export const SeriesManager = ({
         )}
 
         {showPagination ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              新しい順に、1ページあたり {pageSize} 件まで表示します。
-            </p>
-            <PaginationControls
-              ariaLabel="シリーズ一覧のページ送り"
-              nextHref={nextHref}
-              previousHref={previousHref}
-            />
-          </div>
+          <PaginationFooter
+            ariaLabel="シリーズ一覧のページ送り"
+            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
         ) : null}
       </CardContent>
     </Card>
