@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { cursorTokenSchema } from "#lib/cursor-token";
+
 const maxSearchParamLength = 255;
 
 type QueryParamValue = string | string[] | undefined;
@@ -41,11 +43,6 @@ const singleSearchParamSchema = z.preprocess(
   z
     .string()
     .transform((value) => (value.length <= maxSearchParamLength ? value : ""))
-);
-
-const cursorTokenSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value : ""),
-  z.string()
 );
 
 const createTenantFiltersSchema = (allowedStatusValues: ReadonlySet<string>) =>

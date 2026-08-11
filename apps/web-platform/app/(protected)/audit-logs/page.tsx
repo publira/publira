@@ -1,5 +1,5 @@
 import { Badge } from "@publira/ui-components/badge";
-import { Button, LinkButton } from "@publira/ui-components/button";
+import { Button } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -23,6 +23,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformPage,
   PlatformPageContent,
@@ -225,23 +226,6 @@ const AuditLogsFilters = ({
   </Form>
 );
 
-const AuditLogsPageControl = ({
-  href,
-  label,
-}: {
-  href?: string;
-  label: string;
-}) =>
-  href ? (
-    <LinkButton render={<Link href={href} />} size="sm" variant="outline">
-      {label}
-    </LinkButton>
-  ) : (
-    <Button disabled size="sm" variant="outline">
-      {label}
-    </Button>
-  );
-
 const AuditLogsPagination = ({
   actionFilter,
   actorFilter,
@@ -267,24 +251,19 @@ const AuditLogsPagination = ({
   return (
     <div className="flex items-center justify-between gap-3">
       <p className="text-xs text-muted-foreground">{summaryText}</p>
-      <div className="flex items-center gap-2">
-        <AuditLogsPageControl
-          href={
-            hasPrev
-              ? buildAuditLogsPath({ ...filterParams, offset: prevOffset })
-              : undefined
-          }
-          label="前へ"
-        />
-        <AuditLogsPageControl
-          href={
-            hasNext
-              ? buildAuditLogsPath({ ...filterParams, offset: nextOffset })
-              : undefined
-          }
-          label="次へ"
-        />
-      </div>
+      <PaginationControls
+        ariaLabel="監査ログ一覧のページ送り"
+        nextHref={
+          hasNext
+            ? buildAuditLogsPath({ ...filterParams, offset: nextOffset })
+            : undefined
+        }
+        previousHref={
+          hasPrev
+            ? buildAuditLogsPath({ ...filterParams, offset: prevOffset })
+            : undefined
+        }
+      />
     </div>
   );
 };

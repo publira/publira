@@ -2,7 +2,7 @@
 
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
-import { Button, LinkButton } from "@publira/ui-components/button";
+import { Button } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -36,9 +36,9 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import Link from "next/link";
 import { useActionState, useCallback, useState, useTransition } from "react";
 
+import { PaginationControls } from "#components/pagination-controls";
 import {
   getTenantRoleLabel,
   getTenantStatusLabel,
@@ -87,23 +87,6 @@ interface TenantMembersManagerProps {
     formData: FormData
   ) => Promise<FormActionState>;
 }
-
-const InvitationPageControl = ({
-  href,
-  label,
-}: {
-  href?: string;
-  label: string;
-}) =>
-  href ? (
-    <LinkButton render={<Link href={href} />} size="sm" variant="outline">
-      {label}
-    </LinkButton>
-  ) : (
-    <Button disabled size="sm" variant="outline">
-      {label}
-    </Button>
-  );
 
 const invitationStatusTone = (status: string) => {
   if (status === "pending") {
@@ -674,16 +657,11 @@ export const TenantMembersManager = ({
             </TableBody>
           </Table>
 
-          <nav
-            aria-label="管理者招待一覧のページ送り"
-            className="flex justify-end gap-2"
-          >
-            <InvitationPageControl
-              href={invitationsPreviousHref}
-              label="前へ"
-            />
-            <InvitationPageControl href={invitationsNextHref} label="次へ" />
-          </nav>
+          <PaginationControls
+            ariaLabel="管理者招待一覧のページ送り"
+            nextHref={invitationsNextHref}
+            previousHref={invitationsPreviousHref}
+          />
         </CardContent>
       </Card>
     </div>

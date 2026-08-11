@@ -45,6 +45,19 @@ import type { CreateSessionRequest } from "@publira/api-client/public/auth";
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";
 ```
 
+## cursor 一覧からの単体検索
+
+単体取得 RPC がないリソースを cursor 一覧から検索する場合は、共有 helper `findByPublicIdWithToken` を使います。ページは token の依存関係に従って逐次取得し、同じ token の再出現とページ数・行数の上限で不正なレスポンスによる無限走査を防ぎます。
+
+```ts
+import { findByPublicIdWithToken } from "@publira/api-client/pagination";
+
+const item = await findByPublicIdWithToken(publicId, async (token, limit) => {
+  const response = await client.listItems({ limit, token });
+  return { items: response.items, nextToken: response.nextToken };
+});
+```
+
 ## テナントヘッダー
 
 `tenantPublicId` を指定すると、すべての API リクエストに `X-Publira-Tenant-Public-Id` ヘッダーが自動で付与されます。
