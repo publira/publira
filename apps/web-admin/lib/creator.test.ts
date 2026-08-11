@@ -27,6 +27,13 @@ vi.mock("./api", () => ({
   }),
 }));
 
+const creatorPage = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    name: `Creator ${index + 1}`,
+    profileText: "",
+    publicId: `CREATOR${String(index + 1).padStart(3, "0")}`,
+  }));
+
 describe("creator lib", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,14 +42,9 @@ describe("creator lib", () => {
   });
 
   it("cursor をたどって101件目の著者を取得する", async () => {
-    const firstPage = Array.from({ length: 100 }, (_, index) => ({
-      name: `Creator ${index + 1}`,
-      profileText: "",
-      publicId: `CREATOR${String(index + 1).padStart(3, "0")}`,
-    }));
     mockListCreators
       .mockResolvedValueOnce({
-        creators: firstPage,
+        creators: creatorPage(100),
         nextToken: "page-2",
       })
       .mockResolvedValueOnce({
@@ -87,5 +89,63 @@ describe("creator lib", () => {
       },
       ok: true,
     });
+  });
+
+  it("セッションがない場合はRPCを呼ばずにエラーを返す", async () => {
+    mockGetAccessToken.mockResolvedValue(null);
+
+    const { getCreator } = await import("./creator");
+    const result = await getCreator({
+      publicId: "CREATOR001",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockListCreators).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    });
+  });
+
+  it("全ページに一致する著者がなければnotFoundを返す", async () => {
+    mockListCreators
+      .mockResolvedValueOnce({
+        creators: creatorPage(100),
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        creators: [],
+        nextToken: "",
+      });
+
+    const { getCreator } = await import("./creator");
+    const result = await getCreator({
+      publicId: "MISSING",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockListCreators).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ notFound: true, ok: false });
+  });
+
+  it("同じnextTokenが返された場合はページ走査を停止する", async () => {
+    mockListCreators
+      .mockResolvedValueOnce({
+        creators: creatorPage(100),
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        creators: [],
+        nextToken: "page-2",
+      });
+
+    const { getCreator } = await import("./creator");
+    const result = await getCreator({
+      publicId: "MISSING",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockListCreators).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ notFound: true, ok: false });
   });
 });
