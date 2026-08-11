@@ -232,44 +232,25 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 }
 
 func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
-	tests := []struct {
-		name         string
-		direction    pagination.Direction
-		wantQuery    string
-		wantPrevious bool
-		wantNext     bool
-	}{
-		{
-			name:         "forward into a page whose rows are gone",
-			direction:    pagination.Forward,
-			wantQuery:    listActiveSeriesIDsByPublishedAtDescQuery,
-			wantPrevious: true,
-		},
-		{
-			name:      "backward into a page whose rows are gone",
-			direction: pagination.Backward,
-			wantQuery: listActiveSeriesIDsByPublishedAtAscQuery,
-			wantNext:  true,
-		},
-	}
-
-	for _, test := range tests {
+	for _, test := range seriesRecoveryCases() {
 		t.Run(test.name, func(t *testing.T) {
 			testServer, mock := newTestPublicServer(t)
 
 			tenantID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			boundaryID := uuid.Must(uuid.NewV7())
-			token := pagination.Encode(test.direction, "published_at_desc", now.Format(time.RFC3339Nano), boundaryID.String())
+			sortKey, sortArg := test.boundarySortKey(now)
+			token := pagination.Encode(test.direction, test.orderName, sortKey, boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, false, now, int32(21)).
+				WithArgs(tenantID, boundaryID, false, sortArg, int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Order:  test.order,
 				Token:  token,
 			}))
 			if err != nil {
@@ -279,11 +260,12 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			if len(resp.Msg.Series) != 0 {
 				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
 			}
-			if (resp.Msg.PreviousToken != "") != test.wantPrevious {
-				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, test.wantPrevious)
+			wantPrevious := test.direction == pagination.Forward
+			if (resp.Msg.PreviousToken != "") != wantPrevious {
+				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, wantPrevious)
 			}
-			if (resp.Msg.NextToken != "") != test.wantNext {
-				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, test.wantNext)
+			if (resp.Msg.NextToken != "") == wantPrevious {
+				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, !wantPrevious)
 			}
 
 			// The recovery token points back the way the client came and is
@@ -298,7 +280,7 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			if err != nil {
 				t.Fatalf("decode recovery token: %v", err)
 			}
-			wantKeys := []string{"published_at_desc", now.Format(time.RFC3339Nano), boundaryID.String(), seriesInclusiveKey}
+			wantKeys := []string{test.orderName, sortKey, boundaryID.String(), seriesInclusiveKey}
 			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
 				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
 			}
@@ -308,50 +290,95 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 	}
 }
 
-// Recovery happens once. When the boundary row itself is gone the recovery
-// query is empty too, and both tokens stay empty so the client falls back to
-// the first page instead of bouncing between empty pages.
-func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
-	tests := []struct {
-		name      string
-		direction pagination.Direction
-		wantQuery string
-	}{
+// seriesRecoveryCase is one empty page: the order it was requested in, the
+// direction the client was moving, and the keyset query that answers it.
+// published_at and title are separate SQL branches carrying different sort key
+// types, so both orders are walked in each direction.
+type seriesRecoveryCase struct {
+	name          string
+	order         publirav1.SeriesOrder
+	orderName     string
+	boundaryTitle string
+	direction     pagination.Direction
+	wantQuery     string
+}
+
+// boundarySortKey returns the boundary value as the token spells it and as the
+// query receives it. A title order carries the title itself; the default order
+// carries a timestamp, which only the caller's clock can supply.
+func (c seriesRecoveryCase) boundarySortKey(now time.Time) (string, any) {
+	if c.boundaryTitle != "" {
+		return c.boundaryTitle, c.boundaryTitle
+	}
+	return now.Format(time.RFC3339Nano), now
+}
+
+func seriesRecoveryCases() []seriesRecoveryCase {
+	return []seriesRecoveryCase{
 		{
-			name:      "recovering backward",
+			name:      "forward by published_at into a page whose rows are gone",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC,
+			orderName: "published_at_desc",
+			direction: pagination.Forward,
+			wantQuery: listActiveSeriesIDsByPublishedAtDescQuery,
+		},
+		{
+			name:      "backward by published_at into a page whose rows are gone",
+			order:     publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC,
+			orderName: "published_at_desc",
 			direction: pagination.Backward,
 			wantQuery: listActiveSeriesIDsByPublishedAtAscQuery,
 		},
 		{
-			name:      "recovering forward",
-			direction: pagination.Forward,
-			wantQuery: listActiveSeriesIDsByPublishedAtDescQuery,
+			name:          "forward by title into a page whose rows are gone",
+			order:         publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+			orderName:     "title_asc",
+			boundaryTitle: "Series 001",
+			direction:     pagination.Forward,
+			wantQuery:     listActiveSeriesIDsByTitleAscQuery,
+		},
+		{
+			name:          "backward by title into a page whose rows are gone",
+			order:         publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC,
+			orderName:     "title_asc",
+			boundaryTitle: "Series 001",
+			direction:     pagination.Backward,
+			wantQuery:     listActiveSeriesIDsByTitleDescQuery,
 		},
 	}
+}
 
-	for _, test := range tests {
+// Recovery happens once. When the boundary row itself is gone the recovery
+// query is empty too, and both tokens stay empty so the client falls back to
+// the first page instead of bouncing between empty pages.
+func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	// The recovery token's own direction picks the query, so the cases the
+	// empty page produced are the cases coming back in.
+	for _, test := range seriesRecoveryCases() {
 		t.Run(test.name, func(t *testing.T) {
 			testServer, mock := newTestPublicServer(t)
 
 			tenantID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			boundaryID := uuid.Must(uuid.NewV7())
+			sortKey, sortArg := test.boundarySortKey(now)
 			token := pagination.Encode(
 				test.direction,
-				"published_at_desc",
-				now.Format(time.RFC3339Nano),
+				test.orderName,
+				sortKey,
 				boundaryID.String(),
 				seriesInclusiveKey,
 			)
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, true, now, int32(21)).
+				WithArgs(tenantID, boundaryID, true, sortArg, int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
 			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
 				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Order:  test.order,
 				Token:  token,
 			}))
 			if err != nil {
