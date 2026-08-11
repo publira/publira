@@ -34,7 +34,99 @@ const creatorPage = (count: number) =>
     publicId: `CREATOR${String(index + 1).padStart(3, "0")}`,
   }));
 
-describe("creator lib", () => {
+describe("listCreators", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+    mockListCreators.mockResolvedValue({
+      creators: [],
+      nextToken: "next-page",
+      previousToken: "previous-page",
+    });
+
+    const { listCreators } = await import("./creator");
+    const result = await listCreators("TENANT001", {
+      limit: 20,
+      token: "current-page",
+    });
+
+    expect(mockListCreators).toHaveBeenCalledWith(
+      {
+        limit: 20,
+        tenant: { tenantId: "TENANT001" },
+        token: "current-page",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      nextToken: "next-page",
+      ok: true,
+      previousToken: "previous-page",
+    });
+  });
+
+  it("最初のページは空のトークンで取得する", async () => {
+    mockListCreators.mockResolvedValue({ creators: [] });
+
+    const { listCreators } = await import("./creator");
+    const result = await listCreators("TENANT001");
+
+    expect(mockListCreators).toHaveBeenCalledWith(
+      {
+        limit: 20,
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    expect(result).toMatchObject({
+      nextToken: "",
+      ok: true,
+      previousToken: "",
+    });
+  });
+
+  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+    mockListCreators.mockResolvedValue({
+      creators: [
+        { name: "ぬ", profileText: "", publicId: "CREATOR002" },
+        { name: "あ", profileText: "", publicId: "CREATOR001" },
+      ],
+    });
+
+    const { listCreators } = await import("./creator");
+    const result = await listCreators("TENANT001");
+
+    expect(result.creators.map((item) => item.publicId)).toEqual([
+      "CREATOR002",
+      "CREATOR001",
+    ]);
+  });
+
+  it("取得に失敗してもトークンなしの結果を返す", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockListCreators.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listCreators } = await import("./creator");
+    const result = await listCreators("TENANT001", { token: "current-page" });
+
+    expect(result).toMatchObject({
+      creators: [],
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
+});
+
+describe("getCreator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();

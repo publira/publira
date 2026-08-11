@@ -12,9 +12,16 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { listCreators } from "#lib/creator";
+import {
+  cursorPageHrefs,
+  DEFAULT_PAGE_SIZE,
+  parseCursorSearchParams,
+} from "#lib/cursor-page";
 import { getTenantId } from "#lib/tenant-id";
 
 import { CreatorManager } from "./_components/creator-manager";
+
+type CreatorPageProps = PageProps<"/[tenant_id]/creators">;
 
 export const metadata: Metadata = {
   title: "著者",
@@ -34,19 +41,24 @@ const CreatorManagerSkeleton = () => (
   </div>
 );
 
-const CreatorManagerData = async () => {
-  const tenantId = await getTenantId();
-  const listResult = await listCreators(tenantId);
+const CreatorManagerData = async ({
+  searchParams,
+}: Pick<CreatorPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const { token } = parseCursorSearchParams(sp);
+  const listResult = await listCreators(tenantId, { token });
 
   return (
     <CreatorManager
-      initialListErrorMessage={listResult.ok ? undefined : listResult.message}
-      initialCreators={listResult.creators}
+      {...cursorPageHrefs(listResult)}
+      creators={listResult.creators}
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      pageSize={DEFAULT_PAGE_SIZE}
     />
   );
 };
 
-const CreatorPage = () => (
+const CreatorPage = ({ searchParams }: CreatorPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -59,7 +71,7 @@ const CreatorPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<CreatorManagerSkeleton />}>
-        <CreatorManagerData />
+        <CreatorManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>
   </AdminPage>
