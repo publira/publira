@@ -35,7 +35,7 @@ Playwright による Web 横断 E2E の共通基盤と、公開カタログ・�
 | E2E Redis（compose 公開）                              | `6380` |
 
 PID / ログ / ローカル storage は既定で `e2e/.run/` に置く。  
-`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` が自動で `e2e/.run/<fingerprint>/` に分離する（明示的な `E2E_RUN_DIR` があればそれを優先）。同じポート集合での並行起動はポート競合で失敗する想定。
+`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じポートでの並行起動はポート競合で失敗する想定。
 
 ## 1 コマンド実行
 
@@ -165,7 +165,7 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
    `playwright.config.ts` の `projects` に `baseURL` を足すか、テスト内で `page.goto` の絶対 URL を使う。定数は `src/urls.ts` に集約する。
 4. **起動対象を増やす場合**  
    `scripts/start-apps.sh` / `wait-ready.sh` / `stop-apps.sh` にプロセスと probe を追加（start だけ足して stop を忘れると `task e2e:down` 後もポートが残る）。compose に Traefik を足す場合は Dev Container のルールを参考にする（#55）。  
-   別ポートで stack を並行起動する場合、`lib.sh` がポート指紋で `E2E_RUN_DIR` を自動分離する。必要なら明示的に `E2E_RUN_DIR` を渡して上書きできる。
+   別ポートで stack を並行起動する場合、`lib.sh` がポート番号と project 名から `E2E_RUN_DIR` を自動で分ける。必要なら明示的に `E2E_RUN_DIR` を渡して上書きできる。
 5. **ローカルで確認**  
    `task e2e` または stack 固定 + `task e2e:test`。
 6. **CI**  

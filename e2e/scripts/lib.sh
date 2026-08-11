@@ -54,9 +54,10 @@ export STORAGE_BACKEND="${STORAGE_BACKEND:-local}"
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share
 # PID/log state: stop-apps would kill the other run. When E2E_RUN_DIR is unset
-# and any of those knobs leave the defaults, isolate under e2e/.run/<fingerprint>
-# automatically. Explicit E2E_RUN_DIR always wins. The default path e2e/.run is
-# kept for the standard single-stack / CI layout so artifacts stay stable.
+# and any of those knobs leave the defaults, isolate under a subdirectory named
+# from the project + port numbers (same overrides → same path). Explicit
+# E2E_RUN_DIR always wins. The default path e2e/.run is kept for the standard
+# single-stack / CI layout so artifacts stay stable.
 if [[ -n "${_E2E_RUN_DIR_FROM_ENV}" ]]; then
   export E2E_RUN_DIR="${_E2E_RUN_DIR_FROM_ENV}"
 else
@@ -78,8 +79,8 @@ else
   if [[ "${_e2e_uses_default_stack}" -eq 1 ]]; then
     export E2E_RUN_DIR="${E2E_DIR}/.run"
   else
-    # Stable fingerprint so the same override set reuses one state dir across
-    # start/stop/wait in one session without clobbering another port set.
+    # Directory name encodes the override set so start/stop/wait in one session
+    # share state, while a different port set gets its own directory.
     export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}"
   fi
   unset _e2e_uses_default_stack
