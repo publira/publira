@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/episodeimages"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -51,6 +53,173 @@ func episodeScheduleRevalidateTags(tenantID string) []string {
 	}
 }
 
+const (
+	defaultEpisodePageSize = int32(20)
+	maxEpisodePageSize     = int32(100)
+	episodeInclusiveKey    = "inclusive"
+)
+
+// episodeCursorKeys is a decoded ListEpisodes token, in the shape the keyset
+// queries take. Its zero value means the request carried no token.
+type episodeCursorKeys struct {
+	orderIndex sql.NullInt32
+	id         uuid.NullUUID
+	inclusive  bool
+}
+
+// The ListEpisodes cursor carries the sort keys of the boundary row in query
+// order: order_index, then the id that breaks its ties. A recovery token adds
+// the inclusive marker so the boundary row itself comes back once. Token rules:
+// proto/README.md.
+func encodeEpisodeCursor(direction pagination.Direction, row episodePageRow) string {
+	return pagination.Encode(direction, strconv.FormatInt(int64(row.orderIndex), 10), row.id.String())
+}
+
+func encodeEpisodeRecoveryToken(direction pagination.Direction, keys episodeCursorKeys) string {
+	return pagination.Encode(
+		direction,
+		strconv.FormatInt(int64(keys.orderIndex.Int32), 10),
+		keys.id.UUID.String(),
+		episodeInclusiveKey,
+	)
+}
+
+func decodeEpisodeCursorKeys(cursor pagination.Cursor) (episodeCursorKeys, error) {
+	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
+		return episodeCursorKeys{}, pagination.ErrInvalidToken
+	}
+	inclusive := len(cursor.Keys) == 3
+	if inclusive && cursor.Keys[2] != episodeInclusiveKey {
+		return episodeCursorKeys{}, pagination.ErrInvalidToken
+	}
+
+	orderIndex, err := strconv.ParseInt(cursor.Keys[0], 10, 32)
+	if err != nil {
+		return episodeCursorKeys{}, pagination.ErrInvalidToken
+	}
+	episodeID, err := uuid.Parse(cursor.Keys[1])
+	if err != nil {
+		return episodeCursorKeys{}, pagination.ErrInvalidToken
+	}
+
+	return episodeCursorKeys{
+		orderIndex: sql.NullInt32{Int32: int32(orderIndex), Valid: true},
+		id:         uuid.NullUUID{UUID: episodeID, Valid: true},
+		inclusive:  inclusive,
+	}, nil
+}
+
+// episodePageRow is one row of an admin episode page, shared by the ascending
+// and descending keyset queries so the handler reads a single shape.
+type episodePageRow struct {
+	id                 uuid.UUID
+	publicID           string
+	title              string
+	orderIndex         int32
+	price              int32
+	readingPeriodHours sql.NullInt32
+	status             string
+	scheduledAt        sql.NullTime
+	publishedAt        sql.NullTime
+}
+
+func (r episodePageRow) toProto() *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		PublicId:   r.publicID,
+		Title:      r.title,
+		OrderIndex: r.orderIndex,
+		Price:      r.price,
+		Status:     r.status,
+	}
+	if r.readingPeriodHours.Valid {
+		episode.ReadingPeriodHours = r.readingPeriodHours.Int32
+	}
+	if r.scheduledAt.Valid {
+		episode.ScheduledAt = r.scheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if r.publishedAt.Valid {
+		episode.PublishedAt = r.publishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
+func mapEpisodeAscRows(rows []dbmodels.ListEpisodesBySeriesForTenantAscRow) []episodePageRow {
+	mapped := make([]episodePageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, episodePageRow{
+			id:                 row.ID,
+			publicID:           row.PublicID,
+			title:              row.Title,
+			orderIndex:         row.OrderIndex,
+			price:              row.Price,
+			readingPeriodHours: row.ReadingPeriodHours,
+			status:             row.Status,
+			scheduledAt:        row.ScheduledAt,
+			publishedAt:        row.PublishedAt,
+		})
+	}
+	return mapped
+}
+
+func mapEpisodeDescRows(rows []dbmodels.ListEpisodesBySeriesForTenantDescRow) []episodePageRow {
+	mapped := make([]episodePageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, episodePageRow{
+			id:                 row.ID,
+			publicID:           row.PublicID,
+			title:              row.Title,
+			orderIndex:         row.OrderIndex,
+			price:              row.Price,
+			readingPeriodHours: row.ReadingPeriodHours,
+			status:             row.Status,
+			scheduledAt:        row.ScheduledAt,
+			publishedAt:        row.PublishedAt,
+		})
+	}
+	return mapped
+}
+
+// episodePage runs the keyset query for one page. The list reads oldest order
+// index first, so a backward page is scanned by the descending query and put
+// back into display order by pagination.Page.
+func (s *adminServer) episodePage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	seriesPublicID string,
+	keys episodeCursorKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]episodePageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListEpisodesBySeriesForTenantDesc(ctx, dbmodels.ListEpisodesBySeriesForTenantDescParams{
+			TenantID:         tenantID,
+			PublicID:         seriesPublicID,
+			CursorID:         keys.id,
+			CursorInclusive:  keys.inclusive,
+			CursorOrderIndex: keys.orderIndex,
+			Limit:            limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapEpisodeDescRows(rows), nil
+	}
+
+	rows, err := queries.ListEpisodesBySeriesForTenantAsc(ctx, dbmodels.ListEpisodesBySeriesForTenantAscParams{
+		TenantID:         tenantID,
+		PublicID:         seriesPublicID,
+		CursorID:         keys.id,
+		CursorInclusive:  keys.inclusive,
+		CursorOrderIndex: keys.orderIndex,
+		Limit:            limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapEpisodeAscRows(rows), nil
+}
+
 func (s *adminServer) ListEpisodes(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListEpisodesRequest],
@@ -63,20 +232,53 @@ func (s *adminServer) ListEpisodes(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
 	}
 
-	rows, err := s.queriesFor(ctx).ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
-		TenantID: tenant.ID,
-		PublicID: req.Msg.SeriesPublicId,
-	})
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultEpisodePageSize, maxEpisodePageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys episodeCursorKeys
+	if !cursor.IsZero() {
+		keys, err = decodeEpisodeCursorKeys(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+	}
+
+	// One row past the page: its presence is what says another page exists.
+	rows, err := s.episodePage(ctx, tenant.ID, req.Msg.SeriesPublicId, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	episodes := make([]*publirattypesv1.Episode, 0, len(rows))
 	for _, row := range rows {
-		episodes = append(episodes, protomapper.EpisodeFromListEpisodesBySeriesForTenantRow(row))
+		episodes = append(episodes, row.toProto())
 	}
 
-	return connect.NewResponse(&publiraadminv1.ListEpisodesResponse{Episodes: episodes}), nil
+	res := &publiraadminv1.ListEpisodesResponse{Episodes: episodes}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = encodeEpisodeCursor(pagination.Backward, rows[0])
+		}
+		if hasNext {
+			res.NextToken = encodeEpisodeCursor(pagination.Forward, rows[len(rows)-1])
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.inclusive:
+		res.PreviousToken = encodeEpisodeRecoveryToken(pagination.Backward, keys)
+	case cursor.Direction == pagination.Backward && !keys.inclusive:
+		res.NextToken = encodeEpisodeRecoveryToken(pagination.Forward, keys)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *adminServer) ReorderEpisodes(
@@ -161,8 +363,8 @@ func (s *adminServer) CreateEpisode(
 	if strings.TrimSpace(req.Msg.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("title is required"))
 	}
-	if req.Msg.OrderIndex <= 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("order_index must be greater than 0"))
+	if req.Msg.OrderIndex < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("order_index must be greater than or equal to 0"))
 	}
 	if req.Msg.Price < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("price must be greater than or equal to 0"))
@@ -185,12 +387,26 @@ func (s *adminServer) CreateEpisode(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	// An unset order_index means "append". Resolving it here keeps the client
+	// from having to read the whole series to find the end, which a paged
+	// ListEpisodes can no longer hand it in one call.
+	orderIndex := req.Msg.OrderIndex
+	if orderIndex == 0 {
+		maxOrderIndex, maxErr := s.queriesFor(ctx).GetMaxEpisodeOrderIndexBySeriesForTenant(ctx, dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenantParams{
+			TenantID: tenant.ID,
+			PublicID: req.Msg.SeriesPublicId,
+		})
+		if maxErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, maxErr)
+		}
+		orderIndex = maxOrderIndex + 1
+	}
 	episodeID, err := uuid.NewV7()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	base, err := publicid.Insert(func(publicID string) (dbmodels.Episode, error) {
-		return s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: publicID, Title: req.Msg.Title, OrderIndex: req.Msg.OrderIndex})
+		return s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: publicID, Title: req.Msg.Title, OrderIndex: orderIndex})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

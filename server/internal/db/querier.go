@@ -177,7 +177,16 @@ type Querier interface {
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
+	// 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
+	// ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
 	ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error)
+	// Admin ListEpisodes は (order_index, id) の昇順で表示する。次ページは昇順、
+	// 前ページは降順のクエリで idx_episodes_series_order_index を走査し、前ページ
+	// だけ handler で表示順へ戻す。order_index は同着があり得るので、UUIDv7 の id
+	// をタイブレーカーにして並びを一意に決める。cursor の共通仕様は
+	// proto/README.md を参照。
+	ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodesBySeriesForTenantAscParams) ([]ListEpisodesBySeriesForTenantAscRow, error)
+	ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error)
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)

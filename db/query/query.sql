@@ -1004,6 +1004,8 @@ WHERE s.tenant_id = $1
     AND el.status = 'published'
 ORDER BY e.order_index ASC;
 
+-- 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
+-- ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
 -- name: ListEpisodesBySeriesForTenant :many
 SELECT e.id,
     e.public_id,
@@ -1021,6 +1023,71 @@ WHERE s.tenant_id = $1
     AND s.public_id = $2
 ORDER BY e.order_index ASC,
     e.created_at ASC;
+
+-- Admin ListEpisodes は (order_index, id) の昇順で表示する。次ページは昇順、
+-- 前ページは降順のクエリで idx_episodes_series_order_index を走査し、前ページ
+-- だけ handler で表示順へ戻す。order_index は同着があり得るので、UUIDv7 の id
+-- をタイブレーカーにして並びを一意に決める。cursor の共通仕様は
+-- proto/README.md を参照。
+-- name: ListEpisodesBySeriesForTenantAsc :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.public_id = sqlc.arg('public_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) >= (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) > (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY e.order_index ASC,
+    e.id ASC
+LIMIT sqlc.arg('limit');
+
+-- name: ListEpisodesBySeriesForTenantDesc :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.public_id = sqlc.arg('public_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) <= (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (e.order_index, e.id) < (sqlc.narg('cursor_order_index')::int4, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY e.order_index DESC,
+    e.id DESC
+LIMIT sqlc.arg('limit');
 
 -- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
 SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index

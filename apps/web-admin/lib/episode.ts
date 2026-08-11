@@ -192,7 +192,6 @@ export const createEpisode = async (input: {
   tenantId: string;
   seriesPublicId: string;
   title: string;
-  orderIndex: number;
   price: number;
   readingPeriodHours: number;
   publishAt: string;
@@ -208,7 +207,7 @@ export const createEpisode = async (input: {
   try {
     const response = await apiClient.series.createEpisode(
       {
-        orderIndex: input.orderIndex,
+        // orderIndex を省くとサーバーが末尾に追加する。
         price: input.price,
         readingPeriodHours: input.readingPeriodHours,
         scheduledAt: input.publishAt,

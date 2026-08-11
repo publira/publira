@@ -7,7 +7,7 @@ import {
 } from "@publira/utils";
 import { redirect } from "next/navigation";
 
-import { createEpisode, listEpisodes, reorderEpisodes } from "#lib/episode";
+import { createEpisode, reorderEpisodes } from "#lib/episode";
 
 import type { EpisodeActionState } from "../episode-types";
 
@@ -128,25 +128,9 @@ export const createEpisodeAction = async (
     return scheduledAt;
   }
 
-  const listedEpisodes = await listEpisodes({
-    seriesPublicId: input.seriesPublicId,
-    tenantId: input.tenantId,
-  });
-  if (!listedEpisodes.ok) {
-    return {
-      message: listedEpisodes.message,
-      mode: "create",
-      ok: false,
-    };
-  }
-  let maxOrderIndex = 0;
-  for (const episode of listedEpisodes.episodes) {
-    maxOrderIndex = Math.max(maxOrderIndex, episode.orderIndex);
-  }
-  const nextOrderIndex = maxOrderIndex + 1;
-
+  // orderIndex は送らない。ListEpisodes がページ単位で返すようになったため
+  // 全件を読んで末尾を数える形は使えず、末尾への追加はサーバーが決める。
   const result = await createEpisode({
-    orderIndex: nextOrderIndex,
     price: input.price,
     publishAt: scheduledAt.value,
     readingPeriodHours: input.readingPeriodHours,
