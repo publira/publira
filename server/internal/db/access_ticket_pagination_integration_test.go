@@ -116,6 +116,9 @@ func TestListAccessTicketsForTenantPaginatesRowsSharingCreatedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListAccessTicketsForTenantDesc first page: %v", err)
 	}
+	if len(firstPage) != 2 {
+		t.Fatalf("first page rows = %d, want 2", len(firstPage))
+	}
 	secondPage, err := queries.ListAccessTicketsForTenantDesc(ctx, dbmodels.ListAccessTicketsForTenantDescParams{
 		TenantID:        tenantID,
 		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
