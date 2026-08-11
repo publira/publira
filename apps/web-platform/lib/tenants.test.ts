@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import type { PlatformApiClient } from "@publira/api-client/platform/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -14,6 +15,31 @@ import {
   resumePlatformTenant,
   suspendPlatformTenant,
 } from "./tenants";
+
+type ListTenantsMethod = PlatformApiClient["tenants"]["listTenants"];
+type ListTenantsResponse = Awaited<ReturnType<ListTenantsMethod>>;
+type ListTenantsResponseTenant = ListTenantsResponse["tenants"][number];
+
+const createListTenantsResponse = ({
+  nextToken = "",
+  previousToken = "",
+  tenants = [],
+}: {
+  nextToken?: string;
+  previousToken?: string;
+  tenants?: (Omit<ListTenantsResponseTenant, "$typeName" | "timezone"> & {
+    timezone?: string;
+  })[];
+}): ListTenantsResponse => ({
+  $typeName: "publira.platform.v1.ListTenantsResponse",
+  nextToken,
+  previousToken,
+  tenants: tenants.map(({ timezone = "", ...tenant }) => ({
+    $typeName: "publira.platform.v1.Tenant",
+    timezone,
+    ...tenant,
+  })),
+});
 
 const {
   mockAddTenantMember,
@@ -43,7 +69,7 @@ const {
   mockListOperators: vi.fn(),
   mockListTenantAdminInvitations: vi.fn(),
   mockListTenantMembers: vi.fn(),
-  mockListTenants: vi.fn(),
+  mockListTenants: vi.fn<ListTenantsMethod>(),
   mockListUsers: vi.fn(),
   mockRemoveTenantMember: vi.fn(),
   mockResendTenantAdminInvitation: vi.fn(),
@@ -91,20 +117,22 @@ beforeEach(() => {
 
 describe("listPlatformTenants", () => {
   it("正常系: テナント一覧を返す", async () => {
-    mockListTenants.mockResolvedValueOnce({
-      nextToken: "next-page",
-      previousToken: "",
-      tenants: [
-        {
-          adminDomain: "admin.example.com",
-          createdAt: "2026-03-01 10:00",
-          domain: "example.com",
-          name: "テスト出版",
-          publicId: "tenant_test",
-          status: "active",
-        },
-      ],
-    });
+    mockListTenants.mockResolvedValueOnce(
+      createListTenantsResponse({
+        nextToken: "next-page",
+        previousToken: "",
+        tenants: [
+          {
+            adminDomain: "admin.example.com",
+            createdAt: "2026-03-01 10:00",
+            domain: "example.com",
+            name: "テスト出版",
+            publicId: "tenant_test",
+            status: "active",
+          },
+        ],
+      })
+    );
 
     await expect(listPlatformTenants({})).resolves.toEqual({
       nextToken: "next-page",
@@ -123,17 +151,19 @@ describe("listPlatformTenants", () => {
     });
 
     expect(mockListTenants).toHaveBeenCalledWith(
-      { limit: 20, name: "", status: "", token: "" },
+      { limit: 20, name: "", publicId: "", status: "", token: "" },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });
 
   it("ページング引数とフィルターを API に渡す", async () => {
-    mockListTenants.mockResolvedValueOnce({
-      nextToken: "",
-      previousToken: "previous-page",
-      tenants: [],
-    });
+    mockListTenants.mockResolvedValueOnce(
+      createListTenantsResponse({
+        nextToken: "",
+        previousToken: "previous-page",
+        tenants: [],
+      })
+    );
 
     await expect(
       listPlatformTenants({
@@ -153,6 +183,7 @@ describe("listPlatformTenants", () => {
       {
         limit: 50,
         name: "テスト",
+        publicId: "",
         status: "active",
         token: "current-page",
       },

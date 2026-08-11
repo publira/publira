@@ -105,9 +105,10 @@ export const listPlatformTenants = async (
       {
         limit: input.limit ?? 20,
         name: input.name ?? "",
+        publicId: "",
         status: input.status ?? "",
         token: input.token ?? "",
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
     return {

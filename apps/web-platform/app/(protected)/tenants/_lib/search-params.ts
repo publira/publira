@@ -43,13 +43,18 @@ const singleSearchParamSchema = z.preprocess(
     .transform((value) => (value.length <= maxSearchParamLength ? value : ""))
 );
 
+const cursorTokenSchema = z.preprocess(
+  (value) => (typeof value === "string" ? value : ""),
+  z.string()
+);
+
 const createTenantFiltersSchema = (allowedStatusValues: ReadonlySet<string>) =>
   z.object({
     name: singleSearchParamSchema,
     status: singleSearchParamSchema.transform((value) =>
       value && allowedStatusValues.has(value) ? value : ""
     ),
-    token: singleSearchParamSchema,
+    token: cursorTokenSchema,
   });
 
 export const parseTenantFilters = (

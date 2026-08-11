@@ -18,8 +18,14 @@ describe("parseTenantFilters", () => {
     ).toEqual({
       name: "テスト出版",
       status: "active",
-      token: "page-token",
+      token: " page-token ",
     });
+  });
+
+  it("cursor token は長さや前後空白を含めて変更しない", () => {
+    const token = ` ${"x".repeat(256)} `;
+
+    expect(parseTenantFilters({ token }, allowedStatuses).token).toBe(token);
   });
 
   it("複数値や不正な状態を空値にする", () => {
