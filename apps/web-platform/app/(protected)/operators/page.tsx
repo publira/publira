@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -30,6 +31,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
   getOperatorRoleLabel,
   getOperatorStatusLabel,
@@ -88,9 +90,10 @@ const OperatorsContent = async ({
       </CardHeader>
       <CardContent className="grid gap-4">
         {result.ok ? null : (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            オペレーター一覧の取得に失敗しました: {result.message}
-          </p>
+          <SectionError
+            description={result.message}
+            title="オペレーター一覧を表示できませんでした"
+          />
         )}
 
         <Table>
@@ -180,9 +183,11 @@ const OperatorsPage = ({ searchParams }: OperatorsPageProps) => (
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <Suspense fallback={<OperatorsTableSkeleton />}>
-        <OperatorsContent searchParams={searchParams} />
-      </Suspense>
+      <SectionErrorBoundary title="オペレーター一覧を表示できませんでした">
+        <Suspense fallback={<OperatorsTableSkeleton />}>
+          <OperatorsContent searchParams={searchParams} />
+        </Suspense>
+      </SectionErrorBoundary>
     </PlatformPageContent>
   </PlatformPage>
 );

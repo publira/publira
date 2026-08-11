@@ -1,4 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -115,22 +116,33 @@ const EditEpisodePage = async ({
               画像はドラッグ＆ドロップで並び替えできます。
             </p>
 
+            {/*
+              A failed read hands back an empty `images`, so 「まだ登録されて
+              いません」 has to stay behind `imagesResult.ok`; otherwise the
+              section says the images are missing and that they were never
+              uploaded, in the same breath.
+            */}
             {imagesResult.ok ? null : (
-              <p className="text-sm text-destructive">{imagesResult.message}</p>
+              <SectionError
+                description={imagesResult.message}
+                title="ページ画像を表示できませんでした"
+              />
             )}
 
-            {imagesResult.images.length === 0 ? (
+            {imagesResult.ok && imagesResult.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 ページ画像はまだ登録されていません。
               </p>
-            ) : (
+            ) : null}
+
+            {imagesResult.images.length > 0 ? (
               <EpisodeImagesSortableGrid
                 episodePublicId={episode_id}
                 images={imagesResult.images}
                 reorderAction={reorderEpisodeImagesAction}
                 seriesPublicId={series_id}
               />
-            )}
+            ) : null}
           </section>
         </div>
       </AdminPageContent>

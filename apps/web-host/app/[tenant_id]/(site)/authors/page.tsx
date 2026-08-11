@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listPublishedAuthors, normalizeAuthorsPage } from "#lib/authors";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -38,73 +39,41 @@ const AuthorsListSkeleton = () => (
   </div>
 );
 
+const TenantSiteLabel = async () => {
+  const tenantId = await getTenantId();
+  return getTenantSiteLabel(tenantId);
+};
+
 const AuthorsListData = async ({
   searchParams,
 }: {
-  params: Promise<{ tenant_id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) => {
   const tenantId = await getTenantId();
 
   const resolvedSearchParams = await searchParams;
   const page = normalizeAuthorsPage(resolvedSearchParams.page);
-  const siteLabel = await getTenantSiteLabel(tenantId);
 
-  let authorsData;
-  try {
-    authorsData = await listPublishedAuthors(tenantId, {
-      page,
-      pageSize: AUTHORS_PAGE_SIZE,
-    });
-  } catch {
-    return (
-      <>
-        <p className="mb-8 text-muted-foreground">
-          {siteLabel} に登録されている著者をご紹介します
-        </p>
-
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
-          <p className="mb-4 text-destructive">
-            著者一覧の取得に失敗しました。時間をおいて再試行してください。
-          </p>
-          <Link
-            href={page > 1 ? `?page=${page}` : "."}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            再試行
-          </Link>
-        </div>
-      </>
-    );
-  }
-
-  const { authors, hasNextPage } = authorsData;
+  const { authors, hasNextPage } = await listPublishedAuthors(tenantId, {
+    page,
+    pageSize: AUTHORS_PAGE_SIZE,
+  });
 
   if (authors.length === 0) {
     return (
-      <>
-        <p className="mb-8 text-muted-foreground">
-          {siteLabel} に登録されている著者をご紹介します
+      <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-6 py-20 text-center">
+        <h2 className="mb-2 font-serif text-2xl font-semibold">
+          まだ著者がいません
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          公開中のシリーズに著者が設定されると、ここに表示されます。
         </p>
-
-        <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-6 py-20 text-center">
-          <h2 className="mb-2 font-serif text-2xl font-semibold">
-            まだ著者がいません
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            公開中のシリーズに著者が設定されると、ここに表示されます。
-          </p>
-        </div>
-      </>
+      </div>
     );
   }
 
   return (
     <>
-      <p className="mb-8 text-muted-foreground">
-        {siteLabel} に登録されている著者をご紹介します
-      </p>
-
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {authors.map((author) => (
           <Link
@@ -171,16 +140,28 @@ const AuthorsListData = async ({
   );
 };
 
-const AuthorsPage = ({
-  params,
-  searchParams,
-}: PageProps<"/[tenant_id]/authors">) => (
+const AuthorsPage = ({ searchParams }: PageProps<"/[tenant_id]/authors">) => (
   <main className="mx-auto max-w-6xl px-6 py-12">
     <h1 className="mb-2 font-serif text-4xl font-bold">著者一覧</h1>
+    <p className="mb-8 text-muted-foreground">
+      <Suspense
+        fallback={
+          <span
+            aria-hidden
+            className="inline-block h-4 w-16 align-middle animate-pulse rounded bg-muted"
+          />
+        }
+      >
+        <TenantSiteLabel />
+      </Suspense>
+      に登録されている著者をご紹介します
+    </p>
 
-    <Suspense fallback={<AuthorsListSkeleton />}>
-      <AuthorsListData params={params} searchParams={searchParams} />
-    </Suspense>
+    <SectionErrorBoundary title="著者一覧を表示できませんでした">
+      <Suspense fallback={<AuthorsListSkeleton />}>
+        <AuthorsListData searchParams={searchParams} />
+      </Suspense>
+    </SectionErrorBoundary>
   </main>
 );
 

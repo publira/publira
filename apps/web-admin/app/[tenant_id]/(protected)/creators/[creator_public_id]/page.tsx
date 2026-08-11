@@ -1,5 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -20,6 +20,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getCreator } from "#lib/creator";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -70,14 +71,15 @@ const EditCreatorFormData = async ({
     }
 
     return (
-      <div className="grid gap-4">
-        <FormMessage variant="destructive">{result.message}</FormMessage>
-        <div>
+      <SectionError
+        actions={
           <LinkButton render={<Link href="/creators" />} variant="outline">
             一覧へ戻る
           </LinkButton>
-        </div>
-      </div>
+        }
+        description={result.message}
+        title="著者を表示できませんでした"
+      />
     );
   }
 
@@ -106,9 +108,11 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
     </AdminPageHeader>
     <AdminPageContent>
       <FlashToast title="著者を作成しました。" />
-      <Suspense fallback={<EditCreatorFormSkeleton />}>
-        <EditCreatorFormData params={params} />
-      </Suspense>
+      <SectionErrorBoundary title="著者を表示できませんでした">
+        <Suspense fallback={<EditCreatorFormSkeleton />}>
+          <EditCreatorFormData params={params} />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );

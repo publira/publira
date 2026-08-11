@@ -1,5 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -20,6 +20,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPage, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -56,6 +57,18 @@ const PageWorkspaceSkeleton = () => (
   </div>
 );
 
+const PageLoadError = ({ message }: { message: string }) => (
+  <SectionError
+    actions={
+      <LinkButton render={<Link href="/pages" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description={message}
+    title="ページを表示できませんでした"
+  />
+);
+
 const PageWorkspaceData = async ({
   params,
 }: Pick<EditPagePageProps, "params">) => {
@@ -76,31 +89,11 @@ const PageWorkspaceData = async ({
       notFound();
     }
 
-    return (
-      <div className="grid gap-4">
-        <FormMessage variant="destructive">{pageResult.message}</FormMessage>
-        <div>
-          <LinkButton render={<Link href="/pages" />} variant="outline">
-            一覧へ戻る
-          </LinkButton>
-        </div>
-      </div>
-    );
+    return <PageLoadError message={pageResult.message} />;
   }
 
   if (!versionsResult.ok && versionsResult.versions.length === 0) {
-    return (
-      <div className="grid gap-4">
-        <FormMessage variant="destructive">
-          {versionsResult.message}
-        </FormMessage>
-        <div>
-          <LinkButton render={<Link href="/pages" />} variant="outline">
-            一覧へ戻る
-          </LinkButton>
-        </div>
-      </div>
-    );
+    return <PageLoadError message={versionsResult.message} />;
   }
 
   return (
@@ -145,9 +138,11 @@ const EditPagePage = ({ params }: EditPagePageProps) => (
         title="指定バージョンからロールバックしました。"
       />
 
-      <Suspense fallback={<PageWorkspaceSkeleton />}>
-        <PageWorkspaceData params={params} />
-      </Suspense>
+      <SectionErrorBoundary title="ページを表示できませんでした">
+        <Suspense fallback={<PageWorkspaceSkeleton />}>
+          <PageWorkspaceData params={params} />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );

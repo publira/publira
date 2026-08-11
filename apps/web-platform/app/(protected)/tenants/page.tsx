@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Input } from "@publira/ui-components/input";
+import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import {
   Table,
@@ -33,6 +34,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { listPlatformTenants } from "#lib/tenants";
 
@@ -142,10 +144,11 @@ const TenantsContent = async ({
           ) : null}
         </Form>
 
-        {!result.ok && (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            テナント一覧の取得に失敗しました: {result.message}
-          </p>
+        {result.ok ? null : (
+          <SectionError
+            description={result.message}
+            title="テナント一覧を表示できませんでした"
+          />
         )}
 
         <Table>
@@ -227,9 +230,11 @@ const TenantsPage = ({ searchParams }: TenantsPageProps) => (
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <Suspense fallback={<TenantsTableSkeleton />}>
-        <TenantsContent searchParams={searchParams} />
-      </Suspense>
+      <SectionErrorBoundary title="テナント一覧を表示できませんでした">
+        <Suspense fallback={<TenantsTableSkeleton />}>
+          <TenantsContent searchParams={searchParams} />
+        </Suspense>
+      </SectionErrorBoundary>
     </PlatformPageContent>
   </PlatformPage>
 );

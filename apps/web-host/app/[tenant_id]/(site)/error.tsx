@@ -10,8 +10,9 @@ import { ErrorScreen } from "#components/error-screen";
  * footer keep rendering here; a failure in that layout falls through to
  * `app/[tenant_id]/error.tsx`.
  *
- * Per-section degradation on the catalog top page is a separate concern and
- * moves to `catchError` boundaries in #647.
+ * Per-section degradation is a separate concern and belongs to the
+ * `SectionErrorBoundary` each section is wrapped in (#647). A failure that
+ * takes the whole route down is what reaches here.
  *
  * No `<main>` here: `SiteLayoutMain` already provides one.
  *

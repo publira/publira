@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { EmptyState } from "@publira/ui-components/empty-state";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -28,6 +29,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getDashboard } from "#lib/dashboard";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -85,14 +87,10 @@ const DashboardContent = async () => {
 
   if (!result.ok) {
     return (
-      <Card>
-        <CardContent className="p-5">
-          <EmptyState
-            description={result.message}
-            title="データの取得に失敗しました"
-          />
-        </CardContent>
-      </Card>
+      <SectionError
+        description={result.message}
+        title="ダッシュボードを表示できませんでした"
+      />
     );
   }
 
@@ -179,9 +177,11 @@ const DashboardPage = () => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
-      </Suspense>
+      <SectionErrorBoundary title="ダッシュボードを表示できませんでした">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardContent />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );

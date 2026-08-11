@@ -33,13 +33,28 @@ test.describe("web-host public API outage", () => {
 
   /**
    * Data fetches degrade far worse than tenant resolution: the helpers run
-   * inside a `"use cache"` scope, so their error is not observable by the
-   * page's try/catch and the route answers a bare `500 Internal Server Error`
-   * body instead of any fallback.
+   * inside a `"use cache"` scope, so their error was not observable by the
+   * `try` / `catch` the pages used to carry, and the route answered a bare
+   * `500 Internal Server Error` body instead of any fallback.
    *
-   * Enable once https://github.com/publira/publira/issues/672 lands. The final
-   * copy and status code are decided there, so this pins the user-visible
-   * contract only: the site chrome survives and a retry affordance exists.
+   * Those `catch` blocks are gone as of #647 — the sections now sit inside a
+   * `SectionErrorBoundary` (`catchError`). Whether a throw crossing a
+   * `"use cache"` scope reaches that boundary is the open question, and it is
+   * measured in https://github.com/publira/publira/issues/672.
+   *
+   * Unlike its neighbours this one navigates the default Host, and that is
+   * load-bearing: `stopApiServer()` breaks tenant resolution too, and `proxy`
+   * answers 503 for a Host it cannot resolve — which would end the request
+   * before any section renders. The default Host survives only because an
+   * earlier spec already resolved it into the `createTenantIdResolver` LRU
+   * (`max: 500`, `ttl: 300_000`), so the outage reaches the catalog read and
+   * nothing else. Whoever enables this should not rely on that by accident:
+   * either assert the tenant still resolves first, or give #672 a fault
+   * injection that fails the catalog read alone.
+   *
+   * Enable once that lands. The final copy and status code are decided there,
+   * so this pins the user-visible contract only: the site chrome survives and
+   * a retry affordance exists.
    */
   test.skip("データ取得に失敗してもサイト UI を保ったフォールバックを表示する", async ({
     page,

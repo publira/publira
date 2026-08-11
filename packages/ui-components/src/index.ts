@@ -64,6 +64,11 @@ export { LinkButton } from "./button";
 export type { LinkButtonProps } from "./button";
 export { RadioGroup } from "./radio-group";
 export type { RadioGroupProps } from "./radio-group";
+export { SectionError, sectionErrorFallback } from "./section-error";
+export type {
+  SectionErrorFallbackProps,
+  SectionErrorProps,
+} from "./section-error";
 export { Select } from "./select";
 export type { SelectProps } from "./select";
 export { Skeleton, SkeletonCard, SkeletonLine, SkeletonText } from "./skeleton";

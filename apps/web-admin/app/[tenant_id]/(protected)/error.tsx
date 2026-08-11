@@ -19,6 +19,10 @@ import { ErrorScreen } from "#components/error-screen";
  * input, conflicts — stay inline as `FormMessage`, and a resource the caller
  * cannot see is `notFound()` (see `not-found.tsx`).
  *
+ * Reach narrowed in #647: a section wrapped in `SectionErrorBoundary` takes its
+ * own throws, so only a failure outside every such boundary — or one in a page
+ * that has no suspended section to degrade — replaces the whole console page.
+ *
  * No `<main>` here: `ConsoleLayoutMain` already provides one.
  *
  * Reach, as measured against `next dev` by throwing from a page body: a direct

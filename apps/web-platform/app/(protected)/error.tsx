@@ -25,7 +25,12 @@ import { ErrorScreen } from "#components/error-screen";
  * The two neighbours stay where they are. Failures a form can act on — invalid
  * input, conflicts — remain inline `FormMessage`s next to the control, and the
  * list screens keep rendering their `ok: false` message inside the page rather
- * than replacing it (moving those to `catchError` is #647).
+ * than replacing it — through the shared `SectionError` since #647, so the
+ * copy matches what a boundary would show.
+ *
+ * That same change narrowed this boundary's reach: a section wrapped in
+ * `SectionErrorBoundary` takes its own throws, so only a failure outside every
+ * such boundary replaces the whole console page.
  *
  * No `<main>` here: `ConsoleLayoutMain` already provides one.
  *

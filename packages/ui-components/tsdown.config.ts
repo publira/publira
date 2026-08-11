@@ -17,6 +17,7 @@ export default defineConfig({
     "src/form-message/index.ts",
     "src/input/index.ts",
     "src/radio-group/index.ts",
+    "src/section-error/index.ts",
     "src/select/index.ts",
     "src/skeleton/index.ts",
     "src/switch/index.ts",

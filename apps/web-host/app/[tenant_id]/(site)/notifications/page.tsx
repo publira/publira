@@ -1,9 +1,11 @@
+import { SectionError } from "@publira/ui-components/section-error";
 import { revalidateTag } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
   listMyNotifications,
   markAllNotificationsAsRead,
@@ -214,18 +216,27 @@ const NotificationsSection = async ({
       </div>
 
       {result.ok ? null : (
-        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          {result.message}
-        </div>
+        <SectionError
+          className="mb-4"
+          description={result.message}
+          title="通知一覧を表示できませんでした"
+        />
       )}
 
-      {result.notifications.length === 0 ? (
+      {/*
+        A failed read hands back an empty `notifications`, so the empty state
+        stays behind `result.ok` — otherwise the page says the list could not
+        be read and that there is nothing to read, one after the other.
+      */}
+      {result.ok && result.notifications.length === 0 ? (
         <NotificationsEmptyState
           nextToken={nextToken}
           previousToken={previousToken}
           token={token}
         />
-      ) : (
+      ) : null}
+
+      {result.notifications.length > 0 ? (
         <div className="grid gap-3">
           {result.notifications.map((notification) => {
             const linkAction = (() => {
@@ -315,7 +326,7 @@ const NotificationsSection = async ({
             );
           })}
         </div>
-      )}
+      ) : null}
 
       {result.notifications.length > 0 ? (
         <NotificationsPagination
@@ -345,9 +356,11 @@ const NotificationsPage = ({
       </p>
     </section>
 
-    <Suspense fallback={<NotificationsSectionFallback />}>
-      <NotificationsSection searchParams={searchParams} />
-    </Suspense>
+    <SectionErrorBoundary title="通知一覧を表示できませんでした">
+      <Suspense fallback={<NotificationsSectionFallback />}>
+        <NotificationsSection searchParams={searchParams} />
+      </Suspense>
+    </SectionErrorBoundary>
   </div>
 );
 

@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -110,47 +110,60 @@ const SeriesEpisodesPage = async ({
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            {result.ok ? null : (
-              <FormMessage variant="destructive">{result.message}</FormMessage>
-            )}
+            {/*
+              A failed read hands back an empty `episodes`, so the empty state
+              has to stay behind `result.ok`. Otherwise the card claims both
+              「表示できませんでした」 and 「未登録です」 at once, and offers a
+              新規作成 button for a list nobody managed to read.
+            */}
+            {result.ok ? (
+              <>
+                {result.episodes.length === 0 ? (
+                  <CursorPageEmptyState
+                    actions={
+                      <LinkButton
+                        render={
+                          <Link href={`/series/${series_id}/episodes/new`} />
+                        }
+                      >
+                        エピソードを新規作成
+                      </LinkButton>
+                    }
+                    description="まだエピソードがありません。まずは新規作成してください。"
+                    hasPageLinks={hasPageLinks}
+                    itemLabel="エピソード"
+                    title="このシリーズのエピソードは未登録です。"
+                  />
+                ) : (
+                  <div className="grid gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      エピソードはカードをドラッグ＆ドロップして並び替えできます。
+                      {hasPageLinks
+                        ? "並び替えはこのページ内で行えます。ページをまたぐ移動はできません。"
+                        : null}
+                    </p>
+                    <EpisodesSortableList
+                      episodes={result.episodes}
+                      reorderAction={reorderEpisodesAction}
+                      seriesPublicId={series_id}
+                    />
+                  </div>
+                )}
 
-            {result.episodes.length === 0 ? (
-              <CursorPageEmptyState
-                actions={
-                  <LinkButton
-                    render={<Link href={`/series/${series_id}/episodes/new`} />}
-                  >
-                    エピソードを新規作成
-                  </LinkButton>
-                }
-                description="まだエピソードがありません。まずは新規作成してください。"
-                hasPageLinks={hasPageLinks}
-                itemLabel="エピソード"
-                title="このシリーズのエピソードは未登録です。"
-              />
+                {result.episodes.length > 0 || hasPageLinks ? (
+                  <PaginationFooter
+                    {...pageHrefs}
+                    ariaLabel="エピソード一覧のページ送り"
+                    description={`表示順に、1ページあたり ${DEFAULT_PAGE_SIZE} 件まで表示します。`}
+                  />
+                ) : null}
+              </>
             ) : (
-              <div className="grid gap-3">
-                <p className="text-xs text-muted-foreground">
-                  エピソードはカードをドラッグ＆ドロップして並び替えできます。
-                  {hasPageLinks
-                    ? "並び替えはこのページ内で行えます。ページをまたぐ移動はできません。"
-                    : null}
-                </p>
-                <EpisodesSortableList
-                  episodes={result.episodes}
-                  reorderAction={reorderEpisodesAction}
-                  seriesPublicId={series_id}
-                />
-              </div>
-            )}
-
-            {result.episodes.length > 0 || hasPageLinks ? (
-              <PaginationFooter
-                {...pageHrefs}
-                ariaLabel="エピソード一覧のページ送り"
-                description={`表示順に、1ページあたり ${DEFAULT_PAGE_SIZE} 件まで表示します。`}
+              <SectionError
+                description={result.message}
+                title="エピソード一覧を表示できませんでした"
               />
-            ) : null}
+            )}
           </CardContent>
         </Card>
       </AdminPageContent>

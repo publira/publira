@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listPublishedSeries } from "#lib/catalog";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -97,29 +98,13 @@ const SeriesListData = async ({
   ]);
   const { token } = parseSeriesListSearchParams(resolvedSearchParams);
 
-  let page;
-  try {
-    page = await listPublishedSeries(tenantId, {
+  const { nextToken, previousToken, series } = await listPublishedSeries(
+    tenantId,
+    {
       limit: SERIES_PAGE_SIZE,
       token,
-    });
-  } catch {
-    return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
-        <p className="mb-4 text-destructive">
-          シリーズ一覧の取得に失敗しました。時間をおいて再試行してください。
-        </p>
-        <Link
-          href={seriesListHref(token)}
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
-          再試行
-        </Link>
-      </div>
-    );
-  }
-
-  const { nextToken, previousToken, series } = page;
+    }
+  );
 
   if (series.length === 0) {
     if (!token) {
@@ -225,9 +210,11 @@ const SeriesPage = ({ searchParams }: PageProps<"/[tenant_id]/series">) => (
       に登録されているシリーズをご紹介します
     </p>
 
-    <Suspense fallback={<SeriesListSkeleton />}>
-      <SeriesListData searchParams={searchParams} />
-    </Suspense>
+    <SectionErrorBoundary title="シリーズ一覧を表示できませんでした">
+      <Suspense fallback={<SeriesListSkeleton />}>
+        <SeriesListData searchParams={searchParams} />
+      </Suspense>
+    </SectionErrorBoundary>
   </main>
 );
 

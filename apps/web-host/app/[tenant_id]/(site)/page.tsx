@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
   getCatalogTopFeaturedAuthors,
   getCatalogTopFeaturedLabels,
@@ -83,6 +84,13 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
+/**
+ * The one suspended piece on this page with no `SectionErrorBoundary` around
+ * it, on purpose. `generateMetadata` reads the same site label, so a tenant
+ * this app cannot resolve fails the route before any section renders; degrading
+ * the eyebrow while the page below it carries on would be a lie. That failure
+ * belongs to `(site)/error.tsx`.
+ */
 const CatalogTopSiteLabel = async () => {
   const tenantId = await getTenantId();
   const siteLabel = await getTenantSiteLabel(tenantId);
@@ -122,48 +130,10 @@ const ListSkeleton = ({ count = 4 }: { count?: number }) => (
   </div>
 );
 
-/**
- * Each section of the top page loads independently, so a failing one is
- * recorded and degraded to this block rather than rethrown: one dead section
- * must not take the whole page down. This is the deliberate "record" side of
- * the #645 record-or-throw split — lib helpers rethrow anything they cannot
- * classify, and it stops here. Replacing this with a real error boundary is
- * #647.
- *
- * The division of labour with the route-level boundaries added in #643: a
- * failure that makes the whole route meaningless throws and is caught by
- * `(site)/error.tsx`; a failure confined to one section stays inline so the
- * rest of the page survives. Only the second kind belongs here.
- */
-const SectionLoadError = ({ retryHref = "." }: { retryHref?: string }) => (
-  <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
-    <p className="mb-4 text-destructive">
-      読み込みに失敗しました。時間をおいて再試行してください。
-    </p>
-    <Link
-      className="text-sm text-primary underline-offset-4 hover:underline"
-      href={retryHref}
-    >
-      再試行
-    </Link>
-  </div>
-);
-
 const RecommendedSeriesSection = async () => {
   const tenantId = await getTenantId();
 
-  let recommendedSeries: Awaited<
-    ReturnType<typeof getCatalogTopRecommendedSeries>
-  >;
-  try {
-    recommendedSeries = await getCatalogTopRecommendedSeries(tenantId);
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      throw error;
-    }
-    console.error("Failed to load recommended series", error);
-    return <SectionLoadError />;
-  }
+  const recommendedSeries = await getCatalogTopRecommendedSeries(tenantId);
 
   if (recommendedSeries.length === 0) {
     return (
@@ -220,16 +190,7 @@ const RecommendedSeriesSection = async () => {
 const NewEpisodesSection = async () => {
   const tenantId = await getTenantId();
 
-  let newEpisodes: Awaited<ReturnType<typeof getCatalogTopNewEpisodes>>;
-  try {
-    newEpisodes = await getCatalogTopNewEpisodes(tenantId);
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      throw error;
-    }
-    console.error("Failed to load new episodes", error);
-    return <SectionLoadError />;
-  }
+  const newEpisodes = await getCatalogTopNewEpisodes(tenantId);
 
   if (newEpisodes.length === 0) {
     return (
@@ -279,16 +240,7 @@ const NewEpisodesSection = async () => {
 const UpdatedSeriesSection = async () => {
   const tenantId = await getTenantId();
 
-  let updatedSeries: Awaited<ReturnType<typeof getCatalogTopUpdatedSeries>>;
-  try {
-    updatedSeries = await getCatalogTopUpdatedSeries(tenantId);
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      throw error;
-    }
-    console.error("Failed to load updated series", error);
-    return <SectionLoadError />;
-  }
+  const updatedSeries = await getCatalogTopUpdatedSeries(tenantId);
 
   if (updatedSeries.length === 0) {
     return (
@@ -363,16 +315,7 @@ const UpdatedSeriesSection = async () => {
 const FeaturedLabelsSection = async () => {
   const tenantId = await getTenantId();
 
-  let featuredLabels: Awaited<ReturnType<typeof getCatalogTopFeaturedLabels>>;
-  try {
-    featuredLabels = await getCatalogTopFeaturedLabels(tenantId);
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      throw error;
-    }
-    console.error("Failed to load featured labels", error);
-    return <SectionLoadError retryHref="/labels" />;
-  }
+  const featuredLabels = await getCatalogTopFeaturedLabels(tenantId);
 
   if (featuredLabels.length === 0) {
     return (
@@ -416,16 +359,7 @@ const FeaturedLabelsSection = async () => {
 const FeaturedAuthorsSection = async () => {
   const tenantId = await getTenantId();
 
-  let featuredAuthors: Awaited<ReturnType<typeof getCatalogTopFeaturedAuthors>>;
-  try {
-    featuredAuthors = await getCatalogTopFeaturedAuthors(tenantId);
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      throw error;
-    }
-    console.error("Failed to load featured authors", error);
-    return <SectionLoadError retryHref="/authors" />;
-  }
+  const featuredAuthors = await getCatalogTopFeaturedAuthors(tenantId);
 
   if (featuredAuthors.length === 0) {
     return (
@@ -509,18 +443,22 @@ const Page = () => (
           すべて見る
         </Link>
       </div>
-      <Suspense fallback={<CardGridSkeleton />}>
-        <RecommendedSeriesSection />
-      </Suspense>
+      <SectionErrorBoundary title="おすすめ作品を表示できませんでした">
+        <Suspense fallback={<CardGridSkeleton />}>
+          <RecommendedSeriesSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </section>
 
     <section aria-labelledby="new-episodes" className="mb-12">
       <h2 id="new-episodes" className="mb-4 font-serif text-2xl font-semibold">
         新着エピソード
       </h2>
-      <Suspense fallback={<ListSkeleton />}>
-        <NewEpisodesSection />
-      </Suspense>
+      <SectionErrorBoundary title="新着エピソードを表示できませんでした">
+        <Suspense fallback={<ListSkeleton />}>
+          <NewEpisodesSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </section>
 
     <section aria-labelledby="updated-series" className="mb-12">
@@ -530,9 +468,11 @@ const Page = () => (
       >
         更新作品
       </h2>
-      <Suspense fallback={<CardGridSkeleton />}>
-        <UpdatedSeriesSection />
-      </Suspense>
+      <SectionErrorBoundary title="更新作品を表示できませんでした">
+        <Suspense fallback={<CardGridSkeleton />}>
+          <UpdatedSeriesSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </section>
 
     <section aria-labelledby="featured-labels" className="mb-12">
@@ -547,9 +487,11 @@ const Page = () => (
           レーベル一覧へ
         </Link>
       </div>
-      <Suspense fallback={<CardGridSkeleton />}>
-        <FeaturedLabelsSection />
-      </Suspense>
+      <SectionErrorBoundary title="注目のレーベルを表示できませんでした">
+        <Suspense fallback={<CardGridSkeleton />}>
+          <FeaturedLabelsSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </section>
 
     <section aria-labelledby="featured-authors">
@@ -564,9 +506,11 @@ const Page = () => (
           著者一覧へ
         </Link>
       </div>
-      <Suspense fallback={<CardGridSkeleton />}>
-        <FeaturedAuthorsSection />
-      </Suspense>
+      <SectionErrorBoundary title="注目の著者を表示できませんでした">
+        <Suspense fallback={<CardGridSkeleton />}>
+          <FeaturedAuthorsSection />
+        </Suspense>
+      </SectionErrorBoundary>
     </section>
   </main>
 );
