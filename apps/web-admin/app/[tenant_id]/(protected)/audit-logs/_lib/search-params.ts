@@ -1,16 +1,17 @@
+import type { SearchParamValue } from "@publira/utils/search-params";
+import {
+  searchParamDate,
+  searchParamEnum,
+  searchParamString,
+} from "@publira/utils/search-params";
 import { z } from "zod";
 
-const maxSearchParamLength = 255;
-const dateParamPattern = /^\d{4}-\d{2}-\d{2}$/u;
-
-type QueryParamValue = string | string[] | undefined;
-
 interface ParseAuditLogFiltersInput {
-  action?: QueryParamValue;
-  actor?: QueryParamValue;
-  from?: QueryParamValue;
-  token?: QueryParamValue;
-  to?: QueryParamValue;
+  action?: SearchParamValue;
+  actor?: SearchParamValue;
+  from?: SearchParamValue;
+  token?: SearchParamValue;
+  to?: SearchParamValue;
 }
 
 export interface AuditLogFilters {
@@ -35,28 +36,20 @@ export const toAllowedActionValues = (
   return allowedActionValues;
 };
 
-const singleSearchParamSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value.trim() : ""),
-  z
-    .string()
-    .transform((value) => (value.length <= maxSearchParamLength ? value : ""))
-);
-
+/**
+ * Every filter falls back to `""`, the "no filter" value this screen already
+ * uses: an unusable query string still renders the default view instead of
+ * 404ing an operator out of the audit log.
+ */
 const createAuditLogFiltersSchema = (
   allowedActionValues: ReadonlySet<string>
 ) =>
   z.object({
-    action: singleSearchParamSchema.transform((value) =>
-      value && allowedActionValues.has(value) ? value : ""
-    ),
-    actor: singleSearchParamSchema,
-    from: singleSearchParamSchema.transform((value) =>
-      dateParamPattern.test(value) ? value : ""
-    ),
-    to: singleSearchParamSchema.transform((value) =>
-      dateParamPattern.test(value) ? value : ""
-    ),
-    token: singleSearchParamSchema,
+    action: searchParamEnum(allowedActionValues, { fallback: "" }),
+    actor: searchParamString({ fallback: "" }),
+    from: searchParamDate({ fallback: "" }),
+    to: searchParamDate({ fallback: "" }),
+    token: searchParamString({ fallback: "" }),
   });
 
 export const parseAuditLogFilters = (
