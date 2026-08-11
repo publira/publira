@@ -56,10 +56,13 @@ export const SeriesManager = ({
   /*
    * Page links stay up even on an empty page: the server hands back a recovery
    * token when the row a token pointed at is gone, and hiding the links would
-   * leave that page with no way back into the list.
+   * leave that page with no way back into the list. That page is also the
+   * reason the empty state is worded twice — an empty page one means the tenant
+   * has no series, while an empty page with links only means this page lost the
+   * rows it pointed at.
    */
-  const showPagination =
-    series.length > 0 || Boolean(previousHref) || Boolean(nextHref);
+  const hasPageLinks = Boolean(previousHref) || Boolean(nextHref);
+  const showPagination = series.length > 0 || hasPageLinks;
 
   return (
     <Card>
@@ -81,8 +84,16 @@ export const SeriesManager = ({
 
         {series.length === 0 ? (
           <EmptyState
-            description="新規作成ページからシリーズを作成してください。"
-            title="シリーズがまだ登録されていません。"
+            description={
+              hasPageLinks
+                ? "表示中に他の操作で削除された可能性があります。前後のページへ移動してください。"
+                : "新規作成ページからシリーズを作成してください。"
+            }
+            title={
+              hasPageLinks
+                ? "このページに表示できるシリーズはありません。"
+                : "シリーズがまだ登録されていません。"
+            }
           />
         ) : (
           <Table>
