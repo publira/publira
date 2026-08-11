@@ -6,6 +6,70 @@ Shared conventions for Next.js apps under `apps/` (`web-admin`, `web-host`, `web
 
 OK and NG rules: repository root [AGENTS.md](../AGENTS.md) (React: Effects and useEffectEvent).
 
+## Untrusted input: validate with zod at the boundary
+
+Treat every value that a caller can put into a request as untrusted, even when Next.js gives the surrounding object a TypeScript type. This includes:
+
+- every field read from `searchParams` or `FormData`
+- dynamic route segments, because an external caller can supply arbitrary values even when app links only generate known ones
+- Route Handler request bodies
+
+Define a zod schema for the whole input and call `parse` / `safeParse` as the value is taken across that boundary. From that point on, pass only the schema's validated output type (`z.output` / `z.infer`) to application and RPC code. Do not let the original `string | string[] | undefined`, `FormDataEntryValue | null`, or `unknown` value travel further into the app.
+
+### NG (do not)
+
+```tsx
+// NG: coercion is not validation; this also turns a File into "[object File]"
+const title = String(formData.get("title") ?? "").trim();
+
+// NG: NaN, negative values, fractions, and unbounded values still get through
+const offset = Number(params.offset ?? "0");
+
+// NG: field-by-field checks duplicate schema logic and easily miss a field
+const body = await request.json();
+if (typeof body.name !== "string" || !body.name.trim()) {
+  return Response.json({ message: "invalid name" }, { status: 400 });
+}
+```
+
+### OK (preferred)
+
+```tsx
+import { z } from "zod";
+
+const formSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+});
+
+const parsed = formSchema.safeParse({
+  title: formData.get("title"),
+});
+if (!parsed.success) {
+  return {
+    fieldErrors: parsed.error.flatten().fieldErrors,
+    message: "入力内容を確認してください。",
+    ok: false,
+  };
+}
+
+await save(parsed.data); // only validated values cross into application code
+```
+
+Good in-repo examples:
+
+- `web-admin` audit-log filters define normalization and validation in one zod schema, then expose only the parsed `AuditLogFilters`: [`audit-logs/_lib/search-params.ts`](web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
+- `web-admin` theme settings use `safeParse`, map zod field errors into the Action state, and call the update function only with `parsed.data`: [`settings/_lib/actions.ts`](web-admin/app/%5Btenant_id%5D/%28protected%29/settings/_lib/actions.ts)
+
+Choose failure handling at the boundary:
+
+- **Server Actions:** use `safeParse` for user-correctable input and return the existing form / Action state with a form message and field errors. Do not throw for an ordinary validation error.
+- **`searchParams`:** normalize optional filter, sort, and pagination values to explicit safe defaults when the page still has a meaningful default view. Call `notFound()` when an invalid value makes the requested URL/resource meaningless instead of silently showing different content.
+- **Dynamic segments and Route Handler bodies:** reject an invalid resource identifier with `notFound()` where existence must not be disclosed; return the handler's documented 4xx response for an invalid request body.
+
+Shared schemas for normalizing `searchParams` and `FormData`, including repeated and file fields, belong in `@publira/utils` as tracked by [#662](https://github.com/publira/publira/issues/662). Until those helpers exist, keep the boundary schema local rather than falling back to unchecked coercion.
+
+Frontend validation is for typed application flow and prompt user feedback. It does **not** replace validation and authorization in the Go server; every RPC input must still be validated at the server's own trust boundary.
+
 ## Next.js cache (Redis)
 
 All apps wire shared Redis cache via `@publira/next-cache-handlers` in `next.config`:
