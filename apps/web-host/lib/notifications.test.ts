@@ -43,6 +43,7 @@ describe("web-host notifications", () => {
     const { listMyNotifications } = await importNotifications();
 
     mockListNotifications.mockResolvedValueOnce({
+      nextToken: "djF8Zg",
       notifications: [
         {
           body: "本文",
@@ -53,9 +54,11 @@ describe("web-host notifications", () => {
           title: "お知らせ",
         },
       ],
+      previousToken: "",
     });
 
     await expect(listMyNotifications("TENANT001")).resolves.toEqual({
+      nextToken: "djF8Zg",
       notifications: [
         {
           body: "本文",
@@ -67,7 +70,35 @@ describe("web-host notifications", () => {
         },
       ],
       ok: true,
+      previousToken: "",
     });
+  });
+
+  it("listMyNotifications: token を指定なしなら先頭ページを既定件数で引く", async () => {
+    const { listMyNotifications } = await importNotifications();
+    mockListNotifications.mockResolvedValueOnce({ notifications: [] });
+
+    await listMyNotifications("TENANT001");
+
+    expect(mockListNotifications).toHaveBeenCalledWith(
+      { limit: 20, tenant: { tenantId: "TENANT001" }, token: "" },
+      expect.anything()
+    );
+  });
+
+  it("listMyNotifications: 渡された cursor と件数をそのまま RPC に載せる", async () => {
+    const { listMyNotifications } = await importNotifications();
+    mockListNotifications.mockResolvedValueOnce({ notifications: [] });
+
+    await listMyNotifications("TENANT001", "sid_001", {
+      limit: 5,
+      token: "djF8Zg",
+    });
+
+    expect(mockListNotifications).toHaveBeenCalledWith(
+      { limit: 5, tenant: { tenantId: "TENANT001" }, token: "djF8Zg" },
+      expect.anything()
+    );
   });
 
   it("markNotificationAsRead: session が無ければ false", async () => {

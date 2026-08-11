@@ -1,17 +1,29 @@
 import { revalidateTag } from "next/cache";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import {
   listMyNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "#lib/notifications";
 import { getTenantId } from "#lib/tenant-id";
+
+import {
+  notificationsListHref,
+  parseNotificationsListSearchParams,
+} from "./_lib/search-params";
+
+const NOTIFICATIONS_PAGE_SIZE = 20;
+
+/*
+ * The session id is left to `resolveAccessToken()` inside `#lib/notifications`.
+ * The `publira_web_host_auth` cookie holds an *encrypted* session payload, not
+ * a bearer token, so reading it here and passing the raw value on made every
+ * call fail `unauthenticated`; only the library's own cookie path decrypts it.
+ */
 
 const markNotificationAsReadAction = async (
   formData: FormData
@@ -25,11 +37,7 @@ const markNotificationAsReadAction = async (
     return;
   }
 
-  const cookieStore = await cookies();
-  const sessionId =
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
-
-  await markNotificationAsRead(tenantId, notificationId, sessionId);
+  await markNotificationAsRead(tenantId, notificationId);
   revalidateTag(`member-notifications-${tenantId}`, "max");
 };
 
@@ -43,11 +51,7 @@ const markAllNotificationsAsReadAction = async (
     return;
   }
 
-  const cookieStore = await cookies();
-  const sessionId =
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
-
-  await markAllNotificationsAsRead(tenantId, sessionId);
+  await markAllNotificationsAsRead(tenantId);
   revalidateTag(`member-notifications-${tenantId}`, "max");
 };
 
@@ -64,29 +68,116 @@ const markNotificationAsReadAndNavigateAction = async (
     return;
   }
 
-  const cookieStore = await cookies();
-  const sessionId =
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
-
   if (notificationId) {
-    await markNotificationAsRead(tenantId, notificationId, sessionId);
+    await markNotificationAsRead(tenantId, notificationId);
     revalidateTag(`member-notifications-${tenantId}`, "max");
   }
 
   redirect(linkUrl);
 };
 
-const NotificationsSection = async () => {
-  const tenantId = await getTenantId();
-  await connection();
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value ?? "";
+const NotificationsPagination = ({
+  nextToken,
+  previousToken,
+}: {
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <nav
+    aria-label="通知一覧ページング"
+    className="mt-6 flex items-center justify-center gap-6"
+  >
+    {previousToken ? (
+      <Link
+        className="text-sm text-primary underline-offset-4 hover:underline"
+        href={notificationsListHref(previousToken)}
+      >
+        前のページ
+      </Link>
+    ) : (
+      <span className="text-sm text-muted-foreground">前のページ</span>
+    )}
 
-  const result = await listMyNotifications(tenantId, sessionId);
-  if (!result.ok && result.requiresSignIn) {
-    redirect("/login?returnTo=%2Fnotifications");
+    {nextToken ? (
+      <Link
+        className="text-sm text-primary underline-offset-4 hover:underline"
+        href={notificationsListHref(nextToken)}
+      >
+        次のページ
+      </Link>
+    ) : (
+      <span className="text-sm text-muted-foreground">次のページ</span>
+    )}
+  </nav>
+);
+
+const NotificationsEmptyState = ({
+  nextToken,
+  previousToken,
+  token,
+}: {
+  nextToken: string;
+  previousToken: string;
+  token: string;
+}) => {
+  if (!token) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
+        現在表示できる通知はありません。
+      </div>
+    );
   }
 
+  // The rows this page pointed at are gone. The server hands back a token for
+  // the neighbouring page when it can, and empty tokens when it cannot — then
+  // the only way out is the first page (`proto/README.md`).
+  return (
+    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+      <p>このページに表示できる通知がありません。</p>
+      {previousToken || nextToken ? (
+        <NotificationsPagination
+          nextToken={nextToken}
+          previousToken={previousToken}
+        />
+      ) : (
+        <Link
+          className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
+          href={notificationsListHref("")}
+        >
+          通知一覧の先頭へ
+        </Link>
+      )}
+    </div>
+  );
+};
+
+const NotificationsSection = async ({
+  searchParams,
+}: {
+  searchParams: PageProps<"/[tenant_id]/notifications">["searchParams"];
+}) => {
+  const [resolvedSearchParams, tenantId] = await Promise.all([
+    searchParams,
+    getTenantId(),
+  ]);
+  const { token } = parseNotificationsListSearchParams(resolvedSearchParams);
+  await connection();
+
+  const result = await listMyNotifications(tenantId, undefined, {
+    limit: NOTIFICATIONS_PAGE_SIZE,
+    token,
+  });
+  if (!result.ok && result.requiresSignIn) {
+    // Come back to the page the reader was actually on, not just the first one.
+    redirect(
+      `/login?returnTo=${encodeURIComponent(notificationsListHref(token))}`
+    );
+  }
+
+  const { nextToken, previousToken } = result;
+  // Only this page's rows are loaded, so this is a per-page count. A total
+  // would need its own RPC, which the cursor contract deliberately leaves out
+  // (`proto/README.md`).
   const unreadCount = result.notifications.filter(
     (item) => !item.isRead
   ).length;
@@ -103,9 +194,12 @@ const NotificationsSection = async () => {
                 : "rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
             }
           >
-            未読 {unreadCount} 件
+            このページの未読 {unreadCount} 件
           </span>
-          {unreadCount > 0 ? (
+          {result.notifications.length > 0 ? (
+            // Offered on every non-empty page: the unread count above covers
+            // this page only, so a page with nothing unread can still sit in
+            // front of unread notifications further down the list.
             <form action={markAllNotificationsAsReadAction}>
               <input name="tenantId" type="hidden" value={tenantId} />
               <button
@@ -126,9 +220,11 @@ const NotificationsSection = async () => {
       )}
 
       {result.notifications.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
-          現在表示できる通知はありません。
-        </div>
+        <NotificationsEmptyState
+          nextToken={nextToken}
+          previousToken={previousToken}
+          token={token}
+        />
       ) : (
         <div className="grid gap-3">
           {result.notifications.map((notification) => {
@@ -220,6 +316,13 @@ const NotificationsSection = async () => {
           })}
         </div>
       )}
+
+      {result.notifications.length > 0 ? (
+        <NotificationsPagination
+          nextToken={nextToken}
+          previousToken={previousToken}
+        />
+      ) : null}
     </section>
   );
 };
@@ -231,7 +334,9 @@ const NotificationsSectionFallback = () => (
   </section>
 );
 
-const NotificationsPage = () => (
+const NotificationsPage = ({
+  searchParams,
+}: PageProps<"/[tenant_id]/notifications">) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
       <h1 className="text-xl font-semibold">通知</h1>
@@ -241,7 +346,7 @@ const NotificationsPage = () => (
     </section>
 
     <Suspense fallback={<NotificationsSectionFallback />}>
-      <NotificationsSection />
+      <NotificationsSection searchParams={searchParams} />
     </Suspense>
   </div>
 );
