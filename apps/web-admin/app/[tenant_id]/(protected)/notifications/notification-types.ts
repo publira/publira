@@ -1,3 +1,5 @@
+import type { CursorPageTokens } from "#lib/cursor-page";
+
 export interface NotificationItem {
   id: string;
   title: string;
@@ -14,20 +16,22 @@ export interface NotificationTargetUser {
   name: string;
 }
 
-export type ListNotificationsResult =
-  | {
-      ok: true;
-      notifications: NotificationItem[];
-      users: NotificationTargetUser[];
-      usersErrorMessage?: string;
-    }
-  | {
-      ok: false;
-      message: string;
-      notifications: NotificationItem[];
-      users: NotificationTargetUser[];
-      usersErrorMessage?: string;
-    };
+export type ListNotificationsResult = CursorPageTokens &
+  (
+    | {
+        ok: true;
+        notifications: NotificationItem[];
+        users: NotificationTargetUser[];
+        usersErrorMessage?: string;
+      }
+    | {
+        ok: false;
+        message: string;
+        notifications: NotificationItem[];
+        users: NotificationTargetUser[];
+        usersErrorMessage?: string;
+      }
+  );
 
 export type CreateNotificationActionState =
   | {

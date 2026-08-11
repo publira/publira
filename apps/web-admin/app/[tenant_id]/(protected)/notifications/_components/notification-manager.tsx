@@ -1,5 +1,3 @@
-"use client";
-
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -8,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -18,15 +15,21 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
-import { useMemo } from "react";
+
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
 
 import type { NotificationItem } from "../notification-types";
 
-interface NotificationManagerProps {
-  initialNotifications: NotificationItem[];
-  initialListErrorMessage?: string;
-}
+type NotificationManagerProps = CursorPageHrefs & {
+  listErrorMessage?: string;
+  notifications: NotificationItem[];
+  pageSize: number;
+};
 
 const formatAudience = (item: NotificationItem): string => {
   if (item.audienceType === "all") {
@@ -46,17 +49,77 @@ const excerpt = (text: string, maxLength: number): string => {
   return `${normalized.slice(0, maxLength)}...`;
 };
 
-export const NotificationManager = ({
-  initialNotifications,
-  initialListErrorMessage,
-}: NotificationManagerProps) => {
-  const notifications = useMemo(
-    () =>
-      initialNotifications.toSorted((a, b) =>
-        b.createdAt.localeCompare(a.createdAt, "ja")
-      ),
-    [initialNotifications]
+// Absolute API timestamp → admin display zone. `formatDateTime` falls back to
+// the raw value when it cannot be parsed, so only the empty case is special.
+const formatNotificationDateTime = (value: string): string =>
+  value ? formatDateTime(value) : "—";
+
+const NotificationListBody = ({
+  hasPageLinks,
+  listErrorMessage,
+  notifications,
+}: {
+  hasPageLinks: boolean;
+  listErrorMessage?: string;
+  notifications: NotificationItem[];
+}) => {
+  // A failed fetch still hands an empty `notifications` array; do not show the
+  // empty list state alongside the error or operators will read it as "none".
+  if (listErrorMessage) {
+    return <FormMessage variant="destructive">{listErrorMessage}</FormMessage>;
+  }
+
+  if (notifications.length === 0) {
+    return (
+      <CursorPageEmptyState
+        description="通知作成から対象ユーザーに通知を配信してください。"
+        hasPageLinks={hasPageLinks}
+        itemLabel="通知"
+        title="通知がまだありません。"
+      />
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-44">作成日時</TableHead>
+          <TableHead>タイトル</TableHead>
+          <TableHead>本文</TableHead>
+          <TableHead className="w-52">対象</TableHead>
+          <TableHead className="w-60">リンク先</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {notifications.map((notification) => (
+          <TableRow key={notification.id}>
+            <TableCell>
+              {formatNotificationDateTime(notification.createdAt)}
+            </TableCell>
+            <TableCell className="font-medium">{notification.title}</TableCell>
+            <TableCell>{excerpt(notification.body, 72)}</TableCell>
+            <TableCell>{formatAudience(notification)}</TableCell>
+            <TableCell>{notification.linkUrl || "—"}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
+};
+
+export const NotificationManager = ({
+  listErrorMessage,
+  nextHref,
+  notifications,
+  pageSize,
+  previousHref,
+}: NotificationManagerProps) => {
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  // Hide the pager on a failed fetch: tokens are empty then, and a bare
+  // "previous/next" chrome next to the error looks like the list exists.
+  const showPagination =
+    !listErrorMessage && (notifications.length > 0 || hasPageLinks);
 
   return (
     <Card>
@@ -75,44 +138,21 @@ export const NotificationManager = ({
         </LinkButton>
       </CardHeader>
 
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
-        ) : null}
+      <CardContent className="grid gap-4">
+        <NotificationListBody
+          hasPageLinks={hasPageLinks}
+          listErrorMessage={listErrorMessage}
+          notifications={notifications}
+        />
 
-        {notifications.length === 0 ? (
-          <EmptyState
-            description="通知作成から対象ユーザーに通知を配信してください。"
-            title="通知がまだありません。"
+        {showPagination ? (
+          <PaginationFooter
+            ariaLabel="通知一覧のページ送り"
+            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
           />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-44">作成日時</TableHead>
-                <TableHead>タイトル</TableHead>
-                <TableHead>本文</TableHead>
-                <TableHead className="w-52">対象</TableHead>
-                <TableHead className="w-60">リンク先</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {notifications.map((notification) => (
-                <TableRow key={notification.id}>
-                  <TableCell>{notification.createdAt || "-"}</TableCell>
-                  <TableCell className="font-medium">
-                    {notification.title}
-                  </TableCell>
-                  <TableCell>{excerpt(notification.body, 72)}</TableCell>
-                  <TableCell>{formatAudience(notification)}</TableCell>
-                  <TableCell>{notification.linkUrl || "-"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
