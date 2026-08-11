@@ -270,6 +270,42 @@ describe("authors", () => {
     });
   });
 
+  it("著者詳細も nextToken が返る限り次ページまで辿る", async () => {
+    mockListPublishedSeries.mockResolvedValueOnce({
+      nextToken: "TOKEN_PAGE_2",
+      previousToken: "",
+      series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+    });
+    mockListPublishedSeries.mockResolvedValueOnce(
+      seriesPage([seriesWithAuthor("SERIES_2", "CREATOR_A", "著者A")])
+    );
+
+    const detail = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A");
+
+    expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
+    expect(detail?.series).toEqual([
+      { publicId: "SERIES_1", title: "SERIES_1" },
+      { publicId: "SERIES_2", title: "SERIES_2" },
+    ]);
+  });
+
+  it("同じ nextToken が繰り返されたら著者一覧の走査を止める", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      nextToken: "STUCK_TOKEN",
+      previousToken: "",
+      series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+    });
+
+    const result = await listPublishedAuthors("TENANT_1", {
+      page: 1,
+      pageSize: 10,
+    });
+
+    // first page with "" then one more with the stuck token, then stop
+    expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
+    expect(result.authors).toHaveLength(1);
+  });
+
   it("page パラメータを正規化する", () => {
     expect(normalizeAuthorsPage()).toBe(1);
     expect(normalizeAuthorsPage("0")).toBe(1);

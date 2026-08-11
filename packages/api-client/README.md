@@ -45,9 +45,13 @@ import type { CreateSessionRequest } from "@publira/api-client/public/auth";
 import type { AdminAuthServiceGetMeRequest } from "@publira/api-client/admin/auth";
 ```
 
-## cursor 一覧からの単体検索
+## cursor 一覧の走査
 
-単体取得 RPC がないリソースを cursor 一覧から検索する場合は、共有 helper `findByPublicIdWithToken` を使います。ページは token の依存関係に従って逐次取得し、同じ token の再出現とページ数・行数の上限で不正なレスポンスによる無限走査を防ぎます。
+cursor 一覧 RPC をアプリ側で順に辿るときは、共有 helper を使います。ページは token の依存関係に従って逐次取得し、同じ token の再出現とページ数・行数の上限で不正なレスポンスによる無限走査を防ぎます。
+
+### 単体検索
+
+単体取得 RPC がないリソースを `publicId` で探す場合:
 
 ```ts
 import { findByPublicIdWithToken } from "@publira/api-client/pagination";
@@ -56,6 +60,26 @@ const item = await findByPublicIdWithToken(publicId, async (token, limit) => {
   const response = await client.listItems({ limit, token });
   return { items: response.items, nextToken: response.nextToken };
 });
+```
+
+### 集約・途中打ち切り
+
+一覧を集約する、または十分な件数で打ち切る場合は `forEachPageWithToken` を使います。`onPage` が `false` を返すと次ページを取りません。
+
+```ts
+import { forEachPageWithToken } from "@publira/api-client/pagination";
+
+await forEachPageWithToken(
+  async (token, limit) => {
+    const response = await client.listItems({ limit, token });
+    return { items: response.items, nextToken: response.nextToken };
+  },
+  (items) => {
+    // items を集約する
+    return collected.size < needed; // false で打ち切り
+  },
+  { pageSize: 50 }
+);
 ```
 
 ## テナントヘッダー
