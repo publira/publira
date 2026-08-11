@@ -111,10 +111,16 @@ export const EpisodesSortableList = ({
         return;
       }
 
+      // A drag permutes the rows of this page only, so the page's own order
+      // indexes are handed back out in ascending slot order. Numbering from 1
+      // would be wrong on every page but the first.
+      const pageOrderIndexes = optimisticItems
+        .map((item) => item.orderIndex)
+        .toSorted((a, b) => a - b);
       const nextItems = reorderItems(optimisticItems, activeId, targetId).map(
         (item, index) => ({
           ...item,
-          orderIndex: index + 1,
+          orderIndex: pageOrderIndexes[index] ?? item.orderIndex,
         })
       );
 

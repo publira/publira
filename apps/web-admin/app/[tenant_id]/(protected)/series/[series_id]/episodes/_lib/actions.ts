@@ -7,7 +7,7 @@ import {
 } from "@publira/utils";
 import { redirect } from "next/navigation";
 
-import { createEpisode, reorderEpisodes } from "#lib/episode";
+import { createEpisode, reorderEpisodePage } from "#lib/episode";
 
 import type { EpisodeActionState } from "../episode-types";
 
@@ -185,7 +185,9 @@ export const reorderEpisodesAction = async (formData: FormData) => {
     };
   }
 
-  const reordered = await reorderEpisodes({
+  // The list screen posts the order of the page that was dragged on, not of the
+  // whole series; the merge back into the series' order happens in the lib.
+  const reordered = await reorderEpisodePage({
     episodePublicIds: orderedEpisodeIds,
     seriesPublicId,
     tenantId,
