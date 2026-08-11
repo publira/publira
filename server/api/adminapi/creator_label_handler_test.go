@@ -405,13 +405,9 @@ func TestListLabelsEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryToken = resp.Msg.NextToken
 				recoveryDirection = pagination.Forward
 			}
-			cursor, err := pagination.Decode(recoveryToken)
-			if err != nil {
-				t.Fatalf("decode recovery token: %v", err)
-			}
-			wantKeys := []string{now.Format(time.RFC3339Nano), boundaryID.String(), labelInclusiveKey}
-			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
-				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
+			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
+			if recoveryToken != wantRecoveryToken {
+				t.Fatalf("recovery token = %q, want %q", recoveryToken, wantRecoveryToken)
 			}
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -480,12 +476,7 @@ func TestListLabelsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 				WillReturnRows(labelColumns())
 
 			req := newLabelRequest(tenantID, sessionToken)
-			req.Msg.Token = pagination.Encode(
-				test.direction,
-				now.Format(time.RFC3339Nano),
-				boundaryID.String(),
-				labelInclusiveKey,
-			)
+			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
 			resp, err := client.ListLabels(context.Background(), req)
 			if err != nil {
 				t.Fatalf("ListLabels: %v", err)

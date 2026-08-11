@@ -18,14 +18,7 @@ import (
 const (
 	defaultAuditLogPageSize = int32(20)
 	maxAuditLogPageSize     = int32(100)
-	auditLogInclusiveKey    = "inclusive"
 )
-
-type auditLogCursorKeys struct {
-	createdAt sql.NullTime
-	id        uuid.NullUUID
-	inclusive bool
-}
 
 type auditLogQueryFilters struct {
 	tenantID          uuid.UUID
@@ -47,47 +40,6 @@ type auditLogPageRow struct {
 	reason        sql.NullString
 	clientIP      sql.NullString
 	createdAt     time.Time
-}
-
-func encodeAuditLogToken(direction pagination.Direction, row auditLogPageRow) string {
-	return pagination.Encode(direction, row.createdAt.UTC().Format(time.RFC3339Nano), row.id.String())
-}
-
-// A recovery token includes the boundary once. That keeps the boundary row in
-// the page when rows beyond it were deleted after the original token was issued.
-func encodeAuditLogRecoveryToken(direction pagination.Direction, keys auditLogCursorKeys) string {
-	return pagination.Encode(
-		direction,
-		keys.createdAt.Time.UTC().Format(time.RFC3339Nano),
-		keys.id.UUID.String(),
-		auditLogInclusiveKey,
-	)
-}
-
-func decodeAuditLogTokenKeys(cursor pagination.Cursor) (auditLogCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
-		return auditLogCursorKeys{}, invalid
-	}
-	inclusive := len(cursor.Keys) == 3
-	if inclusive && cursor.Keys[2] != auditLogInclusiveKey {
-		return auditLogCursorKeys{}, invalid
-	}
-
-	createdAt, err := time.Parse(time.RFC3339Nano, cursor.Keys[0])
-	if err != nil {
-		return auditLogCursorKeys{}, invalid
-	}
-	id, err := uuid.Parse(cursor.Keys[1])
-	if err != nil {
-		return auditLogCursorKeys{}, invalid
-	}
-
-	return auditLogCursorKeys{
-		createdAt: sql.NullTime{Time: createdAt.UTC(), Valid: true},
-		id:        uuid.NullUUID{UUID: id, Valid: true},
-		inclusive: inclusive,
-	}, nil
 }
 
 func mapAuditLogDescRows(rows []dbmodels.ListAuditLogsByTenantDescRow) []auditLogPageRow {
@@ -133,7 +85,7 @@ func mapAuditLogAscRows(rows []dbmodels.ListAuditLogsByTenantAscRow) []auditLogP
 func (s *adminServer) auditLogPage(
 	ctx context.Context,
 	filters auditLogQueryFilters,
-	keys auditLogCursorKeys,
+	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
 ) ([]auditLogPageRow, error) {
@@ -145,9 +97,9 @@ func (s *adminServer) auditLogPage(
 			FilterAction:            filters.action,
 			FilterCreatedFrom:       filters.createdFrom,
 			FilterCreatedTo:         filters.createdTo,
-			CursorID:                keys.id,
-			CursorCreatedAt:         keys.createdAt,
-			CursorInclusive:         keys.inclusive,
+			CursorID:                uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorCreatedAt:         sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			CursorInclusive:         keys.Inclusive,
 			Limit:                   limit,
 		})
 		if err != nil {
@@ -162,9 +114,9 @@ func (s *adminServer) auditLogPage(
 		FilterAction:            filters.action,
 		FilterCreatedFrom:       filters.createdFrom,
 		FilterCreatedTo:         filters.createdTo,
-		CursorID:                keys.id,
-		CursorCreatedAt:         keys.createdAt,
-		CursorInclusive:         keys.inclusive,
+		CursorID:                uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorCreatedAt:         sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive:         keys.Inclusive,
 		Limit:                   limit,
 	})
 	if err != nil {
@@ -201,11 +153,11 @@ func (s *adminServer) ListAuditLogs(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys auditLogCursorKeys
+	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = decodeAuditLogTokenKeys(cursor)
+		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, err
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 		}
 	}
 
@@ -273,20 +225,21 @@ func (s *adminServer) ListAuditLogs(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeAuditLogToken(pagination.Backward, rows[0])
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
-			res.NextToken = encodeAuditLogToken(pagination.Forward, rows[len(rows)-1])
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
 	// out is not to start over from the first page. A recovery token that comes
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
-	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeAuditLogRecoveryToken(pagination.Backward, keys)
-	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeAuditLogRecoveryToken(pagination.Forward, keys)
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil

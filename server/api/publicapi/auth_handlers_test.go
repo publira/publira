@@ -308,13 +308,9 @@ func TestAuthListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryToken = resp.Msg.NextToken
 				recoveryDirection = pagination.Forward
 			}
-			cursor, err := pagination.Decode(recoveryToken)
-			if err != nil {
-				t.Fatalf("decode recovery token: %v", err)
-			}
-			wantKeys := []string{now.Format(time.RFC3339Nano), boundaryID.String(), notificationInclusiveKey}
-			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
-				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
+			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
+			if recoveryToken != wantRecoveryToken {
+				t.Fatalf("recovery token = %q, want %q", recoveryToken, wantRecoveryToken)
 			}
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
@@ -378,12 +374,7 @@ func TestAuthListNotificationsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 				WillReturnRows(notificationColumns())
 
 			req := newListNotificationsRequest(tenantID)
-			req.Msg.Token = pagination.Encode(
-				test.direction,
-				now.Format(time.RFC3339Nano),
-				boundaryID.String(),
-				notificationInclusiveKey,
-			)
+			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
 			resp, err := client.ListNotifications(context.Background(), req)
 			if err != nil {
 				t.Fatalf("ListNotifications: %v", err)
@@ -411,7 +402,7 @@ func TestAuthListNotificationsInvalidToken(t *testing.T) {
 	tests := map[string]string{
 		"not a token":        "not-a-valid-token",
 		"too few keys":       pagination.Encode(pagination.Forward, boundaryAt),
-		"too many keys":      pagination.Encode(pagination.Forward, boundaryAt, boundaryID, notificationInclusiveKey, "extra"),
+		"too many keys":      pagination.Encode(pagination.Forward, boundaryAt, boundaryID, "inclusive", "extra"),
 		"unknown third key":  pagination.Encode(pagination.Forward, boundaryAt, boundaryID, "exclusive"),
 		"created_at not iso": pagination.Encode(pagination.Forward, "2026-08-11 00:00:00", boundaryID),
 		"id not a uuid":      pagination.Encode(pagination.Forward, boundaryAt, "not-a-uuid"),

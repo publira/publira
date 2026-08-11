@@ -35,14 +35,7 @@ const (
 	creatorIconMinDimension   = 256
 	defaultLabelPageSize      = int32(20)
 	maxLabelPageSize          = int32(100)
-	labelInclusiveKey         = "inclusive"
 )
-
-type labelCursorKeys struct {
-	createdAt sql.NullTime
-	id        uuid.NullUUID
-	inclusive bool
-}
 
 type labelPageRow struct {
 	id                     uuid.UUID
@@ -51,45 +44,6 @@ type labelPageRow struct {
 	createdAt              time.Time
 	eyeCatchImageID        uuid.NullUUID
 	eyeCatchImageUpdatedAt sql.NullTime
-}
-
-func encodeLabelToken(direction pagination.Direction, row labelPageRow) string {
-	return pagination.Encode(direction, row.createdAt.UTC().Format(time.RFC3339Nano), row.id.String())
-}
-
-func encodeLabelRecoveryToken(direction pagination.Direction, keys labelCursorKeys) string {
-	return pagination.Encode(
-		direction,
-		keys.createdAt.Time.UTC().Format(time.RFC3339Nano),
-		keys.id.UUID.String(),
-		labelInclusiveKey,
-	)
-}
-
-func decodeLabelTokenKeys(cursor pagination.Cursor) (labelCursorKeys, error) {
-	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
-		return labelCursorKeys{}, invalid
-	}
-	inclusive := len(cursor.Keys) == 3
-	if inclusive && cursor.Keys[2] != labelInclusiveKey {
-		return labelCursorKeys{}, invalid
-	}
-
-	createdAt, err := time.Parse(time.RFC3339Nano, cursor.Keys[0])
-	if err != nil {
-		return labelCursorKeys{}, invalid
-	}
-	id, err := uuid.Parse(cursor.Keys[1])
-	if err != nil {
-		return labelCursorKeys{}, invalid
-	}
-
-	return labelCursorKeys{
-		createdAt: sql.NullTime{Time: createdAt.UTC(), Valid: true},
-		id:        uuid.NullUUID{UUID: id, Valid: true},
-		inclusive: inclusive,
-	}, nil
 }
 
 func mapLabelDescRows(rows []dbmodels.ListLabelsByTenantDescRow) []labelPageRow {
@@ -378,7 +332,7 @@ func (s *adminServer) labelEyeCatchVariantsByImageIDs(
 func (s *adminServer) labelPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
-	keys labelCursorKeys,
+	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
 ) ([]labelPageRow, error) {
@@ -386,9 +340,9 @@ func (s *adminServer) labelPage(
 	if direction == pagination.Backward {
 		rows, err := queries.ListLabelsByTenantAsc(ctx, dbmodels.ListLabelsByTenantAscParams{
 			TenantID:        tenantID,
-			CursorID:        keys.id,
-			CursorInclusive: keys.inclusive,
-			CursorCreatedAt: keys.createdAt,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 			Limit:           limit,
 		})
 		if err != nil {
@@ -399,9 +353,9 @@ func (s *adminServer) labelPage(
 
 	rows, err := queries.ListLabelsByTenantDesc(ctx, dbmodels.ListLabelsByTenantDescParams{
 		TenantID:        tenantID,
-		CursorID:        keys.id,
-		CursorInclusive: keys.inclusive,
-		CursorCreatedAt: keys.createdAt,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		Limit:           limit,
 	})
 	if err != nil {
@@ -457,11 +411,11 @@ func (s *adminServer) ListLabels(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	var keys labelCursorKeys
+	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
-		keys, err = decodeLabelTokenKeys(cursor)
+		keys, err = pagination.DecodeTimeUUID(cursor)
 		if err != nil {
-			return nil, err
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 		}
 	}
 
@@ -497,20 +451,21 @@ func (s *adminServer) ListLabels(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = encodeLabelToken(pagination.Backward, rows[0])
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
 		}
 		if hasNext {
-			res.NextToken = encodeLabelToken(pagination.Forward, rows[len(rows)-1])
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
 	// out is not to start over from the first page. A recovery token that comes
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
-	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeLabelRecoveryToken(pagination.Backward, keys)
-	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeLabelRecoveryToken(pagination.Forward, keys)
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(res), nil
