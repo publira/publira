@@ -152,6 +152,7 @@ jobs:
               - 'e2e/**'
               - 'apps/web-host/**'
               - 'apps/web-admin/**'
+              - 'apps/web-platform/**'
               - 'packages/**'
               - 'server/**'
               - 'db/**'
@@ -168,8 +169,8 @@ jobs:
               - 'db/**'
               - 'e2e/bootstrap/**'
               # task dev starts every app and server, so any of their sources
-              # can break startup — Test / E2E covers web-host / web-admin and
-              # their APIs, not the full task dev surface.
+              # can break startup — Test / E2E covers web-host / web-admin /
+              # web-platform and their APIs, not the full task dev surface.
               - 'apps/**'
               - 'packages/**'
               - 'server/**'

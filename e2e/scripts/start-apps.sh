@@ -76,8 +76,11 @@ for port in \
   "${E2E_PUBLIC_API_GRPC_PORT}" \
   "${E2E_ADMIN_API_PORT}" \
   "${E2E_ADMIN_API_GRPC_PORT}" \
+  "${E2E_PLATFORM_API_PORT}" \
+  "${E2E_PLATFORM_API_GRPC_PORT}" \
   "${E2E_WEB_HOST_PORT}" \
-  "${E2E_WEB_ADMIN_PORT}"; do
+  "${E2E_WEB_ADMIN_PORT}" \
+  "${E2E_WEB_PLATFORM_PORT}"; do
   if ss -ltn 2>/dev/null | grep -qE ":${port}\\b" || netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"; then
     e2e_err "port ${port} is already in use; free it or override E2E_*_PORT"
     exit 1
@@ -88,10 +91,12 @@ done
 # appends to the same log; truncate here so a run starts from a clean file.
 : >"${LOG_DIR}/api-server.log"
 : >"${LOG_DIR}/admin-api-server.log"
+: >"${LOG_DIR}/platform-api-server.log"
 : >"${LOG_DIR}/publish-episodes.log"
 
 bash "${E2E_SCRIPTS_DIR}/api-server.sh" start
 bash "${E2E_SCRIPTS_DIR}/admin-api-server.sh" start
+bash "${E2E_SCRIPTS_DIR}/platform-api-server.sh" start
 bash "${E2E_SCRIPTS_DIR}/publish-episodes.sh" start
 
 # Bind hostname must match browser Host so Next internal rewrites are not
@@ -113,5 +118,15 @@ start_web_app \
   "PUBLIRA_ADMIN_GRPC_URL" \
   "${PUBLIRA_ADMIN_GRPC_URL}" \
   "web-admin"
+
+# web-platform has no tenant Host resolution; bind 0.0.0.0 so platform.localhost
+# reaches the process the same way admin.localhost does for web-admin.
+start_web_app \
+  "web-platform" \
+  "${E2E_WEB_PLATFORM_PORT}" \
+  "${E2E_WEB_PLATFORM_BIND_HOST:-0.0.0.0}" \
+  "PUBLIRA_PLATFORM_GRPC_URL" \
+  "${PUBLIRA_PLATFORM_GRPC_URL}" \
+  "web-platform"
 
 e2e_log "apps started (logs under ${LOG_DIR})"

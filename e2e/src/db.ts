@@ -112,3 +112,38 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
     WHERE public_id IN (${list});
   `);
 };
+
+/**
+ * Remove tenants created by platform tenant-ops tests.
+ * Most tenant-scoped tables cascade; series does not, so wipe empty
+ * series/episodes first for safety. Platform audit log rows keep their
+ * target_id text (no FK to tenants).
+ */
+export const deleteTenantsByPublicIds = (
+  publicIds: readonly string[]
+): void => {
+  const quoted: string[] = [];
+  for (const publicId of publicIds) {
+    const trimmed = publicId.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  const list = quoted.join(", ");
+  runSql(`
+    DELETE FROM episodes e
+    USING series s, tenants t
+    WHERE e.series_id = s.id
+      AND s.tenant_id = t.id
+      AND t.public_id IN (${list});
+    DELETE FROM series s
+    USING tenants t
+    WHERE s.tenant_id = t.id
+      AND t.public_id IN (${list});
+    DELETE FROM tenants
+    WHERE public_id IN (${list});
+  `);
+};
