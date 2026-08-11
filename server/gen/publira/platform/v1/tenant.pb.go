@@ -117,13 +117,15 @@ func (x *Tenant) GetTimezone() string {
 }
 
 type ListTenantsRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	Limit  int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// フィルタ条件
-	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	PublicId      string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
-	Status        string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	Name     string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Status   string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -165,13 +167,6 @@ func (x *ListTenantsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListTenantsRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
 func (x *ListTenantsRequest) GetName() string {
 	if x != nil {
 		return x.Name
@@ -193,9 +188,20 @@ func (x *ListTenantsRequest) GetStatus() string {
 	return ""
 }
 
+func (x *ListTenantsRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type ListTenantsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenants       []*Tenant              `protobuf:"bytes,1,rep,name=tenants,proto3" json:"tenants,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Tenants []*Tenant              `protobuf:"bytes,1,rep,name=tenants,proto3" json:"tenants,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,6 +241,20 @@ func (x *ListTenantsResponse) GetTenants() []*Tenant {
 		return x.Tenants
 	}
 	return nil
+}
+
+func (x *ListTenantsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListTenantsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type GetTenantRequest struct {
@@ -1752,15 +1772,18 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x16\n" +
 	"\x06domain\x18\x05 \x01(\tR\x06domain\x12!\n" +
 	"\fadmin_domain\x18\a \x01(\tR\vadminDomain\x12\x1a\n" +
-	"\btimezone\x18\b \x01(\tR\btimezoneJ\x04\b\x06\x10\a\"\x8b\x01\n" +
+	"\btimezone\x18\b \x01(\tR\btimezoneJ\x04\b\x06\x10\a\"\x97\x01\n" +
 	"\x12ListTenantsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12\x12\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
 	"\tpublic_id\x18\x04 \x01(\tR\bpublicId\x12\x16\n" +
-	"\x06status\x18\x05 \x01(\tR\x06status\"L\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12\x14\n" +
+	"\x05token\x18\x06 \x01(\tR\x05tokenJ\x04\b\x02\x10\x03R\x06offset\"\x92\x01\n" +
 	"\x13ListTenantsResponse\x125\n" +
-	"\atenants\x18\x01 \x03(\v2\x1b.publira.platform.v1.TenantR\atenants\"/\n" +
+	"\atenants\x18\x01 \x03(\v2\x1b.publira.platform.v1.TenantR\atenants\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"/\n" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"H\n" +
 	"\x11GetTenantResponse\x123\n" +

@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -71,16 +72,17 @@ func (s *platformServer) ListTenants(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListTenantsRequest],
 ) (*connect.Response[publirasplatformv1.ListTenantsResponse], error) {
-	limit := req.Msg.Limit
-	if limit <= 0 {
-		limit = defaultListLimit
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	if limit > maxListLimit {
-		limit = maxListLimit
-	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
 
 	// フィルタパラメータを処理
@@ -88,16 +90,11 @@ func (s *platformServer) ListTenants(
 	filterPublicID := strings.TrimSpace(req.Msg.PublicId)
 	filterStatus := strings.TrimSpace(req.Msg.Status)
 
-	tenants, err := s.queriesFor(ctx).ListTenants(ctx, dbmodels.ListTenantsParams{
-		Limit:          limit,
-		Offset:         offset,
-		FilterName:     sql.NullString{String: filterName, Valid: true},
-		FilterPublicID: sql.NullString{String: filterPublicID, Valid: true},
-		FilterStatus:   sql.NullString{String: filterStatus, Valid: true},
-	})
+	tenants, err := s.tenantPage(ctx, filterName, filterPublicID, filterStatus, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	tenants, hasMore := pagination.Page(tenants, limit, cursor.Direction)
 
 	resp := &publirasplatformv1.ListTenantsResponse{
 		Tenants: make([]*publirasplatformv1.Tenant, len(tenants)),
@@ -105,7 +102,53 @@ func (s *platformServer) ListTenants(
 	for i, t := range tenants {
 		resp.Tenants[i] = tenantToProto(t)
 	}
+	switch {
+	case len(tenants) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, tenants[0].CreatedAt, tenants[0].ID)
+		}
+		if hasNext {
+			last := tenants[len(tenants)-1]
+			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+		}
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		resp.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
 	return connect.NewResponse(resp), nil
+}
+
+func (s *platformServer) tenantPage(
+	ctx context.Context,
+	filterName, filterPublicID, filterStatus string,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]dbmodels.Tenant, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		return queries.ListTenantsAsc(ctx, dbmodels.ListTenantsAscParams{
+			FilterName:      sql.NullString{String: filterName, Valid: true},
+			FilterPublicID:  sql.NullString{String: filterPublicID, Valid: true},
+			FilterStatus:    sql.NullString{String: filterStatus, Valid: true},
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+	}
+
+	return queries.ListTenantsDesc(ctx, dbmodels.ListTenantsDescParams{
+		FilterName:      sql.NullString{String: filterName, Valid: true},
+		FilterPublicID:  sql.NullString{String: filterPublicID, Valid: true},
+		FilterStatus:    sql.NullString{String: filterStatus, Valid: true},
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
 }
 
 func (s *platformServer) GetTenant(

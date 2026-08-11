@@ -221,8 +221,11 @@ type Querier interface {
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	// テナントに所属する管理・編集ユーザー一覧を取得する
 	ListTenantUsers(ctx context.Context, arg ListTenantUsersParams) ([]ListTenantUsersRow, error)
-	// プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
-	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
+	ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) ([]Tenant, error)
+	// ListTenants は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
 	// 指定ユーザーの未読通知を一括既読化
 	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error

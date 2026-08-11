@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -76,6 +77,67 @@ func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 	}
 	if getResp.Msg.Tenant.Domain != "integration.example.com" {
 		t.Fatalf("GetTenant domain = %q", getResp.Msg.Tenant.Domain)
+	}
+}
+
+func TestDBListTenantsPaginatesWithTokens(t *testing.T) {
+	ts, operator := newDBIntegrationTestServer(t)
+	client := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+
+	createdPublicIDs := make([]string, 0, 3)
+	for index, name := range []string{"First", "Second", "Third"} {
+		resp, err := client.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+			Name:   name + " Paginated Tenant",
+			Domain: strings.ToLower(name) + "-paginated.example.com",
+		}))
+		if err != nil {
+			t.Fatalf("CreateTenant %d: %v", index, err)
+		}
+		createdPublicIDs = append(createdPublicIDs, resp.Msg.Tenant.PublicId)
+	}
+
+	first, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{Limit: 2}))
+	if err != nil {
+		t.Fatalf("ListTenants first page: %v", err)
+	}
+	if len(first.Msg.Tenants) != 2 || first.Msg.PreviousToken != "" || first.Msg.NextToken == "" {
+		t.Fatalf("first page = %d tenants, tokens (%q, %q); want 2, empty previous, non-empty next", len(first.Msg.Tenants), first.Msg.PreviousToken, first.Msg.NextToken)
+	}
+
+	second, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{
+		Limit: 2,
+		Token: first.Msg.NextToken,
+	}))
+	if err != nil {
+		t.Fatalf("ListTenants second page: %v", err)
+	}
+	if len(second.Msg.Tenants) != 1 || second.Msg.PreviousToken == "" || second.Msg.NextToken != "" {
+		t.Fatalf("second page = %d tenants, tokens (%q, %q); want 1, non-empty previous, empty next", len(second.Msg.Tenants), second.Msg.PreviousToken, second.Msg.NextToken)
+	}
+
+	listedPublicIDs := []string{
+		first.Msg.Tenants[0].PublicId,
+		first.Msg.Tenants[1].PublicId,
+		second.Msg.Tenants[0].PublicId,
+	}
+	slices.Sort(createdPublicIDs)
+	slices.Sort(listedPublicIDs)
+	if !slices.Equal(listedPublicIDs, createdPublicIDs) {
+		t.Fatalf("listed public IDs = %v, want %v", listedPublicIDs, createdPublicIDs)
+	}
+
+	back, err := client.ListTenants(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListTenantsRequest{
+		Limit: 2,
+		Token: second.Msg.PreviousToken,
+	}))
+	if err != nil {
+		t.Fatalf("ListTenants previous page: %v", err)
+	}
+	if len(back.Msg.Tenants) != 2 {
+		t.Fatalf("previous page tenant count = %d, want 2", len(back.Msg.Tenants))
+	}
+	if back.Msg.Tenants[0].PublicId != first.Msg.Tenants[0].PublicId || back.Msg.Tenants[1].PublicId != first.Msg.Tenants[1].PublicId {
+		t.Fatalf("previous page public IDs = [%s %s], want [%s %s]", back.Msg.Tenants[0].PublicId, back.Msg.Tenants[1].PublicId, first.Msg.Tenants[0].PublicId, first.Msg.Tenants[1].PublicId)
 	}
 }
 

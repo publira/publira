@@ -1,12 +1,45 @@
--- name: ListTenants :many
--- プラットフォーム管理者向けテナント一覧取得（フィルタ対応）
+-- ListTenants は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListTenantsDesc :many
 SELECT *
 FROM tenants
 WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
   AND (sqlc.narg('filter_public_id')::text = '' OR public_id ILIKE '%' || sqlc.narg('filter_public_id')::text || '%')
   AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
-ORDER BY created_at DESC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+  AND (
+    sqlc.narg('cursor_id')::uuid IS NULL
+    OR (
+      sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+    OR (
+      NOT sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantsAsc :many
+SELECT *
+FROM tenants
+WHERE (sqlc.narg('filter_name')::text = '' OR name ILIKE '%' || sqlc.narg('filter_name')::text || '%')
+  AND (sqlc.narg('filter_public_id')::text = '' OR public_id ILIKE '%' || sqlc.narg('filter_public_id')::text || '%')
+  AND (sqlc.narg('filter_status')::text = '' OR status = sqlc.narg('filter_status')::text)
+  AND (
+    sqlc.narg('cursor_id')::uuid IS NULL
+    OR (
+      sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+    OR (
+      NOT sqlc.arg('cursor_inclusive')::boolean
+      AND (created_at, id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT sqlc.arg('limit');
 -- name: CreateTenant :one
 -- プラットフォーム管理者向けテナント作成
 INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)

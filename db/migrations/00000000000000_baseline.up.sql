@@ -932,6 +932,11 @@ CREATE UNIQUE INDEX idx_tenant_admin_invitations_tenant_token_hash ON tenant_adm
 -- INDEX: idx_tenant_user_roles_tenant_id
 CREATE INDEX idx_tenant_user_roles_tenant_id ON tenant_user_roles USING btree (tenant_id);
 
+-- INDEX: idx_tenants_created_at
+-- 末尾の id はテナント一覧の cursor のタイブレーカー。btree は逆順にも
+-- 走査できるので、この 1 本で次ページと前ページの両方を索引順に取り出せる。
+CREATE INDEX idx_tenants_created_at ON tenants USING btree (created_at DESC, id DESC);
+
 -- INDEX: idx_user_email_change_tokens_tenant_current_token
 CREATE INDEX idx_user_email_change_tokens_tenant_current_token ON user_email_change_tokens USING btree (tenant_id, current_email_token_hash);
 
