@@ -18,8 +18,8 @@ import {
  * resolve to nothing, so the copy stays resource-agnostic.
  *
  * Rendered inside `(protected)/layout.tsx`, which keeps the console sidebar and
- * header. Unmatched URLs that never enter this group are #646, not this
- * boundary.
+ * header. URLs that match no route at all are handled by
+ * `app/global-not-found.tsx`, not this boundary.
  *
  * No `<main>` here: `ConsoleLayoutMain` already provides one.
  *

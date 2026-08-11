@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   },
   cacheMaxMemorySize: 0,
   experimental: {
+    // Unmatched URLs skip normal layout rendering.
+    globalNotFound: true,
     turbopackRustReactCompiler: true,
   },
   images: {
