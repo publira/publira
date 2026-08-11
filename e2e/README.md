@@ -1,9 +1,9 @@
 # E2E テスト基盤
 
-Playwright による Web 横断 E2E の共通基盤と、公開カタログのシナリオです。  
-残りの製品シナリオは子 Issue（#516–#518 など）側で追加します。本ディレクトリは起動・readiness・CI・成果物の標準化も責務に含みます。
+Playwright による Web 横断 E2E の共通基盤と、公開カタログ・管理画面入稿フローのシナリオです。  
+残りの製品シナリオは子 Issue（#517–#518 など）側で追加します。本ディレクトリは起動・readiness・CI・成果物の標準化も責務に含みます。
 
-関連: [#513](https://github.com/publira/publira/issues/513) / Epic [#512](https://github.com/publira/publira/issues/512)
+関連: [#513](https://github.com/publira/publira/issues/513) / [#516](https://github.com/publira/publira/issues/516) / Epic [#512](https://github.com/publira/publira/issues/512)
 
 開発環境そのもの（空 DB volume からの `task setup`、`task dev` の全サービス起動）の検証は Playwright を使わない別ライフサイクルで、[`bootstrap/README.md`](./bootstrap/README.md) が正（`task e2e:bootstrap`）。
 
@@ -23,8 +23,11 @@ Playwright による Web 横断 E2E の共通基盤と、公開カタログの�
 | 用途                                                   | 既定   |
 | ------------------------------------------------------ | ------ |
 | web-host（`other.localhost` などの別 Host も同ポート） | `3000` |
+| web-admin（Host `admin.localhost`）                    | `4000` |
 | public API (Connect)                                   | `8000` |
 | public API (gRPC 口 / Web が向ける先)                  | `8100` |
+| admin API (Connect)                                    | `8001` |
+| admin API (gRPC 口 / web-admin が向ける先)             | `8101` |
 | E2E Postgres（compose 公開）                           | `5433` |
 | E2E Redis（compose 公開）                              | `6380` |
 
@@ -41,11 +44,12 @@ task e2e
 
 | コマンド | 内容 |
 | --- | --- |
-| `task e2e:prepare` | `api-server` / `web-host` ビルド + Playwright Chromium インストール |
+| `task e2e:prepare` | server 全バイナリ / `web-host` / `web-admin` ビルド + Playwright Chromium インストール |
 | `task e2e:up` | Postgres + Redis のみ起動 |
 | `task e2e:db` | migrate + dev seed |
-| `task e2e:start-apps` | api-server / web-host をバックグラウンド起動 |
+| `task e2e:start-apps` | api-server / admin-api-server / publish-episodes / web-host / web-admin をバックグラウンド起動 |
 | `bash e2e/scripts/api-server.sh <start\|start-wait\|stop>` | api-server だけを操作（障害シナリオが使用） |
+| `bash e2e/scripts/admin-api-server.sh <start\|start-wait\|stop>` | admin-api-server だけを操作 |
 | `task e2e:wait-ready` | readiness ポーリング（失敗時は `readiness failed: …`） |
 | `task e2e:test` | Playwright のみ（stack 起動済み前提） |
 | `task e2e:down` | アプリ停止 + compose 削除（volume 含む） |
@@ -69,26 +73,31 @@ e2e/
 ├── bootstrap/             # 開発環境 bootstrap チェック（Playwright を使わない別ライフサイクル）
 ├── compose.yaml           # postgres + redis（project: publira-e2e）
 ├── playwright.config.ts
-├── scripts/               # up / db / start / api-server / wait-ready / test / run / down
+├── scripts/               # up / db / start / api-server / admin-api / publish-episodes / wait-ready / test / run / down
 ├── src/
+│   ├── admin.ts           # web-admin ログイン・フォーム操作ヘルパー
 │   ├── api-server.ts      # api-server の停止・再起動（障害シナリオ用）
 │   ├── db.ts              # scenario SQL 適用ヘルパー
-│   ├── scenarios/         # scenario seed が作るレコードの定数
+│   ├── scenarios/         # scenario seed / seed アカウントの定数
 │   └── urls.ts            # host ベース URL 定数
 └── tests/
+    ├── admin.publish-flow.spec.ts
     ├── catalog.browse.spec.ts
     ├── catalog.not-found.spec.ts
     ├── catalog.outage.spec.ts
     ├── catalog.tenant-boundary.spec.ts
+    ├── notifications.pagination.spec.ts
     ├── smoke.health.spec.ts
     └── smoke.web-host-home.spec.ts
 ```
 
 - **依存 (Compose):** Postgres 18・Valkey（Redis 互換）
-- **アプリ (ホストプロセス):** `server/bin/api-server` + `apps/web-host`（standalone の `node server.js`）
-- **seed:** 開発用 `task db:setup`（domain `localhost` / テナント名 `Seed Tenant`）
+- **アプリ (ホストプロセス):**
+  - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/publish-episodes`
+  - `apps/web-host` / `apps/web-admin`（standalone の `node server.js`）
+- **seed:** 開発用 `task db:setup`（public domain `localhost` / admin domain `admin.localhost` / テナント名 `Seed Tenant`）
 
-Host ベース URL は `src/urls.ts` を参照。将来の admin / platform 用定数もここにあります。
+Host ベース URL は `src/urls.ts` を参照。
 
 ### Host によるテナント切り替え
 
@@ -114,15 +123,18 @@ Node 側の `request` fixture は OS の名前解決を使うので、`localhost
 `wait-ready` のチェック順:
 
 1. compose postgres / redis healthy
-2. `GET :8100/readyz` → `status=ok`
-3. `GET :3000/livez` → `ok`
-4. `GET :3000/readyz` → `status=ok`
+2. `GET :8100/readyz` → `status=ok`（public API）
+3. `GET :8101/readyz` → `status=ok`（admin API）
+4. `GET :3000/livez` → `ok`（web-host）
+5. `GET :3000/readyz` → `status=ok`
+6. `GET :4000/livez` → `ok`（web-admin）
+7. `GET :4000/readyz` → `status=ok`
 
 ## CI
 
 ジョブ名: **Test / E2E**（`.github/workflows/ci.yml`）
 
-- path filter: `e2e/**`, `apps/web-host/**`, `packages/**`, `server/**`, `db/**` など
+- path filter: `e2e/**`, `apps/web-host/**`, `apps/web-admin/**`, `packages/**`, `server/**`, `db/**` など
 - 失敗時 artifact: `e2e-artifacts`（report / test-results / app logs）
 - Playwright Chromium のみ、workers=1、CI 時 retries=1
 - 必須ブランチチェックは最終ジョブ **Summary** が集約（他ジョブと同様）
@@ -134,11 +146,12 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 1. **（任意）fixture SQL**  
    `db/seeds/scenarios/<name>.sql` を追加し、必要ならテストから `applyScenarioSql('name')`（`src/db.ts`）で適用。
 2. **spec を追加**  
-   `e2e/tests/<area>.spec.ts` を作成。`@playwright/test` の `test` / `expect` を使う。
+   `e2e/tests/<area>.spec.ts` を作成。`@playwright/test` の `test` / `expect` を使う。  
+   web-admin 向けはファイル名を `admin.*.spec.ts` にすると `web-admin` project（baseURL=`admin.localhost:4000`）に載る。
 3. **Host が必要な場合**  
    `playwright.config.ts` の `projects` に `baseURL` を足すか、テスト内で `page.goto` の絶対 URL を使う。定数は `src/urls.ts` に集約する。
 4. **起動対象を増やす場合**  
-   `scripts/start-apps.sh` / `wait-ready.sh` にプロセスと probe を追加（admin API・web-admin など）。compose に Traefik を足す場合は Dev Container のルールを参考にする（#55）。
+   `scripts/start-apps.sh` / `wait-ready.sh` にプロセスと probe を追加。compose に Traefik を足す場合は Dev Container のルールを参考にする（#55）。
 5. **ローカルで確認**  
    `task e2e` または stack 固定 + `task e2e:test`。
 6. **CI**  
@@ -154,9 +167,14 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 | `catalog.not-found.spec.ts` | 存在しないシリーズ / エピソード / 著者 |
 | `catalog.outage.spec.ts` | 公開 API 停止中のテナント解決失敗（503 + `Retry-After`）と復旧 |
 | `catalog.tenant-boundary.spec.ts` | Host による別テナント解決、公開中コンテンツのみの表示、テナント跨ぎ参照の遮断、未知 Host の 404 |
+| `notifications.pagination.spec.ts` | 会員通知一覧の cursor ページングと既読 |
+| `admin.publish-flow.spec.ts` | web-admin 入稿（シリーズ/エピソード作成・編集・公開）→ 管理画面再表示 → web-host 反映、バリデーションエラー、tenant 境界 |
 
-`catalog.tenant-boundary.spec.ts` は `db/seeds/scenarios/010_multi_tenant.sql` を `beforeAll` で適用します（`applyScenarioSql`）。  
+`catalog.tenant-boundary.spec.ts` / `admin.publish-flow.spec.ts`（tenant 境界ケース）は `db/seeds/scenarios/010_multi_tenant.sql` を適用します（`applyScenarioSql`）。  
 `catalog.outage.spec.ts` は `src/api-server.ts` 経由で api-server を落として戻すので、単体で走らせる場合も `task e2e:test`（`scripts/test.sh` が `lib.sh` を読み込む）を使ってください。
+
+`admin.publish-flow.spec.ts` は dev seed の `admin@example.com` / `adminpass` でログインします（ログイン網羅は #67）。  
+エピソードの予約公開は UI で `scheduled` にしたあと、`datetime-local` の分単位制約を避けるため `runSql` で `scheduled_at` を過去へ進め、`publish-episodes` ワーカーの反映を待ちます。
 
 ### 未対応の挙動を先に書いておく
 
@@ -171,14 +189,14 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 ## 失敗時のトリアージ
 
 1. ログ先頭が `readiness failed:` か `Playwright tests failed` かを見る
-2. `e2e/.run/logs/api-server.log` / `web-host.log`
+2. `e2e/.run/logs/api-server.log` / `admin-api-server.log` / `publish-episodes.log` / `web-host.log` / `web-admin.log`
 3. `docker compose -p publira-e2e -f e2e/compose.yaml ps`
 4. CI なら artifact `e2e-artifacts` の HTML report と trace
 
 ## 非スコープ
 
-- カタログ以外の業務シナリオ本体（#516–#518, #55, #67）
-- ログイン・ログアウトとセッション失効（#67）
+- Platform / モバイルの業務シナリオ本体（#517–#518）
+- ログイン・ログアウトとセッション失効の網羅（#67）
+- ホストベースルーティングの Traefik 疎通（#55）
 - 開発環境の bootstrap 検証（#514 → [`bootstrap/`](./bootstrap/README.md)）
 - 負荷試験
-- モバイル integration test（#518）

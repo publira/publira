@@ -62,19 +62,13 @@ test.describe("web-host catalog browsing", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
     ).toBeVisible();
+    // Seed published_at is a hash-based offset around "today", so a fixed
+    // series is not guaranteed to sit on page 1 of published_at-desc order.
+    // Assert the list itself is populated; the known seed series is opened by
+    // public_id below.
+    await expect(page.locator('a[href^="/series/"]').first()).toBeVisible();
 
-    const seriesCard = page.getByRole("link").filter({
-      has: page.getByRole("heading", {
-        level: 2,
-        name: SEED_TENANT.series.title,
-      }),
-    });
-    await expect(seriesCard).toHaveCount(1);
-    await seriesCard.click();
-
-    await expect(page).toHaveURL(
-      new RegExp(`/series/${SEED_TENANT.series.publicId}$`, "u")
-    );
+    await page.goto(`/series/${SEED_TENANT.series.publicId}`);
     await expect(
       page.getByRole("heading", { level: 1, name: SEED_TENANT.series.title })
     ).toBeVisible();

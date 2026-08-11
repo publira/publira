@@ -338,6 +338,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.3
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

@@ -414,9 +414,10 @@ INSERT INTO episodes (
         series_id,
         public_id,
         title,
-        order_index
+        order_index,
+        tenant_id
     )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, series_id, public_id, title, order_index, created_at, tenant_id
 `
 
@@ -426,6 +427,7 @@ type CreateEpisodeBaseParams struct {
 	PublicID   string    `json:"public_id"`
 	Title      string    `json:"title"`
 	OrderIndex int32     `json:"order_index"`
+	TenantID   uuid.UUID `json:"tenant_id"`
 }
 
 // エピソードのBaseレコードを作成する
@@ -436,6 +438,7 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		arg.PublicID,
 		arg.Title,
 		arg.OrderIndex,
+		arg.TenantID,
 	)
 	var i Episode
 	err := row.Scan(
@@ -7342,9 +7345,10 @@ INSERT INTO episode_listings (
         reading_period_hours,
         status,
         scheduled_at,
-        published_at
+        published_at,
+        tenant_id
     )
-VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (episode_id) DO
+VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (episode_id) DO
 UPDATE
 SET price = EXCLUDED.price,
     reading_period_hours = EXCLUDED.reading_period_hours,
@@ -7361,6 +7365,7 @@ type UpsertEpisodeListingParams struct {
 	Status             string        `json:"status"`
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
 }
 
 func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error) {
@@ -7371,6 +7376,7 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 		arg.Status,
 		arg.ScheduledAt,
 		arg.PublishedAt,
+		arg.TenantID,
 	)
 	var i EpisodeListing
 	err := row.Scan(

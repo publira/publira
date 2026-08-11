@@ -27,10 +27,10 @@ tasks:
       - bash {{.E2E_DIR}}/scripts/run.sh
 
   prepare:
-    desc: Build server binary, web-host, and install Playwright Chromium
+    desc: Build server binaries, web-host, web-admin, and install Playwright Chromium
     cmds:
       - task: :server:build
-      - pnpm build --filter @publira/web-host
+      - pnpm build --filter @publira/web-host --filter @publira/web-admin
       # CI: install OS libs (--with-deps needs root). Local: browser only
       # (run `pnpm --dir e2e exec playwright install-deps chromium` once if needed).
       - |
@@ -62,12 +62,12 @@ tasks:
       - bash {{.E2E_DIR}}/scripts/db-setup.sh
 
   start-apps:
-    desc: Start api-server and web-host (background, logs in e2e/.run/logs)
+    desc: Start api-server, admin-api-server, publish-episodes, web-host, web-admin (background, logs in e2e/.run/logs)
     cmds:
       - bash {{.E2E_DIR}}/scripts/start-apps.sh
 
   stop-apps:
-    desc: Stop background api-server and web-host
+    desc: Stop background API/app processes started by start-apps
     cmds:
       - bash {{.E2E_DIR}}/scripts/stop-apps.sh
 
