@@ -140,12 +140,18 @@ describe("mergeEpisodeOrder", () => {
   it("ページ内の並びをシリーズ全体の同じ位置へ差し戻す", async () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
-    expect(mergeEpisodeOrder(["A", "B", "C", "D", "E"], ["D", "C"])).toEqual([
+    expect(
+      mergeEpisodeOrder(["A", "B", "C", "D", "E"], ["C", "D"], ["D", "C"])
+    ).toEqual(["A", "B", "D", "C", "E"]);
+  });
+
+  it("ページ外のエピソードが消えていても、ページの並びが保たれていれば書き込む", async () => {
+    const { mergeEpisodeOrder } = await import("./episode");
+
+    expect(mergeEpisodeOrder(["A", "C", "D"], ["C", "D"], ["D", "C"])).toEqual([
       "A",
-      "B",
       "D",
       "C",
-      "E",
     ]);
   });
 
@@ -153,9 +159,30 @@ describe("mergeEpisodeOrder", () => {
     const { mergeEpisodeOrder } = await import("./episode");
 
     // 既に削除されたエピソードを含むページ。
-    expect(mergeEpisodeOrder(["A", "B"], ["B", "Z"])).toBeNull();
+    expect(mergeEpisodeOrder(["A", "B"], ["B", "Z"], ["B", "Z"])).toBeNull();
     // 同じエピソードが二重に来たページ。
-    expect(mergeEpisodeOrder(["A", "B"], ["B", "B"])).toBeNull();
+    expect(mergeEpisodeOrder(["A", "B"], ["A", "B"], ["B", "B"])).toBeNull();
+    // 表示していた件数と送られてきた件数が合わないページ。
+    expect(mergeEpisodeOrder(["A", "B"], ["A"], ["B", "A"])).toBeNull();
+  });
+
+  it("ページの間に別のエピソードが割り込んでいたら書き込まない", async () => {
+    const { mergeEpisodeOrder } = await import("./episode");
+
+    // 表示は [C, D] だったが、その間へ A と B が移動した。ID だけ見ると揃って
+    // いるので、スロットへ流し込むと [D, A, B, C] になり無関係な行まで動く。
+    expect(
+      mergeEpisodeOrder(["C", "A", "B", "D"], ["C", "D"], ["D", "C"])
+    ).toBeNull();
+  });
+
+  it("表示していた並びと現在の並びが食い違っていたら書き込まない", async () => {
+    const { mergeEpisodeOrder } = await import("./episode");
+
+    // 表示は [C, D] だったが、別の操作で [D, C] へ入れ替わっていた。
+    expect(
+      mergeEpisodeOrder(["A", "B", "D", "C"], ["C", "D"], ["D", "C"])
+    ).toBeNull();
   });
 });
 
@@ -174,6 +201,7 @@ describe("reorderEpisodePage", () => {
 
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage({
+      currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
       episodePublicIds: ["EPISODE004", "EPISODE003"],
       seriesPublicId: "SERIES001",
       tenantId: "TENANT001",
@@ -203,7 +231,33 @@ describe("reorderEpisodePage", () => {
 
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage({
+      currentEpisodePublicIds: ["EPISODE002"],
       episodePublicIds: ["EPISODE002"],
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(mockReorderEpisodes).not.toHaveBeenCalled();
+  });
+
+  it("表示中に別の操作でページの並びが変わっていたら RPC を呼ばない", async () => {
+    // 画面が [EPISODE003, EPISODE004] を表示している間に、EPISODE001 と
+    // EPISODE002 がその間へ移動した。
+    mockListEpisodes.mockResolvedValue({
+      episodes: [
+        episode("EPISODE003", 1),
+        episode("EPISODE001", 2),
+        episode("EPISODE002", 3),
+        episode("EPISODE004", 4),
+      ],
+      nextToken: "",
+    });
+
+    const { reorderEpisodePage } = await import("./episode");
+    const result = await reorderEpisodePage({
+      currentEpisodePublicIds: ["EPISODE003", "EPISODE004"],
+      episodePublicIds: ["EPISODE004", "EPISODE003"],
       seriesPublicId: "SERIES001",
       tenantId: "TENANT001",
     });
@@ -219,6 +273,7 @@ describe("reorderEpisodePage", () => {
 
     const { reorderEpisodePage } = await import("./episode");
     const result = await reorderEpisodePage({
+      currentEpisodePublicIds: ["EPISODE001"],
       episodePublicIds: ["EPISODE001"],
       seriesPublicId: "SERIES001",
       tenantId: "TENANT001",

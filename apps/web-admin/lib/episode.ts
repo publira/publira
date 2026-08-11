@@ -482,37 +482,74 @@ const reorderEpisodes = async (input: {
  * episode keeps its position and the page's rows are refilled, in their new
  * order, into the slots that page already occupied.
  *
- * Returns `null` when the page no longer lines up with the series — a duplicate
- * id, or an id the series does not have because it was created, deleted, or
- * moved while the page was on screen. The order is then left alone and the
- * screen reloads instead of writing a guess.
+ * `currentPagePublicIds` is the order the page was showing when the drag
+ * started, and it is checked against the series before anything is written: the
+ * page's rows must still sit in one unbroken run of slots, in exactly that
+ * order. Comparing ids alone is not enough. If someone else moves an episode
+ * into the middle of the page — `[C, D]` on screen while the series becomes
+ * `[C, A, B, D]` — the ids all still exist, and dropping `[D, C]` into the two
+ * slots those ids now occupy would write `[D, A, B, C]`, moving rows the user
+ * never touched.
+ *
+ * Returns `null` whenever the page no longer lines up with the series that way,
+ * including a duplicate id or an id the series does not have because it was
+ * created or deleted while the page was on screen. The order is then left alone
+ * and the screen reloads instead of writing a guess.
+ *
+ * The check is against the order this request read back, so it closes the
+ * window the page was on screen for, not the one between that read and the
+ * write. Closing that last one needs `ReorderEpisodes` to take a revision and
+ * verify it in the same transaction, which is a proto and server change.
  */
 export const mergeEpisodeOrder = (
   seriesPublicIds: readonly string[],
-  pagePublicIds: readonly string[]
+  currentPagePublicIds: readonly string[],
+  nextPagePublicIds: readonly string[]
 ): string[] | null => {
-  const pagePublicIdSet = new Set(pagePublicIds);
-  if (pagePublicIdSet.size !== pagePublicIds.length) {
+  if (
+    nextPagePublicIds.length === 0 ||
+    currentPagePublicIds.length !== nextPagePublicIds.length
+  ) {
     return null;
   }
 
-  const slotCount = seriesPublicIds.filter((publicId) =>
-    pagePublicIdSet.has(publicId)
-  ).length;
-  if (slotCount !== pagePublicIds.length) {
+  const pagePublicIdSet = new Set(nextPagePublicIds);
+  if (pagePublicIdSet.size !== nextPagePublicIds.length) {
     return null;
   }
 
-  let pageIndex = 0;
-  return seriesPublicIds.map((publicId) => {
-    if (!pagePublicIdSet.has(publicId)) {
-      return publicId;
+  const slots: number[] = [];
+  for (const [index, publicId] of seriesPublicIds.entries()) {
+    if (pagePublicIdSet.has(publicId)) {
+      slots.push(index);
     }
+  }
 
-    const nextPublicId = pagePublicIds[pageIndex];
-    pageIndex += 1;
-    return nextPublicId;
-  });
+  if (slots.length !== nextPagePublicIds.length) {
+    return null;
+  }
+
+  // One unbroken run of slots, holding exactly the order the page was showing.
+  const [firstSlot = 0] = slots;
+  const lastSlot = slots.at(-1) ?? 0;
+  if (lastSlot - firstSlot !== slots.length - 1) {
+    return null;
+  }
+
+  if (
+    slots.some(
+      (slot, index) => seriesPublicIds[slot] !== currentPagePublicIds[index]
+    )
+  ) {
+    return null;
+  }
+
+  const merged = [...seriesPublicIds];
+  for (const [index, slot] of slots.entries()) {
+    merged[slot] = nextPagePublicIds[index];
+  }
+
+  return merged;
 };
 
 const listSeriesEpisodePublicIds = async (input: {
@@ -557,10 +594,15 @@ const listSeriesEpisodePublicIds = async (input: {
  * `order_index` from the list it is given and rejects anything shorter — but a
  * paginated screen only holds one page of it. So the series' current order is
  * read back here and the page is merged into it before the RPC is called.
+ *
+ * `currentEpisodePublicIds` is the page's order as the screen was showing it,
+ * and the merge writes nothing unless the series still agrees with it — see
+ * `mergeEpisodeOrder`.
  */
 export const reorderEpisodePage = async (input: {
   tenantId: string;
   seriesPublicId: string;
+  currentEpisodePublicIds: string[];
   episodePublicIds: string[];
 }): Promise<ReorderEpisodesResult> => {
   const sessionId = await getAccessToken();
@@ -603,12 +645,13 @@ export const reorderEpisodePage = async (input: {
 
   const episodePublicIds = mergeEpisodeOrder(
     seriesPublicIds,
+    input.currentEpisodePublicIds,
     input.episodePublicIds
   );
   if (!episodePublicIds) {
     return {
       message:
-        "エピソードの構成が変わったため並び順を更新できませんでした。画面を再読み込みして再試行してください。",
+        "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。",
       ok: false,
     };
   }
