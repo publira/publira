@@ -49,8 +49,9 @@ test.describe("web-host catalog browsing", () => {
       featuredAuthors.locator('a[href^="/authors/"]').first()
     ).toBeVisible();
 
-    // The per-section fallback must not have kicked in.
-    await expect(page.getByText("読み込みに失敗しました")).toHaveCount(0);
+    // The per-section fallback must not have kicked in. Every section's
+    // `SectionErrorBoundary` titles its fallback 「…を表示できませんでした」.
+    await expect(page.getByText(/を表示できませんでした/u)).toHaveCount(0);
   });
 
   test("シリーズ一覧からシリーズ詳細とエピソードまで辿れる", async ({

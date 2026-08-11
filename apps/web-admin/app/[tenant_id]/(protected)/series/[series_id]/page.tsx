@@ -1,5 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -21,6 +21,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listCreators } from "#lib/creator";
 import { listLabels } from "#lib/label";
 import { getSeries } from "#lib/series";
@@ -101,14 +102,15 @@ const EditSeriesTabs = async ({
 };
 
 const SeriesLoadError = ({ message }: { message: string }) => (
-  <div className="grid gap-4">
-    <FormMessage variant="destructive">{message}</FormMessage>
-    <div>
+  <SectionError
+    actions={
       <LinkButton render={<Link href="/series" />} variant="outline">
         一覧へ戻る
       </LinkButton>
-    </div>
-  </div>
+    }
+    description={message}
+    title="シリーズを表示できませんでした"
+  />
 );
 
 const EditSeriesFormData = async ({
@@ -199,9 +201,11 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditSeriesTabs params={params} searchParams={searchParams} />
         </Suspense>
-        <Suspense fallback={<EditSeriesFormSkeleton />}>
-          <EditSeriesFormData params={params} searchParams={searchParams} />
-        </Suspense>
+        <SectionErrorBoundary title="シリーズを表示できませんでした">
+          <Suspense fallback={<EditSeriesFormSkeleton />}>
+            <EditSeriesFormData params={params} searchParams={searchParams} />
+          </Suspense>
+        </SectionErrorBoundary>
       </div>
     </AdminPageContent>
   </AdminPage>

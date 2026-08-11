@@ -6,9 +6,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -31,6 +31,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
@@ -293,9 +294,9 @@ const AuditLogsContent = async ({
               </div>
             </>
           ) : (
-            <EmptyState
+            <SectionError
               description={result.message}
-              title="監査ログを取得できませんでした"
+              title="監査ログを表示できませんでした"
             />
           )}
         </CardContent>
@@ -316,9 +317,11 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <Suspense fallback={<AuditLogsSkeleton />}>
-        <AuditLogsContent searchParams={searchParams} />
-      </Suspense>
+      <SectionErrorBoundary title="監査ログを表示できませんでした">
+        <Suspense fallback={<AuditLogsSkeleton />}>
+          <AuditLogsContent searchParams={searchParams} />
+        </Suspense>
+      </SectionErrorBoundary>
     </AdminPageContent>
   </AdminPage>
 );

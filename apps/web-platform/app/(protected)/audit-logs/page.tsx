@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Input } from "@publira/ui-components/input";
+import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import {
   Table,
@@ -33,6 +34,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { auditActionOptions, getAuditActionLabel } from "#lib/audit-log-labels";
 import { listPlatformAuditLogs } from "#lib/audit-logs";
 import type {
@@ -434,9 +436,10 @@ const AuditLogsContent = async ({
         />
 
         {result.ok ? null : (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            監査ログの取得に失敗しました: {result.message}
-          </p>
+          <SectionError
+            description={result.message}
+            title="監査ログを表示できませんでした"
+          />
         )}
 
         <Table>
@@ -477,9 +480,11 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
       </PlatformPageHeading>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <Suspense fallback={<AuditLogsSkeleton />}>
-        <AuditLogsContent searchParams={searchParams} />
-      </Suspense>
+      <SectionErrorBoundary title="監査ログを表示できませんでした">
+        <Suspense fallback={<AuditLogsSkeleton />}>
+          <AuditLogsContent searchParams={searchParams} />
+        </Suspense>
+      </SectionErrorBoundary>
     </PlatformPageContent>
   </PlatformPage>
 );

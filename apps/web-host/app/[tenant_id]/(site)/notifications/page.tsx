@@ -1,9 +1,11 @@
+import { SectionError } from "@publira/ui-components/section-error";
 import { revalidateTag } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
   listMyNotifications,
   markAllNotificationsAsRead,
@@ -214,9 +216,11 @@ const NotificationsSection = async ({
       </div>
 
       {result.ok ? null : (
-        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          {result.message}
-        </div>
+        <SectionError
+          className="mb-4"
+          description={result.message}
+          title="通知一覧を表示できませんでした"
+        />
       )}
 
       {result.notifications.length === 0 ? (
@@ -345,9 +349,11 @@ const NotificationsPage = ({
       </p>
     </section>
 
-    <Suspense fallback={<NotificationsSectionFallback />}>
-      <NotificationsSection searchParams={searchParams} />
-    </Suspense>
+    <SectionErrorBoundary title="通知一覧を表示できませんでした">
+      <Suspense fallback={<NotificationsSectionFallback />}>
+        <NotificationsSection searchParams={searchParams} />
+      </Suspense>
+    </SectionErrorBoundary>
   </div>
 );
 

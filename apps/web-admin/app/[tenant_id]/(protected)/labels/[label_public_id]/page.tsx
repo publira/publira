@@ -1,5 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -21,6 +21,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getLabel } from "#lib/label";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -114,14 +115,15 @@ const EditLabelFormData = async ({
     }
 
     return (
-      <div className="grid gap-4">
-        <FormMessage variant="destructive">{result.message}</FormMessage>
-        <div>
+      <SectionError
+        actions={
           <LinkButton render={<Link href="/labels" />} variant="outline">
             一覧へ戻る
           </LinkButton>
-        </div>
-      </div>
+        }
+        description={result.message}
+        title="レーベルを表示できませんでした"
+      />
     );
   }
 
@@ -171,9 +173,11 @@ const EditLabelPage = ({ params, searchParams }: EditLabelPageProps) => (
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditLabelTabNav params={params} searchParams={searchParams} />
         </Suspense>
-        <Suspense fallback={<EditLabelFormSkeleton />}>
-          <EditLabelFormData params={params} searchParams={searchParams} />
-        </Suspense>
+        <SectionErrorBoundary title="レーベルを表示できませんでした">
+          <Suspense fallback={<EditLabelFormSkeleton />}>
+            <EditLabelFormData params={params} searchParams={searchParams} />
+          </Suspense>
+        </SectionErrorBoundary>
       </div>
     </AdminPageContent>
   </AdminPage>

@@ -1,4 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -116,7 +117,10 @@ const EditEpisodePage = async ({
             </p>
 
             {imagesResult.ok ? null : (
-              <p className="text-sm text-destructive">{imagesResult.message}</p>
+              <SectionError
+                description={imagesResult.message}
+                title="ページ画像を表示できませんでした"
+              />
             )}
 
             {imagesResult.images.length === 0 ? (

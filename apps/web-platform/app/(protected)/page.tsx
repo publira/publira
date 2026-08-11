@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -30,6 +31,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAuditActionLabel } from "#lib/audit-log-labels";
 import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type {
@@ -199,9 +201,10 @@ const DashboardContent = async () => {
   return (
     <>
       {result.ok ? null : (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          ダッシュボードの取得に失敗しました: {result.message}
-        </p>
+        <SectionError
+          description={result.message}
+          title="ダッシュボードを表示できませんでした"
+        />
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -357,9 +360,11 @@ const Page = () => (
       </PlatformPageActions>
     </PlatformPageHeader>
     <PlatformPageContent>
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
-      </Suspense>
+      <SectionErrorBoundary title="ダッシュボードを表示できませんでした">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardContent />
+        </Suspense>
+      </SectionErrorBoundary>
     </PlatformPageContent>
   </PlatformPage>
 );

@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -111,7 +111,10 @@ const SeriesEpisodesPage = async ({
           </CardHeader>
           <CardContent className="grid gap-4">
             {result.ok ? null : (
-              <FormMessage variant="destructive">{result.message}</FormMessage>
+              <SectionError
+                description={result.message}
+                title="エピソード一覧を表示できませんでした"
+              />
             )}
 
             {result.episodes.length === 0 ? (

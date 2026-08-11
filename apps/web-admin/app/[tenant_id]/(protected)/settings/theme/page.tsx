@@ -1,4 +1,4 @@
-import { EmptyState } from "@publira/ui-components/empty-state";
+import { SectionError } from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
@@ -50,9 +50,9 @@ const SettingsThemePage = async () => {
               initialTheme={themeResult.theme}
             />
           ) : (
-            <EmptyState
+            <SectionError
               description={themeResult.message}
-              title="テーマを読み込めませんでした"
+              title="テーマを表示できませんでした"
             />
           )}
         </div>

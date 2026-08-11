@@ -105,7 +105,60 @@ The same rules apply to all three apps:
 - Take the wording from `rpcErrorMessage`'s shared table and override only the categories a screen genuinely words differently. Do not build a per-file mapping table.
 - `rpcErrorMentions()` is **not** an exception to the rule above — it does not classify. It only picks between wordings _inside_ a category `rpcErrorDisposition()` has already decided: one `Code` covering several distinct inputs (`invalid_argument` for both a bad slug and a rejected image), or a field name a `Code` cannot carry (`domain` vs `admin_domain`). It returns `false` for anything that is not an RPC error, every branch degrades to that category's generic message when the server rewords, and the call site names the server file its tokens come from.
 - **Never swallow an unclassifiable error** (`internal`, `unimplemented`, or a throw that is not an RPC error at all). A `catch` returning `null` / `false` / `[]` still calls `rethrowUnclassifiedRpcError(error)` first.
-- The exceptions are logout (the cookie must clear either way), non-critical chrome such as footer links, and the top page's per-section degradation. Each one records why in a comment.
+- The exceptions are logout (the cookie must clear either way) and non-critical chrome such as footer links. Each one records why in a comment. Per-section degradation is **not** an exception any more — it is a boundary, not a `catch` (see below).
+
+## Failure display: `SectionError` and `SectionErrorBoundary`
+
+A failure that only kills part of a page must not be hand-rolled into that page. Two shared pieces cover it (#647), and which one a screen reaches for follows from what it is holding:
+
+| What the screen has | Use |
+| --- | --- |
+| A throw it never sees — anything the lib layer re-threw as unclassifiable | Wrap the section's `<Suspense>` in that app's `SectionErrorBoundary` (`components/section-error-boundary.tsx`) |
+| A classified `ok: false` result with a message | Render `SectionError` from `@publira/ui-components/section-error` with that message as `description` |
+| A failure that makes the whole route meaningless | Let it throw; the route's `error.tsx` takes it |
+| A submission the server rejected | `FormMessage` next to the control — unchanged |
+| Nothing to show yet | `EmptyState` — unchanged |
+
+The boundary goes **outside** the `<Suspense>`, not inside, so `retry()` puts that section's own skeleton back while the re-run is in flight:
+
+```tsx
+<SectionErrorBoundary title="おすすめ作品を表示できませんでした">
+  <Suspense fallback={<CardGridSkeleton />}>
+    <RecommendedSeriesSection />
+  </Suspense>
+</SectionErrorBoundary>
+```
+
+Title the fallback after the section it replaces (「おすすめ作品を表示できませんでした」), so a reader can tell which part of the page is missing.
+
+### NG (do not)
+
+```tsx
+// NG: page-local failure markup, duplicated per screen
+<div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6">
+  <p>読み込みに失敗しました。</p>
+  <Link href=".">再試行</Link>
+</div>;
+
+// NG: try/catch standing in for a boundary, with the behaviour split by env
+try {
+  series = await getCatalogTopRecommendedSeries(tenantId);
+} catch (error) {
+  if (process.env.NODE_ENV !== "production") {
+    throw error;
+  }
+  return <SectionLoadError />;
+}
+
+// NG: `EmptyState` for a failure — it means "nothing yet", not "we could not load it"
+<EmptyState description={result.message} title="データの取得に失敗しました" />;
+```
+
+This covers the failure displays that pages own. A list or form component that receives the message as a prop (`listErrorMessage` and friends) still renders its own `FormMessage`; lining those up is [#817](https://github.com/publira/publira/issues/817).
+
+The `catchError` call itself stays in each app's `components/section-error-boundary.tsx` rather than in `@publira/ui-components`: `tsdown` drops the `"use client"` directive when it bundles the package, and `catchError` cannot run in the server graph. The fallback body is shared from the package; only the four-line wiring is per app, the same split the route-level `error.tsx` bodies already use.
+
+Reaching the boundary at all is a separate question for reads inside a `"use cache"` scope — a throw there was not observable from the awaiting caller, which is what made the old `catch` blocks dead code in production ([#672](https://github.com/publira/publira/issues/672)).
 
 ## Icons: `@publira/icons`, never inline `<svg>`
 

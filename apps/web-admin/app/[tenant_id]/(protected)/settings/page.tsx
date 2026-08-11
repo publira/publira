@@ -1,4 +1,4 @@
-import { EmptyState } from "@publira/ui-components/empty-state";
+import { SectionError } from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 
@@ -43,9 +43,9 @@ const SettingsPage = async () => {
           </AdminPageHeading>
         </AdminPageHeader>
         <AdminPageContent>
-          <EmptyState
+          <SectionError
             description={settingsResult.message}
-            title="設定を読み込めませんでした"
+            title="設定を表示できませんでした"
           />
         </AdminPageContent>
       </AdminPage>

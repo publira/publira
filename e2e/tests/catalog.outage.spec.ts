@@ -33,13 +33,18 @@ test.describe("web-host public API outage", () => {
 
   /**
    * Data fetches degrade far worse than tenant resolution: the helpers run
-   * inside a `"use cache"` scope, so their error is not observable by the
-   * page's try/catch and the route answers a bare `500 Internal Server Error`
-   * body instead of any fallback.
+   * inside a `"use cache"` scope, so their error was not observable by the
+   * `try` / `catch` the pages used to carry, and the route answered a bare
+   * `500 Internal Server Error` body instead of any fallback.
    *
-   * Enable once https://github.com/publira/publira/issues/672 lands. The final
-   * copy and status code are decided there, so this pins the user-visible
-   * contract only: the site chrome survives and a retry affordance exists.
+   * Those `catch` blocks are gone as of #647 — the sections now sit inside a
+   * `SectionErrorBoundary` (`catchError`). Whether a throw crossing a
+   * `"use cache"` scope reaches that boundary is the open question, and it is
+   * measured in https://github.com/publira/publira/issues/672.
+   *
+   * Enable once that lands. The final copy and status code are decided there,
+   * so this pins the user-visible contract only: the site chrome survives and
+   * a retry affordance exists.
    */
   test.skip("データ取得に失敗してもサイト UI を保ったフォールバックを表示する", async ({
     page,
