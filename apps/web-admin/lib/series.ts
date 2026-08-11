@@ -31,13 +31,26 @@ export interface SeriesItem {
   eyeCatchImageUpdatedAt: string;
 }
 
+export interface ListSeriesOptions {
+  limit?: number;
+  token?: string;
+}
+
 export type ListSeriesResult =
-  | { ok: true; series: SeriesItem[]; defaultReadingPeriodHours: number }
+  | {
+      ok: true;
+      series: SeriesItem[];
+      defaultReadingPeriodHours: number;
+      nextToken: string;
+      previousToken: string;
+    }
   | {
       ok: false;
       message: string;
       series: SeriesItem[];
       defaultReadingPeriodHours: number;
+      nextToken: string;
+      previousToken: string;
     };
 
 export type CreateSeriesResult =
@@ -138,8 +151,16 @@ const mapSeries = (series: {
   title: series.title,
 });
 
+/**
+ * One page of the tenant's series, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
 export const listSeries = async (
-  tenantId: string
+  tenantId: string,
+  options: ListSeriesOptions = {}
 ): Promise<ListSeriesResult> => {
   "use cache: private";
 
@@ -148,7 +169,9 @@ export const listSeries = async (
     return {
       defaultReadingPeriodHours: 0,
       message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
       series: [],
     };
   }
@@ -156,25 +179,28 @@ export const listSeries = async (
   try {
     const response = await apiClient.series.listSeries(
       {
-        limit: 100,
+        limit: options.limit ?? 20,
         tenant: { tenantId },
+        token: options.token ?? "",
       },
       withSessionHeaders(sessionId)
     );
 
     return {
       defaultReadingPeriodHours: response.defaultReadingPeriodHours ?? 0,
+      nextToken: response.nextToken ?? "",
       ok: true,
-      series: (response.series ?? [])
-        .map((item) => mapSeries(item))
-        .toSorted((a, b) => a.title.localeCompare(b.title, "ja")),
+      previousToken: response.previousToken ?? "",
+      series: (response.series ?? []).map((item) => mapSeries(item)),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
       defaultReadingPeriodHours: 0,
       message: mapErrorToMessage(error, genericListErrorMessage),
+      nextToken: "",
       ok: false,
+      previousToken: "",
       series: [],
     };
   }

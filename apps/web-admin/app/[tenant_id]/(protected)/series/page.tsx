@@ -15,6 +15,14 @@ import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 
 import { SeriesManager } from "./_components/series-manager";
+import {
+  buildSeriesPageHref,
+  parseSeriesSearchParams,
+} from "./_lib/search-params";
+
+const pageSize = 20;
+
+type SeriesPageProps = PageProps<"/[tenant_id]/series">;
 
 export const metadata: Metadata = {
   title: "シリーズ",
@@ -34,19 +42,33 @@ const SeriesManagerSkeleton = () => (
   </div>
 );
 
-const SeriesManagerData = async () => {
-  const tenantId = await getTenantId();
-  const listResult = await listSeries(tenantId);
+const SeriesManagerData = async ({
+  searchParams,
+}: Pick<SeriesPageProps, "searchParams">) => {
+  const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+  const { token } = parseSeriesSearchParams(sp);
+  const listResult = await listSeries(tenantId, { limit: pageSize, token });
 
   return (
     <SeriesManager
-      initialListErrorMessage={listResult.ok ? undefined : listResult.message}
-      initialSeries={listResult.series}
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      nextHref={
+        listResult.nextToken
+          ? buildSeriesPageHref({ token: listResult.nextToken })
+          : undefined
+      }
+      pageSize={pageSize}
+      previousHref={
+        listResult.previousToken
+          ? buildSeriesPageHref({ token: listResult.previousToken })
+          : undefined
+      }
+      series={listResult.series}
     />
   );
 };
 
-const SeriesPage = () => (
+const SeriesPage = ({ searchParams }: SeriesPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -59,7 +81,7 @@ const SeriesPage = () => (
     </AdminPageHeader>
     <AdminPageContent>
       <Suspense fallback={<SeriesManagerSkeleton />}>
-        <SeriesManagerData />
+        <SeriesManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>
   </AdminPage>
