@@ -11,10 +11,15 @@ linters:
 
   exclusions:
     # sqlc output (`internal/db/*.sql.go`, `models.go`, …) and buf output
-    # (`gen/**`) all carry the `DO NOT EDIT.` header, so this keeps them out of
-    # the report. Preferred over excluding those paths: `internal/db/` also holds
-    # hand-written `*_integration_test.go` files, which must stay linted.
-    generated: lax
+    # (`gen/**`) all carry the canonical `Code generated … DO NOT EDIT.` header,
+    # so this keeps them out of the report. Preferred over excluding those paths:
+    # `internal/db/` also holds hand-written `*_integration_test.go` files, which
+    # must stay linted.
+    #
+    # `strict` (the default) matches only that canonical header. Do not relax it
+    # to `lax`, which matches "do not edit" anywhere in a file's leading comments
+    # and would silently skip a hand-written file that merely says so in prose.
+    generated: strict
 
 issues:
   # Report every finding. The defaults truncate at 50 per linter and 3 per

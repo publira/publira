@@ -50,7 +50,7 @@ go build -o bin/ ./cmd/...
 
 Rules live in [`.golangci.yml`](.golangci.yml); the enabled set is golangci-lint's own `standard` default (`errcheck`, `govet`, `ineffassign`, `staticcheck`, `unused`). `Lint / Go` in CI runs the same file and the same pinned version, so a clean `task server:lint` means a clean CI job.
 
-- Generated code is excluded by its `DO NOT EDIT.` header, not by path. Do not add `gen/` or `internal/db/` to `exclusions.paths` — `internal/db/` also holds hand-written `*_integration_test.go` files that must stay linted.
+- Generated code is excluded by its canonical `Code generated … DO NOT EDIT.` header, not by path. Do not add `gen/` or `internal/db/` to `exclusions.paths` — `internal/db/` also holds hand-written `*_integration_test.go` files that must stay linted. Keep `exclusions.generated` at `strict`; `lax` matches "do not edit" anywhere in a file's leading comments and silently skips hand-written files that say so in prose.
 - **Fix the finding rather than suppress it.** The one standing exception is `errcheck` on deferred cleanup, where the error is unactionable and `defer` has no statement form to discard it:
 
   ```go
