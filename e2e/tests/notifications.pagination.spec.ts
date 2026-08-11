@@ -25,20 +25,33 @@ const noticeTitles = (page: Page) =>
   page.locator("article h3").allTextContents();
 
 /**
- * Follow a page link and wait for the move to land. Neighbouring pages can hold
- * the same number of rows, so a count assertion alone is satisfied by the page
- * still on screen; the `token` in the URL is what actually changes.
+ * Follow a page link and wait for the move to land. Two separate signals have to
+ * settle: the `token` in the URL, and the rows themselves. Neighbouring pages
+ * hold the same number of rows, so a count assertion alone is satisfied by the
+ * page still on screen — and the list renders behind Suspense, so the URL can
+ * change while the previous page's rows are still mounted. Every move in this
+ * suite crosses a page boundary, so the leading title is what proves it landed.
  */
 const movePage = async (page: Page, label: string): Promise<void> => {
-  const from = page.url();
+  const fromUrl = page.url();
+  const fromLeadingTitle = await page
+    .locator("article h3")
+    .first()
+    .textContent();
+
   await pagination(page).getByRole("link", { name: label }).click();
-  await page.waitForURL((url) => url.toString() !== from);
+
+  await page.waitForURL((url) => url.toString() !== fromUrl);
+  await expect(page.locator("article h3").first()).not.toHaveText(
+    fromLeadingTitle ?? ""
+  );
 };
 
 /**
  * The signed-in member's notification list under cursor pagination (#717). The
  * list streams in behind Suspense, so every assertion targets resolved content
- * rather than the skeleton, and page moves wait on the `token` in the URL.
+ * rather than the skeleton, and page moves go through `movePage` so the rows
+ * are known to have caught up with the URL.
  */
 test.describe("web-host member notifications", () => {
   test.beforeAll(() => {

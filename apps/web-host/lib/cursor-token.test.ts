@@ -22,6 +22,16 @@ describe("cursorTokenSchema", () => {
     expect(cursorTokenSchema.parse(["a", "b"])).toBe("");
     expect(cursorTokenSchema.parse("a".repeat(513))).toBe("");
   });
+
+  it("base64url が取り得ない長さの token は捨てる", () => {
+    // 4 で割った余りが 1 になる長さは、パディング無し base64url では作れない。
+    expect(cursorTokenSchema.parse("a")).toBe("");
+    expect(cursorTokenSchema.parse("abcde")).toBe("");
+    // 余り 0 / 2 / 3 は正当な長さなので通す。
+    expect(cursorTokenSchema.parse("ab")).toBe("ab");
+    expect(cursorTokenSchema.parse("abc")).toBe("abc");
+    expect(cursorTokenSchema.parse("abcd")).toBe("abcd");
+  });
 });
 
 describe("cursorPageHref", () => {
