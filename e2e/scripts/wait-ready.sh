@@ -83,6 +83,9 @@ wait_until "public-api/readyz" check_http_json_ok \
 wait_until "admin-api/readyz" check_http_json_ok \
   "http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}/readyz"
 
+wait_until "platform-api/readyz" check_http_json_ok \
+  "http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}/readyz"
+
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.
 wait_until "web-host/livez" check_http_body \
   "http://localhost:${E2E_WEB_HOST_PORT}/livez" "ok"
@@ -97,5 +100,12 @@ wait_until "web-admin/livez" check_http_body \
 
 wait_until "web-admin/readyz" check_http_json_ok \
   "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/readyz"
+
+# web-platform also binds 0.0.0.0; probes skip setup / session checks.
+wait_until "web-platform/livez" check_http_body \
+  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/livez" "ok"
+
+wait_until "web-platform/readyz" check_http_json_ok \
+  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/readyz"
 
 e2e_log "all readiness checks passed"

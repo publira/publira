@@ -53,7 +53,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Test / TypeScript` | `apps/**`, `packages/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
-| `Test / E2E` | `e2e/**`, `apps/web-host/**`, `apps/web-admin/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
+| `Test / E2E` | `e2e/**`, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
 | `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Build` | `apps/**`, `packages/**`, `server/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Docker`（ロール別） | [`infra/docker/README.md`](../../infra/docker/README.md) の「変更検知のロール対応」 |

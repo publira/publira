@@ -41,8 +41,10 @@ test.beforeAll(() => {
 | ファイル | 内容 |
 | --- | --- |
 | `010_multi_tenant.sql` | dev seed（`localhost` / `Seed Tenant`）の隣に 2 つ目のテナント `other.localhost` / `Boundary Tenant` を追加する。公開シリーズ 1 本（公開エピソード 2 本 + 未公開の scheduled 1 本）と未公開シリーズ 1 本を持ち、テナント境界と公開判定の検証に使う（`e2e/tests/catalog.tenant-boundary.spec.ts`）。レコードの public_id は `e2e/src/scenarios/multi-tenant.ts` に定数化してある |
+| `020_member_notifications.sql` | 会員通知のページング用シード（`e2e/tests/notifications.pagination.spec.ts`） |
+| `030_platform_operators.sql` | dev seed の super admin に加え、`platform_operator` ロールの限定オペレーター `platform-operator@example.com` / `platformpass`（public_id `ScenPFUSAAA1`）を追加する。ロール別の操作可否検証に使う（`e2e/tests/platform.tenant-ops.spec.ts`）。定数は `e2e/src/scenarios/platform-tenants.ts` |
 
 ## 例（未作成）
 
-- `020_suspended_tenant.sql`
-- `030_paid_episode.sql`
+- `040_suspended_tenant.sql`
+- `050_paid_episode.sql`
