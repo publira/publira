@@ -838,10 +838,10 @@ CREATE INDEX idx_labels_tenant_created_at ON labels USING btree (tenant_id, crea
 CREATE INDEX idx_notification_reads_user_notification ON notification_reads USING btree (user_id, notification_id);
 
 -- INDEX: idx_notifications_tenant_created_at
-CREATE INDEX idx_notifications_tenant_created_at ON notifications USING btree (tenant_id, created_at DESC);
+CREATE INDEX idx_notifications_tenant_created_at ON notifications USING btree (tenant_id, created_at DESC, id DESC);
 
 -- INDEX: idx_notifications_tenant_target_created_at
-CREATE INDEX idx_notifications_tenant_target_created_at ON notifications USING btree (tenant_id, target_user_id, created_at DESC);
+CREATE INDEX idx_notifications_tenant_target_created_at ON notifications USING btree (tenant_id, target_user_id, created_at DESC, id DESC);
 
 -- INDEX: idx_page_versions_page_id_created_at
 CREATE INDEX idx_page_versions_page_id_created_at ON page_versions USING btree (page_id, created_at DESC);
