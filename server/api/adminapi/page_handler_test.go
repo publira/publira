@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -244,6 +245,26 @@ func TestListPagesInvalidToken(t *testing.T) {
 	}
 	if err.Error() != "invalid_argument: token is invalid" {
 		t.Fatalf("error = %q, want token internals hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListPagesDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listPagesForTenantAscQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(errors.New(`pq: relation "tenant_pages" does not exist`))
+
+	_, err := client.ListPages(context.Background(), newListPagesRequest(tenantID, sessionToken))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListPages code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertExpectations(t, mock)
 }
