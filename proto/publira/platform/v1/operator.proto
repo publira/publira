@@ -13,10 +13,19 @@ message PlatformOperator {
   string created_at = 6;
 }
 
-message ListOperatorsRequest {}
+message ListOperatorsRequest {
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 1;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 2;
+}
 
 message ListOperatorsResponse {
   repeated PlatformOperator operators = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message CreateOperatorRequest {

@@ -23,9 +23,10 @@ func TestListOperators(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(integrationListPlatformOperatorsQuery)).
+		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(integrationOperatorColumns()).
-			AddRow("PLATUSER001", "operator1@example.com", "Operator One", "platform_operator", "active", now).
-			AddRow("PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "suspended", now))
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER001", "operator1@example.com", "Operator One", "platform_operator", "active", now).
+			AddRow(uuid.Must(uuid.NewV7()), "PLATUSER002", "operator2@example.com", "Operator Two", "platform_auditor", "suspended", now))
 
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 	resp, err := client.ListOperators(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListOperatorsRequest{}))

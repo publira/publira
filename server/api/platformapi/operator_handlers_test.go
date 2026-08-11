@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,7 +13,217 @@ import (
 	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/pagination"
 )
+
+const (
+	listPlatformOperatorsAscQuery  = "-- name: ListPlatformOperatorsAsc :many\n"
+	listPlatformOperatorsDescQuery = "-- name: ListPlatformOperatorsDesc :many\n"
+)
+
+func addOperatorRow(
+	rows *sqlmock.Rows,
+	id uuid.UUID,
+	publicID string,
+	createdAt time.Time,
+) *sqlmock.Rows {
+	return rows.AddRow(
+		id,
+		publicID,
+		publicID+"@example.com",
+		publicID,
+		rolePlatformOperator,
+		"active",
+		createdAt,
+	)
+}
+
+func TestListOperatorsFirstPageReportsNextToken(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	actorID := uuid.Must(uuid.NewV7())
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WillReturnRows(addOperatorRow(
+			addOperatorRow(
+				addOperatorRow(sqlmock.NewRows(operatorTestColumns()), ids[0], "PLATUSER001", now),
+				ids[1], "PLATUSER002", now.Add(-time.Minute),
+			),
+			ids[2], "PLATUSER003", now.Add(-2*time.Minute),
+		))
+
+	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{Limit: 2}))
+	if err != nil {
+		t.Fatalf("ListOperators: %v", err)
+	}
+	if len(resp.Msg.Operators) != 2 {
+		t.Fatalf("operator count = %d, want the over-fetched row dropped", len(resp.Msg.Operators))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListOperatorsFollowsNextToken(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	actorID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+		WithArgs(boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addOperatorRow(
+			sqlmock.NewRows(operatorTestColumns()), uuid.Must(uuid.NewV7()), "PLATUSER003", now.Add(-2*time.Minute),
+		))
+
+	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+		Limit: 2,
+		Token: pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID),
+	}))
+	if err != nil {
+		t.Fatalf("ListOperators: %v", err)
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the previous page")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListOperatorsFollowsPreviousTokenBackwards(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	actorID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-10 * time.Minute)
+	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsAscQuery)).
+		WithArgs(boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addOperatorRow(
+			addOperatorRow(sqlmock.NewRows(operatorTestColumns()), uuid.Must(uuid.NewV7()), "PLATUSER002", now.Add(-2*time.Minute)),
+			uuid.Must(uuid.NewV7()), "PLATUSER001", now.Add(-time.Minute),
+		))
+
+	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+		Limit: 2,
+		Token: pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID),
+	}))
+	if err != nil {
+		t.Fatalf("ListOperators: %v", err)
+	}
+	publicIDs := []string{resp.Msg.Operators[0].PublicId, resp.Msg.Operators[1].PublicId}
+	if !slices.Equal(publicIDs, []string{"PLATUSER001", "PLATUSER002"}) {
+		t.Fatalf("public IDs = %v, want backward page restored to descending order", publicIDs)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListOperatorsEmptyPageReturnsOneRecoveryToken(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction pagination.Direction
+		query     string
+	}{
+		{name: "forward", direction: pagination.Forward, query: listPlatformOperatorsDescQuery},
+		{name: "backward", direction: pagination.Backward, query: listPlatformOperatorsAscQuery},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			actorID := uuid.Must(uuid.NewV7())
+			boundaryID := uuid.Must(uuid.NewV7())
+			expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
+			mock.ExpectQuery(regexp.QuoteMeta(test.query)).
+				WithArgs(boundaryID, false, now, int32(21)).
+				WillReturnRows(sqlmock.NewRows(operatorTestColumns()))
+
+			resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+				Token: pagination.EncodeTimeUUID(test.direction, now, boundaryID),
+			}))
+			if err != nil {
+				t.Fatalf("ListOperators: %v", err)
+			}
+			if test.direction == pagination.Forward {
+				want := pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
+				if resp.Msg.PreviousToken != want || resp.Msg.NextToken != "" {
+					t.Fatalf("tokens = (%q, %q), want recovery previous token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				}
+			} else {
+				want := pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID)
+				if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != want {
+					t.Fatalf("tokens = (%q, %q), want recovery next token %q", resp.Msg.PreviousToken, resp.Msg.NextToken, want)
+				}
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
+}
+
+func TestListOperatorsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	actorID := uuid.Must(uuid.NewV7())
+	boundaryID := uuid.Must(uuid.NewV7())
+	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+		WithArgs(boundaryID, true, now, int32(21)).
+		WillReturnRows(sqlmock.NewRows(operatorTestColumns()))
+
+	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
+		Token: pagination.EncodeTimeUUIDRecovery(pagination.Forward, now, boundaryID),
+	}))
+	if err != nil {
+		t.Fatalf("ListOperators: %v", err)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after one recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListOperatorsRejectsInvalidToken(t *testing.T) {
+	tests := []string{
+		"not-base64",
+		pagination.Encode(pagination.Forward, "not-a-time", uuid.Must(uuid.NewV7()).String()),
+		pagination.Encode(pagination.Forward, time.Now().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String(), "not-inclusive"),
+	}
+
+	for _, token := range tests {
+		server, mock := newOperatorHandlerTestServer(t)
+		now := time.Now().UTC().Truncate(time.Microsecond)
+		expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
+		_, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{Token: token}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("ListOperators code = %v, want invalid_argument", connect.CodeOf(err))
+		}
+		if err.Error() != "invalid_argument: token is invalid" {
+			t.Fatalf("error = %q, want token internals hidden", err)
+		}
+		assertOperatorHandlerExpectations(t, mock)
+	}
+}
 
 func TestCreateOperatorSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)

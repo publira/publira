@@ -201,7 +201,11 @@ type Querier interface {
 	ListPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
 	// 管理操作監査ログ一覧取得（フィルタ対応）
 	ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error)
-	ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error)
+	ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatformOperatorsAscParams) ([]ListPlatformOperatorsAscRow, error)
+	// Platform ListOperators は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// テナントの公開中かつフッター表示対象のページ一覧を取得する

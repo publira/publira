@@ -106,7 +106,11 @@ func (x *PlatformOperator) GetCreatedAt() string {
 }
 
 type ListOperatorsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -141,9 +145,27 @@ func (*ListOperatorsRequest) Descriptor() ([]byte, []int) {
 	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{1}
 }
 
+func (x *ListOperatorsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListOperatorsRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type ListOperatorsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Operators     []*PlatformOperator    `protobuf:"bytes,1,rep,name=operators,proto3" json:"operators,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Operators []*PlatformOperator    `protobuf:"bytes,1,rep,name=operators,proto3" json:"operators,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -183,6 +205,20 @@ func (x *ListOperatorsResponse) GetOperators() []*PlatformOperator {
 		return x.Operators
 	}
 	return nil
+}
+
+func (x *ListOperatorsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListOperatorsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type CreateOperatorRequest struct {
@@ -661,10 +697,15 @@ const file_publira_platform_v1_operator_proto_rawDesc = "" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\x16\n" +
-	"\x14ListOperatorsRequest\"\\\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\"B\n" +
+	"\x14ListOperatorsRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\xa2\x01\n" +
 	"\x15ListOperatorsResponse\x12C\n" +
-	"\toperators\x18\x01 \x03(\v2%.publira.platform.v1.PlatformOperatorR\toperators\"U\n" +
+	"\toperators\x18\x01 \x03(\v2%.publira.platform.v1.PlatformOperatorR\toperators\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"U\n" +
 	"\x15CreateOperatorRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +

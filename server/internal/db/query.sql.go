@@ -4888,8 +4888,9 @@ func (q *Queries) ListNotificationsForUserDesc(ctx context.Context, arg ListNoti
 	return items, nil
 }
 
-const listPlatformOperators = `-- name: ListPlatformOperators :many
-SELECT pu.public_id,
+const listPlatformOperatorsAsc = `-- name: ListPlatformOperatorsAsc :many
+SELECT pu.id,
+    pu.public_id,
     pu.email,
     pu.name,
     COALESCE(
@@ -4911,10 +4912,28 @@ SELECT pu.public_id,
     pu.status,
     pu.created_at
 FROM platform_users pu
-ORDER BY pu.created_at DESC
+WHERE $1::uuid IS NULL
+    OR (
+        $2::boolean
+        AND (pu.created_at, pu.id) >= ($3::timestamptz, $1::uuid)
+    )
+    OR (
+        NOT $2::boolean
+        AND (pu.created_at, pu.id) > ($3::timestamptz, $1::uuid)
+    )
+ORDER BY pu.created_at ASC, pu.id ASC
+LIMIT $4
 `
 
-type ListPlatformOperatorsRow struct {
+type ListPlatformOperatorsAscParams struct {
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListPlatformOperatorsAscRow struct {
+	ID        uuid.UUID `json:"id"`
 	PublicID  string    `json:"public_id"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
@@ -4923,16 +4942,115 @@ type ListPlatformOperatorsRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (q *Queries) ListPlatformOperators(ctx context.Context) ([]ListPlatformOperatorsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformOperators)
+func (q *Queries) ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatformOperatorsAscParams) ([]ListPlatformOperatorsAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPlatformOperatorsAsc,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListPlatformOperatorsRow
+	var items []ListPlatformOperatorsAscRow
 	for rows.Next() {
-		var i ListPlatformOperatorsRow
+		var i ListPlatformOperatorsAscRow
 		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Email,
+			&i.Name,
+			&i.Role,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlatformOperatorsDesc = `-- name: ListPlatformOperatorsDesc :many
+SELECT pu.id,
+    pu.public_id,
+    pu.email,
+    pu.name,
+    COALESCE(
+        (
+            SELECT pur.role
+            FROM platform_user_roles pur
+            WHERE pur.platform_user_id = pu.id
+            ORDER BY CASE
+                    WHEN pur.role = 'platform_super_admin' THEN 3
+                    WHEN pur.role = 'platform_operator' THEN 2
+                    WHEN pur.role = 'platform_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                pur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+WHERE $1::uuid IS NULL
+    OR (
+        $2::boolean
+        AND (pu.created_at, pu.id) <= ($3::timestamptz, $1::uuid)
+    )
+    OR (
+        NOT $2::boolean
+        AND (pu.created_at, pu.id) < ($3::timestamptz, $1::uuid)
+    )
+ORDER BY pu.created_at DESC, pu.id DESC
+LIMIT $4
+`
+
+type ListPlatformOperatorsDescParams struct {
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListPlatformOperatorsDescRow struct {
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Platform ListOperators は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPlatformOperatorsDesc,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlatformOperatorsDescRow
+	for rows.Next() {
+		var i ListPlatformOperatorsDescRow
+		if err := rows.Scan(
+			&i.ID,
 			&i.PublicID,
 			&i.Email,
 			&i.Name,

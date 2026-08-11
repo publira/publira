@@ -583,8 +583,12 @@ FROM platform_user_roles
 WHERE platform_user_id = $1
 ORDER BY role;
 
--- name: ListPlatformOperators :many
-SELECT pu.public_id,
+-- Platform ListOperators は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListPlatformOperatorsDesc :many
+SELECT pu.id,
+    pu.public_id,
     pu.email,
     pu.name,
     COALESCE(
@@ -606,7 +610,53 @@ SELECT pu.public_id,
     pu.status,
     pu.created_at
 FROM platform_users pu
-ORDER BY pu.created_at DESC;
+WHERE sqlc.narg('cursor_id')::uuid IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (pu.created_at, pu.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (pu.created_at, pu.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+ORDER BY pu.created_at DESC, pu.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListPlatformOperatorsAsc :many
+SELECT pu.id,
+    pu.public_id,
+    pu.email,
+    pu.name,
+    COALESCE(
+        (
+            SELECT pur.role
+            FROM platform_user_roles pur
+            WHERE pur.platform_user_id = pu.id
+            ORDER BY CASE
+                    WHEN pur.role = 'platform_super_admin' THEN 3
+                    WHEN pur.role = 'platform_operator' THEN 2
+                    WHEN pur.role = 'platform_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                pur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    pu.status,
+    pu.created_at
+FROM platform_users pu
+WHERE sqlc.narg('cursor_id')::uuid IS NULL
+    OR (
+        sqlc.arg('cursor_inclusive')::boolean
+        AND (pu.created_at, pu.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+    OR (
+        NOT sqlc.arg('cursor_inclusive')::boolean
+        AND (pu.created_at, pu.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+    )
+ORDER BY pu.created_at ASC, pu.id ASC
+LIMIT sqlc.arg('limit');
 
 -- name: GetPlatformOperatorByPublicID :one
 SELECT pu.id,
