@@ -1064,7 +1064,11 @@ SET published_at = sqlc.narg(published_at)::timestamptz,
     END,
     updated_at = NOW()
 WHERE id = $1;
--- name: ListSeriesByTenant :many
+-- Admin ListSeries は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで idx_series_tenant_created_at を
+-- 走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
+-- が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+-- name: ListSeriesByTenantDesc :many
 SELECT s.id,
     s.public_id,
     s.title,
@@ -1074,6 +1078,7 @@ SELECT s.id,
     sl.reading_period_hours,
     s.is_published,
     s.published_at,
+    s.created_at,
     s.eye_catch_image_id,
     si.updated_at AS eye_catch_image_updated_at,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
@@ -1088,9 +1093,60 @@ FROM series s
         ORDER BY width DESC
         LIMIT 1
     ) siv ON true
-WHERE s.tenant_id = $1
-ORDER BY s.created_at DESC
-LIMIT $2 OFFSET $3;
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.created_at, s.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.created_at, s.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY s.created_at DESC, s.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListSeriesByTenantAsc :many
+SELECT s.id,
+    s.public_id,
+    s.title,
+    l.public_id AS label_public_id,
+    l.name AS label_name,
+    sl.synopsis,
+    sl.reading_period_hours,
+    s.is_published,
+    s.published_at,
+    s.created_at,
+    s.eye_catch_image_id,
+    si.updated_at AS eye_catch_image_updated_at,
+    COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes
+FROM series s
+    LEFT JOIN labels l ON l.id = s.label_id
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+    LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM series_image_variants
+        WHERE series_image_id = si.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) siv ON true
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.created_at, s.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.created_at, s.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY s.created_at ASC, s.id ASC
+LIMIT sqlc.arg('limit');
 -- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,

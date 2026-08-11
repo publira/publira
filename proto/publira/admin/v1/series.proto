@@ -42,15 +42,26 @@ message UpdateSeriesResponse {
   publira.types.v1.Series series = 1;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 message ListSeriesRequest {
+  // Removed with the move to cursor pagination.
+  reserved 3;
+  reserved "offset";
+
   publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
   int32 limit = 2;
-  int32 offset = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
 }
 
 message ListSeriesResponse {
   repeated publira.types.v1.Series series = 1;
   int32 default_reading_period_hours = 2;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 3;
+  // Token for the next page. Empty on the last page.
+  string next_token = 4;
 }
 
 message GetSeriesRequest {

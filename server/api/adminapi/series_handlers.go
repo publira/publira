@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
@@ -536,6 +537,108 @@ func (s *adminServer) UpdateSeries(
 	return connect.NewResponse(&publiraadminv1.UpdateSeriesResponse{Series: series}), nil
 }
 
+const (
+	defaultSeriesPageSize = int32(20)
+	maxSeriesPageSize     = int32(100)
+)
+
+// seriesPageRow is one row of an admin series page, shared by the descending
+// and ascending keyset queries so the handler reads a single shape.
+type seriesPageRow struct {
+	id                     uuid.UUID
+	publicID               string
+	title                  string
+	labelPublicID          sql.NullString
+	labelName              sql.NullString
+	synopsis               sql.NullString
+	readingPeriodHours     sql.NullInt32
+	isPublished            bool
+	publishedAt            sql.NullTime
+	createdAt              time.Time
+	eyeCatchImageID        uuid.NullUUID
+	eyeCatchImageUpdatedAt sql.NullTime
+}
+
+func mapSeriesDescRows(rows []dbmodels.ListSeriesByTenantDescRow) []seriesPageRow {
+	mapped := make([]seriesPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, seriesPageRow{
+			id:                     row.ID,
+			publicID:               row.PublicID,
+			title:                  row.Title,
+			labelPublicID:          row.LabelPublicID,
+			labelName:              row.LabelName,
+			synopsis:               row.Synopsis,
+			readingPeriodHours:     row.ReadingPeriodHours,
+			isPublished:            row.IsPublished,
+			publishedAt:            row.PublishedAt,
+			createdAt:              row.CreatedAt,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		})
+	}
+	return mapped
+}
+
+func mapSeriesAscRows(rows []dbmodels.ListSeriesByTenantAscRow) []seriesPageRow {
+	mapped := make([]seriesPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, seriesPageRow{
+			id:                     row.ID,
+			publicID:               row.PublicID,
+			title:                  row.Title,
+			labelPublicID:          row.LabelPublicID,
+			labelName:              row.LabelName,
+			synopsis:               row.Synopsis,
+			readingPeriodHours:     row.ReadingPeriodHours,
+			isPublished:            row.IsPublished,
+			publishedAt:            row.PublishedAt,
+			createdAt:              row.CreatedAt,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+		})
+	}
+	return mapped
+}
+
+// seriesPage runs the keyset query for one page. The list reads newest first, so
+// a backward page is scanned by the ascending query and put back into display
+// order by pagination.Page.
+func (s *adminServer) seriesPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]seriesPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListSeriesByTenantAsc(ctx, dbmodels.ListSeriesByTenantAscParams{
+			TenantID:        tenantID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapSeriesAscRows(rows), nil
+	}
+
+	rows, err := queries.ListSeriesByTenantDesc(ctx, dbmodels.ListSeriesByTenantDescParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapSeriesDescRows(rows), nil
+}
+
 func (s *adminServer) ListSeries(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListSeriesRequest],
@@ -544,46 +647,54 @@ func (s *adminServer) ListSeries(
 	if err != nil {
 		return nil, err
 	}
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > 100 {
-		limit = 20
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultSeriesPageSize, maxSeriesPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
-	rows, err := s.queriesFor(ctx).ListSeriesByTenant(ctx, dbmodels.ListSeriesByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+
+	// One row past the page: its presence is what says another page exists.
+	rows, err := s.seriesPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
 	items := make([]*publirattypesv1.Series, 0, len(rows))
 	seriesIDs := make([]uuid.UUID, 0, len(rows))
 	seriesImageIDs := make([]uuid.UUID, 0, len(rows))
 	itemByID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	itemByImageID := make(map[uuid.UUID]*publirattypesv1.Series, len(rows))
 	for _, row := range rows {
-		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title, IsPublished: row.IsPublished}
-		if row.LabelPublicID.Valid {
-			item.Label = protomapper.Label(row.LabelPublicID.String, row.LabelName.String)
+		item := &publirattypesv1.Series{PublicId: row.publicID, Title: row.title, IsPublished: row.isPublished}
+		if row.labelPublicID.Valid {
+			item.Label = protomapper.Label(row.labelPublicID.String, row.labelName.String)
 		}
-		if row.Synopsis.Valid {
-			item.Synopsis = row.Synopsis.String
+		if row.synopsis.Valid {
+			item.Synopsis = row.synopsis.String
 		}
-		if row.ReadingPeriodHours.Valid {
-			item.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+		if row.readingPeriodHours.Valid {
+			item.ReadingPeriodHours = row.readingPeriodHours.Int32
 		}
-		if row.EyeCatchImageID.Valid {
-			seriesImageIDs = append(seriesImageIDs, row.EyeCatchImageID.UUID)
-			itemByImageID[row.EyeCatchImageID.UUID] = item
+		if row.eyeCatchImageID.Valid {
+			seriesImageIDs = append(seriesImageIDs, row.eyeCatchImageID.UUID)
+			itemByImageID[row.eyeCatchImageID.UUID] = item
 		}
-		if row.EyeCatchImageUpdatedAt.Valid {
-			item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
+		if row.eyeCatchImageUpdatedAt.Valid {
+			item.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
 		}
-		if row.PublishedAt.Valid {
-			item.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+		if row.publishedAt.Valid {
+			item.PublishedAt = row.publishedAt.Time.UTC().Format(time.RFC3339)
 		}
-		seriesIDs = append(seriesIDs, row.ID)
-		itemByID[row.ID] = item
+		seriesIDs = append(seriesIDs, row.id)
+		itemByID[row.id] = item
 		items = append(items, item)
 	}
 	creatorsBySeriesID, err := s.seriesCreatorsBySeriesIDs(ctx, seriesIDs)
@@ -608,10 +719,33 @@ func (s *adminServer) ListSeries(
 	if tenant.DefaultReadingPeriodHours.Valid {
 		defaultReadingPeriodHours = tenant.DefaultReadingPeriodHours.Int32
 	}
-	return connect.NewResponse(&publiraadminv1.ListSeriesResponse{
+
+	res := &publiraadminv1.ListSeriesResponse{
 		Series:                    items,
 		DefaultReadingPeriodHours: defaultReadingPeriodHours,
-	}), nil
+	}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *adminServer) GetSeries(

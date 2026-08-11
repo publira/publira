@@ -358,11 +358,14 @@ func (x *UpdateSeriesResponse) GetSeries() *v1.Series {
 	return nil
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -411,19 +414,23 @@ func (x *ListSeriesRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListSeriesRequest) GetOffset() int32 {
+func (x *ListSeriesRequest) GetToken() string {
 	if x != nil {
-		return x.Offset
+		return x.Token
 	}
-	return 0
+	return ""
 }
 
 type ListSeriesResponse struct {
 	state                     protoimpl.MessageState `protogen:"open.v1"`
 	Series                    []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
 	DefaultReadingPeriodHours int32                  `protobuf:"varint,2,opt,name=default_reading_period_hours,json=defaultReadingPeriodHours,proto3" json:"default_reading_period_hours,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,3,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,4,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListSeriesResponse) Reset() {
@@ -468,6 +475,20 @@ func (x *ListSeriesResponse) GetDefaultReadingPeriodHours() int32 {
 		return x.DefaultReadingPeriodHours
 	}
 	return 0
+}
+
+func (x *ListSeriesResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListSeriesResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type GetSeriesRequest struct {
@@ -1443,14 +1464,17 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x15clear_eye_catch_image\x18\v \x01(\bR\x12clearEyeCatchImage\x12!\n" +
 	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\"H\n" +
 	"\x14UpdateSeriesResponse\x120\n" +
-	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"z\n" +
+	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\"\x86\x01\n" +
 	"\x11ListSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"\x87\x01\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\xcd\x01\n" +
 	"\x12ListSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12?\n" +
-	"\x1cdefault_reading_period_hours\x18\x02 \x01(\x05R\x19defaultReadingPeriodHours\"h\n" +
+	"\x1cdefault_reading_period_hours\x18\x02 \x01(\x05R\x19defaultReadingPeriodHours\x12%\n" +
+	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x04 \x01(\tR\tnextToken\"h\n" +
 	"\x10GetSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"E\n" +
