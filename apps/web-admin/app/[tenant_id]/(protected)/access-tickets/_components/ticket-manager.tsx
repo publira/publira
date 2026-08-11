@@ -1,5 +1,3 @@
-"use client";
-
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -8,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -20,15 +17,20 @@ import {
 } from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
-import { useMemo } from "react";
+
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
 
 import type { AccessTicketItem } from "../ticket-types";
 import { RevokeTicketButton } from "./revoke-ticket-button";
 
-interface TicketManagerProps {
-  initialListErrorMessage?: string;
-  initialTickets: AccessTicketItem[];
-}
+type TicketManagerProps = CursorPageHrefs & {
+  listErrorMessage?: string;
+  pageSize: number;
+  tickets: AccessTicketItem[];
+};
 
 const statusLabel = (status: string): string => {
   switch (status) {
@@ -53,16 +55,13 @@ const formatTicketDateTime = (value: string): string =>
   value ? formatDateTime(value) : "—";
 
 export const TicketManager = ({
-  initialTickets,
-  initialListErrorMessage,
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  previousHref,
+  tickets,
 }: TicketManagerProps) => {
-  const tickets = useMemo(
-    () =>
-      initialTickets.toSorted((a, b) =>
-        b.createdAt.localeCompare(a.createdAt, "ja")
-      ),
-    [initialTickets]
-  );
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
 
   return (
     <Card>
@@ -81,16 +80,16 @@ export const TicketManager = ({
         </LinkButton>
       </CardHeader>
 
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
+      <CardContent className="grid gap-4">
+        {listErrorMessage ? (
+          <FormMessage variant="destructive">{listErrorMessage}</FormMessage>
         ) : null}
 
         {tickets.length === 0 ? (
-          <EmptyState
+          <CursorPageEmptyState
             description="チケット発行からユーザーにエピソード閲覧権を付与してください。"
+            hasPageLinks={hasPageLinks}
+            itemLabel="チケット"
             title="チケットがまだありません。"
           />
         ) : (
@@ -158,6 +157,15 @@ export const TicketManager = ({
             </TableBody>
           </Table>
         )}
+
+        {tickets.length > 0 || hasPageLinks ? (
+          <PaginationFooter
+            ariaLabel="アクセスチケット一覧のページ送り"
+            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );
