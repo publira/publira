@@ -21,12 +21,12 @@ import (
 )
 
 const (
-	getUserByIDQuery                = "-- name: GetUserByID :one\n"
-	listTenantUserRolesQuery        = "-- name: ListTenantUserRoles :many\nSELECT role\nFROM tenant_user_roles\nWHERE user_id = $1\nORDER BY role\n"
+	getUserByIDQuery                  = "-- name: GetUserByID :one\n"
+	listTenantUserRolesQuery          = "-- name: ListTenantUserRoles :many\nSELECT role\nFROM tenant_user_roles\nWHERE user_id = $1\nORDER BY role\n"
 	listNotificationsForUserDescQuery = "-- name: ListNotificationsForUserDesc :many\n"
 	listNotificationsForUserAscQuery  = "-- name: ListNotificationsForUserAsc :many\n"
-	markNotificationAsReadQuery     = "-- name: MarkNotificationAsRead :one\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $3, NOW()\nFROM notifications n\nWHERE n.id = $1\n    AND n.tenant_id = $2\n    AND (n.target_user_id IS NULL OR n.target_user_id = $3)\nON CONFLICT (notification_id, user_id) DO UPDATE\nSET read_at = EXCLUDED.read_at\nRETURNING notification_id, user_id, read_at\n"
-	markAllNotificationsAsReadQuery = "-- name: MarkAllNotificationsAsRead :execrows\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $2, NOW()\nFROM notifications n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM notification_reads nr\n        WHERE nr.notification_id = n.id\n            AND nr.user_id = $2\n    )\n"
+	markNotificationAsReadQuery       = "-- name: MarkNotificationAsRead :one\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $3, NOW()\nFROM notifications n\nWHERE n.id = $1\n    AND n.tenant_id = $2\n    AND (n.target_user_id IS NULL OR n.target_user_id = $3)\nON CONFLICT (notification_id, user_id) DO UPDATE\nSET read_at = EXCLUDED.read_at\nRETURNING notification_id, user_id, read_at\n"
+	markAllNotificationsAsReadQuery   = "-- name: MarkAllNotificationsAsRead :execrows\nINSERT INTO notification_reads (notification_id, user_id, read_at)\nSELECT n.id, $2, NOW()\nFROM notifications n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM notification_reads nr\n        WHERE nr.notification_id = n.id\n            AND nr.user_id = $2\n    )\n"
 )
 
 const testPublicUserPublicID = "USR001"

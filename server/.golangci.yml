@@ -21,6 +21,17 @@ linters:
     # and would silently skip a hand-written file that merely says so in prose.
     generated: strict
 
+formatters:
+  # `standard` carries no formatting check, so unformatted code used to pass both
+  # lint and test. `golangci-lint run` reports formatters as findings too, so the
+  # existing `Lint / Go` job gates this without a new CI job. Fix a report with
+  # `golangci-lint fmt` (or `gofmt -w`).
+  #
+  # Plain `gofmt` only — `gofumpt` / `goimports` / `golines` impose rules beyond
+  # the Go toolchain's own default, which is a separate decision.
+  enable:
+    - gofmt
+
 issues:
   # Report every finding. The defaults truncate at 50 per linter and 3 per
   # identical message, which hides work and makes a green run ambiguous.

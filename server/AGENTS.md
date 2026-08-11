@@ -32,7 +32,7 @@ Run verification from the **repository root** unless noted. Prefer Task targets 
 
 | Step | Command | When |
 | --- | --- | --- |
-| Static analysis | `task server:lint` | After any `server/` change; CI gates on it (`Lint / Go`) |
+| Static analysis + formatting | `task server:lint` | After any `server/` change; CI gates on it (`Lint / Go`) |
 | Unit / package tests (fast) | `task server:test-short` | After any non-trivial `server/` change |
 | Full Go tests (CI parity) | `task server:test` | Before finishing; includes Testcontainers DB tests (needs Docker) |
 | Build binaries | `task server:build` | When changing `cmd/` or wiring that might break compile |
@@ -48,7 +48,9 @@ go build -o bin/ ./cmd/...
 
 ### Lint (golangci-lint)
 
-Rules live in [`.golangci.yml`](.golangci.yml); the enabled set is golangci-lint's own `standard` default (`errcheck`, `govet`, `ineffassign`, `staticcheck`, `unused`). `Lint / Go` in CI runs the same file and the same pinned version, so a clean `task server:lint` means a clean CI job.
+Rules live in [`.golangci.yml`](.golangci.yml); the enabled set is golangci-lint's own `standard` default (`errcheck`, `govet`, `ineffassign`, `staticcheck`, `unused`), plus the `gofmt` formatter. `Lint / Go` in CI runs the same file and the same pinned version, so a clean `task server:lint` means a clean CI job.
+
+- **Formatting is part of the same gate.** `golangci-lint run` reports a `gofmt`-dirty file as `File is not properly formatted (gofmt)`, so `task server:lint` (and therefore `Lint / Go`) fails on it — there is no separate formatting job. To fix only formatting, run `golangci-lint fmt ./...` from `server/` (`gofmt -w` on individual files works too); it rewrites files in place and reports nothing.
 
 - Generated code is excluded by its canonical `Code generated … DO NOT EDIT.` header, not by path. Do not add `gen/` or `internal/db/` to `exclusions.paths` — `internal/db/` also holds hand-written `*_integration_test.go` files that must stay linted. Keep `exclusions.generated` at `strict`; `lax` matches "do not edit" anywhere in a file's leading comments and silently skips hand-written files that say so in prose.
 - **Fix the finding rather than suppress it.** The one standing exception is `errcheck` on deferred cleanup, where the error is unactionable and `defer` has no statement form to discard it:
@@ -61,7 +63,7 @@ Rules live in [`.golangci.yml`](.golangci.yml); the enabled set is golangci-lint
   Outside `defer`, discard explicitly with `_ = conn.Close()` instead of a directive.
 
 - Suppressing anything else needs a reason on the line (`//nolint:staticcheck // …`) or, for a whole rule, a comment in `.golangci.yml`. Bare directives beyond the `defer` convention above, and blanket `linters.disable` entries, do not belong here.
-- Adding or removing a linter is its own change, separate from the work that surfaced the need.
+- Adding or removing a linter or formatter is its own change, separate from the work that surfaced the need. The formatter set is plain `gofmt`; swapping in a stricter one (`gofumpt`, `goimports`, `golines`) reformats the whole module and needs its own discussion.
 - Version bumps: `GOLANGCI_LINT_VERSION` in [`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile) and [`ci.yml`](../.github/workflows/ci.yml) must move together (Renovate manages both).
 
 ### When codegen inputs change
