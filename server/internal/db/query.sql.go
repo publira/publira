@@ -3412,19 +3412,30 @@ WHERE s.tenant_id = $1
     AND s.published_at <= NOW()
     AND (
         $2::uuid IS NULL
-        OR (s.published_at, s.id) > (
-            $3::timestamptz,
-            $2::uuid
+        OR (
+            $3::boolean
+            AND (s.published_at, s.id) >= (
+                $4::timestamptz,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (s.published_at, s.id) > (
+                $4::timestamptz,
+                $2::uuid
+            )
         )
     )
 ORDER BY s.published_at ASC,
     s.id ASC
-LIMIT $4
+LIMIT $5
 `
 
 type ListActiveSeriesIDsByPublishedAtAscParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
 	Limit             int32         `json:"limit"`
 }
@@ -3433,6 +3444,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg L
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtAsc,
 		arg.TenantID,
 		arg.CursorID,
+		arg.CursorInclusive,
 		arg.CursorPublishedAt,
 		arg.Limit,
 	)
@@ -3466,19 +3478,30 @@ WHERE s.tenant_id = $1
     AND s.published_at <= NOW()
     AND (
         $2::uuid IS NULL
-        OR (s.published_at, s.id) < (
-            $3::timestamptz,
-            $2::uuid
+        OR (
+            $3::boolean
+            AND (s.published_at, s.id) <= (
+                $4::timestamptz,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (s.published_at, s.id) < (
+                $4::timestamptz,
+                $2::uuid
+            )
         )
     )
 ORDER BY s.published_at DESC,
     s.id DESC
-LIMIT $4
+LIMIT $5
 `
 
 type ListActiveSeriesIDsByPublishedAtDescParams struct {
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
 	Limit             int32         `json:"limit"`
 }
@@ -3500,6 +3523,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg 
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByPublishedAtDesc,
 		arg.TenantID,
 		arg.CursorID,
+		arg.CursorInclusive,
 		arg.CursorPublishedAt,
 		arg.Limit,
 	)
@@ -3533,27 +3557,39 @@ WHERE s.tenant_id = $1
     AND s.published_at <= NOW()
     AND (
         $2::uuid IS NULL
-        OR (s.title, s.id) > (
-            $3::text,
-            $2::uuid
+        OR (
+            $3::boolean
+            AND (s.title, s.id) >= (
+                $4::text,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (s.title, s.id) > (
+                $4::text,
+                $2::uuid
+            )
         )
     )
 ORDER BY s.title ASC,
     s.id ASC
-LIMIT $4
+LIMIT $5
 `
 
 type ListActiveSeriesIDsByTitleAscParams struct {
-	TenantID    uuid.UUID      `json:"tenant_id"`
-	CursorID    uuid.NullUUID  `json:"cursor_id"`
-	CursorTitle sql.NullString `json:"cursor_title"`
-	Limit       int32          `json:"limit"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
 }
 
 func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleAsc,
 		arg.TenantID,
 		arg.CursorID,
+		arg.CursorInclusive,
 		arg.CursorTitle,
 		arg.Limit,
 	)
@@ -3587,27 +3623,39 @@ WHERE s.tenant_id = $1
     AND s.published_at <= NOW()
     AND (
         $2::uuid IS NULL
-        OR (s.title, s.id) < (
-            $3::text,
-            $2::uuid
+        OR (
+            $3::boolean
+            AND (s.title, s.id) <= (
+                $4::text,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (s.title, s.id) < (
+                $4::text,
+                $2::uuid
+            )
         )
     )
 ORDER BY s.title DESC,
     s.id DESC
-LIMIT $4
+LIMIT $5
 `
 
 type ListActiveSeriesIDsByTitleDescParams struct {
-	TenantID    uuid.UUID      `json:"tenant_id"`
-	CursorID    uuid.NullUUID  `json:"cursor_id"`
-	CursorTitle sql.NullString `json:"cursor_title"`
-	Limit       int32          `json:"limit"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
 }
 
 func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveSeriesIDsByTitleDesc,
 		arg.TenantID,
 		arg.CursorID,
+		arg.CursorInclusive,
 		arg.CursorTitle,
 		arg.Limit,
 	)

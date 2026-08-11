@@ -652,9 +652,19 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at <= NOW()
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
-        OR (s.published_at, s.id) < (
-            sqlc.narg('cursor_published_at')::timestamptz,
-            sqlc.narg('cursor_id')::uuid
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.published_at, s.id) <= (
+                sqlc.narg('cursor_published_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.published_at, s.id) < (
+                sqlc.narg('cursor_published_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
         )
     )
 ORDER BY s.published_at DESC,
@@ -669,9 +679,19 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at <= NOW()
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
-        OR (s.published_at, s.id) > (
-            sqlc.narg('cursor_published_at')::timestamptz,
-            sqlc.narg('cursor_id')::uuid
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.published_at, s.id) >= (
+                sqlc.narg('cursor_published_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.published_at, s.id) > (
+                sqlc.narg('cursor_published_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
         )
     )
 ORDER BY s.published_at ASC,
@@ -686,9 +706,19 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at <= NOW()
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
-        OR (s.title, s.id) > (
-            sqlc.narg('cursor_title')::text,
-            sqlc.narg('cursor_id')::uuid
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) >= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) > (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
         )
     )
 ORDER BY s.title ASC,
@@ -703,9 +733,19 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.published_at <= NOW()
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
-        OR (s.title, s.id) < (
-            sqlc.narg('cursor_title')::text,
-            sqlc.narg('cursor_id')::uuid
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) <= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) < (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
         )
     )
 ORDER BY s.title DESC,

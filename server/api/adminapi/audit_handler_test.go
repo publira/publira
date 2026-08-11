@@ -325,6 +325,63 @@ func TestListAuditLogsEmptyPageKeepsAWayBack(t *testing.T) {
 	}
 }
 
+// Recovery happens once. When the boundary row itself is gone the recovery
+// query is empty too, and both tokens stay empty so the client falls back to
+// the first page instead of bouncing between empty pages.
+func TestListAuditLogsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction pagination.Direction
+		wantQuery string
+	}{
+		{
+			name:      "recovering backward",
+			direction: pagination.Backward,
+			wantQuery: listAuditLogsByTenantAscQuery,
+		},
+		{
+			name:      "recovering forward",
+			direction: pagination.Forward,
+			wantQuery: listAuditLogsByTenantDescQuery,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newAuditLogClient(t, tenantID, userID, now)
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, sql.NullString{}, sql.NullString{}, sql.NullTime{}, sql.NullTime{}, boundaryID, true, now, int32(21)).
+				WillReturnRows(auditLogColumns())
+
+			req := newAuditLogRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.Encode(
+				test.direction,
+				now.Format(time.RFC3339Nano),
+				boundaryID.String(),
+				auditLogInclusiveKey,
+			)
+			resp, err := client.ListAuditLogs(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListAuditLogs: %v", err)
+			}
+			if len(resp.Msg.AuditLogs) != 0 {
+				t.Fatalf("audit_logs = %d rows, want an empty page", len(resp.Msg.AuditLogs))
+			}
+			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+				t.Fatalf(
+					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
+					resp.Msg.PreviousToken, resp.Msg.NextToken,
+				)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 func TestListAuditLogsInvalidToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())

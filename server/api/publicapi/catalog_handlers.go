@@ -23,6 +23,7 @@ import (
 const (
 	defaultSeriesPageSize = int32(20)
 	maxSeriesPageSize     = int32(100)
+	seriesInclusiveKey    = "inclusive"
 )
 
 const (
@@ -59,6 +60,7 @@ type seriesCursorKeys struct {
 	publishedAt sql.NullTime
 	title       sql.NullString
 	id          uuid.NullUUID
+	inclusive   bool
 }
 
 // The ListPublishedSeries cursor carries the order it was built for, then the
@@ -72,13 +74,27 @@ func encodeSeriesCursor(direction pagination.Direction, order seriesOrder, row d
 	return pagination.Encode(direction, order.name, sortValue, row.ID.String())
 }
 
+// A recovery token includes the boundary once. That keeps the boundary row in
+// the page when rows beyond it were deleted after the original token was issued.
+func encodeSeriesRecoveryToken(direction pagination.Direction, order seriesOrder, keys seriesCursorKeys) string {
+	sortValue := keys.title.String
+	if order.column == seriesOrderColumnPublishedAt {
+		sortValue = keys.publishedAt.Time.UTC().Format(time.RFC3339Nano)
+	}
+	return pagination.Encode(direction, order.name, sortValue, keys.id.UUID.String(), seriesInclusiveKey)
+}
+
 // decodeSeriesCursorKeys reads a token into the keyset the query compares
 // against. A token built for another order is rejected rather than
 // reinterpreted: its keys point into a page that does not exist in the
 // requested order.
 func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder) (seriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
-	if len(cursor.Keys) != 3 {
+	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
+		return seriesCursorKeys{}, invalid
+	}
+	inclusive := len(cursor.Keys) == 4
+	if inclusive && cursor.Keys[3] != seriesInclusiveKey {
 		return seriesCursorKeys{}, invalid
 	}
 	if cursor.Keys[0] != order.name {
@@ -89,7 +105,7 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order seriesOrder) (series
 	if err != nil {
 		return seriesCursorKeys{}, invalid
 	}
-	keys := seriesCursorKeys{id: uuid.NullUUID{UUID: seriesID, Valid: true}}
+	keys := seriesCursorKeys{id: uuid.NullUUID{UUID: seriesID, Valid: true}, inclusive: inclusive}
 
 	if order.column == seriesOrderColumnTitle {
 		keys.title = sql.NullString{String: cursor.Keys[1], Valid: true}
@@ -123,23 +139,26 @@ func (s *apiServer) activeSeriesPageIDs(
 	switch {
 	case order.column == seriesOrderColumnTitle && descending:
 		return queries.ListActiveSeriesIDsByTitleDesc(ctx, dbmodels.ListActiveSeriesIDsByTitleDescParams{
-			TenantID:    tenantID,
-			CursorTitle: keys.title,
-			CursorID:    keys.id,
-			Limit:       limit,
+			TenantID:        tenantID,
+			CursorTitle:     keys.title,
+			CursorID:        keys.id,
+			CursorInclusive: keys.inclusive,
+			Limit:           limit,
 		})
 	case order.column == seriesOrderColumnTitle:
 		return queries.ListActiveSeriesIDsByTitleAsc(ctx, dbmodels.ListActiveSeriesIDsByTitleAscParams{
-			TenantID:    tenantID,
-			CursorTitle: keys.title,
-			CursorID:    keys.id,
-			Limit:       limit,
+			TenantID:        tenantID,
+			CursorTitle:     keys.title,
+			CursorID:        keys.id,
+			CursorInclusive: keys.inclusive,
+			Limit:           limit,
 		})
 	case descending:
 		return queries.ListActiveSeriesIDsByPublishedAtDesc(ctx, dbmodels.ListActiveSeriesIDsByPublishedAtDescParams{
 			TenantID:          tenantID,
 			CursorPublishedAt: keys.publishedAt,
 			CursorID:          keys.id,
+			CursorInclusive:   keys.inclusive,
 			Limit:             limit,
 		})
 	default:
@@ -147,6 +166,7 @@ func (s *apiServer) activeSeriesPageIDs(
 			TenantID:          tenantID,
 			CursorPublishedAt: keys.publishedAt,
 			CursorID:          keys.id,
+			CursorInclusive:   keys.inclusive,
 			Limit:             limit,
 		})
 	}
@@ -415,11 +435,13 @@ func (s *apiServer) ListPublishedSeries(
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
-	// out is not to start over from the first page.
-	case cursor.Direction == pagination.Forward:
-		res.PreviousToken = pagination.Encode(pagination.Backward, cursor.Keys...)
-	case cursor.Direction == pagination.Backward:
-		res.NextToken = pagination.Encode(pagination.Forward, cursor.Keys...)
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.inclusive:
+		res.PreviousToken = encodeSeriesRecoveryToken(pagination.Backward, order, keys)
+	case cursor.Direction == pagination.Backward && !keys.inclusive:
+		res.NextToken = encodeSeriesRecoveryToken(pagination.Forward, order, keys)
 	}
 	return connect.NewResponse(res), nil
 }
