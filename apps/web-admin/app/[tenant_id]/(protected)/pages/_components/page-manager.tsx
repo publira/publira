@@ -1,5 +1,3 @@
-"use client";
-
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -9,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -20,28 +17,29 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
+
 import type { PageListItem } from "../page-types";
 import { formatPageDateTime, formatPagePath } from "../page-types";
 
-interface PageManagerProps {
-  initialListErrorMessage?: string;
-  initialPages: PageListItem[];
-}
+type PageManagerProps = CursorPageHrefs & {
+  listErrorMessage?: string;
+  pageSize: number;
+  pages: PageListItem[];
+};
 
 export const PageManager = ({
-  initialListErrorMessage,
-  initialPages,
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  pages,
+  previousHref,
 }: PageManagerProps) => {
-  const sortedPages = initialPages.toSorted((left, right) => {
-    const leftPublished = left.publishedVersionId.length > 0;
-    const rightPublished = right.publishedVersionId.length > 0;
-
-    if (leftPublished !== rightPublished) {
-      return leftPublished ? -1 : 1;
-    }
-
-    return left.slug.localeCompare(right.slug, "ja");
-  });
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  const showPagination = pages.length > 0 || hasPageLinks;
 
   return (
     <Card>
@@ -56,16 +54,16 @@ export const PageManager = ({
           ページを新規作成
         </LinkButton>
       </CardHeader>
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
+      <CardContent className="grid gap-4">
+        {listErrorMessage ? (
+          <FormMessage variant="destructive">{listErrorMessage}</FormMessage>
         ) : null}
 
-        {sortedPages.length === 0 ? (
-          <EmptyState
+        {pages.length === 0 ? (
+          <CursorPageEmptyState
             description="新規作成ページから固定ページを登録してください。"
+            hasPageLinks={hasPageLinks}
+            itemLabel="ページ"
             title="ページはまだ登録されていません。"
           />
         ) : (
@@ -81,7 +79,7 @@ export const PageManager = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedPages.map((page) => (
+              {pages.map((page) => (
                 <TableRow key={page.id}>
                   <TableCell className="font-medium">{page.title}</TableCell>
                   <TableCell>{formatPagePath(page.slug)}</TableCell>
@@ -112,6 +110,15 @@ export const PageManager = ({
             </TableBody>
           </Table>
         )}
+
+        {showPagination ? (
+          <PaginationFooter
+            ariaLabel="ページ一覧のページ送り"
+            description={`作成順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );
