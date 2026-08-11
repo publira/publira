@@ -38,10 +38,10 @@ const (
 	StatusError       = "error"
 
 	// Public /readyz error categories (stable; no internal host/URL detail).
-	ErrorNotConfigured      = "not configured"
-	ErrorTimeout            = "timeout"
-	ErrorDependencyFailed   = "dependency_failed"
-	ErrorDuplicateChecker   = "duplicate checker name"
+	ErrorNotConfigured    = "not configured"
+	ErrorTimeout          = "timeout"
+	ErrorDependencyFailed = "dependency_failed"
+	ErrorDuplicateChecker = "duplicate checker name"
 
 	defaultCheckTimeout = 2 * time.Second
 )

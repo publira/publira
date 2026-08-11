@@ -22,7 +22,7 @@ type Client struct {
 
 type requestPayload struct {
 	TenantID string   `json:"tenantId"`
-	Tags           []string `json:"tags"`
+	Tags     []string `json:"tags"`
 }
 
 const (
@@ -91,7 +91,7 @@ func buildEndpoint(baseURL, reqPath string) (string, error) {
 func (c *Client) sendRequest(ctx context.Context, endpoint, tenantID, tenantDomain string, tags []string) error {
 	payload, err := json.Marshal(requestPayload{
 		TenantID: tenantID,
-		Tags:           tags,
+		Tags:     tags,
 	})
 	if err != nil {
 		return fmt.Errorf("marshal revalidate payload: %w", err)
