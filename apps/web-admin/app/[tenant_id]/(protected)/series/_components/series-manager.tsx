@@ -1,5 +1,3 @@
-"use client";
-
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -19,14 +17,18 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { formatDateTime, parseInstant } from "@publira/utils";
-import { useMemo } from "react";
+import { formatDateTime } from "@publira/utils";
+
+import { PaginationControls } from "#components/pagination-controls";
 
 import type { SeriesListItem } from "../series-types";
 
 interface SeriesManagerProps {
-  initialSeries: SeriesListItem[];
-  initialListErrorMessage?: string;
+  series: SeriesListItem[];
+  listErrorMessage?: string;
+  nextHref?: string;
+  pageSize: number;
+  previousHref?: string;
 }
 
 const getStatusTone = (isPublished: boolean) =>
@@ -45,42 +47,22 @@ const excerpt = (text: string, max = 56) => {
 };
 
 export const SeriesManager = ({
-  initialSeries,
-  initialListErrorMessage,
+  series,
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  previousHref,
 }: SeriesManagerProps) => {
-  const sortedSeries = useMemo(
-    () =>
-      initialSeries.toSorted((a, b) => {
-        // Absolute-time ordering: the API may express the same instant with
-        // different offsets, so neither string nor local-`Date` comparison is safe.
-        const aPublishedAt = parseInstant(a.publishedAt);
-        const bPublishedAt = parseInstant(b.publishedAt);
-        if (aPublishedAt && bPublishedAt) {
-          const publishedAtDiff = Temporal.Instant.compare(
-            bPublishedAt,
-            aPublishedAt
-          );
-          if (publishedAtDiff !== 0) {
-            return publishedAtDiff;
-          }
-        }
-
-        // "Has a publish date" beats "does not", decided on the parse result:
-        // keying this off the raw strings made two different spellings of the
-        // same instant return -1 in both directions, which is not a valid
-        // comparator.
-        if (Boolean(aPublishedAt) !== Boolean(bPublishedAt)) {
-          return aPublishedAt ? -1 : 1;
-        }
-
-        if (a.isPublished !== b.isPublished) {
-          return a.isPublished ? -1 : 1;
-        }
-
-        return a.title.localeCompare(b.title, "ja");
-      }),
-    [initialSeries]
-  );
+  /*
+   * Page links stay up even on an empty page: the server hands back a recovery
+   * token when the row a token pointed at is gone, and hiding the links would
+   * leave that page with no way back into the list. That page is also the
+   * reason the empty state is worded twice — an empty page one means the tenant
+   * has no series, while an empty page with links only means this page lost the
+   * rows it pointed at.
+   */
+  const hasPageLinks = Boolean(previousHref) || Boolean(nextHref);
+  const showPagination = series.length > 0 || hasPageLinks;
 
   return (
     <Card>
@@ -95,17 +77,23 @@ export const SeriesManager = ({
           シリーズを新規作成
         </LinkButton>
       </CardHeader>
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
+      <CardContent className="grid gap-4">
+        {listErrorMessage ? (
+          <FormMessage variant="destructive">{listErrorMessage}</FormMessage>
         ) : null}
 
-        {sortedSeries.length === 0 ? (
+        {series.length === 0 ? (
           <EmptyState
-            description="新規作成ページからシリーズを作成してください。"
-            title="シリーズがまだ登録されていません。"
+            description={
+              hasPageLinks
+                ? "表示中に他の操作で削除された可能性があります。前後のページへ移動してください。"
+                : "新規作成ページからシリーズを作成してください。"
+            }
+            title={
+              hasPageLinks
+                ? "このページに表示できるシリーズはありません。"
+                : "シリーズがまだ登録されていません。"
+            }
           />
         ) : (
           <Table>
@@ -121,30 +109,30 @@ export const SeriesManager = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedSeries.map((series) => (
-                <TableRow key={series.publicId}>
-                  <TableCell className="font-medium">{series.title}</TableCell>
-                  <TableCell>{series.labelName || "-"}</TableCell>
+              {series.map((item) => (
+                <TableRow key={item.publicId}>
+                  <TableCell className="font-medium">{item.title}</TableCell>
+                  <TableCell>{item.labelName || "-"}</TableCell>
                   <TableCell>
-                    {formatDateTime(series.publishedAt, { fallback: "-" })}
+                    {formatDateTime(item.publishedAt, { fallback: "-" })}
                   </TableCell>
-                  <TableCell>{series.readingPeriodHours}</TableCell>
-                  <TableCell>{excerpt(series.synopsis)}</TableCell>
+                  <TableCell>{item.readingPeriodHours}</TableCell>
+                  <TableCell>{excerpt(item.synopsis)}</TableCell>
                   <TableCell>
-                    <Badge tone={getStatusTone(series.isPublished)}>
-                      {getStatusLabel(series.isPublished)}
+                    <Badge tone={getStatusTone(item.isPublished)}>
+                      {getStatusLabel(item.isPublished)}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
                       <LinkButton
-                        href={`/series/${series.publicId}`}
+                        href={`/series/${item.publicId}`}
                         variant="outline"
                       >
                         編集
                       </LinkButton>
                       <LinkButton
-                        href={`/series/${series.publicId}/episodes`}
+                        href={`/series/${item.publicId}/episodes`}
                         variant="outline"
                       >
                         エピソード
@@ -156,6 +144,19 @@ export const SeriesManager = ({
             </TableBody>
           </Table>
         )}
+
+        {showPagination ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              新しい順に、1ページあたり {pageSize} 件まで表示します。
+            </p>
+            <PaginationControls
+              ariaLabel="シリーズ一覧のページ送り"
+              nextHref={nextHref}
+              previousHref={previousHref}
+            />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

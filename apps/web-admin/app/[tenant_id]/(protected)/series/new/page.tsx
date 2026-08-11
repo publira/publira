@@ -42,7 +42,10 @@ const NewSeriesFormSkeleton = () => (
 const NewSeriesFormData = async () => {
   const tenantId = await getTenantId();
   const [listResult, creatorsResult, labelsResult] = await Promise.all([
-    listSeries(tenantId),
+    // Only `defaultReadingPeriodHours` is read here, and that comes from the
+    // tenant rather than the page, so the smallest page the API allows is
+    // enough.
+    listSeries(tenantId, { limit: 1 }),
     listCreators(tenantId),
     listLabels(tenantId),
   ]);
