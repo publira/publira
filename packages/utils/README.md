@@ -7,6 +7,9 @@
 - `cn`: `clsx` + `tailwind-merge` を使った className 結合ヘルパー
 - `formatDateTime` / `formatDate` / `toDateTimeLocalValue` / `fromDateTimeLocalValue`: テナントタイムゾーン対応の日時・日付表示、`datetime-local` 相互変換（`Temporal` 前提）
 - `parseInstant` / `toInstantIsoString` / `startOfDayIsoString` / `endOfDayIsoString`: 絶対時刻のパース・比較、フォーム値の正規化、date-only フィルタの日境界
+- `@publira/utils/search-params`: `searchParams`（`string | string[] | undefined`）を zod で検証するためのスキーマ生成関数
+- `@publira/utils/form-data`: `FormData` を zod の検証対象オブジェクトへ変換するヘルパー
+- `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー
 
 ## 使い方
 
@@ -63,6 +66,73 @@ toInstantIsoString(formValue, tenantTimeZone); // "...Z" / 解釈できなけれ
 startOfDayIsoString("2024-03-10", tenantTimeZone); // その TZ の 00:00
 endOfDayIsoString("2024-03-10", tenantTimeZone); // 同日の終端（inclusive）
 ```
+
+## 信頼できない入力の検証（zod）
+
+方針は [`apps/AGENTS.md`](../../apps/AGENTS.md) の「Untrusted input」を参照。ここにあるのは、その方針を 3 アプリで同じ書き方にするための共有スキーマです。zod は peerDependency なので、アプリ側の zod がそのまま使われます。
+
+### `searchParams`
+
+`fallback` を渡すと「絶対に失敗しないスキーマ」、渡さないと「不正な値で zod エラーになるスキーマ」になります。前者はフィルタ画面の既定表示へのフォールバック、後者は `notFound()` させたい URL 向けです。
+
+```ts
+import {
+  searchParamDate,
+  searchParamEnum,
+  searchParamNumber,
+  searchParamString,
+} from "@publira/utils/search-params";
+import { z } from "zod";
+
+const filtersSchema = z.object({
+  from: searchParamDate({ fallback: "" }), // 暦上ありえない日付は "" に落ちる
+  limit: searchParamNumber({ clamp: true, fallback: 20, max: 50, min: 1 }),
+  q: searchParamString({ fallback: "", maxLength: 255 }),
+  sort: searchParamEnum(["asc", "desc"], { fallback: "desc" }),
+});
+
+const filters = filtersSchema.parse(await searchParams);
+```
+
+- 単一値のスキーマは同じキーが複数回現れた場合、どれか 1 つを選ばず不正扱いにする（`fallback` があればそれに落ちる）
+- 複数値は `searchParamStringArray()`。単一の `?tag=a` も 1 要素の配列として受ける
+- `searchParamNumber` は 10 進の整数・小数だけを受ける（`0x10` / `1e3` / `Infinity` は不正）。`integer` は既定で `true`
+- `maxLength` 超過は既定で不正。`truncate: true` のときだけ切り詰める（サロゲートペアは割らない）
+- `searchParamDate` は `Temporal` で暦の妥当性まで見るため、実行時に polyfill が必要
+
+実例: [`web-admin` の監査ログフィルタ](../../apps/web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
+
+### `FormData` と Server Action
+
+`toFormDataInput` は「テキスト / 繰り返しテキスト / ファイル / 繰り返しファイル」を宣言して読み出すだけで、trim も長さ制限も行いません。フォームが何を受け付けるかは zod スキーマ 1 か所に置きます。
+
+```ts
+import {
+  toFieldErrors,
+  VALIDATION_ERROR_MESSAGE,
+} from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
+
+const parsed = seriesSchema.safeParse(
+  toFormDataInput(formData, {
+    creatorPublicIds: { kind: "values", name: "creator_public_ids" },
+    eyeCatchImage: { kind: "file", name: "eye_catch_image" },
+    title: "value",
+  })
+);
+
+if (!parsed.success) {
+  return {
+    fieldErrors: toFieldErrors(parsed.error),
+    message: VALIDATION_ERROR_MESSAGE,
+    ok: false,
+  };
+}
+```
+
+- `value` はファイルが送られてきても文字列化せず `undefined`（`String(formData.get(...))` が `"[object File]"` を作る事故を防ぐ）
+- 未入力の `<input type="file">` は 0 バイトのエントリを送るため、ファイル系は空ファイルを落とす
+- ActionState にフィールド単位の枠がない画面は `toFormErrorMessage(parsed.error)` で 1 本のメッセージにする
 
 ## ビルド
 
