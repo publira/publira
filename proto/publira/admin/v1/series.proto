@@ -73,13 +73,22 @@ message GetSeriesResponse {
   publira.types.v1.Series series = 1;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 message ListEpisodesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
 }
 
 message ListEpisodesResponse {
   repeated publira.types.v1.Episode episodes = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message ReorderEpisodesRequest {
@@ -96,6 +105,8 @@ message CreateEpisodeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
   string title = 3;
+  // Position in the series. 0 appends after the current last episode, so a
+  // client paging through ListEpisodes does not have to find the end itself.
   int32 order_index = 4;
   int32 price = 5;
   int32 reading_period_hours = 6;

@@ -816,8 +816,8 @@ CREATE INDEX idx_episode_listings_status_scheduled ON episode_listings USING btr
 -- INDEX: idx_episode_listings_tenant_id
 CREATE INDEX idx_episode_listings_tenant_id ON episode_listings USING btree (tenant_id);
 
--- INDEX: idx_episodes_series_id
-CREATE INDEX idx_episodes_series_id ON episodes USING btree (series_id);
+-- INDEX: idx_episodes_series_order_index
+CREATE INDEX idx_episodes_series_order_index ON episodes USING btree (series_id, order_index, id);
 
 -- INDEX: idx_episodes_tenant_id
 CREATE INDEX idx_episodes_tenant_id ON episodes USING btree (tenant_id);

@@ -4359,6 +4359,8 @@ type ListEpisodesBySeriesForTenantRow struct {
 	PublishedAt        sql.NullTime  `json:"published_at"`
 }
 
+// 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
+// ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
 func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenant, arg.TenantID, arg.PublicID)
 	if err != nil {
@@ -4368,6 +4370,195 @@ func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpi
 	var items []ListEpisodesBySeriesForTenantRow
 	for rows.Next() {
 		var i ListEpisodesBySeriesForTenantRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Title,
+			&i.OrderIndex,
+			&i.Price,
+			&i.ReadingPeriodHours,
+			&i.Status,
+			&i.ScheduledAt,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodesBySeriesForTenantAsc = `-- name: ListEpisodesBySeriesForTenantAsc :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (e.order_index, e.id) >= ($5::int4, $3::uuid)
+        )
+        OR (
+            NOT $4::boolean
+            AND (e.order_index, e.id) > ($5::int4, $3::uuid)
+        )
+    )
+ORDER BY e.order_index ASC,
+    e.id ASC
+LIMIT $6
+`
+
+type ListEpisodesBySeriesForTenantAscParams struct {
+	TenantID         uuid.UUID     `json:"tenant_id"`
+	PublicID         string        `json:"public_id"`
+	CursorID         uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive  bool          `json:"cursor_inclusive"`
+	CursorOrderIndex sql.NullInt32 `json:"cursor_order_index"`
+	Limit            int32         `json:"limit"`
+}
+
+type ListEpisodesBySeriesForTenantAscRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Title              string        `json:"title"`
+	OrderIndex         int32         `json:"order_index"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Status             string        `json:"status"`
+	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+}
+
+// Admin ListEpisodes は (order_index, id) の昇順で表示する。次ページは昇順、
+// 前ページは降順のクエリで idx_episodes_series_order_index を走査し、前ページ
+// だけ handler で表示順へ戻す。order_index は同着があり得るので、UUIDv7 の id
+// をタイブレーカーにして並びを一意に決める。cursor の共通仕様は
+// proto/README.md を参照。
+func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodesBySeriesForTenantAscParams) ([]ListEpisodesBySeriesForTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenantAsc,
+		arg.TenantID,
+		arg.PublicID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorOrderIndex,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesBySeriesForTenantAscRow
+	for rows.Next() {
+		var i ListEpisodesBySeriesForTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Title,
+			&i.OrderIndex,
+			&i.Price,
+			&i.ReadingPeriodHours,
+			&i.Status,
+			&i.ScheduledAt,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpisodesBySeriesForTenantDesc = `-- name: ListEpisodesBySeriesForTenantDesc :many
+SELECT e.id,
+    e.public_id,
+    e.title,
+    e.order_index,
+    el.price,
+    el.reading_period_hours,
+    el.status,
+    el.scheduled_at,
+    el.published_at
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (e.order_index, e.id) <= ($5::int4, $3::uuid)
+        )
+        OR (
+            NOT $4::boolean
+            AND (e.order_index, e.id) < ($5::int4, $3::uuid)
+        )
+    )
+ORDER BY e.order_index DESC,
+    e.id DESC
+LIMIT $6
+`
+
+type ListEpisodesBySeriesForTenantDescParams struct {
+	TenantID         uuid.UUID     `json:"tenant_id"`
+	PublicID         string        `json:"public_id"`
+	CursorID         uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive  bool          `json:"cursor_inclusive"`
+	CursorOrderIndex sql.NullInt32 `json:"cursor_order_index"`
+	Limit            int32         `json:"limit"`
+}
+
+type ListEpisodesBySeriesForTenantDescRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Title              string        `json:"title"`
+	OrderIndex         int32         `json:"order_index"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	Status             string        `json:"status"`
+	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
+	PublishedAt        sql.NullTime  `json:"published_at"`
+}
+
+func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodesBySeriesForTenantDescParams) ([]ListEpisodesBySeriesForTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenantDesc,
+		arg.TenantID,
+		arg.PublicID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorOrderIndex,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesBySeriesForTenantDescRow
+	for rows.Next() {
+		var i ListEpisodesBySeriesForTenantDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,
