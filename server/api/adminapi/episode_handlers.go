@@ -406,7 +406,14 @@ func (s *adminServer) CreateEpisode(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	base, err := publicid.Insert(func(publicID string) (dbmodels.Episode, error) {
-		return s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{ID: episodeID, SeriesID: series.ID, PublicID: publicID, Title: req.Msg.Title, OrderIndex: orderIndex})
+		return s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{
+			ID:         episodeID,
+			OrderIndex: orderIndex,
+			PublicID:   publicID,
+			SeriesID:   series.ID,
+			TenantID:   tenant.ID,
+			Title:      req.Msg.Title,
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -418,10 +425,11 @@ func (s *adminServer) CreateEpisode(
 	listing, err := s.queriesFor(ctx).UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
 		EpisodeID:          base.ID,
 		Price:              req.Msg.Price,
-		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
-		Status:             status,
-		ScheduledAt:        scheduledAt,
 		PublishedAt:        sql.NullTime{},
+		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
+		ScheduledAt:        scheduledAt,
+		Status:             status,
+		TenantID:           tenant.ID,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

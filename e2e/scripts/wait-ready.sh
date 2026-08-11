@@ -80,11 +80,22 @@ wait_until "redis" check_redis_ping
 wait_until "public-api/readyz" check_http_json_ok \
   "http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}/readyz"
 
+wait_until "admin-api/readyz" check_http_json_ok \
+  "http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}/readyz"
+
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.
 wait_until "web-host/livez" check_http_body \
   "http://localhost:${E2E_WEB_HOST_PORT}/livez" "ok"
 
 wait_until "web-host/readyz" check_http_json_ok \
   "http://localhost:${E2E_WEB_HOST_PORT}/readyz"
+
+# web-admin binds 0.0.0.0; probe via 127.0.0.1 (tenant resolution is skipped
+# for /livez and /readyz in proxy.ts).
+wait_until "web-admin/livez" check_http_body \
+  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/livez" "ok"
+
+wait_until "web-admin/readyz" check_http_json_ok \
+  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/readyz"
 
 e2e_log "all readiness checks passed"

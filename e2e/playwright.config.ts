@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { WEB_HOST_BASE_URL } from "./src/urls";
+import { WEB_ADMIN_BASE_URL, WEB_HOST_BASE_URL } from "./src/urls";
 
 const isCi = Boolean(process.env.CI);
 
@@ -13,9 +13,19 @@ export default defineConfig({
   projects: [
     {
       name: "web-host",
+      testIgnore: [/admin\./u],
       use: {
         ...devices["Desktop Chrome"],
         baseURL: WEB_HOST_BASE_URL,
+      },
+    },
+    {
+      name: "web-admin",
+      testMatch: [/admin\./u],
+      timeout: 120_000,
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: WEB_ADMIN_BASE_URL,
       },
     },
   ],

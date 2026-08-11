@@ -943,9 +943,10 @@ INSERT INTO episodes (
         series_id,
         public_id,
         title,
-        order_index
+        order_index,
+        tenant_id
     )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 -- name: UpsertEpisodeListing :one
 INSERT INTO episode_listings (
@@ -954,9 +955,10 @@ INSERT INTO episode_listings (
         reading_period_hours,
         status,
         scheduled_at,
-        published_at
+        published_at,
+        tenant_id
     )
-VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (episode_id) DO
+VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (episode_id) DO
 UPDATE
 SET price = EXCLUDED.price,
     reading_period_hours = EXCLUDED.reading_period_hours,

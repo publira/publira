@@ -45,12 +45,12 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 			AddRow(seriesID, "SERIES001", "Series Title", nil, nil, "Synopsis", nil, true, now, nil, nil, int64(0)))
 
 	mock.ExpectQuery("INSERT INTO episodes").
-		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 1", int32(1)).
+		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 1", int32(1), tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id"}).
 			AddRow(episodeID, seriesID, "EP001", "Episode 1", int32(1), now, tenantID))
 
 	mock.ExpectQuery("INSERT INTO episode_listings").
-		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}).
+		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil, tenantID))
 	mock.ExpectExec("INSERT INTO audit_logs").
@@ -106,11 +106,11 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(30)))
 	mock.ExpectQuery("INSERT INTO episodes").
-		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 31", int32(31)).
+		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 31", int32(31), tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id"}).
 			AddRow(episodeID, seriesID, "EP031", "Episode 31", int32(31), now, tenantID))
 	mock.ExpectQuery("INSERT INTO episode_listings").
-		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}).
+		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(0), nil, "draft", nil, nil, tenantID))
 	mock.ExpectExec("INSERT INTO audit_logs").

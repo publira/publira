@@ -16,21 +16,38 @@ export E2E_POSTGRES_PORT="${E2E_POSTGRES_PORT:-5433}"
 export E2E_REDIS_PORT="${E2E_REDIS_PORT:-6380}"
 
 export E2E_WEB_HOST_PORT="${E2E_WEB_HOST_PORT:-3000}"
+export E2E_WEB_ADMIN_PORT="${E2E_WEB_ADMIN_PORT:-4000}"
 export E2E_PUBLIC_API_PORT="${E2E_PUBLIC_API_PORT:-8000}"
 export E2E_PUBLIC_API_GRPC_PORT="${E2E_PUBLIC_API_GRPC_PORT:-8100}"
+export E2E_ADMIN_API_PORT="${E2E_ADMIN_API_PORT:-8001}"
+export E2E_ADMIN_API_GRPC_PORT="${E2E_ADMIN_API_GRPC_PORT:-8101}"
 
 export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
+export PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL:-postgres://publira_admin:adminpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export REDIS_URL="${REDIS_URL:-redis://127.0.0.1:${E2E_REDIS_PORT}}"
 export PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
+export PUBLIRA_ADMIN_GRPC_URL="${PUBLIRA_ADMIN_GRPC_URL:-http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}}"
 export E2E_WEB_HOST_BASE_URL="${E2E_WEB_HOST_BASE_URL:-http://localhost:${E2E_WEB_HOST_PORT}}"
+export E2E_WEB_ADMIN_BASE_URL="${E2E_WEB_ADMIN_BASE_URL:-http://admin.localhost:${E2E_WEB_ADMIN_PORT}}"
 export E2E_PUBLIC_API_BASE_URL="${E2E_PUBLIC_API_BASE_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
+export E2E_ADMIN_API_BASE_URL="${E2E_ADMIN_API_BASE_URL:-http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}}"
+
+# publish-episodes interval (seconds). Short so scheduled episodes can land in
+# the same Playwright run without multi-minute waits.
+export E2E_PUBLISH_EPISODES_INTERVAL_SEC="${E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
 
 export NEXT_CACHE_APP="${NEXT_CACHE_APP:-web-host}"
 export STORAGE_BACKEND="${STORAGE_BACKEND:-local}"
-export LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR:-${E2E_DIR}/.run/storage}"
 
-RUN_DIR="${E2E_DIR}/.run"
+# PID files, logs, and local storage for one stack run. Concurrent runs that
+# override E2E_*_PORT (or COMPOSE_PROJECT_NAME) must set a distinct E2E_RUN_DIR
+# so stop/start does not clobber another run's processes. Default stays
+# e2e/.run so CI artifacts keep the existing path.
+export E2E_RUN_DIR="${E2E_RUN_DIR:-${E2E_DIR}/.run}"
+export LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR:-${E2E_RUN_DIR}/storage}"
+
+RUN_DIR="${E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 PID_DIR="${RUN_DIR}/pids"
 
