@@ -2045,9 +2045,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- Admin ListNotifications は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
--- handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
--- 読めないため、走査方向ごとにクエリを分ける。
+-- 次ページは降順、前ページは昇順のクエリで idx_notifications_tenant_created_at を
+-- 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
+-- 索引順に読めないため、走査方向ごとにクエリを分ける。
 -- cursor の共通仕様は proto/README.md を参照。
 -- name: ListNotificationsForTenantDesc :many
 -- テナント管理画面向け通知一覧（次ページ方向）

@@ -245,11 +245,19 @@ func TestListNotificationsFollowsNextToken(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	boundaryID := uuid.Must(uuid.NewV7())
 	boundaryAt := now.Add(-time.Minute)
+	lastID := uuid.Must(uuid.NewV7())
+	lastAt := now.Add(-2 * time.Minute)
 	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantDescQuery)).
-		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
-		WillReturnRows(addNotificationRow(notificationColumns(), uuid.Must(uuid.NewV7()), tenantID, "Last", "body", "", now.Add(-2*time.Minute)))
+		WithArgs(
+			tenantID,
+			uuid.NullUUID{UUID: boundaryID, Valid: true},
+			false,
+			sql.NullTime{Time: boundaryAt, Valid: true},
+			int32(3),
+		).
+		WillReturnRows(addNotificationRow(notificationColumns(), lastID, tenantID, "Last", "body", "", lastAt))
 
 	req := newNotificationRequest(tenantID, sessionToken)
 	req.Msg.Limit = 2
@@ -258,8 +266,13 @@ func TestListNotificationsFollowsNextToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListNotifications: %v", err)
 	}
-	if resp.Msg.PreviousToken == "" {
-		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	prev, err := pagination.Decode(resp.Msg.PreviousToken)
+	if err != nil {
+		t.Fatalf("decode previous_token: %v", err)
+	}
+	wantPrev := []string{lastAt.Format(time.RFC3339Nano), lastID.String()}
+	if prev.Direction != pagination.Backward || !slices.Equal(prev.Keys, wantPrev) {
+		t.Fatalf("previous_token = %+v, want backward keys %v", prev, wantPrev)
 	}
 	if resp.Msg.NextToken != "" {
 		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
@@ -276,12 +289,20 @@ func TestListNotificationsFollowsPreviousTokenBackwards(t *testing.T) {
 	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
+	olderAt := now.Add(-2 * time.Minute)
+	newerAt := now.Add(-time.Minute)
 
 	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantAscQuery)).
-		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WithArgs(
+			tenantID,
+			uuid.NullUUID{UUID: boundaryID, Valid: true},
+			false,
+			sql.NullTime{Time: boundaryAt, Valid: true},
+			int32(3),
+		).
 		WillReturnRows(addNotificationRow(
-			addNotificationRow(notificationColumns(), olderID, tenantID, "Older", "body", "", now.Add(-2*time.Minute)),
-			newerID, tenantID, "Newer", "body", "", now.Add(-time.Minute),
+			addNotificationRow(notificationColumns(), olderID, tenantID, "Older", "body", "", olderAt),
+			newerID, tenantID, "Newer", "body", "", newerAt,
 		))
 
 	req := newNotificationRequest(tenantID, sessionToken)
@@ -301,8 +322,15 @@ func TestListNotificationsFollowsPreviousTokenBackwards(t *testing.T) {
 	if resp.Msg.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
 	}
-	if resp.Msg.NextToken == "" {
-		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	next, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	// After Page reverses ASC rows into DESC display order, next_token is
+	// built from the last row of the display page (older).
+	wantNext := []string{olderAt.Format(time.RFC3339Nano), olderID.String()}
+	if next.Direction != pagination.Forward || !slices.Equal(next.Keys, wantNext) {
+		t.Fatalf("next_token = %+v, want forward keys %v", next, wantNext)
 	}
 	assertExpectations(t, mock)
 }
@@ -340,7 +368,13 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 			client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, false, now, int32(21)).
+				WithArgs(
+					tenantID,
+					uuid.NullUUID{UUID: boundaryID, Valid: true},
+					false,
+					sql.NullTime{Time: now, Valid: true},
+					int32(21),
+				).
 				WillReturnRows(notificationColumns())
 
 			req := newNotificationRequest(tenantID, sessionToken)
@@ -350,10 +384,15 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 				t.Fatalf("ListNotifications: %v", err)
 			}
 			recoveryToken := resp.Msg.PreviousToken
+			otherToken := resp.Msg.NextToken
 			recoveryDirection := pagination.Backward
 			if test.direction == pagination.Backward {
 				recoveryToken = resp.Msg.NextToken
+				otherToken = resp.Msg.PreviousToken
 				recoveryDirection = pagination.Forward
+			}
+			if otherToken != "" {
+				t.Fatalf("opposite token = %q, want empty on an empty page", otherToken)
 			}
 			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(recoveryDirection, now, boundaryID)
 			if recoveryToken != wantRecoveryToken {
@@ -371,7 +410,13 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 				recoveryRows = addNotificationRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "Older", "body", "", now.Add(-time.Minute))
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
-				WithArgs(tenantID, boundaryID, true, now, int32(21)).
+				WithArgs(
+					tenantID,
+					uuid.NullUUID{UUID: boundaryID, Valid: true},
+					true,
+					sql.NullTime{Time: now, Valid: true},
+					int32(21),
+				).
 				WillReturnRows(recoveryRows)
 
 			recoveryReq := newNotificationRequest(tenantID, sessionToken)
@@ -422,7 +467,13 @@ func TestListNotificationsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 			client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, true, now, int32(21)).
+				WithArgs(
+					tenantID,
+					uuid.NullUUID{UUID: boundaryID, Valid: true},
+					true,
+					sql.NullTime{Time: now, Valid: true},
+					int32(21),
+				).
 				WillReturnRows(notificationColumns())
 
 			req := newNotificationRequest(tenantID, sessionToken)
