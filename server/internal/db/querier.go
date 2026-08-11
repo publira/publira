@@ -184,8 +184,15 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
-	// テナント管理画面向け通知一覧を取得
-	ListNotificationsForTenant(ctx context.Context, arg ListNotificationsForTenantParams) ([]ListNotificationsForTenantRow, error)
+	// テナント管理画面向け通知一覧（前ページ方向）
+	ListNotificationsForTenantAsc(ctx context.Context, arg ListNotificationsForTenantAscParams) ([]ListNotificationsForTenantAscRow, error)
+	// Admin ListNotifications は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+	// 読めないため、走査方向ごとにクエリを分ける。
+	// cursor の共通仕様は proto/README.md を参照。
+	// テナント管理画面向け通知一覧（次ページ方向）
+	ListNotificationsForTenantDesc(ctx context.Context, arg ListNotificationsForTenantDescParams) ([]ListNotificationsForTenantDescRow, error)
 	// 通知一覧を取得（既読状態付き・前ページ方向）
 	ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error)
 	// 公開サイトの ListNotifications は (created_at, id) の降順で表示する。

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/notification.proto.
  */
 export const file_publira_admin_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL25vdGlmaWNhdGlvbi5wcm90bxIQcHVibGlyYS5hZG1pbi52MSLeAQoRQWRtaW5Ob3RpZmljYXRpb24SCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRJBCg1hdWRpZW5jZV90eXBlGAUgASgOMioucHVibGlyYS5hZG1pbi52MS5Ob3RpZmljYXRpb25BdWRpZW5jZVR5cGUSHQoVdGFyZ2V0X3VzZXJfcHVibGljX2lkGAYgASgJEhgKEHRhcmdldF91c2VyX25hbWUYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCSJqChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJXChlMaXN0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlEjoKDW5vdGlmaWNhdGlvbnMYASADKAsyIy5wdWJsaXJhLmFkbWluLnYxLkFkbWluTm90aWZpY2F0aW9uIt4BChlDcmVhdGVOb3RpZmljYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgV0aXRsZRgCIAEoCRIMCgRib2R5GAMgASgJEhAKCGxpbmtfdXJsGAQgASgJEkEKDWF1ZGllbmNlX3R5cGUYBSABKA4yKi5wdWJsaXJhLmFkbWluLnYxLk5vdGlmaWNhdGlvbkF1ZGllbmNlVHlwZRIeChZ0YXJnZXRfdXNlcl9wdWJsaWNfaWRzGAYgAygJIlgKGkNyZWF0ZU5vdGlmaWNhdGlvblJlc3BvbnNlEjoKDW5vdGlmaWNhdGlvbnMYASADKAsyIy5wdWJsaXJhLmFkbWluLnYxLkFkbWluTm90aWZpY2F0aW9uKp8BChhOb3RpZmljYXRpb25BdWRpZW5jZVR5cGUSKgomTk9USUZJQ0FUSU9OX0FVRElFTkNFX1RZUEVfVU5TUEVDSUZJRUQQABIoCiROT1RJRklDQVRJT05fQVVESUVOQ0VfVFlQRV9BTExfVVNFUlMQARItCilOT1RJRklDQVRJT05fQVVESUVOQ0VfVFlQRV9TRUxFQ1RFRF9VU0VSUxACMv0BChhBZG1pbk5vdGlmaWNhdGlvblNlcnZpY2USbgoRTGlzdE5vdGlmaWNhdGlvbnMSKi5wdWJsaXJhLmFkbWluLnYxLkxpc3ROb3RpZmljYXRpb25zUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZSIAEnEKEkNyZWF0ZU5vdGlmaWNhdGlvbhIrLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlTm90aWZpY2F0aW9uUmVxdWVzdBosLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlTm90aWZpY2F0aW9uUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL25vdGlmaWNhdGlvbi5wcm90bxIQcHVibGlyYS5hZG1pbi52MSLeAQoRQWRtaW5Ob3RpZmljYXRpb24SCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRJBCg1hdWRpZW5jZV90eXBlGAUgASgOMioucHVibGlyYS5hZG1pbi52MS5Ob3RpZmljYXRpb25BdWRpZW5jZVR5cGUSHQoVdGFyZ2V0X3VzZXJfcHVibGljX2lkGAYgASgJEhgKEHRhcmdldF91c2VyX25hbWUYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCSJ3ChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQigwEKGUxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2USOgoNbm90aWZpY2F0aW9ucxgBIAMoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Ob3RpZmljYXRpb24SFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLeAQoZQ3JlYXRlTm90aWZpY2F0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRJBCg1hdWRpZW5jZV90eXBlGAUgASgOMioucHVibGlyYS5hZG1pbi52MS5Ob3RpZmljYXRpb25BdWRpZW5jZVR5cGUSHgoWdGFyZ2V0X3VzZXJfcHVibGljX2lkcxgGIAMoCSJYChpDcmVhdGVOb3RpZmljYXRpb25SZXNwb25zZRI6Cg1ub3RpZmljYXRpb25zGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbk5vdGlmaWNhdGlvbiqfAQoYTm90aWZpY2F0aW9uQXVkaWVuY2VUeXBlEioKJk5PVElGSUNBVElPTl9BVURJRU5DRV9UWVBFX1VOU1BFQ0lGSUVEEAASKAokTk9USUZJQ0FUSU9OX0FVRElFTkNFX1RZUEVfQUxMX1VTRVJTEAESLQopTk9USUZJQ0FUSU9OX0FVRElFTkNFX1RZUEVfU0VMRUNURURfVVNFUlMQAjL9AQoYQWRtaW5Ob3RpZmljYXRpb25TZXJ2aWNlEm4KEUxpc3ROb3RpZmljYXRpb25zEioucHVibGlyYS5hZG1pbi52MS5MaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2UiABJxChJDcmVhdGVOb3RpZmljYXRpb24SKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZU5vdGlmaWNhdGlvblJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZU5vdGlmaWNhdGlvblJlc3BvbnNlIgBCR1pFZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminNotification
@@ -67,6 +67,8 @@ export const AdminNotificationSchema: GenMessage<AdminNotification> = /*@__PURE_
   messageDesc(file_publira_admin_v1_notification, 0);
 
 /**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
  * @generated from message publira.admin.v1.ListNotificationsRequest
  */
 export type ListNotificationsRequest = Message<"publira.admin.v1.ListNotificationsRequest"> & {
@@ -76,14 +78,18 @@ export type ListNotificationsRequest = Message<"publira.admin.v1.ListNotificatio
   tenant?: TenantContext | undefined;
 
   /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
    * @generated from field: int32 limit = 2;
    */
   limit: number;
 
   /**
-   * @generated from field: int32 offset = 3;
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 4;
    */
-  offset: number;
+  token: string;
 };
 
 /**
@@ -101,6 +107,20 @@ export type ListNotificationsResponse = Message<"publira.admin.v1.ListNotificati
    * @generated from field: repeated publira.admin.v1.AdminNotification notifications = 1;
    */
   notifications: AdminNotification[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
 };
 
 /**
