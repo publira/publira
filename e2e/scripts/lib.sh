@@ -39,9 +39,15 @@ export E2E_PUBLISH_EPISODES_INTERVAL_SEC="${E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2
 
 export NEXT_CACHE_APP="${NEXT_CACHE_APP:-web-host}"
 export STORAGE_BACKEND="${STORAGE_BACKEND:-local}"
-export LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR:-${E2E_DIR}/.run/storage}"
 
-RUN_DIR="${E2E_DIR}/.run"
+# PID files, logs, and local storage for one stack run. Concurrent runs that
+# override E2E_*_PORT (or COMPOSE_PROJECT_NAME) must set a distinct E2E_RUN_DIR
+# so stop/start does not clobber another run's processes. Default stays
+# e2e/.run so CI artifacts keep the existing path.
+export E2E_RUN_DIR="${E2E_RUN_DIR:-${E2E_DIR}/.run}"
+export LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR:-${E2E_RUN_DIR}/storage}"
+
+RUN_DIR="${E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 PID_DIR="${RUN_DIR}/pids"
 

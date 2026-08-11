@@ -6,10 +6,15 @@ import {
   formMessage,
   signInAsSeedAdmin,
 } from "../src/admin";
-import { applyScenarioSql, querySql, runSql } from "../src/db";
+import {
+  applyScenarioSql,
+  deleteSeriesByPublicIds,
+  querySql,
+  runSql,
+} from "../src/db";
 import {
   publishedAtOneHourAgo,
-  scheduleAtNinetySecondsFromNow,
+  scheduleAtFiveMinutesFromNow,
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
 import {
@@ -71,11 +76,27 @@ const waitUntilEpisodePublishedInDb = async (
  *
  * Login is a prerequisite helper (full auth coverage is #67). Each test uses a
  * unique title so runs do not depend on leftover rows from a previous suite.
+ * Series created during the suite are deleted in `afterEach` so `task e2e:test`
+ * against a long-lived stack does not accumulate rows.
  */
 test.describe("admin publish flow", () => {
+  /** Series public_ids created in the current test; drained by afterEach. */
+  let createdSeriesIds: string[] = [];
+
   test.beforeEach(async ({ page }) => {
+    createdSeriesIds = [];
     await signInAsSeedAdmin(page);
   });
+
+  test.afterEach(() => {
+    deleteSeriesByPublicIds(createdSeriesIds);
+    createdSeriesIds = [];
+  });
+
+  const trackSeries = (publicId: string): string => {
+    createdSeriesIds.push(publicId);
+    return publicId;
+  };
 
   test("シリーズを下書き作成し、編集後に管理画面へ再表示される", async ({
     page,
@@ -84,7 +105,9 @@ test.describe("admin publish flow", () => {
     const title = `E2E Draft Series ${suffix}`;
     const synopsis = `下書き概要 ${suffix}`;
 
-    const seriesId = await createSeriesViaUi(page, { synopsis, title });
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, { synopsis, title })
+    );
 
     await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
     await expect(page.locator("#series_title")).toHaveValue(title);
@@ -122,11 +145,13 @@ test.describe("admin publish flow", () => {
     const title = `E2E Published Series ${suffix}`;
     const synopsis = `公開概要 ${suffix}`;
     // Past wall clock → immediate publish on create.
-    const seriesId = await createSeriesViaUi(page, {
-      publishedAt: publishedAtOneHourAgo(),
-      synopsis,
-      title,
-    });
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        publishedAt: publishedAtOneHourAgo(),
+        synopsis,
+        title,
+      })
+    );
 
     // After create the edit form may briefly coexist with a streaming shell —
     // pin the filled title field, not every #series_title in the tree.
@@ -153,17 +178,19 @@ test.describe("admin publish flow", () => {
     const seriesTitle = `E2E Episode Parent ${suffix}`;
     const episodeTitle = `E2E Episode ${suffix}`;
 
-    const seriesId = await createSeriesViaUi(page, {
-      publishedAt: publishedAtOneHourAgo(),
-      synopsis: `親シリーズ ${suffix}`,
-      title: seriesTitle,
-    });
+    const seriesId = trackSeries(
+      await createSeriesViaUi(page, {
+        publishedAt: publishedAtOneHourAgo(),
+        synopsis: `親シリーズ ${suffix}`,
+        title: seriesTitle,
+      })
+    );
 
-    // Schedule ~90s ahead (datetime-local minute precision). The worker
-    // cannot fire yet; we nudge scheduled_at into the past after create so the
-    // suite stays under a few seconds rather than waiting a full minute.
+    // Schedule far enough ahead for minute-precision datetime-local and slow
+    // CI. Nudge scheduled_at into the past after create so the worker fires
+    // without waiting out the wall clock.
     const episodeId = await createEpisodeViaUi(page, {
-      publishAt: scheduleAtNinetySecondsFromNow(),
+      publishAt: scheduleAtFiveMinutesFromNow(),
       seriesPublicId: seriesId,
       title: episodeTitle,
     });

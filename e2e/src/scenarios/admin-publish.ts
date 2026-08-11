@@ -37,9 +37,13 @@ export const toTokyoDateTimeLocal = (instant: Temporal.Instant): string => {
 export const publishedAtOneHourAgo = (): Temporal.Instant =>
   Temporal.Now.instant().subtract({ hours: 1 });
 
-/** Wall clock 90 seconds ahead — schedules an episode (minute precision). */
-export const scheduleAtNinetySecondsFromNow = (): Temporal.Instant =>
-  Temporal.Now.instant().add({ seconds: 90 });
+/**
+ * Wall clock five minutes ahead — safe for minute-precision `datetime-local`
+ * and slow CI submit latency. The suite still nudges `scheduled_at` into the
+ * past so the publish worker does not wait out the full five minutes.
+ */
+export const scheduleAtFiveMinutesFromNow = (): Temporal.Instant =>
+  Temporal.Now.instant().add({ minutes: 5 });
 
 /** Unique run suffix so re-runs do not collide with leftover titles. */
 export const uniqueSuffix = (): string =>

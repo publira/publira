@@ -31,6 +31,8 @@ Playwright による Web 横断 E2E の共通基盤と、公開カタログ・�
 | E2E Postgres（compose 公開）                           | `5433` |
 | E2E Redis（compose 公開）                              | `6380` |
 
+PID / ログ / ローカル storage は既定で `e2e/.run/` に置く。別ポートで stack を並行起動するときは `E2E_RUN_DIR` を実行ごとに分けて共有しない。
+
 ## 1 コマンド実行
 
 ```bash
@@ -73,7 +75,7 @@ e2e/
 ├── bootstrap/             # 開発環境 bootstrap チェック（Playwright を使わない別ライフサイクル）
 ├── compose.yaml           # postgres + redis（project: publira-e2e）
 ├── playwright.config.ts
-├── scripts/               # up / db / start / api-server / admin-api / publish-episodes / wait-ready / test / run / down
+├── scripts/               # up / db / start / api-server / admin-api / publish-episodes / wait-ready / stop-apps / test / run / down
 ├── src/
 │   ├── admin.ts           # web-admin ログイン・フォーム操作ヘルパー
 │   ├── api-server.ts      # api-server の停止・再起動（障害シナリオ用）
@@ -151,7 +153,8 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 3. **Host が必要な場合**  
    `playwright.config.ts` の `projects` に `baseURL` を足すか、テスト内で `page.goto` の絶対 URL を使う。定数は `src/urls.ts` に集約する。
 4. **起動対象を増やす場合**  
-   `scripts/start-apps.sh` / `wait-ready.sh` にプロセスと probe を追加。compose に Traefik を足す場合は Dev Container のルールを参考にする（#55）。
+   `scripts/start-apps.sh` / `wait-ready.sh` / `stop-apps.sh` にプロセスと probe を追加（start だけ足して stop を忘れると `task e2e:down` 後もポートが残る）。compose に Traefik を足す場合は Dev Container のルールを参考にする（#55）。  
+   別ポートで stack を並行起動する場合は `E2E_RUN_DIR` を実行ごとに分け、PID/ログを共有しないこと。
 5. **ローカルで確認**  
    `task e2e` または stack 固定 + `task e2e:test`。
 6. **CI**  

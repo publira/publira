@@ -82,3 +82,33 @@ export const querySql = (sql: string): string => {
     }
   ).trim();
 };
+
+const quoteSqlLiteral = (value: string): string =>
+  `'${value.replaceAll("'", "''")}'`;
+
+/**
+ * Remove series created by admin publish-flow tests (and their episodes).
+ * Episodes do not cascade from series, so they are deleted first. Listings /
+ * creators cascade from their parents.
+ */
+export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
+  const quoted: string[] = [];
+  for (const publicId of publicIds) {
+    const trimmed = publicId.trim();
+    if (trimmed.length > 0) {
+      quoted.push(quoteSqlLiteral(trimmed));
+    }
+  }
+  if (quoted.length === 0) {
+    return;
+  }
+  const list = quoted.join(", ");
+  runSql(`
+    DELETE FROM episodes e
+    USING series s
+    WHERE e.series_id = s.id
+      AND s.public_id IN (${list});
+    DELETE FROM series
+    WHERE public_id IN (${list});
+  `);
+};
