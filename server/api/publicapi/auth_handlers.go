@@ -21,11 +21,18 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
-const emailVerificationTokenTTL = 24 * time.Hour
+const (
+	emailVerificationTokenTTL = 24 * time.Hour
+
+	defaultNotificationPageSize = int32(20)
+	maxNotificationPageSize     = int32(100)
+	notificationInclusiveKey    = "inclusive"
+)
 
 func (s *apiServer) issueAccessToken(
 	tenant dbmodels.Tenant,
@@ -1041,6 +1048,142 @@ func (s *apiServer) UpdateNotificationSettings(
 	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
 }
 
+type notificationCursorKeys struct {
+	createdAt sql.NullTime
+	id        uuid.NullUUID
+	inclusive bool
+}
+
+type notificationPageRow struct {
+	id               uuid.UUID
+	notificationType string
+	title            string
+	body             string
+	linkURL          sql.NullString
+	isRead           bool
+	readAt           sql.NullTime
+	createdAt        time.Time
+}
+
+func encodeNotificationToken(direction pagination.Direction, row notificationPageRow) string {
+	return pagination.Encode(direction, row.createdAt.UTC().Format(time.RFC3339Nano), row.id.String())
+}
+
+// A recovery token includes the boundary once. That keeps the boundary row in
+// the page when rows beyond it were deleted after the original token was issued.
+func encodeNotificationRecoveryToken(direction pagination.Direction, keys notificationCursorKeys) string {
+	return pagination.Encode(
+		direction,
+		keys.createdAt.Time.UTC().Format(time.RFC3339Nano),
+		keys.id.UUID.String(),
+		notificationInclusiveKey,
+	)
+}
+
+func decodeNotificationTokenKeys(cursor pagination.Cursor) (notificationCursorKeys, error) {
+	invalid := connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	if len(cursor.Keys) != 2 && len(cursor.Keys) != 3 {
+		return notificationCursorKeys{}, invalid
+	}
+	inclusive := len(cursor.Keys) == 3
+	if inclusive && cursor.Keys[2] != notificationInclusiveKey {
+		return notificationCursorKeys{}, invalid
+	}
+
+	createdAt, err := time.Parse(time.RFC3339Nano, cursor.Keys[0])
+	if err != nil {
+		return notificationCursorKeys{}, invalid
+	}
+	id, err := uuid.Parse(cursor.Keys[1])
+	if err != nil {
+		return notificationCursorKeys{}, invalid
+	}
+
+	return notificationCursorKeys{
+		createdAt: sql.NullTime{Time: createdAt.UTC(), Valid: true},
+		id:        uuid.NullUUID{UUID: id, Valid: true},
+		inclusive: inclusive,
+	}, nil
+}
+
+// is_read comes back as an untyped SQL boolean expression, so it lands in an
+// interface{} column that has to be asserted before it can be sent.
+func notificationIsRead(value any) bool {
+	read, ok := value.(bool)
+	return ok && read
+}
+
+func mapNotificationDescRows(rows []dbmodels.ListNotificationsForUserDescRow) []notificationPageRow {
+	mapped := make([]notificationPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, notificationPageRow{
+			id:               row.ID,
+			notificationType: row.NotificationType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			isRead:           notificationIsRead(row.IsRead),
+			readAt:           row.ReadAt,
+			createdAt:        row.CreatedAt,
+		})
+	}
+	return mapped
+}
+
+func mapNotificationAscRows(rows []dbmodels.ListNotificationsForUserAscRow) []notificationPageRow {
+	mapped := make([]notificationPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, notificationPageRow{
+			id:               row.ID,
+			notificationType: row.NotificationType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			isRead:           notificationIsRead(row.IsRead),
+			readAt:           row.ReadAt,
+			createdAt:        row.CreatedAt,
+		})
+	}
+	return mapped
+}
+
+func (s *apiServer) notificationPage(
+	ctx context.Context,
+	tenantID, userID uuid.UUID,
+	keys notificationCursorKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]notificationPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListNotificationsForUserAsc(ctx, dbmodels.ListNotificationsForUserAscParams{
+			TenantID:        tenantID,
+			UserID:          userID,
+			CursorID:        keys.id,
+			CursorCreatedAt: keys.createdAt,
+			CursorInclusive: keys.inclusive,
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapNotificationAscRows(rows), nil
+	}
+
+	rows, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+		TenantID:        tenantID,
+		UserID:          userID,
+		CursorID:        keys.id,
+		CursorCreatedAt: keys.createdAt,
+		CursorInclusive: keys.inclusive,
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapNotificationDescRows(rows), nil
+}
+
 func (s *apiServer) ListNotifications(
 	ctx context.Context,
 	req *connect.Request[publirav1.ListNotificationsRequest],
@@ -1050,45 +1193,60 @@ func (s *apiServer) ListNotifications(
 		return nil, err
 	}
 
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > 100 {
-		limit = 20
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultNotificationPageSize, maxNotificationPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	rows, err := s.queriesFor(ctx).ListNotificationsForUser(ctx, dbmodels.ListNotificationsForUserParams{
-		TenantID: tenant.ID,
-		UserID:   user.ID,
-		Limit:    limit,
-		// The keyset query and token handling are introduced in #742. Until
-		// then, preserve the current client's first-page behavior.
-		Offset: 0,
-	})
+	var keys notificationCursorKeys
+	if !cursor.IsZero() {
+		keys, err = decodeNotificationTokenKeys(cursor)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	rows, err := s.notificationPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	items := make([]*publirav1.NotificationItem, 0, len(rows))
 	for _, row := range rows {
-		isRead := false
-		if value, ok := row.IsRead.(bool); ok {
-			isRead = value
-		}
 		readAt := ""
-		if row.ReadAt.Valid {
-			readAt = row.ReadAt.Time.UTC().Format(time.RFC3339)
+		if row.readAt.Valid {
+			readAt = row.readAt.Time.UTC().Format(time.RFC3339)
 		}
 		items = append(items, &publirav1.NotificationItem{
-			Id:               row.ID.String(),
-			NotificationType: row.NotificationType,
-			Title:            row.Title,
-			Body:             row.Body,
-			LinkUrl:          row.LinkUrl.String,
-			IsRead:           isRead,
+			Id:               row.id.String(),
+			NotificationType: row.notificationType,
+			Title:            row.title,
+			Body:             row.body,
+			LinkUrl:          row.linkURL.String,
+			IsRead:           row.isRead,
 			ReadAt:           readAt,
-			CreatedAt:        row.CreatedAt.UTC().Format(time.RFC3339),
+			CreatedAt:        row.createdAt.UTC().Format(time.RFC3339),
 		})
 	}
 
-	return connect.NewResponse(&publirav1.ListNotificationsResponse{Notifications: items}), nil
+	res := &publirav1.ListNotificationsResponse{Notifications: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = encodeNotificationToken(pagination.Backward, rows[0])
+		}
+		if hasNext {
+			res.NextToken = encodeNotificationToken(pagination.Forward, rows[len(rows)-1])
+		}
+	case cursor.Direction == pagination.Forward:
+		res.PreviousToken = encodeNotificationRecoveryToken(pagination.Backward, keys)
+	case cursor.Direction == pagination.Backward:
+		res.NextToken = encodeNotificationRecoveryToken(pagination.Forward, keys)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *apiServer) MarkNotificationAsRead(

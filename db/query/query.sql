@@ -1845,19 +1845,60 @@ WHERE n.tenant_id = $1
 ORDER BY n.created_at DESC
 LIMIT $2 OFFSET $3;
 
--- name: ListNotificationsForUser :many
--- 通知一覧を取得（既読状態付き）
+-- 公開サイトの ListNotifications は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+-- 読めないため、走査方向ごとにクエリを分ける。
+-- cursor の共通仕様は proto/README.md を参照。
+-- name: ListNotificationsForUserDesc :many
+-- 通知一覧を取得（既読状態付き・次ページ方向）
 SELECT
     n.*,
     (nr.notification_id IS NOT NULL) AS is_read,
     nr.read_at
 FROM notifications n
     LEFT JOIN notification_reads nr ON nr.notification_id = n.id
-    AND nr.user_id = $2
-WHERE n.tenant_id = $1
-    AND (n.target_user_id IS NULL OR n.target_user_id = $2)
-ORDER BY n.created_at DESC
-LIMIT $3 OFFSET $4;
+    AND nr.user_id = sqlc.arg('user_id')
+WHERE n.tenant_id = sqlc.arg('tenant_id')
+    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'))
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY n.created_at DESC, n.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListNotificationsForUserAsc :many
+-- 通知一覧を取得（既読状態付き・前ページ方向）
+SELECT
+    n.*,
+    (nr.notification_id IS NOT NULL) AS is_read,
+    nr.read_at
+FROM notifications n
+    LEFT JOIN notification_reads nr ON nr.notification_id = n.id
+    AND nr.user_id = sqlc.arg('user_id')
+WHERE n.tenant_id = sqlc.arg('tenant_id')
+    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'))
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (n.created_at, n.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY n.created_at ASC, n.id ASC
+LIMIT sqlc.arg('limit');
 
 -- name: MarkNotificationAsRead :one
 -- 指定した通知を既読にする（未読時は新規作成、既読済みなら時刻更新）
