@@ -1,5 +1,6 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -167,25 +168,18 @@ const EditSeriesFormData = async ({
   );
 };
 
-const TextLineSkeleton = ({ className }: { className: string }) => (
-  <span
-    aria-hidden
-    className={`inline-block animate-pulse rounded bg-muted align-middle ${className}`}
-  />
-);
-
 const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>
-          <Suspense fallback={<TextLineSkeleton className="h-7 w-64" />}>
+          <Suspense fallback={<SkeletonLine className="h-7 w-64" />}>
             <EditSeriesTitle searchParams={searchParams} />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
-          <Suspense fallback={<TextLineSkeleton className="h-4 w-80" />}>
+          <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <EditSeriesDescription searchParams={searchParams} />
           </Suspense>
         </AdminPageDescription>
@@ -200,7 +194,7 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
       <FlashToast title="シリーズを作成しました。" />
       <FlashToast keyName="updated" title="シリーズを更新しました。" />
       <div className="grid gap-6">
-        <Suspense fallback={<TextLineSkeleton className="h-9 w-56" />}>
+        <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditSeriesTabs params={params} searchParams={searchParams} />
         </Suspense>
         <Suspense fallback={<EditSeriesFormSkeleton />}>
