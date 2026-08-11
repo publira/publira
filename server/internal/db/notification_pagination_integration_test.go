@@ -131,6 +131,9 @@ func TestListNotificationsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListNotificationsForUserDesc first page: %v", err)
 	}
+	if len(firstPage) != 2 {
+		t.Fatalf("first page count = %d, want the page filled to the limit", len(firstPage))
+	}
 	secondPage, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,

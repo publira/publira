@@ -345,22 +345,39 @@ func TestAuthListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 }
 
 func TestAuthListNotificationsInvalidToken(t *testing.T) {
-	tenantID := uuid.Must(uuid.NewV7())
-	userID := uuid.Must(uuid.NewV7())
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	client, mock := newNotificationClient(t, tenantID, userID, now)
+	boundaryAt := time.Now().UTC().Truncate(time.Microsecond).Format(time.RFC3339Nano)
+	boundaryID := uuid.Must(uuid.NewV7()).String()
 
-	req := newListNotificationsRequest(tenantID)
-	req.Msg.Token = "not-a-valid-token"
-	_, err := client.ListNotifications(context.Background(), req)
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("ListNotifications code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
-	}
-	if err.Error() != "invalid_argument: token is invalid" {
-		t.Fatalf("error = %q, want token internals hidden", err)
+	// Every one of these fails before the query runs, so no row is mocked.
+	tests := map[string]string{
+		"not a token":        "not-a-valid-token",
+		"too few keys":       pagination.Encode(pagination.Forward, boundaryAt),
+		"too many keys":      pagination.Encode(pagination.Forward, boundaryAt, boundaryID, notificationInclusiveKey, "extra"),
+		"unknown third key":  pagination.Encode(pagination.Forward, boundaryAt, boundaryID, "exclusive"),
+		"created_at not iso": pagination.Encode(pagination.Forward, "2026-08-11 00:00:00", boundaryID),
+		"id not a uuid":      pagination.Encode(pagination.Forward, boundaryAt, "not-a-uuid"),
 	}
 
-	assertPublicExpectations(t, mock)
+	for name, token := range tests {
+		t.Run(name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock := newNotificationClient(t, tenantID, userID, now)
+
+			req := newListNotificationsRequest(tenantID)
+			req.Msg.Token = token
+			_, err := client.ListNotifications(context.Background(), req)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("ListNotifications code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+			}
+			if err.Error() != "invalid_argument: token is invalid" {
+				t.Fatalf("error = %q, want token internals hidden", err)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
 }
 
 func TestAuthMarkNotificationAsRead(t *testing.T) {
