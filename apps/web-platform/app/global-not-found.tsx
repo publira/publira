@@ -10,12 +10,8 @@ import "./globals.css";
  * Contrast with `(protected)/not-found.tsx`, which handles `notFound()` for
  * resources under a signed-in operator session and keeps the console chrome.
  *
- * Enabled by `experimental.globalNotFound` in `next.config.ts` (#646). The flag
- * is still experimental — see `apps/AGENTS.md` for what breaks if it is removed
- * or stabilises under a different name.
- *
- * Styles and brand tokens are imported here because this file bypasses
- * `app/layout.tsx`.
+ * Requires `experimental.globalNotFound` in `next.config.ts`. Styles and brand
+ * tokens are imported here because this file bypasses `app/layout.tsx`.
  */
 export const metadata: Metadata = {
   description: "お探しの項目は削除されたか、URL が変更された可能性があります。",
@@ -26,7 +22,7 @@ const GlobalNotFound = () => (
   <html lang="ja">
     <body className="min-h-dvh bg-background text-foreground antialiased">
       <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
-        <p className="text-sm tracking-[0.14em] uppercase text-muted-foreground">
+        <p className="text-sm tracking-wide uppercase text-muted-foreground">
           404 Not Found
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">

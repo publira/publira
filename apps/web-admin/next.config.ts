@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   },
   cacheMaxMemorySize: 0,
   experimental: {
-    // Unmatched URLs skip the [tenant_id] layout tree. See apps/AGENTS.md.
+    // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
     serverActions: {
       bodySizeLimit: "10mb",

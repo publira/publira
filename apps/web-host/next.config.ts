@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   // Prefer Redis over the default in-process memory tier.
   cacheMaxMemorySize: 0,
   experimental: {
-    // Unmatched URLs skip the [tenant_id] layout tree. See apps/AGENTS.md.
+    // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
     turbopackRustReactCompiler: true,
   },

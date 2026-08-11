@@ -19,7 +19,7 @@ import {
  *
  * Rendered inside `(protected)/layout.tsx`, which keeps the console sidebar and
  * header. URLs that match no route at all are handled by
- * `app/global-not-found.tsx` (#646), not this boundary.
+ * `app/global-not-found.tsx`, not this boundary.
  *
  * No `<main>` here: `ConsoleLayoutMain` already provides one.
  *

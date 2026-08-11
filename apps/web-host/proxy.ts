@@ -66,16 +66,6 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   return NextResponse.rewrite(url);
 };
 
-/**
- * Skip proxy for static asset paths that must not trigger tenant resolution.
- *
- * Role split with `app/global-not-found.tsx` and `app/favicon.ico` (#646):
- * - This matcher keeps `_next/*` and `favicon.ico` out of domain → tenant RPC.
- * - `app/favicon.ico` is a real metadata file so `/favicon.ico` never lands on
- *   `[tenant_id]` as a fake segment.
- * - `global-not-found.tsx` answers URLs that match no route at all, without
- *   entering the tenant layout tree (and without any tenant RPC).
- */
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

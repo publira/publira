@@ -7,7 +7,7 @@ import Link from "next/link";
  *
  * Rendered inside `(site)/layout.tsx`, which keeps the tenant header and
  * footer. URLs that match no route at all are handled by
- * `app/global-not-found.tsx` (#646), not this boundary.
+ * `app/global-not-found.tsx`, not this boundary.
  *
  * No `<main>` here: `SiteLayoutMain` already provides one.
  *
@@ -16,12 +16,12 @@ import Link from "next/link";
  * `notFound()` with its `__next_error__` document — status 404 and the right
  * flight payload, but an empty SSR `<body>`, so this UI paints only after
  * hydration. `/authors/[author_id]` already behaved this way before there was
- * any `not-found.tsx`. Truly unmatched URLs (no route) use `global-not-found`
- * instead and render a full HTML document without this shell.
+ * any `not-found.tsx`. Truly unmatched URLs use `global-not-found` instead and
+ * render a full HTML document without this shell.
  */
 const NotFound = () => (
   <div className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
-    <p className="text-sm tracking-[0.14em] uppercase text-muted-foreground">
+    <p className="text-sm tracking-wide uppercase text-muted-foreground">
       404 Not Found
     </p>
     <h1 className="mt-4 font-serif text-4xl font-bold">
