@@ -483,21 +483,110 @@ describe("tenant admin invitations", () => {
           status: "pending",
         },
       ],
+      nextToken: "next-page",
+      previousToken: "",
     });
 
     await expect(
-      listPlatformTenantAdminInvitations("tenant_seifuu")
-    ).resolves.toEqual([
+      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+    ).resolves.toEqual({
+      invitations: [
+        {
+          acceptedAt: "",
+          canceledAt: "",
+          createdAt: "2026-03-30T00:00:00Z",
+          email: "admin@example.com",
+          expiresAt: "2026-03-31T00:00:00Z",
+          id: "inv_001",
+          status: "pending",
+        },
+      ],
+      nextToken: "next-page",
+      ok: true,
+      previousToken: "",
+    });
+
+    expect(mockListTenantAdminInvitations).toHaveBeenCalledWith(
       {
-        acceptedAt: "",
-        canceledAt: "",
-        createdAt: "2026-03-30T00:00:00Z",
-        email: "admin@example.com",
-        expiresAt: "2026-03-31T00:00:00Z",
-        id: "inv_001",
-        status: "pending",
+        limit: 20,
+        tenantPublicId: "tenant_seifuu",
+        token: "",
       },
-    ]);
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("ページング引数を API に渡す", async () => {
+    mockListTenantAdminInvitations.mockResolvedValueOnce({
+      invitations: [],
+      nextToken: "",
+      previousToken: "previous-page",
+    });
+
+    await expect(
+      listPlatformTenantAdminInvitations({
+        limit: 50,
+        tenantId: "tenant_seifuu",
+        token: "current-page",
+      })
+    ).resolves.toEqual({
+      invitations: [],
+      nextToken: "",
+      ok: true,
+      previousToken: "previous-page",
+    });
+
+    expect(mockListTenantAdminInvitations).toHaveBeenCalledWith(
+      {
+        limit: 50,
+        tenantPublicId: "tenant_seifuu",
+        token: "current-page",
+      },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("sessionId を解決できない場合は API を呼ばずエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(
+      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+    ).resolves.toEqual({
+      invitations: [],
+      message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+
+    expect(mockListTenantAdminInvitations).not.toHaveBeenCalled();
+  });
+
+  it("到達不能エラーは共通文言で返す", async () => {
+    mockListTenantAdminInvitations.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    await expect(
+      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+    ).resolves.toEqual({
+      invitations: [],
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
+
+  it("分類できない RPC エラーは伝播する", async () => {
+    mockListTenantAdminInvitations.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(
+      listPlatformTenantAdminInvitations({ tenantId: "tenant_seifuu" })
+    ).rejects.toThrow("boom");
   });
 
   it("招待作成が成功する", async () => {

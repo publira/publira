@@ -55,6 +55,27 @@ export interface PlatformTenantAdminInvitation {
   status: string;
 }
 
+export interface ListPlatformTenantAdminInvitationsInput {
+  limit?: number;
+  tenantId: string;
+  token?: string;
+}
+
+export type ListPlatformTenantAdminInvitationsResult =
+  | {
+      invitations: PlatformTenantAdminInvitation[];
+      nextToken: string;
+      ok: true;
+      previousToken: string;
+    }
+  | {
+      invitations: PlatformTenantAdminInvitation[];
+      message: string;
+      nextToken: string;
+      ok: false;
+      previousToken: string;
+    };
+
 export interface CreatePlatformTenantInput {
   adminDomain?: string;
   domain: string;
@@ -374,29 +395,51 @@ const mapInvitation = (invitation: {
 });
 
 export const listPlatformTenantAdminInvitations = async (
-  tenantId: string
-): Promise<PlatformTenantAdminInvitation[]> => {
+  input: ListPlatformTenantAdminInvitationsInput
+): Promise<ListPlatformTenantAdminInvitationsResult> => {
   "use cache: private";
 
+  const tenantId = input.tenantId.trim();
   const sid = await resolveAccessToken();
-  if (!tenantId.trim() || !sid) {
-    return [];
+  if (!tenantId || !sid) {
+    return {
+      invitations: [],
+      message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    };
   }
 
   try {
     const response = await apiClient.tenants.listTenantAdminInvitations(
       {
-        limit: 100,
-        tenantId,
-      } as never,
+        limit: input.limit ?? 20,
+        tenantPublicId: tenantId,
+        token: input.token ?? "",
+      },
       buildSessionHeaders(sid)
     );
-    return (response.invitations ?? []).map((invitation) =>
-      mapInvitation(invitation)
-    );
+    return {
+      invitations: (response.invitations ?? []).map((invitation) =>
+        mapInvitation(invitation)
+      ),
+      nextToken: response.nextToken ?? "",
+      ok: true,
+      previousToken: response.previousToken ?? "",
+    };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    return [];
+    return {
+      invitations: [],
+      message: rpcErrorMessage(
+        error,
+        "管理者招待一覧の取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    };
   }
 };
 

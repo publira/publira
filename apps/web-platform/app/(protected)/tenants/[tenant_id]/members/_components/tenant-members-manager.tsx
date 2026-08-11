@@ -2,7 +2,7 @@
 
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import {
   Card,
   CardContent,
@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import Link from "next/link";
 import { useActionState, useCallback, useState, useTransition } from "react";
 
 import {
@@ -67,7 +68,10 @@ interface TenantMembersManagerProps {
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
+  invitationErrorMessage?: string;
   invitations: PlatformTenantAdminInvitation[];
+  invitationsNextHref?: string;
+  invitationsPreviousHref?: string;
   members: PlatformTenantMemberSummary[];
   removeAction: (
     prevState: FormActionState,
@@ -83,6 +87,23 @@ interface TenantMembersManagerProps {
     formData: FormData
   ) => Promise<FormActionState>;
 }
+
+const InvitationPageControl = ({
+  href,
+  label,
+}: {
+  href?: string;
+  label: string;
+}) =>
+  href ? (
+    <LinkButton render={<Link href={href} />} size="sm" variant="outline">
+      {label}
+    </LinkButton>
+  ) : (
+    <Button disabled size="sm" variant="outline">
+      {label}
+    </Button>
+  );
 
 const invitationStatusTone = (status: string) => {
   if (status === "pending") {
@@ -400,7 +421,10 @@ export const TenantMembersManager = ({
   addAction,
   cancelInvitationAction,
   createInvitationAction,
+  invitationErrorMessage,
   invitations,
+  invitationsNextHref,
+  invitationsPreviousHref,
   members,
   removeAction,
   resendInvitationAction,
@@ -603,10 +627,15 @@ export const TenantMembersManager = ({
             送信済み招待の状態確認、再送、取り消しができます。承諾済みの招待は承諾後1週間のみ表示されます。
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-4">
+          {invitationErrorMessage ? (
+            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              管理者招待一覧の取得に失敗しました: {invitationErrorMessage}
+            </p>
+          ) : null}
+
           {invitationActionState ? (
             <FormMessage
-              className="mb-4"
               variant={invitationActionState.ok ? "success" : "destructive"}
             >
               {invitationActionState.message}
@@ -624,7 +653,7 @@ export const TenantMembersManager = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invitations.length === 0 ? (
+              {!invitationErrorMessage && invitations.length === 0 ? (
                 <TableRow>
                   <TableCell className="text-muted-foreground" colSpan={5}>
                     管理者招待はまだありません。
@@ -644,6 +673,17 @@ export const TenantMembersManager = ({
               ))}
             </TableBody>
           </Table>
+
+          <nav
+            aria-label="管理者招待一覧のページ送り"
+            className="flex justify-end gap-2"
+          >
+            <InvitationPageControl
+              href={invitationsPreviousHref}
+              label="前へ"
+            />
+            <InvitationPageControl href={invitationsNextHref} label="次へ" />
+          </nav>
         </CardContent>
       </Card>
     </div>

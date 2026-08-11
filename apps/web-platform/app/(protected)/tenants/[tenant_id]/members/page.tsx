@@ -31,16 +31,18 @@ import {
   updateTenantMemberRoleAction,
 } from "../_lib/actions";
 import { TenantMembersManager } from "./_components/tenant-members-manager";
+import {
+  buildMemberInvitationsPath,
+  parseMemberInvitationFilters,
+} from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "テナントメンバー管理",
 };
 
-interface TenantMembersPageProps {
-  params: Promise<{
-    tenant_id: string;
-  }>;
-}
+const invitationPageSize = 20;
+
+type TenantMembersPageProps = PageProps<"/tenants/[tenant_id]/members">;
 
 const TenantMembersSkeleton = () => (
   <PlatformPageContent>
@@ -64,18 +66,35 @@ const TenantMembersSkeleton = () => (
 
 const TenantMembersContent = async ({
   params,
-}: Pick<TenantMembersPageProps, "params">) => {
+  searchParams,
+}: Pick<TenantMembersPageProps, "params" | "searchParams">) => {
   const { tenant_id: tenantId } = await params;
+  const invitationFilters = parseMemberInvitationFilters(await searchParams);
 
-  const [tenant, members, invitations] = await Promise.all([
+  const [tenant, members, invitationsResult] = await Promise.all([
     getPlatformTenant(tenantId),
     listPlatformTenantMembers(tenantId),
-    listPlatformTenantAdminInvitations(tenantId),
+    listPlatformTenantAdminInvitations({
+      limit: invitationPageSize,
+      tenantId,
+      token: invitationFilters.token || undefined,
+    }),
   ]);
 
   if (!tenant) {
     notFound();
   }
+
+  const previousHref = invitationsResult.previousToken
+    ? buildMemberInvitationsPath(tenant.publicId, {
+        token: invitationsResult.previousToken,
+      })
+    : undefined;
+  const nextHref = invitationsResult.nextToken
+    ? buildMemberInvitationsPath(tenant.publicId, {
+        token: invitationsResult.nextToken,
+      })
+    : undefined;
 
   return (
     <>
@@ -101,7 +120,12 @@ const TenantMembersContent = async ({
             addAction={addTenantMemberAction}
             cancelInvitationAction={cancelTenantAdminInvitationAction}
             createInvitationAction={createTenantAdminInvitationAction}
-            invitations={invitations}
+            invitationErrorMessage={
+              invitationsResult.ok ? undefined : invitationsResult.message
+            }
+            invitations={invitationsResult.invitations}
+            invitationsNextHref={nextHref}
+            invitationsPreviousHref={previousHref}
             members={members}
             removeAction={removeTenantMemberAction}
             resendInvitationAction={resendTenantAdminInvitationAction}
@@ -116,10 +140,13 @@ const TenantMembersContent = async ({
 
 // `PlatformPage` stays in the static shell so the max width and padding are
 // painted before `params` resolves; only the header and body stream in.
-const TenantMembersPage = ({ params }: TenantMembersPageProps) => (
+const TenantMembersPage = ({
+  params,
+  searchParams,
+}: TenantMembersPageProps) => (
   <PlatformPage>
     <Suspense fallback={<TenantMembersSkeleton />}>
-      <TenantMembersContent params={params} />
+      <TenantMembersContent params={params} searchParams={searchParams} />
     </Suspense>
   </PlatformPage>
 );
