@@ -80,7 +80,7 @@ func TestEncodeTimeUUIDKeepsExistingTokenFormat(t *testing.T) {
 }
 
 func TestDecodeTimeUUID(t *testing.T) {
-	at := time.Date(2026, time.March, 18, 0, 10, 11, 123_456_789, time.UTC)
+	at := time.Date(2026, time.March, 18, 9, 10, 11, 123_456_789, time.FixedZone("test", 9*60*60))
 	id := uuid.MustParse("019d008d-184d-7d31-a78a-89728a746e38")
 
 	tests := []struct {
@@ -90,11 +90,11 @@ func TestDecodeTimeUUID(t *testing.T) {
 	}{
 		{
 			name:  "boundary",
-			token: pagination.EncodeTimeUUID(pagination.Backward, at, id),
+			token: pagination.Encode(pagination.Backward, at.Format(time.RFC3339Nano), id.String()),
 		},
 		{
 			name:      "inclusive recovery",
-			token:     pagination.EncodeTimeUUIDRecovery(pagination.Backward, at, id),
+			token:     pagination.Encode(pagination.Backward, at.Format(time.RFC3339Nano), id.String(), "inclusive"),
 			inclusive: true,
 		},
 	}
@@ -109,8 +109,11 @@ func TestDecodeTimeUUID(t *testing.T) {
 			if err != nil {
 				t.Fatalf("DecodeTimeUUID: %v", err)
 			}
-			if !keys.Valid || !keys.Time.Equal(at) || keys.ID != id || keys.Inclusive != test.inclusive {
+			if !keys.Valid || !keys.Time.Equal(at.UTC()) || keys.ID != id || keys.Inclusive != test.inclusive {
 				t.Fatalf("keys = %+v, want time %v, ID %v, inclusive %t, valid", keys, at, id, test.inclusive)
+			}
+			if keys.Time.Location() != time.UTC {
+				t.Fatalf("time location = %v, want UTC", keys.Time.Location())
 			}
 		})
 	}
