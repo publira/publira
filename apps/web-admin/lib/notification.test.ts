@@ -270,8 +270,11 @@ describe("notification lib", () => {
     const { listAllNotificationTargetUsers } = await import("./notification");
     const result = await listAllNotificationTargetUsers("TENANT001");
 
-    expect(result.ok).toBe(false);
-    expect(result.users).toEqual([]);
+    expect(result).toEqual({
+      message: "対象ユーザー一覧の取得に失敗しました。",
+      ok: false,
+      users: [],
+    });
   });
 
   it("対象ユーザーの取得に失敗したらメッセージを返す", async () => {
@@ -282,8 +285,12 @@ describe("notification lib", () => {
     const { listAllNotificationTargetUsers } = await import("./notification");
     const result = await listAllNotificationTargetUsers("TENANT001");
 
-    expect(result.ok).toBe(false);
-    expect(result.users).toEqual([]);
+    expect(result).toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+      users: [],
+    });
   });
 
   it("通知作成成功時に件数を返す", async () => {

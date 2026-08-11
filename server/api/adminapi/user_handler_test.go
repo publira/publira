@@ -136,8 +136,19 @@ func TestListTenantUsersFallsBackToDefaultLimit(t *testing.T) {
 
 			req := newTenantUserRequest(tenantID, sessionToken)
 			req.Msg.Limit = testCase.requested
-			if _, err := client.ListTenantUsers(context.Background(), req); err != nil {
+			resp, err := client.ListTenantUsers(context.Background(), req)
+			if err != nil {
 				t.Fatalf("ListTenantUsers: %v", err)
+			}
+
+			// An empty first page carries no boundary to recover to, so neither
+			// token may be issued: a recovery token built from the zero cursor
+			// would point at the epoch.
+			if resp.Msg.PreviousToken != "" {
+				t.Fatalf("previous_token = %q, want empty on an empty first page", resp.Msg.PreviousToken)
+			}
+			if resp.Msg.NextToken != "" {
+				t.Fatalf("next_token = %q, want empty on an empty first page", resp.Msg.NextToken)
 			}
 
 			assertExpectations(t, mock)
