@@ -35,6 +35,7 @@ v1|<direction>|<sort key 1>|<sort key 2>|...
 - `direction` は `f`（token が指す先が次ページ）または `b`（前ページ）。サーバーは向きに応じて比較演算子と `ORDER BY` を反転させ、`b` のときは取得した行を並べ直してから返す。
 - sort key は境界となる行の並び替えキーの値。`f` ならそのページの末尾行、`b` なら先頭行から作る。
 - クライアントはこの構造に依存しない。組み立ても分解もせず、受け取った文字列をそのまま返すだけ。
+- 復帰 token は sort key の後ろに `inclusive` を 1 つ足す。SQL 側はこのフラグで比較を `<` から `<=`（昇順なら `>` から `>=`）へ切り替え、境界の行を含めて引き直す。サーバーが「これは復帰 token か」を判別できるのもこのキーで、上の「復帰は 1 回まで」はこれを見て決める。他の文字列が入っていれば `invalid_argument`。
 - 壊れた token は `invalid_argument`。エラーメッセージに内部構造を書かない。
 
 Go 側の符号化と検証は [`server/internal/pagination`](../server/internal/pagination) にある。`Encode` / `Decode` / `NormalizeLimit` / `Page` を使い、RPC ごとに base64 を書き直さない。

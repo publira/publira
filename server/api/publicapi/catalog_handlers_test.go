@@ -28,7 +28,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, nil, nil, int32(21)).
+		WithArgs(tenantID, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -113,7 +113,7 @@ func TestCatalogListPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	// The handler asks for one id past the page to learn that a next page exists.
 	ids := newSeriesIDs(3)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, nil, nil, int32(3)).
+		WithArgs(tenantID, nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -153,7 +153,7 @@ func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, boundaryID, boundaryPublishedAt, int32(3)).
+		WithArgs(tenantID, boundaryID, false, boundaryPublishedAt, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -196,7 +196,7 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtAscQuery)).
-		WithArgs(tenantID, boundaryID, boundaryPublishedAt, int32(3)).
+		WithArgs(tenantID, boundaryID, false, boundaryPublishedAt, int32(3)).
 		WillReturnRows(seriesIDRows(olderID, newerID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -264,7 +264,7 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, boundaryID, now, int32(21)).
+				WithArgs(tenantID, boundaryID, false, now, int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -284,6 +284,88 @@ func TestCatalogListPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
 			}
 			if (resp.Msg.NextToken != "") != test.wantNext {
 				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, test.wantNext)
+			}
+
+			// The recovery token points back the way the client came and is
+			// marked inclusive, so the boundary row is in the page it returns.
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
+			}
+			cursor, err := pagination.Decode(recoveryToken)
+			if err != nil {
+				t.Fatalf("decode recovery token: %v", err)
+			}
+			wantKeys := []string{"published_at_desc", now.Format(time.RFC3339Nano), boundaryID.String(), seriesInclusiveKey}
+			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
+				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
+			}
+
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+// Recovery happens once. When the boundary row itself is gone the recovery
+// query is empty too, and both tokens stay empty so the client falls back to
+// the first page instead of bouncing between empty pages.
+func TestCatalogListPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction pagination.Direction
+		wantQuery string
+	}{
+		{
+			name:      "recovering backward",
+			direction: pagination.Backward,
+			wantQuery: listActiveSeriesIDsByPublishedAtAscQuery,
+		},
+		{
+			name:      "recovering forward",
+			direction: pagination.Forward,
+			wantQuery: listActiveSeriesIDsByPublishedAtDescQuery,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			token := pagination.Encode(
+				test.direction,
+				"published_at_desc",
+				now.Format(time.RFC3339Nano),
+				boundaryID.String(),
+				seriesInclusiveKey,
+			)
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, boundaryID, true, now, int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Token:  token,
+			}))
+			if err != nil {
+				t.Fatalf("ListPublishedSeries: %v", err)
+			}
+
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			}
+			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+				t.Fatalf(
+					"previous_token = %q / next_token = %q, want both empty once recovery also came back empty",
+					resp.Msg.PreviousToken, resp.Msg.NextToken,
+				)
 			}
 
 			assertPublicExpectations(t, mock)
@@ -326,7 +408,7 @@ func TestCatalogListPublishedSeriesSortsByRequestedOrder(t *testing.T) {
 			tenantID := uuid.Must(uuid.NewV7())
 			expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(tenantID, nil, nil, int32(21)).
+				WithArgs(tenantID, nil, false, nil, int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -352,7 +434,7 @@ func TestCatalogListPublishedSeriesTitleTokenCarriesTheTitleKey(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByTitleAscQuery)).
-		WithArgs(tenantID, boundaryID, "Series 001", int32(21)).
+		WithArgs(tenantID, boundaryID, false, "Series 001", int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -406,6 +488,37 @@ func TestCatalogListPublishedSeriesRejectsUnknownOrder(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// The fourth key exists only to mark a recovery cursor, so anything else in
+// that position is a token this server did not issue.
+func TestCatalogListPublishedSeriesRejectsUnknownFourthKey(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	token := pagination.Encode(
+		pagination.Forward,
+		"published_at_desc",
+		now.Format(time.RFC3339Nano),
+		uuid.Must(uuid.NewV7()).String(),
+		"exclusive",
+	)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Token:  token,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("error = %q, want token internals hidden", err)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
 func TestCatalogListPublishedSeriesRejectsBrokenToken(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -431,7 +544,7 @@ func TestCatalogListPublishedSeriesLimitOutOfRangeUsesDefault(t *testing.T) {
 	now := time.Now()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantID, nil, nil, int32(21)).
+		WithArgs(tenantID, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
@@ -456,7 +569,7 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 	seriesBID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantAID, "TENANT_A", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantAID, nil, nil, int32(21)).
+		WithArgs(tenantAID, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesAID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantAID, sqlmock.AnyArg()).
@@ -464,7 +577,7 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", now, nil, nil, []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
-		WithArgs(tenantBID, nil, nil, int32(21)).
+		WithArgs(tenantBID, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesBID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantBID, sqlmock.AnyArg()).
