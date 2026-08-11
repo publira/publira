@@ -64,9 +64,9 @@ describe("TicketManager", () => {
       screen.getByText("このページに表示できるチケットはありません。")
     ).toBeDefined();
     // 復旧用のリンクは残す。ここを隠すと一覧へ戻る手段が無くなる。
-    expect(
-      screen.getByLabelText("アクセスチケット一覧のページ送り")
-    ).toBeDefined();
+    const previous = screen.getByRole("link", { name: "前へ" });
+    expect(previous.getAttribute("href")).toBe("?token=previous");
+    expect(screen.queryByRole("link", { name: "次へ" })).toBeNull();
   });
 
   it("後続ページでも行ごとの操作とページ送りを描画する", () => {
@@ -80,7 +80,34 @@ describe("TicketManager", () => {
     );
 
     expect(screen.getByText("失効 TICKET001")).toBeDefined();
-    expect(screen.getByRole("link", { name: "前へ" })).toBeDefined();
-    expect(screen.getByRole("link", { name: "次へ" })).toBeDefined();
+    expect(
+      screen.getByRole("link", { name: "前へ" }).getAttribute("href")
+    ).toBe("?token=previous");
+    expect(
+      screen.getByRole("link", { name: "次へ" }).getAttribute("href")
+    ).toBe("?token=next");
+  });
+
+  it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
+    render(
+      <TicketManager
+        listErrorMessage="チケット一覧を取得できませんでした。"
+        nextHref="?token=next"
+        pageSize={20}
+        previousHref="?token=previous"
+        tickets={[]}
+      />
+    );
+
+    expect(
+      screen.getByText("チケット一覧を取得できませんでした。")
+    ).toBeDefined();
+    expect(screen.queryByText("チケットがまだありません。")).toBeNull();
+    expect(
+      screen.queryByText("このページに表示できるチケットはありません。")
+    ).toBeNull();
+    expect(
+      screen.queryByLabelText("アクセスチケット一覧のページ送り")
+    ).toBeNull();
   });
 });
