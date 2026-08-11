@@ -3166,7 +3166,7 @@ func (q *Queries) GetUserPasswordResetTokenByHashForTenant(ctx context.Context, 
 	return i, err
 }
 
-const listAccessTicketsForTenant = `-- name: ListAccessTicketsForTenant :many
+const listAccessTicketsForTenantAsc = `-- name: ListAccessTicketsForTenantAsc :many
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -3190,15 +3190,15 @@ FROM access_tickets at
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND (
-        $4::uuid IS NULL
-        OR at.user_id = $4::uuid
+        $2::uuid IS NULL
+        OR at.user_id = $2::uuid
     )
     AND (
-        $5::uuid IS NULL
-        OR at.episode_id = $5::uuid
+        $3::uuid IS NULL
+        OR at.episode_id = $3::uuid
     )
     AND (
-        NOT $6::bool
+        NOT $4::bool
         OR (
             at.revoked_at IS NULL
             AND (
@@ -3207,21 +3207,34 @@ WHERE at.tenant_id = $1
             )
         )
     )
-ORDER BY at.created_at DESC,
-    at.id DESC
-LIMIT $2 OFFSET $3
+    AND (
+        $5::uuid IS NULL
+        OR (
+            $6::boolean
+            AND (at.created_at, at.id) >= ($7::timestamptz, $5::uuid)
+        )
+        OR (
+            NOT $6::boolean
+            AND (at.created_at, at.id) > ($7::timestamptz, $5::uuid)
+        )
+    )
+ORDER BY at.created_at ASC,
+    at.id ASC
+LIMIT $8
 `
 
-type ListAccessTicketsForTenantParams struct {
-	TenantID   uuid.UUID     `json:"tenant_id"`
-	Limit      int32         `json:"limit"`
-	Offset     int32         `json:"offset"`
-	UserID     uuid.NullUUID `json:"user_id"`
-	EpisodeID  uuid.NullUUID `json:"episode_id"`
-	ActiveOnly bool          `json:"active_only"`
+type ListAccessTicketsForTenantAscParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	UserID          uuid.NullUUID `json:"user_id"`
+	EpisodeID       uuid.NullUUID `json:"episode_id"`
+	ActiveOnly      bool          `json:"active_only"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
 }
 
-type ListAccessTicketsForTenantRow struct {
+type ListAccessTicketsForTenantAscRow struct {
 	ID              uuid.UUID      `json:"id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	PublicID        string         `json:"public_id"`
@@ -3241,22 +3254,166 @@ type ListAccessTicketsForTenantRow struct {
 	CreatedAt       time.Time      `json:"created_at"`
 }
 
-func (q *Queries) ListAccessTicketsForTenant(ctx context.Context, arg ListAccessTicketsForTenantParams) ([]ListAccessTicketsForTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAccessTicketsForTenant,
+func (q *Queries) ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAccessTicketsForTenantAsc,
 		arg.TenantID,
-		arg.Limit,
-		arg.Offset,
 		arg.UserID,
 		arg.EpisodeID,
 		arg.ActiveOnly,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListAccessTicketsForTenantRow
+	var items []ListAccessTicketsForTenantAscRow
 	for rows.Next() {
-		var i ListAccessTicketsForTenantRow
+		var i ListAccessTicketsForTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.UserID,
+			&i.UserPublicID,
+			&i.UserName,
+			&i.UserEmail,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.Note,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAccessTicketsForTenantDesc = `-- name: ListAccessTicketsForTenantDesc :many
+SELECT at.id,
+    at.tenant_id,
+    at.public_id,
+    at.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    at.user_id,
+    u.public_id AS user_public_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    at.expires_at,
+    at.revoked_at,
+    at.note,
+    at.created_by_user_id,
+    at.created_at
+FROM access_tickets at
+    JOIN episodes e ON e.id = at.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN users u ON u.id = at.user_id
+WHERE at.tenant_id = $1
+    AND (
+        $2::uuid IS NULL
+        OR at.user_id = $2::uuid
+    )
+    AND (
+        $3::uuid IS NULL
+        OR at.episode_id = $3::uuid
+    )
+    AND (
+        NOT $4::bool
+        OR (
+            at.revoked_at IS NULL
+            AND (
+                at.expires_at IS NULL
+                OR at.expires_at > NOW()
+            )
+        )
+    )
+    AND (
+        $5::uuid IS NULL
+        OR (
+            $6::boolean
+            AND (at.created_at, at.id) <= ($7::timestamptz, $5::uuid)
+        )
+        OR (
+            NOT $6::boolean
+            AND (at.created_at, at.id) < ($7::timestamptz, $5::uuid)
+        )
+    )
+ORDER BY at.created_at DESC,
+    at.id DESC
+LIMIT $8
+`
+
+type ListAccessTicketsForTenantDescParams struct {
+	TenantID        uuid.UUID     `json:"tenant_id"`
+	UserID          uuid.NullUUID `json:"user_id"`
+	EpisodeID       uuid.NullUUID `json:"episode_id"`
+	ActiveOnly      bool          `json:"active_only"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListAccessTicketsForTenantDescRow struct {
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+	UserID          uuid.UUID      `json:"user_id"`
+	UserPublicID    string         `json:"user_public_id"`
+	UserName        string         `json:"user_name"`
+	UserEmail       string         `json:"user_email"`
+	ExpiresAt       sql.NullTime   `json:"expires_at"`
+	RevokedAt       sql.NullTime   `json:"revoked_at"`
+	Note            sql.NullString `json:"note"`
+	CreatedByUserID uuid.NullUUID  `json:"created_by_user_id"`
+	CreatedAt       time.Time      `json:"created_at"`
+}
+
+// Admin ListAccessTickets は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで idx_access_tickets_tenant_created_at
+// を走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
+// が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListAccessTicketsForTenantDesc(ctx context.Context, arg ListAccessTicketsForTenantDescParams) ([]ListAccessTicketsForTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAccessTicketsForTenantDesc,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodeID,
+		arg.ActiveOnly,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAccessTicketsForTenantDescRow
+	for rows.Next() {
+		var i ListAccessTicketsForTenantDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,

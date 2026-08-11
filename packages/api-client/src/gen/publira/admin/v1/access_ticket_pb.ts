@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/access_ticket.proto.
  */
 export const file_publira_admin_v1_access_ticket: GenFile = /*@__PURE__*/
-  fileDesc("CiRwdWJsaXJhL2FkbWluL3YxL2FjY2Vzc190aWNrZXQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEioQIKEUFkbWluQWNjZXNzVGlja2V0EhEKCXB1YmxpY19pZBgBIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAMgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYBCABKAkSFAoMc2VyaWVzX3RpdGxlGAUgASgJEhYKDnVzZXJfcHVibGljX2lkGAYgASgJEhEKCXVzZXJfbmFtZRgHIAEoCRISCgp1c2VyX2VtYWlsGAggASgJEhIKCmV4cGlyZXNfYXQYCSABKAkSEgoKcmV2b2tlZF9hdBgKIAEoCRIMCgRub3RlGAsgASgJEhIKCmNyZWF0ZWRfYXQYDCABKAkSDgoGc3RhdHVzGA0gASgJIrIBChhMaXN0QWNjZXNzVGlja2V0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBRIWCg51c2VyX3B1YmxpY19pZBgEIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgFIAEoCRITCgthY3RpdmVfb25seRgGIAEoCCJRChlMaXN0QWNjZXNzVGlja2V0c1Jlc3BvbnNlEjQKB3RpY2tldHMYASADKAsyIy5wdWJsaXJhLmFkbWluLnYxLkFkbWluQWNjZXNzVGlja2V0IqABChhJc3N1ZUFjY2Vzc1RpY2tldFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDnVzZXJfcHVibGljX2lkGAIgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAMgASgJEhIKCmV4cGlyZXNfYXQYBCABKAkSDAoEbm90ZRgFIAEoCSJQChlJc3N1ZUFjY2Vzc1RpY2tldFJlc3BvbnNlEjMKBnRpY2tldBgBIAEoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BY2Nlc3NUaWNrZXQiXwoZUmV2b2tlQWNjZXNzVGlja2V0UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIlEKGlJldm9rZUFjY2Vzc1RpY2tldFJlc3BvbnNlEjMKBnRpY2tldBgBIAEoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BY2Nlc3NUaWNrZXQy7QIKGEFkbWluQWNjZXNzVGlja2V0U2VydmljZRJuChFMaXN0QWNjZXNzVGlja2V0cxIqLnB1YmxpcmEuYWRtaW4udjEuTGlzdEFjY2Vzc1RpY2tldHNSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5MaXN0QWNjZXNzVGlja2V0c1Jlc3BvbnNlIgASbgoRSXNzdWVBY2Nlc3NUaWNrZXQSKi5wdWJsaXJhLmFkbWluLnYxLklzc3VlQWNjZXNzVGlja2V0UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuSXNzdWVBY2Nlc3NUaWNrZXRSZXNwb25zZSIAEnEKElJldm9rZUFjY2Vzc1RpY2tldBIrLnB1YmxpcmEuYWRtaW4udjEuUmV2b2tlQWNjZXNzVGlja2V0UmVxdWVzdBosLnB1YmxpcmEuYWRtaW4udjEuUmV2b2tlQWNjZXNzVGlja2V0UmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("CiRwdWJsaXJhL2FkbWluL3YxL2FjY2Vzc190aWNrZXQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEioQIKEUFkbWluQWNjZXNzVGlja2V0EhEKCXB1YmxpY19pZBgBIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAMgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYBCABKAkSFAoMc2VyaWVzX3RpdGxlGAUgASgJEhYKDnVzZXJfcHVibGljX2lkGAYgASgJEhEKCXVzZXJfbmFtZRgHIAEoCRISCgp1c2VyX2VtYWlsGAggASgJEhIKCmV4cGlyZXNfYXQYCSABKAkSEgoKcmV2b2tlZF9hdBgKIAEoCRIMCgRub3RlGAsgASgJEhIKCmNyZWF0ZWRfYXQYDCABKAkSDgoGc3RhdHVzGA0gASgJIr8BChhMaXN0QWNjZXNzVGlja2V0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEhYKDnVzZXJfcHVibGljX2lkGAQgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAUgASgJEhMKC2FjdGl2ZV9vbmx5GAYgASgIEg0KBXRva2VuGAcgASgJSgQIAxAEUgZvZmZzZXQifQoZTGlzdEFjY2Vzc1RpY2tldHNSZXNwb25zZRI0Cgd0aWNrZXRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFjY2Vzc1RpY2tldBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIqABChhJc3N1ZUFjY2Vzc1RpY2tldFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDnVzZXJfcHVibGljX2lkGAIgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAMgASgJEhIKCmV4cGlyZXNfYXQYBCABKAkSDAoEbm90ZRgFIAEoCSJQChlJc3N1ZUFjY2Vzc1RpY2tldFJlc3BvbnNlEjMKBnRpY2tldBgBIAEoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BY2Nlc3NUaWNrZXQiXwoZUmV2b2tlQWNjZXNzVGlja2V0UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIlEKGlJldm9rZUFjY2Vzc1RpY2tldFJlc3BvbnNlEjMKBnRpY2tldBgBIAEoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5BY2Nlc3NUaWNrZXQy7QIKGEFkbWluQWNjZXNzVGlja2V0U2VydmljZRJuChFMaXN0QWNjZXNzVGlja2V0cxIqLnB1YmxpcmEuYWRtaW4udjEuTGlzdEFjY2Vzc1RpY2tldHNSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5MaXN0QWNjZXNzVGlja2V0c1Jlc3BvbnNlIgASbgoRSXNzdWVBY2Nlc3NUaWNrZXQSKi5wdWJsaXJhLmFkbWluLnYxLklzc3VlQWNjZXNzVGlja2V0UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuSXNzdWVBY2Nlc3NUaWNrZXRSZXNwb25zZSIAEnEKElJldm9rZUFjY2Vzc1RpY2tldBIrLnB1YmxpcmEuYWRtaW4udjEuUmV2b2tlQWNjZXNzVGlja2V0UmVxdWVzdBosLnB1YmxpcmEuYWRtaW4udjEuUmV2b2tlQWNjZXNzVGlja2V0UmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * AdminAccessTicket is a user-bound viewing grant for a single episode.
@@ -101,6 +101,8 @@ export const AdminAccessTicketSchema: GenMessage<AdminAccessTicket> = /*@__PURE_
   messageDesc(file_publira_admin_v1_access_ticket, 0);
 
 /**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
  * @generated from message publira.admin.v1.ListAccessTicketsRequest
  */
 export type ListAccessTicketsRequest = Message<"publira.admin.v1.ListAccessTicketsRequest"> & {
@@ -110,14 +112,11 @@ export type ListAccessTicketsRequest = Message<"publira.admin.v1.ListAccessTicke
   tenant?: TenantContext | undefined;
 
   /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
    * @generated from field: int32 limit = 2;
    */
   limit: number;
-
-  /**
-   * @generated from field: int32 offset = 3;
-   */
-  offset: number;
 
   /**
    * Optional filters (empty = no filter).
@@ -137,6 +136,13 @@ export type ListAccessTicketsRequest = Message<"publira.admin.v1.ListAccessTicke
    * @generated from field: bool active_only = 6;
    */
   activeOnly: boolean;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 7;
+   */
+  token: string;
 };
 
 /**
@@ -154,6 +160,20 @@ export type ListAccessTicketsResponse = Message<"publira.admin.v1.ListAccessTick
    * @generated from field: repeated publira.admin.v1.AdminAccessTicket tickets = 1;
    */
   tickets: AdminAccessTicket[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
 };
 
 /**

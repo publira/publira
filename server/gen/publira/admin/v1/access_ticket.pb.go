@@ -167,16 +167,19 @@ func (x *AdminAccessTicket) GetStatus() string {
 	return ""
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListAccessTicketsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Limit  int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional filters (empty = no filter).
 	UserPublicId    string `protobuf:"bytes,4,opt,name=user_public_id,json=userPublicId,proto3" json:"user_public_id,omitempty"`
 	EpisodePublicId string `protobuf:"bytes,5,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// When true, omit revoked tickets from the list.
-	ActiveOnly    bool `protobuf:"varint,6,opt,name=active_only,json=activeOnly,proto3" json:"active_only,omitempty"`
+	ActiveOnly bool `protobuf:"varint,6,opt,name=active_only,json=activeOnly,proto3" json:"active_only,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,7,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -225,13 +228,6 @@ func (x *ListAccessTicketsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListAccessTicketsRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
 func (x *ListAccessTicketsRequest) GetUserPublicId() string {
 	if x != nil {
 		return x.UserPublicId
@@ -253,9 +249,20 @@ func (x *ListAccessTicketsRequest) GetActiveOnly() bool {
 	return false
 }
 
+func (x *ListAccessTicketsRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type ListAccessTicketsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tickets       []*AdminAccessTicket   `protobuf:"bytes,1,rep,name=tickets,proto3" json:"tickets,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Tickets []*AdminAccessTicket   `protobuf:"bytes,1,rep,name=tickets,proto3" json:"tickets,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -295,6 +302,20 @@ func (x *ListAccessTicketsResponse) GetTickets() []*AdminAccessTicket {
 		return x.Tickets
 	}
 	return nil
+}
+
+func (x *ListAccessTicketsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListAccessTicketsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type IssueAccessTicketRequest struct {
@@ -538,17 +559,20 @@ const file_publira_admin_v1_access_ticket_proto_rawDesc = "" +
 	"\x04note\x18\v \x01(\tR\x04note\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\f \x01(\tR\tcreatedAt\x12\x16\n" +
-	"\x06status\x18\r \x01(\tR\x06status\"\xf4\x01\n" +
+	"\x06status\x18\r \x01(\tR\x06status\"\x80\x02\n" +
 	"\x18ListAccessTicketsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12$\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12$\n" +
 	"\x0euser_public_id\x18\x04 \x01(\tR\fuserPublicId\x12*\n" +
 	"\x11episode_public_id\x18\x05 \x01(\tR\x0fepisodePublicId\x12\x1f\n" +
 	"\vactive_only\x18\x06 \x01(\bR\n" +
-	"activeOnly\"Z\n" +
+	"activeOnly\x12\x14\n" +
+	"\x05token\x18\a \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\xa0\x01\n" +
 	"\x19ListAccessTicketsResponse\x12=\n" +
-	"\atickets\x18\x01 \x03(\v2#.publira.admin.v1.AdminAccessTicketR\atickets\"\xd8\x01\n" +
+	"\atickets\x18\x01 \x03(\v2#.publira.admin.v1.AdminAccessTicketR\atickets\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd8\x01\n" +
 	"\x18IssueAccessTicketRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12*\n" +

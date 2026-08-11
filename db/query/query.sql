@@ -2201,7 +2201,11 @@ WHERE at.tenant_id = $1
     AND at.public_id = $2
 LIMIT 1;
 
--- name: ListAccessTicketsForTenant :many
+-- Admin ListAccessTickets は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで idx_access_tickets_tenant_created_at
+-- を走査し、前ページだけ handler で表示順へ戻す。id は UUIDv7 なので created_at
+-- が同着でも並びが一意に決まる。cursor の共通仕様は proto/README.md を参照。
+-- name: ListAccessTicketsForTenantDesc :many
 SELECT at.id,
     at.tenant_id,
     at.public_id,
@@ -2223,7 +2227,7 @@ FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
     JOIN series s ON s.id = e.series_id
     JOIN users u ON u.id = at.user_id
-WHERE at.tenant_id = $1
+WHERE at.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('user_id')::uuid IS NULL
         OR at.user_id = sqlc.narg('user_id')::uuid
@@ -2242,9 +2246,76 @@ WHERE at.tenant_id = $1
             )
         )
     )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (at.created_at, at.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (at.created_at, at.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
 ORDER BY at.created_at DESC,
     at.id DESC
-LIMIT $2 OFFSET $3;
+LIMIT sqlc.arg('limit');
+
+-- name: ListAccessTicketsForTenantAsc :many
+SELECT at.id,
+    at.tenant_id,
+    at.public_id,
+    at.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
+    at.user_id,
+    u.public_id AS user_public_id,
+    u.name AS user_name,
+    u.email AS user_email,
+    at.expires_at,
+    at.revoked_at,
+    at.note,
+    at.created_by_user_id,
+    at.created_at
+FROM access_tickets at
+    JOIN episodes e ON e.id = at.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN users u ON u.id = at.user_id
+WHERE at.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('user_id')::uuid IS NULL
+        OR at.user_id = sqlc.narg('user_id')::uuid
+    )
+    AND (
+        sqlc.narg('episode_id')::uuid IS NULL
+        OR at.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        NOT sqlc.arg('active_only')::bool
+        OR (
+            at.revoked_at IS NULL
+            AND (
+                at.expires_at IS NULL
+                OR at.expires_at > NOW()
+            )
+        )
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (at.created_at, at.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (at.created_at, at.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY at.created_at ASC,
+    at.id ASC
+LIMIT sqlc.arg('limit');
 
 -- name: RevokeAccessTicketByPublicIDForTenant :one
 UPDATE access_tickets
