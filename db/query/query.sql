@@ -610,14 +610,16 @@ SELECT pu.id,
     pu.status,
     pu.created_at
 FROM platform_users pu
-WHERE sqlc.narg('cursor_id')::uuid IS NULL
-    OR (
-        sqlc.arg('cursor_inclusive')::boolean
-        AND (pu.created_at, pu.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
-    )
-    OR (
-        NOT sqlc.arg('cursor_inclusive')::boolean
-        AND (pu.created_at, pu.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+WHERE (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (pu.created_at, pu.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (pu.created_at, pu.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
     )
 ORDER BY pu.created_at DESC, pu.id DESC
 LIMIT sqlc.arg('limit');
@@ -646,14 +648,16 @@ SELECT pu.id,
     pu.status,
     pu.created_at
 FROM platform_users pu
-WHERE sqlc.narg('cursor_id')::uuid IS NULL
-    OR (
-        sqlc.arg('cursor_inclusive')::boolean
-        AND (pu.created_at, pu.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
-    )
-    OR (
-        NOT sqlc.arg('cursor_inclusive')::boolean
-        AND (pu.created_at, pu.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+WHERE (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (pu.created_at, pu.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (pu.created_at, pu.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
     )
 ORDER BY pu.created_at ASC, pu.id ASC
 LIMIT sqlc.arg('limit');

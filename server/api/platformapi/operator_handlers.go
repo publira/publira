@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -35,6 +36,28 @@ type operatorPageRow struct {
 	Role      string
 	Status    string
 	CreatedAt time.Time
+}
+
+func toOperatorPage[T any](rows []T, convert func(T) operatorPageRow) []operatorPageRow {
+	page := make([]operatorPageRow, len(rows))
+	for index, row := range rows {
+		page[index] = convert(row)
+	}
+	return page
+}
+
+func operatorPageFromAsc(row dbmodels.ListPlatformOperatorsAscRow) operatorPageRow {
+	return operatorPageRow{
+		ID: row.ID, PublicID: row.PublicID, Email: row.Email, Name: row.Name,
+		Role: row.Role, Status: row.Status, CreatedAt: row.CreatedAt,
+	}
+}
+
+func operatorPageFromDesc(row dbmodels.ListPlatformOperatorsDescRow) operatorPageRow {
+	return operatorPageRow{
+		ID: row.ID, PublicID: row.PublicID, Email: row.Email, Name: row.Name,
+		Role: row.Role, Status: row.Status, CreatedAt: row.CreatedAt,
+	}
 }
 
 func normalizePlatformOperatorRole(rawRole string) (string, bool) {
@@ -122,7 +145,8 @@ func (s *platformServer) ListOperators(
 
 	rows, err := s.operatorPage(ctx, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		slog.ErrorContext(ctx, "failed to list platform operators", "error", err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list operators"))
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -168,14 +192,7 @@ func (s *platformServer) operatorPage(
 			return nil, err
 		}
 
-		page := make([]operatorPageRow, len(rows))
-		for index, row := range rows {
-			page[index] = operatorPageRow{
-				ID: row.ID, PublicID: row.PublicID, Email: row.Email, Name: row.Name,
-				Role: row.Role, Status: row.Status, CreatedAt: row.CreatedAt,
-			}
-		}
-		return page, nil
+		return toOperatorPage(rows, operatorPageFromAsc), nil
 	}
 
 	rows, err := queries.ListPlatformOperatorsDesc(ctx, dbmodels.ListPlatformOperatorsDescParams{
@@ -188,14 +205,7 @@ func (s *platformServer) operatorPage(
 		return nil, err
 	}
 
-	page := make([]operatorPageRow, len(rows))
-	for index, row := range rows {
-		page[index] = operatorPageRow{
-			ID: row.ID, PublicID: row.PublicID, Email: row.Email, Name: row.Name,
-			Role: row.Role, Status: row.Status, CreatedAt: row.CreatedAt,
-		}
-	}
-	return page, nil
+	return toOperatorPage(rows, operatorPageFromDesc), nil
 }
 
 func (s *platformServer) CreateOperator(

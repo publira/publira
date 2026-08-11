@@ -3,6 +3,7 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -81,11 +82,13 @@ func TestListOperatorsFollowsNextToken(t *testing.T) {
 	actorID := uuid.Must(uuid.NewV7())
 	boundaryID := uuid.Must(uuid.NewV7())
 	boundaryAt := now.Add(-time.Minute)
+	resultID := uuid.Must(uuid.NewV7())
+	resultAt := now.Add(-2 * time.Minute)
 	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
 	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
 		WithArgs(boundaryID, false, boundaryAt, int32(3)).
 		WillReturnRows(addOperatorRow(
-			sqlmock.NewRows(operatorTestColumns()), uuid.Must(uuid.NewV7()), "PLATUSER003", now.Add(-2*time.Minute),
+			sqlmock.NewRows(operatorTestColumns()), resultID, "PLATUSER003", resultAt,
 		))
 
 	resp, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{
@@ -95,8 +98,19 @@ func TestListOperatorsFollowsNextToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListOperators: %v", err)
 	}
+	if len(resp.Msg.Operators) != 1 || resp.Msg.Operators[0].PublicId != "PLATUSER003" {
+		t.Fatalf("operators = %+v, want PLATUSER003", resp.Msg.Operators)
+	}
 	if resp.Msg.PreviousToken == "" {
 		t.Fatal("previous_token is empty, want a token back to the previous page")
+	}
+	cursor, err := pagination.Decode(resp.Msg.PreviousToken)
+	if err != nil {
+		t.Fatalf("decode previous_token: %v", err)
+	}
+	wantKeys := []string{resultAt.Format(time.RFC3339Nano), resultID.String()}
+	if cursor.Direction != pagination.Backward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("previous_token = %+v, want backward keys %v", cursor, wantKeys)
 	}
 	if resp.Msg.NextToken != "" {
 		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
@@ -223,6 +237,24 @@ func TestListOperatorsRejectsInvalidToken(t *testing.T) {
 		}
 		assertOperatorHandlerExpectations(t, mock)
 	}
+}
+
+func TestListOperatorsHidesDatabaseError(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(errors.New("relation platform_users does not exist"))
+
+	_, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListOperators code = %v, want internal", connect.CodeOf(err))
+	}
+	if err.Error() != "internal: failed to list operators" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
 }
 
 func TestCreateOperatorSuccess(t *testing.T) {

@@ -4912,14 +4912,16 @@ SELECT pu.id,
     pu.status,
     pu.created_at
 FROM platform_users pu
-WHERE $1::uuid IS NULL
-    OR (
-        $2::boolean
-        AND (pu.created_at, pu.id) >= ($3::timestamptz, $1::uuid)
-    )
-    OR (
-        NOT $2::boolean
-        AND (pu.created_at, pu.id) > ($3::timestamptz, $1::uuid)
+WHERE (
+        $1::uuid IS NULL
+        OR (
+            $2::boolean
+            AND (pu.created_at, pu.id) >= ($3::timestamptz, $1::uuid)
+        )
+        OR (
+            NOT $2::boolean
+            AND (pu.created_at, pu.id) > ($3::timestamptz, $1::uuid)
+        )
     )
 ORDER BY pu.created_at ASC, pu.id ASC
 LIMIT $4
@@ -5002,14 +5004,16 @@ SELECT pu.id,
     pu.status,
     pu.created_at
 FROM platform_users pu
-WHERE $1::uuid IS NULL
-    OR (
-        $2::boolean
-        AND (pu.created_at, pu.id) <= ($3::timestamptz, $1::uuid)
-    )
-    OR (
-        NOT $2::boolean
-        AND (pu.created_at, pu.id) < ($3::timestamptz, $1::uuid)
+WHERE (
+        $1::uuid IS NULL
+        OR (
+            $2::boolean
+            AND (pu.created_at, pu.id) <= ($3::timestamptz, $1::uuid)
+        )
+        OR (
+            NOT $2::boolean
+            AND (pu.created_at, pu.id) < ($3::timestamptz, $1::uuid)
+        )
     )
 ORDER BY pu.created_at DESC, pu.id DESC
 LIMIT $4
