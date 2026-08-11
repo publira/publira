@@ -7,6 +7,12 @@ import { findByPublicIdWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
+import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
+import {
+  cursorPageRequest,
+  cursorPageTokens,
+  emptyCursorPageTokens,
+} from "./cursor-page";
 import { mentionsImageRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
@@ -25,9 +31,11 @@ export interface LabelItem {
   }[];
 }
 
-export type ListLabelsResult =
-  | { ok: true; labels: LabelItem[] }
-  | { ok: false; message: string; labels: LabelItem[] };
+export type ListLabelsResult = CursorPageTokens &
+  (
+    | { ok: true; labels: LabelItem[] }
+    | { ok: false; message: string; labels: LabelItem[] }
+  );
 
 export type CreateLabelResult =
   | { ok: true; label: LabelItem }
@@ -105,8 +113,16 @@ const mapLabel = (label: {
   publicId: label.publicId,
 });
 
+/**
+ * One page of the tenant's labels, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page, which
+ * reads as a broken order as soon as the list spans more than one page.
+ */
 export const listLabels = async (
-  tenantId: string
+  tenantId: string,
+  options: CursorPageOptions = {}
 ): Promise<ListLabelsResult> => {
   "use cache: private";
   cacheTag(`labels-${tenantId}`);
@@ -114,6 +130,7 @@ export const listLabels = async (
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
+      ...emptyCursorPageTokens,
       labels: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -123,21 +140,21 @@ export const listLabels = async (
   try {
     const response = await apiClient.label.listLabels(
       {
-        limit: 100,
+        ...cursorPageRequest(options),
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
     );
 
     return {
-      labels: (response.labels ?? [])
-        .map((item) => mapLabel(item))
-        .toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
+      ...cursorPageTokens(response),
+      labels: (response.labels ?? []).map((item) => mapLabel(item)),
       ok: true,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
+      ...emptyCursorPageTokens,
       labels: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,

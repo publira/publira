@@ -1,5 +1,3 @@
-"use client";
-
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -8,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { EmptyState } from "@publira/ui-components/empty-state";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   Table,
@@ -19,23 +16,87 @@ import {
   TableRow,
 } from "@publira/ui-components/table";
 import Link from "next/link";
-import { useMemo } from "react";
+
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { PaginationFooter } from "#components/pagination-controls";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
 
 import type { LabelListItem } from "../label-types";
 
-interface LabelManagerProps {
-  initialLabels: LabelListItem[];
-  initialListErrorMessage?: string;
-}
+type LabelManagerProps = CursorPageHrefs & {
+  labels: LabelListItem[];
+  listErrorMessage?: string;
+  pageSize: number;
+};
+
+const LabelListBody = ({
+  hasPageLinks,
+  labels,
+  listErrorMessage,
+}: {
+  hasPageLinks: boolean;
+  labels: LabelListItem[];
+  listErrorMessage?: string;
+}) => {
+  // A failed fetch still hands an empty `labels` array; do not show the empty
+  // list state alongside the error or operators will read it as "no labels".
+  if (listErrorMessage) {
+    return <FormMessage variant="destructive">{listErrorMessage}</FormMessage>;
+  }
+
+  if (labels.length === 0) {
+    return (
+      <CursorPageEmptyState
+        description="新規作成ページからレーベルを作成してください。"
+        hasPageLinks={hasPageLinks}
+        itemLabel="レーベル"
+        title="レーベルがまだ登録されていません。"
+      />
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>レーベル名</TableHead>
+          <TableHead className="w-56">操作</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {labels.map((label) => (
+          <TableRow key={label.publicId}>
+            <TableCell className="font-medium">{label.name}</TableCell>
+            <TableCell>
+              <div className="flex flex-wrap gap-2">
+                <LinkButton
+                  render={<Link href={`/labels/${label.publicId}`} />}
+                  variant="outline"
+                >
+                  編集
+                </LinkButton>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
 
 export const LabelManager = ({
-  initialLabels,
-  initialListErrorMessage,
+  labels,
+  listErrorMessage,
+  nextHref,
+  pageSize,
+  previousHref,
 }: LabelManagerProps) => {
-  const sortedLabels = useMemo(
-    () => initialLabels.toSorted((a, b) => a.name.localeCompare(b.name, "ja")),
-    [initialLabels]
-  );
+  const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+  // Hide the pager on a failed fetch: tokens are empty then, and a bare
+  // "previous/next" chrome next to the error looks like the list exists.
+  const showPagination =
+    !listErrorMessage && (labels.length > 0 || hasPageLinks);
 
   return (
     <Card>
@@ -50,45 +111,21 @@ export const LabelManager = ({
           レーベルを新規作成
         </LinkButton>
       </CardHeader>
-      <CardContent>
-        {initialListErrorMessage ? (
-          <FormMessage className="mb-4" variant="destructive">
-            {initialListErrorMessage}
-          </FormMessage>
-        ) : null}
+      <CardContent className="grid gap-4">
+        <LabelListBody
+          hasPageLinks={hasPageLinks}
+          labels={labels}
+          listErrorMessage={listErrorMessage}
+        />
 
-        {sortedLabels.length === 0 ? (
-          <EmptyState
-            description="新規作成ページからレーベルを作成してください。"
-            title="レーベルがまだ登録されていません。"
+        {showPagination ? (
+          <PaginationFooter
+            ariaLabel="レーベル一覧のページ送り"
+            description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
+            nextHref={nextHref}
+            previousHref={previousHref}
           />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>レーベル名</TableHead>
-                <TableHead className="w-56">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedLabels.map((label) => (
-                <TableRow key={label.publicId}>
-                  <TableCell className="font-medium">{label.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      <LinkButton
-                        render={<Link href={`/labels/${label.publicId}`} />}
-                        variant="outline"
-                      >
-                        編集
-                      </LinkButton>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

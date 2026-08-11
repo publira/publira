@@ -25,7 +25,105 @@ vi.mock("./api", () => ({
   }),
 }));
 
-describe("label lib", () => {
+const labelPage = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    name: `Label ${index + 1}`,
+    publicId: `LABEL${String(index + 1).padStart(3, "0")}`,
+  }));
+
+describe("listLabels", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
+    mockListLabels.mockResolvedValue({
+      labels: [],
+      nextToken: "next-page",
+      previousToken: "previous-page",
+    });
+
+    const { listLabels } = await import("./label");
+    const result = await listLabels("TENANT001", {
+      limit: 20,
+      token: "current-page",
+    });
+
+    expect(mockListLabels).toHaveBeenCalledWith(
+      {
+        limit: 20,
+        tenant: { tenantId: "TENANT001" },
+        token: "current-page",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      nextToken: "next-page",
+      ok: true,
+      previousToken: "previous-page",
+    });
+  });
+
+  it("最初のページは空のトークンで取得する", async () => {
+    mockListLabels.mockResolvedValue({ labels: [] });
+
+    const { listLabels } = await import("./label");
+    const result = await listLabels("TENANT001");
+
+    expect(mockListLabels).toHaveBeenCalledWith(
+      {
+        limit: 20,
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    // トークン未指定の応答でも、呼び出し側が分岐せずに済むよう空文字へそろえる。
+    expect(result).toMatchObject({
+      nextToken: "",
+      ok: true,
+      previousToken: "",
+    });
+  });
+
+  it("サーバーのキーセット順を並べ替えずに返す", async () => {
+    mockListLabels.mockResolvedValue({
+      labels: [
+        { name: "ぬ", publicId: "LABEL002" },
+        { name: "あ", publicId: "LABEL001" },
+      ],
+    });
+
+    const { listLabels } = await import("./label");
+    const result = await listLabels("TENANT001");
+
+    expect(result.labels.map((item) => item.publicId)).toEqual([
+      "LABEL002",
+      "LABEL001",
+    ]);
+  });
+
+  it("取得に失敗してもトークンなしの結果を返す", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockListLabels.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    const { listLabels } = await import("./label");
+    const result = await listLabels("TENANT001", { token: "current-page" });
+
+    expect(result).toMatchObject({
+      labels: [],
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+    });
+  });
+});
+
+describe("getLabel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -33,13 +131,9 @@ describe("label lib", () => {
   });
 
   it("cursor をたどって101件目のレーベルを取得する", async () => {
-    const firstPage = Array.from({ length: 100 }, (_, index) => ({
-      name: `Label ${index + 1}`,
-      publicId: `LABEL${String(index + 1).padStart(3, "0")}`,
-    }));
     mockListLabels
       .mockResolvedValueOnce({
-        labels: firstPage,
+        labels: labelPage(100),
         nextToken: "page-2",
       })
       .mockResolvedValueOnce({
