@@ -15,11 +15,43 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 var slugSegmentPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]*$`)
 
-const slugMaxLen = 255
+const (
+	slugMaxLen           = 255
+	defaultPageListLimit = int32(20)
+	maxPageListLimit     = int32(100)
+)
+
+func (s *adminServer) pagePage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]dbmodels.Page, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		return queries.ListPagesForTenantDesc(ctx, dbmodels.ListPagesForTenantDescParams{
+			TenantID:        tenantID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+	}
+
+	return queries.ListPagesForTenantAsc(ctx, dbmodels.ListPagesForTenantAscParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+}
 
 func pageFromModel(p dbmodels.Page) *publirattypesv1.Page {
 	proto := &publirattypesv1.Page{
@@ -249,17 +281,51 @@ func (s *adminServer) ListPages(
 	if _, err := s.requireTenantAdmin(ctx); err != nil {
 		return nil, err
 	}
-	rows, err := s.queriesFor(ctx).ListPagesForTenant(ctx, tenant.ID)
+
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultPageListLimit, maxPageListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+	}
+
+	rows, err := s.pagePage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	if err != nil {
+		s.logger.Error("failed to list pages", "error", err, "tenant_id", tenant.ID.String())
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
 	pages := make([]*publirattypesv1.Page, 0, len(rows))
 	for _, p := range rows {
 		pages = append(pages, pageFromModel(p))
 	}
-	return connect.NewResponse(&publiraadminv1.ListPagesResponse{
+	res := &publiraadminv1.ListPagesResponse{
 		Pages: pages,
-	}), nil
+	}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].CreatedAt, rows[0].ID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.CreatedAt, last.ID)
+		}
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *adminServer) GetPage(

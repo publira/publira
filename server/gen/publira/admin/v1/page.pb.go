@@ -248,9 +248,14 @@ func (x *UpdatePageResponse) GetPage() *v1.Page {
 	return nil
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListPagesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -292,9 +297,27 @@ func (x *ListPagesRequest) GetTenant() *v1.TenantContext {
 	return nil
 }
 
+func (x *ListPagesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListPagesRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type ListPagesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pages         []*v1.Page             `protobuf:"bytes,1,rep,name=pages,proto3" json:"pages,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Pages []*v1.Page             `protobuf:"bytes,1,rep,name=pages,proto3" json:"pages,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,6 +357,20 @@ func (x *ListPagesResponse) GetPages() []*v1.Page {
 		return x.Pages
 	}
 	return nil
+}
+
+func (x *ListPagesResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListPagesResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type GetPageRequest struct {
@@ -859,11 +896,16 @@ const file_publira_admin_v1_page_proto_rawDesc = "" +
 	"\x11display_in_footer\x18\x04 \x01(\bH\x00R\x0fdisplayInFooter\x88\x01\x01B\x14\n" +
 	"\x12_display_in_footer\"@\n" +
 	"\x12UpdatePageResponse\x12*\n" +
-	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"K\n" +
+	"\x04page\x18\x01 \x01(\v2\x16.publira.types.v1.PageR\x04page\"w\n" +
 	"\x10ListPagesRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"A\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\"\x87\x01\n" +
 	"\x11ListPagesResponse\x12,\n" +
-	"\x05pages\x18\x01 \x03(\v2\x16.publira.types.v1.PageR\x05pages\"b\n" +
+	"\x05pages\x18\x01 \x03(\v2\x16.publira.types.v1.PageR\x05pages\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"b\n" +
 	"\x0eGetPageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x17\n" +
 	"\apage_id\x18\x02 \x01(\tR\x06pageId\"=\n" +

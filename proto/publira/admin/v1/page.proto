@@ -30,12 +30,21 @@ message UpdatePageResponse {
   publira.types.v1.Page page = 1;
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 message ListPagesRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
 }
 
 message ListPagesResponse {
   repeated publira.types.v1.Page pages = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message GetPageRequest {
