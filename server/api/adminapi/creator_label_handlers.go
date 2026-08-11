@@ -33,9 +33,56 @@ import (
 const (
 	creatorIconMaxUploadBytes = 10 << 20
 	creatorIconMinDimension   = 256
+	defaultCreatorPageSize    = int32(20)
+	maxCreatorPageSize        = int32(100)
 	defaultLabelPageSize      = int32(20)
 	maxLabelPageSize          = int32(100)
 )
+
+type creatorPageRow struct {
+	id                     uuid.UUID
+	publicID               string
+	name                   string
+	profileText            sql.NullString
+	createdAt              time.Time
+	iconImageID            uuid.NullUUID
+	iconImageFileSizeBytes int64
+	iconImageUpdatedAt     sql.NullTime
+}
+
+func mapCreatorDescRows(rows []dbmodels.ListCreatorsByTenantDescRow) []creatorPageRow {
+	mapped := make([]creatorPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, creatorPageRow{
+			id:                     row.ID,
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			profileText:            row.ProfileText,
+			createdAt:              row.CreatedAt,
+			iconImageID:            row.IconImageID,
+			iconImageFileSizeBytes: row.IconImageFileSizeBytes,
+			iconImageUpdatedAt:     row.IconImageUpdatedAt,
+		})
+	}
+	return mapped
+}
+
+func mapCreatorAscRows(rows []dbmodels.ListCreatorsByTenantAscRow) []creatorPageRow {
+	mapped := make([]creatorPageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, creatorPageRow{
+			id:                     row.ID,
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			profileText:            row.ProfileText,
+			createdAt:              row.CreatedAt,
+			iconImageID:            row.IconImageID,
+			iconImageFileSizeBytes: row.IconImageFileSizeBytes,
+			iconImageUpdatedAt:     row.IconImageUpdatedAt,
+		})
+	}
+	return mapped
+}
 
 type labelPageRow struct {
 	id                     uuid.UUID
@@ -364,6 +411,41 @@ func (s *adminServer) labelPage(
 	return mapLabelDescRows(rows), nil
 }
 
+func (s *adminServer) creatorPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]creatorPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListCreatorsByTenantAsc(ctx, dbmodels.ListCreatorsByTenantAscParams{
+			TenantID:        tenantID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return mapCreatorAscRows(rows), nil
+	}
+
+	rows, err := queries.ListCreatorsByTenantDesc(ctx, dbmodels.ListCreatorsByTenantDescParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapCreatorDescRows(rows), nil
+}
+
 func (s *adminServer) ListCreators(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListCreatorsRequest],
@@ -372,30 +454,55 @@ func (s *adminServer) ListCreators(
 	if err != nil {
 		return nil, err
 	}
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > 100 {
-		limit = 20
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultCreatorPageSize, maxCreatorPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
-	rows, err := s.queriesFor(ctx).ListCreatorsByTenant(ctx, dbmodels.ListCreatorsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+
+	rows, err := s.creatorPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+
 	items := make([]*publirattypesv1.Creator, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, protomapper.CreatorFromRow(
-			row.PublicID,
-			row.Name,
-			row.ProfileText.String,
-			row.IconImageID,
-			row.IconImageFileSizeBytes,
-			row.IconImageUpdatedAt,
+			row.publicID,
+			row.name,
+			row.profileText.String,
+			row.iconImageID,
+			row.iconImageFileSizeBytes,
+			row.iconImageUpdatedAt,
 		))
 	}
-	return connect.NewResponse(&publiraadminv1.ListCreatorsResponse{Creators: items}), nil
+
+	res := &publiraadminv1.ListCreatorsResponse{Creators: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+		}
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *adminServer) ListLabels(

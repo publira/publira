@@ -798,6 +798,9 @@ CREATE INDEX idx_creator_images_creator_id ON creator_images USING btree (creato
 -- INDEX: idx_creator_images_tenant_id
 CREATE INDEX idx_creator_images_tenant_id ON creator_images USING btree (tenant_id);
 
+-- INDEX: idx_creators_tenant_created_at
+CREATE INDEX idx_creators_tenant_created_at ON creators USING btree (tenant_id, created_at DESC, id DESC);
+
 -- INDEX: idx_episode_image_variants_episode_image_id
 CREATE INDEX idx_episode_image_variants_episode_image_id ON episode_image_variants USING btree (episode_image_id);
 

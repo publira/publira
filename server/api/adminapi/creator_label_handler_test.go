@@ -19,9 +19,57 @@ import (
 )
 
 const (
-	listLabelsByTenantAscQuery  = "-- name: ListLabelsByTenantAsc :many\n"
-	listLabelsByTenantDescQuery = "-- name: ListLabelsByTenantDesc :many\n"
+	listCreatorsByTenantAscQuery  = "-- name: ListCreatorsByTenantAsc :many\n"
+	listCreatorsByTenantDescQuery = "-- name: ListCreatorsByTenantDesc :many\n"
+	listLabelsByTenantAscQuery    = "-- name: ListLabelsByTenantAsc :many\n"
+	listLabelsByTenantDescQuery   = "-- name: ListLabelsByTenantDesc :many\n"
 )
+
+func creatorColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id",
+		"tenant_id",
+		"public_id",
+		"name",
+		"profile_text",
+		"created_at",
+		"icon_image_id",
+		"icon_image_updated_at",
+		"icon_image_file_size_bytes",
+		"icon_image_width",
+		"icon_image_height",
+	})
+}
+
+func addCreatorRow(
+	rows *sqlmock.Rows,
+	id, tenantID uuid.UUID,
+	publicID, name string,
+	createdAt time.Time,
+) *sqlmock.Rows {
+	return rows.AddRow(id, tenantID, publicID, name, "profile", createdAt, nil, nil, int64(0), int32(0), int32(0))
+}
+
+func newCreatorClient(
+	t *testing.T,
+	tenantID, userID uuid.UUID,
+	now time.Time,
+) (publiraadminv1connect.AdminCreatorServiceClient, sqlmock.Sqlmock, string) {
+	t.Helper()
+	testServer, mock := newTestAdminServer(t)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	return publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+}
+
+func newCreatorRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListCreatorsRequest] {
+	req := connect.NewRequest(&publiraadminv1.ListCreatorsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	return req
+}
 
 func labelColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
@@ -66,27 +114,16 @@ func newLabelRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[p
 }
 
 func TestListCreatorsSuccess(t *testing.T) {
-	testServer, mock := newTestAdminServer(t)
-
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
 
-	expectTenantLookup(mock, tenantID, "TENANT", now)
-	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery("FROM creators").
-		WithArgs(tenantID, int32(20), int32(0)).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", "profile", now, nil, nil, int64(0), int32(0), int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(addCreatorRow(creatorColumns(), uuid.Must(uuid.NewV7()), tenantID, "CREATOR001", "Creator One", now))
 
-	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.ListCreatorsRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-	})
-	req.Header().Set("Authorization", "Bearer "+sessionToken)
-
-	resp, err := client.ListCreators(context.Background(), req)
+	resp, err := client.ListCreators(context.Background(), newCreatorRequest(tenantID, sessionToken))
 	if err != nil {
 		t.Fatalf("ListCreators: %v", err)
 	}
@@ -95,6 +132,243 @@ func TestListCreatorsSuccess(t *testing.T) {
 	}
 	if resp.Msg.Creators[0].PublicId != "CREATOR001" {
 		t.Fatalf("creator public_id = %q, want CREATOR001", resp.Msg.Creators[0].PublicId)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListCreatorsFirstPageReportsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
+		WillReturnRows(addCreatorRow(
+			addCreatorRow(
+				addCreatorRow(creatorColumns(), ids[0], tenantID, "CREATOR001", "First", now),
+				ids[1], tenantID, "CREATOR002", "Second", now.Add(-time.Minute),
+			),
+			ids[2], tenantID, "CREATOR003", "Third", now.Add(-2*time.Minute),
+		))
+
+	req := newCreatorRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	resp, err := client.ListCreators(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListCreators: %v", err)
+	}
+	if len(resp.Msg.Creators) != 2 {
+		t.Fatalf("creators count = %d, want the over-fetched row dropped", len(resp.Msg.Creators))
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	cursor, err := pagination.Decode(resp.Msg.NextToken)
+	if err != nil {
+		t.Fatalf("decode next_token: %v", err)
+	}
+	wantKeys := []string{now.Add(-time.Minute).Format(time.RFC3339Nano), ids[1].String()}
+	if cursor.Direction != pagination.Forward || !slices.Equal(cursor.Keys, wantKeys) {
+		t.Fatalf("next_token = %+v, want forward keys %v", cursor, wantKeys)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListCreatorsFollowsNextToken(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-time.Minute)
+	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addCreatorRow(creatorColumns(), uuid.Must(uuid.NewV7()), tenantID, "CREATOR003", "Last", now.Add(-2*time.Minute)))
+
+	req := newCreatorRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Forward, boundaryAt, boundaryID)
+	resp, err := client.ListCreators(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListCreators: %v", err)
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListCreatorsFollowsPreviousTokenBackwards(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	boundaryAt := now.Add(-10 * time.Minute)
+	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+	olderID := uuid.Must(uuid.NewV7())
+	newerID := uuid.Must(uuid.NewV7())
+
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantAscQuery)).
+		WithArgs(tenantID, boundaryID, false, boundaryAt, int32(3)).
+		WillReturnRows(addCreatorRow(
+			addCreatorRow(creatorColumns(), olderID, tenantID, "CREATOR002", "Older", now.Add(-2*time.Minute)),
+			newerID, tenantID, "CREATOR001", "Newer", now.Add(-time.Minute),
+		))
+
+	req := newCreatorRequest(tenantID, sessionToken)
+	req.Msg.Limit = 2
+	req.Msg.Token = pagination.EncodeTimeUUID(pagination.Backward, boundaryAt, boundaryID)
+	resp, err := client.ListCreators(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListCreators: %v", err)
+	}
+	publicIDs := make([]string, 0, len(resp.Msg.Creators))
+	for _, creator := range resp.Msg.Creators {
+		publicIDs = append(publicIDs, creator.PublicId)
+	}
+	if !slices.Equal(publicIDs, []string{"CREATOR001", "CREATOR002"}) {
+		t.Fatalf("public_ids = %v, want backward page restored to descending order", publicIDs)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListCreatorsEmptyPageKeepsAWayBack(t *testing.T) {
+	tests := []struct {
+		name              string
+		direction         pagination.Direction
+		wantQuery         string
+		recoveryDirection pagination.Direction
+	}{
+		{
+			name:              "forward",
+			direction:         pagination.Forward,
+			wantQuery:         listCreatorsByTenantDescQuery,
+			recoveryDirection: pagination.Backward,
+		},
+		{
+			name:              "backward",
+			direction:         pagination.Backward,
+			wantQuery:         listCreatorsByTenantAscQuery,
+			recoveryDirection: pagination.Forward,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			boundaryID := uuid.Must(uuid.NewV7())
+			client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, boundaryID, false, now, int32(21)).
+				WillReturnRows(creatorColumns())
+
+			req := newCreatorRequest(tenantID, sessionToken)
+			req.Msg.Token = pagination.EncodeTimeUUID(test.direction, now, boundaryID)
+			resp, err := client.ListCreators(context.Background(), req)
+			if err != nil {
+				t.Fatalf("ListCreators: %v", err)
+			}
+			recoveryToken := resp.Msg.PreviousToken
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+			}
+			wantRecoveryToken := pagination.EncodeTimeUUIDRecovery(test.recoveryDirection, now, boundaryID)
+			if recoveryToken != wantRecoveryToken {
+				t.Fatalf("recovery token = %q, want %q", recoveryToken, wantRecoveryToken)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestListCreatorsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	boundaryID := uuid.Must(uuid.NewV7())
+	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantAscQuery)).
+		WithArgs(tenantID, boundaryID, true, now, int32(21)).
+		WillReturnRows(creatorColumns())
+
+	req := newCreatorRequest(tenantID, sessionToken)
+	req.Msg.Token = pagination.EncodeTimeUUIDRecovery(pagination.Backward, now, boundaryID)
+	resp, err := client.ListCreators(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListCreators: %v", err)
+	}
+	if len(resp.Msg.Creators) != 0 {
+		t.Fatalf("creators = %d rows, want an empty page", len(resp.Msg.Creators))
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty once recovery also came back empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestListCreatorsRejectsInvalidToken(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+	}{
+		{name: "invalid encoding", token: "not-a-valid-token"},
+		{name: "invalid key", token: pagination.Encode(pagination.Forward, "not-a-time", uuid.Must(uuid.NewV7()).String())},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+			req := newCreatorRequest(tenantID, sessionToken)
+			req.Msg.Token = test.token
+
+			_, err := client.ListCreators(context.Background(), req)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("ListCreators code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+			}
+			if err.Error() != "invalid_argument: token is invalid" {
+				t.Fatalf("error = %q, want token internals hidden", err)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestListCreatorsLimitOutOfRangeUsesDefault(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newCreatorClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listCreatorsByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnRows(creatorColumns())
+
+	req := newCreatorRequest(tenantID, sessionToken)
+	req.Msg.Limit = 101
+	if _, err := client.ListCreators(context.Background(), req); err != nil {
+		t.Fatalf("ListCreators: %v", err)
 	}
 	assertExpectations(t, mock)
 }

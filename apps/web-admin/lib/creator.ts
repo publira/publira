@@ -6,7 +6,7 @@ import {
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
-import { findByPublicId } from "./paged-lookup";
+import { findByPublicIdWithToken } from "./paged-lookup";
 import { getAccessToken } from "./session";
 
 export interface CreatorItem {
@@ -91,7 +91,6 @@ export const listCreators = async (
     const response = await apiClient.creator.listCreators(
       {
         limit: 100,
-        offset: 0,
         tenant: { tenantId },
       },
       withSessionHeaders(sessionId)
@@ -229,19 +228,22 @@ export const getCreator = async (input: {
 
   try {
     // `creator.proto` has no `GetCreator`, so the record has to be found by
-    // walking `ListCreators`; see `findByPublicId`.
-    const creator = await findByPublicId(
+    // walking `ListCreators`; see `findByPublicIdWithToken`.
+    const creator = await findByPublicIdWithToken(
       input.publicId,
-      async (offset, limit) => {
+      async (token, limit) => {
         const response = await apiClient.creator.listCreators(
           {
             limit,
-            offset,
             tenant: { tenantId: input.tenantId },
+            token,
           },
           withSessionHeaders(sessionId)
         );
-        return response.creators ?? [];
+        return {
+          items: response.creators ?? [],
+          nextToken: response.nextToken,
+        };
       }
     );
     if (!creator) {
