@@ -265,7 +265,9 @@ describe("getLabel", () => {
       labels: [],
       message:
         "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
     });
   });
 });

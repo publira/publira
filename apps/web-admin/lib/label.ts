@@ -220,6 +220,7 @@ export const listAllLabels = async (
     // option list that looks complete.
     if (walkStop !== "completed") {
       return {
+        ...emptyCursorPageTokens,
         labels: [],
         message: genericListErrorMessage,
         ok: false,
