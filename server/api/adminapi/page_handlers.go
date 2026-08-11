@@ -297,8 +297,7 @@ func (s *adminServer) ListPages(
 
 	rows, err := s.pagePage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		s.logger.Error("failed to list pages", "error", err, "tenant_id", tenant.ID.String())
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		return nil, s.internalDBError("failed to list pages", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -442,13 +441,11 @@ func (s *adminServer) ListVersions(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		s.logger.Error("failed to get page for list versions", "error", err, "tenant_id", tenant.ID.String())
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		return nil, s.internalDBError("failed to get page for list versions", err, "tenant_id", tenant.ID.String())
 	}
 	rows, err := s.queriesFor(ctx).ListPageVersionsByPageID(ctx, pageID)
 	if err != nil {
-		s.logger.Error("failed to list page versions", "error", err, "tenant_id", tenant.ID.String())
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		return nil, s.internalDBError("failed to list page versions", err, "tenant_id", tenant.ID.String())
 	}
 	versions := make([]*publirattypesv1.PageVersion, 0, len(rows))
 	for _, v := range rows {

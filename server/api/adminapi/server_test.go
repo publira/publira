@@ -1,10 +1,14 @@
 package adminapi
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"connectrpc.com/connect"
 )
 
 // TestAdminHandlerExposesOnlyAdminRoutes は、NewHandler が管理 API (AdminSeriesService, AdminAuthService) だけ
@@ -29,6 +33,25 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 func newAdminRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(NewHandler(nil, nil, nil, slog.Default(), nil, nil))
+}
+
+func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
+	server := &adminServer{logger: slog.Default()}
+
+	if got := server.internalDBError("ignored", context.Canceled); !errors.Is(got, context.Canceled) {
+		t.Fatalf("canceled error = %v, want context.Canceled", got)
+	}
+	if got := server.internalDBError("ignored", context.DeadlineExceeded); !errors.Is(got, context.DeadlineExceeded) {
+		t.Fatalf("deadline error = %v, want context.DeadlineExceeded", got)
+	}
+
+	err := server.internalDBError("failed to list example", errors.New(`pq: relation "x" does not exist`))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
 }
 
 func assertRouteRegistered(t *testing.T, ts *httptest.Server, path string, wantRegistered bool) {

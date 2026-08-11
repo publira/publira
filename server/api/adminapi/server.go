@@ -48,6 +48,21 @@ func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
 }
 
+// internalDBError keeps context cancellation and deadline errors as-is so
+// Connect can map them to CodeCanceled / CodeDeadlineExceeded. Other DB
+// failures are logged and replaced with a generic client-facing message so
+// driver details never leave the server.
+func (s *adminServer) internalDBError(msg string, err error, keyvals ...any) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	args := make([]any, 0, len(keyvals)+2)
+	args = append(args, keyvals...)
+	args = append(args, "error", err)
+	s.logger.Error(msg, args...)
+	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+}
+
 func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
 	return rpcmiddleware.ResolveTenantID(ctx, nil)
 }
@@ -65,7 +80,7 @@ func (s *adminServer) tenantByContext(ctx context.Context, tenantCtx *publiratty
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return dbmodels.Tenant{}, connect.NewError(connect.CodeInternal, err)
+		return dbmodels.Tenant{}, s.internalDBError("failed to get tenant", err, "tenant_id", tenantID.String())
 	}
 	return tenant, nil
 }
