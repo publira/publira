@@ -66,8 +66,12 @@ export { RadioGroup } from "./radio-group";
 export type { RadioGroupProps } from "./radio-group";
 export { Select } from "./select";
 export type { SelectProps } from "./select";
-export { Skeleton, SkeletonCard, SkeletonText } from "./skeleton";
-export type { SkeletonCardProps, SkeletonTextProps } from "./skeleton";
+export { Skeleton, SkeletonCard, SkeletonLine, SkeletonText } from "./skeleton";
+export type {
+  SkeletonCardProps,
+  SkeletonLineProps,
+  SkeletonTextProps,
+} from "./skeleton";
 export { Switch } from "./switch";
 export type { SwitchProps } from "./switch";
 export {

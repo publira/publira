@@ -16,6 +16,23 @@ export const Skeleton = ({ className, ...props }: DivProps) => (
   />
 );
 
+export type SkeletonLineProps = ComponentPropsWithoutRef<"span">;
+
+/**
+ * 見出しやボタンなど、行内フローの中に置くためのスケルトン。
+ * ブロック要素の `Skeleton` を差し込むと行が崩れる場所で使う。
+ */
+export const SkeletonLine = ({ className, ...props }: SkeletonLineProps) => (
+  <span
+    {...props}
+    aria-hidden
+    className={cn(
+      "inline-block rounded-md bg-muted/70 align-middle motion-safe:animate-pulse",
+      className
+    )}
+  />
+);
+
 export type SkeletonTextProps = DivProps & {
   lines?: number;
 };

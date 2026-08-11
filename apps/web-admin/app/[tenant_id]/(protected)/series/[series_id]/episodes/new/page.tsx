@@ -1,4 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
   guardPlaceholder,
@@ -36,13 +37,6 @@ const resolveSeriesId = async (params: NewEpisodePageProps["params"]) => {
   guardPlaceholder(seriesId);
   return seriesId;
 };
-
-const TextLineSkeleton = ({ className }: { className: string }) => (
-  <span
-    aria-hidden
-    className={`inline-block animate-pulse rounded bg-muted align-middle ${className}`}
-  />
-);
 
 const NewEpisodeEyebrow = async ({
   params,
@@ -96,7 +90,7 @@ const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>
-          <Suspense fallback={<TextLineSkeleton className="h-3 w-40" />}>
+          <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
             <NewEpisodeEyebrow params={params} />
           </Suspense>
         </AdminPageEyebrow>
@@ -106,7 +100,7 @@ const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
-        <Suspense fallback={<TextLineSkeleton className="h-10 w-56" />}>
+        <Suspense fallback={<SkeletonLine className="h-10 w-56" />}>
           <NewEpisodeActions params={params} />
         </Suspense>
       </AdminPageActions>

@@ -18,12 +18,28 @@ export default function Example() {
 }
 ```
 
+### 行内で使う場合は `SkeletonLine`
+
+`Skeleton` は `<div>` なので、見出しやボタン行の中に差し込むと行内フローが崩れます。`<Suspense>` の fallback を見出しやアクションの位置に置くときは `<span>` ベースの `SkeletonLine` を使ってください。
+
+```tsx
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
+
+<AdminPageTitle>
+  <Suspense fallback={<SkeletonLine className="h-7 w-64" />}>
+    <EditLabelTitle searchParams={searchParams} />
+  </Suspense>
+</AdminPageTitle>;
+```
+
 ## Subpath import
 
 ```tsx
 import {
   Skeleton,
   SkeletonCard,
+  SkeletonLine,
   SkeletonText,
 } from "@publira/ui-components/skeleton";
 ```
