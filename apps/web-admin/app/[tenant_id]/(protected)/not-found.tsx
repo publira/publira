@@ -17,8 +17,8 @@ import {
  * `notFound()`, so the copy stays resource-agnostic.
  *
  * Rendered inside `(protected)/layout.tsx`, which keeps the console sidebar and
- * header. Unmatched URLs that never resolve to a tenant are #646, not this
- * boundary.
+ * header. URLs that match no route at all are handled by
+ * `app/global-not-found.tsx` (#646), not this boundary.
  *
  * No `<main>` here: `ConsoleLayoutMain` already provides one.
  *
@@ -50,8 +50,8 @@ import {
  * read, so a `notFound()` raised while resolving the resource cannot change the
  * status: this UI arrives in the flight payload and paints after hydration
  * rather than in the SSR `<body>`. Do not "fix" it by hoisting the fetch to an
- * outer boundary. (#646 covers unmatched URLs that never resolve to a tenant,
- * which is a separate question, not a later fix for this one.)
+ * outer boundary. Truly unmatched URLs use `app/global-not-found.tsx` and are
+ * a separate path, not a later fix for this status behaviour.
  */
 const NotFound = () => (
   <AdminPage>

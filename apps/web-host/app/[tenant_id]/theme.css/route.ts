@@ -26,9 +26,9 @@ export const GET = async (
   // Route Handlers cannot use `next/root-params`, so the raw segment is read
   // here instead of via `getTenantId()`.
   // The placeholder appears while generating this route's static paths, and a
-  // non-UUID segment means the request bypassed `proxy.ts` (e.g. /favicon.ico).
-  // Either way there is no tenant: serve the default theme rather than calling
-  // the API with a value it will reject.
+  // non-UUID segment means the request bypassed `proxy.ts`. Either way there is
+  // no tenant: serve the default theme rather than calling the API with a value
+  // it will reject. `/favicon.ico` itself is handled by `app/favicon.ico` (#646).
   if (isPlaceholderStaticParam(tenantId) || !isTenantIdFormat(tenantId)) {
     return cssResponse(toPubliraThemeCssText(null));
   }

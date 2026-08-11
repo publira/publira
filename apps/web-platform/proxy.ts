@@ -53,6 +53,14 @@ export const proxy = async (request: NextRequest) => {
   return NextResponse.redirect(buildLoginUrl(request.nextUrl));
 };
 
+/**
+ * Skip proxy for static asset paths that need no auth / setup checks.
+ *
+ * Role split with `app/global-not-found.tsx` and `app/favicon.ico` (#646):
+ * - This matcher keeps `_next/*` and `favicon.ico` out of the auth gate.
+ * - `app/favicon.ico` serves the browser's default favicon request.
+ * - `global-not-found.tsx` answers URLs that match no route at all.
+ */
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

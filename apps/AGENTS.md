@@ -154,6 +154,30 @@ Barrel vs subpath is existing drift, not a rule — follow whatever the surround
 - **Sizing** → lucide is always `viewBox="0 0 24 24"` at `strokeWidth={2}`. Pick a `size-*` / `h-* w-*` class that suits the layout and leave the rest at lucide's defaults. Do not carry dimensions or stroke widths over from markup you are deleting.
 - **A genuine non-icon SVG** (decorative artwork, a chart, a generated image) is a real exception. Add its path to the grep step's exclusions in `.github/workflows/ci.yml`, with a comment saying why — the same way the `Date` boundary is handled in root [AGENTS.md](../AGENTS.md).
 
+## Global unmatched 404 (`global-not-found.tsx`)
+
+All three apps enable `experimental.globalNotFound` and ship `app/global-not-found.tsx` (#646).
+
+| Concern | Where it lives |
+| --- | --- |
+| URL matches no route at all | `app/global-not-found.tsx` — full HTML document, **no** app layout, **no** tenant RPC |
+| `notFound()` for a missing / invisible resource under a resolved tenant or session | Segment `not-found.tsx` inside `(site)` / `(protected)` — keeps site or console chrome |
+| Browser `/favicon.ico` and `_next/*` | `proxy.ts` matcher exclusions (skip tenant / auth work) **and** `app/favicon.ico` so the path never becomes `[tenant_id]="favicon.ico"` |
+| Non-UUID `[tenant_id]` that still reaches the tree | `isTenantIdFormat` / `getTenantId()` → `notFound()` (last line of defence) |
+
+`global-not-found.tsx` bypasses every layout, so it must import `globals.css` (and any fonts it needs) itself. Do **not** link tenant `/theme.css` there: there is no tenant context on an unmatched URL; brand defaults from `@publira/brand` are the intended look.
+
+### `experimental.globalNotFound` is experimental
+
+The flag is still under `experimental` in Next.js (introduced in 15.4). If it is removed, renamed, or the default flips:
+
+1. Drop or rename the flag in each app's `next.config.ts`.
+2. Keep or delete `app/global-not-found.tsx` to match the then-current Next.js file convention (`node_modules/next/dist/docs/` for that app's Next version).
+3. Re-check that URLs which match no route still return 404 **without** entering `app/[tenant_id]/layout.tsx` on `web-host` / `web-admin` (those apps have no root layout above the dynamic segment — that is why this file exists).
+4. Confirm `/favicon.ico` still serves the metadata file and does not issue a tenant RPC.
+
+Until the flag stabilises, do not build alternative "fake root layout" 404 schemes for the same job — that is explicitly out of scope for #646.
+
 ## Before coding in an app
 
 1. Read this file (`apps/AGENTS.md`).
