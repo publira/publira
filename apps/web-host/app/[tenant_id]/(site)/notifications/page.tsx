@@ -1,17 +1,22 @@
 import { revalidateTag } from "next/cache";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import {
   listMyNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "#lib/notifications";
 import { getTenantId } from "#lib/tenant-id";
+
+/*
+ * The session id is left to `resolveAccessToken()` inside `#lib/notifications`.
+ * The `publira_web_host_auth` cookie holds an *encrypted* session payload, not
+ * a bearer token, so reading it here and passing the raw value on made every
+ * call fail `unauthenticated`; only the library's own cookie path decrypts it.
+ */
 
 const markNotificationAsReadAction = async (
   formData: FormData
@@ -25,11 +30,7 @@ const markNotificationAsReadAction = async (
     return;
   }
 
-  const cookieStore = await cookies();
-  const sessionId =
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
-
-  await markNotificationAsRead(tenantId, notificationId, sessionId);
+  await markNotificationAsRead(tenantId, notificationId);
   revalidateTag(`member-notifications-${tenantId}`, "max");
 };
 
@@ -43,11 +44,7 @@ const markAllNotificationsAsReadAction = async (
     return;
   }
 
-  const cookieStore = await cookies();
-  const sessionId =
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
-
-  await markAllNotificationsAsRead(tenantId, sessionId);
+  await markAllNotificationsAsRead(tenantId);
   revalidateTag(`member-notifications-${tenantId}`, "max");
 };
 
@@ -64,12 +61,8 @@ const markNotificationAsReadAndNavigateAction = async (
     return;
   }
 
-  const cookieStore = await cookies();
-  const sessionId =
-    cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
-
   if (notificationId) {
-    await markNotificationAsRead(tenantId, notificationId, sessionId);
+    await markNotificationAsRead(tenantId, notificationId);
     revalidateTag(`member-notifications-${tenantId}`, "max");
   }
 
@@ -79,10 +72,8 @@ const markNotificationAsReadAndNavigateAction = async (
 const NotificationsSection = async () => {
   const tenantId = await getTenantId();
   await connection();
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value ?? "";
 
-  const result = await listMyNotifications(tenantId, sessionId);
+  const result = await listMyNotifications(tenantId);
   if (!result.ok && result.requiresSignIn) {
     redirect("/login?returnTo=%2Fnotifications");
   }
