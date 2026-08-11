@@ -922,7 +922,9 @@ CREATE INDEX idx_series_tenant_published_at ON series USING btree (tenant_id, is
 CREATE INDEX idx_series_tenant_title ON series USING btree (tenant_id, is_published, title, id);
 
 -- INDEX: idx_tenant_admin_invitations_tenant_created_at
-CREATE INDEX idx_tenant_admin_invitations_tenant_created_at ON tenant_admin_invitations USING btree (tenant_id, created_at DESC);
+-- 末尾の id は招待一覧の cursor のタイブレーカー。btree は逆順にも走査
+-- できるので、この 1 本で次ページと前ページの両方を索引順に取り出せる。
+CREATE INDEX idx_tenant_admin_invitations_tenant_created_at ON tenant_admin_invitations USING btree (tenant_id, created_at DESC, id DESC);
 
 -- INDEX: idx_tenant_admin_invitations_tenant_token_hash
 CREATE UNIQUE INDEX idx_tenant_admin_invitations_tenant_token_hash ON tenant_admin_invitations USING btree (tenant_id, token_hash);

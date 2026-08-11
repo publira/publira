@@ -212,7 +212,11 @@ type Querier interface {
 	ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error)
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
 	ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error)
-	ListTenantAdminInvitations(ctx context.Context, arg ListTenantAdminInvitationsParams) ([]TenantAdminInvitation, error)
+	ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTenantAdminInvitationsAscParams) ([]TenantAdminInvitation, error)
+	// Platform ListTenantAdminInvitations は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
 	// テナントユーザーのロール一覧を取得する
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	// テナントに所属する管理・編集ユーザー一覧を取得する
