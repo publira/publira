@@ -38,10 +38,15 @@ const (
 
 	platformDBUser     = "publira_platform"
 	platformDBPassword = "platformpass"
+
+	// The admin API role is deliberately not BYPASSRLS: every statement it runs
+	// is filtered by the tenant isolation policies.
+	adminDBUser     = "publira_admin"
+	adminDBPassword = "adminpass"
 )
 
-// SeededPassword is the plaintext behind the password hash of every platform user
-// seeded by this package. Tests that drive a real Login need the cleartext.
+// SeededPassword is the plaintext behind the password hash of every user seeded
+// by this package. Tests that drive a real Login need the cleartext.
 const SeededPassword = "password-for-tests-only"
 
 // PostgresEnv holds a shared Testcontainers PostgreSQL instance prepared with
@@ -52,6 +57,8 @@ type PostgresEnv struct {
 	URL string
 	// Application (platform API) DSN using publira_platform.
 	PlatformURL string
+	// Application (admin API) DSN using publira_admin, which is subject to RLS.
+	AdminURL string
 
 	// Superuser pool used for setup and seeding.
 	DB *sql.DB
@@ -165,7 +172,13 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 	}
 	configurePool(db)
 
-	platformURL, err := platformConnectionString(connURL)
+	platformURL, err := appConnectionString(connURL, platformDBUser, platformDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	adminURL, err := appConnectionString(connURL, adminDBUser, adminDBPassword)
 	if err != nil {
 		_ = db.Close()
 		_ = testcontainers.TerminateContainer(container)
@@ -176,6 +189,7 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		Container:   container,
 		URL:         connURL,
 		PlatformURL: platformURL,
+		AdminURL:    adminURL,
 		DB:          db,
 	}, nil
 }
@@ -217,9 +231,22 @@ func (e *PostgresEnv) Reset(t *testing.T) {
 // The connection is closed via t.Cleanup.
 func (e *PostgresEnv) OpenPlatformDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("pgx", e.PlatformURL)
+	return e.openAppDB(t, e.PlatformURL, platformDBUser)
+}
+
+// OpenAdminDB opens a connection as publira_admin, the RLS-bound role the admin
+// API runs as. Statements only see rows of the tenant the session set through
+// app.current_tenant_id. The connection is closed via t.Cleanup.
+func (e *PostgresEnv) OpenAdminDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.AdminURL, adminDBUser)
+}
+
+func (e *PostgresEnv) openAppDB(t *testing.T, dsn, role string) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		t.Fatalf("open platform db: %v", err)
+		t.Fatalf("open %s db: %v", role, err)
 	}
 	db.SetMaxOpenConns(5)
 	db.SetMaxIdleConns(2)
@@ -228,7 +255,7 @@ func (e *PostgresEnv) OpenPlatformDB(t *testing.T) *sql.DB {
 	defer cancel()
 	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
-		t.Fatalf("ping platform db: %v", err)
+		t.Fatalf("ping %s db: %v", role, err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	return db
@@ -412,12 +439,12 @@ func findRepoRoot() (string, error) {
 	}
 }
 
-func platformConnectionString(superuserURL string) (string, error) {
+func appConnectionString(superuserURL, user, password string) (string, error) {
 	u, err := url.Parse(superuserURL)
 	if err != nil {
 		return "", fmt.Errorf("parse postgres url: %w", err)
 	}
-	u.User = url.UserPassword(platformDBUser, platformDBPassword)
+	u.User = url.UserPassword(user, password)
 	return u.String(), nil
 }
 
