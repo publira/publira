@@ -28,10 +28,12 @@ import { ErrorScreen } from "#components/error-screen";
  * Reach, as measured against `next dev` by throwing from a page body: a direct
  * hit renders this screen with the sidebar and header intact, after hydration,
  * with the response status left at 200 (see `not-found.tsx` for why the status
- * is already committed). The production build was not measured — the equivalent
- * web-host boundary answers a bare `500 Internal Server Error` there instead,
- * which #683 is tracking; whatever that turns out to be, this app has the same
- * root-layout-under-a-dynamic-segment shape and is likely to share it.
+ * is already committed). The production build follows the rule #683 measured on
+ * web-host, which is a framework one and applies here unchanged: a failure
+ * raised after the static shell has been flushed — every failed read, since they
+ * all cross the network — reaches this boundary, while one raised in the first
+ * synchronous pass aborts the response as a bare `500 Internal Server Error`
+ * that no boundary can catch.
  */
 const ConsoleError = ({
   error,

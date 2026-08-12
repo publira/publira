@@ -20,7 +20,9 @@ import { ErrorScreen } from "#components/error-screen";
  *
  * Measured against `next dev` by throwing from `(protected)/layout.tsx`: a
  * direct hit renders this screen, with no console chrome, as intended. Same
- * caveat as `(protected)/error.tsx` about the production build and #683.
+ * production-build rule as `(protected)/error.tsx` — a failure reaches this
+ * boundary once the static shell has been flushed, and aborts the response as a
+ * bare 500 before that (#683).
  */
 const TenantError = ({
   error,
