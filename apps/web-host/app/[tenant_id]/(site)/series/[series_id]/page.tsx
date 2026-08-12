@@ -109,7 +109,7 @@ const Page = async (props: PageProps<"/[tenant_id]/series/[series_id]">) => {
                   href={`/series/${series.publicId}/episodes/${ep.publicId}`}
                   className="group flex items-center gap-4 rounded-lg border border-border/70 bg-card px-5 py-4 shadow-sm transition hover:border-accent/40 hover:shadow-md"
                 >
-                  <span className="min-w-8 text-center text-sm font-medium tabular-nums text-muted-foreground">
+                  <span className="min-w-8 text-center text-sm font-medium text-muted-foreground tabular-nums">
                     {ep.orderIndex}
                   </span>
                   <span className="flex-1 font-medium transition-colors group-hover:text-secondary">

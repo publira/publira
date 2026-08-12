@@ -36,7 +36,7 @@ export const RadioGroup = ({
         )}
       >
         <BaseRadio.Root
-          className="relative mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-input bg-background transition-colors data-[checked]:border-primary data-[checked]:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="relative mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-input bg-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[checked]:border-primary data-[checked]:bg-primary"
           disabled={item.disabled}
           value={item.value}
         >

@@ -96,7 +96,7 @@ const CatalogTopSiteLabel = async () => {
   const siteLabel = await getTenantSiteLabel(tenantId);
 
   return (
-    <p className="text-sm tracking-[0.14em] uppercase text-muted-foreground">
+    <p className="text-sm tracking-[0.14em] text-muted-foreground uppercase">
       {siteLabel}
     </p>
   );

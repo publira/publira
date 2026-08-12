@@ -75,7 +75,7 @@ export const MultiCombobox = ({
     >
       <BaseCombobox.InputGroup
         className={cn(
-          "relative flex min-h-10 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-1.5 py-1 shadow-xs focus-within:outline-none focus-within:ring-2 focus-within:ring-ring",
+          "relative flex min-h-10 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-1.5 py-1 shadow-xs focus-within:ring-2 focus-within:ring-ring focus-within:outline-none",
           className
         )}
       >

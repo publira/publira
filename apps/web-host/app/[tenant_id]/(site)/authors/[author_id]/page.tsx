@@ -101,7 +101,7 @@ const Page = async ({
           )}
 
           <div className="min-w-0 flex-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.24em] text-muted-foreground">
+            <p className="mb-3 text-xs tracking-[0.24em] text-muted-foreground uppercase">
               {siteLabel}
             </p>
             <h1 className="mb-2 font-serif text-4xl font-bold text-foreground">
@@ -116,7 +116,7 @@ const Page = async ({
                 プロフィール
               </h2>
               {hasProfileText ? (
-                <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">
+                <p className="text-sm leading-7 whitespace-pre-wrap text-muted-foreground">
                   {author.profileText}
                 </p>
               ) : (

@@ -32,7 +32,7 @@ export const Select = ({
     <BaseSelect.Root {...props} items={safeItems}>
       <BaseSelect.Trigger
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
+          "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
           className
         )}
       >
@@ -50,7 +50,7 @@ export const Select = ({
                 <BaseSelect.Item
                   key={item.value}
                   value={item.value}
-                  className="flex cursor-pointer items-center justify-between rounded-sm px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-muted data-[highlighted]:text-foreground"
+                  className="flex cursor-pointer items-center justify-between rounded-sm px-3 py-2 text-sm transition-colors outline-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground"
                 >
                   <BaseSelect.ItemText>{item.label}</BaseSelect.ItemText>
                   <BaseSelect.ItemIndicator className="text-primary">

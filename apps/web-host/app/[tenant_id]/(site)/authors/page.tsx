@@ -148,7 +148,7 @@ const AuthorsPage = ({ searchParams }: PageProps<"/[tenant_id]/authors">) => (
         fallback={
           <span
             aria-hidden
-            className="inline-block h-4 w-16 align-middle animate-pulse rounded bg-muted"
+            className="inline-block h-4 w-16 animate-pulse rounded bg-muted align-middle"
           />
         }
       >

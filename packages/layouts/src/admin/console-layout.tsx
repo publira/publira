@@ -88,7 +88,7 @@ const toRoleLabel = (role: string): string => {
 };
 
 export const ConsoleHeaderSkeleton = () => (
-  <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 backdrop-blur px-4 py-4">
+  <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 px-4 py-4 backdrop-blur">
     <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
       <Skeleton className="h-6 w-48 rounded" />
       <Skeleton className="h-6 w-24 rounded" />
@@ -200,7 +200,7 @@ export const ConsoleSidebar = ({
             <div className="grid gap-1.5">
               {section.items.map((item) => (
                 <Link
-                  className="group grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 rounded-2xl border px-3 py-3 transition-colors text-muted-foreground hover:border-border/70 hover:bg-muted/55 hover:text-foreground"
+                  className="group grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 rounded-2xl border px-3 py-3 text-muted-foreground transition-colors hover:border-border/70 hover:bg-muted/55 hover:text-foreground"
                   href={item.href}
                   key={item.href}
                 >

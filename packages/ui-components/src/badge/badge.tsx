@@ -6,7 +6,7 @@ import type { VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithoutRef } from "react";
 
 export const badgeVariants = cva(
-  "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium leading-5 whitespace-normal",
+  "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs leading-5 font-medium whitespace-normal",
   {
     compoundVariants: [
       {
