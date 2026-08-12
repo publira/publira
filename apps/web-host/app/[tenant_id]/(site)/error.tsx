@@ -25,9 +25,12 @@ import { ErrorScreen } from "#components/error-screen";
  * aborts the response with a bare `500 Internal Server Error` that no boundary
  * can reach; Next.js does not fall back to its `__next_error__` document there
  * either, which is why adding `app/global-error.tsx` changed nothing. That last
- * part is upstream behaviour for routes generated on demand
- * (vercel/next.js#62046 / #96567), not wiring to fix here. The measurements live
- * in `e2e/tests/catalog.error-boundary.spec.ts`.
+ * part is upstream behaviour, not wiring to fix here: an on-demand render that
+ * throws skips both boundaries (vercel/next.js#62046 for `generateStaticParams`,
+ * vercel/next.js#96567 for `"use cache"`), and this build answers plain text
+ * rather than #62046's built-in error page only because it has no pages-router
+ * `/_error` to fall back to. The measurements live in
+ * `e2e/tests/catalog.error-boundary.spec.ts`.
  */
 const SiteError = ({
   error,
