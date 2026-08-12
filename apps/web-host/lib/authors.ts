@@ -222,7 +222,7 @@ export const listPublishedAuthors = async (
   // the requested window; infinite-scan bounds live in forEachPageWithToken.
   await forEachPageWithToken(
     (token, limit) =>
-      fetchPublishedSeriesPage(tenantId, token, limit, (message) => {
+      fetchPublishedSeriesPage(normalizedTenantId, token, limit, (message) => {
         failureMessage = message;
       }),
     (seriesList) => {
@@ -265,6 +265,9 @@ export const getPublishedAuthorDetail = async (
 ): Promise<CachedReadResult<PublishedAuthorDetail | null>> => {
   "use cache";
 
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
+
   const fallbackAuthorName = decodeFallbackAuthorId(authorId);
   const isFallbackAuthor = fallbackAuthorName !== null;
 
@@ -279,7 +282,7 @@ export const getPublishedAuthorDetail = async (
   // walk below the row budget (default maxPages alone would stop at 5_000).
   await forEachPageWithToken(
     (token, limit) =>
-      fetchPublishedSeriesPage(tenantId, token, limit, (message) => {
+      fetchPublishedSeriesPage(normalizedTenantId, token, limit, (message) => {
         failureMessage = message;
       }),
     (seriesList) => {

@@ -163,7 +163,7 @@ export const listPublishedSeries = async (
   try {
     response = await apiClient.catalog.listPublishedSeries({
       limit,
-      tenant: { tenantId },
+      tenant: { tenantId: normalizedTenantId },
       token,
     });
   } catch (error) {
@@ -214,6 +214,8 @@ export const listPublishedLabels = async (
 ): Promise<CachedReadResult<LabelListItem[]>> => {
   "use cache";
 
+  const normalizedTenantId = tenantId.trim();
+
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.listPublishedLabels>
   >;
@@ -221,7 +223,7 @@ export const listPublishedLabels = async (
     response = await apiClient.catalog.listPublishedLabels({
       limit,
       offset,
-      tenant: { tenantId },
+      tenant: { tenantId: normalizedTenantId },
     });
   } catch (error) {
     return cachedReadFailure(rpcErrorMessage(error, LABEL_LIST_ERROR_MESSAGE));

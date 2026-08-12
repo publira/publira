@@ -49,8 +49,15 @@ test.describe("web-host public API outage", () => {
    *
    * As of #672 no cached read throws: each one reports failure as a value and
    * drops its own cache entry, so the page renders `SectionError` (a section
-   * inside `<Suspense>`) or `PageLoadError` (a detail route that awaits before
-   * the shell is flushed, so that a missing record can still answer 404).
+   * inside `<Suspense>`) or `PageLoadError` (a detail route, where that read is
+   * the whole page). A missing record answers HTTP 200 with the not-found UI,
+   * because the shell has been committed by the time `notFound()` runs — that
+   * contract belongs to `catalog.not-found.spec.ts`.
+   *
+   * Outage **and** recovery live in one test on purpose: "the failure was not
+   * cached" is only a claim about a URL this test itself failed a moment ago,
+   * so splitting them would let the recovery half pass without ever having
+   * seen a failure.
    *
    * Unlike its neighbours this one navigates the default Host, and that is
    * load-bearing: `stopApiServer()` breaks tenant resolution too, and `proxy`
@@ -62,7 +69,7 @@ test.describe("web-host public API outage", () => {
    * for exactly that reason: it asserts the tenant resolves rather than
    * relying on another spec having warmed the cache first.
    */
-  test("データ取得に失敗してもサイト UI を保ったフォールバックを表示する", async ({
+  test("データ取得の失敗はフォールバックを出し、復旧後はキャッシュされない", async ({
     page,
   }) => {
     // Tenant resolution must be the thing that still works, so warm it against
@@ -78,56 +85,60 @@ test.describe("web-host public API outage", () => {
       page.getByRole("link", { exact: true, name: "Series" })
     ).toBeVisible();
 
-    stopApiServer();
+    try {
+      stopApiServer();
 
-    const response = await page.goto(`/series/${uncachedSeriesId}`);
+      const response = await page.goto(`/series/${uncachedSeriesId}`);
 
-    expect(response?.status(), await page.content()).toBe(200);
-    await expect(
-      page.getByRole("link", { exact: true, name: "Series" })
-    ).toBeVisible();
-    // `getByRole("alert")` also matches Next.js's route announcer, so assert
-    // the failure display by its own copy and its retry affordance.
-    await expect(page.getByText("ページを表示できませんでした")).toBeVisible();
-    await expect(page.getByRole("button", { name: "再試行" })).toBeVisible();
+      expect(response?.status(), await page.content()).toBe(200);
+      await expect(
+        page.getByRole("link", { exact: true, name: "Series" })
+      ).toBeVisible();
+      // `getByRole("alert")` also matches Next.js's route announcer, so assert
+      // the failure display by its own copy and its retry affordance.
+      await expect(
+        page.getByText("ページを表示できませんでした")
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "再試行" })).toBeVisible();
 
-    // A list page degrades per section instead: the page heading and the site
-    // chrome stay, and only the section that could not load is replaced. The
-    // cursor token is base64url-shaped (so it survives `cursorTokenSchema`) and
-    // is requested by no other spec, which keeps this list read cold — a page
-    // whose entry is already cached would rightly answer from the cache and
-    // prove nothing.
-    await page.goto("/series?token=OUTAGE00");
-    await expect(
-      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
-    ).toBeVisible();
-    await expect(
-      page.getByText("シリーズ一覧を表示できませんでした")
-    ).toBeVisible();
-  });
+      // A list page degrades per section instead: the page heading and the site
+      // chrome stay, and only the section that could not load is replaced. The
+      // cursor token is base64url-shaped (so it survives `cursorTokenSchema`)
+      // and is requested by no other spec, which keeps this list read cold — a
+      // page whose entry is already cached would rightly answer from the cache
+      // and prove nothing.
+      await page.goto("/series?token=OUTAGE00");
+      await expect(
+        page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+      ).toBeVisible();
+      await expect(
+        page.getByText("シリーズ一覧を表示できませんでした")
+      ).toBeVisible();
+    } finally {
+      // Restore the API even if an assertion above threw, so the rest of the
+      // suite does not inherit the outage.
+      startApiServer();
+    }
 
-  test("復旧後はキャッシュされた失敗ではなく通常の内容を表示する", async ({
-    page,
-  }) => {
-    startApiServer();
-
-    // The failed reads above must not have been cached: without a revalidation
-    // or a wait, the very next request has to show real content again.
-    // The series does not exist, so a working API answers "not found" — the
-    // point is that it is that answer and not the failure display cached from
-    // the previous test. The 404 *status* contract for a cold URL belongs to
-    // `catalog.not-found.spec.ts`; this URL was just rendered during the
-    // outage, so its shell can already be committed when `notFound()` runs.
+    // Same URL, no revalidation and no wait: the failure just rendered must not
+    // have been stored, so the next request shows the real answer — which for
+    // this id is "not found", not the failure display.
     await page.goto(`/series/${uncachedSeriesId}`);
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
     await expect(page.getByText("ページを表示できませんでした")).toHaveCount(0);
 
-    await page.goto("/authors?page=7");
-    await expect(page.getByText("著者一覧を表示できませんでした")).toHaveCount(
-      0
-    );
+    // The list is checked without the token: a healthy API rejects
+    // `OUTAGE00` as a malformed cursor, so that URL shows a section failure by
+    // design and says nothing about caching.
+    await page.goto("/series");
+    await expect(
+      page.getByText("シリーズ一覧を表示できませんでした")
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "シリーズ一覧" })
+    ).toBeVisible();
   });
 
   test("復旧後は同じ導線が通常どおり応答する", async ({ page }) => {

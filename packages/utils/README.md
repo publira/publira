@@ -169,11 +169,25 @@ export const getSeriesDetail = async (
 };
 
 // 見せるメッセージが無い chrome 用の読み取りは、既定値に落として entry だけ捨てる
-dropFailedCacheEntry();
-return null;
+export const getTenantSiteInfo = async (
+  tenantId: string
+): Promise<TenantSiteInfo | null> => {
+  "use cache";
+  try {
+    return toTenantSiteInfo(
+      await apiClient.tenant.getTenant({ tenant: { tenantId } })
+    );
+  } catch (error) {
+    if (!isExpectedNullableRpcError(error)) {
+      dropFailedCacheEntry();
+    }
+    return null;
+  }
+};
 ```
 
 - `cachedReadFailure` / `dropFailedCacheEntry` は `cacheLife({ expire: 0, revalidate: 0, stale: 0 })` を設定し、**失敗をキャッシュに載せない**（`@publira/next-cache-handlers` の `set` は `expire === 0` を保存せず、仮に保存されても `revalidate: 0` で次回 miss になる）。復旧後の再読み込みは即座に通常の内容を返す
+- `next.config.ts` の名前付きプロファイルには `expire > revalidate` や `stale` 最小値の検証があるが、`cacheLife()` の**インライン呼び出しには検証がない**（`next/dist/server/use-cache/cache-life.js` は明示値を記録するだけ）。この 3 値の組み合わせは #672 で production ビルド上の実測により、エラーを出さず、失敗が保存されないことを確認している
 - エラーの分類はキャッシュスコープの**内側**で行う。`"use cache"` 境界を越えたエラーは production で message が digest に置き換わり、`Code`（`rpcErrorDisposition()` / `rpcErrorMessage()`）が失われる
 - 呼び出し側は `ok: false` を `SectionError` / `PageLoadError` として描画する。画面側の使い分けは `apps/AGENTS.md`
 

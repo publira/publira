@@ -19,7 +19,14 @@ export type CachedReadResult<TValue> =
  * `@publira/next-cache-handlers` (its `set` skips `expire === 0` in
  * production), and `revalidate: 0` makes anything that did get stored read back
  * as a miss — two independent guards, so a recovered API shows normal content
- * on the next request instead of a cached failure.
+ * on the next request instead of a cached failure. `stale: 0` keeps the client
+ * router from reusing the failed payload.
+ *
+ * The "expire must exceed revalidate" and "stale is at least 30s" rules in the
+ * `cacheLife` docs constrain **named profiles** declared in `next.config.ts`.
+ * An inline call is not validated — `next/dist/server/use-cache/cache-life.js`
+ * only records the explicit values — and this combination was measured against
+ * the production build in #672: no error, and the entry is not stored.
  */
 export const dropFailedCacheEntry = (): void => {
   try {
