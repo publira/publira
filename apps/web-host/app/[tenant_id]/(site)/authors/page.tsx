@@ -1,4 +1,5 @@
 import { UserIcon } from "@publira/icons";
+import { SectionError } from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -11,6 +12,7 @@ import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 const AUTHORS_PAGE_SIZE = 12;
+const SECTION_TITLE = "著者一覧を表示できませんでした";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -54,10 +56,16 @@ const AuthorsListData = async ({
   const resolvedSearchParams = await searchParams;
   const page = normalizeAuthorsPage(resolvedSearchParams.page);
 
-  const { authors, hasNextPage } = await listPublishedAuthors(tenantId, {
+  const result = await listPublishedAuthors(tenantId, {
     page,
     pageSize: AUTHORS_PAGE_SIZE,
   });
+
+  if (!result.ok) {
+    return <SectionError description={result.message} title={SECTION_TITLE} />;
+  }
+
+  const { authors, hasNextPage } = result.value;
 
   if (authors.length === 0) {
     return (
@@ -157,7 +165,7 @@ const AuthorsPage = ({ searchParams }: PageProps<"/[tenant_id]/authors">) => (
       に登録されている著者をご紹介します
     </p>
 
-    <SectionErrorBoundary title="著者一覧を表示できませんでした">
+    <SectionErrorBoundary title={SECTION_TITLE}>
       <Suspense fallback={<AuthorsListSkeleton />}>
         <AuthorsListData searchParams={searchParams} />
       </Suspense>

@@ -15,6 +15,10 @@
       "types": "./dist/next-static-params.d.mts",
       "default": "./dist/next-static-params.mjs"
     },
+    "./cached-read": {
+      "types": "./dist/cached-read.d.mts",
+      "default": "./dist/cached-read.mjs"
+    },
     "./cn": {
       "types": "./dist/cn.d.mts",
       "default": "./dist/cn.mjs"

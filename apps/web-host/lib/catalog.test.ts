@@ -64,13 +64,14 @@ describe("catalog.getEpisodeDetail", () => {
       publicId: "EP_001",
       tenant: { tenantId: "TENANT_001" },
     });
-    expect(result?.series).toEqual({
+    const detail = result.ok ? result.value : null;
+    expect(detail?.series).toEqual({
       publicId: "SERIES_001",
       title: "シリーズタイトル",
     });
-    expect(result?.episode.title).toBe("第2話");
-    expect(result?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
-    expect(result?.images[0]?.fileSizeBytes).toBe(1024);
+    expect(detail?.episode.title).toBe("第2話");
+    expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
+    expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
   });
 
   it("episode が欠けている場合は null", async () => {
@@ -85,7 +86,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     await expect(
       getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
-    ).resolves.toBeNull();
+    ).resolves.toEqual({ ok: true, value: null });
   });
 
   it("URL の series_id とレスポンスが不一致なら null", async () => {
@@ -109,7 +110,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     await expect(
       getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
-    ).resolves.toBeNull();
+    ).resolves.toEqual({ ok: true, value: null });
   });
 
   it("API が not_found を返したら null", async () => {
@@ -119,7 +120,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     await expect(
       getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
-    ).resolves.toBeNull();
+    ).resolves.toEqual({ ok: true, value: null });
   });
 
   // `"use cache"` re-creates a thrown error from name + message, dropping
@@ -131,7 +132,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     await expect(
       getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
-    ).resolves.toBeNull();
+    ).resolves.toEqual({ ok: true, value: null });
   });
 
   // Another tenant's episode comes back as permission_denied, not not_found.
@@ -142,7 +143,7 @@ describe("catalog.getEpisodeDetail", () => {
 
     await expect(
       getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
-    ).resolves.toBeNull();
+    ).resolves.toEqual({ ok: true, value: null });
   });
 
   it("識別子の前後空白を除去して API に渡し所属判定する", async () => {
@@ -171,16 +172,22 @@ describe("catalog.getEpisodeDetail", () => {
       publicId: "EP_001",
       tenant: { tenantId: "TENANT_001" },
     });
-    expect(result?.episode.title).toBe("第1話");
+    expect(result.ok && result.value?.episode.title).toBe("第1話");
   });
 
-  it("not_found 以外のエラーは呼び出し元に伝播する", async () => {
+  // A `"use cache"` function must not throw: the fill would fail the whole
+  // request instead of reaching the awaiting page (#672).
+  it("not_found 以外のエラーは throw せず失敗の値を返す", async () => {
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
 
     await expect(
       getEpisodeDetail("TENANT_001", "SERIES_001", "EP_001")
-    ).rejects.toThrow("[unavailable] connect ECONNREFUSED");
+    ).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
   });
 });

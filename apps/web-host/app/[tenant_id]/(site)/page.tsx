@@ -1,4 +1,5 @@
 import { CollectionIcon, ImageIcon } from "@publira/icons";
+import { SectionError } from "@publira/ui-components/section-error";
 import { DEFAULT_TIME_ZONE, formatDate } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -71,6 +72,19 @@ const resolveUpdatedSeriesLinkIds = (
   return { latestEpisodeId, seriesId };
 };
 
+/**
+ * One title per section, shared by the section's own failure display and by the
+ * `SectionErrorBoundary` around it: the reader sees the same sentence whether
+ * the read reported a failure or something threw unexpectedly.
+ */
+const SECTION_TITLES = {
+  authors: "注目の著者を表示できませんでした",
+  labels: "注目のレーベルを表示できませんでした",
+  newEpisodes: "新着エピソードを表示できませんでした",
+  recommended: "おすすめ作品を表示できませんでした",
+  updated: "更新作品を表示できませんでした",
+} as const;
+
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
@@ -86,10 +100,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 /**
  * The one suspended piece on this page with no `SectionErrorBoundary` around
- * it, on purpose. `generateMetadata` reads the same site label, so a tenant
- * this app cannot resolve fails the route before any section renders; degrading
- * the eyebrow while the page below it carries on would be a lie. That failure
- * belongs to `(site)/error.tsx`.
+ * it, on purpose: `getTenantSiteLabel` degrades to 「サイト」 rather than
+ * failing, the same way the header brand and the `<title>` do, because it is
+ * resolved before any shell exists (#672). There is nothing here for a boundary
+ * to catch.
  */
 const CatalogTopSiteLabel = async () => {
   const tenantId = await getTenantId();
@@ -133,7 +147,18 @@ const ListSkeleton = ({ count = 4 }: { count?: number }) => (
 const RecommendedSeriesSection = async () => {
   const tenantId = await getTenantId();
 
-  const recommendedSeries = await getCatalogTopRecommendedSeries(tenantId);
+  const result = await getCatalogTopRecommendedSeries(tenantId);
+
+  if (!result.ok) {
+    return (
+      <SectionError
+        description={result.message}
+        title={SECTION_TITLES.recommended}
+      />
+    );
+  }
+
+  const recommendedSeries = result.value;
 
   if (recommendedSeries.length === 0) {
     return (
@@ -190,7 +215,18 @@ const RecommendedSeriesSection = async () => {
 const NewEpisodesSection = async () => {
   const tenantId = await getTenantId();
 
-  const newEpisodes = await getCatalogTopNewEpisodes(tenantId);
+  const result = await getCatalogTopNewEpisodes(tenantId);
+
+  if (!result.ok) {
+    return (
+      <SectionError
+        description={result.message}
+        title={SECTION_TITLES.newEpisodes}
+      />
+    );
+  }
+
+  const newEpisodes = result.value;
 
   if (newEpisodes.length === 0) {
     return (
@@ -240,7 +276,18 @@ const NewEpisodesSection = async () => {
 const UpdatedSeriesSection = async () => {
   const tenantId = await getTenantId();
 
-  const updatedSeries = await getCatalogTopUpdatedSeries(tenantId);
+  const result = await getCatalogTopUpdatedSeries(tenantId);
+
+  if (!result.ok) {
+    return (
+      <SectionError
+        description={result.message}
+        title={SECTION_TITLES.updated}
+      />
+    );
+  }
+
+  const updatedSeries = result.value;
 
   if (updatedSeries.length === 0) {
     return (
@@ -315,7 +362,18 @@ const UpdatedSeriesSection = async () => {
 const FeaturedLabelsSection = async () => {
   const tenantId = await getTenantId();
 
-  const featuredLabels = await getCatalogTopFeaturedLabels(tenantId);
+  const result = await getCatalogTopFeaturedLabels(tenantId);
+
+  if (!result.ok) {
+    return (
+      <SectionError
+        description={result.message}
+        title={SECTION_TITLES.labels}
+      />
+    );
+  }
+
+  const featuredLabels = result.value;
 
   if (featuredLabels.length === 0) {
     return (
@@ -359,7 +417,18 @@ const FeaturedLabelsSection = async () => {
 const FeaturedAuthorsSection = async () => {
   const tenantId = await getTenantId();
 
-  const featuredAuthors = await getCatalogTopFeaturedAuthors(tenantId);
+  const result = await getCatalogTopFeaturedAuthors(tenantId);
+
+  if (!result.ok) {
+    return (
+      <SectionError
+        description={result.message}
+        title={SECTION_TITLES.authors}
+      />
+    );
+  }
+
+  const featuredAuthors = result.value;
 
   if (featuredAuthors.length === 0) {
     return (
@@ -443,7 +512,7 @@ const Page = () => (
           すべて見る
         </Link>
       </div>
-      <SectionErrorBoundary title="おすすめ作品を表示できませんでした">
+      <SectionErrorBoundary title={SECTION_TITLES.recommended}>
         <Suspense fallback={<CardGridSkeleton />}>
           <RecommendedSeriesSection />
         </Suspense>
@@ -454,7 +523,7 @@ const Page = () => (
       <h2 id="new-episodes" className="mb-4 font-serif text-2xl font-semibold">
         新着エピソード
       </h2>
-      <SectionErrorBoundary title="新着エピソードを表示できませんでした">
+      <SectionErrorBoundary title={SECTION_TITLES.newEpisodes}>
         <Suspense fallback={<ListSkeleton />}>
           <NewEpisodesSection />
         </Suspense>
@@ -468,7 +537,7 @@ const Page = () => (
       >
         更新作品
       </h2>
-      <SectionErrorBoundary title="更新作品を表示できませんでした">
+      <SectionErrorBoundary title={SECTION_TITLES.updated}>
         <Suspense fallback={<CardGridSkeleton />}>
           <UpdatedSeriesSection />
         </Suspense>
@@ -487,7 +556,7 @@ const Page = () => (
           レーベル一覧へ
         </Link>
       </div>
-      <SectionErrorBoundary title="注目のレーベルを表示できませんでした">
+      <SectionErrorBoundary title={SECTION_TITLES.labels}>
         <Suspense fallback={<CardGridSkeleton />}>
           <FeaturedLabelsSection />
         </Suspense>
@@ -506,7 +575,7 @@ const Page = () => (
           著者一覧へ
         </Link>
       </div>
-      <SectionErrorBoundary title="注目の著者を表示できませんでした">
+      <SectionErrorBoundary title={SECTION_TITLES.authors}>
         <Suspense fallback={<CardGridSkeleton />}>
           <FeaturedAuthorsSection />
         </Suspense>

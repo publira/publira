@@ -1,4 +1,7 @@
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import { cachedReadFailure } from "@publira/utils/cached-read";
+import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
 import {
@@ -120,6 +123,16 @@ export interface LabelListItem {
   eyeCatchImageVariants?: EyeCatchImageVariant[];
 }
 
+/** Wording for a catalog read that could not reach the API. */
+const SERIES_LIST_ERROR_MESSAGE =
+  "シリーズ一覧を取得できませんでした。時間をおいて再試行してください。";
+const LABEL_LIST_ERROR_MESSAGE =
+  "レーベル一覧を取得できませんでした。時間をおいて再試行してください。";
+const SERIES_DETAIL_ERROR_MESSAGE =
+  "シリーズを取得できませんでした。時間をおいて再試行してください。";
+const EPISODE_DETAIL_ERROR_MESSAGE =
+  "エピソードを取得できませんでした。時間をおいて再試行してください。";
+
 export interface SeriesListPage {
   series: SeriesListItem[];
   /** Token for the previous page. Empty on the first page. */
@@ -137,18 +150,25 @@ export interface SeriesListPage {
 export const listPublishedSeries = async (
   tenantId: string,
   { limit = 50, token = "" }: { limit?: number; token?: string } = {}
-): Promise<SeriesListPage> => {
+): Promise<CachedReadResult<SeriesListPage>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
   applyCacheTag(tenantAuthorsTag(normalizedTenantId));
 
-  const response = await apiClient.catalog.listPublishedSeries({
-    limit,
-    tenant: { tenantId },
-    token,
-  });
+  let response: Awaited<
+    ReturnType<typeof apiClient.catalog.listPublishedSeries>
+  >;
+  try {
+    response = await apiClient.catalog.listPublishedSeries({
+      limit,
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    return cachedReadFailure(rpcErrorMessage(error, SERIES_LIST_ERROR_MESSAGE));
+  }
 
   const series = (response.series ?? []).map((s) => ({
     creatorNames: (s.creators ?? []).flatMap((c) => {
@@ -178,9 +198,12 @@ export const listPublishedSeries = async (
   }));
 
   return {
-    nextToken: response.nextToken ?? "",
-    previousToken: response.previousToken ?? "",
-    series,
+    ok: true,
+    value: {
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+      series,
+    },
   };
 };
 
@@ -188,36 +211,52 @@ export const listPublishedLabels = async (
   tenantId: string,
   limit = 50,
   offset = 0
-): Promise<LabelListItem[]> => {
+): Promise<CachedReadResult<LabelListItem[]>> => {
   "use cache";
 
-  const response = await apiClient.catalog.listPublishedLabels({
-    limit,
-    offset,
-    tenant: { tenantId },
-  });
+  const normalizedTenantId = tenantId.trim();
 
-  return (response.labels ?? []).map((label) => ({
-    eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
-    eyeCatchImageVariants: toEyeCatchImageVariants(label.eyeCatchImageVariants),
-    name: label.name,
-    publicId: label.publicId,
-  }));
+  let response: Awaited<
+    ReturnType<typeof apiClient.catalog.listPublishedLabels>
+  >;
+  try {
+    response = await apiClient.catalog.listPublishedLabels({
+      limit,
+      offset,
+      tenant: { tenantId: normalizedTenantId },
+    });
+  } catch (error) {
+    return cachedReadFailure(rpcErrorMessage(error, LABEL_LIST_ERROR_MESSAGE));
+  }
+
+  return {
+    ok: true,
+    value: (response.labels ?? []).map((label) => ({
+      eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
+      eyeCatchImageVariants: toEyeCatchImageVariants(
+        label.eyeCatchImageVariants
+      ),
+      name: label.name,
+      publicId: label.publicId,
+    })),
+  };
 };
 
 /**
- * `null` when the series does not exist, is unpublished, or belongs to another
- * tenant — the server returns `not_found` or `permission_denied` for those and
- * the public site must not tell them apart.
+ * `ok: true` with a `null` value when the series does not exist, is
+ * unpublished, or belongs to another tenant — the server returns `not_found` or
+ * `permission_denied` for those and the public site must not tell them apart.
  *
- * Returns `null` rather than throwing because this runs inside a `"use cache"`
- * scope, where a thrown error is not observable by the caller's `try` / `catch`
- * and fails the whole request instead.
+ * `ok: false` when the fetch itself failed. Neither case throws: a `"use cache"`
+ * fill that throws fails the whole request, so the awaiting page never gets to
+ * render either a 404 or a fallback (#672).
  */
 export const getSeriesDetail = async (
   tenantId: string,
   seriesPublicId: string
-): Promise<{ series: SeriesDetail; episodes: EpisodeItem[] } | null> => {
+): Promise<
+  CachedReadResult<{ series: SeriesDetail; episodes: EpisodeItem[] } | null>
+> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -233,9 +272,11 @@ export const getSeriesDetail = async (
     });
   } catch (error) {
     if (isMissingResourceRpcError(error)) {
-      return null;
+      return { ok: true, value: null };
     }
-    throw error;
+    return cachedReadFailure(
+      rpcErrorMessage(error, SERIES_DETAIL_ERROR_MESSAGE)
+    );
   }
 
   const result = {
@@ -270,28 +311,34 @@ export const getSeriesDetail = async (
   };
 
   if (!result.series) {
-    return null;
+    return { ok: true, value: null };
   }
 
   return {
-    episodes: result.episodes,
-    series: result.series,
+    ok: true,
+    value: {
+      episodes: result.episodes,
+      series: result.series,
+    },
   };
 };
 
 /**
- * `null` when the episode is missing, unpublished, or not part of
- * `seriesPublicId`. Same `"use cache"` constraint as `getSeriesDetail`.
+ * `ok: true` with a `null` value when the episode is missing, unpublished, or
+ * not part of `seriesPublicId`. Same `"use cache"` contract as
+ * `getSeriesDetail`: a failure is a value, never a throw.
  */
 export const getEpisodeDetail = async (
   tenantId: string,
   seriesPublicId: string,
   episodePublicId: string
-): Promise<{
-  episode: EpisodeDetail;
-  images: EpisodeImageItem[];
-  series: EpisodeSeriesSummary;
-} | null> => {
+): Promise<
+  CachedReadResult<{
+    episode: EpisodeDetail;
+    images: EpisodeImageItem[];
+    series: EpisodeSeriesSummary;
+  } | null>
+> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -308,9 +355,11 @@ export const getEpisodeDetail = async (
     });
   } catch (error) {
     if (isMissingResourceRpcError(error)) {
-      return null;
+      return { ok: true, value: null };
     }
-    throw error;
+    return cachedReadFailure(
+      rpcErrorMessage(error, EPISODE_DETAIL_ERROR_MESSAGE)
+    );
   }
 
   const series = response.series
@@ -325,10 +374,10 @@ export const getEpisodeDetail = async (
     !series ||
     series.publicId !== normalizedSeriesPublicId
   ) {
-    return null;
+    return { ok: true, value: null };
   }
 
-  return {
+  const episodeDetail = {
     episode: {
       orderIndex: response.episode.orderIndex,
       price: response.episode.price,
@@ -352,4 +401,6 @@ export const getEpisodeDetail = async (
       .toSorted((left, right) => left.displayOrder - right.displayOrder),
     series,
   };
+
+  return { ok: true, value: episodeDetail };
 };

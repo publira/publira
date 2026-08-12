@@ -1,4 +1,6 @@
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { cachedReadFailure } from "@publira/utils/cached-read";
+import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { applyCacheTag, tenantAuthorsTag } from "./cache-tags";
 import { listPublishedSeries } from "./catalog";
@@ -118,18 +120,34 @@ const addAuthorContribution = (
   });
 };
 
+/**
+ * One page of the series walk.
+ *
+ * `listPublishedSeries` answers with a result rather than throwing (#672), and
+ * this walk runs inside a `"use cache"` scope of its own, so a failure has to
+ * be carried out to the caller by hand: `onFailure` records the message and the
+ * walk stops, leaving the caller to return the failure instead of a short list
+ * that looks like real data.
+ */
 const fetchPublishedSeriesPage = async (
   tenantId: string,
   token: string,
-  limit: number
+  limit: number,
+  onFailure: (message: string) => void
 ): Promise<{ items: readonly SeriesListItem[]; nextToken: string }> => {
   const seriesPage = await listPublishedSeries(tenantId, {
     limit,
     token,
   });
+
+  if (!seriesPage.ok) {
+    onFailure(seriesPage.message);
+    return { items: [], nextToken: "" };
+  }
+
   return {
-    items: seriesPage.series,
-    nextToken: seriesPage.nextToken,
+    items: seriesPage.value.series,
+    nextToken: seriesPage.value.nextToken,
   };
 };
 
@@ -187,7 +205,7 @@ export const listPublishedAuthors = async (
     page?: number;
     pageSize?: number;
   } = {}
-): Promise<PublishedAuthorListResult> => {
+): Promise<CachedReadResult<PublishedAuthorListResult>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -198,17 +216,25 @@ export const listPublishedAuthors = async (
     string,
     { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
   >();
+  let failureMessage: string | null = null;
 
   // Aggregation needs every series page until enough unique authors exist for
   // the requested window; infinite-scan bounds live in forEachPageWithToken.
   await forEachPageWithToken(
-    (token, limit) => fetchPublishedSeriesPage(tenantId, token, limit),
+    (token, limit) =>
+      fetchPublishedSeriesPage(normalizedTenantId, token, limit, (message) => {
+        failureMessage = message;
+      }),
     (seriesList) => {
       collectAuthorsFromSeries(authorSeriesMap, seriesList);
-      return authorSeriesMap.size < targetEndIndex;
+      return failureMessage === null && authorSeriesMap.size < targetEndIndex;
     },
     SERIES_SCAN_OPTIONS
   );
+
+  if (failureMessage !== null) {
+    return cachedReadFailure(failureMessage);
+  }
 
   const allAuthors = [...authorSeriesMap.entries()]
     .map(([id, value]) => ({
@@ -223,18 +249,24 @@ export const listPublishedAuthors = async (
   const endIndex = startIndex + pageSize;
 
   return {
-    authors: allAuthors.slice(startIndex, endIndex),
-    hasNextPage: allAuthors.length > endIndex,
-    page,
-    pageSize,
+    ok: true,
+    value: {
+      authors: allAuthors.slice(startIndex, endIndex),
+      hasNextPage: allAuthors.length > endIndex,
+      page,
+      pageSize,
+    },
   };
 };
 
 export const getPublishedAuthorDetail = async (
   tenantId: string,
   authorId: string
-): Promise<PublishedAuthorDetail | null> => {
+): Promise<CachedReadResult<PublishedAuthorDetail | null>> => {
   "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
 
   const fallbackAuthorName = decodeFallbackAuthorId(authorId);
   const isFallbackAuthor = fallbackAuthorName !== null;
@@ -243,13 +275,21 @@ export const getPublishedAuthorDetail = async (
   let resolvedAuthorName = fallbackAuthorName ?? "";
   let resolvedAuthorIconImageUrl = "";
   let resolvedAuthorProfileText = "";
+  let failureMessage: string | null = null;
 
   // Author detail is embedded in series creators; walk all series pages and
   // collect matches. Explicit maxRows/maxPages so pageSize 50 does not cap the
   // walk below the row budget (default maxPages alone would stop at 5_000).
   await forEachPageWithToken(
-    (token, limit) => fetchPublishedSeriesPage(tenantId, token, limit),
+    (token, limit) =>
+      fetchPublishedSeriesPage(normalizedTenantId, token, limit, (message) => {
+        failureMessage = message;
+      }),
     (seriesList) => {
+      if (failureMessage !== null) {
+        return false;
+      }
+
       for (const series of seriesList) {
         const matchedCreator = series.creators.find((creator) => {
           const name = normalizeAuthorName(creator.name);
@@ -299,18 +339,25 @@ export const getPublishedAuthorDetail = async (
     SERIES_SCAN_OPTIONS
   );
 
+  if (failureMessage !== null) {
+    return cachedReadFailure(failureMessage);
+  }
+
   if (relatedSeries.size === 0) {
-    return null;
+    return { ok: true, value: null };
   }
 
   return {
-    iconImageUrl: resolvedAuthorIconImageUrl,
-    id: authorId,
-    name: resolvedAuthorName,
-    profileText: resolvedAuthorProfileText,
-    series: [...relatedSeries.entries()]
-      .map(([publicId, title]) => ({ publicId, title }))
-      .toSorted((left, right) => left.title.localeCompare(right.title, "ja")),
+    ok: true,
+    value: {
+      iconImageUrl: resolvedAuthorIconImageUrl,
+      id: authorId,
+      name: resolvedAuthorName,
+      profileText: resolvedAuthorProfileText,
+      series: [...relatedSeries.entries()]
+        .map(([publicId, title]) => ({ publicId, title }))
+        .toSorted((left, right) => left.title.localeCompare(right.title, "ja")),
+    },
   };
 };
 

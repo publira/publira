@@ -34,11 +34,13 @@ const seriesWithAuthor = (
   title: seriesId,
 });
 
-/** One page with nothing after it, which is what these fixtures stand for. */
+/**
+ * One page with nothing after it, which is what these fixtures stand for.
+ * `listPublishedSeries` answers with a `CachedReadResult`, never a throw (#672).
+ */
 const seriesPage = (series: unknown[]) => ({
-  nextToken: "",
-  previousToken: "",
-  series,
+  ok: true,
+  value: { nextToken: "", previousToken: "", series },
 });
 
 describe("authors", () => {
@@ -97,17 +99,17 @@ describe("authors", () => {
       limit: 50,
       token: "",
     });
-    expect(result.authors).toHaveLength(2);
-    expect(result.authors[0]?.id).toBe("CREATOR_YAMADA");
-    expect(result.authors[0]?.iconImageUrl).toBe(
+    expect(result.ok && result.value.authors).toHaveLength(2);
+    expect(result.ok && result.value.authors[0]?.id).toBe("CREATOR_YAMADA");
+    expect(result.ok && result.value.authors[0]?.iconImageUrl).toBe(
       "/images/creators/creator-yamada"
     );
-    expect(result.authors[0]?.name).toBe("山田 太郎");
-    expect(result.authors[0]?.seriesCount).toBe(2);
-    expect(result.authors[1]?.iconImageUrl).toBe("");
-    expect(result.authors[1]?.name).toBe("鈴木 花子");
-    expect(result.authors[1]?.seriesCount).toBe(1);
-    expect(result.hasNextPage).toBe(false);
+    expect(result.ok && result.value.authors[0]?.name).toBe("山田 太郎");
+    expect(result.ok && result.value.authors[0]?.seriesCount).toBe(2);
+    expect(result.ok && result.value.authors[1]?.iconImageUrl).toBe("");
+    expect(result.ok && result.value.authors[1]?.name).toBe("鈴木 花子");
+    expect(result.ok && result.value.authors[1]?.seriesCount).toBe(1);
+    expect(result.ok && result.value.hasNextPage).toBe(false);
   });
 
   it("ページングに応じて次ページ有無を返す", async () => {
@@ -166,15 +168,18 @@ describe("authors", () => {
       pageSize: 2,
     });
 
-    expect(result.authors).toHaveLength(2);
-    expect(result.hasNextPage).toBe(true);
+    expect(result.ok && result.value.authors).toHaveLength(2);
+    expect(result.ok && result.value.hasNextPage).toBe(true);
   });
 
   it("nextToken が返る限り次ページまで辿って集約する", async () => {
     mockListPublishedSeries.mockResolvedValueOnce({
-      nextToken: "TOKEN_PAGE_2",
-      previousToken: "",
-      series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+      ok: true,
+      value: {
+        nextToken: "TOKEN_PAGE_2",
+        previousToken: "",
+        series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+      },
     });
     mockListPublishedSeries.mockResolvedValueOnce(
       seriesPage([seriesWithAuthor("SERIES_2", "CREATOR_B", "著者B")])
@@ -194,11 +199,10 @@ describe("authors", () => {
       limit: 50,
       token: "TOKEN_PAGE_2",
     });
-    expect(result.authors.map((author) => author.id)).toEqual([
-      "CREATOR_A",
-      "CREATOR_B",
-    ]);
-    expect(result.hasNextPage).toBe(false);
+    expect(
+      result.ok && result.value.authors.map((author) => author.id)
+    ).toEqual(["CREATOR_A", "CREATOR_B"]);
+    expect(result.ok && result.value.hasNextPage).toBe(false);
   });
 
   it("著者IDから著者詳細と関連シリーズを返す", async () => {
@@ -247,10 +251,12 @@ describe("authors", () => {
 
     const detail = await getPublishedAuthorDetail("TENANT_1", authorId);
 
-    expect(detail?.iconImageUrl).toBe("/images/creators/creator-a");
-    expect(detail?.name).toBe("著者A");
-    expect(detail?.profileText).toBe("著者Aのプロフィール");
-    expect(detail?.series).toEqual([
+    expect(detail.ok && detail.value?.iconImageUrl).toBe(
+      "/images/creators/creator-a"
+    );
+    expect(detail.ok && detail.value?.name).toBe("著者A");
+    expect(detail.ok && detail.value?.profileText).toBe("著者Aのプロフィール");
+    expect(detail.ok && detail.value?.series).toEqual([
       { publicId: "SERIES_1", title: "シリーズ1" },
       { publicId: "SERIES_2", title: "シリーズ2" },
     ]);
@@ -263,7 +269,7 @@ describe("authors", () => {
       "TENANT_1",
       "UNKNOWN_CREATOR"
     );
-    expect(detail).toBeNull();
+    expect(detail).toEqual({ ok: true, value: null });
     expect(mockListPublishedSeries).toHaveBeenCalledWith("TENANT_1", {
       limit: 50,
       token: "",
@@ -272,9 +278,12 @@ describe("authors", () => {
 
   it("著者詳細も nextToken が返る限り次ページまで辿る", async () => {
     mockListPublishedSeries.mockResolvedValueOnce({
-      nextToken: "TOKEN_PAGE_2",
-      previousToken: "",
-      series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+      ok: true,
+      value: {
+        nextToken: "TOKEN_PAGE_2",
+        previousToken: "",
+        series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+      },
     });
     mockListPublishedSeries.mockResolvedValueOnce(
       seriesPage([seriesWithAuthor("SERIES_2", "CREATOR_A", "著者A")])
@@ -283,7 +292,7 @@ describe("authors", () => {
     const detail = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A");
 
     expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
-    expect(detail?.series).toEqual([
+    expect(detail.ok && detail.value?.series).toEqual([
       { publicId: "SERIES_1", title: "SERIES_1" },
       { publicId: "SERIES_2", title: "SERIES_2" },
     ]);
@@ -291,9 +300,12 @@ describe("authors", () => {
 
   it("同じ nextToken が繰り返されたら著者一覧の走査を止める", async () => {
     mockListPublishedSeries.mockResolvedValue({
-      nextToken: "STUCK_TOKEN",
-      previousToken: "",
-      series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+      ok: true,
+      value: {
+        nextToken: "STUCK_TOKEN",
+        previousToken: "",
+        series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+      },
     });
 
     const result = await listPublishedAuthors("TENANT_1", {
@@ -303,7 +315,35 @@ describe("authors", () => {
 
     // first page with "" then one more with the stuck token, then stop
     expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
-    expect(result.authors).toHaveLength(1);
+    expect(result.ok && result.value.authors).toHaveLength(1);
+  });
+
+  /**
+   * The walk is built on `listPublishedSeries`, which reports failure as a
+   * value (#672). Half an author list would read as real data, so the failure
+   * has to come out of the aggregation too.
+   */
+  it("シリーズ取得が失敗したら著者一覧・著者詳細も失敗を返す", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+
+    await expect(
+      listPublishedAuthors("TENANT_1", { page: 1, pageSize: 10 })
+    ).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+    await expect(
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+    ).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
   });
 
   it("page パラメータを正規化する", () => {

@@ -5,37 +5,61 @@ import {
 } from "@publira/utils/next-static-params";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { PageLoadError } from "#components/page-load-error";
 import { getSeriesDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
-
-/**
- * A missing series must call `notFound()` outside `<Suspense>` so the response
- * status is HTTP 404 instead of a streamed 200 (same pattern as authors detail
- * and the published-page route). Instant shell is not used for this segment.
- */
-export const instant = false;
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
 
-const Page = async (props: PageProps<"/[tenant_id]/series/[series_id]">) => {
+const SeriesDetailSkeleton = () => (
+  <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className="mb-10 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+      <div className="aspect-3/4 animate-pulse rounded-2xl bg-muted" />
+      <div className="space-y-4">
+        <div className="h-9 w-2/3 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+        <div className="h-20 w-full animate-pulse rounded bg-muted" />
+      </div>
+    </div>
+    <div className="grid gap-3">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div
+          className="h-16 animate-pulse rounded-lg border border-border/70 bg-muted/40"
+          key={index}
+        />
+      ))}
+    </div>
+  </div>
+);
+
+const SeriesDetailContent = async (
+  props: PageProps<"/[tenant_id]/series/[series_id]">
+) => {
   const [{ series_id }, tenantId] = await Promise.all([
     props.params,
     getTenantId(),
   ]);
   guardPlaceholders({ series_id });
 
-  // Missing / unpublished / other-tenant series all resolve to null, and the
-  // public site must not tell those apart.
+  // Missing / unpublished / other-tenant series all resolve to `null`, and the
+  // public site must not tell those apart. A failed read is a value as well:
+  // a `"use cache"` fill that throws fails the whole request, so neither this
+  // page nor any boundary would get to render anything (#672).
   const result = await getSeriesDetail(tenantId, series_id);
 
-  if (!result) {
+  if (!result.ok) {
+    return <PageLoadError description={result.message} />;
+  }
+
+  if (!result.value) {
     notFound();
   }
 
-  const { episodes, series } = result;
+  const { episodes, series } = result.value;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -133,5 +157,11 @@ const Page = async (props: PageProps<"/[tenant_id]/series/[series_id]">) => {
     </main>
   );
 };
+
+const Page = (props: PageProps<"/[tenant_id]/series/[series_id]">) => (
+  <Suspense fallback={<SeriesDetailSkeleton />}>
+    <SeriesDetailContent {...props} />
+  </Suspense>
+);
 
 export default Page;

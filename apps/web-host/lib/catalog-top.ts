@@ -1,4 +1,6 @@
 import { parseInstant } from "@publira/utils";
+import { cachedReadFailure } from "@publira/utils/cached-read";
+import type { CachedReadResult } from "@publira/utils/cached-read";
 
 import { listPublishedAuthors } from "./authors";
 import {
@@ -83,47 +85,69 @@ interface SeriesDetailRow {
   title: string;
 }
 
+/**
+ * The reads this builds on answer with results instead of throwing (#672), so
+ * a failure is carried through here as a result too — a section that could not
+ * be built must say so, not quietly render the rows that happened to load.
+ */
 const loadSeriesDetailRows = async (
   tenantId: string,
   seriesLimit: number,
   detailFetchLimit: number
-): Promise<SeriesDetailRow[]> => {
-  const { series } = await listPublishedSeries(tenantId, {
+): Promise<CachedReadResult<SeriesDetailRow[]>> => {
+  const seriesPage = await listPublishedSeries(tenantId, {
     limit: seriesLimit,
   });
-  const seriesForDetails = series.slice(0, detailFetchLimit);
+  if (!seriesPage.ok) {
+    return cachedReadFailure(seriesPage.message);
+  }
+
+  const seriesForDetails = seriesPage.value.series.slice(0, detailFetchLimit);
 
   const seriesDetails = await Promise.all(
-    seriesForDetails.map(async (seriesItem) => {
-      // Unpublished between the list and detail call → skip the row.
-      const detail = await getSeriesDetail(tenantId, seriesItem.publicId);
-      if (!detail) {
-        return null;
-      }
-
-      return {
-        creatorNames: seriesItem.creatorNames,
-        episodes: detail.episodes,
-        eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
-        publicId: seriesItem.publicId,
-        title: seriesItem.title,
-      };
-    })
+    seriesForDetails.map(async (seriesItem) => ({
+      detail: await getSeriesDetail(tenantId, seriesItem.publicId),
+      seriesItem,
+    }))
   );
 
-  return seriesDetails.filter((item) => item !== null);
+  const rows: SeriesDetailRow[] = [];
+  for (const { detail, seriesItem } of seriesDetails) {
+    if (!detail.ok) {
+      return cachedReadFailure(detail.message);
+    }
+
+    // Unpublished between the list and detail call → skip the row.
+    if (!detail.value) {
+      continue;
+    }
+
+    rows.push({
+      creatorNames: seriesItem.creatorNames,
+      episodes: detail.value.episodes,
+      eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
+      publicId: seriesItem.publicId,
+      title: seriesItem.title,
+    });
+  }
+
+  return { ok: true, value: rows };
 };
 
 export const getCatalogTopRecommendedSeries = async (
   tenantId: string,
   { maxRecommended = 6, seriesLimit = 24 }: CatalogTopDataOptions = {}
-): Promise<SeriesListItem[]> => {
+): Promise<CachedReadResult<SeriesListItem[]>> => {
   "use cache";
 
-  const { series } = await listPublishedSeries(tenantId, {
+  const seriesPage = await listPublishedSeries(tenantId, {
     limit: seriesLimit,
   });
-  return series.slice(0, maxRecommended);
+  if (!seriesPage.ok) {
+    return cachedReadFailure(seriesPage.message);
+  }
+
+  return { ok: true, value: seriesPage.value.series.slice(0, maxRecommended) };
 };
 
 export const getCatalogTopNewEpisodes = async (
@@ -133,7 +157,7 @@ export const getCatalogTopNewEpisodes = async (
     maxNewEpisodes = 6,
     seriesLimit = 24,
   }: CatalogTopDataOptions = {}
-): Promise<CatalogTopEpisodeItem[]> => {
+): Promise<CachedReadResult<CatalogTopEpisodeItem[]>> => {
   "use cache";
 
   const detailRows = await loadSeriesDetailRows(
@@ -141,8 +165,11 @@ export const getCatalogTopNewEpisodes = async (
     seriesLimit,
     detailFetchLimit
   );
+  if (!detailRows.ok) {
+    return cachedReadFailure(detailRows.message);
+  }
 
-  return detailRows
+  const episodes = detailRows.value
     .flatMap((row) =>
       row.episodes.flatMap((episode) =>
         episode.publishedAt.trim().length > 0
@@ -160,6 +187,8 @@ export const getCatalogTopNewEpisodes = async (
     )
     .toSorted(byNewestDateDesc)
     .slice(0, maxNewEpisodes);
+
+  return { ok: true, value: episodes };
 };
 
 export const getCatalogTopUpdatedSeries = async (
@@ -169,7 +198,7 @@ export const getCatalogTopUpdatedSeries = async (
     maxUpdatedSeries = 6,
     seriesLimit = 24,
   }: CatalogTopDataOptions = {}
-): Promise<CatalogTopUpdatedSeriesItem[]> => {
+): Promise<CachedReadResult<CatalogTopUpdatedSeriesItem[]>> => {
   "use cache";
 
   const detailRows = await loadSeriesDetailRows(
@@ -177,8 +206,11 @@ export const getCatalogTopUpdatedSeries = async (
     seriesLimit,
     detailFetchLimit
   );
+  if (!detailRows.ok) {
+    return cachedReadFailure(detailRows.message);
+  }
 
-  return detailRows
+  const updatedSeries = detailRows.value
     .flatMap((row) => {
       const [latestEpisode] = row.episodes
         .filter((episode) => episode.publishedAt.trim().length > 0)
@@ -204,26 +236,39 @@ export const getCatalogTopUpdatedSeries = async (
       compareNewestFirst(left.latestPublishedAt, right.latestPublishedAt)
     )
     .slice(0, maxUpdatedSeries);
+
+  return { ok: true, value: updatedSeries };
 };
 
 export const getCatalogTopFeaturedLabels = async (
   tenantId: string,
   { maxLabels = 6 }: CatalogTopDataOptions = {}
-): Promise<LabelListItem[]> => {
+): Promise<CachedReadResult<LabelListItem[]>> => {
   "use cache";
 
-  return await listPublishedLabels(tenantId, maxLabels, 0);
+  const labels = await listPublishedLabels(tenantId, maxLabels, 0);
+  if (!labels.ok) {
+    // Re-marking the outer entry is deliberate: the inner cache life does
+    // propagate, but this scope owning its own drop keeps the guarantee local.
+    return cachedReadFailure(labels.message);
+  }
+
+  return labels;
 };
 
 export const getCatalogTopFeaturedAuthors = async (
   tenantId: string,
   { maxAuthors = 6 }: CatalogTopDataOptions = {}
-): Promise<CatalogTopFeaturedAuthor[]> => {
+): Promise<CachedReadResult<CatalogTopFeaturedAuthor[]>> => {
   "use cache";
 
   const authorsResult = await listPublishedAuthors(tenantId, {
     page: 1,
     pageSize: maxAuthors,
   });
-  return authorsResult.authors;
+  if (!authorsResult.ok) {
+    return cachedReadFailure(authorsResult.message);
+  }
+
+  return { ok: true, value: authorsResult.value.authors };
 };

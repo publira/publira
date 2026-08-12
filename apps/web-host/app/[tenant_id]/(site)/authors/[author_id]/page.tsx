@@ -6,7 +6,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
+import { PageLoadError } from "#components/page-load-error";
 import { getPublishedAuthorDetail } from "#lib/authors";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -40,10 +42,14 @@ export const generateMetadata = async ({
 
   guardPlaceholders({ author_id });
 
-  const [siteLabel, author] = await Promise.all([
+  const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
     getPublishedAuthorDetail(tenantId, author_id),
   ]);
+
+  // An unavailable author reads as "not found" for the `<title>` alone; the
+  // page body below says what actually happened.
+  const author = result.ok ? result.value : null;
 
   if (!author) {
     return {
@@ -59,17 +65,49 @@ export const generateMetadata = async ({
   };
 };
 
-const Page = async ({
+const AuthorDetailSkeleton = () => (
+  <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className="mb-10 rounded-3xl border border-border/70 bg-card/90 p-8 shadow-sm">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+        <div className="h-24 w-24 shrink-0 animate-pulse rounded-full bg-muted" />
+        <div className="min-w-0 flex-1 space-y-4">
+          <div className="h-9 w-1/2 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+          <div className="h-24 w-full animate-pulse rounded-2xl bg-muted" />
+        </div>
+      </div>
+    </div>
+    <div className="grid gap-4">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div
+          className="h-20 animate-pulse rounded-2xl border border-border/70 bg-muted/40"
+          key={index}
+        />
+      ))}
+    </div>
+  </div>
+);
+
+const AuthorDetailContent = async ({
   params,
 }: PageProps<"/[tenant_id]/authors/[author_id]">) => {
   const [{ author_id }, tenantId] = await Promise.all([params, getTenantId()]);
 
   guardPlaceholders({ author_id });
 
-  const [siteLabel, author] = await Promise.all([
+  // A failed read is a value, not a throw: a `"use cache"` fill that throws
+  // fails the whole request, so neither this page nor any boundary would get
+  // to render anything (#672).
+  const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
     getPublishedAuthorDetail(tenantId, author_id),
   ]);
+
+  if (!result.ok) {
+    return <PageLoadError description={result.message} />;
+  }
+
+  const author = result.value;
 
   if (!author) {
     notFound();
@@ -173,5 +211,11 @@ const Page = async ({
     </main>
   );
 };
+
+const Page = (props: PageProps<"/[tenant_id]/authors/[author_id]">) => (
+  <Suspense fallback={<AuthorDetailSkeleton />}>
+    <AuthorDetailContent {...props} />
+  </Suspense>
+);
 
 export default Page;

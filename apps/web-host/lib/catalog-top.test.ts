@@ -116,9 +116,8 @@ describe("catalog-top section loaders", () => {
 
   it("getCatalogTopRecommendedSeries は公開シリーズの先頭を返す", async () => {
     mockListPublishedSeries.mockResolvedValue({
-      nextToken: "",
-      previousToken: "",
-      series: seriesFixture,
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: seriesFixture },
     });
 
     const result = await getCatalogTopRecommendedSeries("TENANT_001", {
@@ -126,21 +125,22 @@ describe("catalog-top section loaders", () => {
       seriesLimit: 10,
     });
 
-    expect(result.map((item) => item.publicId)).toEqual(["SERIES_1"]);
+    expect(result.ok && result.value.map((item) => item.publicId)).toEqual([
+      "SERIES_1",
+    ]);
   });
 
   it("getCatalogTopNewEpisodes は公開日が新しい順に返す", async () => {
     mockListPublishedSeries.mockResolvedValue({
-      nextToken: "",
-      previousToken: "",
-      series: seriesFixture,
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: seriesFixture },
     });
     mockGetSeriesDetail.mockImplementation(
       (_tenantId: string, seriesId: string) => {
         if (seriesId === "SERIES_1") {
-          return Promise.resolve(detailSeries1);
+          return Promise.resolve({ ok: true, value: detailSeries1 });
         }
-        return Promise.resolve(detailSeries2);
+        return Promise.resolve({ ok: true, value: detailSeries2 });
       }
     );
 
@@ -150,7 +150,7 @@ describe("catalog-top section loaders", () => {
       seriesLimit: 10,
     });
 
-    expect(result.map((item) => item.episodeId)).toEqual([
+    expect(result.ok && result.value.map((item) => item.episodeId)).toEqual([
       "EP_2_1",
       "EP_1_2",
       "EP_1_1",
@@ -159,16 +159,15 @@ describe("catalog-top section loaders", () => {
 
   it("getCatalogTopUpdatedSeries は最新エピソード更新順に返す", async () => {
     mockListPublishedSeries.mockResolvedValue({
-      nextToken: "",
-      previousToken: "",
-      series: seriesFixture,
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: seriesFixture },
     });
     mockGetSeriesDetail.mockImplementation(
       (_tenantId: string, seriesId: string) => {
         if (seriesId === "SERIES_1") {
-          return Promise.resolve(detailSeries1);
+          return Promise.resolve({ ok: true, value: detailSeries1 });
         }
-        return Promise.resolve(detailSeries2);
+        return Promise.resolve({ ok: true, value: detailSeries2 });
       }
     );
 
@@ -178,7 +177,7 @@ describe("catalog-top section loaders", () => {
       seriesLimit: 10,
     });
 
-    expect(result.map((item) => item.seriesId)).toEqual([
+    expect(result.ok && result.value.map((item) => item.seriesId)).toEqual([
       "SERIES_2",
       "SERIES_1",
     ]);
@@ -186,87 +185,152 @@ describe("catalog-top section loaders", () => {
 
   it("getCatalogTopFeaturedLabels / Authors は公開一覧を返す", async () => {
     mockListPublishedAuthors.mockResolvedValue({
-      authors: [
-        { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
-        { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
-      ],
-      hasNextPage: false,
-      page: 1,
-      pageSize: 6,
-    });
-    mockListPublishedLabels.mockResolvedValue([
-      {
-        eyeCatchImageVariants: [],
-        name: "ラベルA",
-        publicId: "LABEL_1",
-        seriesCount: 3,
+      ok: true,
+      value: {
+        authors: [
+          { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
+          { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
+        ],
+        hasNextPage: false,
+        page: 1,
+        pageSize: 6,
       },
-    ]);
+    });
+    mockListPublishedLabels.mockResolvedValue({
+      ok: true,
+      value: [
+        {
+          eyeCatchImageVariants: [],
+          name: "ラベルA",
+          publicId: "LABEL_1",
+          seriesCount: 3,
+        },
+      ],
+    });
 
     await expect(
       getCatalogTopFeaturedAuthors("TENANT_001", { maxAuthors: 6 })
-    ).resolves.toEqual([
-      { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
-      { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
-    ]);
+    ).resolves.toEqual({
+      ok: true,
+      value: [
+        { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
+        { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
+      ],
+    });
     await expect(
       getCatalogTopFeaturedLabels("TENANT_001", { maxLabels: 6 })
-    ).resolves.toEqual([
-      {
-        eyeCatchImageVariants: [],
-        name: "ラベルA",
-        publicId: "LABEL_1",
-        seriesCount: 3,
-      },
-    ]);
+    ).resolves.toEqual({
+      ok: true,
+      value: [
+        {
+          eyeCatchImageVariants: [],
+          name: "ラベルA",
+          publicId: "LABEL_1",
+          seriesCount: 3,
+        },
+      ],
+    });
+  });
+
+  /**
+   * The reads below never throw (#672), so a failure has to travel as a value —
+   * a section that could not be built must not look like an empty one.
+   */
+  it("シリーズ一覧の取得に失敗したらセクションも失敗を返す", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+
+    await expect(
+      getCatalogTopRecommendedSeries("TENANT_001", { maxRecommended: 6 })
+    ).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+    await expect(
+      getCatalogTopNewEpisodes("TENANT_001", { maxNewEpisodes: 6 })
+    ).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+  });
+
+  it("シリーズ詳細の取得に失敗したらセクションも失敗を返す", async () => {
+    mockListPublishedSeries.mockResolvedValue({
+      ok: true,
+      value: { nextToken: "", previousToken: "", series: seriesFixture },
+    });
+    mockGetSeriesDetail.mockResolvedValue({
+      message:
+        "シリーズを取得できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+
+    await expect(
+      getCatalogTopUpdatedSeries("TENANT_001", { maxUpdatedSeries: 6 })
+    ).resolves.toEqual({
+      message:
+        "シリーズを取得できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
   });
 
   it("詳細が null のシリーズ (非公開化など) を除外して継続する", async () => {
     mockListPublishedSeries.mockResolvedValue({
-      nextToken: "",
-      previousToken: "",
-      series: [
-        {
-          creatorNames: [],
-          creators: [],
-          labelName: "",
-          publicId: "SERIES_1",
-          synopsis: "",
-          title: "シリーズ1",
-        },
-        {
-          creatorNames: [],
-          creators: [],
-          labelName: "",
-          publicId: "SERIES_2",
-          synopsis: "",
-          title: "シリーズ2",
-        },
-      ],
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [
+          {
+            creatorNames: [],
+            creators: [],
+            labelName: "",
+            publicId: "SERIES_1",
+            synopsis: "",
+            title: "シリーズ1",
+          },
+          {
+            creatorNames: [],
+            creators: [],
+            labelName: "",
+            publicId: "SERIES_2",
+            synopsis: "",
+            title: "シリーズ2",
+          },
+        ],
+      },
     });
     mockGetSeriesDetail.mockImplementation(
       (_tenantId: string, seriesId: string) => {
         if (seriesId === "SERIES_1") {
-          return Promise.resolve(null);
+          return Promise.resolve({ ok: true, value: null });
         }
         return Promise.resolve({
-          episodes: [
-            {
-              orderIndex: 1,
-              price: 0,
-              publicId: "EP_2_1",
-              publishedAt: "2026-03-20T00:00:00Z",
-              status: "published",
-              title: "第1話",
+          ok: true,
+          value: {
+            episodes: [
+              {
+                orderIndex: 1,
+                price: 0,
+                publicId: "EP_2_1",
+                publishedAt: "2026-03-20T00:00:00Z",
+                status: "published",
+                title: "第1話",
+              },
+            ],
+            series: {
+              creatorNames: [],
+              labelName: "",
+              publicId: "SERIES_2",
+              readingPeriodHours: 0,
+              synopsis: "",
+              title: "シリーズ2",
             },
-          ],
-          series: {
-            creatorNames: [],
-            labelName: "",
-            publicId: "SERIES_2",
-            readingPeriodHours: 0,
-            synopsis: "",
-            title: "シリーズ2",
           },
         });
       }
@@ -281,9 +345,15 @@ describe("catalog-top section loaders", () => {
 
     await expect(
       getCatalogTopNewEpisodes("TENANT_001", options)
-    ).resolves.toEqual([expect.objectContaining({ episodeId: "EP_2_1" })]);
+    ).resolves.toEqual({
+      ok: true,
+      value: [expect.objectContaining({ episodeId: "EP_2_1" })],
+    });
     await expect(
       getCatalogTopUpdatedSeries("TENANT_001", options)
-    ).resolves.toEqual([expect.objectContaining({ seriesId: "SERIES_2" })]);
+    ).resolves.toEqual({
+      ok: true,
+      value: [expect.objectContaining({ seriesId: "SERIES_2" })],
+    });
   });
 });

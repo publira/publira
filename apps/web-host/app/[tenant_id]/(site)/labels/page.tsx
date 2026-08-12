@@ -1,12 +1,16 @@
 import { ImageIcon } from "@publira/icons";
+import { SectionError } from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listPublishedLabels } from "#lib/catalog";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+
+const SECTION_TITLE = "レーベル一覧を表示できませんでした";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
@@ -44,7 +48,13 @@ const TenantSiteLabel = async () => {
 
 const LabelsListData = async () => {
   const tenantId = await getTenantId();
-  const labels = await listPublishedLabels(tenantId);
+  const result = await listPublishedLabels(tenantId);
+
+  if (!result.ok) {
+    return <SectionError description={result.message} title={SECTION_TITLE} />;
+  }
+
+  const labels = result.value;
 
   if (labels.length === 0) {
     return (
@@ -101,9 +111,11 @@ const LabelsPage = () => (
       のレーベルをご紹介します
     </p>
 
-    <Suspense fallback={<LabelsListSkeleton />}>
-      <LabelsListData />
-    </Suspense>
+    <SectionErrorBoundary title={SECTION_TITLE}>
+      <Suspense fallback={<LabelsListSkeleton />}>
+        <LabelsListData />
+      </Suspense>
+    </SectionErrorBoundary>
   </main>
 );
 

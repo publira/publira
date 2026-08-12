@@ -6,21 +6,31 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
+import { PageLoadError } from "#components/page-load-error";
 import { getEpisodeDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
-
-/**
- * A missing episode must call `notFound()` outside `<Suspense>` so the response
- * status is HTTP 404 instead of a streamed 200 (same pattern as authors detail
- * and the published-page route). Instant shell is not used for this segment.
- */
-export const instant = false;
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
 
-const Page = async (
+const EpisodeSkeleton = () => (
+  <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+      <div className="order-2 space-y-6 lg:order-1">
+        <div className="h-40 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+        <div className="h-96 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+      </div>
+      <div className="order-1 space-y-4 lg:order-2">
+        <div className="h-32 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+        <div className="h-48 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+      </div>
+    </div>
+  </div>
+);
+
+const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
 ) => {
   const [{ episode_id, series_id }, tenantId] = await Promise.all([
@@ -30,14 +40,20 @@ const Page = async (
   guardPlaceholders({ episode_id, series_id });
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to
-  // null, and the public site must not tell those apart.
+  // `null`, and the public site must not tell those apart. A failed read is a
+  // value as well: a `"use cache"` fill that throws fails the whole request,
+  // so nothing downstream would get to render (#672).
   const result = await getEpisodeDetail(tenantId, series_id, episode_id);
 
-  if (!result) {
+  if (!result.ok) {
+    return <PageLoadError description={result.message} />;
+  }
+
+  if (!result.value) {
     notFound();
   }
 
-  const { episode, images, series } = result;
+  const { episode, images, series } = result.value;
   const priceLabel =
     episode.price > 0 ? `¥${episode.price.toLocaleString("ja-JP")}` : "無料";
 
@@ -196,5 +212,13 @@ const Page = async (
     </main>
   );
 };
+
+const Page = (
+  props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
+) => (
+  <Suspense fallback={<EpisodeSkeleton />}>
+    <EpisodeContent {...props} />
+  </Suspense>
+);
 
 export default Page;
