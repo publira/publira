@@ -455,7 +455,7 @@ func (s *adminServer) IssueAccessTicket(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -530,7 +530,7 @@ func (s *adminServer) RevokeAccessTicket(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,

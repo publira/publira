@@ -445,7 +445,7 @@ func (s *adminServer) CreateEpisode(
 		episode.PublishedAt = listing.PublishedAt.Time.UTC().Format(time.RFC3339)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
@@ -467,7 +467,7 @@ func (s *adminServer) UploadEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	items, err := episodeimages.Service{Queries: s.queriesFor(ctx), Storage: s.storage, Recorder: s.recorder}.Upload(ctx, episodeimages.UploadRequest{
+	items, err := episodeimages.Service{Queries: s.queriesFor(ctx), Storage: s.storage, Recorder: s.recorderFor(ctx)}.Upload(ctx, episodeimages.UploadRequest{
 		Tenant:          tenant,
 		SeriesPublicID:  req.Msg.SeriesPublicId,
 		EpisodePublicID: req.Msg.EpisodePublicId,
@@ -618,7 +618,7 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,

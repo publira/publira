@@ -215,7 +215,7 @@ func (s *adminServer) UpdateTenantEmailSettings(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -259,7 +259,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 
 	if err := s.tester.SendTestEmail(ctx, settings, recipientEmail); err != nil {
 		reason := internalsmtp.UserFacingError(err)
-		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
@@ -273,7 +273,7 @@ func (s *adminServer) SendTenantSmtpTestEmail(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New(reason))
 	}
 
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,

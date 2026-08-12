@@ -177,7 +177,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: user.ID,
 		ActorRole:   auth.RoleTenantAdmin,
