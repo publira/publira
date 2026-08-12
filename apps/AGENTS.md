@@ -164,6 +164,28 @@ Measured against the production build under Cache Components ([#672](https://git
 
 "Has a committed shell" is not something a `lib/` helper can assume: the same read is awaited by a section inside `<Suspense>` and by `generateMetadata`, which resolves before anything is flushed. So the rule is unconditional.
 
+### Why a throw before the shell is fatal
+
+The framework rule behind it, measured on the production standalone build for [#683](https://github.com/publira/publira/issues/683) by injecting a throw at each position:
+
+| Where the throw happens | Direct hit |
+| --- | --- |
+| In the first synchronous pass — the top of a page body or of a suspended section, before any `await` | Bare `500 Internal Server Error`, 21-byte body |
+| After any `await` — a failed RPC, a timer, `connection()` | `200`, static shell, the error streams into it and `error.tsx` / `SectionErrorBoundary` renders |
+
+The static shell is flushed only once the render has yielded, so a throw in that first pass aborts the response before anything is committed. Next.js does not fall back to its own `__next_error__` recovery document there either — the error escapes the app render and the server answers plain text — which is why adding `app/global-error.tsx` changed nothing when it was measured, and why the reach notes in each `error.tsx` are worded around the flush rather than around direct hits versus client navigations.
+
+This is a known Next.js behaviour, not something these apps configured. Two open issues report it, and they differ in what the reader ends up seeing rather than in how the error escapes:
+
+| Issue | Trigger | What the response is |
+| --- | --- | --- |
+| [vercel/next.js#62046](https://github.com/vercel/next.js/issues/62046) | A route with `generateStaticParams` throwing while it is generated on demand | Neither `error.tsx` nor `global-error.tsx`; Next.js's built-in error page |
+| [vercel/next.js#96567](https://github.com/vercel/next.js/issues/96567) | A `"use cache"` route throwing while it regenerates | Neither boundary; plain-text `Internal Server Error` |
+
+The escape is the same in both: the error leaves the app render, and `base-server` falls back to `getFallbackErrorComponents()`. What that returns decides the ending — the pages-router `/_error` component when one exists, and otherwise the 21-byte plain-text body, because `NextNodeServer.getFallbackErrorComponents()` returns `null` outside dev. These apps are app-router-only in production, so they land on the plain-text row. Check both issues before re-investigating, and do not open a third.
+
+The apps sit on the good side of that line by construction: every read crosses the network, so a failure that is left to throw lands after the flush, and the cached-read rule above keeps it from throwing at all. The bare 500 is what a bug that throws synchronously at the top of a component gets. That last row is a property of the tenant route structure, not something to work around per route — a minimal reproduction showed the same throw producing Next.js's `__next_error__` document only when the root layout sits above the top-level dynamic segment, which is not this app's shape. Do not add per-route escape hatches (a `connection()` call, a `try` / `catch` around a component body) to chase it.
+
 ## Never use `instant = false`
 
 `export const instant = false` opts a segment out of Cache Components' static-shell validation. It is an escape hatch for codebases that cannot yet fix a blocking read, and it has no place in a product being built from scratch — **do not add it to any segment**, and do not treat an existing occurrence as licence to add another.

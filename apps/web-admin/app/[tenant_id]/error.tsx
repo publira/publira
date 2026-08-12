@@ -19,8 +19,15 @@ import { ErrorScreen } from "#components/error-screen";
  * boundary and still needs `global-error.tsx` — tracked in #642.
  *
  * Measured against `next dev` by throwing from `(protected)/layout.tsx`: a
- * direct hit renders this screen, with no console chrome, as intended. Same
- * caveat as `(protected)/error.tsx` about the production build and #683.
+ * direct hit renders this screen, with no console chrome, as intended. The
+ * production build was measured for #683 the same way an admin API outage
+ * exercises it — `(protected)/layout.tsx` reads session and tenant, so the
+ * outage fails that layout and this screen answers a direct hit with HTTP 200,
+ * and 再試行 recovers once the API is back
+ * (`e2e/tests/admin.error-boundary.spec.ts`). The limit is the one
+ * `(protected)/error.tsx` records: a throw in the first synchronous pass, before
+ * the static shell is flushed, aborts the response as a bare 500 that no
+ * boundary can catch.
  */
 const TenantError = ({
   error,

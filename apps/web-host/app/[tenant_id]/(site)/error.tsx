@@ -16,13 +16,21 @@ import { ErrorScreen } from "#components/error-screen";
  *
  * No `<main>` here: `SiteLayoutMain` already provides one.
  *
- * Reach, as measured against the production build: this renders on a client
- * navigation when the page throws and `(site)/layout.tsx` still succeeds. A
- * direct hit answers a bare `500 Internal Server Error` instead, and so does a
- * client navigation when the layout throws too. The cause of that 500 is not
- * identified. #683 carries it, and
- * `e2e/tests/catalog.error-boundary.spec.ts` records the measurements and holds
- * the target assertions.
+ * Reach, as measured against the production build (#683): what decides whether
+ * this renders is **when** the failure happens, not how the request arrived. A
+ * throw raised after the static shell has been flushed — which every failed
+ * read is, because they all cross the network — streams into the committed
+ * shell and lands here, on a direct hit as well as on a client navigation. A
+ * throw raised in the first synchronous pass, before anything is committed,
+ * aborts the response with a bare `500 Internal Server Error` that no boundary
+ * can reach; Next.js does not fall back to its `__next_error__` document there
+ * either, which is why adding `app/global-error.tsx` changed nothing. That last
+ * part is upstream behaviour, not wiring to fix here: an on-demand render that
+ * throws skips both boundaries (vercel/next.js#62046 for `generateStaticParams`,
+ * vercel/next.js#96567 for `"use cache"`), and this build answers plain text
+ * rather than #62046's built-in error page only because it has no pages-router
+ * `/_error` to fall back to. The measurements live in
+ * `e2e/tests/catalog.error-boundary.spec.ts`.
  */
 const SiteError = ({
   error,
