@@ -128,8 +128,9 @@ func TestDBSeriesRejectsCreatorFromAnotherTenant(t *testing.T) {
 		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 
-	// The series row is written before creators are resolved, so the failure must
-	// not leave the link behind even though the series itself may exist.
+	// The link must not exist either way. The series row itself does survive the
+	// failure today because CreateSeries is not transactional, which #844 tracks;
+	// this assertion holds before and after that changes.
 	if count := env.countRows(t, "SELECT count(*) FROM series_creators"); count != 0 {
 		t.Fatalf("series_creators rows = %d, want 0", count)
 	}
