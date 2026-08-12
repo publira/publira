@@ -92,6 +92,19 @@ func (s *adminServer) queriesFor(ctx context.Context) Querier {
 	return s.queries
 }
 
+// recorderFor returns an audit recorder bound to the tenant-scoped connection of
+// the current request. audit_logs is under RLS and the admin API connects as
+// publira_admin, so an entry written through the pool-level querier — which
+// carries no app.current_tenant_id — is rejected by the tenant isolation policy
+// and the event is lost. Falls back to the pool-level recorder when no
+// tenant-scoped connection is in play (sqlmock tests, unauthenticated paths).
+func (s *adminServer) recorderFor(ctx context.Context) *auditlog.Recorder {
+	if queries, ok := rpcmiddleware.TenantQueriesFromContext(ctx); ok {
+		return auditlog.New(queries, s.logger)
+	}
+	return s.recorder
+}
+
 func (s *adminServer) authenticateSession(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,

@@ -192,7 +192,7 @@ func (s *adminServer) CreatePage(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -244,7 +244,7 @@ func (s *adminServer) UpdatePage(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -403,7 +403,7 @@ func (s *adminServer) CreateVersion(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -504,7 +504,7 @@ func (s *adminServer) PublishVersion(
 	}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
@@ -591,7 +591,7 @@ func (s *adminServer) RollbackToVersion(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,

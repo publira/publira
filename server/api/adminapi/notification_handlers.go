@@ -327,7 +327,7 @@ func (s *adminServer) CreateNotification(
 		}
 	}
 
-	s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,

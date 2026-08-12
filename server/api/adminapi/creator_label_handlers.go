@@ -632,7 +632,7 @@ func (s *adminServer) CreateCreator(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
@@ -707,7 +707,7 @@ func (s *adminServer) UpdateCreator(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
@@ -785,7 +785,7 @@ func (s *adminServer) CreateLabel(
 		variants = variantsByImageID[created.EyeCatchImageID.UUID]
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
@@ -854,7 +854,7 @@ func (s *adminServer) UpdateLabel(
 		variants = variantsByImageID[updated.EyeCatchImageID.UUID]
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
-		s.recorder.RecordTenant(ctx, auditlog.TenantEntry{
+		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 			TenantID:    tenant.ID,
 			ActorUserID: sessionCtx.User.ID,
 			ActorRole:   sessionCtx.Role,
