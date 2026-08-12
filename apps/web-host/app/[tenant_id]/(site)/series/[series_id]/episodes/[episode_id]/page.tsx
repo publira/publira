@@ -123,7 +123,7 @@ const Page = async (
         <aside className="order-1 lg:order-2">
           <div className="space-y-4 lg:sticky lg:top-8">
             <section className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="mb-2 text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
                 Series
               </p>
               <h2 className="mb-3 font-serif text-2xl font-semibold">
@@ -138,7 +138,7 @@ const Page = async (
             </section>
 
             <section className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="mb-4 text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
                 Episode Info
               </p>
               <dl className="space-y-4 text-sm">

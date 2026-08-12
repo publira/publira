@@ -331,7 +331,7 @@ export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
         if (block.type === "blockquote") {
           return (
             <blockquote
-              className="border-l-4 border-border pl-4 italic text-muted-foreground"
+              className="border-l-4 border-border pl-4 text-muted-foreground italic"
               key={block.key}
             >
               {parseInline(block.text)}
@@ -367,7 +367,7 @@ export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
             key={block.key}
           >
             {block.language ? (
-              <div className="border-b border-border/70 px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <div className="border-b border-border/70 px-4 py-2 text-xs tracking-wide text-muted-foreground uppercase">
                 {block.language}
               </div>
             ) : null}

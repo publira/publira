@@ -28,7 +28,7 @@ export const SignupForm = () => {
                   name="name"
                   type="text"
                   placeholder="山田太郎"
-                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
               <div>
@@ -40,7 +40,7 @@ export const SignupForm = () => {
                   name="email"
                   type="email"
                   placeholder="your@email.com"
-                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
               <div>
@@ -52,7 +52,7 @@ export const SignupForm = () => {
                   name="password"
                   type="password"
                   placeholder="••••••••"
-                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
               <div>
@@ -67,7 +67,7 @@ export const SignupForm = () => {
                   name="confirmPassword"
                   type="password"
                   placeholder="••••••••"
-                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:outline-none"
                 />
               </div>
               <button

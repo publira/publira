@@ -99,7 +99,7 @@ export const CreatorManager = ({
                         width={40}
                       />
                     ) : (
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-xs text-muted-foreground">
                         未設定
                       </span>
                     )}

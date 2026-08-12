@@ -164,7 +164,7 @@ export const SiteLayout = ({ children }: { children: ReactNode }) => (
 );
 
 export const SiteLayoutHeader = ({ children }: { children: ReactNode }) => (
-  <header className="border-b border-border/70 border-t-2 border-t-secondary bg-card/70 backdrop-blur">
+  <header className="border-t-2 border-b border-border/70 border-t-secondary bg-card/70 backdrop-blur">
     <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
       {children}
     </div>

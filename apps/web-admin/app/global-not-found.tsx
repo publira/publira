@@ -25,7 +25,7 @@ const GlobalNotFound = () => (
   <html lang="ja">
     <body className="min-h-dvh bg-background text-foreground antialiased">
       <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
-        <p className="text-sm tracking-wide uppercase text-muted-foreground">
+        <p className="text-sm tracking-wide text-muted-foreground uppercase">
           404 Not Found
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">

@@ -517,7 +517,7 @@ export const PageWorkspace = ({
                             key={key}
                           >
                             <span>{display.prefix}</span>
-                            <span className="whitespace-pre-wrap wrap-break-word">
+                            <span className="wrap-break-word whitespace-pre-wrap">
                               {line.value || " "}
                             </span>
                           </div>

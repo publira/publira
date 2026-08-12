@@ -28,7 +28,7 @@ export const SettingsTabs = () => {
           <Link
             key={tab.id}
             href={tab.href}
-            className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
               active
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"

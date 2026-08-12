@@ -20,7 +20,7 @@ const markdownComponents: Components = {
     </a>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-border pl-4 italic text-muted-foreground">
+    <blockquote className="border-l-4 border-border pl-4 text-muted-foreground italic">
       {children}
     </blockquote>
   ),
