@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -40,6 +40,83 @@ const excerpt = (text: string, max = 56) => {
   return `${normalized.slice(0, max)}...`;
 };
 
+const CreatorListBody = ({
+  creators,
+  hasPageLinks,
+  listErrorMessage,
+}: {
+  creators: CreatorListItem[];
+  hasPageLinks: boolean;
+  listErrorMessage?: string;
+}) => {
+  // A failed fetch still hands an empty `creators` array; do not show the empty
+  // list state alongside the error or operators will read it as "no creators".
+  if (listErrorMessage) {
+    return (
+      <SectionError
+        description={listErrorMessage}
+        title="著者一覧を表示できませんでした"
+      />
+    );
+  }
+
+  if (creators.length === 0) {
+    return (
+      <CursorPageEmptyState
+        description="新規作成ページから著者を作成してください。"
+        hasPageLinks={hasPageLinks}
+        itemLabel="著者"
+        title="著者がまだ登録されていません。"
+      />
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-24">画像</TableHead>
+          <TableHead>名前</TableHead>
+          <TableHead>プロフィール</TableHead>
+          <TableHead className="w-56">操作</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {creators.map((creator) => (
+          <TableRow key={creator.publicId}>
+            <TableCell>
+              {creator.iconImageUrl ? (
+                <Image
+                  alt={`${creator.name} のアイコン`}
+                  className="size-10 rounded-full border object-cover"
+                  height={40}
+                  src={creator.iconImageUrl}
+                  unoptimized
+                  width={40}
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">未設定</span>
+              )}
+            </TableCell>
+            <TableCell className="font-medium">{creator.name}</TableCell>
+            <TableCell>{excerpt(creator.profileText)}</TableCell>
+            <TableCell>
+              <div className="flex flex-wrap gap-2">
+                <LinkButton
+                  render={<Link href={`/creators/${creator.publicId}`} />}
+                  variant="outline"
+                >
+                  編集
+                </LinkButton>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
 export const CreatorManager = ({
   creators,
   listErrorMessage,
@@ -48,7 +125,10 @@ export const CreatorManager = ({
   previousHref,
 }: CreatorManagerProps) => {
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
-  const showPagination = creators.length > 0 || hasPageLinks;
+  // Hide the pager on a failed fetch: tokens are empty then, and a bare
+  // "previous/next" chrome next to the error looks like the list exists.
+  const showPagination =
+    !listErrorMessage && (creators.length > 0 || hasPageLinks);
 
   return (
     <Card>
@@ -64,63 +144,11 @@ export const CreatorManager = ({
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {listErrorMessage ? (
-          <FormMessage variant="destructive">{listErrorMessage}</FormMessage>
-        ) : null}
-
-        {creators.length === 0 ? (
-          <CursorPageEmptyState
-            description="新規作成ページから著者を作成してください。"
-            hasPageLinks={hasPageLinks}
-            itemLabel="著者"
-            title="著者がまだ登録されていません。"
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-24">画像</TableHead>
-                <TableHead>名前</TableHead>
-                <TableHead>プロフィール</TableHead>
-                <TableHead className="w-56">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {creators.map((creator) => (
-                <TableRow key={creator.publicId}>
-                  <TableCell>
-                    {creator.iconImageUrl ? (
-                      <Image
-                        alt={`${creator.name} のアイコン`}
-                        className="size-10 rounded-full border object-cover"
-                        height={40}
-                        src={creator.iconImageUrl}
-                        unoptimized
-                        width={40}
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        未設定
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-medium">{creator.name}</TableCell>
-                  <TableCell>{excerpt(creator.profileText)}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      <LinkButton
-                        render={<Link href={`/creators/${creator.publicId}`} />}
-                        variant="outline"
-                      >
-                        編集
-                      </LinkButton>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <CreatorListBody
+          creators={creators}
+          hasPageLinks={hasPageLinks}
+          listErrorMessage={listErrorMessage}
+        />
 
         {showPagination ? (
           <PaginationFooter

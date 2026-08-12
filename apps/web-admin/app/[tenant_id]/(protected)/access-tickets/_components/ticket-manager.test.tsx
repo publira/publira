@@ -99,9 +99,15 @@ describe("TicketManager", () => {
       />
     );
 
-    expect(
-      screen.getByText("チケット一覧を取得できませんでした。")
-    ).toBeDefined();
+    // 取得失敗はセクションの失敗なので、他画面と同じ `SectionError`
+    // （role="alert" と「〇〇一覧を表示できませんでした」）で出す。
+    const sectionError = screen.getByRole("alert");
+    expect(sectionError.textContent).toContain(
+      "アクセスチケット一覧を表示できませんでした"
+    );
+    expect(sectionError.textContent).toContain(
+      "チケット一覧を取得できませんでした。"
+    );
     expect(screen.queryByText("チケットがまだありません。")).toBeNull();
     expect(
       screen.queryByText("このページに表示できるチケットはありません。")

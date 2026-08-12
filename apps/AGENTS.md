@@ -117,6 +117,7 @@ A failure that only kills part of a page must not be hand-rolled into that page.
 | An `ok: false` that leaves nothing to show around it — a detail route whose whole content is that one read | Render that app's `PageLoadError` |
 | A throw it never sees — a bug, or an uncached read that failed | Wrap the section's `<Suspense>` in that app's `SectionErrorBoundary` (`components/section-error-boundary.tsx`) |
 | A submission the server rejected | `FormMessage` next to the control — unchanged |
+| A form whose own choices or initial values failed to load — a `<select>`'s options, a settings form's saved state | `FormMessage` next to that control (#817). The form is still usable; the message says which input degraded, not that the section is gone |
 | Nothing to show yet | `EmptyState` — unchanged |
 
 The boundary goes **outside** the `<Suspense>`, not inside, so `retry()` puts that section's own skeleton back while the re-run is in flight:
@@ -154,7 +155,22 @@ try {
 <EmptyState description={result.message} title="データの取得に失敗しました" />;
 ```
 
-This covers the failure displays that pages own. A list or form component that receives the message as a prop (`listErrorMessage` and friends) still renders its own `FormMessage`; lining those up is [#817](https://github.com/publira/publira/issues/817).
+A list component that receives the failure as a prop (`listErrorMessage` and friends) renders `SectionError` itself, with the same title the pages use ([#817](https://github.com/publira/publira/issues/817)). The prop carries the message from `rpcErrorMessage`, so the component supplies the title and passes the prop through as `description`:
+
+```tsx
+if (listErrorMessage) {
+  return (
+    <SectionError
+      description={listErrorMessage}
+      title="シリーズ一覧を表示できませんでした"
+    />
+  );
+}
+```
+
+Two things follow from the list being gone rather than empty, and both are already true of every `*Manager`: the `EmptyState` is not rendered next to the error (a failed read still hands the component an empty array, and「まだ登録されていません」next to the error reads as "there is no data"), and the pager is hidden (its tokens are empty then, so "前へ / 次へ" chrome next to the error looks like the list exists).
+
+Form components keep `FormMessage` for the row above: `creatorsErrorMessage`, `usersErrorMessage`, `loadErrorMessage` and friends stay where they are, next to the control they degrade.
 
 The `catchError` call itself stays in each app's `components/section-error-boundary.tsx` rather than in `@publira/ui-components`: `tsdown` drops the `"use client"` directive when it bundles the package, and `catchError` cannot run in the server graph. The fallback body is shared from the package; only the four-line wiring is per app, the same split the route-level `error.tsx` bodies already use.
 

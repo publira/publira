@@ -27,6 +27,7 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import {
   Table,
@@ -612,9 +613,10 @@ export const TenantMembersManager = ({
         </CardHeader>
         <CardContent className="grid gap-4">
           {invitationErrorMessage ? (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              管理者招待一覧の取得に失敗しました: {invitationErrorMessage}
-            </p>
+            <SectionError
+              description={invitationErrorMessage}
+              title="管理者招待一覧を表示できませんでした"
+            />
           ) : null}
 
           {invitationActionState ? (
