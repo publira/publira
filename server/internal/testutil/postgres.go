@@ -40,6 +40,10 @@ const (
 	platformDBPassword = "platformpass"
 )
 
+// SeededPassword is the plaintext behind the password hash of every platform user
+// seeded by this package. Tests that drive a real Login need the cleartext.
+const SeededPassword = "password-for-tests-only"
+
 // PostgresEnv holds a shared Testcontainers PostgreSQL instance prepared with
 // migrations and application roles. Prefer [StartPostgres] from tests.
 type PostgresEnv struct {
@@ -263,7 +267,7 @@ func (e *PostgresEnv) seedPlatformUser(t *testing.T, publicID, email, name, role
 	email = defaultIfEmpty(email, "platform@example.com")
 	name = defaultIfEmpty(name, "Platform Operator")
 
-	passwordHash, err := auth.HashPassword("password-for-tests-only")
+	passwordHash, err := auth.HashPassword(SeededPassword)
 	if err != nil {
 		t.Fatalf("hash password: %v", err)
 	}
