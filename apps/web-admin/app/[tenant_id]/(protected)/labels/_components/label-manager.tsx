@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -42,7 +42,12 @@ const LabelListBody = ({
   // A failed fetch still hands an empty `labels` array; do not show the empty
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
-    return <FormMessage variant="destructive">{listErrorMessage}</FormMessage>;
+    return (
+      <SectionError
+        description={listErrorMessage}
+        title="レーベル一覧を表示できませんでした"
+      />
+    );
   }
 
   if (labels.length === 0) {

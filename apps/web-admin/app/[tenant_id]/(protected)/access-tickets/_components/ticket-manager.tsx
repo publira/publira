@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -64,7 +64,12 @@ const TicketListBody = ({
   tickets: AccessTicketItem[];
 }) => {
   if (listErrorMessage) {
-    return <FormMessage variant="destructive">{listErrorMessage}</FormMessage>;
+    return (
+      <SectionError
+        description={listErrorMessage}
+        title="アクセスチケット一覧を表示できませんでした"
+      />
+    );
   }
 
   if (tickets.length === 0) {

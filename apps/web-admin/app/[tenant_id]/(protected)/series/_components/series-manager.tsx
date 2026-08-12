@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -46,6 +46,85 @@ const excerpt = (text: string, max = 56) => {
   return `${normalized.slice(0, max)}...`;
 };
 
+const SeriesListBody = ({
+  hasPageLinks,
+  listErrorMessage,
+  series,
+}: {
+  hasPageLinks: boolean;
+  listErrorMessage?: string;
+  series: SeriesListItem[];
+}) => {
+  // A failed fetch still hands an empty `series` array; do not show the empty
+  // list state alongside the error or operators will read it as "no series".
+  if (listErrorMessage) {
+    return (
+      <SectionError
+        description={listErrorMessage}
+        title="シリーズ一覧を表示できませんでした"
+      />
+    );
+  }
+
+  if (series.length === 0) {
+    return (
+      <CursorPageEmptyState
+        description="新規作成ページからシリーズを作成してください。"
+        hasPageLinks={hasPageLinks}
+        itemLabel="シリーズ"
+        title="シリーズがまだ登録されていません。"
+      />
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>タイトル</TableHead>
+          <TableHead>レーベル</TableHead>
+          <TableHead className="w-44">公開日</TableHead>
+          <TableHead className="w-40">閲覧可能期間</TableHead>
+          <TableHead>概要</TableHead>
+          <TableHead className="w-32">状態</TableHead>
+          <TableHead className="w-56">操作</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {series.map((item) => (
+          <TableRow key={item.publicId}>
+            <TableCell className="font-medium">{item.title}</TableCell>
+            <TableCell>{item.labelName || "-"}</TableCell>
+            <TableCell>
+              {formatDateTime(item.publishedAt, { fallback: "-" })}
+            </TableCell>
+            <TableCell>{item.readingPeriodHours}</TableCell>
+            <TableCell>{excerpt(item.synopsis)}</TableCell>
+            <TableCell>
+              <Badge tone={getStatusTone(item.isPublished)}>
+                {getStatusLabel(item.isPublished)}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-wrap gap-2">
+                <LinkButton href={`/series/${item.publicId}`} variant="outline">
+                  編集
+                </LinkButton>
+                <LinkButton
+                  href={`/series/${item.publicId}/episodes`}
+                  variant="outline"
+                >
+                  エピソード
+                </LinkButton>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
 export const SeriesManager = ({
   series,
   listErrorMessage,
@@ -54,7 +133,10 @@ export const SeriesManager = ({
   previousHref,
 }: SeriesManagerProps) => {
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
-  const showPagination = series.length > 0 || hasPageLinks;
+  // Hide the pager on a failed fetch: tokens are empty then, and a bare
+  // "previous/next" chrome next to the error looks like the list exists.
+  const showPagination =
+    !listErrorMessage && (series.length > 0 || hasPageLinks);
 
   return (
     <Card>
@@ -70,66 +152,11 @@ export const SeriesManager = ({
         </LinkButton>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {listErrorMessage ? (
-          <FormMessage variant="destructive">{listErrorMessage}</FormMessage>
-        ) : null}
-
-        {series.length === 0 ? (
-          <CursorPageEmptyState
-            description="新規作成ページからシリーズを作成してください。"
-            hasPageLinks={hasPageLinks}
-            itemLabel="シリーズ"
-            title="シリーズがまだ登録されていません。"
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>タイトル</TableHead>
-                <TableHead>レーベル</TableHead>
-                <TableHead className="w-44">公開日</TableHead>
-                <TableHead className="w-40">閲覧可能期間</TableHead>
-                <TableHead>概要</TableHead>
-                <TableHead className="w-32">状態</TableHead>
-                <TableHead className="w-56">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {series.map((item) => (
-                <TableRow key={item.publicId}>
-                  <TableCell className="font-medium">{item.title}</TableCell>
-                  <TableCell>{item.labelName || "-"}</TableCell>
-                  <TableCell>
-                    {formatDateTime(item.publishedAt, { fallback: "-" })}
-                  </TableCell>
-                  <TableCell>{item.readingPeriodHours}</TableCell>
-                  <TableCell>{excerpt(item.synopsis)}</TableCell>
-                  <TableCell>
-                    <Badge tone={getStatusTone(item.isPublished)}>
-                      {getStatusLabel(item.isPublished)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      <LinkButton
-                        href={`/series/${item.publicId}`}
-                        variant="outline"
-                      >
-                        編集
-                      </LinkButton>
-                      <LinkButton
-                        href={`/series/${item.publicId}/episodes`}
-                        variant="outline"
-                      >
-                        エピソード
-                      </LinkButton>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <SeriesListBody
+          hasPageLinks={hasPageLinks}
+          listErrorMessage={listErrorMessage}
+          series={series}
+        />
 
         {showPagination ? (
           <PaginationFooter

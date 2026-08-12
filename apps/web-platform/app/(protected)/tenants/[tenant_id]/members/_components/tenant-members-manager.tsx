@@ -27,6 +27,7 @@ import {
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import {
   Table,
@@ -339,6 +340,17 @@ const TenantMemberRow = ({
   </TableRow>
 );
 
+interface TenantInvitationsSectionProps {
+  invitationErrorMessage?: string;
+  invitations: PlatformTenantAdminInvitation[];
+  invitationsNextHref?: string;
+  invitationsPreviousHref?: string;
+  isCancelPending: boolean;
+  isResendPending: boolean;
+  onCancel: (invitationId: string) => void;
+  onResend: (invitationId: string) => void;
+}
+
 const TenantInvitationRow = ({
   invitation,
   isCancelPending,
@@ -397,6 +409,71 @@ const TenantInvitationRow = ({
         </div>
       </TableCell>
     </TableRow>
+  );
+};
+
+const TenantInvitationsSection = ({
+  invitationErrorMessage,
+  invitations,
+  invitationsNextHref,
+  invitationsPreviousHref,
+  isCancelPending,
+  isResendPending,
+  onCancel,
+  onResend,
+}: TenantInvitationsSectionProps) => {
+  // A failed fetch still hands an empty `invitations` array. Keeping the table
+  // header and the pager next to the error reads as "there are no invitations",
+  // so the error replaces the whole list instead of sitting on top of it.
+  if (invitationErrorMessage) {
+    return (
+      <SectionError
+        description={invitationErrorMessage}
+        title="管理者招待一覧を表示できませんでした"
+      />
+    );
+  }
+
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>メール</TableHead>
+            <TableHead>状態</TableHead>
+            <TableHead>作成日時</TableHead>
+            <TableHead>有効期限</TableHead>
+            <TableHead className="w-56">操作</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {invitations.length === 0 ? (
+            <TableRow>
+              <TableCell className="text-muted-foreground" colSpan={5}>
+                管理者招待はまだありません。
+              </TableCell>
+            </TableRow>
+          ) : null}
+
+          {invitations.map((invitation) => (
+            <TenantInvitationRow
+              invitation={invitation}
+              isCancelPending={isCancelPending}
+              isResendPending={isResendPending}
+              key={invitation.id}
+              onCancel={onCancel}
+              onResend={onResend}
+            />
+          ))}
+        </TableBody>
+      </Table>
+
+      <PaginationControls
+        ariaLabel="管理者招待一覧のページ送り"
+        nextHref={invitationsNextHref}
+        previousHref={invitationsPreviousHref}
+      />
+    </>
   );
 };
 
@@ -611,12 +688,6 @@ export const TenantMembersManager = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          {invitationErrorMessage ? (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              管理者招待一覧の取得に失敗しました: {invitationErrorMessage}
-            </p>
-          ) : null}
-
           {invitationActionState ? (
             <FormMessage
               variant={invitationActionState.ok ? "success" : "destructive"}
@@ -625,42 +696,15 @@ export const TenantMembersManager = ({
             </FormMessage>
           ) : null}
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>メール</TableHead>
-                <TableHead>状態</TableHead>
-                <TableHead>作成日時</TableHead>
-                <TableHead>有効期限</TableHead>
-                <TableHead className="w-56">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {!invitationErrorMessage && invitations.length === 0 ? (
-                <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={5}>
-                    管理者招待はまだありません。
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {invitations.map((invitation) => (
-                <TenantInvitationRow
-                  invitation={invitation}
-                  isCancelPending={isCancelPending}
-                  isResendPending={isResendPending}
-                  key={invitation.id}
-                  onCancel={handleCancel}
-                  onResend={handleResend}
-                />
-              ))}
-            </TableBody>
-          </Table>
-
-          <PaginationControls
-            ariaLabel="管理者招待一覧のページ送り"
-            nextHref={invitationsNextHref}
-            previousHref={invitationsPreviousHref}
+          <TenantInvitationsSection
+            invitationErrorMessage={invitationErrorMessage}
+            invitations={invitations}
+            invitationsNextHref={invitationsNextHref}
+            invitationsPreviousHref={invitationsPreviousHref}
+            isCancelPending={isCancelPending}
+            isResendPending={isResendPending}
+            onCancel={handleCancel}
+            onResend={handleResend}
           />
         </CardContent>
       </Card>

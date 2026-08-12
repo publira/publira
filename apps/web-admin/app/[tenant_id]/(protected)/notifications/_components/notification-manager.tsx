@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
-import { FormMessage } from "@publira/ui-components/form-message";
+import { SectionError } from "@publira/ui-components/section-error";
 import {
   Table,
   TableBody,
@@ -66,7 +66,12 @@ const NotificationListBody = ({
   // A failed fetch still hands an empty `notifications` array; do not show the
   // empty list state alongside the error or operators will read it as "none".
   if (listErrorMessage) {
-    return <FormMessage variant="destructive">{listErrorMessage}</FormMessage>;
+    return (
+      <SectionError
+        description={listErrorMessage}
+        title="通知一覧を表示できませんでした"
+      />
+    );
   }
 
   if (notifications.length === 0) {

@@ -84,7 +84,15 @@ describe("NotificationManager", () => {
       />
     );
 
-    expect(screen.getByText("通知一覧を取得できませんでした。")).toBeDefined();
+    // 取得失敗はセクションの失敗なので、他画面と同じ `SectionError`
+    // （role="alert" と「〇〇一覧を表示できませんでした」）で出す。
+    const sectionError = screen.getByRole("alert");
+    expect(sectionError.textContent).toContain(
+      "通知一覧を表示できませんでした"
+    );
+    expect(sectionError.textContent).toContain(
+      "通知一覧を取得できませんでした。"
+    );
     expect(screen.queryByText("通知がまだありません。")).toBeNull();
     expect(
       screen.queryByText("このページに表示できる通知はありません。")
