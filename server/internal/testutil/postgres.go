@@ -43,6 +43,11 @@ const (
 	// is filtered by the tenant isolation policies.
 	adminDBUser     = "publira_admin"
 	adminDBPassword = "adminpass"
+
+	// The public API role is likewise RLS-bound, so a catalog query that forgets
+	// its tenant predicate still cannot reach another tenant's rows.
+	publicDBUser     = "publira_public"
+	publicDBPassword = "publicpass"
 )
 
 // SeededPassword is the plaintext behind the password hash of every user seeded
@@ -59,6 +64,8 @@ type PostgresEnv struct {
 	PlatformURL string
 	// Application (admin API) DSN using publira_admin, which is subject to RLS.
 	AdminURL string
+	// Application (public API) DSN using publira_public, which is subject to RLS.
+	PublicURL string
 
 	// Superuser pool used for setup and seeding.
 	DB *sql.DB
@@ -184,12 +191,19 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		_ = testcontainers.TerminateContainer(container)
 		return nil, err
 	}
+	publicURL, err := appConnectionString(connURL, publicDBUser, publicDBPassword)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
 
 	return &PostgresEnv{
 		Container:   container,
 		URL:         connURL,
 		PlatformURL: platformURL,
 		AdminURL:    adminURL,
+		PublicURL:   publicURL,
 		DB:          db,
 	}, nil
 }
@@ -240,6 +254,16 @@ func (e *PostgresEnv) OpenPlatformDB(t *testing.T) *sql.DB {
 func (e *PostgresEnv) OpenAdminDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return e.openAppDB(t, e.AdminURL, adminDBUser)
+}
+
+// OpenPublicDB opens a connection as publira_public, the RLS-bound role the
+// public API runs as. Like the admin role it only sees rows of the tenant the
+// session set through app.current_tenant_id, so a public catalog query is
+// filtered by the database as well as by its own WHERE clause. The connection
+// is closed via t.Cleanup.
+func (e *PostgresEnv) OpenPublicDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return e.openAppDB(t, e.PublicURL, publicDBUser)
 }
 
 func (e *PostgresEnv) openAppDB(t *testing.T, dsn, role string) *sql.DB {

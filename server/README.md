@@ -57,8 +57,9 @@ task server:test
 
 - 単体テストは主に `sqlmock` で DB をモックします。
 - 実 DB の統合テストは [Testcontainers for Go](https://golang.testcontainers.org/) で PostgreSQL コンテナを起動します。
-  - 共通ヘルパー: `internal/testutil`（マイグレーション適用・アプリロール seed・Snapshot/Restore）
-  - 例: `api/platformapi` の `TestDB*`（テナント作成・重複制約・状態遷移など）
+  - 共通ヘルパー: `internal/testutil`（マイグレーション適用・アプリロール seed・Snapshot/Restore・テナント/カタログ seed）
+  - アプリロール別の接続を `OpenPlatformDB` / `OpenAdminDB` / `OpenPublicDB` で開きます。後者 2 つは RLS が有効なので、テナント境界そのものを検証できます。
+  - 例: `api/platformapi` の `TestDB*`（テナント作成・重複制約・状態遷移など）、`api/adminapi` の `TestDB*`（テナント分離）、`api/publicapi` の `TestDB*`（公開/非公開フィルタ・会員認証）
 - 実行要件: ローカルに Docker が使えること（未起動時は当該テストを skip）
 - 高速化: `go test -short ./...` でコンテナ起動を伴う統合テストをスキップできます
 

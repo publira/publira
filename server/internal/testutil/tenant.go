@@ -78,9 +78,75 @@ func (e *PostgresEnv) SeedTenantAdmin(t *testing.T, tenantID uuid.UUID, publicID
 	return e.SeedTenantUser(t, tenantID, publicID, email, name, auth.RoleTenantAdmin)
 }
 
+// SeedEndUser inserts a member of the tenant's public site: an active user with
+// a verified address and no tenant role, which is the only shape the public API
+// lets sign in.
+func (e *PostgresEnv) SeedEndUser(t *testing.T, tenantID uuid.UUID, publicID, email, name string) TenantUser {
+	t.Helper()
+
+	user := e.seedUser(t, tenantID, publicID, email, name)
+	e.markEndUserVerified(t, user.ID)
+	return user
+}
+
+// SeedUnverifiedEndUser inserts the state signup leaves behind before the
+// address is confirmed: inactive, with email_verified_at still null.
+func (e *PostgresEnv) SeedUnverifiedEndUser(t *testing.T, tenantID uuid.UUID, publicID, email, name string) TenantUser {
+	t.Helper()
+
+	user := e.seedUser(t, tenantID, publicID, email, name)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := dbmodels.New(e.DB).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{
+		ID:     user.ID,
+		Status: "inactive",
+	}); err != nil {
+		t.Fatalf("UpdateUserStatusByID %s: %v", publicID, err)
+	}
+	return user
+}
+
+func (e *PostgresEnv) markEndUserVerified(t *testing.T, userID uuid.UUID) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := dbmodels.New(e.DB).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
+		ID:              userID,
+		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	}); err != nil {
+		t.Fatalf("UpdateUserEmailVerifiedAtByID %s: %v", userID, err)
+	}
+}
+
 // SeedTenantUser inserts an active user in the tenant and grants it one tenant
 // role (tenant_admin / tenant_editor / tenant_auditor).
 func (e *PostgresEnv) SeedTenantUser(t *testing.T, tenantID uuid.UUID, publicID, email, name, role string) TenantUser {
+	t.Helper()
+
+	user := e.seedUser(t, tenantID, publicID, email, name)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// tenant_user_roles.tenant_id has no default, so the row is inserted
+	// directly rather than through CreateTenantUserRole.
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
+		VALUES ($1, $2, $3, $4)
+	`, uuid.Must(uuid.NewV7()), tenantID, user.ID, role); err != nil {
+		t.Fatalf("insert tenant_user_roles for %s: %v", user.PublicID, err)
+	}
+
+	user.Role = role
+	return user
+}
+
+// seedUser inserts the users row shared by every kind of account in a tenant.
+// The caller decides what the account is by what it adds on top: a tenant role,
+// a verified address, or neither.
+func (e *PostgresEnv) seedUser(t *testing.T, tenantID uuid.UUID, publicID, email, name string) TenantUser {
 	t.Helper()
 	if e.DB == nil {
 		t.Fatal("postgres env db is nil; call Reset first if needed")
@@ -110,22 +176,12 @@ func (e *PostgresEnv) SeedTenantUser(t *testing.T, tenantID uuid.UUID, publicID,
 		t.Fatalf("CreateUser %s: %v", publicID, err)
 	}
 
-	// tenant_user_roles.tenant_id has no default, so the row is inserted
-	// directly rather than through CreateTenantUserRole.
-	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
-		VALUES ($1, $2, $3, $4)
-	`, uuid.Must(uuid.NewV7()), tenantID, user.ID, role); err != nil {
-		t.Fatalf("insert tenant_user_roles for %s: %v", publicID, err)
-	}
-
 	return TenantUser{
 		ID:                 user.ID,
 		TenantID:           tenantID,
 		PublicID:           user.PublicID,
 		Email:              user.Email,
 		Name:               user.Name,
-		Role:               role,
 		CredentialsVersion: user.CredentialsVersion,
 	}
 }
