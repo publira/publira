@@ -11,7 +11,7 @@ ARG MIGRATE_VERSION=4.19.1
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver-coerced
 ARG GOLANGCI_LINT_VERSION=2.12.2
 # renovate: datasource=flutter-version depName=flutter
-ARG FLUTTER_VERSION=3.44.9
+ARG FLUTTER_VERSION=3.47.0
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
  && apt-get -y install --no-install-recommends postgresql-client \
