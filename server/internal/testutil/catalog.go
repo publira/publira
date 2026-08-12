@@ -144,13 +144,15 @@ func (e *PostgresEnv) SeedEpisode(t *testing.T, tenantID, seriesID uuid.UUID, se
 
 	orderIndex := seed.OrderIndex
 	if orderIndex == 0 {
-		var existing int32
+		// Past the last episode rather than past the count, so appending still
+		// lands at the end when earlier seeds picked their own order indexes.
+		var lastOrderIndex int32
 		if err := e.DB.QueryRowContext(ctx,
-			"SELECT count(*) FROM episodes WHERE series_id = $1", seriesID,
-		).Scan(&existing); err != nil {
-			t.Fatalf("count episodes of series %s: %v", seriesID, err)
+			"SELECT COALESCE(max(order_index), 0) FROM episodes WHERE series_id = $1", seriesID,
+		).Scan(&lastOrderIndex); err != nil {
+			t.Fatalf("last order_index of series %s: %v", seriesID, err)
 		}
-		orderIndex = existing + 1
+		orderIndex = lastOrderIndex + 1
 	}
 
 	if _, err := e.DB.ExecContext(ctx, `

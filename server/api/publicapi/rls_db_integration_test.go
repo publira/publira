@@ -47,31 +47,60 @@ func TestDBPublicRoleSeesOnlyTheScopedTenant(t *testing.T) {
 	})
 }
 
+// publicDataTables are the tables a storefront request reads that hold tenant
+// data. Each query is a literal so the count cannot be assembled from a name at
+// runtime, and so a table added here without a policy is a failing test rather
+// than a silent zero.
+var publicDataTables = []struct {
+	name  string
+	count string
+}{
+	{name: "series", count: "SELECT count(*) FROM series"},
+	{name: "episodes", count: "SELECT count(*) FROM episodes"},
+	{name: "episode_listings", count: "SELECT count(*) FROM episode_listings"},
+	{name: "users", count: "SELECT count(*) FROM users"},
+	{name: "purchases", count: "SELECT count(*) FROM purchases"},
+	{name: "pages", count: "SELECT count(*) FROM pages"},
+	{name: "page_versions", count: "SELECT count(*) FROM page_versions"},
+}
+
 // The fail-closed direction: a connection that never set app.current_tenant_id
 // sees nothing, so a public code path that skips the tenant-scoping interceptor
-// cannot leak one storefront's catalog into another's.
+// cannot leak one storefront's catalog into another's. Every table is seeded
+// first — a count of zero over an empty table would hold whether or not the
+// policy is there.
 func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
-	env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Tenant A Series", Published: true})
+
+	series := env.PG.SeedSeries(t, first.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Tenant A Series", Published: true})
 	env.PG.SeedSeries(t, second.ID, testutil.SeriesSeed{PublicID: "SERIESB00001", Title: "Tenant B Series", Published: true})
+	episode := env.PG.SeedEpisode(t, first.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "EPISODEA0001",
+		Title:    "Tenant A Episode",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    500,
+	})
+	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	env.PG.SeedPurchase(t, first.ID, member.ID, episode.ID, episode.Price)
+	env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	db := env.PG.OpenPublicDB(t)
-	for _, table := range []string{"series", "episodes", "users", "purchases", "pages"} {
+	for _, table := range publicDataTables {
+		// The seed has to have landed, otherwise the assertion below is vacuous.
+		if seeded := env.countRows(t, table.count); seeded == 0 {
+			t.Fatalf("seeded %s rows = 0, want the fail-closed check to run against real rows", table.name)
+		}
+
 		var visible int
-		if err := db.QueryRowContext(ctx, "SELECT count(*) FROM "+table).Scan(&visible); err != nil {
-			t.Fatalf("count %s: %v", table, err)
+		if err := db.QueryRowContext(ctx, table.count).Scan(&visible); err != nil {
+			t.Fatalf("count %s: %v", table.name, err)
 		}
 		if visible != 0 {
-			t.Fatalf("%s rows visible without a tenant setting = %d, want 0", table, visible)
+			t.Fatalf("%s rows visible without a tenant setting = %d, want 0", table.name, visible)
 		}
-	}
-
-	// The seeded rows are still there; they are only invisible to this session.
-	if count := env.countRows(t, "SELECT count(*) FROM series"); count != 2 {
-		t.Fatalf("seeded series = %d, want 2", count)
 	}
 }

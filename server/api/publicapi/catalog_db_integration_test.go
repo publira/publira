@@ -155,6 +155,11 @@ func TestDBListPublishedSeriesPagesForwardAndBack(t *testing.T) {
 	if secondPage.Msg.NextToken != "" {
 		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.Msg.NextToken)
 	}
+	// Without this the request below would be a plain first-page request, and the
+	// assertion on it would hold whether or not paging backwards works.
+	if secondPage.Msg.PreviousToken == "" {
+		t.Fatal("page 2 previous_token is empty, want a token back to the first page")
+	}
 
 	backAgain, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
 		Tenant: tenantContext(tenant),
