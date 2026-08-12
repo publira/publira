@@ -198,8 +198,8 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 		t.Fatalf("Login with the new password: %v", err)
 	}
 
-	// The completed token stays in the table, so a replay has to be refused there
-	// rather than in memory.
+	// The completed token stays in the table, and the handler answers a replay
+	// idempotently: confirmed, with the replayed password never applied.
 	replay, err := authClient.ConfirmPasswordReset(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceConfirmPasswordResetRequest{
 		Token:       freshToken,
 		NewPassword: "yet-another-password",
@@ -209,6 +209,13 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 	}
 	if !replay.Msg.Confirmed {
 		t.Fatal("replayed ConfirmPasswordReset confirmed = false, want the completed token reported as confirmed")
+	}
+	_, err = authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+		Email:    operator.Email,
+		Password: "yet-another-password",
+	}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("Login with the replayed password code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
 	if _, err := authClient.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
 		Email:    operator.Email,

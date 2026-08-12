@@ -2,6 +2,8 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http/httptest"
 	"net/url"
@@ -306,7 +308,12 @@ func userByPublicID(t *testing.T, pg *testutil.PostgresEnv, publicID string) (db
 	defer cancel()
 	user, err := dbmodels.New(pg.DB).GetUserByPublicID(ctx, publicID)
 	if err != nil {
-		return dbmodels.GetUserByPublicIDRow{}, false
+		// Only a missing row means "deleted"; anything else would let a broken
+		// query pass for a successful deletion.
+		if errors.Is(err, sql.ErrNoRows) {
+			return dbmodels.GetUserByPublicIDRow{}, false
+		}
+		t.Fatalf("GetUserByPublicID %s: %v", publicID, err)
 	}
 	return user, true
 }

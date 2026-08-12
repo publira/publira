@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -27,9 +28,13 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 	if created.PublicId == "" {
 		t.Fatal("created operator public_id is empty")
 	}
-	// The handler lower-cases the address before it is stored.
+	// The handler lower-cases the address before it is stored, so the normalized
+	// form has to be what actually landed in platform_users.
 	if created.Email != "new.operator@example.com" {
 		t.Fatalf("created email = %q, want new.operator@example.com", created.Email)
+	}
+	if stored := platformUserByPublicID(t, pg, created.PublicId); stored.Email != "new.operator@example.com" {
+		t.Fatalf("stored email = %q, want new.operator@example.com", stored.Email)
 	}
 	if created.Role != auth.RolePlatformOperator {
 		t.Fatalf("created role = %q, want %s", created.Role, auth.RolePlatformOperator)
@@ -42,12 +47,16 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListOperators: %v", err)
 	}
+	// Counted before the map collapses duplicates, so a repeated row is caught.
+	if len(listResp.Msg.Operators) != 2 {
+		t.Fatalf("listed operators = %d, want the seeded super admin and the new operator", len(listResp.Msg.Operators))
+	}
 	roles := make(map[string]string, len(listResp.Msg.Operators))
 	for _, operator := range listResp.Msg.Operators {
 		roles[operator.PublicId] = operator.Role
 	}
 	if len(roles) != 2 {
-		t.Fatalf("listed operators = %d, want the seeded super admin and the new operator", len(roles))
+		t.Fatalf("listed operators cover %d distinct public IDs, want 2", len(roles))
 	}
 	if roles[superAdmin.PublicID] != auth.RolePlatformSuperAdmin {
 		t.Fatalf("super admin role = %q, want %s", roles[superAdmin.PublicID], auth.RolePlatformSuperAdmin)
@@ -66,16 +75,20 @@ func TestDBCreateOperatorRejectsExistingOperatorEmail(t *testing.T) {
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 
-	_, err := client.CreateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.CreateOperatorRequest{
-		Name:  "Duplicate",
-		Email: superAdmin.Email,
-		Role:  auth.RolePlatformOperator,
-	}))
-	if connect.CodeOf(err) != connect.CodeAlreadyExists {
-		t.Fatalf("CreateOperator code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
+	// Addresses are normalized before the lookup, so a differently cased address
+	// has to collide with the stored one rather than create a second account.
+	for _, email := range []string{superAdmin.Email, strings.ToUpper(superAdmin.Email)} {
+		_, err := client.CreateOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.CreateOperatorRequest{
+			Name:  "Duplicate",
+			Email: email,
+			Role:  auth.RolePlatformOperator,
+		}))
+		if connect.CodeOf(err) != connect.CodeAlreadyExists {
+			t.Fatalf("CreateOperator %q code = %v, want already_exists (err=%v)", email, connect.CodeOf(err), err)
+		}
 	}
 
-	// The failed attempt is rolled back, so the existing operator keeps its role
+	// The failed attempts are rolled back, so the existing operator keeps its role
 	// and no second platform user is created.
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_users"); got != 1 {
 		t.Fatalf("platform_users rows = %d, want 1", got)
