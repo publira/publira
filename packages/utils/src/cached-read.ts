@@ -56,12 +56,11 @@ export const dropFailedCacheEntry = (): void => {
  * failure streams into the nearest client error boundary
  * (`SectionErrorBoundary`) and the rest of the page survives.
  *
- * Every route in these apps sits under a dynamic `[tenant_id]` root segment, so
- * "has a committed shell" is not a property a `lib/` helper can assume: the
+ * "Has a committed shell" is not a property a `lib/` helper can assume: the
  * same read is awaited by a page section inside `<Suspense>` (shell committed)
- * and by `generateMetadata` or a detail page body that awaits before anything
- * is flushed (no shell). Returning the failure as a value is what works in both
- * places, so it is the rule for all of them.
+ * and by `generateMetadata`, which resolves before anything is flushed.
+ * Returning the failure as a value is what works in both places, so it is the
+ * rule for all of them.
  *
  * Classification stays **inside** the cache scope, which is the other reason
  * this shape is the one that works: Next.js re-creates an error that crossed a

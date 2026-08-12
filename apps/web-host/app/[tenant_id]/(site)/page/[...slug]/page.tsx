@@ -5,6 +5,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { PageLoadError } from "#components/page-load-error";
 import { getPublishedPage } from "#lib/pages";
@@ -12,13 +13,6 @@ import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { PublishedPageContent } from "./_components/published-page-view";
-
-/**
- * Missing pages must call `notFound()` outside `<Suspense>` so the response
- * status is HTTP 404 (same pattern as authors detail). Instant shell is not
- * used for this segment.
- */
-export const instant = false;
 
 export const generateStaticParams = () => [
   {
@@ -57,13 +51,26 @@ export const generateMetadata = async (
   };
 };
 
-const Page = async (props: PageProps<"/[tenant_id]/page/[...slug]">) => {
+const PublishedPageSkeleton = () => (
+  <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className="mb-6 h-9 w-2/3 animate-pulse rounded bg-muted" />
+    <div className="space-y-3">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div className="h-4 animate-pulse rounded bg-muted" key={index} />
+      ))}
+    </div>
+  </div>
+);
+
+const PublishedPageBody = async (
+  props: PageProps<"/[tenant_id]/page/[...slug]">
+) => {
   const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
   guardCatchAllSlug(slug);
 
   // Missing / unpublished / other-tenant pages all resolve to `null`. A genuine
-  // fetch failure is a value as well: this page awaits before anything is
-  // flushed, so a throw would answer a bare 500 no boundary can reach (#672).
+  // fetch failure is a value as well: a `"use cache"` fill that throws fails
+  // the whole request, so nothing downstream would get to render (#672).
   const result = await getPublishedPage(tenantId, slug);
 
   if (!result.ok) {
@@ -76,5 +83,11 @@ const Page = async (props: PageProps<"/[tenant_id]/page/[...slug]">) => {
 
   return <PublishedPageContent page={result.value} />;
 };
+
+const Page = (props: PageProps<"/[tenant_id]/page/[...slug]">) => (
+  <Suspense fallback={<PublishedPageSkeleton />}>
+    <PublishedPageBody {...props} />
+  </Suspense>
+);
 
 export default Page;

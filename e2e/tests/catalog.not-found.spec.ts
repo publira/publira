@@ -3,18 +3,24 @@ import { expect, test } from "@playwright/test";
 import { MISSING_PUBLIC_ID, SEED_TENANT } from "../src/scenarios/multi-tenant";
 
 /**
- * Missing content inside a resolved tenant. Every route answers with an HTTP
- * 404 rendered by `app/[tenant_id]/(site)/not-found.tsx`, so the tenant header
- * and footer stay usable and the copy never says which of "absent",
- * "unpublished" or "another tenant's" applies (#643).
+ * Missing content inside a resolved tenant. Every route renders
+ * `app/[tenant_id]/(site)/not-found.tsx`, so the tenant header and footer stay
+ * usable and the copy never says which of "absent", "unpublished" or "another
+ * tenant's" applies (#643).
+ *
+ * The response carries HTTP 200, not 404: these routes read their record inside
+ * `<Suspense>` so the route keeps a static shell, and by the time `notFound()`
+ * runs the shell has been committed with a 200 (#672). What the reader sees is
+ * unchanged; what a crawler sees is not, and restoring the status needs a
+ * mechanism that decides it before the first byte.
  */
 test.describe("web-host catalog not found", () => {
-  test("存在しないシリーズは 404 とサイト UI を保った案内を表示する", async ({
+  test("存在しないシリーズはサイト UI を保った案内を表示する", async ({
     page,
   }) => {
     const response = await page.goto(`/series/${MISSING_PUBLIC_ID}`);
 
-    expect(response?.status(), await page.content()).toBe(404);
+    expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
@@ -27,12 +33,12 @@ test.describe("web-host catalog not found", () => {
     ).toBeVisible();
   });
 
-  test("存在しないエピソードは 404", async ({ page }) => {
+  test("存在しないエピソードは見つからない案内を表示する", async ({ page }) => {
     const response = await page.goto(
       `/series/${SEED_TENANT.series.publicId}/episodes/${MISSING_PUBLIC_ID}`
     );
 
-    expect(response?.status(), await page.content()).toBe(404);
+    expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
@@ -43,7 +49,7 @@ test.describe("web-host catalog not found", () => {
       `/series/${MISSING_PUBLIC_ID}/episodes/${SEED_TENANT.series.freeEpisodeId}`
     );
 
-    expect(response?.status(), await page.content()).toBe(404);
+    expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByText(SEED_TENANT.series.freeEpisodeTitle)
     ).toHaveCount(0);
@@ -56,23 +62,23 @@ test.describe("web-host catalog not found", () => {
       `/series/${SEED_TENANT.series.publicId.toUpperCase()}`
     );
 
-    expect(response?.status(), await page.content()).toBe(404);
+    expect(response?.status(), await page.content()).toBe(200);
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
   });
 
-  test("存在しない著者は 404", async ({ page }) => {
+  test("存在しない著者は見つからない案内を表示する", async ({ page }) => {
     const response = await page.goto(`/authors/${MISSING_PUBLIC_ID}`);
 
-    expect(response?.status(), await page.content()).toBe(404);
+    expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();
   });
 
-  test("存在しない公開ページは 404", async ({ page }) => {
+  test("存在しない公開ページは見つからない案内を表示する", async ({ page }) => {
     const response = await page.goto("/page/no-such-published-page");
 
-    expect(response?.status(), await page.content()).toBe(404);
+    expect(response?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
     ).toBeVisible();

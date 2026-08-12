@@ -6,19 +6,13 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 /**
- * Failure body for a **blocking** segment — a route that awaits its read
- * outside `<Suspense>` (`instant = false`) so a missing resource can answer a
- * real HTTP 404.
+ * Failure body for a route whose **whole** content is one read — the detail
+ * routes, where an `ok: false` leaves nothing to show around it.
  *
- * Such a route has no static shell in flight when the read fails, so neither
- * `SectionErrorBoundary` nor `(site)/error.tsx` can take over and the response
- * is a bare `500 Internal Server Error` document (#672). The page therefore
- * holds the failure as an `ok: false` value and renders it, which is the
- * "classified result with a message" row of the table in `apps/AGENTS.md`.
- *
- * A section that lives inside `<Suspense>` must keep using
- * `SectionErrorBoundary` instead: its throw does reach the boundary, and only
- * that section is replaced.
+ * A section that is one part of a larger page renders `SectionError` instead,
+ * so the rest of the page stays; this is for the case where the section *is*
+ * the page. Both come from the same `ok: false` value, because a cached read
+ * reports failure as a value rather than throwing (#672).
  *
  * The title matches `(site)/error.tsx` on purpose — a reader who loses a whole
  * page should see the same thing whichever renderer produced it.

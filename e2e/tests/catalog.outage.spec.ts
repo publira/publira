@@ -70,8 +70,10 @@ test.describe("web-host public API outage", () => {
     // no published page warms the tenant lookup without filling any catalog
     // cache entry, which is what keeps the reads below cold.
     startApiServer();
-    const healthy = await page.goto("/no-such-page-in-any-spec");
-    expect(healthy?.status(), await page.content()).toBe(404);
+    await page.goto("/no-such-page-in-any-spec");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { exact: true, name: "Series" })
     ).toBeVisible();

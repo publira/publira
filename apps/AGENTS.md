@@ -114,7 +114,7 @@ A failure that only kills part of a page must not be hand-rolled into that page.
 | What the screen has | Use |
 | --- | --- |
 | A classified `ok: false` result with a message | Render `SectionError` from `@publira/ui-components/section-error` with that message as `description` — this is the normal case, because a cached read reports failure as a value (see below) |
-| An `ok: false` on a route that awaits **before** the shell is flushed (`instant = false` page body, `generateMetadata`) | Render that app's `PageLoadError` — a boundary cannot reach it there |
+| An `ok: false` that leaves nothing to show around it — a detail route whose whole content is that one read | Render that app's `PageLoadError` |
 | A throw it never sees — a bug, or an uncached read that failed | Wrap the section's `<Suspense>` in that app's `SectionErrorBoundary` (`components/section-error-boundary.tsx`) |
 | A submission the server rejected | `FormMessage` next to the control — unchanged |
 | Nothing to show yet | `EmptyState` — unchanged |
@@ -162,7 +162,15 @@ The `catchError` call itself stays in each app's `components/section-error-bound
 
 Measured against the production build under Cache Components ([#672](https://github.com/publira/publira/issues/672)): **when a cache fill throws, Next.js fails the request that triggered it.** An awaiting `try` / `catch` does not save it, and neither does an outer cached function catching an inner one — both were measured returning a perfectly good element while the response was still a bare `500 Internal Server Error` document. The failure is only recoverable when a static shell has already been committed, and then only by a client error boundary (`SectionErrorBoundary`), which is why the catalog's `<Suspense>` sections survived an outage while its detail routes answered 500.
 
-Every route in these apps sits under a dynamic `[tenant_id]` root segment, so "has a committed shell" is not something a `lib/` helper can assume: the same read is awaited by a section inside `<Suspense>` and by `generateMetadata` or an `instant = false` page body, which run before anything is flushed. So the rule is unconditional.
+"Has a committed shell" is not something a `lib/` helper can assume: the same read is awaited by a section inside `<Suspense>` and by `generateMetadata`, which resolves before anything is flushed. So the rule is unconditional.
+
+## Never use `instant = false`
+
+`export const instant = false` opts a segment out of Cache Components' static-shell validation. It is an escape hatch for codebases that cannot yet fix a blocking read, and it has no place in a product being built from scratch — **do not add it to any segment**, and do not treat an existing occurrence as licence to add another.
+
+When the validation reports `blocking-prerender-dynamic`, the fix is the one it names: move the data access inside `<Suspense>` so the route keeps a non-empty static shell. A page whose whole body is one read becomes a `<Suspense>` with a skeleton around an async content component, which is also what lets a failed read render a fallback at all.
+
+One consequence to know about, rather than to work around with the escape hatch: `notFound()` raised inside `<Suspense>` streams into an already-committed 200 response, so a missing record renders `not-found.tsx` without an HTTP 404 status. Where that status matters it needs a different mechanism, not a blocking page body.
 
 | Inside a `"use cache"` function | Do |
 | --- | --- |
