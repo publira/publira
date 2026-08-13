@@ -49,7 +49,7 @@ func main() {
 	}
 
 	resolverQueries := dbmodels.New(db)
-	tenantFactory := imageserver.NewDBTenantScopedFactory(db)
+	tenantFactory := imageserver.NewDBTenantScopedFactory(db, logger)
 
 	imageHandler := imageserver.NewHandler(
 		resolverQueries,

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/tenantconn"
 )
 
 type Querier interface {
@@ -127,16 +129,11 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				return nil, connect.NewError(connect.CodeInternal, err)
 			}
 
-			conn, err := s.db.Conn(ctx)
+			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, slog.Default())
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInternal, err)
 			}
-			defer conn.Close() //nolint:errcheck
-
-			if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_tenant_id', $1, false)", tenant.ID.String()); err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
-			}
-			defer conn.ExecContext(context.Background(), "SELECT set_config('app.current_tenant_id', '', false)") //nolint:errcheck
+			defer release()
 
 			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
