@@ -59,6 +59,18 @@ export type ThemeSettingsActionState =
     }
   | null;
 
+export type TenantTimezoneActionState =
+  | {
+      ok: true;
+      message: string;
+      timezone: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
 export type TenantEmailSettingsFormState =
   | {
       ok: true;
