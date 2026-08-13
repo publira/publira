@@ -16,6 +16,7 @@ const signIn = async (page: Page): Promise<void> => {
   await page.getByLabel(/メールアドレス/u).fill(SEED_MEMBER.email);
   await page.getByLabel(/パスワード/u).fill(SEED_MEMBER.password);
   await page.getByRole("button", { name: "ログイン" }).click();
+  await expect(page).toHaveURL(/\/announcements/u);
 };
 
 const pagination = (page: Page) =>
