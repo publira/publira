@@ -38,6 +38,7 @@ import type {
   PlatformDashboardRecentEvent,
   PlatformDashboardSummary,
 } from "#lib/dashboard";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
 export const metadata: Metadata = {
   title: "ダッシュボード",
@@ -192,9 +193,12 @@ const DashboardSkeleton = () => (
 );
 
 const DashboardContent = async () => {
-  const result = await getPlatformDashboardSummary({
-    recentEventsLimit,
-  });
+  // Timestamps follow the platform default time zone, not the host's or the
+  // browser's, so every operator reads the same wall clock (#850).
+  const [result, timeZone] = await Promise.all([
+    getPlatformDashboardSummary({ recentEventsLimit }),
+    getPlatformDisplayTimeZone(),
+  ]);
   const summary = result.ok ? result.summary : null;
   const stats = getStatCards(summary);
 
@@ -290,7 +294,10 @@ const DashboardContent = async () => {
                         </TableCell>
                         <TableCell>{event.actor || "system"}</TableCell>
                         <TableCell>
-                          {formatDateTime(event.at, { fallback: "-" })}
+                          {formatDateTime(event.at, {
+                            fallback: "-",
+                            timeZone,
+                          })}
                         </TableCell>
                       </TableRow>
                     );

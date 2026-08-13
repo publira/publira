@@ -18,11 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import {
-  DEFAULT_TIME_ZONE,
-  endOfDayIsoString,
-  startOfDayIsoString,
-} from "@publira/utils";
+import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
@@ -38,6 +34,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import {
   listPlatformEndUsers,
@@ -122,16 +119,18 @@ const buildUsersPath = (params: {
 /**
  * The created_from / created_to filters are date-only (`YYYY-MM-DD`), so the
  * calendar day has to be pinned to a zone before it can become an RFC3339
- * instant. Platform operators read these screens in JST; tenant zones are a
- * separate concern (#566 / #567).
+ * instant. The zone is the platform default (#850), the same one the console
+ * formats its timestamps with, so a filtered day matches what the screens show
+ * regardless of the browser's zone. Tenant zones are a separate concern
+ * (#566 / #567).
  */
-const usersFilterTimeZone = DEFAULT_TIME_ZONE;
+const createdRangeStart = (
+  date: string,
+  timeZone: string
+): string | undefined => startOfDayIsoString(date, timeZone) || undefined;
 
-const createdRangeStart = (date: string): string | undefined =>
-  startOfDayIsoString(date, usersFilterTimeZone) || undefined;
-
-const createdRangeEnd = (date: string): string | undefined =>
-  endOfDayIsoString(date, usersFilterTimeZone) || undefined;
+const createdRangeEnd = (date: string, timeZone: string): string | undefined =>
+  endOfDayIsoString(date, timeZone) || undefined;
 
 interface UsersPageProps {
   searchParams: Promise<{
@@ -429,17 +428,21 @@ const UsersContent = async ({
 }: Pick<UsersPageProps, "searchParams">) => {
   const filters = parseUsersFilters(await searchParams);
 
-  const [tenantItems, result] = await Promise.all([
+  // Only the user list needs the zone (its date filters are day boundaries), so
+  // the tenant options start alongside the zone read instead of behind it.
+  const [tenantItems, timeZone] = await Promise.all([
     listPlatformTenantFilterOptions(),
-    listPlatformEndUsers({
-      createdAfter: createdRangeStart(filters.createdFromFilter),
-      createdBefore: createdRangeEnd(filters.createdToFilter),
-      limit: filters.limit,
-      offset: filters.offset,
-      status: filters.statusFilter || undefined,
-      tenantId: filters.tenantIdFilter || undefined,
-    }),
+    getPlatformDisplayTimeZone(),
   ]);
+
+  const result = await listPlatformEndUsers({
+    createdAfter: createdRangeStart(filters.createdFromFilter, timeZone),
+    createdBefore: createdRangeEnd(filters.createdToFilter, timeZone),
+    limit: filters.limit,
+    offset: filters.offset,
+    status: filters.statusFilter || undefined,
+    tenantId: filters.tenantIdFilter || undefined,
+  });
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(

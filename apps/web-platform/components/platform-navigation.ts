@@ -33,8 +33,9 @@ export const navigation: NavSection[] = [
   {
     items: [
       {
-        description: "SMTP などプラットフォーム共通設定を管理",
-        href: "/settings/email",
+        description:
+          "既定タイムゾーンや SMTP などプラットフォーム共通設定を管理",
+        href: "/settings/general",
         icon: SettingsIcon,
         label: "設定",
       },

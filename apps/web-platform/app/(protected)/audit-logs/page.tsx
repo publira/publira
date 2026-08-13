@@ -42,6 +42,7 @@ import type {
   PlatformAuditLogSummary,
 } from "#lib/audit-logs";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
 
 export const metadata: Metadata = {
@@ -321,9 +322,11 @@ const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
 const AuditLogsTableBody = ({
   hasFilter,
   result,
+  timeZone,
 }: {
   hasFilter: boolean;
   result: ListPlatformAuditLogsResult;
+  timeZone: string;
 }) => {
   if (!result.ok) {
     return <TableBody />;
@@ -348,7 +351,7 @@ const AuditLogsTableBody = ({
           key={`${log.createdAt}-${log.actorUserPublicId}-${log.action}-${log.targetType}-${log.targetId}`}
         >
           <TableCell>
-            {formatDateTime(log.createdAt, { fallback: "-" })}
+            {formatDateTime(log.createdAt, { fallback: "-", timeZone })}
           </TableCell>
           <TableCell>
             <div className="grid gap-1">
@@ -407,12 +410,17 @@ const AuditLogsContent = async ({
 
   const hasFilter = Boolean(actorFilter || actionFilter);
 
-  const result = await listPlatformAuditLogs({
-    action: actionFilter || undefined,
-    actorUserPublicId: actorFilter || undefined,
-    limit: pageSize,
-    offset,
-  });
+  // Timestamps follow the platform default time zone, not the host's or the
+  // browser's, so every operator reads the same wall clock (#850).
+  const [result, timeZone] = await Promise.all([
+    listPlatformAuditLogs({
+      action: actionFilter || undefined,
+      actorUserPublicId: actorFilter || undefined,
+      limit: pageSize,
+      offset,
+    }),
+    getPlatformDisplayTimeZone(),
+  ]);
 
   const hasPrev = offset > 0;
   const hasNext = result.ok && result.auditLogs.length === pageSize;
@@ -451,7 +459,11 @@ const AuditLogsContent = async ({
               <TableHead>対象</TableHead>
             </TableRow>
           </TableHeader>
-          <AuditLogsTableBody hasFilter={hasFilter} result={result} />
+          <AuditLogsTableBody
+            hasFilter={hasFilter}
+            result={result}
+            timeZone={timeZone}
+          />
         </Table>
 
         <AuditLogsPagination

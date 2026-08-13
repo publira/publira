@@ -1,6 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { isValidTimeZone } from "@publira/utils";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
+import { revalidatePath, updateTag } from "next/cache";
+import { z } from "zod";
 
 import { requestPlatformEmailChange } from "#lib/email-change";
 import {
@@ -14,6 +18,10 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
+import {
+  platformSettingsCacheTag,
+  updatePlatformDefaultTimezone,
+} from "#lib/platform-settings";
 
 export type PlatformEmailSettingsFormState =
   | { message: string; ok: false }
@@ -29,6 +37,26 @@ export type PlatformEmailChangeActionState =
   | { message: string; ok: false }
   | { message: string; ok: true }
   | null;
+
+export type PlatformDefaultTimezoneActionState =
+  | { defaultTimezone: string; message: string; ok: true }
+  | { message: string; ok: false }
+  | null;
+
+/**
+ * The Go server validates against the IANA tzdata it embeds
+ * (`server/internal/tenanttz`) and stays the authority; this only gives the
+ * operator immediate feedback instead of a round trip.
+ */
+const platformDefaultTimezoneSchema = z.object({
+  defaultTimezone: z
+    .string({ error: "タイムゾーンを選択してください。" })
+    .trim()
+    .min(1, "タイムゾーンを選択してください。")
+    .refine(isValidTimeZone, {
+      error: "有効なタイムゾーンを選択してください。",
+    }),
+});
 
 interface ParsedSmtpFormData {
   encryption: string;
@@ -113,6 +141,39 @@ export const updatePlatformEmailSettingsAction = async (
     message: "メール設定を保存しました。",
     ok: true,
     settings: result.settings,
+  };
+};
+
+export const updatePlatformDefaultTimezoneAction = async (
+  _prevState: PlatformDefaultTimezoneActionState,
+  formData: FormData
+): Promise<PlatformDefaultTimezoneActionState> => {
+  const parsed = platformDefaultTimezoneSchema.safeParse(
+    toFormDataInput(formData, {
+      defaultTimezone: { kind: "value", name: "default_timezone" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
+
+  const result = await updatePlatformDefaultTimezone(
+    parsed.data.defaultTimezone
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  // The settings screen and the console's timestamps read the setting through a
+  // private cache, so without this the operator would keep seeing the previous
+  // zone in the same session.
+  updateTag(platformSettingsCacheTag);
+
+  return {
+    defaultTimezone: result.defaultTimezone,
+    message: "既定タイムゾーンを保存しました。",
+    ok: true,
   };
 };
 
