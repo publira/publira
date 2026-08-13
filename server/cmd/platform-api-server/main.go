@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
@@ -61,25 +62,13 @@ func main() {
 
 	handler := platformapi.NewHandler(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient())
 
-	protocols := new(http.Protocols)
-	protocols.SetHTTP1(true)
-	protocols.SetUnencryptedHTTP2(true)
-
 	// Start Connect server on public port
 	logger.Info("starting platform api server (Connect)", "addr", addr)
-	connectServer := &http.Server{
-		Addr:      addr,
-		Handler:   handler,
-		Protocols: protocols,
-	}
+	connectServer := httpserver.New(addr, handler)
 
 	// Start gRPC server on internal port
 	logger.Info("starting platform api server (gRPC)", "addr", grpcAddr)
-	grpcServer := &http.Server{
-		Addr:      grpcAddr,
-		Handler:   handler,
-		Protocols: protocols,
-	}
+	grpcServer := httpserver.New(grpcAddr, handler)
 
 	// Run servers concurrently
 	var wg sync.WaitGroup
