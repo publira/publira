@@ -1,5 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
+import type { CursorPageVisitResult } from "@publira/api-client/pagination";
 import { parseInstant } from "@publira/utils";
 
 import {
@@ -221,6 +223,68 @@ const paginateUsers = (
   return sortedUsers.slice(offset, offset + limit);
 };
 
+const walkPlatformTenants = async (
+  sid: string,
+  onPage: (
+    tenants: readonly { name: string; publicId: string }[]
+  ) => CursorPageVisitResult | Promise<CursorPageVisitResult>
+): Promise<void> => {
+  await forEachPageWithToken(async (token, limit) => {
+    const response = await apiClient.tenants.listTenants(
+      {
+        limit,
+        name: "",
+        publicId: "",
+        status: "",
+        token,
+      },
+      buildSessionHeaders(sid)
+    );
+    return {
+      items: response.tenants ?? [],
+      nextToken: response.nextToken ?? "",
+    };
+  }, onPage);
+};
+
+const membersPerPage = 100;
+
+const walkTenantMembers = async (
+  sid: string,
+  tenantPublicId: string,
+  onMembers: (
+    members: readonly {
+      createdAt: string;
+      email: string;
+      name: string;
+      status: string;
+      userPublicId: string;
+    }[]
+  ) => void
+): Promise<void> => {
+  for (let page = 0; page < 100; page += 1) {
+    // Sequential pagination depends on previous page results.
+    // oxlint-disable-next-line no-await-in-loop
+    const response = await apiClient.tenants.listTenantMembers(
+      {
+        limit: membersPerPage,
+        offset: page * membersPerPage,
+        tenantPublicId,
+      },
+      buildSessionHeaders(sid)
+    );
+
+    const members = response.members ?? [];
+    if (members.length === 0) {
+      break;
+    }
+    onMembers(members);
+    if (members.length < membersPerPage) {
+      break;
+    }
+  }
+};
+
 const listTenantScopedUsersFallback = async (
   sid: string,
   input: ListPlatformEndUsersInput,
@@ -230,71 +294,28 @@ const listTenantScopedUsersFallback = async (
   users: PlatformEndUserSummary[];
 }> => {
   const normalizedTenantId = normalizeTenantId(input);
-  const tenantsPerPage = 200;
-  const membersPerPage = 200;
   const allUsers = new Map<string, PlatformEndUserSummary>();
   const tenantNameMap = new Map<string, string>();
 
-  for (let tenantPage = 0; tenantPage < 20; tenantPage += 1) {
-    const tenantOffset = tenantPage * tenantsPerPage;
-    // Sequential pagination depends on previous page results.
-    // oxlint-disable-next-line no-await-in-loop
-    const tenantResponse = await apiClient.tenants.listTenants(
-      {
-        limit: tenantsPerPage,
-        name: "",
-        offset: tenantOffset,
-        status: "",
-      } as never,
-      buildSessionHeaders(sid)
-    );
-
-    const tenants = tenantResponse.tenants ?? [];
-    if (tenants.length === 0) {
-      break;
-    }
-
+  await walkPlatformTenants(sid, async (tenants) => {
     for (const tenant of tenants) {
       tenantNameMap.set(tenant.publicId, tenant.name ?? tenant.publicId);
       if (normalizedTenantId && tenant.publicId !== normalizedTenantId) {
         continue;
       }
 
-      for (let memberPage = 0; memberPage < 20; memberPage += 1) {
-        const memberOffset = memberPage * membersPerPage;
-        // Sequential pagination depends on previous page results.
-        // oxlint-disable-next-line no-await-in-loop
-        const memberResponse = await apiClient.tenants.listTenantMembers(
-          {
-            limit: membersPerPage,
-            offset: memberOffset,
-            tenantId: tenant.publicId,
-          } as never,
-          buildSessionHeaders(sid)
-        );
-
-        const members = memberResponse.members ?? [];
-        if (members.length === 0) {
-          break;
-        }
-
+      // Sequential: the first tenant a user belongs to wins on the shared map.
+      // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop
+      await walkTenantMembers(sid, tenant.publicId, (members) => {
         for (const member of members) {
           if (shouldSkipFallbackMember(member, input, publicIdsSet, allUsers)) {
             continue;
           }
           addFallbackMemberUser(allUsers, member, tenant);
         }
-
-        if (members.length < membersPerPage) {
-          break;
-        }
-      }
+      });
     }
-
-    if (tenants.length < tenantsPerPage) {
-      break;
-    }
-  }
+  });
 
   return {
     tenantNameMap,
@@ -328,7 +349,7 @@ export const listPlatformEndUsers = async (
         offset: Math.max(0, input.offset ?? 0),
         publicIds,
         status: input.status ?? "",
-      } as never,
+      },
       buildSessionHeaders(sid)
     );
 
@@ -379,39 +400,16 @@ export const listPlatformTenantFilterOptions = async (): Promise<
   }
 
   try {
-    const tenantsPerPage = 200;
     const options: PlatformTenantFilterOption[] = [];
 
-    for (let tenantPage = 0; tenantPage < 20; tenantPage += 1) {
-      const offset = tenantPage * tenantsPerPage;
-      // Sequential pagination depends on previous page results.
-      // oxlint-disable-next-line no-await-in-loop
-      const response = await apiClient.tenants.listTenants(
-        {
-          limit: tenantsPerPage,
-          name: "",
-          offset,
-          status: "",
-        } as never,
-        buildSessionHeaders(sid)
-      );
-
-      const tenants = response.tenants ?? [];
-      if (tenants.length === 0) {
-        break;
-      }
-
+    await walkPlatformTenants(sid, (tenants) => {
       options.push(
         ...tenants.map((tenant) => ({
           name: tenant.name,
           publicId: tenant.publicId,
         }))
       );
-
-      if (tenants.length < tenantsPerPage) {
-        break;
-      }
-    }
+    });
 
     return options;
   } catch (error) {

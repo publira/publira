@@ -390,6 +390,11 @@ describe("createPlatformTenant", () => {
         userPublicId: "user_001",
       },
     ]);
+
+    expect(mockListTenantMembers).toHaveBeenCalledWith(
+      { tenantPublicId: "tenant_seifuu" },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
   });
 
   it("停止/再開 API を呼び分ける", async () => {
