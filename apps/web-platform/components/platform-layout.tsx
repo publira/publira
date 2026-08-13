@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { getPlatformCurrentOperator } from "../lib/auth";
+import { logoutAction } from "../lib/logout-action";
 import { navigation } from "./platform-navigation";
 
 const platformGradient =
@@ -46,6 +47,7 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
       <ConsoleHeader
         contextLabel="テナント横断オペレーション"
         eyebrow="Platform Operations"
+        logoutAction={logoutAction}
       >
         <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
           <PlatformUser />

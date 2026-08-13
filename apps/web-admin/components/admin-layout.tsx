@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
+import { logoutAction } from "../lib/logout-action";
 import { getTenantId } from "../lib/tenant-id";
 import { navigation } from "./admin-navigation";
 
@@ -64,7 +65,11 @@ export const AdminLayout = ({
     </ConsoleSidebar>
 
     <ConsoleLayoutContent>
-      <ConsoleHeader contextLabel={tenant.name} eyebrow="現在の運用先">
+      <ConsoleHeader
+        contextLabel={tenant.name}
+        eyebrow="現在の運用先"
+        logoutAction={logoutAction.bind(null, tenant.publicId)}
+      >
         <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
           <AdminUser />
         </Suspense>

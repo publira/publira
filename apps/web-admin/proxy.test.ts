@@ -77,6 +77,21 @@ describe("web-admin proxy", () => {
     expect(mockResolveTenantId).not.toHaveBeenCalled();
   });
 
+  it("GET /logout はテナント解決もセッション操作もせず 404 を返す", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/logout", {
+        headers: { cookie: "publira_web_admin_auth=tok" },
+      })
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(mockResolveTenantId).not.toHaveBeenCalled();
+  });
+
   it.each(["/livez", "/readyz"])(
     "ヘルス probe %s はテナント解決なしで next する",
     async (path) => {

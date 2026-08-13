@@ -41,6 +41,11 @@ export const signInAsScenarioPlatformOperator = async (
   await signInAsPlatformOperator(page, SCENARIO_PLATFORM_OPERATOR, nextPath);
 };
 
+export const signOutPlatform = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: "ログアウト" }).click();
+  await page.waitForURL((url) => url.pathname.endsWith("/login"));
+};
+
 export interface CreateTenantInput {
   name: string;
   domain: string;

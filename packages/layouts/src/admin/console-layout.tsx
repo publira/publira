@@ -140,6 +140,7 @@ export const ConsoleHeaderUserSkeleton = () => (
 export const ConsoleHeader = ({
   eyebrow,
   contextLabel,
+  logoutAction,
   children,
 }: ConsoleHeaderProps) => (
   <Suspense fallback={<ConsoleHeaderSkeleton />}>
@@ -157,7 +158,7 @@ export const ConsoleHeader = ({
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {children}
-          <form action="/logout" method="post">
+          <form action={logoutAction}>
             <Button size="sm" type="submit" variant="outline">
               ログアウト
             </Button>
@@ -237,6 +238,7 @@ export interface ConsoleCurrentUser {
 export interface ConsoleHeaderProps {
   eyebrow: string;
   contextLabel: string;
+  logoutAction: (formData: FormData) => void | Promise<void>;
   children?: ReactNode;
 }
 

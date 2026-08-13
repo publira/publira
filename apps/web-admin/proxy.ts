@@ -18,7 +18,6 @@ const PUBLIC_PATHS = new Set([
   "/forgot-password",
   "/livez",
   "/login",
-  "/logout",
   "/readyz",
   "/theme.css",
 ]);
@@ -35,6 +34,11 @@ export const proxy = async (request: NextRequest) => {
   // Probes must not depend on tenant resolution or backend availability.
   if (isHealthProbePath(pathname)) {
     return NextResponse.next();
+  }
+
+  // Former Route Handler. GET must not clear the session (#655).
+  if (pathname === "/logout") {
+    return new NextResponse("Not Found", { status: 404 });
   }
 
   if (
