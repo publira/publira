@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockReorderEpisodeImages,
   mockUpdateEpisodePublishSchedule,
   mockUploadEpisodePages,
 } = vi.hoisted(() => ({
+  mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
   mockUpdateEpisodePublishSchedule: vi.fn(),
@@ -22,10 +24,15 @@ vi.mock("#lib/episode", () => ({
   uploadEpisodePages: mockUploadEpisodePages,
 }));
 
+vi.mock("#lib/tenant-timezone", () => ({
+  getTenantDisplayTimeZone: mockGetTenantDisplayTimeZone,
+}));
+
 describe("episode actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
   });
 
   it("公開スケジュール更新: hidden パラメータ不足でエラーを返す", async () => {
@@ -86,7 +93,8 @@ describe("episode actions", () => {
     );
   });
 
-  it("公開スケジュール更新: datetime-local の壁時計は JST として解釈する", async () => {
+  it("公開スケジュール更新: datetime-local の壁時計はテナントタイムゾーンとして解釈する", async () => {
+    mockGetTenantDisplayTimeZone.mockResolvedValue("America/Los_Angeles");
     mockUpdateEpisodePublishSchedule.mockResolvedValueOnce({ ok: true });
 
     const { updateEpisodeScheduleAction } = await import("./actions");
@@ -99,12 +107,13 @@ describe("episode actions", () => {
 
     await updateEpisodeScheduleAction(null, formData);
 
-    // JST (+09:00), never the server process's local zone.
+    // PDT (UTC-7) in June — 10:00 in Los Angeles is 17:00Z.
     expect(mockUpdateEpisodePublishSchedule).toHaveBeenCalledWith({
       episodePublicId: "EP001",
-      publishAt: "2099-06-01T01:00:00Z",
+      publishAt: "2099-06-01T17:00:00Z",
       tenantId: "TENANT001",
     });
+    expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
 
   it("公開スケジュール更新: 日付のみの publish_at は形式エラーにする", async () => {

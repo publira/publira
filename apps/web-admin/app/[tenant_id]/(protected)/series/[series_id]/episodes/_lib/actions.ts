@@ -1,13 +1,10 @@
 "use server";
 
-import {
-  DEFAULT_TIME_ZONE,
-  parseInstant,
-  toInstantIsoString,
-} from "@publira/utils";
+import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { redirect } from "next/navigation";
 
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { EpisodeActionState } from "../episode-types";
 
@@ -84,15 +81,17 @@ const validateCreateEpisodeInput = (
 };
 
 const toScheduledAt = (
-  publishAtRaw: string
+  publishAtRaw: string,
+  timeZone: string
 ): { ok: true; value: string } | EpisodeCreateErrorState => {
   if (!publishAtRaw) {
     return { ok: true, value: "" };
   }
 
-  // The form posts a `datetime-local` wall clock; read it in the admin UI's
-  // display zone instead of whatever zone the server process happens to run in.
-  const value = toInstantIsoString(publishAtRaw, DEFAULT_TIME_ZONE);
+  // The form posts an absolute instant resolved against the zone it was
+  // rendered in. A leftover `datetime-local` wall clock (no JS) is still
+  // accepted and read in the tenant's current display zone.
+  const value = toInstantIsoString(publishAtRaw, timeZone);
   const parsed = parseInstant(value);
   if (!parsed) {
     return {
@@ -123,7 +122,8 @@ export const createEpisodeAction = async (
     return validation;
   }
 
-  const scheduledAt = toScheduledAt(input.publishAtRaw);
+  const timeZone = await getTenantDisplayTimeZone(input.tenantId);
+  const scheduledAt = toScheduledAt(input.publishAtRaw, timeZone);
   if (!scheduledAt.ok) {
     return scheduledAt;
   }

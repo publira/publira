@@ -43,7 +43,7 @@ afterEach(() => {
 
 describe("TicketManager", () => {
   it("最初のページが空なら未登録として案内する", () => {
-    render(<TicketManager pageSize={20} tickets={[]} />);
+    render(<TicketManager pageSize={20} tickets={[]} timeZone="Asia/Tokyo" />);
 
     expect(screen.getByText("チケットがまだありません。")).toBeDefined();
     expect(
@@ -57,6 +57,7 @@ describe("TicketManager", () => {
         pageSize={20}
         previousHref="?token=previous"
         tickets={[]}
+        timeZone="Asia/Tokyo"
       />
     );
 
@@ -76,6 +77,7 @@ describe("TicketManager", () => {
         pageSize={20}
         previousHref="?token=previous"
         tickets={[ticket("TICKET001")]}
+        timeZone="Asia/Tokyo"
       />
     );
 
@@ -96,6 +98,7 @@ describe("TicketManager", () => {
         pageSize={20}
         previousHref="?token=previous"
         tickets={[]}
+        timeZone="Asia/Tokyo"
       />
     );
 

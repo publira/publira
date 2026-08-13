@@ -29,6 +29,7 @@ type NotificationManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
   notifications: NotificationItem[];
   pageSize: number;
+  timeZone: string;
 };
 
 const formatAudience = (item: NotificationItem): string => {
@@ -49,19 +50,21 @@ const excerpt = (text: string, maxLength: number): string => {
   return `${normalized.slice(0, maxLength)}...`;
 };
 
-// Absolute API timestamp → admin display zone. `formatDateTime` falls back to
+// Absolute API timestamp → tenant display zone. `formatDateTime` falls back to
 // the raw value when it cannot be parsed, so only the empty case is special.
-const formatNotificationDateTime = (value: string): string =>
-  value ? formatDateTime(value) : "—";
+const formatNotificationDateTime = (value: string, timeZone: string): string =>
+  value ? formatDateTime(value, { timeZone }) : "—";
 
 const NotificationListBody = ({
   hasPageLinks,
   listErrorMessage,
   notifications,
+  timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
   notifications: NotificationItem[];
+  timeZone: string;
 }) => {
   // A failed fetch still hands an empty `notifications` array; do not show the
   // empty list state alongside the error or operators will read it as "none".
@@ -100,7 +103,7 @@ const NotificationListBody = ({
         {notifications.map((notification) => (
           <TableRow key={notification.id}>
             <TableCell>
-              {formatNotificationDateTime(notification.createdAt)}
+              {formatNotificationDateTime(notification.createdAt, timeZone)}
             </TableCell>
             <TableCell className="font-medium">{notification.title}</TableCell>
             <TableCell>{excerpt(notification.body, 72)}</TableCell>
@@ -119,6 +122,7 @@ export const NotificationManager = ({
   notifications,
   pageSize,
   previousHref,
+  timeZone,
 }: NotificationManagerProps) => {
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
@@ -148,6 +152,7 @@ export const NotificationManager = ({
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
           notifications={notifications}
+          timeZone={timeZone}
         />
 
         {showPagination ? (

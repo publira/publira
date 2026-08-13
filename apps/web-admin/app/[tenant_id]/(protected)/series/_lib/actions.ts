@@ -1,20 +1,22 @@
 "use server";
 
-import { DEFAULT_TIME_ZONE, toInstantIsoString } from "@publira/utils";
+import { toInstantIsoString } from "@publira/utils";
 import { redirect } from "next/navigation";
 
 import { createSeries, updateSeries } from "#lib/series";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { SeriesActionState } from "../series-types";
 
 /**
- * `published_at` arrives either as an absolute timestamp or as the zone-less
- * wall clock of a `datetime-local` input. The wall clock is read in the admin
- * UI's display zone (tenant zones land in #566 / #567) rather than being glued
- * to a hardcoded `+09:00` or reinterpreted in the server's local zone.
+ * `published_at` arrives either as an absolute timestamp (the form resolves
+ * the wall clock against the zone it was rendered in) or as a leftover
+ * zone-less `datetime-local` value. The latter is read in the tenant's
+ * current display zone rather than being glued to a hardcoded `+09:00` or
+ * reinterpreted in the server's local zone.
  */
-const parsePublishedAt = (value: string): string =>
-  toInstantIsoString(value, DEFAULT_TIME_ZONE);
+const parsePublishedAt = (value: string, timeZone: string): string =>
+  toInstantIsoString(value, timeZone);
 
 const parseCommonFields = async (formData: FormData) => {
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
@@ -26,7 +28,8 @@ const parseCommonFields = async (formData: FormData) => {
     formData.get("reading_period_hours") ?? ""
   ).trim();
   const isPublished = String(formData.get("is_published") ?? "") === "on";
-  const publishedAt = parsePublishedAt(publishedAtRaw);
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  const publishedAt = parsePublishedAt(publishedAtRaw, timeZone);
   const creatorPublicIds = formData
     .getAll("creator_public_ids")
     .flatMap((value) => {

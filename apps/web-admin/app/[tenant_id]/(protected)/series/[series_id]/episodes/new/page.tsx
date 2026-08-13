@@ -18,6 +18,8 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeForm } from "../_components/episode-form";
 import { createEpisodeAction } from "../_lib/actions";
@@ -71,8 +73,18 @@ const NewEpisodeActions = async ({
 const NewEpisodeFormData = async ({
   params,
 }: Pick<NewEpisodePageProps, "params">) => {
-  const seriesId = await resolveSeriesId(params);
-  return <EpisodeForm action={createEpisodeAction} seriesPublicId={seriesId} />;
+  const [seriesId, tenantId] = await Promise.all([
+    resolveSeriesId(params),
+    getTenantId(),
+  ]);
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  return (
+    <EpisodeForm
+      action={createEpisodeAction}
+      seriesPublicId={seriesId}
+      timeZone={timeZone}
+    />
+  );
 };
 
 const NewEpisodeFormSkeleton = () => (

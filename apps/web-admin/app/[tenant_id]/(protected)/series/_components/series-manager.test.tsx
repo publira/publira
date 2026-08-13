@@ -18,7 +18,7 @@ afterEach(() => {
 
 describe("SeriesManager", () => {
   it("最初のページが空なら未登録として案内する", () => {
-    render(<SeriesManager pageSize={20} series={[]} />);
+    render(<SeriesManager pageSize={20} series={[]} timeZone="Asia/Tokyo" />);
 
     expect(
       screen.getByText("シリーズがまだ登録されていません。")
@@ -28,7 +28,12 @@ describe("SeriesManager", () => {
 
   it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
     render(
-      <SeriesManager pageSize={20} previousHref="?token=previous" series={[]} />
+      <SeriesManager
+        pageSize={20}
+        previousHref="?token=previous"
+        series={[]}
+        timeZone="Asia/Tokyo"
+      />
     );
 
     expect(
@@ -46,6 +51,7 @@ describe("SeriesManager", () => {
         pageSize={20}
         previousHref="?token=previous"
         series={[]}
+        timeZone="Asia/Tokyo"
       />
     );
 

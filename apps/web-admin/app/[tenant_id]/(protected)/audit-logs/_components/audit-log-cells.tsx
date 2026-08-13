@@ -41,6 +41,7 @@ type AuditOutcome = "failure" | "success" | "unknown";
 
 interface AuditLogDateCellProps {
   createdAt: string;
+  timeZone: string;
 }
 
 interface AuditLogActorCellProps {
@@ -60,9 +61,12 @@ interface AuditLogOutcomeCellProps {
   outcome: AuditOutcome;
 }
 
-export const AuditLogDateCell = ({ createdAt }: AuditLogDateCellProps) => (
+export const AuditLogDateCell = ({
+  createdAt,
+  timeZone,
+}: AuditLogDateCellProps) => (
   <TableCell className="text-sm text-muted-foreground">
-    {formatDateTime(createdAt, { fallback: "-" })}
+    {formatDateTime(createdAt, { fallback: "-", timeZone })}
   </TableCell>
 );
 

@@ -23,6 +23,7 @@ import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPage, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { PageWorkspace } from "../_components/page-workspace";
 import {
@@ -76,9 +77,10 @@ const PageWorkspaceData = async ({
   guardPlaceholder(pageId);
 
   const tenantId = await getTenantId();
-  const [pageResult, versionsResult] = await Promise.all([
+  const [pageResult, versionsResult, timeZone] = await Promise.all([
     getPage({ pageId, tenantId }),
     listPageVersions({ pageId, tenantId }),
+    getTenantDisplayTimeZone(tenantId),
   ]);
 
   if (!pageResult.ok) {
@@ -103,6 +105,7 @@ const PageWorkspaceData = async ({
       initialVersions={versionsResult.versions}
       publishAction={publishVersionAction}
       rollbackAction={rollbackVersionAction}
+      timeZone={timeZone}
       updatePageAction={updatePageAction}
     />
   );

@@ -29,6 +29,7 @@ type SeriesManagerProps = CursorPageHrefs & {
   series: SeriesListItem[];
   listErrorMessage?: string;
   pageSize: number;
+  timeZone: string;
 };
 
 const getStatusTone = (isPublished: boolean) =>
@@ -50,10 +51,12 @@ const SeriesListBody = ({
   hasPageLinks,
   listErrorMessage,
   series,
+  timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
   series: SeriesListItem[];
+  timeZone: string;
 }) => {
   // A failed fetch still hands an empty `series` array; do not show the empty
   // list state alongside the error or operators will read it as "no series".
@@ -96,7 +99,10 @@ const SeriesListBody = ({
             <TableCell className="font-medium">{item.title}</TableCell>
             <TableCell>{item.labelName || "-"}</TableCell>
             <TableCell>
-              {formatDateTime(item.publishedAt, { fallback: "-" })}
+              {formatDateTime(item.publishedAt, {
+                fallback: "-",
+                timeZone,
+              })}
             </TableCell>
             <TableCell>{item.readingPeriodHours}</TableCell>
             <TableCell>{excerpt(item.synopsis)}</TableCell>
@@ -131,6 +137,7 @@ export const SeriesManager = ({
   nextHref,
   pageSize,
   previousHref,
+  timeZone,
 }: SeriesManagerProps) => {
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
@@ -156,6 +163,7 @@ export const SeriesManager = ({
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
           series={series}
+          timeZone={timeZone}
         />
 
         {showPagination ? (

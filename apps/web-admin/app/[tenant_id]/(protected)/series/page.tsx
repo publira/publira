@@ -18,6 +18,7 @@ import {
 } from "#lib/cursor-page";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { SeriesManager } from "./_components/series-manager";
 
@@ -46,7 +47,10 @@ const SeriesManagerData = async ({
 }: Pick<SeriesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listSeries(tenantId, { token });
+  const [listResult, timeZone] = await Promise.all([
+    listSeries(tenantId, { token }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   return (
     <SeriesManager
@@ -54,6 +58,7 @@ const SeriesManagerData = async ({
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       pageSize={DEFAULT_PAGE_SIZE}
       series={listResult.series}
+      timeZone={timeZone}
     />
   );
 };

@@ -18,6 +18,7 @@ import {
 } from "#lib/cursor-page";
 import { listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { NotificationManager } from "./_components/notification-manager";
 
@@ -46,7 +47,10 @@ const NotificationManagerData = async ({
 }: Pick<NotificationsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listNotifications(tenantId, { token });
+  const [listResult, timeZone] = await Promise.all([
+    listNotifications(tenantId, { token }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   return (
     <NotificationManager
@@ -54,6 +58,7 @@ const NotificationManagerData = async ({
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       notifications={listResult.notifications}
       pageSize={DEFAULT_PAGE_SIZE}
+      timeZone={timeZone}
     />
   );
 };

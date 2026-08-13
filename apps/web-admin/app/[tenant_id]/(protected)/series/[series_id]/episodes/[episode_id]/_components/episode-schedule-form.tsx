@@ -9,8 +9,9 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { useActionState } from "react";
+import { useActionState, useCallback } from "react";
 
+import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import { PublishAtInput } from "../../_components/publish-at-input";
@@ -23,15 +24,28 @@ interface EpisodeScheduleFormProps {
     prevState: EpisodeEditActionState,
     formData: FormData
   ) => Promise<EpisodeEditActionState>;
+  timeZone: string;
 }
 
 export const EpisodeScheduleForm = ({
   seriesPublicId,
   episodePublicId,
   action,
+  timeZone,
 }: EpisodeScheduleFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      fillInstantFromDateTimeLocal(event.currentTarget, {
+        isoName: "publish_at",
+        localName: "publish_at_local",
+        timeZone,
+      });
+    },
+    [timeZone]
+  );
 
   return (
     <Card>
@@ -42,7 +56,11 @@ export const EpisodeScheduleForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="grid gap-4">
+        <form
+          action={formAction}
+          className="grid gap-4"
+          onSubmit={handleSubmit}
+        >
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="series_public_id" type="hidden" value={seriesPublicId} />
           <input
@@ -51,7 +69,11 @@ export const EpisodeScheduleForm = ({
             value={episodePublicId}
           />
 
-          <PublishAtInput id="episode_edit_publish_at" name="publish_at" />
+          <PublishAtInput
+            id="episode_edit_publish_at"
+            name="publish_at"
+            timeZone={timeZone}
+          />
 
           {state && state.mode === "schedule" ? (
             <FormMessage variant={state.ok ? "success" : "destructive"}>

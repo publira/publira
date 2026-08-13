@@ -16,7 +16,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { DEFAULT_TIME_ZONE, toDateTimeLocalValue } from "@publira/utils";
+import { toDateTimeLocalValue } from "@publira/utils";
 import Image from "next/image";
 import {
   useActionState,
@@ -27,6 +27,7 @@ import {
 } from "react";
 import type { ChangeEventHandler } from "react";
 
+import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { SeriesActionState, SeriesListItem } from "../series-types";
@@ -53,6 +54,7 @@ interface SeriesFormProps {
   creatorsErrorMessage?: string;
   labelsErrorMessage?: string;
   initialSeries?: SeriesListItem;
+  timeZone: string;
 }
 
 const getSubmitLabel = (
@@ -324,6 +326,7 @@ export const SeriesForm = ({
   creatorsErrorMessage,
   labelsErrorMessage,
   initialSeries,
+  timeZone,
 }: SeriesFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
@@ -363,10 +366,25 @@ export const SeriesForm = ({
   const isUpdate = mode === "update";
   const submitLabel = getSubmitLabel(mode, isPending);
 
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      fillInstantFromDateTimeLocal(event.currentTarget, {
+        isoName: "published_at",
+        localName: "published_at_local",
+        timeZone,
+      });
+    },
+    [timeZone]
+  );
+
   return (
     <Card>
       <CardContent className="pt-6">
-        <form action={formAction} className="grid gap-4">
+        <form
+          action={formAction}
+          className="grid gap-4"
+          onSubmit={handleSubmit}
+        >
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input
             name="public_id"
@@ -448,19 +466,22 @@ export const SeriesForm = ({
             <Field>
               <FieldLabel htmlFor="series_published_at">公開日時</FieldLabel>
               <FieldContent>
+                <input defaultValue="" name="published_at" type="hidden" />
                 <Input
-                  // Wall clock shown in the admin display zone; the action
-                  // resolves it back against the same zone on submit.
+                  // Wall clock shown in the zone this form was rendered in.
+                  // Submit writes the matching instant into `published_at`.
                   defaultValue={toDateTimeLocalValue(
                     initialSeries?.publishedAt ?? "",
-                    DEFAULT_TIME_ZONE
+                    timeZone
                   )}
                   id="series_published_at"
-                  name="published_at"
+                  name="published_at_local"
                   type="datetime-local"
                 />
                 <FieldDescription>
-                  空欄の場合は非公開です。日時を設定するとその時刻以降（日本時間）に公開されます。
+                  空欄の場合は非公開です。日時はテナントのタイムゾーン（
+                  {timeZone}
+                  ）の壁時計として解釈し、その時刻以降に公開されます。
                 </FieldDescription>
               </FieldContent>
             </Field>

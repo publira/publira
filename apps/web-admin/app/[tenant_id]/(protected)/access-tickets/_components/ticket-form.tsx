@@ -11,7 +11,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { DEFAULT_TIME_ZONE, fromDateTimeLocalValue } from "@publira/utils";
+import { fromDateTimeLocalValue } from "@publira/utils";
 import { useActionState, useCallback, useRef } from "react";
 
 import { useTenantId } from "#lib/use-tenant-id";
@@ -23,19 +23,21 @@ interface TicketFormProps {
     prevState: IssueAccessTicketActionState,
     formData: FormData
   ) => Promise<IssueAccessTicketActionState>;
+  timeZone: string;
 }
 
-export const TicketForm = ({ action }: TicketFormProps) => {
+export const TicketForm = ({ action, timeZone }: TicketFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const expiresAtIsoRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
-      // datetime-local is a zone-free wall clock. Resolve it against the admin
-      // UI's display zone — not the browser's, which would make the same input
-      // mean different instants for operators travelling or set to another TZ —
-      // and post an absolute instant so the server cannot reinterpret it.
+      // datetime-local is a zone-free wall clock. Resolve it against the
+      // tenant's display zone — not the browser's, which would make the same
+      // input mean different instants for operators travelling or set to
+      // another TZ — and post an absolute instant so the server cannot
+      // reinterpret it.
       const form = event.currentTarget;
       const localInput = form.elements.namedItem(
         "expires_at_local"
@@ -47,10 +49,10 @@ export const TicketForm = ({ action }: TicketFormProps) => {
       // Empty / unparseable values become "", which the server action rejects.
       isoInput.value = fromDateTimeLocalValue(
         localInput?.value ?? "",
-        DEFAULT_TIME_ZONE
+        timeZone
       );
     },
-    []
+    [timeZone]
   );
 
   return (
@@ -114,8 +116,8 @@ export const TicketForm = ({ action }: TicketFormProps) => {
                 type="datetime-local"
               />
               <FieldDescription>
-                未指定の場合は無期限です。日本時間（Asia/Tokyo）で解釈し、送信時に
-                ISO 8601（UTC）へ変換します。失効操作でいつでも取り消せます。
+                未指定の場合は無期限です。テナントのタイムゾーン（{timeZone}
+                ）の壁時計として解釈し、送信時に絶対時刻へ変換します。失効操作でいつでも取り消せます。
               </FieldDescription>
             </FieldContent>
           </Field>

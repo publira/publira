@@ -30,7 +30,13 @@ afterEach(() => {
 
 describe("NotificationManager", () => {
   it("最初のページが空なら未登録として案内する", () => {
-    render(<NotificationManager notifications={[]} pageSize={20} />);
+    render(
+      <NotificationManager
+        notifications={[]}
+        pageSize={20}
+        timeZone="Asia/Tokyo"
+      />
+    );
 
     expect(screen.getByText("通知がまだありません。")).toBeDefined();
     expect(screen.queryByLabelText("通知一覧のページ送り")).toBeNull();
@@ -42,6 +48,7 @@ describe("NotificationManager", () => {
         notifications={[]}
         pageSize={20}
         previousHref="?token=previous"
+        timeZone="Asia/Tokyo"
       />
     );
 
@@ -61,10 +68,13 @@ describe("NotificationManager", () => {
         notifications={[notification("n1")]}
         pageSize={20}
         previousHref="?token=previous"
+        timeZone="Asia/Tokyo"
       />
     );
 
     expect(screen.getByText("メンテナンスのお知らせ")).toBeDefined();
+    // 2026-06-01T00:00:00Z is 09:00 the same calendar day in Asia/Tokyo.
+    expect(screen.getByText("2026/06/01 9:00")).toBeDefined();
     expect(
       screen.getByRole("link", { name: "前へ" }).getAttribute("href")
     ).toBe("?token=previous");
@@ -81,6 +91,7 @@ describe("NotificationManager", () => {
         notifications={[]}
         pageSize={20}
         previousHref="?token=previous"
+        timeZone="Asia/Tokyo"
       />
     );
 
@@ -98,5 +109,19 @@ describe("NotificationManager", () => {
       screen.queryByText("このページに表示できる通知はありません。")
     ).toBeNull();
     expect(screen.queryByLabelText("通知一覧のページ送り")).toBeNull();
+  });
+
+  it("作成日時をテナントタイムゾーンの壁時計で表示する", () => {
+    render(
+      <NotificationManager
+        notifications={[notification("n1")]}
+        pageSize={20}
+        timeZone="America/Los_Angeles"
+      />
+    );
+
+    // 2026-06-01T00:00:00Z is 17:00 the previous calendar day in PDT.
+    expect(screen.getByText("2026/05/31 17:00")).toBeDefined();
+    expect(screen.queryByText("2026/06/01 9:00")).toBeNull();
   });
 });

@@ -17,6 +17,7 @@ import { listAllCreators } from "#lib/creator";
 import { listAllLabels } from "#lib/label";
 import { listSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { SeriesForm } from "../_components/series-form";
 import { createSeriesAction } from "../_lib/actions";
@@ -41,15 +42,17 @@ const NewSeriesFormSkeleton = () => (
 
 const NewSeriesFormData = async () => {
   const tenantId = await getTenantId();
-  const [listResult, creatorsResult, labelsResult] = await Promise.all([
-    // Only `defaultReadingPeriodHours` is read here, and that comes from the
-    // tenant rather than the page, so the smallest page the API allows is
-    // enough.
-    listSeries(tenantId, { limit: 1 }),
-    // Walk every cursor page so the Combobox can search past the first 100.
-    listAllCreators(tenantId),
-    listAllLabels(tenantId),
-  ]);
+  const [listResult, creatorsResult, labelsResult, timeZone] =
+    await Promise.all([
+      // Only `defaultReadingPeriodHours` is read here, and that comes from the
+      // tenant rather than the page, so the smallest page the API allows is
+      // enough.
+      listSeries(tenantId, { limit: 1 }),
+      // Walk every cursor page so the Combobox can search past the first 100.
+      listAllCreators(tenantId),
+      listAllLabels(tenantId),
+      getTenantDisplayTimeZone(tenantId),
+    ]);
 
   return (
     <SeriesForm
@@ -62,6 +65,7 @@ const NewSeriesFormData = async () => {
       labels={labelsResult.labels}
       labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="create"
+      timeZone={timeZone}
     />
   );
 };

@@ -29,16 +29,19 @@ type PageManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
   pageSize: number;
   pages: PageListItem[];
+  timeZone: string;
 };
 
 const PageListBody = ({
   hasPageLinks,
   listErrorMessage,
   pages,
+  timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
   pages: PageListItem[];
+  timeZone: string;
 }) => {
   // A failed fetch still hands an empty `pages` array; do not show the empty
   // list state alongside the error or operators will read it as "no pages".
@@ -93,7 +96,9 @@ const PageListBody = ({
                 <Badge tone="muted">非表示</Badge>
               )}
             </TableCell>
-            <TableCell>{formatPageDateTime(page.updatedAt)}</TableCell>
+            <TableCell>
+              {formatPageDateTime(page.updatedAt, timeZone)}
+            </TableCell>
             <TableCell>
               <LinkButton href={`/pages/${page.id}`} variant="outline">
                 編集
@@ -112,6 +117,7 @@ export const PageManager = ({
   pageSize,
   pages,
   previousHref,
+  timeZone,
 }: PageManagerProps) => {
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
@@ -137,6 +143,7 @@ export const PageManager = ({
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
           pages={pages}
+          timeZone={timeZone}
         />
 
         {showPagination ? (

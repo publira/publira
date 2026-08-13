@@ -35,6 +35,7 @@ import {
 } from "#lib/cursor-page";
 import { listEpisodes } from "#lib/episode";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodesSortableList } from "./_components/episodes-sortable-list";
 import { reorderEpisodesAction } from "./_lib/actions";
@@ -58,11 +59,14 @@ const SeriesEpisodesPage = async ({
   guardPlaceholder(series_id);
 
   const { token } = parseCursorSearchParams(sp);
-  const result = await listEpisodes({
-    seriesPublicId: series_id,
-    tenantId,
-    token,
-  });
+  const [result, timeZone] = await Promise.all([
+    listEpisodes({
+      seriesPublicId: series_id,
+      tenantId,
+      token,
+    }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);
 
@@ -146,6 +150,7 @@ const SeriesEpisodesPage = async ({
                       episodes={result.episodes}
                       reorderAction={reorderEpisodesAction}
                       seriesPublicId={series_id}
+                      timeZone={timeZone}
                     />
                   </div>
                 )}

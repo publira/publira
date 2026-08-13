@@ -18,6 +18,7 @@ import {
 } from "#lib/cursor-page";
 import { listPages } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { PageManager } from "./_components/page-manager";
 
@@ -46,7 +47,10 @@ const PageManagerData = async ({
 }: Pick<PagesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listPages(tenantId, { token });
+  const [listResult, timeZone] = await Promise.all([
+    listPages(tenantId, { token }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   return (
     <PageManager
@@ -54,6 +58,7 @@ const PageManagerData = async ({
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       pageSize={DEFAULT_PAGE_SIZE}
       pages={listResult.pages}
+      timeZone={timeZone}
     />
   );
 };

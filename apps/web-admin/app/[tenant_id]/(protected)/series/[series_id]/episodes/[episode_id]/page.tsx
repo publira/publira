@@ -20,6 +20,7 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { listEpisodeImages } from "#lib/episode";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
@@ -47,10 +48,13 @@ const EditEpisodePage = async ({
   guardPlaceholder(series_id);
   guardPlaceholder(episode_id);
 
-  const imagesResult = await listEpisodeImages({
-    episodePublicId: episode_id,
-    tenantId,
-  });
+  const [imagesResult, timeZone] = await Promise.all([
+    listEpisodeImages({
+      episodePublicId: episode_id,
+      tenantId,
+    }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   return (
     <AdminPage>
@@ -103,6 +107,7 @@ const EditEpisodePage = async ({
             action={updateEpisodeScheduleAction}
             episodePublicId={episode_id}
             seriesPublicId={series_id}
+            timeZone={timeZone}
           />
           <EpisodePagesForm
             action={uploadEpisodePagesAction}
