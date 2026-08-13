@@ -36,6 +36,11 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next();
   }
 
+  // Former Route Handler. GET must not clear the session (#655).
+  if (pathname === "/logout") {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
   if (
     pathname === LEGACY_ANNOUNCEMENTS_PREFIX ||
     pathname.startsWith(`${LEGACY_ANNOUNCEMENTS_PREFIX}/`)

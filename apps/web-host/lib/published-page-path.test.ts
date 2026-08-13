@@ -55,6 +55,9 @@ describe("getPublishedPageSlugFromPathname", () => {
 
 describe("buildTenantRewritePathname", () => {
   it("公開ページ候補は /page/[...slug] へ rewrite する", () => {
+    expect(buildTenantRewritePathname("tenant-1", "/logout")).toBe(
+      "/tenant-1/page/logout"
+    );
     expect(buildTenantRewritePathname("tenant-1", "/privacy")).toBe(
       "/tenant-1/page/privacy"
     );

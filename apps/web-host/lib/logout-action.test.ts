@@ -71,6 +71,9 @@ describe("logoutAction", () => {
     await logoutAction("TENANT001");
 
     expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_host_auth");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "public-session-cookie-publira_web_host_auth"
+    );
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 });
