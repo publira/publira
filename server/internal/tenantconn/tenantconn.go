@@ -35,9 +35,10 @@ const (
 
 // Acquire takes a connection from db, sets app.current_tenant_id, and
 // returns a cleanup that clears the setting (with [ClearTimeout]) and
-// returns the connection to the pool. If clearing fails, cleanup logs
-// the error and discards the connection so it cannot be reused with the
-// leftover tenant GUC.
+// returns the connection to the pool. If setting or clearing fails,
+// the error is logged and the connection is discarded: set_config is
+// session-scoped, so a canceled or timed-out ExecContext may still
+// have applied the GUC, and pool-level queriers would inherit it.
 func Acquire(ctx context.Context, db *sql.DB, tenantID uuid.UUID, logger *slog.Logger) (*sql.Conn, func(), error) {
 	logger = loggerOrDefault(logger)
 
@@ -47,9 +48,8 @@ func Acquire(ctx context.Context, db *sql.DB, tenantID uuid.UUID, logger *slog.L
 	}
 
 	if _, err := conn.ExecContext(ctx, setTenantSQL, tenantID.String()); err != nil {
-		if closeErr := conn.Close(); closeErr != nil {
-			logger.Error("failed to return connection after tenant set failure", "error", closeErr)
-		}
+		logger.Error("failed to set app.current_tenant_id; discarding connection", "error", err)
+		discard(conn, logger)
 		return nil, func() {}, err
 	}
 

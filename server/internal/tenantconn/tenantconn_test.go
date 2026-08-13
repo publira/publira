@@ -168,7 +168,7 @@ func TestReleaseDiscardsConnectionWhenClearTimesOut(t *testing.T) {
 	}
 }
 
-func TestAcquireReturnsConnectionToPoolWhenSetFails(t *testing.T) {
+func TestAcquireDiscardsConnectionWhenSetFails(t *testing.T) {
 	t.Parallel()
 
 	drv := newFakeDriver(func(call execCall) error {
@@ -178,28 +178,139 @@ func TestAcquireReturnsConnectionToPoolWhenSetFails(t *testing.T) {
 		return nil
 	})
 	db := openFakeDB(t, drv)
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
 
-	_, cleanup, err := Acquire(context.Background(), db, uuid.Must(uuid.NewV7()), discardLogger())
+	_, cleanup, err := Acquire(context.Background(), db, uuid.Must(uuid.NewV7()), logger)
 	if err == nil {
 		cleanup()
 		t.Fatal("Acquire succeeded, want set failure")
 	}
 
 	first := drv.lastConn()
-	if first.closed.Load() {
-		t.Fatal("set failure discarded the connection instead of returning it to the pool")
-	}
 	if drv.clearCalls() != 0 {
 		t.Fatalf("clear calls = %d, want 0 after a failed set", drv.clearCalls())
+	}
+	if !bytes.Contains(logs.Bytes(), []byte("failed to set app.current_tenant_id; discarding connection")) {
+		t.Fatalf("set failure was not logged:\n%s", logs.String())
+	}
+	assertConnDiscarded(t, db, drv, first)
+}
+
+func TestAcquireDiscardsConnectionWhenSetCanceled(t *testing.T) {
+	t.Parallel()
+
+	started := make(chan struct{})
+	drv := newFakeDriver(func(call execCall) error {
+		if !isSetQuery(call.query) {
+			return nil
+		}
+		close(started)
+		<-call.ctx.Done()
+		return call.ctx.Err()
+	})
+	db := openFakeDB(t, drv)
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, cleanup, err := Acquire(ctx, db, uuid.Must(uuid.NewV7()), logger)
+		if err == nil {
+			cleanup()
+		}
+		done <- err
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("set did not start")
+	}
+	cancel()
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Acquire error = %v, want context.Canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Acquire did not return after cancel")
+	}
+
+	if !bytes.Contains(logs.Bytes(), []byte("failed to set app.current_tenant_id; discarding connection")) {
+		t.Fatalf("canceled set was not logged:\n%s", logs.String())
+	}
+	assertConnDiscarded(t, db, drv, drv.lastConn())
+}
+
+func TestAcquireDiscardsConnectionWhenSetTimesOut(t *testing.T) {
+	t.Parallel()
+
+	started := make(chan struct{})
+	drv := newFakeDriver(func(call execCall) error {
+		if !isSetQuery(call.query) {
+			return nil
+		}
+		close(started)
+		<-call.ctx.Done()
+		return call.ctx.Err()
+	})
+	db := openFakeDB(t, drv)
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		_, cleanup, err := Acquire(ctx, db, uuid.Must(uuid.NewV7()), logger)
+		if err == nil {
+			cleanup()
+		}
+		done <- err
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("set did not start")
+	}
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("Acquire error = %v, want context.DeadlineExceeded", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Acquire did not return after the set timeout")
+	}
+
+	if !bytes.Contains(logs.Bytes(), []byte("failed to set app.current_tenant_id; discarding connection")) {
+		t.Fatalf("set timeout was not logged:\n%s", logs.String())
+	}
+	assertConnDiscarded(t, db, drv, drv.lastConn())
+}
+
+func assertConnDiscarded(t *testing.T, db *sql.DB, drv *fakeDriver, first *fakeConn) {
+	t.Helper()
+
+	if first == nil {
+		t.Fatal("driver did not open a connection")
+	}
+	if !first.closed.Load() {
+		t.Fatal("driver connection was returned to the pool")
 	}
 
 	conn2, err := db.Conn(context.Background())
 	if err != nil {
-		t.Fatalf("Conn after failed set: %v", err)
+		t.Fatalf("Conn after discard: %v", err)
 	}
 	t.Cleanup(func() { _ = conn2.Close() })
-	if drv.lastConn().id != first.id {
-		t.Fatal("pool did not reuse the connection after a failed set")
+	if drv.lastConn().id == first.id {
+		t.Fatal("pool reused the discarded connection")
 	}
 }
 

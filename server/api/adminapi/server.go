@@ -343,7 +343,7 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 
 			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, s.internalDBError("failed to acquire tenant-scoped connection", err, "tenant_id", tenant.ID.String())
 			}
 			defer release()
 
