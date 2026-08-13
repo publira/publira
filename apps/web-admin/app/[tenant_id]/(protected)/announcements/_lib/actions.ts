@@ -3,14 +3,14 @@
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createNotification } from "#lib/notification";
+import { createAnnouncement } from "#lib/announcement";
 
-import type { CreateNotificationActionState } from "../notification-types";
+import type { CreateAnnouncementActionState } from "../announcement-types";
 
-export const createNotificationAction = async (
-  _prevState: CreateNotificationActionState,
+export const createAnnouncementAction = async (
+  _prevState: CreateAnnouncementActionState,
   formData: FormData
-): Promise<CreateNotificationActionState> => {
+): Promise<CreateAnnouncementActionState> => {
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
@@ -64,7 +64,7 @@ export const createNotificationAction = async (
     };
   }
 
-  const result = await createNotification({
+  const result = await createAnnouncement({
     audienceType,
     body,
     linkUrl,
@@ -80,6 +80,6 @@ export const createNotificationAction = async (
     };
   }
 
-  updateTag(`notifications-${tenantId}`);
-  redirect("/notifications");
+  updateTag(`announcements-${tenantId}`);
+  redirect("/announcements");
 };

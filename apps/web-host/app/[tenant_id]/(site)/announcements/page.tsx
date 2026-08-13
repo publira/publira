@@ -8,44 +8,44 @@ import { Suspense } from "react";
 
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
-  listMyNotifications,
-  markAllNotificationsAsRead,
-  markNotificationAsRead,
-} from "#lib/notifications";
+  listMyAnnouncements,
+  markAllAnnouncementsAsRead,
+  markAnnouncementAsRead,
+} from "#lib/announcements";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
-  notificationsListHref,
-  parseNotificationsListSearchParams,
+  announcementsListHref,
+  parseAnnouncementsListSearchParams,
 } from "./_lib/search-params";
 
-const NOTIFICATIONS_PAGE_SIZE = 20;
+const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
 /*
- * The session id is left to `resolveAccessToken()` inside `#lib/notifications`.
+ * The session id is left to `resolveAccessToken()` inside `#lib/announcements`.
  * The `publira_web_host_auth` cookie holds an *encrypted* session payload, not
  * a bearer token, so reading it here and passing the raw value on made every
  * call fail `unauthenticated`; only the library's own cookie path decrypts it.
  */
 
-const markNotificationAsReadAction = async (
+const markAnnouncementAsReadAction = async (
   formData: FormData
 ): Promise<void> => {
   "use server";
 
   const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const notificationId = String(formData.get("notificationId") ?? "").trim();
+  const announcementId = String(formData.get("announcementId") ?? "").trim();
 
-  if (!tenantId || !notificationId) {
+  if (!tenantId || !announcementId) {
     return;
   }
 
-  await markNotificationAsRead(tenantId, notificationId);
-  revalidateTag(`member-notifications-${tenantId}`, "max");
+  await markAnnouncementAsRead(tenantId, announcementId);
+  revalidateTag(`member-announcements-${tenantId}`, "max");
 };
 
-const markAllNotificationsAsReadAction = async (
+const markAllAnnouncementsAsReadAction = async (
   formData: FormData
 ): Promise<void> => {
   "use server";
@@ -55,32 +55,32 @@ const markAllNotificationsAsReadAction = async (
     return;
   }
 
-  await markAllNotificationsAsRead(tenantId);
-  revalidateTag(`member-notifications-${tenantId}`, "max");
+  await markAllAnnouncementsAsRead(tenantId);
+  revalidateTag(`member-announcements-${tenantId}`, "max");
 };
 
-const markNotificationAsReadAndNavigateAction = async (
+const markAnnouncementAsReadAndNavigateAction = async (
   formData: FormData
 ): Promise<void> => {
   "use server";
 
   const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const notificationId = String(formData.get("notificationId") ?? "").trim();
+  const announcementId = String(formData.get("announcementId") ?? "").trim();
   const linkUrl = String(formData.get("linkUrl") ?? "").trim();
 
   if (!tenantId || !linkUrl) {
     return;
   }
 
-  if (notificationId) {
-    await markNotificationAsRead(tenantId, notificationId);
-    revalidateTag(`member-notifications-${tenantId}`, "max");
+  if (announcementId) {
+    await markAnnouncementAsRead(tenantId, announcementId);
+    revalidateTag(`member-announcements-${tenantId}`, "max");
   }
 
   redirect(linkUrl);
 };
 
-const NotificationsPagination = ({
+const AnnouncementsPagination = ({
   nextToken,
   previousToken,
 }: {
@@ -88,13 +88,13 @@ const NotificationsPagination = ({
   previousToken: string;
 }) => (
   <nav
-    aria-label="通知一覧ページング"
+    aria-label="お知らせ一覧ページング"
     className="mt-6 flex items-center justify-center gap-6"
   >
     {previousToken ? (
       <Link
         className="text-sm text-primary underline-offset-4 hover:underline"
-        href={notificationsListHref(previousToken)}
+        href={announcementsListHref(previousToken)}
       >
         前のページ
       </Link>
@@ -105,7 +105,7 @@ const NotificationsPagination = ({
     {nextToken ? (
       <Link
         className="text-sm text-primary underline-offset-4 hover:underline"
-        href={notificationsListHref(nextToken)}
+        href={announcementsListHref(nextToken)}
       >
         次のページ
       </Link>
@@ -115,7 +115,7 @@ const NotificationsPagination = ({
   </nav>
 );
 
-const NotificationsEmptyState = ({
+const AnnouncementsEmptyState = ({
   nextToken,
   previousToken,
   token,
@@ -127,7 +127,7 @@ const NotificationsEmptyState = ({
   if (!token) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
-        現在表示できる通知はありません。
+        現在表示できるお知らせはありません。
       </div>
     );
   }
@@ -137,39 +137,39 @@ const NotificationsEmptyState = ({
   // the only way out is the first page (`proto/README.md`).
   return (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-5 text-center text-sm text-muted-foreground">
-      <p>このページに表示できる通知がありません。</p>
+      <p>このページに表示できるお知らせがありません。</p>
       {previousToken || nextToken ? (
-        <NotificationsPagination
+        <AnnouncementsPagination
           nextToken={nextToken}
           previousToken={previousToken}
         />
       ) : (
         <Link
           className="mt-4 inline-flex text-sm text-primary underline-offset-4 hover:underline"
-          href={notificationsListHref("")}
+          href={announcementsListHref("")}
         >
-          通知一覧の先頭へ
+          お知らせ一覧の先頭へ
         </Link>
       )}
     </div>
   );
 };
 
-const NotificationsSection = async ({
+const AnnouncementsSection = async ({
   searchParams,
 }: {
-  searchParams: PageProps<"/[tenant_id]/notifications">["searchParams"];
+  searchParams: PageProps<"/[tenant_id]/announcements">["searchParams"];
 }) => {
   const [resolvedSearchParams, tenantId] = await Promise.all([
     searchParams,
     getTenantId(),
   ]);
-  const { token } = parseNotificationsListSearchParams(resolvedSearchParams);
+  const { token } = parseAnnouncementsListSearchParams(resolvedSearchParams);
   await connection();
 
   const [result, timeZone] = await Promise.all([
-    listMyNotifications(tenantId, undefined, {
-      limit: NOTIFICATIONS_PAGE_SIZE,
+    listMyAnnouncements(tenantId, undefined, {
+      limit: ANNOUNCEMENTS_PAGE_SIZE,
       token,
     }),
     getTenantDisplayTimeZone(tenantId),
@@ -177,7 +177,7 @@ const NotificationsSection = async ({
   if (!result.ok && result.requiresSignIn) {
     // Come back to the page the reader was actually on, not just the first one.
     redirect(
-      `/login?returnTo=${encodeURIComponent(notificationsListHref(token))}`
+      `/login?returnTo=${encodeURIComponent(announcementsListHref(token))}`
     );
   }
 
@@ -185,14 +185,14 @@ const NotificationsSection = async ({
   // Only this page's rows are loaded, so this is a per-page count. A total
   // would need its own RPC, which the cursor contract deliberately leaves out
   // (`proto/README.md`).
-  const unreadCount = result.notifications.filter(
+  const unreadCount = result.announcements.filter(
     (item) => !item.isRead
   ).length;
 
   return (
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">通知一覧</h2>
+        <h2 className="text-lg font-semibold">お知らせ一覧</h2>
         <div className="flex items-center gap-2">
           <span
             className={
@@ -203,11 +203,11 @@ const NotificationsSection = async ({
           >
             このページの未読 {unreadCount} 件
           </span>
-          {result.notifications.length > 0 ? (
+          {result.announcements.length > 0 ? (
             // Offered on every non-empty page: the unread count above covers
             // this page only, so a page with nothing unread can still sit in
-            // front of unread notifications further down the list.
-            <form action={markAllNotificationsAsReadAction}>
+            // front of unread announcements further down the list.
+            <form action={markAllAnnouncementsAsReadAction}>
               <input name="tenantId" type="hidden" value={tenantId} />
               <button
                 className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
@@ -224,36 +224,36 @@ const NotificationsSection = async ({
         <SectionError
           className="mb-4"
           description={result.message}
-          title="通知一覧を表示できませんでした"
+          title="お知らせ一覧を表示できませんでした"
         />
       )}
 
       {/*
-        A failed read hands back an empty `notifications`, so the empty state
+        A failed read hands back an empty `announcements`, so the empty state
         stays behind `result.ok` — otherwise the page says the list could not
         be read and that there is nothing to read, one after the other.
       */}
-      {result.ok && result.notifications.length === 0 ? (
-        <NotificationsEmptyState
+      {result.ok && result.announcements.length === 0 ? (
+        <AnnouncementsEmptyState
           nextToken={nextToken}
           previousToken={previousToken}
           token={token}
         />
       ) : null}
 
-      {result.notifications.length > 0 ? (
+      {result.announcements.length > 0 ? (
         <div className="grid gap-3">
-          {result.notifications.map((notification) => {
+          {result.announcements.map((announcement) => {
             const linkAction = (() => {
-              if (!notification.linkUrl) {
+              if (!announcement.linkUrl) {
                 return null;
               }
 
-              if (notification.isRead) {
+              if (announcement.isRead) {
                 return (
                   <Link
                     className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-                    href={notification.linkUrl}
+                    href={announcement.linkUrl}
                   >
                     遷移先を開く
                   </Link>
@@ -261,17 +261,17 @@ const NotificationsSection = async ({
               }
 
               return (
-                <form action={markNotificationAsReadAndNavigateAction}>
+                <form action={markAnnouncementAsReadAndNavigateAction}>
                   <input name="tenantId" type="hidden" value={tenantId} />
                   <input
-                    name="notificationId"
+                    name="announcementId"
                     type="hidden"
-                    value={notification.id}
+                    value={announcement.id}
                   />
                   <input
                     name="linkUrl"
                     type="hidden"
-                    value={notification.linkUrl}
+                    value={announcement.linkUrl}
                   />
                   <button
                     className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
@@ -286,22 +286,22 @@ const NotificationsSection = async ({
             return (
               <article
                 className="rounded-xl border border-border/70 bg-background p-4"
-                key={notification.id}
+                key={announcement.id}
               >
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <h3 className="font-medium">{notification.title}</h3>
+                  <h3 className="font-medium">{announcement.title}</h3>
                   <div className="flex items-center gap-2">
                     <span
                       className={
-                        notification.isRead
+                        announcement.isRead
                           ? "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
                           : "rounded-full bg-info px-2 py-1 text-xs font-medium text-info-foreground"
                       }
                     >
-                      {notification.isRead ? "既読" : "未読"}
+                      {announcement.isRead ? "既読" : "未読"}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {formatDateTime(notification.createdAt, {
+                      {formatDateTime(announcement.createdAt, {
                         fallback: "-",
                         timeZone,
                       })}
@@ -309,16 +309,16 @@ const NotificationsSection = async ({
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {notification.body}
+                  {announcement.body}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {notification.isRead ? null : (
-                    <form action={markNotificationAsReadAction}>
+                  {announcement.isRead ? null : (
+                    <form action={markAnnouncementAsReadAction}>
                       <input name="tenantId" type="hidden" value={tenantId} />
                       <input
-                        name="notificationId"
+                        name="announcementId"
                         type="hidden"
-                        value={notification.id}
+                        value={announcement.id}
                       />
                       <button
                         className="inline-flex rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
@@ -336,8 +336,8 @@ const NotificationsSection = async ({
         </div>
       ) : null}
 
-      {result.notifications.length > 0 ? (
-        <NotificationsPagination
+      {result.announcements.length > 0 ? (
+        <AnnouncementsPagination
           nextToken={nextToken}
           previousToken={previousToken}
         />
@@ -346,30 +346,30 @@ const NotificationsSection = async ({
   );
 };
 
-const NotificationsSectionFallback = () => (
+const AnnouncementsSectionFallback = () => (
   <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-    <h2 className="mb-4 text-lg font-semibold">通知一覧</h2>
+    <h2 className="mb-4 text-lg font-semibold">お知らせ一覧</h2>
     <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
   </section>
 );
 
-const NotificationsPage = ({
+const AnnouncementsPage = ({
   searchParams,
-}: PageProps<"/[tenant_id]/notifications">) => (
+}: PageProps<"/[tenant_id]/announcements">) => (
   <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
     <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-      <h1 className="text-xl font-semibold">通知</h1>
+      <h1 className="text-xl font-semibold">お知らせ</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        運営から配信された通知を確認できます。
+        運営から配信されたお知らせを確認できます。
       </p>
     </section>
 
-    <SectionErrorBoundary title="通知一覧を表示できませんでした">
-      <Suspense fallback={<NotificationsSectionFallback />}>
-        <NotificationsSection searchParams={searchParams} />
+    <SectionErrorBoundary title="お知らせ一覧を表示できませんでした">
+      <Suspense fallback={<AnnouncementsSectionFallback />}>
+        <AnnouncementsSection searchParams={searchParams} />
       </Suspense>
     </SectionErrorBoundary>
   </div>
 );
 
-export default NotificationsPage;
+export default AnnouncementsPage;

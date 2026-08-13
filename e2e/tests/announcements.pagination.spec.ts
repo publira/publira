@@ -3,23 +3,24 @@ import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql } from "../src/db";
 import {
-  MEMBER_NOTIFICATIONS,
-  MEMBER_NOTIFICATIONS_SCENARIO,
+  MEMBER_ANNOUNCEMENTS,
+  MEMBER_ANNOUNCEMENTS_SCENARIO,
   SEED_MEMBER,
-} from "../src/scenarios/member-notifications";
+} from "../src/scenarios/member-announcements";
 
-/** Keep in sync with `NOTIFICATIONS_PAGE_SIZE` in the web-host notifications page. */
-const NOTIFICATIONS_PAGE_SIZE = 20;
+/** Keep in sync with `ANNOUNCEMENTS_PAGE_SIZE` in the web-host announcements page. */
+const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
 const signIn = async (page: Page): Promise<void> => {
-  await page.goto("/login?returnTo=%2Fnotifications");
+  await page.goto("/login?returnTo=%2Fannouncements");
   await page.getByLabel(/メールアドレス/u).fill(SEED_MEMBER.email);
   await page.getByLabel(/パスワード/u).fill(SEED_MEMBER.password);
   await page.getByRole("button", { name: "ログイン" }).click();
+  await expect(page).toHaveURL(/\/announcements/u);
 };
 
 const pagination = (page: Page) =>
-  page.getByRole("navigation", { name: "通知一覧ページング" });
+  page.getByRole("navigation", { name: "お知らせ一覧ページング" });
 
 const noticeTitles = (page: Page) =>
   page.locator("article h3").allTextContents();
@@ -48,25 +49,25 @@ const movePage = async (page: Page, label: string): Promise<void> => {
 };
 
 /**
- * The signed-in member's notification list under cursor pagination (#717). The
+ * The signed-in member's announcement list under cursor pagination (#717). The
  * list streams in behind Suspense, so every assertion targets resolved content
  * rather than the skeleton, and page moves go through `movePage` so the rows
  * are known to have caught up with the URL.
  */
-test.describe("web-host member notifications", () => {
+test.describe("web-host member announcements", () => {
   test.beforeAll(() => {
-    applyScenarioSql(MEMBER_NOTIFICATIONS_SCENARIO);
+    applyScenarioSql(MEMBER_ANNOUNCEMENTS_SCENARIO);
   });
 
-  test("通知一覧を cursor でページ送りできる", async ({ page }) => {
+  test("お知らせ一覧を cursor でページ送りできる", async ({ page }) => {
     await signIn(page);
-    await expect(page).toHaveURL(/\/notifications/u);
+    await expect(page).toHaveURL(/\/announcements/u);
 
     const notices = page.locator("article h3");
-    await expect(notices).toHaveCount(NOTIFICATIONS_PAGE_SIZE);
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
 
     // Newest first, and nothing before the first page.
-    await expect(notices.first()).toHaveText(MEMBER_NOTIFICATIONS.newestTitle);
+    await expect(notices.first()).toHaveText(MEMBER_ANNOUNCEMENTS.newestTitle);
     await expect(
       pagination(page).getByRole("link", { name: "前のページ" })
     ).toHaveCount(0);
@@ -74,7 +75,7 @@ test.describe("web-host member notifications", () => {
 
     await movePage(page, "次のページ");
     await expect(page).toHaveURL(/\?token=/u);
-    await expect(notices).toHaveCount(NOTIFICATIONS_PAGE_SIZE);
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
     const secondPage = await noticeTitles(page);
 
     // No row is repeated across the page boundary.
@@ -82,12 +83,12 @@ test.describe("web-host member notifications", () => {
 
     await movePage(page, "次のページ");
     await expect(notices).toHaveCount(
-      MEMBER_NOTIFICATIONS.count - 2 * NOTIFICATIONS_PAGE_SIZE
+      MEMBER_ANNOUNCEMENTS.count - 2 * ANNOUNCEMENTS_PAGE_SIZE
     );
     const lastPage = await noticeTitles(page);
 
     expect(lastPage.filter((title) => secondPage.includes(title))).toEqual([]);
-    await expect(notices.last()).toHaveText(MEMBER_NOTIFICATIONS.oldestTitle);
+    await expect(notices.last()).toHaveText(MEMBER_ANNOUNCEMENTS.oldestTitle);
     // Nothing after the last page.
     await expect(
       pagination(page).getByRole("link", { name: "次のページ" })
@@ -95,22 +96,22 @@ test.describe("web-host member notifications", () => {
 
     // Every seeded row was reachable across the three pages.
     expect(new Set([...firstPage, ...secondPage, ...lastPage]).size).toBe(
-      MEMBER_NOTIFICATIONS.count
+      MEMBER_ANNOUNCEMENTS.count
     );
 
     // `前のページ` walks back to the same rows, not to a shifted window.
     await movePage(page, "前のページ");
-    await expect(notices).toHaveCount(NOTIFICATIONS_PAGE_SIZE);
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
     await expect(noticeTitles(page)).resolves.toEqual(secondPage);
 
     await movePage(page, "前のページ");
-    await expect(notices).toHaveCount(NOTIFICATIONS_PAGE_SIZE);
+    await expect(notices).toHaveCount(ANNOUNCEMENTS_PAGE_SIZE);
     await expect(noticeTitles(page)).resolves.toEqual(firstPage);
   });
 
   test("先頭以外のページから遷移先を開いて既読にできる", async ({ page }) => {
     await signIn(page);
-    await expect(page).toHaveURL(/\/notifications/u);
+    await expect(page).toHaveURL(/\/announcements/u);
 
     await movePage(page, "次のページ");
     await expect(page).toHaveURL(/\?token=/u);
@@ -134,20 +135,31 @@ test.describe("web-host member notifications", () => {
     await expect(readNotice.getByText("既読")).toBeVisible();
   });
 
+  test("古い /notifications は /announcements へリダイレクトする", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto("/notifications");
+    await expect(page).toHaveURL(/\/announcements\/?$/u);
+    await expect(page.locator("article h3").first()).toHaveText(
+      MEMBER_ANNOUNCEMENTS.newestTitle
+    );
+  });
+
   test("壊れた token は先頭ページに落とす", async ({ page }) => {
     await signIn(page);
-    await expect(page).toHaveURL(/\/notifications/u);
+    await expect(page).toHaveURL(/\/announcements/u);
     await expect(page.locator("article h3")).toHaveCount(
-      NOTIFICATIONS_PAGE_SIZE
+      ANNOUNCEMENTS_PAGE_SIZE
     );
 
-    await page.goto("/notifications?token=not%20a%20token");
+    await page.goto("/announcements?token=not%20a%20token");
 
     await expect(page.locator("article h3")).toHaveCount(
-      NOTIFICATIONS_PAGE_SIZE
+      ANNOUNCEMENTS_PAGE_SIZE
     );
     await expect(page.locator("article h3").first()).toHaveText(
-      MEMBER_NOTIFICATIONS.newestTitle
+      MEMBER_ANNOUNCEMENTS.newestTitle
     );
     await expect(
       pagination(page).getByRole("link", { name: "前のページ" })

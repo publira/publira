@@ -21,16 +21,16 @@ import (
 )
 
 const (
-	listNotificationsForTenantAscQuery  = "-- name: ListNotificationsForTenantAsc :many\n"
-	listNotificationsForTenantDescQuery = "-- name: ListNotificationsForTenantDesc :many\n"
+	listAnnouncementsForTenantAscQuery  = "-- name: ListAnnouncementsForTenantAsc :many\n"
+	listAnnouncementsForTenantDescQuery = "-- name: ListAnnouncementsForTenantDesc :many\n"
 )
 
-func notificationColumns() *sqlmock.Rows {
+func announcementColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id",
 		"tenant_id",
 		"target_user_id",
-		"notification_type",
+		"announcement_type",
 		"title",
 		"body",
 		"link_url",
@@ -41,7 +41,7 @@ func notificationColumns() *sqlmock.Rows {
 	})
 }
 
-func addNotificationRow(
+func addAnnouncementRow(
 	rows *sqlmock.Rows,
 	id, tenantID uuid.UUID,
 	title, body, linkURL string,
@@ -51,7 +51,7 @@ func addNotificationRow(
 		id,
 		tenantID,
 		uuid.NullUUID{},
-		"admin_notification",
+		"announcement",
 		title,
 		body,
 		sql.NullString{String: linkURL, Valid: linkURL != ""},
@@ -62,28 +62,28 @@ func addNotificationRow(
 	)
 }
 
-func newNotificationClient(
+func newAnnouncementClient(
 	t *testing.T,
 	tenantID, actorID uuid.UUID,
 	now time.Time,
-) (publiraadminv1connect.AdminNotificationServiceClient, sqlmock.Sqlmock, string) {
+) (publiraadminv1connect.AdminAnnouncementServiceClient, sqlmock.Sqlmock, string) {
 	t.Helper()
 	testServer, mock := newTestAdminServer(t)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-	return publiraadminv1connect.NewAdminNotificationServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
+	return publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL), mock, sessionToken
 }
 
-func newNotificationRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListNotificationsRequest] {
-	req := connect.NewRequest(&publiraadminv1.ListNotificationsRequest{
+func newAnnouncementRequest(tenantID uuid.UUID, sessionToken string) *connect.Request[publiraadminv1.ListAnnouncementsRequest] {
+	req := connect.NewRequest(&publiraadminv1.ListAnnouncementsRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 	return req
 }
 
-func TestCreateNotificationRequiresTenantAdmin(t *testing.T) {
+func TestCreateAnnouncementRequiresTenantAdmin(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
@@ -94,31 +94,31 @@ func TestCreateNotificationRequiresTenantAdmin(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
-	client := publiraadminv1connect.NewAdminNotificationServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateNotificationRequest{
+	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:  "メンテナンス告知",
 		Body:   "本日 25:00 からメンテナンスを実施します。",
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
-	_, err := client.CreateNotification(context.Background(), req)
+	_, err := client.CreateAnnouncement(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("CreateNotification code = %v, want permission_denied", connect.CodeOf(err))
+		t.Fatalf("CreateAnnouncement code = %v, want permission_denied", connect.CodeOf(err))
 	}
 
 	assertExpectations(t, mock)
 }
 
-func TestCreateNotificationForSelectedUsers(t *testing.T) {
+func TestCreateAnnouncementForSelectedUsers(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	user1ID := uuid.Must(uuid.NewV7())
 	user2ID := uuid.Must(uuid.NewV7())
-	notification1ID := uuid.Must(uuid.NewV7())
-	notification2ID := uuid.Must(uuid.NewV7())
+	announcement1ID := uuid.Must(uuid.NewV7())
+	announcement2ID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 
@@ -135,63 +135,63 @@ func TestCreateNotificationForSelectedUsers(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
 			AddRow(user2ID, "USER002", "User Two", "u2@example.com", "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateNotification :one\n")).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "admin_notification", "更新情報", "本文", sqlmock.AnyArg(), json.RawMessage("{}")).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "notification_type", "title", "body", "link_url", "metadata", "created_at"}).
-			AddRow(notification1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "admin_notification", "更新情報", "本文", "/series/S001", json.RawMessage("{}"), now))
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "更新情報", "本文", sqlmock.AnyArg(), json.RawMessage("{}")).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
+			AddRow(announcement1ID, tenantID, uuid.NullUUID{UUID: user1ID, Valid: true}, "announcement", "更新情報", "本文", "/series/S001", json.RawMessage("{}"), now))
 
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateNotification :one\n")).
-		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "admin_notification", "更新情報", "本文", sqlmock.AnyArg(), json.RawMessage("{}")).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "notification_type", "title", "body", "link_url", "metadata", "created_at"}).
-			AddRow(notification2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "admin_notification", "更新情報", "本文", "/series/S001", json.RawMessage("{}"), now))
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: CreateAnnouncement :one\n")).
+		WithArgs(sqlmock.AnyArg(), tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "更新情報", "本文", sqlmock.AnyArg(), json.RawMessage("{}")).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "target_user_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at"}).
+			AddRow(announcement2ID, tenantID, uuid.NullUUID{UUID: user2ID, Valid: true}, "announcement", "更新情報", "本文", "/series/S001", json.RawMessage("{}"), now))
 
 	expectAdminAuditLogInsert(mock)
 
-	client := publiraadminv1connect.NewAdminNotificationServiceClient(testServer.Client(), testServer.URL)
-	req := connect.NewRequest(&publiraadminv1.CreateNotificationRequest{
+	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateAnnouncementRequest{
 		Tenant:              &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		Title:               "更新情報",
 		Body:                "本文",
 		LinkUrl:             "/series/S001",
-		AudienceType:        publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS,
+		AudienceType:        publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
 		TargetUserPublicIds: []string{"USER001", "USER002"},
 	})
 	req.Header().Set("Authorization", "Bearer "+sessionToken)
 
-	resp, err := client.CreateNotification(context.Background(), req)
+	resp, err := client.CreateAnnouncement(context.Background(), req)
 	if err != nil {
-		t.Fatalf("CreateNotification: %v", err)
+		t.Fatalf("CreateAnnouncement: %v", err)
 	}
-	if len(resp.Msg.Notifications) != 2 {
-		t.Fatalf("notifications count = %d, want 2", len(resp.Msg.Notifications))
+	if len(resp.Msg.Announcements) != 2 {
+		t.Fatalf("announcements count = %d, want 2", len(resp.Msg.Announcements))
 	}
-	if resp.Msg.Notifications[0].TargetUserPublicId != "USER001" {
-		t.Fatalf("target_user_public_id = %q, want USER001", resp.Msg.Notifications[0].TargetUserPublicId)
+	if resp.Msg.Announcements[0].TargetUserPublicId != "USER001" {
+		t.Fatalf("target_user_public_id = %q, want USER001", resp.Msg.Announcements[0].TargetUserPublicId)
 	}
 
 	assertExpectations(t, mock)
 }
 
-func TestListNotificationsSuccess(t *testing.T) {
+func TestListAnnouncementsSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
-	notificationID := uuid.Must(uuid.NewV7())
+	announcementID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
-		WillReturnRows(addNotificationRow(notificationColumns(), notificationID, tenantID, "お知らせ", "本文", "/notifications", now))
+		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "お知らせ", "本文", "/announcements", now))
 
-	resp, err := client.ListNotifications(context.Background(), newNotificationRequest(tenantID, sessionToken))
+	resp, err := client.ListAnnouncements(context.Background(), newAnnouncementRequest(tenantID, sessionToken))
 	if err != nil {
-		t.Fatalf("ListNotifications: %v", err)
+		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if len(resp.Msg.Notifications) != 1 {
-		t.Fatalf("notifications count = %d, want 1", len(resp.Msg.Notifications))
+	if len(resp.Msg.Announcements) != 1 {
+		t.Fatalf("announcements count = %d, want 1", len(resp.Msg.Announcements))
 	}
-	if resp.Msg.Notifications[0].AudienceType != publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_ALL_USERS {
-		t.Fatalf("audience_type = %v, want all users", resp.Msg.Notifications[0].AudienceType)
+	if resp.Msg.Announcements[0].AudienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS {
+		t.Fatalf("audience_type = %v, want all users", resp.Msg.Announcements[0].AudienceType)
 	}
 	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
 		t.Fatalf("tokens = (%q, %q), want both empty", resp.Msg.PreviousToken, resp.Msg.NextToken)
@@ -200,31 +200,31 @@ func TestListNotificationsSuccess(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestListNotificationsFirstPageReportsNextToken(t *testing.T) {
+func TestListAnnouncementsFirstPageReportsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(3)).
-		WillReturnRows(addNotificationRow(
-			addNotificationRow(
-				addNotificationRow(notificationColumns(), ids[0], tenantID, "First", "body", "", now),
+		WillReturnRows(addAnnouncementRow(
+			addAnnouncementRow(
+				addAnnouncementRow(announcementColumns(), ids[0], tenantID, "First", "body", "", now),
 				ids[1], tenantID, "Second", "body", "", now.Add(-time.Minute),
 			),
 			ids[2], tenantID, "Third", "body", "", now.Add(-2*time.Minute),
 		))
 
-	req := newNotificationRequest(tenantID, sessionToken)
+	req := newAnnouncementRequest(tenantID, sessionToken)
 	req.Msg.Limit = 2
-	resp, err := client.ListNotifications(context.Background(), req)
+	resp, err := client.ListAnnouncements(context.Background(), req)
 	if err != nil {
-		t.Fatalf("ListNotifications: %v", err)
+		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	if len(resp.Msg.Notifications) != 2 {
-		t.Fatalf("notifications count = %d, want the over-fetched row dropped", len(resp.Msg.Notifications))
+	if len(resp.Msg.Announcements) != 2 {
+		t.Fatalf("announcements count = %d, want the over-fetched row dropped", len(resp.Msg.Announcements))
 	}
 	if resp.Msg.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
@@ -240,7 +240,7 @@ func TestListNotificationsFirstPageReportsNextToken(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestListNotificationsFollowsNextToken(t *testing.T) {
+func TestListAnnouncementsFollowsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
@@ -248,9 +248,9 @@ func TestListNotificationsFollowsNextToken(t *testing.T) {
 	boundaryAt := now.Add(-time.Minute)
 	lastID := uuid.Must(uuid.NewV7())
 	lastAt := now.Add(-2 * time.Minute)
-	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
 		WithArgs(
 			tenantID,
 			uuid.NullUUID{UUID: boundaryID, Valid: true},
@@ -258,14 +258,14 @@ func TestListNotificationsFollowsNextToken(t *testing.T) {
 			sql.NullTime{Time: boundaryAt, Valid: true},
 			int32(3),
 		).
-		WillReturnRows(addNotificationRow(notificationColumns(), lastID, tenantID, "Last", "body", "", lastAt))
+		WillReturnRows(addAnnouncementRow(announcementColumns(), lastID, tenantID, "Last", "body", "", lastAt))
 
-	req := newNotificationRequest(tenantID, sessionToken)
+	req := newAnnouncementRequest(tenantID, sessionToken)
 	req.Msg.Limit = 2
 	req.Msg.Token = pagination.Encode(pagination.Forward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListNotifications(context.Background(), req)
+	resp, err := client.ListAnnouncements(context.Background(), req)
 	if err != nil {
-		t.Fatalf("ListNotifications: %v", err)
+		t.Fatalf("ListAnnouncements: %v", err)
 	}
 	prev, err := pagination.Decode(resp.Msg.PreviousToken)
 	if err != nil {
@@ -281,19 +281,19 @@ func TestListNotificationsFollowsNextToken(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestListNotificationsFollowsPreviousTokenBackwards(t *testing.T) {
+func TestListAnnouncementsFollowsPreviousTokenBackwards(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	boundaryID := uuid.Must(uuid.NewV7())
 	boundaryAt := now.Add(-10 * time.Minute)
-	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 	olderID := uuid.Must(uuid.NewV7())
 	newerID := uuid.Must(uuid.NewV7())
 	olderAt := now.Add(-2 * time.Minute)
 	newerAt := now.Add(-time.Minute)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantAscQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantAscQuery)).
 		WithArgs(
 			tenantID,
 			uuid.NullUUID{UUID: boundaryID, Valid: true},
@@ -301,20 +301,20 @@ func TestListNotificationsFollowsPreviousTokenBackwards(t *testing.T) {
 			sql.NullTime{Time: boundaryAt, Valid: true},
 			int32(3),
 		).
-		WillReturnRows(addNotificationRow(
-			addNotificationRow(notificationColumns(), olderID, tenantID, "Older", "body", "", olderAt),
+		WillReturnRows(addAnnouncementRow(
+			addAnnouncementRow(announcementColumns(), olderID, tenantID, "Older", "body", "", olderAt),
 			newerID, tenantID, "Newer", "body", "", newerAt,
 		))
 
-	req := newNotificationRequest(tenantID, sessionToken)
+	req := newAnnouncementRequest(tenantID, sessionToken)
 	req.Msg.Limit = 2
 	req.Msg.Token = pagination.Encode(pagination.Backward, boundaryAt.Format(time.RFC3339Nano), boundaryID.String())
-	resp, err := client.ListNotifications(context.Background(), req)
+	resp, err := client.ListAnnouncements(context.Background(), req)
 	if err != nil {
-		t.Fatalf("ListNotifications: %v", err)
+		t.Fatalf("ListAnnouncements: %v", err)
 	}
-	titles := make([]string, 0, len(resp.Msg.Notifications))
-	for _, item := range resp.Msg.Notifications {
+	titles := make([]string, 0, len(resp.Msg.Announcements))
+	for _, item := range resp.Msg.Announcements {
 		titles = append(titles, item.Title)
 	}
 	if !slices.Equal(titles, []string{"Newer", "Older"}) {
@@ -336,7 +336,7 @@ func TestListNotificationsFollowsPreviousTokenBackwards(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
+func TestListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 	tests := []struct {
 		name                string
 		direction           pagination.Direction
@@ -347,15 +347,15 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 		{
 			name:                "forward",
 			direction:           pagination.Forward,
-			wantQuery:           listNotificationsForTenantDescQuery,
-			wantRecoveryQuery:   listNotificationsForTenantAscQuery,
+			wantQuery:           listAnnouncementsForTenantDescQuery,
+			wantRecoveryQuery:   listAnnouncementsForTenantAscQuery,
 			wantRecoveredTitles: []string{"Newer", "Boundary"},
 		},
 		{
 			name:                "backward",
 			direction:           pagination.Backward,
-			wantQuery:           listNotificationsForTenantAscQuery,
-			wantRecoveryQuery:   listNotificationsForTenantDescQuery,
+			wantQuery:           listAnnouncementsForTenantAscQuery,
+			wantRecoveryQuery:   listAnnouncementsForTenantDescQuery,
 			wantRecoveredTitles: []string{"Boundary", "Older"},
 		},
 	}
@@ -366,7 +366,7 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 			actorID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			boundaryID := uuid.Must(uuid.NewV7())
-			client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+			client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
 				WithArgs(
@@ -376,13 +376,13 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 					sql.NullTime{Time: now, Valid: true},
 					int32(21),
 				).
-				WillReturnRows(notificationColumns())
+				WillReturnRows(announcementColumns())
 
-			req := newNotificationRequest(tenantID, sessionToken)
+			req := newAnnouncementRequest(tenantID, sessionToken)
 			req.Msg.Token = pagination.Encode(test.direction, now.Format(time.RFC3339Nano), boundaryID.String())
-			resp, err := client.ListNotifications(context.Background(), req)
+			resp, err := client.ListAnnouncements(context.Background(), req)
 			if err != nil {
-				t.Fatalf("ListNotifications: %v", err)
+				t.Fatalf("ListAnnouncements: %v", err)
 			}
 			recoveryToken := resp.Msg.PreviousToken
 			otherToken := resp.Msg.NextToken
@@ -402,13 +402,13 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
-			recoveryRows := notificationColumns()
+			recoveryRows := announcementColumns()
 			if test.direction == pagination.Forward {
-				recoveryRows = addNotificationRow(recoveryRows, boundaryID, tenantID, "Boundary", "body", "", now)
-				recoveryRows = addNotificationRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "Newer", "body", "", now.Add(time.Minute))
+				recoveryRows = addAnnouncementRow(recoveryRows, boundaryID, tenantID, "Boundary", "body", "", now)
+				recoveryRows = addAnnouncementRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "Newer", "body", "", now.Add(time.Minute))
 			} else {
-				recoveryRows = addNotificationRow(recoveryRows, boundaryID, tenantID, "Boundary", "body", "", now)
-				recoveryRows = addNotificationRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "Older", "body", "", now.Add(-time.Minute))
+				recoveryRows = addAnnouncementRow(recoveryRows, boundaryID, tenantID, "Boundary", "body", "", now)
+				recoveryRows = addAnnouncementRow(recoveryRows, uuid.Must(uuid.NewV7()), tenantID, "Older", "body", "", now.Add(-time.Minute))
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantRecoveryQuery)).
 				WithArgs(
@@ -420,14 +420,14 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 				).
 				WillReturnRows(recoveryRows)
 
-			recoveryReq := newNotificationRequest(tenantID, sessionToken)
+			recoveryReq := newAnnouncementRequest(tenantID, sessionToken)
 			recoveryReq.Msg.Token = recoveryToken
-			recovered, err := client.ListNotifications(context.Background(), recoveryReq)
+			recovered, err := client.ListAnnouncements(context.Background(), recoveryReq)
 			if err != nil {
-				t.Fatalf("ListNotifications recovery: %v", err)
+				t.Fatalf("ListAnnouncements recovery: %v", err)
 			}
-			titles := make([]string, 0, len(recovered.Msg.Notifications))
-			for _, item := range recovered.Msg.Notifications {
+			titles := make([]string, 0, len(recovered.Msg.Announcements))
+			for _, item := range recovered.Msg.Announcements {
 				titles = append(titles, item.Title)
 			}
 			if !slices.Equal(titles, test.wantRecoveredTitles) {
@@ -441,7 +441,7 @@ func TestListNotificationsEmptyPageKeepsAWayBack(t *testing.T) {
 // Recovery happens once. When the boundary row itself is gone the recovery
 // query is empty too, and both tokens stay empty so the client falls back to
 // the first page instead of bouncing between empty pages.
-func TestListNotificationsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+func TestListAnnouncementsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 	tests := []struct {
 		name      string
 		direction pagination.Direction
@@ -450,12 +450,12 @@ func TestListNotificationsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 		{
 			name:      "recovering backward",
 			direction: pagination.Backward,
-			wantQuery: listNotificationsForTenantAscQuery,
+			wantQuery: listAnnouncementsForTenantAscQuery,
 		},
 		{
 			name:      "recovering forward",
 			direction: pagination.Forward,
-			wantQuery: listNotificationsForTenantDescQuery,
+			wantQuery: listAnnouncementsForTenantDescQuery,
 		},
 	}
 
@@ -465,7 +465,7 @@ func TestListNotificationsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 			actorID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			boundaryID := uuid.Must(uuid.NewV7())
-			client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+			client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
 				WithArgs(
@@ -475,16 +475,16 @@ func TestListNotificationsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 					sql.NullTime{Time: now, Valid: true},
 					int32(21),
 				).
-				WillReturnRows(notificationColumns())
+				WillReturnRows(announcementColumns())
 
-			req := newNotificationRequest(tenantID, sessionToken)
+			req := newAnnouncementRequest(tenantID, sessionToken)
 			req.Msg.Token = pagination.EncodeTimeUUIDRecovery(test.direction, now, boundaryID)
-			resp, err := client.ListNotifications(context.Background(), req)
+			resp, err := client.ListAnnouncements(context.Background(), req)
 			if err != nil {
-				t.Fatalf("ListNotifications: %v", err)
+				t.Fatalf("ListAnnouncements: %v", err)
 			}
-			if len(resp.Msg.Notifications) != 0 {
-				t.Fatalf("notifications = %d rows, want an empty page", len(resp.Msg.Notifications))
+			if len(resp.Msg.Announcements) != 0 {
+				t.Fatalf("announcements = %d rows, want an empty page", len(resp.Msg.Announcements))
 			}
 			if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
 				t.Fatalf(
@@ -497,17 +497,17 @@ func TestListNotificationsEmptyRecoveryPageDropsBothTokens(t *testing.T) {
 	}
 }
 
-func TestListNotificationsInvalidToken(t *testing.T) {
+func TestListAnnouncementsInvalidToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
-	req := newNotificationRequest(tenantID, sessionToken)
+	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
+	req := newAnnouncementRequest(tenantID, sessionToken)
 	req.Msg.Token = "not-a-valid-token"
 
-	_, err := client.ListNotifications(context.Background(), req)
+	_, err := client.ListAnnouncements(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("ListNotifications code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+		t.Fatalf("ListAnnouncements code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
 	}
 	if err.Error() != "invalid_argument: token is invalid" {
 		t.Fatalf("error = %q, want token internals hidden", err)
@@ -515,19 +515,19 @@ func TestListNotificationsInvalidToken(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestListNotificationsDatabaseErrorIsHidden(t *testing.T) {
+func TestListAnnouncementsDatabaseErrorIsHidden(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	actorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	client, mock, sessionToken := newNotificationClient(t, tenantID, actorID, now)
+	client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
-	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForTenantDescQuery)).
+	mock.ExpectQuery(regexp.QuoteMeta(listAnnouncementsForTenantDescQuery)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
-		WillReturnError(errors.New(`pq: relation "notifications" does not exist`))
+		WillReturnError(errors.New(`pq: relation "announcements" does not exist`))
 
-	_, err := client.ListNotifications(context.Background(), newNotificationRequest(tenantID, sessionToken))
+	_, err := client.ListAnnouncements(context.Background(), newAnnouncementRequest(tenantID, sessionToken))
 	if connect.CodeOf(err) != connect.CodeInternal {
-		t.Fatalf("ListNotifications code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+		t.Fatalf("ListAnnouncements code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
 	if err.Error() != "internal: internal server error" {
 		t.Fatalf("error = %q, want database details hidden", err)

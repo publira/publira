@@ -3,6 +3,7 @@
  * not to tenant-published content pages.
  */
 const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
+  "announcements",
   "api",
   "authors",
   "confirm-email",

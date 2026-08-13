@@ -289,7 +289,7 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(pagesPath, pagesHandler)
-	notificationPath, notificationHandler := publiraadminv1connect.NewAdminNotificationServiceHandler(
+	announcementPath, announcementHandler := publiraadminv1connect.NewAdminAnnouncementServiceHandler(
 		server,
 		connect.WithInterceptors(
 			server.tenantScopedQuerierInterceptor(),
@@ -298,7 +298,7 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 			),
 		),
 	)
-	mux.Handle(notificationPath, notificationHandler)
+	mux.Handle(announcementPath, announcementHandler)
 	accessTicketPath, accessTicketHandler := publiraadminv1connect.NewAdminAccessTicketServiceHandler(
 		server,
 		connect.WithInterceptors(

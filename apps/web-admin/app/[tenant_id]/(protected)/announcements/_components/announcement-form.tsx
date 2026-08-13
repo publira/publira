@@ -16,24 +16,24 @@ import { useActionState, useCallback, useMemo, useState } from "react";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type {
-  CreateNotificationActionState,
-  NotificationTargetUser,
-} from "../notification-types";
+  CreateAnnouncementActionState,
+  AnnouncementTargetUser,
+} from "../announcement-types";
 
-interface NotificationFormProps {
-  users: NotificationTargetUser[];
+interface AnnouncementFormProps {
+  users: AnnouncementTargetUser[];
   usersErrorMessage?: string;
   action: (
-    prevState: CreateNotificationActionState,
+    prevState: CreateAnnouncementActionState,
     formData: FormData
-  ) => Promise<CreateNotificationActionState>;
+  ) => Promise<CreateAnnouncementActionState>;
 }
 
-export const NotificationForm = ({
+export const AnnouncementForm = ({
   users,
   usersErrorMessage,
   action,
-}: NotificationFormProps) => {
+}: AnnouncementFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const [audienceType, setAudienceType] = useState<"all" | "selected">("all");
@@ -77,12 +77,12 @@ export const NotificationForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel htmlFor="notification_title" required>
+            <FieldLabel htmlFor="announcement_title" required>
               タイトル
             </FieldLabel>
             <FieldContent>
               <Input
-                id="notification_title"
+                id="announcement_title"
                 maxLength={120}
                 name="title"
                 placeholder="例: 重要なお知らせ"
@@ -93,15 +93,15 @@ export const NotificationForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="notification_body" required>
+            <FieldLabel htmlFor="announcement_body" required>
               本文
             </FieldLabel>
             <FieldContent>
               <Textarea
-                id="notification_body"
+                id="announcement_body"
                 maxLength={2000}
                 name="body"
-                placeholder="通知本文を入力"
+                placeholder="お知らせ本文を入力"
                 required
                 rows={5}
               />
@@ -109,16 +109,16 @@ export const NotificationForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="notification_link_url">リンク先</FieldLabel>
+            <FieldLabel htmlFor="announcement_link_url">リンク先</FieldLabel>
             <FieldContent>
               <Input
-                id="notification_link_url"
+                id="announcement_link_url"
                 name="link_url"
                 placeholder="例: /series/SERIES001"
                 type="text"
               />
               <FieldDescription>
-                通知をタップしたときのリンク先を指定できます。サイト内ページは
+                お知らせをタップしたときのリンク先を指定できます。サイト内ページは
                 /...、外部サイトは https:// で入力してください。
               </FieldDescription>
             </FieldContent>
@@ -207,7 +207,7 @@ export const NotificationForm = ({
 
           <div className="flex justify-end">
             <Button disabled={isPending} type="submit">
-              {isPending ? "送信中..." : "通知を配信"}
+              {isPending ? "送信中..." : "お知らせを配信"}
             </Button>
           </div>
         </form>

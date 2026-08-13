@@ -154,19 +154,19 @@ CREATE TABLE labels (
     eye_catch_image_id uuid
 );
 
--- TABLE: notification_reads
-CREATE TABLE notification_reads (
-    notification_id uuid NOT NULL,
+-- TABLE: announcement_reads
+CREATE TABLE announcement_reads (
+    announcement_id uuid NOT NULL,
     user_id uuid NOT NULL,
     read_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- TABLE: notifications
-CREATE TABLE notifications (
+-- TABLE: announcements
+CREATE TABLE announcements (
     id uuid NOT NULL,
     tenant_id uuid NOT NULL,
     target_user_id uuid,
-    notification_type character varying(64) NOT NULL,
+    announcement_type character varying(64) NOT NULL,
     title text NOT NULL,
     body text NOT NULL,
     link_url text,
@@ -600,13 +600,13 @@ ALTER TABLE ONLY labels
 ALTER TABLE ONLY labels
     ADD CONSTRAINT labels_public_id_key UNIQUE (public_id);
 
--- CONSTRAINT: notification_reads notification_reads_pkey
-ALTER TABLE ONLY notification_reads
-    ADD CONSTRAINT notification_reads_pkey PRIMARY KEY (notification_id, user_id);
+-- CONSTRAINT: announcement_reads announcement_reads_pkey
+ALTER TABLE ONLY announcement_reads
+    ADD CONSTRAINT announcement_reads_pkey PRIMARY KEY (announcement_id, user_id);
 
--- CONSTRAINT: notifications notifications_pkey
-ALTER TABLE ONLY notifications
-    ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+-- CONSTRAINT: announcements announcements_pkey
+ALTER TABLE ONLY announcements
+    ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
 
 -- CONSTRAINT: page_versions page_versions_page_id_version_number_key
 ALTER TABLE ONLY page_versions
@@ -854,14 +854,14 @@ CREATE INDEX idx_label_images_tenant_id ON label_images USING btree (tenant_id);
 -- INDEX: idx_labels_tenant_created_at
 CREATE INDEX idx_labels_tenant_created_at ON labels USING btree (tenant_id, created_at DESC, id DESC);
 
--- INDEX: idx_notification_reads_user_notification
-CREATE INDEX idx_notification_reads_user_notification ON notification_reads USING btree (user_id, notification_id);
+-- INDEX: idx_announcement_reads_user_announcement
+CREATE INDEX idx_announcement_reads_user_announcement ON announcement_reads USING btree (user_id, announcement_id);
 
--- INDEX: idx_notifications_tenant_created_at
-CREATE INDEX idx_notifications_tenant_created_at ON notifications USING btree (tenant_id, created_at DESC, id DESC);
+-- INDEX: idx_announcements_tenant_created_at
+CREATE INDEX idx_announcements_tenant_created_at ON announcements USING btree (tenant_id, created_at DESC, id DESC);
 
--- INDEX: idx_notifications_tenant_target_created_at
-CREATE INDEX idx_notifications_tenant_target_created_at ON notifications USING btree (tenant_id, target_user_id, created_at DESC, id DESC);
+-- INDEX: idx_announcements_tenant_target_created_at
+CREATE INDEX idx_announcements_tenant_target_created_at ON announcements USING btree (tenant_id, target_user_id, created_at DESC, id DESC);
 
 -- INDEX: idx_page_versions_page_id_created_at
 CREATE INDEX idx_page_versions_page_id_created_at ON page_versions USING btree (page_id, created_at DESC);
@@ -1119,21 +1119,21 @@ ALTER TABLE ONLY labels
 ALTER TABLE ONLY labels
     ADD CONSTRAINT labels_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
--- FK CONSTRAINT: notification_reads notification_reads_notification_id_fkey
-ALTER TABLE ONLY notification_reads
-    ADD CONSTRAINT notification_reads_notification_id_fkey FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE;
+-- FK CONSTRAINT: announcement_reads announcement_reads_announcement_id_fkey
+ALTER TABLE ONLY announcement_reads
+    ADD CONSTRAINT announcement_reads_announcement_id_fkey FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE;
 
--- FK CONSTRAINT: notification_reads notification_reads_user_id_fkey
-ALTER TABLE ONLY notification_reads
-    ADD CONSTRAINT notification_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+-- FK CONSTRAINT: announcement_reads announcement_reads_user_id_fkey
+ALTER TABLE ONLY announcement_reads
+    ADD CONSTRAINT announcement_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
--- FK CONSTRAINT: notifications notifications_target_user_id_fkey
-ALTER TABLE ONLY notifications
-    ADD CONSTRAINT notifications_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE;
+-- FK CONSTRAINT: announcements announcements_target_user_id_fkey
+ALTER TABLE ONLY announcements
+    ADD CONSTRAINT announcements_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE;
 
--- FK CONSTRAINT: notifications notifications_tenant_id_fkey
-ALTER TABLE ONLY notifications
-    ADD CONSTRAINT notifications_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+-- FK CONSTRAINT: announcements announcements_tenant_id_fkey
+ALTER TABLE ONLY announcements
+    ADD CONSTRAINT announcements_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: page_versions page_versions_author_user_id_fkey
 ALTER TABLE ONLY page_versions

@@ -4,8 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { NotificationItem } from "../notification-types";
-import { NotificationManager } from "./notification-manager";
+import type { AnnouncementItem } from "../announcement-types";
+import { AnnouncementManager } from "./announcement-manager";
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: React.ComponentProps<"a">) => (
@@ -13,7 +13,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-const notification = (id: string): NotificationItem => ({
+const announcement = (id: string): AnnouncementItem => ({
   audienceType: "all",
   body: "本文",
   createdAt: "2026-06-01T00:00:00Z",
@@ -28,24 +28,24 @@ afterEach(() => {
   cleanup();
 });
 
-describe("NotificationManager", () => {
+describe("AnnouncementManager", () => {
   it("最初のページが空なら未登録として案内する", () => {
     render(
-      <NotificationManager
-        notifications={[]}
+      <AnnouncementManager
+        announcements={[]}
         pageSize={20}
         timeZone="Asia/Tokyo"
       />
     );
 
-    expect(screen.getByText("通知がまだありません。")).toBeDefined();
-    expect(screen.queryByLabelText("通知一覧のページ送り")).toBeNull();
+    expect(screen.getByText("お知らせがまだありません。")).toBeDefined();
+    expect(screen.queryByLabelText("お知らせ一覧のページ送り")).toBeNull();
   });
 
   it("ページ送りの先が空でも一覧全体が空だとは案内しない", () => {
     render(
-      <NotificationManager
-        notifications={[]}
+      <AnnouncementManager
+        announcements={[]}
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
@@ -53,7 +53,7 @@ describe("NotificationManager", () => {
     );
 
     expect(
-      screen.getByText("このページに表示できる通知はありません。")
+      screen.getByText("このページに表示できるお知らせはありません。")
     ).toBeDefined();
     // 復旧用のリンクは残す。ここを隠すと一覧へ戻る手段が無くなる。
     const previous = screen.getByRole("link", { name: "前へ" });
@@ -63,9 +63,9 @@ describe("NotificationManager", () => {
 
   it("後続ページでも行とページ送りを描画する", () => {
     render(
-      <NotificationManager
+      <AnnouncementManager
         nextHref="?token=next"
-        notifications={[notification("n1")]}
+        announcements={[announcement("n1")]}
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
@@ -85,10 +85,10 @@ describe("NotificationManager", () => {
 
   it("取得失敗時はエラーだけを出し、空一覧としては案内しない", () => {
     render(
-      <NotificationManager
-        listErrorMessage="通知一覧を取得できませんでした。"
+      <AnnouncementManager
+        listErrorMessage="お知らせ一覧を取得できませんでした。"
         nextHref="?token=next"
-        notifications={[]}
+        announcements={[]}
         pageSize={20}
         previousHref="?token=previous"
         timeZone="Asia/Tokyo"
@@ -99,22 +99,22 @@ describe("NotificationManager", () => {
     // （role="alert" と「〇〇一覧を表示できませんでした」）で出す。
     const sectionError = screen.getByRole("alert");
     expect(sectionError.textContent).toContain(
-      "通知一覧を表示できませんでした"
+      "お知らせ一覧を表示できませんでした"
     );
     expect(sectionError.textContent).toContain(
-      "通知一覧を取得できませんでした。"
+      "お知らせ一覧を取得できませんでした。"
     );
-    expect(screen.queryByText("通知がまだありません。")).toBeNull();
+    expect(screen.queryByText("お知らせがまだありません。")).toBeNull();
     expect(
-      screen.queryByText("このページに表示できる通知はありません。")
+      screen.queryByText("このページに表示できるお知らせはありません。")
     ).toBeNull();
-    expect(screen.queryByLabelText("通知一覧のページ送り")).toBeNull();
+    expect(screen.queryByLabelText("お知らせ一覧のページ送り")).toBeNull();
   });
 
   it("作成日時をテナントタイムゾーンの壁時計で表示する", () => {
     render(
-      <NotificationManager
-        notifications={[notification("n1")]}
+      <AnnouncementManager
+        announcements={[announcement("n1")]}
         pageSize={20}
         timeZone="America/Los_Angeles"
       />

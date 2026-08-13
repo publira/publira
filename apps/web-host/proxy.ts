@@ -10,7 +10,8 @@ import { createTenantIdResolver } from "./lib/tenant-resolution";
 
 const resolveTenantId = createTenantIdResolver(apiClient);
 
-const MEMBER_PATH_PREFIXES = ["/my", "/notifications", "/settings"] as const;
+const MEMBER_PATH_PREFIXES = ["/my", "/announcements", "/settings"] as const;
+const LEGACY_ANNOUNCEMENTS_PREFIX = "/notifications";
 const GUEST_ONLY_PATHS = new Set(["/login", "/signup"]);
 
 const isMemberPath = (pathname: string): boolean =>
@@ -33,6 +34,17 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   // Probes must not depend on tenant resolution or backend availability.
   if (isHealthProbePath(pathname)) {
     return NextResponse.next();
+  }
+
+  // Old member list path. `/settings/notifications` is a different feature and
+  // stays put.
+  if (
+    pathname === LEGACY_ANNOUNCEMENTS_PREFIX ||
+    pathname.startsWith(`${LEGACY_ANNOUNCEMENTS_PREFIX}/`)
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/announcements${pathname.slice(LEGACY_ANNOUNCEMENTS_PREFIX.length)}`;
+    return NextResponse.redirect(url);
   }
 
   const hasSessionCookie = Boolean(

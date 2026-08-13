@@ -126,9 +126,9 @@ message UpdateNotificationSettingsResponse {
   bool email_notifications_enabled = 1;
 }
 
-message NotificationItem {
+message AnnouncementItem {
   string id = 1;
-  string notification_type = 2;
+  string announcement_type = 2;
   string title = 3;
   string body = 4;
   string link_url = 5;
@@ -138,7 +138,7 @@ message NotificationItem {
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
-message ListNotificationsRequest {
+message ListAnnouncementsRequest {
   // Removed with the move to cursor pagination.
   reserved 3;
   reserved "offset";
@@ -150,28 +150,28 @@ message ListNotificationsRequest {
   string token = 4;
 }
 
-message ListNotificationsResponse {
-  repeated NotificationItem notifications = 1;
+message ListAnnouncementsResponse {
+  repeated AnnouncementItem announcements = 1;
   // Token for the previous page. Empty on the first page.
   string previous_token = 2;
   // Token for the next page. Empty on the last page.
   string next_token = 3;
 }
 
-message MarkNotificationAsReadRequest {
+message MarkAnnouncementAsReadRequest {
   publira.types.v1.TenantContext tenant = 1;
-  string notification_id = 2;
+  string announcement_id = 2;
 }
 
-message MarkNotificationAsReadResponse {
+message MarkAnnouncementAsReadResponse {
   bool marked = 1;
 }
 
-message MarkAllNotificationsAsReadRequest {
+message MarkAllAnnouncementsAsReadRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
 
-message MarkAllNotificationsAsReadResponse {
+message MarkAllAnnouncementsAsReadResponse {
   int32 marked_count = 1;
 }
 
@@ -189,7 +189,7 @@ service AuthService {
   rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}
   rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
   rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
-  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {}
-  rpc MarkNotificationAsRead(MarkNotificationAsReadRequest) returns (MarkNotificationAsReadResponse) {}
-  rpc MarkAllNotificationsAsRead(MarkAllNotificationsAsReadRequest) returns (MarkAllNotificationsAsReadResponse) {}
+  rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
+  rpc MarkAnnouncementAsRead(MarkAnnouncementAsReadRequest) returns (MarkAnnouncementAsReadResponse) {}
+  rpc MarkAllAnnouncementsAsRead(MarkAllAnnouncementsAsReadRequest) returns (MarkAllAnnouncementsAsReadResponse) {}
 }

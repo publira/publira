@@ -18,12 +18,12 @@ import (
 )
 
 const (
-	defaultNotificationListLimit = int32(20)
-	maxNotificationListLimit     = int32(100)
-	notificationTypeAdmin        = "admin_notification"
+	defaultAnnouncementListLimit = int32(20)
+	maxAnnouncementListLimit     = int32(100)
+	announcementTypeAdmin        = "announcement"
 )
 
-func isValidNotificationLinkURL(raw string) bool {
+func isValidAnnouncementLinkURL(raw string) bool {
 	if raw == "" {
 		return true
 	}
@@ -33,7 +33,7 @@ func isValidNotificationLinkURL(raw string) bool {
 	return strings.HasPrefix(raw, "https://") || strings.HasPrefix(raw, "http://")
 }
 
-type notificationPageRow struct {
+type announcementPageRow struct {
 	id                 uuid.UUID
 	targetUserID       uuid.NullUUID
 	title              string
@@ -44,10 +44,10 @@ type notificationPageRow struct {
 	createdAt          time.Time
 }
 
-func mapNotificationDescRows(rows []dbmodels.ListNotificationsForTenantDescRow) []notificationPageRow {
-	mapped := make([]notificationPageRow, 0, len(rows))
+func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForTenantDescRow) []announcementPageRow {
+	mapped := make([]announcementPageRow, 0, len(rows))
 	for _, row := range rows {
-		mapped = append(mapped, notificationPageRow{
+		mapped = append(mapped, announcementPageRow{
 			id:                 row.ID,
 			targetUserID:       row.TargetUserID,
 			title:              row.Title,
@@ -61,10 +61,10 @@ func mapNotificationDescRows(rows []dbmodels.ListNotificationsForTenantDescRow) 
 	return mapped
 }
 
-func mapNotificationAscRows(rows []dbmodels.ListNotificationsForTenantAscRow) []notificationPageRow {
-	mapped := make([]notificationPageRow, 0, len(rows))
+func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForTenantAscRow) []announcementPageRow {
+	mapped := make([]announcementPageRow, 0, len(rows))
 	for _, row := range rows {
-		mapped = append(mapped, notificationPageRow{
+		mapped = append(mapped, announcementPageRow{
 			id:                 row.ID,
 			targetUserID:       row.TargetUserID,
 			title:              row.Title,
@@ -78,13 +78,13 @@ func mapNotificationAscRows(rows []dbmodels.ListNotificationsForTenantAscRow) []
 	return mapped
 }
 
-func mapAdminNotificationFromRow(row notificationPageRow) *publiraadminv1.AdminNotification {
-	audienceType := publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_ALL_USERS
+func mapAdminAnnouncementFromRow(row announcementPageRow) *publiraadminv1.AdminAnnouncement {
+	audienceType := publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS
 	if row.targetUserID.Valid {
-		audienceType = publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS
+		audienceType = publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS
 	}
 
-	return &publiraadminv1.AdminNotification{
+	return &publiraadminv1.AdminAnnouncement{
 		Id:                 row.id.String(),
 		Title:              row.title,
 		Body:               row.body,
@@ -96,20 +96,20 @@ func mapAdminNotificationFromRow(row notificationPageRow) *publiraadminv1.AdminN
 	}
 }
 
-// notificationPage loads one over-fetched page. Admin ListNotifications is
+// announcementPage loads one over-fetched page. Admin ListAnnouncements is
 // sorted (created_at, id) DESC. Forward uses the DESC query; backward uses ASC
 // so the index can be scanned in reverse. pagination.Page flips ASC rows back
 // into display order.
-func (s *adminServer) notificationPage(
+func (s *adminServer) announcementPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
-) ([]notificationPageRow, error) {
+) ([]announcementPageRow, error) {
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
-		rows, err := queries.ListNotificationsForTenantAsc(ctx, dbmodels.ListNotificationsForTenantAscParams{
+		rows, err := queries.ListAnnouncementsForTenantAsc(ctx, dbmodels.ListAnnouncementsForTenantAscParams{
 			TenantID:        tenantID,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
@@ -119,10 +119,10 @@ func (s *adminServer) notificationPage(
 		if err != nil {
 			return nil, err
 		}
-		return mapNotificationAscRows(rows), nil
+		return mapAnnouncementAscRows(rows), nil
 	}
 
-	rows, err := queries.ListNotificationsForTenantDesc(ctx, dbmodels.ListNotificationsForTenantDescParams{
+	rows, err := queries.ListAnnouncementsForTenantDesc(ctx, dbmodels.ListAnnouncementsForTenantDescParams{
 		TenantID:        tenantID,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
@@ -132,13 +132,13 @@ func (s *adminServer) notificationPage(
 	if err != nil {
 		return nil, err
 	}
-	return mapNotificationDescRows(rows), nil
+	return mapAnnouncementDescRows(rows), nil
 }
 
-func (s *adminServer) ListNotifications(
+func (s *adminServer) ListAnnouncements(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.ListNotificationsRequest],
-) (*connect.Response[publiraadminv1.ListNotificationsResponse], error) {
+	req *connect.Request[publiraadminv1.ListAnnouncementsRequest],
+) (*connect.Response[publiraadminv1.ListAnnouncementsResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (s *adminServer) ListNotifications(
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultNotificationListLimit, maxNotificationListLimit)
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAnnouncementListLimit, maxAnnouncementListLimit)
 	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
@@ -160,18 +160,18 @@ func (s *adminServer) ListNotifications(
 		}
 	}
 
-	rows, err := s.notificationPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.announcementPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list notifications", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError("failed to list announcements", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	items := make([]*publiraadminv1.AdminNotification, 0, len(rows))
+	items := make([]*publiraadminv1.AdminAnnouncement, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapAdminNotificationFromRow(row))
+		items = append(items, mapAdminAnnouncementFromRow(row))
 	}
 
-	res := &publiraadminv1.ListNotificationsResponse{Notifications: items}
+	res := &publiraadminv1.ListAnnouncementsResponse{Announcements: items}
 	switch {
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
@@ -196,10 +196,10 @@ func (s *adminServer) ListNotifications(
 	return connect.NewResponse(res), nil
 }
 
-func (s *adminServer) CreateNotification(
+func (s *adminServer) CreateAnnouncement(
 	ctx context.Context,
-	req *connect.Request[publiraadminv1.CreateNotificationRequest],
-) (*connect.Response[publiraadminv1.CreateNotificationResponse], error) {
+	req *connect.Request[publiraadminv1.CreateAnnouncementRequest],
+) (*connect.Response[publiraadminv1.CreateAnnouncementResponse], error) {
 	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
 	if err != nil {
 		return nil, err
@@ -218,17 +218,17 @@ func (s *adminServer) CreateNotification(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("body is required"))
 	}
 	linkURL := strings.TrimSpace(req.Msg.LinkUrl)
-	if !isValidNotificationLinkURL(linkURL) {
+	if !isValidAnnouncementLinkURL(linkURL) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("link_url must start with / or http(s)://"))
 	}
 
 	audienceType := req.Msg.AudienceType
-	if audienceType == publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_UNSPECIFIED {
-		audienceType = publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_ALL_USERS
+	if audienceType == publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_UNSPECIFIED {
+		audienceType = publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS
 	}
 
 	selectedUsers := make([]dbmodels.GetUserByPublicIDForTenantRow, 0)
-	if audienceType == publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS {
+	if audienceType == publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS {
 		targetPublicIDs := make([]string, 0, len(req.Msg.TargetUserPublicIds))
 		seen := make(map[string]struct{}, len(req.Msg.TargetUserPublicIds))
 		for _, raw := range req.Msg.TargetUserPublicIds {
@@ -261,23 +261,23 @@ func (s *adminServer) CreateNotification(
 			selectedUsers = append(selectedUsers, userRow)
 		}
 	}
-	if audienceType != publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_ALL_USERS &&
-		audienceType != publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS {
+	if audienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS &&
+		audienceType != publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid audience_type"))
 	}
 
-	created := make([]*publiraadminv1.AdminNotification, 0)
+	created := make([]*publiraadminv1.AdminAnnouncement, 0)
 	metadata := json.RawMessage("{}")
-	if audienceType == publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_ALL_USERS {
-		notificationID, idErr := uuid.NewV7()
+	if audienceType == publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS {
+		announcementID, idErr := uuid.NewV7()
 		if idErr != nil {
 			return nil, connect.NewError(connect.CodeInternal, idErr)
 		}
-		row, createErr := s.queriesFor(ctx).CreateNotification(ctx, dbmodels.CreateNotificationParams{
-			ID:               notificationID,
+		row, createErr := s.queriesFor(ctx).CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
+			ID:               announcementID,
 			TenantID:         tenant.ID,
 			TargetUserID:     uuid.NullUUID{},
-			NotificationType: notificationTypeAdmin,
+			AnnouncementType: announcementTypeAdmin,
 			Title:            title,
 			Body:             body,
 			LinkUrl:          sql.NullString{String: linkURL, Valid: linkURL != ""},
@@ -286,26 +286,26 @@ func (s *adminServer) CreateNotification(
 		if createErr != nil {
 			return nil, connect.NewError(connect.CodeInternal, createErr)
 		}
-		created = append(created, &publiraadminv1.AdminNotification{
+		created = append(created, &publiraadminv1.AdminAnnouncement{
 			Id:           row.ID.String(),
 			Title:        row.Title,
 			Body:         row.Body,
 			LinkUrl:      row.LinkUrl.String,
-			AudienceType: publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_ALL_USERS,
+			AudienceType: publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_ALL_USERS,
 			CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	} else {
-		created = make([]*publiraadminv1.AdminNotification, 0, len(selectedUsers))
+		created = make([]*publiraadminv1.AdminAnnouncement, 0, len(selectedUsers))
 		for _, userRow := range selectedUsers {
-			notificationID, idErr := uuid.NewV7()
+			announcementID, idErr := uuid.NewV7()
 			if idErr != nil {
 				return nil, connect.NewError(connect.CodeInternal, idErr)
 			}
-			row, createErr := s.queriesFor(ctx).CreateNotification(ctx, dbmodels.CreateNotificationParams{
-				ID:               notificationID,
+			row, createErr := s.queriesFor(ctx).CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
+				ID:               announcementID,
 				TenantID:         tenant.ID,
 				TargetUserID:     uuid.NullUUID{UUID: userRow.ID, Valid: true},
-				NotificationType: notificationTypeAdmin,
+				AnnouncementType: announcementTypeAdmin,
 				Title:            title,
 				Body:             body,
 				LinkUrl:          sql.NullString{String: linkURL, Valid: linkURL != ""},
@@ -314,12 +314,12 @@ func (s *adminServer) CreateNotification(
 			if createErr != nil {
 				return nil, connect.NewError(connect.CodeInternal, createErr)
 			}
-			created = append(created, &publiraadminv1.AdminNotification{
+			created = append(created, &publiraadminv1.AdminAnnouncement{
 				Id:                 row.ID.String(),
 				Title:              row.Title,
 				Body:               row.Body,
 				LinkUrl:            row.LinkUrl.String,
-				AudienceType:       publiraadminv1.NotificationAudienceType_NOTIFICATION_AUDIENCE_TYPE_SELECTED_USERS,
+				AudienceType:       publiraadminv1.AnnouncementAudienceType_ANNOUNCEMENT_AUDIENCE_TYPE_SELECTED_USERS,
 				TargetUserPublicId: userRow.PublicID,
 				TargetUserName:     userRow.Name,
 				CreatedAt:          row.CreatedAt.UTC().Format(time.RFC3339),
@@ -331,14 +331,14 @@ func (s *adminServer) CreateNotification(
 		TenantID:    tenant.ID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
-		Action:      "notification_created",
-		TargetType:  "notification",
+		Action:      "announcement_created",
+		TargetType:  "announcement",
 		TargetID:    "bulk",
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    auditlog.ClientIPFromHeader(req.Header()),
 	})
 
-	return connect.NewResponse(&publiraadminv1.CreateNotificationResponse{
-		Notifications: created,
+	return connect.NewResponse(&publiraadminv1.CreateAnnouncementResponse{
+		Announcements: created,
 	}), nil
 }

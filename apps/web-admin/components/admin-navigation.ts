@@ -36,9 +36,9 @@ export const navigation: NavSection[] = [
       },
       {
         description: "お知らせ作成と配信の管理",
-        href: "/notifications",
+        href: "/announcements",
         icon: CollectionIcon,
-        label: "通知",
+        label: "お知らせ",
       },
       {
         description: "限定閲覧チケットの発行と失効",

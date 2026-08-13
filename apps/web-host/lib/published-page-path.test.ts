@@ -9,6 +9,8 @@ import {
 describe("isReservedTopLevelSegment", () => {
   it("アプリ固定ルートを予約扱いする", () => {
     expect(isReservedTopLevelSegment("series")).toBe(true);
+    expect(isReservedTopLevelSegment("announcements")).toBe(true);
+    expect(isReservedTopLevelSegment("notifications")).toBe(true);
     expect(isReservedTopLevelSegment("login")).toBe(true);
     expect(isReservedTopLevelSegment("page")).toBe(true);
     expect(isReservedTopLevelSegment("api")).toBe(true);

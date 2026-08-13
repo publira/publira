@@ -5,13 +5,13 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
 import { AdminAccessTicketService } from "../gen/publira/admin/v1/access_ticket_pb.js";
+import { AdminAnnouncementService } from "../gen/publira/admin/v1/announcement_pb.js";
 import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
 import { AdminDashboardService } from "../gen/publira/admin/v1/dashboard_pb.js";
 import { AdminEmailSettingsService } from "../gen/publira/admin/v1/email_pb.js";
 import { AdminLabelService } from "../gen/publira/admin/v1/label_pb.js";
-import { AdminNotificationService } from "../gen/publira/admin/v1/notification_pb.js";
 import { AdminPagesService } from "../gen/publira/admin/v1/page_pb.js";
 import { AdminSeriesService } from "../gen/publira/admin/v1/series_pb.js";
 import { TenantSettingsService } from "../gen/publira/admin/v1/tenant_pb.js";
@@ -36,7 +36,7 @@ export interface AdminApiClient {
   dashboard: Client<typeof AdminDashboardService>;
   emailSettings: Client<typeof AdminEmailSettingsService>;
   label: Client<typeof AdminLabelService>;
-  notification: Client<typeof AdminNotificationService>;
+  announcement: Client<typeof AdminAnnouncementService>;
   pages: Client<typeof AdminPagesService>;
   series: Client<typeof AdminSeriesService>;
   tenantSettings: Client<typeof TenantSettingsService>;
@@ -77,13 +77,13 @@ export const createAdminApiClient = (
 
   return {
     accessTickets: createClient(AdminAccessTicketService, transportInstance),
+    announcement: createClient(AdminAnnouncementService, transportInstance),
     audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
     creator: createClient(AdminCreatorService, transportInstance),
     dashboard: createClient(AdminDashboardService, transportInstance),
     emailSettings: createClient(AdminEmailSettingsService, transportInstance),
     label: createClient(AdminLabelService, transportInstance),
-    notification: createClient(AdminNotificationService, transportInstance),
     pages: createClient(AdminPagesService, transportInstance),
     series: createClient(AdminSeriesService, transportInstance),
     tenantSettings: createClient(TenantSettingsService, transportInstance),

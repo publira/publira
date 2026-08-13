@@ -29,8 +29,8 @@ import (
 const (
 	emailVerificationTokenTTL = 24 * time.Hour
 
-	defaultNotificationPageSize = int32(20)
-	maxNotificationPageSize     = int32(100)
+	defaultAnnouncementPageSize = int32(20)
+	maxAnnouncementPageSize     = int32(100)
 )
 
 func (s *apiServer) issueAccessToken(
@@ -1047,9 +1047,9 @@ func (s *apiServer) UpdateNotificationSettings(
 	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
 }
 
-type notificationPageRow struct {
+type announcementPageRow struct {
 	id               uuid.UUID
-	notificationType string
+	announcementType string
 	title            string
 	body             string
 	linkURL          sql.NullString
@@ -1060,21 +1060,21 @@ type notificationPageRow struct {
 
 // is_read comes back as an untyped SQL boolean expression, so it lands in an
 // interface{} column that has to be asserted before it can be sent.
-func notificationIsRead(value any) bool {
+func announcementIsRead(value any) bool {
 	read, ok := value.(bool)
 	return ok && read
 }
 
-func mapNotificationDescRows(rows []dbmodels.ListNotificationsForUserDescRow) []notificationPageRow {
-	mapped := make([]notificationPageRow, 0, len(rows))
+func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForUserDescRow) []announcementPageRow {
+	mapped := make([]announcementPageRow, 0, len(rows))
 	for _, row := range rows {
-		mapped = append(mapped, notificationPageRow{
+		mapped = append(mapped, announcementPageRow{
 			id:               row.ID,
-			notificationType: row.NotificationType,
+			announcementType: row.AnnouncementType,
 			title:            row.Title,
 			body:             row.Body,
 			linkURL:          row.LinkUrl,
-			isRead:           notificationIsRead(row.IsRead),
+			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
 			createdAt:        row.CreatedAt,
 		})
@@ -1082,16 +1082,16 @@ func mapNotificationDescRows(rows []dbmodels.ListNotificationsForUserDescRow) []
 	return mapped
 }
 
-func mapNotificationAscRows(rows []dbmodels.ListNotificationsForUserAscRow) []notificationPageRow {
-	mapped := make([]notificationPageRow, 0, len(rows))
+func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForUserAscRow) []announcementPageRow {
+	mapped := make([]announcementPageRow, 0, len(rows))
 	for _, row := range rows {
-		mapped = append(mapped, notificationPageRow{
+		mapped = append(mapped, announcementPageRow{
 			id:               row.ID,
-			notificationType: row.NotificationType,
+			announcementType: row.AnnouncementType,
 			title:            row.Title,
 			body:             row.Body,
 			linkURL:          row.LinkUrl,
-			isRead:           notificationIsRead(row.IsRead),
+			isRead:           announcementIsRead(row.IsRead),
 			readAt:           row.ReadAt,
 			createdAt:        row.CreatedAt,
 		})
@@ -1099,16 +1099,16 @@ func mapNotificationAscRows(rows []dbmodels.ListNotificationsForUserAscRow) []no
 	return mapped
 }
 
-func (s *apiServer) notificationPage(
+func (s *apiServer) announcementPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
-) ([]notificationPageRow, error) {
+) ([]announcementPageRow, error) {
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
-		rows, err := queries.ListNotificationsForUserAsc(ctx, dbmodels.ListNotificationsForUserAscParams{
+		rows, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
 			TenantID:        tenantID,
 			UserID:          userID,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -1119,10 +1119,10 @@ func (s *apiServer) notificationPage(
 		if err != nil {
 			return nil, err
 		}
-		return mapNotificationAscRows(rows), nil
+		return mapAnnouncementAscRows(rows), nil
 	}
 
-	rows, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+	rows, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -1133,19 +1133,19 @@ func (s *apiServer) notificationPage(
 	if err != nil {
 		return nil, err
 	}
-	return mapNotificationDescRows(rows), nil
+	return mapAnnouncementDescRows(rows), nil
 }
 
-func (s *apiServer) ListNotifications(
+func (s *apiServer) ListAnnouncements(
 	ctx context.Context,
-	req *connect.Request[publirav1.ListNotificationsRequest],
-) (*connect.Response[publirav1.ListNotificationsResponse], error) {
+	req *connect.Request[publirav1.ListAnnouncementsRequest],
+) (*connect.Response[publirav1.ListAnnouncementsResponse], error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
 
-	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultNotificationPageSize, maxNotificationPageSize)
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultAnnouncementPageSize, maxAnnouncementPageSize)
 	cursor, err := pagination.Decode(req.Msg.Token)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
@@ -1158,21 +1158,21 @@ func (s *apiServer) ListNotifications(
 		}
 	}
 
-	rows, err := s.notificationPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	rows, err := s.announcementPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	items := make([]*publirav1.NotificationItem, 0, len(rows))
+	items := make([]*publirav1.AnnouncementItem, 0, len(rows))
 	for _, row := range rows {
 		readAt := ""
 		if row.readAt.Valid {
 			readAt = row.readAt.Time.UTC().Format(time.RFC3339)
 		}
-		items = append(items, &publirav1.NotificationItem{
+		items = append(items, &publirav1.AnnouncementItem{
 			Id:               row.id.String(),
-			NotificationType: row.notificationType,
+			AnnouncementType: row.announcementType,
 			Title:            row.title,
 			Body:             row.body,
 			LinkUrl:          row.linkURL.String,
@@ -1182,7 +1182,7 @@ func (s *apiServer) ListNotifications(
 		})
 	}
 
-	res := &publirav1.ListNotificationsResponse{Notifications: items}
+	res := &publirav1.ListAnnouncementsResponse{Announcements: items}
 	switch {
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
@@ -1207,45 +1207,45 @@ func (s *apiServer) ListNotifications(
 	return connect.NewResponse(res), nil
 }
 
-func (s *apiServer) MarkNotificationAsRead(
+func (s *apiServer) MarkAnnouncementAsRead(
 	ctx context.Context,
-	req *connect.Request[publirav1.MarkNotificationAsReadRequest],
-) (*connect.Response[publirav1.MarkNotificationAsReadResponse], error) {
+	req *connect.Request[publirav1.MarkAnnouncementAsReadRequest],
+) (*connect.Response[publirav1.MarkAnnouncementAsReadResponse], error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
 
-	notificationID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.NotificationId))
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
 	if parseErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("notification_id is invalid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
 	}
 
-	_, err = s.queriesFor(ctx).MarkNotificationAsRead(ctx, dbmodels.MarkNotificationAsReadParams{
-		ID:       notificationID,
+	_, err = s.queriesFor(ctx).MarkAnnouncementAsRead(ctx, dbmodels.MarkAnnouncementAsReadParams{
+		ID:       announcementID,
 		TenantID: tenant.ID,
 		UserID:   user.ID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("notification not found"))
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return connect.NewResponse(&publirav1.MarkNotificationAsReadResponse{Marked: true}), nil
+	return connect.NewResponse(&publirav1.MarkAnnouncementAsReadResponse{Marked: true}), nil
 }
 
-func (s *apiServer) MarkAllNotificationsAsRead(
+func (s *apiServer) MarkAllAnnouncementsAsRead(
 	ctx context.Context,
-	req *connect.Request[publirav1.MarkAllNotificationsAsReadRequest],
-) (*connect.Response[publirav1.MarkAllNotificationsAsReadResponse], error) {
+	req *connect.Request[publirav1.MarkAllAnnouncementsAsReadRequest],
+) (*connect.Response[publirav1.MarkAllAnnouncementsAsReadResponse], error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
 
-	marked, err := s.queriesFor(ctx).MarkAllNotificationsAsRead(ctx, dbmodels.MarkAllNotificationsAsReadParams{
+	marked, err := s.queriesFor(ctx).MarkAllAnnouncementsAsRead(ctx, dbmodels.MarkAllAnnouncementsAsReadParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
 	})
@@ -1253,5 +1253,5 @@ func (s *apiServer) MarkAllNotificationsAsRead(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return connect.NewResponse(&publirav1.MarkAllNotificationsAsReadResponse{MarkedCount: int32(marked)}), nil
+	return connect.NewResponse(&publirav1.MarkAllAnnouncementsAsReadResponse{MarkedCount: int32(marked)}), nil
 }

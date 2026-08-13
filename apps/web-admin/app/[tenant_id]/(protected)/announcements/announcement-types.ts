@@ -1,6 +1,6 @@
 import type { CursorPageTokens } from "#lib/cursor-page";
 
-export interface NotificationItem {
+export interface AnnouncementItem {
   id: string;
   title: string;
   body: string;
@@ -11,37 +11,37 @@ export interface NotificationItem {
   createdAt: string;
 }
 
-export interface NotificationTargetUser {
+export interface AnnouncementTargetUser {
   publicId: string;
   name: string;
 }
 
-export type ListNotificationsResult = CursorPageTokens &
+export type ListAnnouncementsResult = CursorPageTokens &
   (
     | {
         ok: true;
-        notifications: NotificationItem[];
+        announcements: AnnouncementItem[];
       }
     | {
         ok: false;
         message: string;
-        notifications: NotificationItem[];
+        announcements: AnnouncementItem[];
       }
   );
 
 /** Every user the create form can address, or the reason none could be read. */
-export type ListNotificationTargetUsersResult =
+export type ListAnnouncementTargetUsersResult =
   | {
       ok: true;
-      users: NotificationTargetUser[];
+      users: AnnouncementTargetUser[];
     }
   | {
       ok: false;
       message: string;
-      users: NotificationTargetUser[];
+      users: AnnouncementTargetUser[];
     };
 
-export type CreateNotificationActionState =
+export type CreateAnnouncementActionState =
   | {
       ok: false;
       message: string;

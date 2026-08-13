@@ -13,7 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-func TestListNotificationsForUserPaginatesBothDirections(t *testing.T) {
+func TestListAnnouncementsForUserPaginatesBothDirections(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -26,25 +26,25 @@ func TestListNotificationsForUserPaginatesBothDirections(t *testing.T) {
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
 	ids := make([]uuid.UUID, 4)
 	for index := range ids {
-		ids[index] = mustInsertNotification(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt.Add(-time.Duration(index)*time.Minute))
+		ids[index] = mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt.Add(-time.Duration(index)*time.Minute))
 	}
 	// Addressed to somebody else, so it must stay out of every page.
-	mustInsertNotification(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: otherUserID, Valid: true}, createdAt.Add(-30*time.Second))
+	mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: otherUserID, Valid: true}, createdAt.Add(-30*time.Second))
 
 	queries := dbmodels.New(pg.DB)
-	firstPage, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+	firstPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID: tenantID,
 		UserID:   userID,
 		Limit:    2,
 	})
 	if err != nil {
-		t.Fatalf("ListNotificationsForUserDesc first page: %v", err)
+		t.Fatalf("ListAnnouncementsForUserDesc first page: %v", err)
 	}
-	if got := notificationDescIDs(firstPage); !slices.Equal(got, ids[:2]) {
+	if got := announcementDescIDs(firstPage); !slices.Equal(got, ids[:2]) {
 		t.Fatalf("first page IDs = %v, want %v", got, ids[:2])
 	}
 
-	inclusiveNextPage, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+	inclusiveNextPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
 		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
@@ -53,13 +53,13 @@ func TestListNotificationsForUserPaginatesBothDirections(t *testing.T) {
 		Limit:           2,
 	})
 	if err != nil {
-		t.Fatalf("ListNotificationsForUserDesc inclusive page: %v", err)
+		t.Fatalf("ListAnnouncementsForUserDesc inclusive page: %v", err)
 	}
-	if got := notificationDescIDs(inclusiveNextPage); !slices.Equal(got, ids[1:3]) {
+	if got := announcementDescIDs(inclusiveNextPage); !slices.Equal(got, ids[1:3]) {
 		t.Fatalf("inclusive next page IDs = %v, want boundary included %v", got, ids[1:3])
 	}
 
-	secondPage, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+	secondPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
 		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
@@ -67,13 +67,13 @@ func TestListNotificationsForUserPaginatesBothDirections(t *testing.T) {
 		Limit:           2,
 	})
 	if err != nil {
-		t.Fatalf("ListNotificationsForUserDesc second page: %v", err)
+		t.Fatalf("ListAnnouncementsForUserDesc second page: %v", err)
 	}
-	if got := notificationDescIDs(secondPage); !slices.Equal(got, ids[2:]) {
+	if got := announcementDescIDs(secondPage); !slices.Equal(got, ids[2:]) {
 		t.Fatalf("second page IDs = %v, want %v", got, ids[2:])
 	}
 
-	previousPage, err := queries.ListNotificationsForUserAsc(ctx, dbmodels.ListNotificationsForUserAscParams{
+	previousPage, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
 		TenantID:        tenantID,
 		UserID:          userID,
 		CursorID:        uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
@@ -81,14 +81,14 @@ func TestListNotificationsForUserPaginatesBothDirections(t *testing.T) {
 		Limit:           2,
 	})
 	if err != nil {
-		t.Fatalf("ListNotificationsForUserAsc previous page: %v", err)
+		t.Fatalf("ListAnnouncementsForUserAsc previous page: %v", err)
 	}
 	wantPreviousScan := []uuid.UUID{ids[1], ids[0]}
-	if got := notificationAscIDs(previousPage); !slices.Equal(got, wantPreviousScan) {
+	if got := announcementAscIDs(previousPage); !slices.Equal(got, wantPreviousScan) {
 		t.Fatalf("previous page scan IDs = %v, want ascending scan %v", got, wantPreviousScan)
 	}
 
-	inclusivePreviousPage, err := queries.ListNotificationsForUserAsc(ctx, dbmodels.ListNotificationsForUserAscParams{
+	inclusivePreviousPage, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
 		TenantID:        tenantID,
 		UserID:          userID,
 		CursorID:        uuid.NullUUID{UUID: secondPage[0].ID, Valid: true},
@@ -97,17 +97,17 @@ func TestListNotificationsForUserPaginatesBothDirections(t *testing.T) {
 		Limit:           2,
 	})
 	if err != nil {
-		t.Fatalf("ListNotificationsForUserAsc inclusive page: %v", err)
+		t.Fatalf("ListAnnouncementsForUserAsc inclusive page: %v", err)
 	}
 	wantInclusivePreviousScan := []uuid.UUID{ids[2], ids[1]}
-	if got := notificationAscIDs(inclusivePreviousPage); !slices.Equal(got, wantInclusivePreviousScan) {
+	if got := announcementAscIDs(inclusivePreviousPage); !slices.Equal(got, wantInclusivePreviousScan) {
 		t.Fatalf("inclusive previous page IDs = %v, want boundary included %v", got, wantInclusivePreviousScan)
 	}
 }
 
-// Notifications created within the same clock tick still have to land on
+// Announcements created within the same clock tick still have to land on
 // separate pages, which is what the id tiebreaker in the sort key is for.
-func TestListNotificationsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
+func TestListAnnouncementsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -119,22 +119,22 @@ func TestListNotificationsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	createdAt := time.Now().UTC().Truncate(time.Microsecond)
 	ids := make([]uuid.UUID, 3)
 	for index := range ids {
-		ids[index] = mustInsertNotification(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt)
+		ids[index] = mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt)
 	}
 
 	queries := dbmodels.New(pg.DB)
-	firstPage, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+	firstPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID: tenantID,
 		UserID:   userID,
 		Limit:    2,
 	})
 	if err != nil {
-		t.Fatalf("ListNotificationsForUserDesc first page: %v", err)
+		t.Fatalf("ListAnnouncementsForUserDesc first page: %v", err)
 	}
 	if len(firstPage) != 2 {
 		t.Fatalf("first page count = %d, want the page filled to the limit", len(firstPage))
 	}
-	secondPage, err := queries.ListNotificationsForUserDesc(ctx, dbmodels.ListNotificationsForUserDescParams{
+	secondPage, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
 		CursorID:        uuid.NullUUID{UUID: firstPage[1].ID, Valid: true},
@@ -142,13 +142,13 @@ func TestListNotificationsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 		Limit:           2,
 	})
 	if err != nil {
-		t.Fatalf("ListNotificationsForUserDesc second page: %v", err)
+		t.Fatalf("ListAnnouncementsForUserDesc second page: %v", err)
 	}
 	if len(secondPage) != 1 {
 		t.Fatalf("second page count = %d, want the single remaining row", len(secondPage))
 	}
 
-	seen := append(notificationDescIDs(firstPage), notificationDescIDs(secondPage)...)
+	seen := append(announcementDescIDs(firstPage), announcementDescIDs(secondPage)...)
 	if !slices.Equal(sortedUUIDs(seen), sortedUUIDs(ids)) {
 		t.Fatalf("paged IDs = %v, want every row exactly once %v", seen, ids)
 	}
@@ -162,7 +162,7 @@ func sortedUUIDs(ids []uuid.UUID) []uuid.UUID {
 	return sorted
 }
 
-func mustInsertNotification(
+func mustInsertAnnouncement(
 	t *testing.T,
 	ctx context.Context,
 	db *sql.DB,
@@ -173,17 +173,17 @@ func mustInsertNotification(
 	t.Helper()
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO notifications (
-			id, tenant_id, target_user_id, notification_type, title, body, created_at
+		INSERT INTO announcements (
+			id, tenant_id, target_user_id, announcement_type, title, body, created_at
 		) VALUES ($1, $2, $3, 'member_episode_published', 'title', 'body', $4)
 	`, id, tenantID, targetUserID, createdAt)
 	if err != nil {
-		t.Fatalf("insert notification: %v", err)
+		t.Fatalf("insert announcement: %v", err)
 	}
 	return id
 }
 
-func notificationDescIDs(rows []dbmodels.ListNotificationsForUserDescRow) []uuid.UUID {
+func announcementDescIDs(rows []dbmodels.ListAnnouncementsForUserDescRow) []uuid.UUID {
 	ids := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
 		ids = append(ids, row.ID)
@@ -191,7 +191,7 @@ func notificationDescIDs(rows []dbmodels.ListNotificationsForUserDescRow) []uuid
 	return ids
 }
 
-func notificationAscIDs(rows []dbmodels.ListNotificationsForUserAscRow) []uuid.UUID {
+func announcementAscIDs(rows []dbmodels.ListAnnouncementsForUserAscRow) []uuid.UUID {
 	ids := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
 		ids = append(ids, row.ID)

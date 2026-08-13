@@ -11,27 +11,27 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { listAnnouncements } from "#lib/announcement";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
   parseCursorSearchParams,
 } from "#lib/cursor-page";
-import { listNotifications } from "#lib/notification";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import { NotificationManager } from "./_components/notification-manager";
+import { AnnouncementManager } from "./_components/announcement-manager";
 
-type NotificationsPageProps = PageProps<"/[tenant_id]/notifications">;
+type AnnouncementsPageProps = PageProps<"/[tenant_id]/announcements">;
 
 export const metadata: Metadata = {
-  title: "通知",
+  title: "お知らせ",
 };
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-const NotificationManagerSkeleton = () => (
+const AnnouncementManagerSkeleton = () => (
   <div className="rounded-2xl border border-border/70 bg-card p-6">
     <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
     <div className="grid gap-3">
@@ -42,44 +42,44 @@ const NotificationManagerSkeleton = () => (
   </div>
 );
 
-const NotificationManagerData = async ({
+const AnnouncementManagerData = async ({
   searchParams,
-}: Pick<NotificationsPageProps, "searchParams">) => {
+}: Pick<AnnouncementsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const [listResult, timeZone] = await Promise.all([
-    listNotifications(tenantId, { token }),
+    listAnnouncements(tenantId, { token }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
   return (
-    <NotificationManager
+    <AnnouncementManager
       {...cursorPageHrefs(listResult)}
       listErrorMessage={listResult.ok ? undefined : listResult.message}
-      notifications={listResult.notifications}
+      announcements={listResult.announcements}
       pageSize={DEFAULT_PAGE_SIZE}
       timeZone={timeZone}
     />
   );
 };
 
-const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
+const AnnouncementsPage = ({ searchParams }: AnnouncementsPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>通知</AdminPageTitle>
+        <AdminPageTitle>お知らせ</AdminPageTitle>
         <AdminPageDescription>
-          通知の作成状況と配信対象を確認できます。
+          お知らせの作成状況と配信対象を確認できます。
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
-      <Suspense fallback={<NotificationManagerSkeleton />}>
-        <NotificationManagerData searchParams={searchParams} />
+      <Suspense fallback={<AnnouncementManagerSkeleton />}>
+        <AnnouncementManagerData searchParams={searchParams} />
       </Suspense>
     </AdminPageContent>
   </AdminPage>
 );
 
-export default NotificationsPage;
+export default AnnouncementsPage;

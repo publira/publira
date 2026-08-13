@@ -9,6 +9,8 @@ import {
 } from "./lib/admin-auth-shared";
 import { resolveTenantId } from "./lib/tenant";
 
+const LEGACY_ANNOUNCEMENTS_PREFIX = "/notifications";
+
 const PUBLIC_PATHS = new Set([
   "/accept-invite",
   "/confirm-email",
@@ -33,6 +35,15 @@ export const proxy = async (request: NextRequest) => {
   // Probes must not depend on tenant resolution or backend availability.
   if (isHealthProbePath(pathname)) {
     return NextResponse.next();
+  }
+
+  if (
+    pathname === LEGACY_ANNOUNCEMENTS_PREFIX ||
+    pathname.startsWith(`${LEGACY_ANNOUNCEMENTS_PREFIX}/`)
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/announcements${pathname.slice(LEGACY_ANNOUNCEMENTS_PREFIX.length)}`;
+    return NextResponse.redirect(url);
   }
 
   let tenantId: string | null;
