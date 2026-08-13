@@ -260,6 +260,24 @@ describe("searchPlatformTenantFilterOptions", () => {
     );
   });
 
+  it("GetTenant が権限不足でも存在しないものとして name 検索の候補は返す", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("permission denied", Code.PermissionDenied)
+    );
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).resolves.toEqual({
+      hasMore: false,
+      ok: true,
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+  });
+
   it("GetTenant が not found でも name 検索の候補は返す", async () => {
     mockListTenants.mockResolvedValueOnce({
       nextToken: "",
@@ -276,5 +294,66 @@ describe("searchPlatformTenantFilterOptions", () => {
       ok: true,
       tenants: [{ name: "Nearby", publicId: "tenant_near" }],
     });
+  });
+
+  it("セッションがなければ RPC を呼ばずエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+      hasMore: false,
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+      tenants: [],
+    });
+
+    expect(mockListTenants).not.toHaveBeenCalled();
+    expect(mockGetTenant).not.toHaveBeenCalled();
+  });
+
+  it("ListTenants が拒否されたら候補を返さない", async () => {
+    mockListTenants.mockRejectedValueOnce(
+      new ConnectError("permission denied", Code.PermissionDenied)
+    );
+
+    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+      hasMore: false,
+      message: "この操作を行う権限がありません。",
+      ok: false,
+      tenants: [],
+    });
+  });
+
+  it("GetTenant の接続失敗は候補取得失敗にする", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).resolves.toEqual({
+      hasMore: false,
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+      tenants: [],
+    });
+  });
+
+  it("GetTenant の未分類エラーは再送出する", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).rejects.toMatchObject({ code: Code.Internal });
   });
 });

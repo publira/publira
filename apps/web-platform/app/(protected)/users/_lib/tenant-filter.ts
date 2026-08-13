@@ -1,4 +1,10 @@
-export const resolveTenantFilterId = ({
+export type TenantFilterResolution =
+  | { kind: "resolved"; tenantId: string }
+  | { kind: "unselected" }
+  | { kind: "none" }
+  | { kind: "ambiguous" };
+
+export const resolveTenantFilter = ({
   matches,
   searchOk,
   tenantId,
@@ -8,23 +14,26 @@ export const resolveTenantFilterId = ({
   searchOk: boolean;
   tenantId: string;
   tenantQuery: string;
-}): string => {
+}): TenantFilterResolution => {
   if (!tenantQuery) {
-    return tenantId;
+    return tenantId ? { kind: "resolved", tenantId } : { kind: "unselected" };
   }
 
   // A failed search must not drop a tenant the URL already named.
   if (!searchOk) {
-    return tenantId;
+    return tenantId ? { kind: "resolved", tenantId } : { kind: "unselected" };
   }
 
   if (tenantId && matches.some((tenant) => tenant.publicId === tenantId)) {
-    return tenantId;
+    return { kind: "resolved", tenantId };
   }
 
   if (matches.length === 1) {
-    return matches[0].publicId;
+    return { kind: "resolved", tenantId: matches[0].publicId };
   }
 
-  return "";
+  return matches.length === 0 ? { kind: "none" } : { kind: "ambiguous" };
 };
+
+export const resolvedTenantId = (resolution: TenantFilterResolution): string =>
+  resolution.kind === "resolved" ? resolution.tenantId : "";

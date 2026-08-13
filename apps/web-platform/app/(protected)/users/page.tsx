@@ -55,7 +55,8 @@ import type {
 
 import { buildUsersPath, parseUsersFilters } from "./_lib/search-params";
 import type { UsersFilters } from "./_lib/search-params";
-import { resolveTenantFilterId } from "./_lib/tenant-filter";
+import { resolveTenantFilter, resolvedTenantId } from "./_lib/tenant-filter";
+import type { TenantFilterResolution } from "./_lib/tenant-filter";
 
 export const metadata: Metadata = {
   title: "ユーザー管理",
@@ -183,11 +184,11 @@ const buildTenantFilterItems = ({
 };
 
 const buildTenantFilterMessages = ({
-  resolvedTenantId,
+  resolution,
   tenantQuery,
   tenantSearch,
 }: {
-  resolvedTenantId: string;
+  resolution: TenantFilterResolution;
   tenantQuery: string;
   tenantSearch: SearchPlatformTenantFilterOptionsResult;
 }): TenantFilterMessage[] => {
@@ -199,12 +200,12 @@ const buildTenantFilterMessages = ({
   }
 
   const messages: TenantFilterMessage[] = [];
-  if (tenantSearch.tenants.length === 0) {
+  if (resolution.kind === "none") {
     messages.push({
       text: "一致するテナントが見つかりませんでした。",
       variant: "info",
     });
-  } else if (!resolvedTenantId) {
+  } else if (resolution.kind === "ambiguous") {
     messages.push({
       text: "候補が複数あります。テナントを選択して絞り込んでください。",
       variant: "info",
@@ -218,6 +219,9 @@ const buildTenantFilterMessages = ({
   }
   return messages;
 };
+
+const shouldListUsers = (resolution: TenantFilterResolution): boolean =>
+  resolution.kind === "resolved" || resolution.kind === "unselected";
 
 const UsersFilterForm = ({
   filters,
@@ -304,11 +308,13 @@ const UsersFilterForm = ({
 
 const UsersTableSection = ({
   hasFilter,
+  hideEmptyMessage = false,
   result,
   timeZone,
   users,
 }: {
   hasFilter: boolean;
+  hideEmptyMessage?: boolean;
   result: ListPlatformEndUsersResult;
   timeZone: string;
   users: PlatformEndUserSummary[];
@@ -325,7 +331,7 @@ const UsersTableSection = ({
       </TableRow>
     </TableHeader>
     <TableBody>
-      {result.ok && users.length === 0 ? (
+      {result.ok && users.length === 0 && !hideEmptyMessage ? (
         <TableRow>
           <TableCell className="text-muted-foreground" colSpan={6}>
             {buildEmptyMessage(hasFilter)}
@@ -448,44 +454,46 @@ const UsersContent = async ({
     tenantQuery: filters.tenantQuery,
     tenantSearch,
   });
-  const resolvedTenantId = resolveTenantFilterId({
+  const resolution = resolveTenantFilter({
     matches: tenantItems,
     searchOk: tenantSearch.ok,
     tenantId: filters.tenantId,
     tenantQuery: filters.tenantQuery,
   });
+  const tenantId = resolvedTenantId(resolution);
+  const pendingTenantPick = !shouldListUsers(resolution);
   const listFilters = {
     ...filters,
-    tenantId: resolvedTenantId,
+    tenantId,
   };
   const tenantMessages = buildTenantFilterMessages({
-    resolvedTenantId,
+    resolution,
     tenantQuery: filters.tenantQuery,
     tenantSearch,
   });
 
-  const result = await listPlatformEndUsers({
-    createdAfter: createdRangeStart(filters.createdFrom, timeZone),
-    createdBefore: createdRangeEnd(filters.createdTo, timeZone),
-    limit: filters.limit,
-    offset: filters.offset,
-    status: filters.status || undefined,
-    tenantId: resolvedTenantId || undefined,
-  });
+  const result = pendingTenantPick
+    ? { ok: true as const, users: [] }
+    : await listPlatformEndUsers({
+        createdAfter: createdRangeStart(filters.createdFrom, timeZone),
+        createdBefore: createdRangeEnd(filters.createdTo, timeZone),
+        limit: filters.limit,
+        offset: filters.offset,
+        status: filters.status || undefined,
+        tenantId: tenantId || undefined,
+      });
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(
     filters.status ||
-    resolvedTenantId ||
+    tenantId ||
     filters.tenantQuery ||
     filters.createdFrom ||
     filters.createdTo
   );
-  const pagination = buildPaginationState(
-    result,
-    filters.offset,
-    filters.limit
-  );
+  const pagination = pendingTenantPick
+    ? { hasNext: false, hasPrev: false, nextOffset: 0, prevOffset: 0 }
+    : buildPaginationState(result, filters.offset, filters.limit);
 
   return (
     <Card>
@@ -499,7 +507,7 @@ const UsersContent = async ({
         <UsersFilterForm
           filters={filters}
           hasFilter={hasFilter}
-          tenantId={resolvedTenantId}
+          tenantId={tenantId}
           tenantItems={tenantItems}
           tenantMessages={tenantMessages}
         />
@@ -513,6 +521,7 @@ const UsersContent = async ({
 
         <UsersTableSection
           hasFilter={hasFilter}
+          hideEmptyMessage={pendingTenantPick}
           result={result}
           timeZone={timeZone}
           users={users}
@@ -520,7 +529,9 @@ const UsersContent = async ({
 
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            {buildSummaryText(result, filters.offset, users.length)}
+            {pendingTenantPick
+              ? "-"
+              : buildSummaryText(result, filters.offset, users.length)}
           </p>
           <PaginationControls filters={listFilters} pagination={pagination} />
         </div>
