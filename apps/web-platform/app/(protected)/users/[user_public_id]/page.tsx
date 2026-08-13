@@ -204,7 +204,7 @@ const UserDetailContent = async ({
                         className="text-sm text-primary underline-offset-4 hover:underline"
                         href={`/tenants/${tenantId}`}
                       >
-                        {tenantId}
+                        {user.primaryTenantName || tenantId}
                       </Link>
                     </li>
                   ))}

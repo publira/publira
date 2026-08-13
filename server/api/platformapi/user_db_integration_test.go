@@ -37,6 +37,32 @@ func TestDBListEndUsersExcludesTenantMembers(t *testing.T) {
 	if got := listResp.Msg.Users[0].TenantIds; !slices.Equal(got, []string{"TENANT000001"}) {
 		t.Fatalf("tenant_ids = %v, want the tenant the user belongs to", got)
 	}
+	if got := listResp.Msg.Users[0].TenantName; got != "Readers" {
+		t.Fatalf("tenant_name = %q, want Readers", got)
+	}
+}
+
+func TestDBListEndUsersFiltersByTenantPublicID(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	readersID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
+	writersID := seedTenant(t, pg, "TENANT000002", "writers.example.com", "Writers")
+	reader := seedEndUser(t, pg, readersID, "ENDUSER00001", "reader@example.com", "Reader One")
+	_ = seedEndUser(t, pg, writersID, "ENDUSER00002", "writer@example.com", "Writer One")
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	listResp, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+		TenantPublicId: "TENANT000001",
+	}))
+	if err != nil {
+		t.Fatalf("ListEndUsers: %v", err)
+	}
+	if got := endUserPublicIDs(listResp.Msg.Users); !slices.Equal(got, []string{reader.PublicID}) {
+		t.Fatalf("tenant filter public IDs = %v, want only %q", got, reader.PublicID)
+	}
+	if got := listResp.Msg.Users[0].TenantName; got != "Readers" {
+		t.Fatalf("tenant_name = %q, want Readers", got)
+	}
 }
 
 func TestDBListEndUsersFiltersByStatusAndPublicIDs(t *testing.T) {

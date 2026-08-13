@@ -12,6 +12,8 @@ message EndUser {
   string status = 4;
   string created_at = 5;
   repeated string tenant_ids = 6;
+  // Display name of the user's tenant. Empty when the user has no tenant.
+  string tenant_name = 7;
 }
 
 message ListEndUsersRequest {
@@ -22,6 +24,8 @@ message ListEndUsersRequest {
   string status = 4;         // active, suspended, inactive
   string created_before = 5; // RFC3339形式
   repeated string public_ids = 6;
+  // Tenant public_id. Empty means every tenant.
+  string tenant_public_id = 7;
 }
 
 message ListEndUsersResponse {

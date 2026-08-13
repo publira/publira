@@ -2,22 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listPlatformEndUsers, listPlatformTenantFilterOptions } from "./users";
 
-const {
-  mockListEndUsers,
-  mockListTenantMembers,
-  mockListTenants,
-  mockResolveSessionId,
-} = vi.hoisted(() => ({
-  mockListEndUsers: vi.fn(),
-  mockListTenantMembers: vi.fn(),
-  mockListTenants: vi.fn(),
-  mockResolveSessionId: vi.fn(),
-}));
+const { mockListEndUsers, mockListTenants, mockResolveSessionId } = vi.hoisted(
+  () => ({
+    mockListEndUsers: vi.fn(),
+    mockListTenants: vi.fn(),
+    mockResolveSessionId: vi.fn(),
+  })
+);
 
 vi.mock("./api-client", () => ({
   apiClient: {
     tenants: {
-      listTenantMembers: mockListTenantMembers,
       listTenants: mockListTenants,
     },
     users: {
@@ -40,26 +35,20 @@ describe("listPlatformEndUsers", () => {
     mockResolveSessionId.mockResolvedValue("sess_abc");
   });
 
-  it("テナント未指定でも tenant_public_id なしで一覧し、メンバーは tenantPublicId で取る", async () => {
+  it("ListEndUsers の応答をそのまま返し、テナント走査はしない", async () => {
     mockListEndUsers.mockResolvedValueOnce({
       users: [
         {
           createdAt: "2026-03-01T00:00:00Z",
           email: "enduser@example.com",
           name: "End User",
-          primaryTenantName: "tenant_a",
-          primaryTenantPublicId: "tenant_a",
           publicId: "ENDUSER001",
           status: "active",
           tenantIds: ["tenant_a"],
+          tenantName: "Tenant A",
         },
       ],
     });
-    mockListTenants.mockResolvedValueOnce({
-      nextToken: "",
-      tenants: [{ name: "Tenant A", publicId: "tenant_a" }],
-    });
-    mockListTenantMembers.mockResolvedValueOnce({ members: [] });
 
     await expect(
       listPlatformEndUsers({ limit: 20, offset: 0 })
@@ -87,131 +76,24 @@ describe("listPlatformEndUsers", () => {
         offset: 0,
         publicIds: [],
         status: "",
+        tenantPublicId: "",
       },
       sessionHeaders
     );
-    expect(mockListTenants).toHaveBeenCalledWith(
-      {
-        limit: 100,
-        name: "",
-        publicId: "",
-        status: "",
-        token: "",
-      },
-      sessionHeaders
-    );
-    expect(mockListTenantMembers).toHaveBeenCalledWith(
-      {
-        limit: 100,
-        offset: 0,
-        tenantPublicId: "tenant_a",
-      },
-      sessionHeaders
-    );
+    expect(mockListTenants).not.toHaveBeenCalled();
   });
 
-  it("end-user API が空でも tenant members を表示する", async () => {
-    mockListEndUsers.mockResolvedValueOnce({ users: [] });
-    mockListTenants.mockResolvedValueOnce({
-      nextToken: "",
-      tenants: [
-        { name: "tenant_a", publicId: "tenant_a" },
-        { name: "tenant_b", publicId: "tenant_b" },
-      ],
-    });
-
-    mockListTenantMembers
-      .mockResolvedValueOnce({
-        members: [
-          {
-            createdAt: "2026-03-02T00:00:00Z",
-            email: "alice@example.com",
-            name: "Alice",
-            role: "tenant_admin",
-            status: "active",
-            userPublicId: "USER000001",
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        members: [
-          {
-            createdAt: "2026-03-03T00:00:00Z",
-            email: "bob@example.com",
-            name: "Bob",
-            role: "tenant_editor",
-            status: "active",
-            userPublicId: "USER000002",
-          },
-        ],
-      });
-
-    await expect(
-      listPlatformEndUsers({ limit: 20, offset: 0 })
-    ).resolves.toEqual({
-      ok: true,
+  it("テナント絞り込みを ListEndUsers の tenantPublicId に渡す", async () => {
+    mockListEndUsers.mockResolvedValueOnce({
       users: [
-        {
-          createdAt: "2026-03-03T00:00:00Z",
-          email: "bob@example.com",
-          name: "Bob",
-          primaryTenantName: "tenant_b",
-          primaryTenantPublicId: "tenant_b",
-          publicId: "USER000002",
-          status: "active",
-          tenantIds: ["tenant_b"],
-        },
         {
           createdAt: "2026-03-02T00:00:00Z",
           email: "alice@example.com",
           name: "Alice",
-          primaryTenantName: "tenant_a",
-          primaryTenantPublicId: "tenant_a",
           publicId: "USER000001",
           status: "active",
           tenantIds: ["tenant_a"],
-        },
-      ],
-    });
-
-    expect(mockListTenantMembers).toHaveBeenNthCalledWith(
-      1,
-      {
-        limit: 100,
-        offset: 0,
-        tenantPublicId: "tenant_a",
-      },
-      sessionHeaders
-    );
-    expect(mockListTenantMembers).toHaveBeenNthCalledWith(
-      2,
-      {
-        limit: 100,
-        offset: 0,
-        tenantPublicId: "tenant_b",
-      },
-      sessionHeaders
-    );
-  });
-
-  it("テナント絞り込み時も指定テナントの tenantPublicId でメンバーを取る", async () => {
-    mockListEndUsers.mockResolvedValueOnce({ users: [] });
-    mockListTenants.mockResolvedValueOnce({
-      nextToken: "",
-      tenants: [
-        { name: "Tenant A", publicId: "tenant_a" },
-        { name: "Tenant B", publicId: "tenant_b" },
-      ],
-    });
-    mockListTenantMembers.mockResolvedValueOnce({
-      members: [
-        {
-          createdAt: "2026-03-02T00:00:00Z",
-          email: "alice@example.com",
-          name: "Alice",
-          role: "tenant_admin",
-          status: "active",
-          userPublicId: "USER000001",
+          tenantName: "Tenant A",
         },
       ],
     });
@@ -238,42 +120,55 @@ describe("listPlatformEndUsers", () => {
       ],
     });
 
-    expect(mockListTenantMembers).toHaveBeenCalledTimes(1);
-    expect(mockListTenantMembers).toHaveBeenCalledWith(
+    expect(mockListEndUsers).toHaveBeenCalledWith(
       {
-        limit: 100,
+        createdAfter: "",
+        createdBefore: "",
+        limit: 20,
         offset: 0,
+        publicIds: [],
+        status: "",
         tenantPublicId: "tenant_a",
       },
       sessionHeaders
     );
+    expect(mockListTenants).not.toHaveBeenCalled();
   });
 
-  it("メンバー走査が上限で途切れたときは成功にしない", async () => {
-    mockListEndUsers.mockResolvedValueOnce({ users: [] });
-    mockListTenants.mockResolvedValueOnce({
-      nextToken: "",
-      tenants: [{ name: "Tenant A", publicId: "tenant_a" }],
-    });
-    mockListTenantMembers.mockResolvedValue({
-      members: Array.from({ length: 100 }, (_, index) => ({
-        createdAt: "2026-03-02T00:00:00Z",
-        email: `user${index}@example.com`,
-        name: `User ${index}`,
-        role: "tenant_admin",
-        status: "active",
-        userPublicId: `USER${String(index).padStart(6, "0")}`,
-      })),
+  it("ページ境界はサーバーへ渡した limit / offset のままにする", async () => {
+    mockListEndUsers.mockResolvedValueOnce({
+      users: [
+        {
+          createdAt: "2026-03-03T00:00:00Z",
+          email: "bob@example.com",
+          name: "Bob",
+          publicId: "USER000002",
+          status: "active",
+          tenantIds: ["tenant_b"],
+          tenantName: "Tenant B",
+        },
+      ],
     });
 
     await expect(
-      listPlatformEndUsers({ limit: 20, offset: 0 })
-    ).resolves.toEqual({
-      message:
-        "ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。",
-      ok: false,
+      listPlatformEndUsers({ limit: 10, offset: 20 })
+    ).resolves.toMatchObject({
+      ok: true,
+      users: [{ publicId: "USER000002" }],
     });
-    expect(mockListTenantMembers).toHaveBeenCalledTimes(100);
+
+    expect(mockListEndUsers).toHaveBeenCalledWith(
+      {
+        createdAfter: "",
+        createdBefore: "",
+        limit: 10,
+        offset: 20,
+        publicIds: [],
+        status: "",
+        tenantPublicId: "",
+      },
+      sessionHeaders
+    );
   });
 });
 

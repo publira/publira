@@ -2755,6 +2755,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 const getTenantByUserID = `-- name: GetTenantByUserID :one
 SELECT t.id,
     t.public_id,
+    t.name,
     t.created_at
 FROM tenants t
     JOIN users u ON u.tenant_id = t.id
@@ -2765,6 +2766,7 @@ LIMIT 1
 type GetTenantByUserIDRow struct {
 	ID        uuid.UUID `json:"id"`
 	PublicID  string    `json:"public_id"`
+	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -2772,7 +2774,12 @@ type GetTenantByUserIDRow struct {
 func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getTenantByUserID, id)
 	var i GetTenantByUserIDRow
-	err := row.Scan(&i.ID, &i.PublicID, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
@@ -4490,8 +4497,11 @@ SELECT u.id,
     u.name,
     u.email,
     u.status,
-    u.created_at
+    u.created_at,
+    COALESCE(t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(t.name, ''::text) AS tenant_name
 FROM users u
+    LEFT JOIN tenants t ON t.id = u.tenant_id
 WHERE NOT EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -4505,35 +4515,46 @@ WHERE NOT EXISTS (
         OR u.status = $3::text
     )
     AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
+    AND (
+        $5::text IS NULL
+        OR $5::text = ''
+        OR t.public_id = $5::text
+    )
 ORDER BY u.created_at DESC
-LIMIT $6 OFFSET $5
+LIMIT $7 OFFSET $6
 `
 
 type ListEndUsersParams struct {
-	CreatedAfter  sql.NullTime   `json:"created_after"`
-	CreatedBefore sql.NullTime   `json:"created_before"`
-	Status        sql.NullString `json:"status"`
-	PublicIds     []string       `json:"public_ids"`
-	Offset        int32          `json:"offset"`
-	Limit         int32          `json:"limit"`
+	CreatedAfter   sql.NullTime   `json:"created_after"`
+	CreatedBefore  sql.NullTime   `json:"created_before"`
+	Status         sql.NullString `json:"status"`
+	PublicIds      []string       `json:"public_ids"`
+	TenantPublicID sql.NullString `json:"tenant_public_id"`
+	Offset         int32          `json:"offset"`
+	Limit          int32          `json:"limit"`
 }
 
 type ListEndUsersRow struct {
-	ID        uuid.UUID `json:"id"`
-	PublicID  string    `json:"public_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	ID             uuid.UUID `json:"id"`
+	PublicID       string    `json:"public_id"`
+	Name           string    `json:"name"`
+	Email          string    `json:"email"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	TenantPublicID string    `json:"tenant_public_id"`
+	TenantName     string    `json:"tenant_name"`
 }
 
-// エンドユーザー（tenant_user_roles未保持）の一覧取得
+// エンドユーザー（tenant_user_roles未保持）の一覧取得。
+// テナントメンバーは意図的に含めない。プラットフォームのユーザー一覧は
+// この結果が完全な集合であり、クライアントが ListTenantMembers で補完しない。
 func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEndUsers,
 		arg.CreatedAfter,
 		arg.CreatedBefore,
 		arg.Status,
 		pq.Array(arg.PublicIds),
+		arg.TenantPublicID,
 		arg.Offset,
 		arg.Limit,
 	)
@@ -4551,6 +4572,8 @@ func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]L
 			&i.Email,
 			&i.Status,
 			&i.CreatedAt,
+			&i.TenantPublicID,
+			&i.TenantName,
 		); err != nil {
 			return nil, err
 		}
