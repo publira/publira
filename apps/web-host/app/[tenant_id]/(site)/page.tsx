@@ -1,6 +1,6 @@
 import { CollectionIcon, ImageIcon } from "@publira/icons";
 import { SectionError } from "@publira/ui-components/section-error";
-import { DEFAULT_TIME_ZONE, formatDate } from "@publira/utils";
+import { formatDate } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -19,7 +19,7 @@ import type {
   CatalogTopEpisodeItem,
   CatalogTopUpdatedSeriesItem,
 } from "#lib/catalog-top";
-import { getTenantSiteLabel } from "#lib/tenant";
+import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 type EpisodeLinkSource = CatalogTopEpisodeItem & {
@@ -215,7 +215,10 @@ const RecommendedSeriesSection = async () => {
 const NewEpisodesSection = async () => {
   const tenantId = await getTenantId();
 
-  const result = await getCatalogTopNewEpisodes(tenantId);
+  const [result, timeZone] = await Promise.all([
+    getCatalogTopNewEpisodes(tenantId),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   if (!result.ok) {
     return (
@@ -259,11 +262,7 @@ const NewEpisodesSection = async () => {
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">
-                {/* Tenant-facing date: named explicitly so #567 can find it. */}
-                {formatDate(episode.publishedAt, {
-                  fallback: "",
-                  timeZone: DEFAULT_TIME_ZONE,
-                })}
+                {formatDate(episode.publishedAt, { fallback: "", timeZone })}
               </span>
             </Link>
           </li>
@@ -276,7 +275,10 @@ const NewEpisodesSection = async () => {
 const UpdatedSeriesSection = async () => {
   const tenantId = await getTenantId();
 
-  const result = await getCatalogTopUpdatedSeries(tenantId);
+  const [result, timeZone] = await Promise.all([
+    getCatalogTopUpdatedSeries(tenantId),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   if (!result.ok) {
     return (
@@ -349,7 +351,11 @@ const UpdatedSeriesSection = async () => {
                 {item.latestEpisodeTitle}
               </Link>
               <p className="mt-2 text-xs text-muted-foreground">
-                公開日 {item.latestPublishedAt.slice(0, 10)}
+                公開日{" "}
+                {formatDate(item.latestPublishedAt, {
+                  fallback: "未設定",
+                  timeZone,
+                })}
               </p>
             </div>
           </article>

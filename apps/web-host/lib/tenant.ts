@@ -1,4 +1,5 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
+import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
@@ -16,6 +17,8 @@ export interface TenantSiteInfo {
   siteLabel: string;
   siteTagline?: string;
   theme: TenantThemeColors;
+  /** IANA zone every tenant-facing wall clock on the public site is rendered in. */
+  timeZone: string;
 }
 
 const buildTenantSiteLabel = (tenantName: string): string => {
@@ -73,6 +76,9 @@ export const getTenantSiteInfo = async (
       siteLabel: buildTenantSiteLabel(name),
       siteTagline: response.siteTagline?.trim(),
       theme: resolveTenantThemeColors(response.theme),
+      // The server resolves the zone before answering (`tenanttz.Resolve`), so
+      // the fallback only covers a response shape that predates the field.
+      timeZone: response.timezone?.trim() || DEFAULT_TIME_ZONE,
     };
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {
@@ -88,4 +94,23 @@ export const getTenantSiteInfo = async (
 export const getTenantSiteLabel = async (tenantId: string): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.siteLabel ?? "サイト";
+};
+
+/**
+ * Display zone for every date the public site shows a reader (#567). One entry
+ * point, so a page never falls back to the fixed `DEFAULT_TIME_ZONE` by
+ * omission and the site agrees with the admin console about what the tenant's
+ * wall clock is.
+ *
+ * An unavailable tenant read degrades to {@link DEFAULT_TIME_ZONE} rather than
+ * to the host's zone, so the rendered wall clock never depends on where the
+ * container runs (#564). The read carries `tenant:<id>:site`, which the admin
+ * API revalidates when the zone is saved (`tenantTimezoneRevalidateTags`), so a
+ * change reaches the site without waiting for the cache to age out.
+ */
+export const getTenantDisplayTimeZone = async (
+  tenantId: string
+): Promise<string> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  return tenant?.timeZone ?? DEFAULT_TIME_ZONE;
 };

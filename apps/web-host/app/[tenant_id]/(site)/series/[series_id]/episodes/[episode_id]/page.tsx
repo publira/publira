@@ -1,4 +1,4 @@
-import { DEFAULT_TIME_ZONE, formatDateTime } from "@publira/utils";
+import { formatDateTime } from "@publira/utils";
 import {
   createPlaceholderStaticParams,
   guardPlaceholders,
@@ -10,6 +10,7 @@ import { Suspense } from "react";
 
 import { PageLoadError } from "#components/page-load-error";
 import { getEpisodeDetail } from "#lib/catalog";
+import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 export const generateStaticParams = () =>
@@ -43,7 +44,10 @@ const EpisodeContent = async (
   // `null`, and the public site must not tell those apart. A failed read is a
   // value as well: a `"use cache"` fill that throws fails the whole request,
   // so nothing downstream would get to render (#672).
-  const result = await getEpisodeDetail(tenantId, series_id, episode_id);
+  const [result, timeZone] = await Promise.all([
+    getEpisodeDetail(tenantId, series_id, episode_id),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   if (!result.ok) {
     return <PageLoadError description={result.message} />;
@@ -89,11 +93,10 @@ const EpisodeContent = async (
                 {priceLabel}
               </span>
               <span>
-                {/* Tenant-facing date: named explicitly so #567 can find it. */}
                 公開{" "}
                 {formatDateTime(episode.publishedAt, {
                   fallback: "未設定",
-                  timeZone: DEFAULT_TIME_ZONE,
+                  timeZone,
                 })}
               </span>
             </div>
@@ -173,10 +176,9 @@ const EpisodeContent = async (
                 <div className="flex items-start justify-between gap-4">
                   <dt className="text-muted-foreground">公開日</dt>
                   <dd className="text-right font-medium">
-                    {/* Tenant-facing date: named explicitly so #567 can find it. */}
                     {formatDateTime(episode.publishedAt, {
                       fallback: "未設定",
-                      timeZone: DEFAULT_TIME_ZONE,
+                      timeZone,
                     })}
                   </dd>
                 </div>
@@ -196,10 +198,9 @@ const EpisodeContent = async (
                   <div className="flex items-start justify-between gap-4">
                     <dt className="text-muted-foreground">公開予定</dt>
                     <dd className="text-right font-medium">
-                      {/* Tenant-facing date: named explicitly so #567 can find it. */}
                       {formatDateTime(episode.scheduledAt, {
                         fallback: "未設定",
-                        timeZone: DEFAULT_TIME_ZONE,
+                        timeZone,
                       })}
                     </dd>
                   </div>
