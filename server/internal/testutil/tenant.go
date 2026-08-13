@@ -10,6 +10,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 // Tenant is a seeded tenants row. Admin API requests address a tenant by its
@@ -57,6 +58,7 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 		Domain:      domain,
 		AdminDomain: sql.NullString{String: adminDomain, Valid: true},
 		Name:        name,
+		Timezone:    tenanttz.Default,
 	})
 	if err != nil {
 		t.Fatalf("CreateTenant %s: %v", publicID, err)

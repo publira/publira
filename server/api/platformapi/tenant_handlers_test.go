@@ -41,12 +41,14 @@ func addTenantRow(rows *sqlmock.Rows, id uuid.UUID, publicID, name string, creat
 
 func TestTenantToProtoExposesTimezone(t *testing.T) {
 	tests := []struct {
-		name   string
-		stored string
-		want   string
+		name            string
+		stored          string
+		platformDefault string
+		want            string
 	}{
-		{name: "configured value", stored: "America/Los_Angeles", want: "America/Los_Angeles"},
-		{name: "blank falls back to default", stored: "", want: tenanttz.Default},
+		{name: "configured value", stored: "America/Los_Angeles", platformDefault: "Europe/Berlin", want: "America/Los_Angeles"},
+		{name: "blank falls back to the platform default", stored: "", platformDefault: "Europe/Berlin", want: "Europe/Berlin"},
+		{name: "blank platform default falls back to the built-in default", stored: "", platformDefault: "", want: tenanttz.Default},
 	}
 
 	for _, tt := range tests {
@@ -58,7 +60,7 @@ func TestTenantToProtoExposesTimezone(t *testing.T) {
 				Domain:    "tenant.example.com",
 				CreatedAt: time.Now(),
 				Timezone:  tt.stored,
-			})
+			}, func() string { return tt.platformDefault })
 			if got.Timezone != tt.want {
 				t.Fatalf("timezone = %q, want %q", got.Timezone, tt.want)
 			}

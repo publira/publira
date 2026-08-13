@@ -11,6 +11,7 @@ import (
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -36,7 +37,7 @@ func (s *adminServer) GetTenantTimezone(
 	}
 
 	return connect.NewResponse(&publiraadminv1.GetTenantTimezoneResponse{
-		Timezone: tenanttz.Resolve(tenant.Timezone),
+		Timezone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }
 
@@ -75,6 +76,6 @@ func (s *adminServer) UpdateTenantTimezone(
 	}
 
 	return connect.NewResponse(&publiraadminv1.UpdateTenantTimezoneResponse{
-		Timezone: tenanttz.Resolve(updated.Timezone),
+		Timezone: tenanttz.Resolve(updated.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }

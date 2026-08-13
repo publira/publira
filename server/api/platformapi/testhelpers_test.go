@@ -57,6 +57,10 @@ const (
 	testGetPlatformSMTPConfigQuery         = "-- name: GetPlatformSMTPConfig :one\n"
 	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
 
+	// プラットフォーム全体設定
+	testGetPlatformConfigQuery             = "-- name: GetPlatformConfig :one\n"
+	testUpsertPlatformDefaultTimezoneQuery = "-- name: UpsertPlatformDefaultTimezone :one\n"
+
 	// エンドユーザー
 	testListEndUsersQuery               = "-- name: ListEndUsers :many\n"
 	testGetUserByPublicIDQuery          = "-- name: GetUserByPublicID :one\n"
@@ -156,6 +160,17 @@ const (
 
 func integrationTenantColumns() []string {
 	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}
+}
+
+func platformConfigColumns() []string {
+	return []string{"singleton", "default_timezone", "created_at", "updated_at"}
+}
+
+// expectPlatformConfigLookup expects the read of the platform settings row and
+// answers it with the given default time zone.
+func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, now, now))
 }
 
 func integrationOperatorColumns() []string {

@@ -19,6 +19,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -251,6 +252,7 @@ func seedTenant(t *testing.T, pg *testutil.PostgresEnv, publicID, domain, name s
 		Domain:      domain,
 		AdminDomain: nullableString("admin-" + domain),
 		Name:        name,
+		Timezone:    tenanttz.Default,
 	})
 	if err != nil {
 		t.Fatalf("CreateTenant %s: %v", publicID, err)

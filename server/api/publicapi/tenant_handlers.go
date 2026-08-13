@@ -9,6 +9,7 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -61,6 +62,6 @@ func (s *apiServer) GetTenant(
 		SiteDescription: siteDescription,
 		SiteTagline:     siteTagline,
 		Theme:           theme,
-		Timezone:        tenanttz.Resolve(tenant.Timezone),
+		Timezone:        tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 	}), nil
 }

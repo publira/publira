@@ -53,6 +53,7 @@ type Querier interface {
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
 	// プラットフォーム管理者向けテナント作成
+	// timezone は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
 	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
@@ -94,6 +95,8 @@ type Querier interface {
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (Page, error)
 	// ページバージョンをIDで取得する
 	GetPageVersionByIDForPage(ctx context.Context, arg GetPageVersionByIDForPageParams) (PageVersion, error)
+	// プラットフォーム全体設定の singleton 行を取得する
+	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	GetPlatformOperatorByPublicID(ctx context.Context, publicID string) (GetPlatformOperatorByPublicIDRow, error)
 	GetPlatformSMTPConfig(ctx context.Context) (PlatformSmtpConfig, error)
 	GetPlatformUserByEmail(ctx context.Context, email string) (PlatformUser, error)
@@ -323,6 +326,8 @@ type Querier interface {
 	// ユーザーのステータスをID指定で更新
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
+	// プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
+	UpsertPlatformDefaultTimezone(ctx context.Context, defaultTimezone string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)

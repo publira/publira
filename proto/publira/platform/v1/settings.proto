@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package publira.platform.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1";
+
+// Platform-wide settings that are not tied to a single tenant. Email/SMTP has its
+// own service (PlatformEmailSettingsService); everything else lands here.
+message PlatformSettings {
+  // IANA time zone name (e.g. Asia/Tokyo, America/Los_Angeles, UTC) applied to
+  // newly created tenants. Never empty in a response.
+  string default_timezone = 1;
+}
+
+message GetPlatformSettingsRequest {}
+
+message GetPlatformSettingsResponse {
+  PlatformSettings settings = 1;
+}
+
+message UpdatePlatformSettingsRequest {
+  string default_timezone = 1;
+}
+
+message UpdatePlatformSettingsResponse {
+  PlatformSettings settings = 1;
+}
+
+service PlatformSettingsService {
+  rpc GetPlatformSettings(GetPlatformSettingsRequest) returns (GetPlatformSettingsResponse) {}
+  rpc UpdatePlatformSettings(UpdatePlatformSettingsRequest) returns (UpdatePlatformSettingsResponse) {}
+}
