@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
@@ -35,6 +36,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { listPlatformTenants } from "#lib/tenants";
 
@@ -83,12 +85,15 @@ const TenantsContent = async ({
 }: Pick<TenantsPageProps, "searchParams">) => {
   const filters = parseTenantFilters(await searchParams, allowedStatusValues);
 
-  const result = await listPlatformTenants({
-    limit: pageSize,
-    name: filters.name || undefined,
-    status: filters.status || undefined,
-    token: filters.token || undefined,
-  });
+  const [result, timeZone] = await Promise.all([
+    listPlatformTenants({
+      limit: pageSize,
+      name: filters.name || undefined,
+      status: filters.status || undefined,
+      token: filters.token || undefined,
+    }),
+    getPlatformDisplayTimeZone(),
+  ]);
 
   const previousHref = result.previousToken
     ? buildTenantsPath({
@@ -188,7 +193,12 @@ const TenantsContent = async ({
                       {getTenantStatusLabel(tenant.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell>{tenant.createdAt}</TableCell>
+                  <TableCell>
+                    {formatDateTime(tenant.createdAt, {
+                      fallback: "未設定",
+                      timeZone,
+                    })}
+                  </TableCell>
                   <TableCell>
                     <LinkButton
                       render={<Link href={`/tenants/${tenant.publicId}`} />}

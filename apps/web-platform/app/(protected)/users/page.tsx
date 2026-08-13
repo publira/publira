@@ -18,7 +18,11 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
-import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
+import {
+  endOfDayIsoString,
+  formatDate,
+  startOfDayIsoString,
+} from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
@@ -289,10 +293,12 @@ const UsersFilterForm = ({
 const UsersTableSection = ({
   hasFilter,
   result,
+  timeZone,
   users,
 }: {
   hasFilter: boolean;
   result: ListPlatformEndUsersResult;
+  timeZone: string;
   users: PlatformEndUserSummary[];
 }) => (
   <Table>
@@ -333,7 +339,9 @@ const UsersTableSection = ({
                   "未所属"
                 )}
               </TableCell>
-              <TableCell>{user.createdAt || "未設定"}</TableCell>
+              <TableCell>
+                {formatDate(user.createdAt, { fallback: "未設定", timeZone })}
+              </TableCell>
               <TableCell>
                 <Badge tone={getEndUserStatusTone(user.status)}>
                   {getEndUserStatusLabel(user.status)}
@@ -486,6 +494,7 @@ const UsersContent = async ({
         <UsersTableSection
           hasFilter={hasFilter}
           result={result}
+          timeZone={timeZone}
           users={users}
         />
 

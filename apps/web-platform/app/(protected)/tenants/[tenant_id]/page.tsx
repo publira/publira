@@ -9,6 +9,7 @@ import {
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,6 +27,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
 
@@ -85,7 +87,10 @@ const TenantDetailContent = async ({
 }: Pick<TenantDetailPageProps, "params">) => {
   const { tenant_id: tenantId } = await params;
 
-  const tenant = await getPlatformTenant(tenantId);
+  const [tenant, timeZone] = await Promise.all([
+    getPlatformTenant(tenantId),
+    getPlatformDisplayTimeZone(),
+  ]);
 
   if (!tenant) {
     notFound();
@@ -170,7 +175,12 @@ const TenantDetailContent = async ({
                     </Field>
                     <Field>
                       <FieldLabel>作成日時</FieldLabel>
-                      <p className="text-sm">{tenant.createdAt || "未設定"}</p>
+                      <p className="text-sm">
+                        {formatDateTime(tenant.createdAt, {
+                          fallback: "未設定",
+                          timeZone,
+                        })}
+                      </p>
                     </Field>
                     <Field>
                       <FieldLabel>ステータス</FieldLabel>

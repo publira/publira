@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
+import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,6 +31,7 @@ import {
   getOperatorStatusLabel,
 } from "#lib/operator-labels";
 import { getPlatformOperator } from "#lib/operators";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { isPlatformSuperAdmin } from "#lib/roles";
 
 import { DangerConfirmButton } from "./_components/danger-confirm-button";
@@ -84,9 +86,10 @@ const OperatorDetailContent = async ({
 }: Pick<OperatorDetailPageProps, "params">) => {
   const { operator_public_id: operatorPublicId } = await params;
 
-  const [operator, currentOperator] = await Promise.all([
+  const [operator, currentOperator, timeZone] = await Promise.all([
     getPlatformOperator(operatorPublicId),
     getPlatformCurrentOperator(),
+    getPlatformDisplayTimeZone(),
   ]);
 
   if (!operator) {
@@ -191,7 +194,12 @@ const OperatorDetailContent = async ({
                 </Field>
                 <Field>
                   <FieldLabel>作成日時</FieldLabel>
-                  <p className="text-sm">{operator.createdAt || "未設定"}</p>
+                  <p className="text-sm">
+                    {formatDateTime(operator.createdAt, {
+                      fallback: "未設定",
+                      timeZone,
+                    })}
+                  </p>
                 </Field>
                 <Field>
                   <FieldLabel>最終ログイン</FieldLabel>

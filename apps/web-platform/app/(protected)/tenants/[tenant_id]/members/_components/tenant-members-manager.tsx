@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@publira/ui-components/table";
+import { formatDate, formatDateTime } from "@publira/utils";
 import { useActionState, useCallback, useState, useTransition } from "react";
 
 import { PaginationControls } from "#components/pagination-controls";
@@ -83,6 +84,7 @@ interface TenantMembersManagerProps {
     formData: FormData
   ) => Promise<FormActionState>;
   tenantId: string;
+  timeZone: string;
   updateRoleAction: (
     prevState: FormActionState,
     formData: FormData
@@ -126,6 +128,7 @@ interface TenantMemberRowProps {
   ) => Promise<FormActionState>;
   setDeleteState: (state: FormActionState) => void;
   tenantId: string;
+  timeZone: string;
   updateRoleAction: (
     prevState: FormActionState,
     formData: FormData
@@ -157,6 +160,7 @@ interface TenantInvitationRowProps {
   isResendPending: boolean;
   onCancel: (invitationId: string) => void;
   onResend: (invitationId: string) => void;
+  timeZone: string;
 }
 
 const TenantMemberDeleteButton = ({
@@ -308,6 +312,7 @@ const TenantMemberRow = ({
   removeAction,
   setDeleteState,
   tenantId,
+  timeZone,
   updateRoleAction,
 }: TenantMemberRowProps) => (
   <TableRow key={member.userPublicId || member.email}>
@@ -321,7 +326,9 @@ const TenantMemberRow = ({
         {getTenantStatusLabel(member.status)}
       </Badge>
     </TableCell>
-    <TableCell>{member.createdAt || "未設定"}</TableCell>
+    <TableCell>
+      {formatDate(member.createdAt, { fallback: "未設定", timeZone })}
+    </TableCell>
     <TableCell>
       <div className="flex flex-wrap gap-2">
         <TenantMemberRoleDialog
@@ -349,6 +356,7 @@ interface TenantInvitationsSectionProps {
   isResendPending: boolean;
   onCancel: (invitationId: string) => void;
   onResend: (invitationId: string) => void;
+  timeZone: string;
 }
 
 const TenantInvitationRow = ({
@@ -357,6 +365,7 @@ const TenantInvitationRow = ({
   isResendPending,
   onCancel,
   onResend,
+  timeZone,
 }: TenantInvitationRowProps) => {
   const canOperate = invitation.status === "pending";
 
@@ -376,8 +385,12 @@ const TenantInvitationRow = ({
           {invitationStatusLabel(invitation.status)}
         </Badge>
       </TableCell>
-      <TableCell>{invitation.createdAt || "-"}</TableCell>
-      <TableCell>{invitation.expiresAt || "-"}</TableCell>
+      <TableCell>
+        {formatDateTime(invitation.createdAt, { fallback: "-", timeZone })}
+      </TableCell>
+      <TableCell>
+        {formatDateTime(invitation.expiresAt, { fallback: "-", timeZone })}
+      </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -421,6 +434,7 @@ const TenantInvitationsSection = ({
   isResendPending,
   onCancel,
   onResend,
+  timeZone,
 }: TenantInvitationsSectionProps) => {
   // A failed fetch still hands an empty `invitations` array. Keeping the table
   // header and the pager next to the error reads as "there are no invitations",
@@ -463,6 +477,7 @@ const TenantInvitationsSection = ({
               key={invitation.id}
               onCancel={onCancel}
               onResend={onResend}
+              timeZone={timeZone}
             />
           ))}
         </TableBody>
@@ -489,6 +504,7 @@ export const TenantMembersManager = ({
   removeAction,
   resendInvitationAction,
   tenantId,
+  timeZone,
   updateRoleAction,
 }: TenantMembersManagerProps) => {
   const [addState, addFormAction, isAddPending] = useActionState(
@@ -620,6 +636,7 @@ export const TenantMembersManager = ({
                   removeAction={removeAction}
                   setDeleteState={setDeleteState}
                   tenantId={tenantId}
+                  timeZone={timeZone}
                   updateRoleAction={updateRoleAction}
                 />
               ))}
@@ -705,6 +722,7 @@ export const TenantMembersManager = ({
             isResendPending={isResendPending}
             onCancel={handleCancel}
             onResend={handleResend}
+            timeZone={timeZone}
           />
         </CardContent>
       </Card>
