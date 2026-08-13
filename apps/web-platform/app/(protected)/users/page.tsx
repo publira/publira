@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@publira/ui-components/card";
+import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SectionError } from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
@@ -39,16 +40,22 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+import { getPlatformTenant } from "#lib/tenants";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import {
   listPlatformEndUsers,
-  listPlatformTenantFilterOptions,
+  searchPlatformTenantFilterOptions,
 } from "#lib/users";
 import type {
   ListPlatformEndUsersResult,
   PlatformEndUserSummary,
   PlatformTenantFilterOption,
+  SearchPlatformTenantFilterOptionsResult,
 } from "#lib/users";
+
+import { buildUsersPath, parseUsersFilters } from "./_lib/search-params";
+import type { UsersFilters } from "./_lib/search-params";
+import { resolveTenantFilterId } from "./_lib/tenant-filter";
 
 export const metadata: Metadata = {
   title: "ユーザー管理",
@@ -87,39 +94,6 @@ const pageSizeItems = [
   { label: "50件", value: "50" },
 ] as const;
 
-const allowedPageSizes = new Set([10, 20, 50]);
-
-const buildUsersPath = (params: {
-  createdFrom?: string;
-  createdTo?: string;
-  limit: number;
-  offset: number;
-  status?: string;
-  tenantId?: string;
-}): string => {
-  const search = new URLSearchParams();
-  if (params.status) {
-    search.set("status", params.status);
-  }
-  if (params.tenantId) {
-    search.set("tenant_id", params.tenantId);
-  }
-  if (params.createdFrom) {
-    search.set("created_from", params.createdFrom);
-  }
-  if (params.createdTo) {
-    search.set("created_to", params.createdTo);
-  }
-  if (params.limit !== 20) {
-    search.set("limit", String(params.limit));
-  }
-  if (params.offset > 0) {
-    search.set("offset", String(params.offset));
-  }
-  const query = search.toString();
-  return query ? `/users?${query}` : "/users";
-};
-
 /**
  * The created_from / created_to filters are date-only (`YYYY-MM-DD`), so the
  * calendar day has to be pinned to a zone before it can become an RFC3339
@@ -136,25 +110,7 @@ const createdRangeStart = (
 const createdRangeEnd = (date: string, timeZone: string): string | undefined =>
   endOfDayIsoString(date, timeZone) || undefined;
 
-interface UsersPageProps {
-  searchParams: Promise<{
-    created_from?: string;
-    created_to?: string;
-    limit?: string;
-    offset?: string;
-    status?: string;
-    tenant_id?: string;
-  }>;
-}
-
-interface UsersFilters {
-  createdFromFilter: string;
-  createdToFilter: string;
-  limit: number;
-  offset: number;
-  statusFilter: string;
-  tenantIdFilter: string;
-}
+type UsersPageProps = PageProps<"/users">;
 
 interface PaginationState {
   hasNext: boolean;
@@ -163,35 +119,16 @@ interface PaginationState {
   prevOffset: number;
 }
 
-const parseUsersFilters = (
-  params: Awaited<UsersPageProps["searchParams"]>
-): UsersFilters => {
-  const statusFilter = params.status?.trim() ?? "";
-  const tenantIdFilter = params.tenant_id?.trim() ?? "";
-  const createdFromFilter = params.created_from?.trim() ?? "";
-  const createdToFilter = params.created_to?.trim() ?? "";
+interface TenantFilterMessage {
+  text: string;
+  variant: "destructive" | "info";
+}
 
-  const requestedLimit = Math.trunc(Number(params.limit ?? "20"));
-  const limit =
-    Number.isFinite(requestedLimit) && allowedPageSizes.has(requestedLimit)
-      ? requestedLimit
-      : 20;
-
-  const requestedOffset = Math.trunc(Number(params.offset ?? "0"));
-  const offset =
-    Number.isFinite(requestedOffset) && requestedOffset >= 0
-      ? requestedOffset
-      : 0;
-
-  return {
-    createdFromFilter,
-    createdToFilter,
-    limit,
-    offset,
-    statusFilter,
-    tenantIdFilter,
-  };
-};
+const emptyTenantSearch = {
+  hasMore: false,
+  ok: true,
+  tenants: [],
+} as const satisfies SearchPlatformTenantFilterOptionsResult;
 
 const buildPaginationState = (
   result: ListPlatformEndUsersResult,
@@ -220,74 +157,149 @@ const buildEmptyMessage = (hasFilter: boolean): string =>
     ? "条件に一致するユーザーが見つかりませんでした。"
     : "ユーザーはまだ登録されていません。";
 
-const UsersFilterForm = ({
-  createdFromFilter,
-  createdToFilter,
-  hasFilter,
-  limit,
-  statusFilter,
-  tenantItems,
-  tenantIdFilter,
+const buildTenantFilterItems = ({
+  selectedName,
+  tenantId,
+  tenantQuery,
+  tenantSearch,
 }: {
-  createdFromFilter: string;
-  createdToFilter: string;
+  selectedName: string;
+  tenantId: string;
+  tenantQuery: string;
+  tenantSearch: SearchPlatformTenantFilterOptionsResult;
+}): PlatformTenantFilterOption[] => {
+  if (tenantQuery && tenantSearch.ok) {
+    return tenantSearch.tenants;
+  }
+  if (tenantId) {
+    return [
+      {
+        name: selectedName || tenantId,
+        publicId: tenantId,
+      },
+    ];
+  }
+  return [];
+};
+
+const buildTenantFilterMessages = ({
+  resolvedTenantId,
+  tenantQuery,
+  tenantSearch,
+}: {
+  resolvedTenantId: string;
+  tenantQuery: string;
+  tenantSearch: SearchPlatformTenantFilterOptionsResult;
+}): TenantFilterMessage[] => {
+  if (!tenantQuery) {
+    return [];
+  }
+  if (!tenantSearch.ok) {
+    return [{ text: tenantSearch.message, variant: "destructive" }];
+  }
+
+  const messages: TenantFilterMessage[] = [];
+  if (tenantSearch.tenants.length === 0) {
+    messages.push({
+      text: "一致するテナントが見つかりませんでした。",
+      variant: "info",
+    });
+  } else if (!resolvedTenantId) {
+    messages.push({
+      text: "候補が複数あります。テナントを選択して絞り込んでください。",
+      variant: "info",
+    });
+  }
+  if (tenantSearch.hasMore) {
+    messages.push({
+      text: "一致するテナントが他にもあります。検索語を絞り込んでください。",
+      variant: "info",
+    });
+  }
+  return messages;
+};
+
+const UsersFilterForm = ({
+  filters,
+  hasFilter,
+  tenantItems,
+  tenantId,
+  tenantMessages,
+}: {
+  filters: UsersFilters;
   hasFilter: boolean;
-  limit: number;
-  statusFilter: string;
   tenantItems: PlatformTenantFilterOption[];
-  tenantIdFilter: string;
+  tenantId: string;
+  tenantMessages: TenantFilterMessage[];
 }) => (
-  <Form
-    action="/users"
-    className="flex flex-wrap gap-3"
-    key={`${statusFilter}::${tenantIdFilter}::${createdFromFilter}::${createdToFilter}::${limit}`}
-  >
-    <Select
-      className="w-44"
-      defaultValue={statusFilter || undefined}
-      items={statusSelectItems}
-      name="status"
-      placeholder="すべての状態"
-    />
-    <Select
-      className="w-56"
-      defaultValue={tenantIdFilter || undefined}
-      items={tenantItems.map((tenant) => ({
-        label: tenant.name,
-        value: tenant.publicId,
-      }))}
-      name="tenant_id"
-      placeholder="すべてのテナント"
-    />
-    <Input
-      className="w-44"
-      defaultValue={createdFromFilter}
-      name="created_from"
-      type="date"
-    />
-    <Input
-      className="w-44"
-      defaultValue={createdToFilter}
-      name="created_to"
-      type="date"
-    />
-    <Select
-      className="w-32"
-      defaultValue={String(limit)}
-      items={pageSizeItems}
-      name="limit"
-      placeholder="20件"
-    />
-    <Button type="submit">絞り込む</Button>
-    {hasFilter ? (
-      <Link
-        className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
-        href="/users"
-      >
-        クリア
-      </Link>
-    ) : null}
-  </Form>
+  <div className="grid gap-3">
+    <Form
+      action="/users"
+      className="flex flex-wrap gap-3"
+      key={`${filters.status}::${tenantId}::${filters.tenantQuery}::${filters.createdFrom}::${filters.createdTo}::${filters.limit}`}
+    >
+      <Select
+        className="w-44"
+        defaultValue={filters.status || undefined}
+        items={statusSelectItems}
+        name="status"
+        placeholder="すべての状態"
+      />
+      <Input
+        aria-label="テナント検索"
+        className="w-56"
+        defaultValue={filters.tenantQuery}
+        name="tenant_q"
+        placeholder="テナント名・IDで検索"
+        type="search"
+      />
+      {tenantItems.length > 0 ? (
+        <Select
+          className="w-56"
+          defaultValue={tenantId || undefined}
+          items={tenantItems.map((tenant) => ({
+            label: tenant.name,
+            value: tenant.publicId,
+          }))}
+          name="tenant_id"
+          placeholder="テナントを選択"
+        />
+      ) : null}
+      <Input
+        className="w-44"
+        defaultValue={filters.createdFrom}
+        name="created_from"
+        type="date"
+      />
+      <Input
+        className="w-44"
+        defaultValue={filters.createdTo}
+        name="created_to"
+        type="date"
+      />
+      <Select
+        className="w-32"
+        defaultValue={String(filters.limit)}
+        items={pageSizeItems}
+        name="limit"
+        placeholder="20件"
+      />
+      <Button type="submit">絞り込む</Button>
+      {hasFilter ? (
+        <Link
+          className="flex h-10 items-center rounded-md px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline"
+          href="/users"
+        >
+          クリア
+        </Link>
+      ) : null}
+    </Form>
+    {tenantMessages.map((message) => (
+      <FormMessage key={message.text} variant={message.variant}>
+        {message.text}
+      </FormMessage>
+    ))}
+  </div>
 );
 
 const UsersTableSection = ({
@@ -364,19 +376,11 @@ const UsersTableSection = ({
 );
 
 const PaginationControls = ({
-  createdFromFilter,
-  createdToFilter,
-  limit,
+  filters,
   pagination,
-  statusFilter,
-  tenantIdFilter,
 }: {
-  createdFromFilter: string;
-  createdToFilter: string;
-  limit: number;
+  filters: UsersFilters;
   pagination: PaginationState;
-  statusFilter: string;
-  tenantIdFilter: string;
 }) => (
   <div className="flex items-center gap-2">
     {pagination.hasPrev ? (
@@ -384,12 +388,8 @@ const PaginationControls = ({
         render={
           <Link
             href={buildUsersPath({
-              createdFrom: createdFromFilter || undefined,
-              createdTo: createdToFilter || undefined,
-              limit,
+              ...filters,
               offset: pagination.prevOffset,
-              status: statusFilter || undefined,
-              tenantId: tenantIdFilter || undefined,
             })}
           />
         }
@@ -409,12 +409,8 @@ const PaginationControls = ({
         render={
           <Link
             href={buildUsersPath({
-              createdFrom: createdFromFilter || undefined,
-              createdTo: createdToFilter || undefined,
-              limit,
+              ...filters,
               offset: pagination.nextOffset,
-              status: statusFilter || undefined,
-              tenantId: tenantIdFilter || undefined,
             })}
           />
         }
@@ -436,28 +432,54 @@ const UsersContent = async ({
 }: Pick<UsersPageProps, "searchParams">) => {
   const filters = parseUsersFilters(await searchParams);
 
-  // Only the user list needs the zone (its date filters are day boundaries), so
-  // the tenant options start alongside the zone read instead of behind it.
-  const [tenantItems, timeZone] = await Promise.all([
-    listPlatformTenantFilterOptions(),
+  const [tenantSearch, selectedTenant, timeZone] = await Promise.all([
+    filters.tenantQuery
+      ? searchPlatformTenantFilterOptions(filters.tenantQuery)
+      : Promise.resolve(emptyTenantSearch),
+    filters.tenantId
+      ? getPlatformTenant(filters.tenantId)
+      : Promise.resolve(null),
     getPlatformDisplayTimeZone(),
   ]);
 
+  const tenantItems = buildTenantFilterItems({
+    selectedName: selectedTenant?.name.trim() ?? "",
+    tenantId: filters.tenantId,
+    tenantQuery: filters.tenantQuery,
+    tenantSearch,
+  });
+  const resolvedTenantId = resolveTenantFilterId({
+    matches: tenantItems,
+    searchOk: tenantSearch.ok,
+    tenantId: filters.tenantId,
+    tenantQuery: filters.tenantQuery,
+  });
+  const listFilters = {
+    ...filters,
+    tenantId: resolvedTenantId,
+  };
+  const tenantMessages = buildTenantFilterMessages({
+    resolvedTenantId,
+    tenantQuery: filters.tenantQuery,
+    tenantSearch,
+  });
+
   const result = await listPlatformEndUsers({
-    createdAfter: createdRangeStart(filters.createdFromFilter, timeZone),
-    createdBefore: createdRangeEnd(filters.createdToFilter, timeZone),
+    createdAfter: createdRangeStart(filters.createdFrom, timeZone),
+    createdBefore: createdRangeEnd(filters.createdTo, timeZone),
     limit: filters.limit,
     offset: filters.offset,
-    status: filters.statusFilter || undefined,
-    tenantId: filters.tenantIdFilter || undefined,
+    status: filters.status || undefined,
+    tenantId: resolvedTenantId || undefined,
   });
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(
-    filters.statusFilter ||
-    filters.tenantIdFilter ||
-    filters.createdFromFilter ||
-    filters.createdToFilter
+    filters.status ||
+    resolvedTenantId ||
+    filters.tenantQuery ||
+    filters.createdFrom ||
+    filters.createdTo
   );
   const pagination = buildPaginationState(
     result,
@@ -475,13 +497,11 @@ const UsersContent = async ({
       </CardHeader>
       <CardContent className="grid gap-4">
         <UsersFilterForm
-          createdFromFilter={filters.createdFromFilter}
-          createdToFilter={filters.createdToFilter}
+          filters={filters}
           hasFilter={hasFilter}
-          limit={filters.limit}
-          statusFilter={filters.statusFilter}
+          tenantId={resolvedTenantId}
           tenantItems={tenantItems}
-          tenantIdFilter={filters.tenantIdFilter}
+          tenantMessages={tenantMessages}
         />
 
         {result.ok ? null : (
@@ -502,14 +522,7 @@ const UsersContent = async ({
           <p className="text-xs text-muted-foreground">
             {buildSummaryText(result, filters.offset, users.length)}
           </p>
-          <PaginationControls
-            createdFromFilter={filters.createdFromFilter}
-            createdToFilter={filters.createdToFilter}
-            limit={filters.limit}
-            pagination={pagination}
-            statusFilter={filters.statusFilter}
-            tenantIdFilter={filters.tenantIdFilter}
-          />
+          <PaginationControls filters={listFilters} pagination={pagination} />
         </div>
       </CardContent>
     </Card>
