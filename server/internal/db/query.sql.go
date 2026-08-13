@@ -4520,7 +4520,7 @@ WHERE NOT EXISTS (
         OR $5::text = ''
         OR t.public_id = $5::text
     )
-ORDER BY u.created_at DESC
+ORDER BY u.created_at DESC, u.id DESC
 LIMIT $7 OFFSET $6
 `
 

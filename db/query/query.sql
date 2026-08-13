@@ -1725,7 +1725,7 @@ WHERE NOT EXISTS (
         OR sqlc.narg('tenant_public_id')::text = ''
         OR t.public_id = sqlc.narg('tenant_public_id')::text
     )
-ORDER BY u.created_at DESC
+ORDER BY u.created_at DESC, u.id DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: ListTenantUsers :many
