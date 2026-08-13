@@ -6,12 +6,12 @@ export type PageMutationMode = "create" | "update" | "draft";
 
 /**
  * Page timestamps used to be formatted in UTC while every other admin screen
- * used the display zone; they now go through the shared {@link formatDateTime}.
- * Unparseable values still fall through as-is so a malformed API response stays
- * visible instead of turning into a placeholder.
+ * used the display zone; they now go through the shared {@link formatDateTime}
+ * in the tenant's zone. Unparseable values still fall through as-is so a
+ * malformed API response stays visible instead of turning into a placeholder.
  */
-export const formatPageDateTime = (value: string): string =>
-  value ? formatDateTime(value) : "-";
+export const formatPageDateTime = (value: string, timeZone: string): string =>
+  value ? formatDateTime(value, { timeZone }) : "-";
 
 /**
  * Canonical page slug for create/update forms and display.

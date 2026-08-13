@@ -35,6 +35,7 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { ActorFilterCombobox } from "./_components/actor-filter-combobox";
 import {
@@ -106,7 +107,7 @@ const AuditLogsContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseAuditLogFilters(sp, allowedActionValues);
 
-  const [result, actorCandidatesResult] = await Promise.all([
+  const [result, actorCandidatesResult, timeZone] = await Promise.all([
     listAuditLogs(tenantId, {
       action: filters.action,
       actorUserPublicId: filters.actor,
@@ -119,6 +120,7 @@ const AuditLogsContent = async ({
       limit: 100,
       query: filters.actor,
     }),
+    getTenantDisplayTimeZone(tenantId),
   ]);
 
   const resetHref = buildQueryString({});
@@ -156,7 +158,8 @@ const AuditLogsContent = async ({
         <CardHeader>
           <CardTitle>絞り込み</CardTitle>
           <CardDescription>
-            期間、アクション種別、操作者で自テナントの監査ログを確認します。
+            期間、アクション種別、操作者で自テナントの監査ログを確認します。開始日・終了日はテナントのタイムゾーン（
+            {timeZone}）の暦日として解釈します。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -256,7 +259,10 @@ const AuditLogsContent = async ({
                       <TableRow
                         key={`${item.createdAt}-${item.actorUserPublicId}-${item.action}-${item.targetId}`}
                       >
-                        <AuditLogDateCell createdAt={item.createdAt} />
+                        <AuditLogDateCell
+                          createdAt={item.createdAt}
+                          timeZone={timeZone}
+                        />
                         <AuditLogActorCell
                           actorName={item.actorName}
                           actorRole={item.actorRole}

@@ -30,7 +30,13 @@ afterEach(() => {
 
 describe("NotificationManager", () => {
   it("最初のページが空なら未登録として案内する", () => {
-    render(<NotificationManager notifications={[]} pageSize={20} />);
+    render(
+      <NotificationManager
+        notifications={[]}
+        pageSize={20}
+        timeZone="Asia/Tokyo"
+      />
+    );
 
     expect(screen.getByText("通知がまだありません。")).toBeDefined();
     expect(screen.queryByLabelText("通知一覧のページ送り")).toBeNull();
@@ -42,6 +48,7 @@ describe("NotificationManager", () => {
         notifications={[]}
         pageSize={20}
         previousHref="?token=previous"
+        timeZone="Asia/Tokyo"
       />
     );
 
@@ -61,6 +68,7 @@ describe("NotificationManager", () => {
         notifications={[notification("n1")]}
         pageSize={20}
         previousHref="?token=previous"
+        timeZone="Asia/Tokyo"
       />
     );
 
@@ -81,6 +89,7 @@ describe("NotificationManager", () => {
         notifications={[]}
         pageSize={20}
         previousHref="?token=previous"
+        timeZone="Asia/Tokyo"
       />
     );
 

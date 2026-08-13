@@ -16,7 +16,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { DEFAULT_TIME_ZONE, toDateTimeLocalValue } from "@publira/utils";
+import { toDateTimeLocalValue } from "@publira/utils";
 import Image from "next/image";
 import {
   useActionState,
@@ -53,6 +53,7 @@ interface SeriesFormProps {
   creatorsErrorMessage?: string;
   labelsErrorMessage?: string;
   initialSeries?: SeriesListItem;
+  timeZone: string;
 }
 
 const getSubmitLabel = (
@@ -324,6 +325,7 @@ export const SeriesForm = ({
   creatorsErrorMessage,
   labelsErrorMessage,
   initialSeries,
+  timeZone,
 }: SeriesFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
@@ -453,14 +455,16 @@ export const SeriesForm = ({
                   // resolves it back against the same zone on submit.
                   defaultValue={toDateTimeLocalValue(
                     initialSeries?.publishedAt ?? "",
-                    DEFAULT_TIME_ZONE
+                    timeZone
                   )}
                   id="series_published_at"
                   name="published_at"
                   type="datetime-local"
                 />
                 <FieldDescription>
-                  空欄の場合は非公開です。日時を設定するとその時刻以降（日本時間）に公開されます。
+                  空欄の場合は非公開です。日時はテナントのタイムゾーン（
+                  {timeZone}
+                  ）の壁時計として解釈し、その時刻以降に公開されます。
                 </FieldDescription>
               </FieldContent>
             </Field>

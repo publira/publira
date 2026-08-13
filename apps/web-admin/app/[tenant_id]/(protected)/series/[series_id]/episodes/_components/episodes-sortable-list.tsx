@@ -16,6 +16,7 @@ interface EpisodesSortableListProps {
   reorderAction: (
     formData: FormData
   ) => Promise<{ ok: boolean; message?: string }>;
+  timeZone: string;
 }
 
 const reorderItems = <T extends { publicId: string }>(
@@ -43,6 +44,7 @@ export const EpisodesSortableList = ({
   seriesPublicId,
   episodes,
   reorderAction,
+  timeZone,
 }: EpisodesSortableListProps) => {
   const tenantId = useTenantId();
   const router = useRouter();
@@ -171,7 +173,7 @@ export const EpisodesSortableList = ({
             </p>
             {episode.status === "scheduled" && episode.scheduledAt ? (
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                公開予約: {formatDateTime(episode.scheduledAt)}
+                公開予約: {formatDateTime(episode.scheduledAt, { timeZone })}
               </p>
             ) : null}
           </div>

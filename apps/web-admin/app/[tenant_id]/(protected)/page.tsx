@@ -32,6 +32,7 @@ import {
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getDashboard } from "#lib/dashboard";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 export const metadata: Metadata = {
   title: "ダッシュボード",
@@ -83,7 +84,10 @@ const DashboardSkeleton = () => (
 
 const DashboardContent = async () => {
   const tenantId = await getTenantId();
-  const result = await getDashboard(tenantId);
+  const [result, timeZone] = await Promise.all([
+    getDashboard(tenantId),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   if (!result.ok) {
     return (
@@ -155,6 +159,7 @@ const DashboardContent = async () => {
                     <TableCell>
                       {formatDateTime(item.scheduledAt, {
                         fallback: "未設定",
+                        timeZone,
                       })}
                     </TableCell>
                   </TableRow>

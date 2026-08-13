@@ -26,6 +26,7 @@ import { listAllCreators } from "#lib/creator";
 import { listAllLabels } from "#lib/label";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
 import { SeriesForm } from "../_components/series-form";
@@ -141,11 +142,12 @@ const EditSeriesFormData = async ({
     );
   }
 
-  const [result, creatorsResult, labelsResult] = await Promise.all([
+  const [result, creatorsResult, labelsResult, timeZone] = await Promise.all([
     getSeries({ publicId: seriesId, tenantId }),
     // Walk every cursor page so the Combobox can search past the first 100.
     listAllCreators(tenantId),
     listAllLabels(tenantId),
+    getTenantDisplayTimeZone(tenantId),
   ]);
 
   if (!result.ok) {
@@ -167,6 +169,7 @@ const EditSeriesFormData = async ({
       labels={labelsResult.labels}
       labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
       mode="update"
+      timeZone={timeZone}
     />
   );
 };

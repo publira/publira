@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCreateSeries, mockRedirect, mockUpdateSeries } = vi.hoisted(() => ({
+const {
+  mockCreateSeries,
+  mockGetTenantDisplayTimeZone,
+  mockRedirect,
+  mockUpdateSeries,
+} = vi.hoisted(() => ({
   mockCreateSeries: vi.fn(),
+  mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdateSeries: vi.fn(),
 }));
@@ -15,10 +21,15 @@ vi.mock("#lib/series", () => ({
   updateSeries: mockUpdateSeries,
 }));
 
+vi.mock("#lib/tenant-timezone", () => ({
+  getTenantDisplayTimeZone: mockGetTenantDisplayTimeZone,
+}));
+
 describe("series actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
   });
 
   it("基本情報更新: 画像未選択でも更新 API を呼び出せる", async () => {
@@ -59,8 +70,8 @@ describe("series actions", () => {
       isPublished: true,
       labelPublicId: "LABEL001",
       publicId: "SERIES001",
-      // "2030-01-01T10:00" is a zone-less wall clock, read as JST (+09:00) —
-      // never as the server process's local zone.
+      // "2030-01-01T10:00" is a zone-less wall clock, read in the tenant zone
+      // (Asia/Tokyo here) — never as the server process's local zone.
       publishedAt: "2030-01-01T01:00:00Z",
       readingPeriodHours: 24,
       synopsis: "Synopsis",
@@ -103,6 +114,44 @@ describe("series actions", () => {
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" })
     );
+  });
+
+  it("基本情報更新: datetime-local の壁時計はテナントタイムゾーンとして解釈する", async () => {
+    mockGetTenantDisplayTimeZone.mockResolvedValue("America/Los_Angeles");
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: {
+        creatorNames: [],
+        creatorPublicIds: [],
+        eyeCatchImageUpdatedAt: "",
+        eyeCatchImageVariants: [],
+        isPublished: true,
+        labelName: "Label",
+        labelPublicId: "LABEL001",
+        publicId: "SERIES001",
+        readingPeriodHours: 24,
+        synopsis: "Synopsis",
+        title: "Title",
+      },
+    });
+
+    const { updateSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("public_id", "SERIES001");
+    formData.set("title", "Title");
+    formData.set("synopsis", "Synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_public_id", "LABEL001");
+    formData.set("published_at", "2030-01-01T10:00");
+
+    await updateSeriesAction(null, formData);
+
+    // PST (UTC-8) in January — 10:00 in Los Angeles is 18:00Z.
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ publishedAt: "2030-01-01T18:00:00Z" })
+    );
+    expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
   });
 
   it("基本情報更新: 日時として解釈できない published_at はエラーにする", async () => {

@@ -1,13 +1,10 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import {
-  DEFAULT_TIME_ZONE,
-  endOfDayIsoString,
-  startOfDayIsoString,
-} from "@publira/utils";
+import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
+import { getTenantDisplayTimeZone } from "./tenant-timezone";
 
 export interface AuditLogItem {
   action: string;
@@ -76,18 +73,19 @@ const mapErrorToMessage = (error: unknown): string =>
 /**
  * The `created_from` / `created_to` filters are date-only (`YYYY-MM-DD`) and the
  * API wants RFC3339 instants, so the calendar day has to be pinned to a zone.
- * Tenant time zones are not wired up yet (#566 / #567), so the admin UI's own
- * display zone is used — never UTC, which would shift the day by nine hours
- * relative to the day the operator picked.
+ * That zone is the tenant's — the same one the list timestamps render in —
+ * never UTC, which would shift the day relative to the day the operator picked.
  */
-const auditFilterTimeZone = DEFAULT_TIME_ZONE;
-
-const normalizeDateStart = (value?: string): string =>
-  startOfDayIsoString(value ?? "", auditFilterTimeZone);
+const normalizeDateStart = (
+  value: string | undefined,
+  timeZone: string
+): string => startOfDayIsoString(value ?? "", timeZone);
 
 // Inclusive calendar-day end for date-only filters (was identical to start).
-const normalizeDateEnd = (value?: string): string =>
-  endOfDayIsoString(value ?? "", auditFilterTimeZone);
+const normalizeDateEnd = (
+  value: string | undefined,
+  timeZone: string
+): string => endOfDayIsoString(value ?? "", timeZone);
 
 const mapAuditLog = (item: {
   action: string;
@@ -184,12 +182,13 @@ export const listAuditLogs = async (
   }
 
   try {
+    const timeZone = await getTenantDisplayTimeZone(tenantId);
     const response = await apiClient.audit.listAuditLogs(
       {
         action: filters.action?.trim() ?? "",
         actorUserPublicId: filters.actorUserPublicId?.trim() ?? "",
-        createdFrom: normalizeDateStart(filters.createdFrom),
-        createdTo: normalizeDateEnd(filters.createdTo),
+        createdFrom: normalizeDateStart(filters.createdFrom, timeZone),
+        createdTo: normalizeDateEnd(filters.createdTo, timeZone),
         limit: filters.limit ?? 20,
         tenant: { tenantId },
         token: filters.token?.trim() ?? "",

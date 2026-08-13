@@ -1,12 +1,19 @@
+import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockListAuditLogs } = vi.hoisted(() => ({
-  mockGetAccessToken: vi.fn(),
-  mockListAuditLogs: vi.fn(),
-}));
+const { mockGetAccessToken, mockGetTenantDisplayTimeZone, mockListAuditLogs } =
+  vi.hoisted(() => ({
+    mockGetAccessToken: vi.fn(),
+    mockGetTenantDisplayTimeZone: vi.fn(),
+    mockListAuditLogs: vi.fn(),
+  }));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
+}));
+
+vi.mock("./tenant-timezone", () => ({
+  getTenantDisplayTimeZone: mockGetTenantDisplayTimeZone,
 }));
 
 vi.mock("./api", () => ({
@@ -25,6 +32,7 @@ describe("audit lib", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetAccessToken.mockResolvedValue("session-token");
+    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
   });
 
   it("共通 token を RPC に渡して前後の token を返す", async () => {
@@ -102,5 +110,34 @@ describe("audit lib", () => {
       ok: false,
       previousToken: "",
     });
+  });
+
+  it("日付フィルタの日境界はテナントタイムゾーンで解釈する", async () => {
+    mockGetTenantDisplayTimeZone.mockResolvedValue("America/Los_Angeles");
+    mockListAuditLogs.mockResolvedValue({
+      auditLogs: [],
+      nextToken: "",
+      previousToken: "",
+    });
+
+    const { listAuditLogs } = await import("./audit");
+    await listAuditLogs("TENANT001", {
+      createdFrom: "2026-08-10",
+      createdTo: "2026-08-10",
+    });
+
+    expect(mockGetTenantDisplayTimeZone).toHaveBeenCalledWith("TENANT001");
+    expect(mockListAuditLogs).toHaveBeenCalledWith(
+      {
+        action: "",
+        actorUserPublicId: "",
+        createdFrom: startOfDayIsoString("2026-08-10", "America/Los_Angeles"),
+        createdTo: endOfDayIsoString("2026-08-10", "America/Los_Angeles"),
+        limit: 20,
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
   });
 });

@@ -23,12 +23,14 @@ interface EpisodeScheduleFormProps {
     prevState: EpisodeEditActionState,
     formData: FormData
   ) => Promise<EpisodeEditActionState>;
+  timeZone: string;
 }
 
 export const EpisodeScheduleForm = ({
   seriesPublicId,
   episodePublicId,
   action,
+  timeZone,
 }: EpisodeScheduleFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
@@ -51,7 +53,11 @@ export const EpisodeScheduleForm = ({
             value={episodePublicId}
           />
 
-          <PublishAtInput id="episode_edit_publish_at" name="publish_at" />
+          <PublishAtInput
+            id="episode_edit_publish_at"
+            name="publish_at"
+            timeZone={timeZone}
+          />
 
           {state && state.mode === "schedule" ? (
             <FormMessage variant={state.ok ? "success" : "destructive"}>

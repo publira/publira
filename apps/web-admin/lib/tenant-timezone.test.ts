@@ -147,4 +147,37 @@ describe("tenant-timezone", () => {
       "tenant:TENANT001:timezone"
     );
   });
+
+  it("表示タイムゾーンとしてテナントのタイムゾーンを返す", async () => {
+    mockGetTenantTimezoneApi.mockResolvedValueOnce({
+      timezone: "America/Los_Angeles",
+    });
+
+    const { getTenantDisplayTimeZone } = await import("./tenant-timezone");
+
+    await expect(getTenantDisplayTimeZone("TENANT001")).resolves.toBe(
+      "America/Los_Angeles"
+    );
+  });
+
+  it("テナントを取得できないときも既定タイムゾーンで表示する", async () => {
+    // Degrading to the host's zone would make the rendered wall clock depend on
+    // where the container runs, which is the thing #564 removed.
+    mockGetTenantTimezoneApi.mockRejectedValueOnce(
+      new ConnectError("tenant unavailable", Code.Unavailable)
+    );
+
+    const { getTenantDisplayTimeZone } = await import("./tenant-timezone");
+
+    await expect(getTenantDisplayTimeZone("TENANT001")).resolves.toBe(
+      "Asia/Tokyo"
+    );
+  });
+
+  it("テナント ID が空のときも既定タイムゾーンで表示する", async () => {
+    const { getTenantDisplayTimeZone } = await import("./tenant-timezone");
+
+    await expect(getTenantDisplayTimeZone("  ")).resolves.toBe("Asia/Tokyo");
+    expect(mockGetTenantTimezoneApi).not.toHaveBeenCalled();
+  });
 });

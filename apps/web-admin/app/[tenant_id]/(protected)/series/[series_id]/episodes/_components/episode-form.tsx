@@ -29,9 +29,14 @@ interface EpisodeFormProps {
     prevState: EpisodeActionState,
     formData: FormData
   ) => Promise<EpisodeActionState>;
+  timeZone: string;
 }
 
-export const EpisodeForm = ({ seriesPublicId, action }: EpisodeFormProps) => {
+export const EpisodeForm = ({
+  seriesPublicId,
+  action,
+  timeZone,
+}: EpisodeFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -106,7 +111,7 @@ export const EpisodeForm = ({ seriesPublicId, action }: EpisodeFormProps) => {
             </FieldContent>
           </Field>
 
-          <PublishAtInput />
+          <PublishAtInput timeZone={timeZone} />
 
           {state ? (
             <FormMessage variant={state.ok ? "success" : "destructive"}>

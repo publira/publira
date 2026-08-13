@@ -18,6 +18,7 @@ import {
   parseCursorSearchParams,
 } from "#lib/cursor-page";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { TicketManager } from "./_components/ticket-manager";
 
@@ -46,7 +47,10 @@ const TicketManagerData = async ({
 }: Pick<AccessTicketsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
-  const listResult = await listAccessTickets(tenantId, { token });
+  const [listResult, timeZone] = await Promise.all([
+    listAccessTickets(tenantId, { token }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   return (
     <TicketManager
@@ -54,6 +58,7 @@ const TicketManagerData = async ({
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       pageSize={DEFAULT_PAGE_SIZE}
       tickets={listResult.tickets}
+      timeZone={timeZone}
     />
   );
 };

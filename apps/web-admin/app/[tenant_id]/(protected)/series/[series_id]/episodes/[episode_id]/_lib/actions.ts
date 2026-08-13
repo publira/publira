@@ -1,10 +1,6 @@
 "use server";
 
-import {
-  DEFAULT_TIME_ZONE,
-  parseInstant,
-  toInstantIsoString,
-} from "@publira/utils";
+import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { redirect } from "next/navigation";
 
 import {
@@ -12,6 +8,7 @@ import {
   updateEpisodePublishSchedule,
   uploadEpisodePages,
 } from "#lib/episode";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
 
@@ -67,16 +64,17 @@ const validateHiddenParams = (
 };
 
 const parsePublishAtToRFC3339 = (
-  value: string
+  value: string,
+  timeZone: string
 ): { ok: true; iso: string } | EpisodeEditErrorState => {
   const trimmed = value.trim();
   if (!trimmed) {
     return { iso: "", ok: true };
   }
 
-  // The form posts a `datetime-local` wall clock; read it in the admin UI's
+  // The form posts a `datetime-local` wall clock; read it in the tenant's
   // display zone instead of whatever zone the server process happens to run in.
-  const iso = toInstantIsoString(trimmed, DEFAULT_TIME_ZONE);
+  const iso = toInstantIsoString(trimmed, timeZone);
   const parsed = parseInstant(iso);
   if (!parsed) {
     return {
@@ -108,7 +106,8 @@ export const updateEpisodeScheduleAction = async (
   }
 
   const publishAtRaw = String(formData.get("publish_at") ?? "");
-  const schedule = parsePublishAtToRFC3339(publishAtRaw);
+  const timeZone = await getTenantDisplayTimeZone(hidden.tenantId);
+  const schedule = parsePublishAtToRFC3339(publishAtRaw, timeZone);
   if (!schedule.ok) {
     return schedule;
   }

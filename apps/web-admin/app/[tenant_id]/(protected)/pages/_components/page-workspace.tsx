@@ -52,6 +52,7 @@ interface PageWorkspaceProps {
   initialVersions: PageVersionListItem[];
   publishAction: (formData: FormData) => Promise<void>;
   rollbackAction: (formData: FormData) => Promise<void>;
+  timeZone: string;
   updatePageAction: (
     prevState: PageFormState,
     formData: FormData
@@ -100,6 +101,7 @@ export const PageWorkspace = ({
   initialVersions,
   publishAction,
   rollbackAction,
+  timeZone,
   updatePageAction,
 }: PageWorkspaceProps) => {
   const tenantId = useTenantId();
@@ -265,7 +267,7 @@ export const PageWorkspace = ({
                 {initialPage.publishedVersionId ? "公開中" : "下書き"}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                最終更新: {formatPageDateTime(initialPage.updatedAt)}
+                最終更新: {formatPageDateTime(initialPage.updatedAt, timeZone)}
               </span>
             </div>
 
@@ -379,10 +381,10 @@ export const PageWorkspace = ({
                         <Badge tone={status.tone}>{status.label}</Badge>
                       </TableCell>
                       <TableCell>
-                        {formatPageDateTime(version.createdAt)}
+                        {formatPageDateTime(version.createdAt, timeZone)}
                       </TableCell>
                       <TableCell>
-                        {formatPageDateTime(version.publishedAt)}
+                        {formatPageDateTime(version.publishedAt, timeZone)}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">

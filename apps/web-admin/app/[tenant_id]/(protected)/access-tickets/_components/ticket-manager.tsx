@@ -30,6 +30,7 @@ type TicketManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
   pageSize: number;
   tickets: AccessTicketItem[];
+  timeZone: string;
 };
 
 const statusLabel = (status: string): string => {
@@ -49,19 +50,21 @@ const statusLabel = (status: string): string => {
   }
 };
 
-// Absolute API timestamp → admin display zone. `formatDateTime` falls back to
+// Absolute API timestamp → tenant display zone. `formatDateTime` falls back to
 // the raw value when it cannot be parsed, so only the empty case is special.
-const formatTicketDateTime = (value: string): string =>
-  value ? formatDateTime(value) : "—";
+const formatTicketDateTime = (value: string, timeZone: string): string =>
+  value ? formatDateTime(value, { timeZone }) : "—";
 
 const TicketListBody = ({
   hasPageLinks,
   listErrorMessage,
   tickets,
+  timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
   tickets: AccessTicketItem[];
+  timeZone: string;
 }) => {
   if (listErrorMessage) {
     return (
@@ -130,8 +133,12 @@ const TicketListBody = ({
                 </span>
               </div>
             </TableCell>
-            <TableCell>{formatTicketDateTime(ticket.expiresAt)}</TableCell>
-            <TableCell>{formatTicketDateTime(ticket.createdAt)}</TableCell>
+            <TableCell>
+              {formatTicketDateTime(ticket.expiresAt, timeZone)}
+            </TableCell>
+            <TableCell>
+              {formatTicketDateTime(ticket.createdAt, timeZone)}
+            </TableCell>
             <TableCell>
               {ticket.status === "active" ? (
                 <RevokeTicketButton publicId={ticket.publicId} />
@@ -152,6 +159,7 @@ export const TicketManager = ({
   pageSize,
   previousHref,
   tickets,
+  timeZone,
 }: TicketManagerProps) => {
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   const showPagination =
@@ -179,6 +187,7 @@ export const TicketManager = ({
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
           tickets={tickets}
+          timeZone={timeZone}
         />
 
         {showPagination ? (

@@ -171,9 +171,9 @@ The reason is not style. `new Date("2030-01-01T10:00")` reads a zone-less string
 
 The zone must always be a decision, never an accident:
 
-- **Conversion helpers** (`toInstantIsoString`, `fromDateTimeLocalValue`, `toDateTimeLocalValue`, `startOfDayIsoString`, `endOfDayIsoString`) take `timeZone` as a **required parameter** — the signature forces the choice. Pass `DEFAULT_TIME_ZONE` and say in a comment which zone it stands in for ("browser TZ", "tenant TZ", "UTC day boundary").
-- **Display helpers** (`formatDateTime`, `formatDate`) default to `DEFAULT_TIME_ZONE`. Per [#564](https://github.com/publira/publira/issues/564) that default is the deliberate migration-era stand-in for the tenant zone, so omitting it is allowed; pass it explicitly whenever the zone is anything else, or where you want the call marked for the tenant-TZ migration.
-- Once tenant time zones are wired up ([#566](https://github.com/publira/publira/issues/566) / [#567](https://github.com/publira/publira/issues/567)), display call sites take a resolved tenant zone and the default stops being the right answer.
+- **Conversion helpers** (`toInstantIsoString`, `fromDateTimeLocalValue`, `toDateTimeLocalValue`, `startOfDayIsoString`, `endOfDayIsoString`) take `timeZone` as a **required parameter** — the signature forces the choice.
+- **Display helpers** (`formatDateTime`, `formatDate`) default to `DEFAULT_TIME_ZONE` only as a last-resort stand-in. Tenant-facing dates pass the resolved zone from `getTenantDisplayTimeZone` (web-admin [#566](https://github.com/publira/publira/issues/566), web-host [#567](https://github.com/publira/publira/issues/567)). Omitting `timeZone` on a tenant-facing call site is a bug.
+- `DEFAULT_TIME_ZONE` remains the fallback when the tenant read is unavailable, so the wall clock never depends on the host zone. Pass it explicitly and say in a comment which zone it stands in for ("unavailable tenant read", "non-tenant context").
 
 Never re-add a fixed `+09:00`.
 
@@ -201,14 +201,15 @@ new Date(value).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
 
 ```ts
 import {
-  DEFAULT_TIME_ZONE,
   formatDateTime,
   parseInstant,
   toInstantIsoString,
 } from "@publira/utils";
 
-// OK: wall clock resolved against an explicit zone
-const iso = toInstantIsoString(raw, DEFAULT_TIME_ZONE);
+const timeZone = await getTenantDisplayTimeZone(tenantId);
+
+// OK: wall clock resolved against the tenant's zone
+const iso = toInstantIsoString(raw, timeZone);
 
 // OK: "is it in the past?" without leaving Temporal
 const at = parseInstant(iso);
@@ -233,9 +234,8 @@ items.toSorted((a, b) => {
   return Temporal.Instant.compare(right, left);
 });
 
-// OK: shared formatter. The zone may be omitted to take DEFAULT_TIME_ZONE;
-// naming it marks the call for the tenant-TZ migration.
-formatDateTime(value, { fallback: "-", timeZone: DEFAULT_TIME_ZONE });
+// OK: shared formatter with the resolved tenant zone
+formatDateTime(value, { fallback: "-", timeZone });
 ```
 
 ### The `Date` boundary

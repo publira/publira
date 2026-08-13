@@ -36,8 +36,8 @@ import {
   toDateTimeLocalValue,
 } from "@publira/utils";
 
-// 表示（timeZone 省略時は DEFAULT_TIME_ZONE = Asia/Tokyo）
-formatDateTime(iso, { timeZone: "America/Los_Angeles", fallback: "-" });
+// 表示（テナント向けは getTenantDisplayTimeZone の値を渡す。省略時は DEFAULT_TIME_ZONE）
+formatDateTime(iso, { timeZone: tenantTimeZone, fallback: "-" });
 
 // 絶対時刻 ↔ datetime-local 壁時計（ホストのローカル TZ に依存しない）
 const local = toDateTimeLocalValue(iso, tenantTimeZone); // "YYYY-MM-DDTHH:mm"
