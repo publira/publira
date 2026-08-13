@@ -6711,6 +6711,7 @@ WHERE n.tenant_id = $1
         WHERE nr.announcement_id = n.id
             AND nr.user_id = $2
     )
+ON CONFLICT (announcement_id, user_id) DO NOTHING
 `
 
 type MarkAllAnnouncementsAsReadParams struct {

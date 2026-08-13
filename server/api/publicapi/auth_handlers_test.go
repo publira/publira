@@ -26,7 +26,7 @@ const (
 	listAnnouncementsForUserDescQuery = "-- name: ListAnnouncementsForUserDesc :many\n"
 	listAnnouncementsForUserAscQuery  = "-- name: ListAnnouncementsForUserAsc :many\n"
 	markAnnouncementAsReadQuery       = "-- name: MarkAnnouncementAsRead :one\nINSERT INTO announcement_reads (announcement_id, user_id, read_at)\nSELECT n.id, $3, NOW()\nFROM announcements n\nWHERE n.id = $1\n    AND n.tenant_id = $2\n    AND (n.target_user_id IS NULL OR n.target_user_id = $3)\nON CONFLICT (announcement_id, user_id) DO UPDATE\nSET read_at = EXCLUDED.read_at\nRETURNING announcement_id, user_id, read_at\n"
-	markAllAnnouncementsAsReadQuery   = "-- name: MarkAllAnnouncementsAsRead :execrows\nINSERT INTO announcement_reads (announcement_id, user_id, read_at)\nSELECT n.id, $2, NOW()\nFROM announcements n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM announcement_reads nr\n        WHERE nr.announcement_id = n.id\n            AND nr.user_id = $2\n    )\n"
+	markAllAnnouncementsAsReadQuery   = "-- name: MarkAllAnnouncementsAsRead :execrows\nINSERT INTO announcement_reads (announcement_id, user_id, read_at)\nSELECT n.id, $2, NOW()\nFROM announcements n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM announcement_reads nr\n        WHERE nr.announcement_id = n.id\n            AND nr.user_id = $2\n    )\nON CONFLICT (announcement_id, user_id) DO NOTHING\n"
 )
 
 const testPublicUserPublicID = "USR001"

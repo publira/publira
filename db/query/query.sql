@@ -2414,7 +2414,8 @@ WHERE n.tenant_id = $1
         FROM announcement_reads nr
         WHERE nr.announcement_id = n.id
             AND nr.user_id = $2
-    );
+    )
+ON CONFLICT (announcement_id, user_id) DO NOTHING;
 -- name: CountPublishedSeriesForTenant :one
 -- テナントの公開中シリーズ数を取得する（ダッシュボード用）
 SELECT COUNT(*)::int AS published_series_count
