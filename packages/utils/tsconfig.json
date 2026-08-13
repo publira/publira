@@ -1,6 +1,9 @@
 {
   "extends": "@publira/tsconfig/base.json",
   "compilerOptions": {
+    // ES2023 for `Array#toSorted`, which the repo's lint preset requires over
+    // the mutating `Array#sort` (`unicorn/no-array-sort`).
+    "lib": ["dom", "es2023", "esnext.temporal"],
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
