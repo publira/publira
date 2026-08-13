@@ -62,6 +62,21 @@ describe("web-admin proxy", () => {
     );
   });
 
+  it("古い /notifications は /announcements へリダイレクトする", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://admin.example.com/notifications?token=abc")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://admin.example.com/announcements?token=abc"
+    );
+    expect(mockResolveTenantId).not.toHaveBeenCalled();
+  });
+
   it.each(["/livez", "/readyz"])(
     "ヘルス probe %s はテナント解決なしで next する",
     async (path) => {

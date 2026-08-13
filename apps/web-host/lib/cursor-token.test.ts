@@ -44,8 +44,8 @@ describe("cursorPageHref", () => {
   });
 
   it("token をクエリ文字列として安全にエスケープする", () => {
-    expect(cursorPageHref("/notifications", "a+b/c")).toBe(
-      "/notifications?token=a%2Bb%2Fc"
+    expect(cursorPageHref("/announcements", "a+b/c")).toBe(
+      "/announcements?token=a%2Bb%2Fc"
     );
   });
 });

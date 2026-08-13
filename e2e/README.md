@@ -94,7 +94,7 @@ e2e/
     ├── catalog.not-found.spec.ts
     ├── catalog.outage.spec.ts
     ├── catalog.tenant-boundary.spec.ts
-    ├── notifications.pagination.spec.ts
+    ├── announcements.pagination.spec.ts
     ├── platform.tenant-ops.spec.ts
     ├── smoke.health.spec.ts
     └── smoke.web-host-home.spec.ts
@@ -181,7 +181,7 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 | `catalog.not-found.spec.ts` | 存在しないシリーズ / エピソード / 著者 |
 | `catalog.outage.spec.ts` | 公開 API 停止中のテナント解決失敗（503 + `Retry-After`）と復旧 |
 | `catalog.tenant-boundary.spec.ts` | Host による別テナント解決、公開中コンテンツのみの表示、テナント跨ぎ参照の遮断、未知 Host の 404 |
-| `notifications.pagination.spec.ts` | 会員通知一覧の cursor ページングと既読 |
+| `announcements.pagination.spec.ts` | 会員お知らせ一覧の cursor ページングと既読 |
 | `admin.publish-flow.spec.ts` | web-admin 入稿（シリーズ/エピソード作成・編集・公開）→ 管理画面再表示 → web-host 反映、バリデーションエラー、tenant 境界 |
 | `platform.tenant-ops.spec.ts` | Platform Console のテナント作成・編集・停止/再開、domain の公開/管理側解決、監査ログ、operator ロール別の操作可否 |
 

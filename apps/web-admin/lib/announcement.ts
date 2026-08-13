@@ -4,11 +4,11 @@ import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import type {
-  ListNotificationsResult,
-  ListNotificationTargetUsersResult,
-  NotificationItem,
-  NotificationTargetUser,
-} from "../app/[tenant_id]/(protected)/notifications/notification-types";
+  ListAnnouncementsResult,
+  ListAnnouncementTargetUsersResult,
+  AnnouncementItem,
+  AnnouncementTargetUser,
+} from "../app/[tenant_id]/(protected)/announcements/announcement-types";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions } from "./cursor-page";
 import {
@@ -20,9 +20,9 @@ import { getAccessToken } from "./session";
 
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
 const listErrorMessage =
-  "通知一覧の取得に失敗しました。時間をおいて再試行してください。";
+  "お知らせ一覧の取得に失敗しました。時間をおいて再試行してください。";
 const createErrorMessage =
-  "通知の配信に失敗しました。時間をおいて再試行してください。";
+  "お知らせの配信に失敗しました。時間をおいて再試行してください。";
 const targetUsersErrorMessage = "対象ユーザー一覧の取得に失敗しました。";
 const audienceTypeAllUsers = 1;
 const audienceTypeSelectedUsers = 2;
@@ -30,7 +30,7 @@ const audienceTypeSelectedUsers = 2;
 const mapErrorMessage = (error: unknown, fallback: string): string =>
   rpcErrorMessage(error, fallback);
 
-const mapNotification = (item: {
+const mapAnnouncement = (item: {
   audienceType: number;
   body: string;
   createdAt: string;
@@ -39,7 +39,7 @@ const mapNotification = (item: {
   targetUserName: string;
   targetUserPublicId: string;
   title: string;
-}): NotificationItem => ({
+}): AnnouncementItem => ({
   audienceType:
     item.audienceType === audienceTypeSelectedUsers ? "selected" : "all",
   body: item.body,
@@ -54,13 +54,13 @@ const mapNotification = (item: {
 const mapUser = (user: {
   publicId: string;
   name: string;
-}): NotificationTargetUser => ({
+}): AnnouncementTargetUser => ({
   name: user.name,
   publicId: user.publicId,
 });
 
 /**
- * Every user a notification can be addressed to.
+ * Every user an announcement can be addressed to.
  *
  * Walks `ListTenantUsers` cursor pages so the create form offers members past
  * the first page too. Sorted by name once the whole set is in hand; sorting a
@@ -70,9 +70,9 @@ const mapUser = (user: {
  * list, so a cache tag here would keep a newly added member out of the picker
  * until the entry expired.
  */
-export const listAllNotificationTargetUsers = async (
+export const listAllAnnouncementTargetUsers = async (
   tenantId: string
-): Promise<ListNotificationTargetUsersResult> => {
+): Promise<ListAnnouncementTargetUsersResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
@@ -83,7 +83,7 @@ export const listAllNotificationTargetUsers = async (
   }
 
   try {
-    const users: NotificationTargetUser[] = [];
+    const users: AnnouncementTargetUser[] = [];
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.users.listTenantUsers(
@@ -134,31 +134,31 @@ export const listAllNotificationTargetUsers = async (
 };
 
 /**
- * One page of the tenant's notifications, newest first.
+ * One page of the tenant's announcements, newest first.
  *
  * The rows keep the server's keyset order (`created_at`, `id` descending).
  * Sorting them here would only sort the rows that happen to share a page, which
  * reads as a broken order as soon as the list spans more than one page.
  */
-export const listNotifications = async (
+export const listAnnouncements = async (
   tenantId: string,
   options: CursorPageOptions = {}
-): Promise<ListNotificationsResult> => {
+): Promise<ListAnnouncementsResult> => {
   "use cache: private";
-  cacheTag(`notifications-${tenantId}`);
+  cacheTag(`announcements-${tenantId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
+      announcements: [],
       message: sessionErrorMessage,
-      notifications: [],
       ok: false,
     };
   }
 
   try {
-    const response = await apiClient.notification.listNotifications(
+    const response = await apiClient.announcement.listAnnouncements(
       {
         ...cursorPageRequest(options),
         tenant: { tenantId },
@@ -168,8 +168,8 @@ export const listNotifications = async (
 
     return {
       ...cursorPageTokens(response),
-      notifications: (response.notifications ?? []).map((item) =>
-        mapNotification(item)
+      announcements: (response.announcements ?? []).map((item) =>
+        mapAnnouncement(item)
       ),
       ok: true,
     };
@@ -177,14 +177,14 @@ export const listNotifications = async (
     rethrowUnclassifiedRpcError(error);
     return {
       ...emptyCursorPageTokens,
+      announcements: [],
       message: mapErrorMessage(error, listErrorMessage),
-      notifications: [],
       ok: false,
     };
   }
 };
 
-export const createNotification = async (input: {
+export const createAnnouncement = async (input: {
   tenantId: string;
   title: string;
   body: string;
@@ -208,7 +208,7 @@ export const createNotification = async (input: {
       : audienceTypeAllUsers;
 
   try {
-    const response = await apiClient.notification.createNotification(
+    const response = await apiClient.announcement.createAnnouncement(
       {
         audienceType: audienceTypeEnum,
         body: input.body,
@@ -221,7 +221,7 @@ export const createNotification = async (input: {
     );
 
     return {
-      createdCount: response.notifications?.length ?? 0,
+      createdCount: response.announcements?.length ?? 0,
       ok: true,
     };
   } catch (error) {

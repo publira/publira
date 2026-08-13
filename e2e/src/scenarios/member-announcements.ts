@@ -1,10 +1,10 @@
 /**
- * Records created by `db/seeds/scenarios/020_member_notifications.sql`.
+ * Records created by `db/seeds/scenarios/020_member_announcements.sql`.
  *
  * Titles and counts are fixed in the seed SQL; keep them in sync with its
  * header comment.
  */
-export const MEMBER_NOTIFICATIONS_SCENARIO = "020_member_notifications";
+export const MEMBER_ANNOUNCEMENTS_SCENARIO = "020_member_announcements";
 
 /** Dev seed member on Host `localhost` (db/seeds/README.md). */
 export const SEED_MEMBER = {
@@ -12,7 +12,7 @@ export const SEED_MEMBER = {
   password: "memberpass",
 } as const;
 
-export const MEMBER_NOTIFICATIONS = {
+export const MEMBER_ANNOUNCEMENTS = {
   /** Total rows the scenario seeds, i.e. three pages of 20 / 20 / 5. */
   count: 45,
   /** Newest row, so it heads the first page. */

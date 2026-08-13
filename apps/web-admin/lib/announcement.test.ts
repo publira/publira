@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetSessionId,
-  mockListNotificationsApi,
-  mockCreateNotificationApi,
+  mockListAnnouncementsApi,
+  mockCreateAnnouncementsApi,
   mockListTenantUsersApi,
 } = vi.hoisted(() => ({
-  mockCreateNotificationApi: vi.fn(),
+  mockCreateAnnouncementsApi: vi.fn(),
   mockGetSessionId: vi.fn(),
-  mockListNotificationsApi: vi.fn(),
+  mockListAnnouncementsApi: vi.fn(),
   mockListTenantUsersApi: vi.fn(),
 }));
 
@@ -19,9 +19,9 @@ vi.mock("./session", () => ({
 
 vi.mock("./api", () => ({
   apiClient: {
-    notification: {
-      createNotification: mockCreateNotificationApi,
-      listNotifications: mockListNotificationsApi,
+    announcement: {
+      createAnnouncement: mockCreateAnnouncementsApi,
+      listAnnouncements: mockListAnnouncementsApi,
     },
     users: {
       listTenantUsers: mockListTenantUsersApi,
@@ -36,7 +36,7 @@ vi.mock("next/cache", () => ({
   cacheTag: vi.fn(),
 }));
 
-const notification = (id: string, createdAt: string) => ({
+const announcement = (id: string, createdAt: string) => ({
   audienceType: 1,
   body: "本文",
   createdAt,
@@ -47,7 +47,7 @@ const notification = (id: string, createdAt: string) => ({
   title: "タイトル",
 });
 
-describe("notification lib", () => {
+describe("announcement lib", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -56,19 +56,19 @@ describe("notification lib", () => {
   });
 
   it("cursor token と limit をそのまま渡し、応答のトークンを返す", async () => {
-    mockListNotificationsApi.mockResolvedValue({
+    mockListAnnouncementsApi.mockResolvedValue({
+      announcements: [],
       nextToken: "next-page",
-      notifications: [],
       previousToken: "previous-page",
     });
 
-    const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001", {
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001", {
       limit: 20,
       token: "current-page",
     });
 
-    expect(mockListNotificationsApi).toHaveBeenCalledWith(
+    expect(mockListAnnouncementsApi).toHaveBeenCalledWith(
       {
         limit: 20,
         tenant: { tenantId: "TENANT001" },
@@ -84,12 +84,12 @@ describe("notification lib", () => {
   });
 
   it("最初のページは空のトークンと既定 limit で取得する", async () => {
-    mockListNotificationsApi.mockResolvedValue({ notifications: [] });
+    mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
-    const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001");
 
-    expect(mockListNotificationsApi).toHaveBeenCalledWith(
+    expect(mockListAnnouncementsApi).toHaveBeenCalledWith(
       {
         limit: 20,
         tenant: { tenantId: "TENANT001" },
@@ -105,9 +105,9 @@ describe("notification lib", () => {
     });
   });
 
-  it("通知一覧を正しく変換する", async () => {
-    mockListNotificationsApi.mockResolvedValue({
-      notifications: [
+  it("お知らせ一覧を正しく変換する", async () => {
+    mockListAnnouncementsApi.mockResolvedValue({
+      announcements: [
         {
           audienceType: 2,
           body: "本文",
@@ -121,11 +121,11 @@ describe("notification lib", () => {
       ],
     });
 
-    const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001");
 
     expect(result.ok).toBe(true);
-    expect(result.notifications).toEqual([
+    expect(result.announcements).toEqual([
       {
         audienceType: "selected",
         body: "本文",
@@ -140,31 +140,31 @@ describe("notification lib", () => {
   });
 
   it("サーバーのキーセット順を並べ替えずに返す", async () => {
-    mockListNotificationsApi.mockResolvedValue({
-      notifications: [
-        notification("n2", "2026-04-01T00:00:00Z"),
-        notification("n1", "2026-06-01T00:00:00Z"),
+    mockListAnnouncementsApi.mockResolvedValue({
+      announcements: [
+        announcement("n2", "2026-04-01T00:00:00Z"),
+        announcement("n1", "2026-06-01T00:00:00Z"),
       ],
     });
 
-    const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001");
 
-    expect(result.notifications.map((item) => item.id)).toEqual(["n2", "n1"]);
+    expect(result.announcements.map((item) => item.id)).toEqual(["n2", "n1"]);
   });
 
   it("権限エラーを分かりやすく返す", async () => {
-    mockListNotificationsApi.mockRejectedValue(
+    mockListAnnouncementsApi.mockRejectedValue(
       new ConnectError("tenant admin role required", Code.PermissionDenied)
     );
 
-    const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001");
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001");
 
     expect(result).toEqual({
+      announcements: [],
       message: "この操作を行う権限がありません。",
       nextToken: "",
-      notifications: [],
       ok: false,
       previousToken: "",
     });
@@ -173,43 +173,43 @@ describe("notification lib", () => {
   it("セッションが無ければトークンなしの結果を返す", async () => {
     mockGetSessionId.mockResolvedValue("");
 
-    const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001", {
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001", {
       token: "current-page",
     });
 
-    expect(mockListNotificationsApi).not.toHaveBeenCalled();
+    expect(mockListAnnouncementsApi).not.toHaveBeenCalled();
     expect(result).toMatchObject({
+      announcements: [],
       nextToken: "",
-      notifications: [],
       ok: false,
       previousToken: "",
     });
   });
 
   it("取得に失敗してもトークンなしの結果を返す", async () => {
-    mockListNotificationsApi.mockRejectedValue(
+    mockListAnnouncementsApi.mockRejectedValue(
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    const { listNotifications } = await import("./notification");
-    const result = await listNotifications("TENANT001", {
+    const { listAnnouncements } = await import("./announcement");
+    const result = await listAnnouncements("TENANT001", {
       token: "current-page",
     });
 
     expect(result).toMatchObject({
+      announcements: [],
       nextToken: "",
-      notifications: [],
       ok: false,
       previousToken: "",
     });
   });
 
   it("一覧取得では対象ユーザーを読まない", async () => {
-    mockListNotificationsApi.mockResolvedValue({ notifications: [] });
+    mockListAnnouncementsApi.mockResolvedValue({ announcements: [] });
 
-    const { listNotifications } = await import("./notification");
-    await listNotifications("TENANT001");
+    const { listAnnouncements } = await import("./announcement");
+    await listAnnouncements("TENANT001");
 
     // 対象ユーザーは作成画面だけが要るので、一覧のたびに引かない。
     expect(mockListTenantUsersApi).not.toHaveBeenCalled();
@@ -226,8 +226,8 @@ describe("notification lib", () => {
         users: [{ name: "アオキ", publicId: "USER002" }],
       });
 
-    const { listAllNotificationTargetUsers } = await import("./notification");
-    const result = await listAllNotificationTargetUsers("TENANT001");
+    const { listAllAnnouncementTargetUsers } = await import("./announcement");
+    const result = await listAllAnnouncementTargetUsers("TENANT001");
 
     expect(mockListTenantUsersApi).toHaveBeenNthCalledWith(
       1,
@@ -267,8 +267,8 @@ describe("notification lib", () => {
       users: [{ name: "ヤマダ", publicId: "USER001" }],
     });
 
-    const { listAllNotificationTargetUsers } = await import("./notification");
-    const result = await listAllNotificationTargetUsers("TENANT001");
+    const { listAllAnnouncementTargetUsers } = await import("./announcement");
+    const result = await listAllAnnouncementTargetUsers("TENANT001");
 
     expect(result).toEqual({
       message: "対象ユーザー一覧の取得に失敗しました。",
@@ -282,8 +282,8 @@ describe("notification lib", () => {
       new ConnectError("upstream down", Code.Unavailable)
     );
 
-    const { listAllNotificationTargetUsers } = await import("./notification");
-    const result = await listAllNotificationTargetUsers("TENANT001");
+    const { listAllAnnouncementTargetUsers } = await import("./announcement");
+    const result = await listAllAnnouncementTargetUsers("TENANT001");
 
     expect(result).toEqual({
       message:
@@ -293,13 +293,13 @@ describe("notification lib", () => {
     });
   });
 
-  it("通知作成成功時に件数を返す", async () => {
-    mockCreateNotificationApi.mockResolvedValue({
-      notifications: [{ id: "n1" }, { id: "n2" }],
+  it("お知らせ作成成功時に件数を返す", async () => {
+    mockCreateAnnouncementsApi.mockResolvedValue({
+      announcements: [{ id: "n1" }, { id: "n2" }],
     });
 
-    const { createNotification } = await import("./notification");
-    const result = await createNotification({
+    const { createAnnouncement } = await import("./announcement");
+    const result = await createAnnouncement({
       audienceType: "all",
       body: "本文",
       linkUrl: "",

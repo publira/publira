@@ -2253,13 +2253,13 @@ SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
     updated_at = NOW()
 RETURNING *;
 
--- name: CreateNotification :one
--- 通知を作成
-INSERT INTO notifications (
+-- name: CreateAnnouncement :one
+-- お知らせを作成
+INSERT INTO announcements (
     id,
     tenant_id,
     target_user_id,
-    notification_type,
+    announcement_type,
     title,
     body,
     link_url,
@@ -2268,18 +2268,18 @@ INSERT INTO notifications (
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
--- Admin ListNotifications は (created_at, id) の降順で表示する。
--- 次ページは降順、前ページは昇順のクエリで idx_notifications_tenant_created_at を
+-- Admin ListAnnouncements は (created_at, id) の降順で表示する。
+-- 次ページは降順、前ページは昇順のクエリで idx_announcements_tenant_created_at を
 -- 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
 -- 索引順に読めないため、走査方向ごとにクエリを分ける。
 -- cursor の共通仕様は proto/README.md を参照。
--- name: ListNotificationsForTenantDesc :many
--- テナント管理画面向け通知一覧（次ページ方向）
+-- name: ListAnnouncementsForTenantDesc :many
+-- テナント管理画面向けお知らせ一覧（次ページ方向）
 SELECT
     n.id,
     n.tenant_id,
     n.target_user_id,
-    n.notification_type,
+    n.announcement_type,
     n.title,
     n.body,
     n.link_url,
@@ -2287,7 +2287,7 @@ SELECT
     n.created_at,
     u.public_id AS target_user_public_id,
     u.name AS target_user_name
-FROM notifications n
+FROM announcements n
     LEFT JOIN users u ON u.id = n.target_user_id
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (
@@ -2304,13 +2304,13 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
 ORDER BY n.created_at DESC, n.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListNotificationsForTenantAsc :many
--- テナント管理画面向け通知一覧（前ページ方向）
+-- name: ListAnnouncementsForTenantAsc :many
+-- テナント管理画面向けお知らせ一覧（前ページ方向）
 SELECT
     n.id,
     n.tenant_id,
     n.target_user_id,
-    n.notification_type,
+    n.announcement_type,
     n.title,
     n.body,
     n.link_url,
@@ -2318,7 +2318,7 @@ SELECT
     n.created_at,
     u.public_id AS target_user_public_id,
     u.name AS target_user_name
-FROM notifications n
+FROM announcements n
     LEFT JOIN users u ON u.id = n.target_user_id
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (
@@ -2335,19 +2335,19 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
 ORDER BY n.created_at ASC, n.id ASC
 LIMIT sqlc.arg('limit');
 
--- 公開サイトの ListNotifications は (created_at, id) の降順で表示する。
+-- 公開サイトの ListAnnouncements は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 -- handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
 -- 読めないため、走査方向ごとにクエリを分ける。
 -- cursor の共通仕様は proto/README.md を参照。
--- name: ListNotificationsForUserDesc :many
--- 通知一覧を取得（既読状態付き・次ページ方向）
+-- name: ListAnnouncementsForUserDesc :many
+-- お知らせ一覧を取得（既読状態付き・次ページ方向）
 SELECT
     n.*,
-    (nr.notification_id IS NOT NULL) AS is_read,
+    (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
-FROM notifications n
-    LEFT JOIN notification_reads nr ON nr.notification_id = n.id
+FROM announcements n
+    LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = sqlc.arg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'))
@@ -2365,14 +2365,14 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
 ORDER BY n.created_at DESC, n.id DESC
 LIMIT sqlc.arg('limit');
 
--- name: ListNotificationsForUserAsc :many
--- 通知一覧を取得（既読状態付き・前ページ方向）
+-- name: ListAnnouncementsForUserAsc :many
+-- お知らせ一覧を取得（既読状態付き・前ページ方向）
 SELECT
     n.*,
-    (nr.notification_id IS NOT NULL) AS is_read,
+    (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
-FROM notifications n
-    LEFT JOIN notification_reads nr ON nr.notification_id = n.id
+FROM announcements n
+    LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
     AND nr.user_id = sqlc.arg('user_id')
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'))
@@ -2390,29 +2390,29 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
 ORDER BY n.created_at ASC, n.id ASC
 LIMIT sqlc.arg('limit');
 
--- name: MarkNotificationAsRead :one
--- 指定した通知を既読にする（未読時は新規作成、既読済みなら時刻更新）
-INSERT INTO notification_reads (notification_id, user_id, read_at)
+-- name: MarkAnnouncementAsRead :one
+-- 指定したお知らせを既読にする（未読時は新規作成、既読済みなら時刻更新）
+INSERT INTO announcement_reads (announcement_id, user_id, read_at)
 SELECT n.id, $3, NOW()
-FROM notifications n
+FROM announcements n
 WHERE n.id = $1
     AND n.tenant_id = $2
     AND (n.target_user_id IS NULL OR n.target_user_id = $3)
-ON CONFLICT (notification_id, user_id) DO UPDATE
+ON CONFLICT (announcement_id, user_id) DO UPDATE
 SET read_at = EXCLUDED.read_at
 RETURNING *;
 
--- name: MarkAllNotificationsAsRead :execrows
--- 指定ユーザーの未読通知を一括既読化
-INSERT INTO notification_reads (notification_id, user_id, read_at)
+-- name: MarkAllAnnouncementsAsRead :execrows
+-- 指定ユーザーの未読お知らせを一括既読化
+INSERT INTO announcement_reads (announcement_id, user_id, read_at)
 SELECT n.id, $2, NOW()
-FROM notifications n
+FROM announcements n
 WHERE n.tenant_id = $1
     AND (n.target_user_id IS NULL OR n.target_user_id = $2)
     AND NOT EXISTS (
         SELECT 1
-        FROM notification_reads nr
-        WHERE nr.notification_id = n.id
+        FROM announcement_reads nr
+        WHERE nr.announcement_id = n.id
             AND nr.user_id = $2
     );
 -- name: CountPublishedSeriesForTenant :one

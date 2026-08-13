@@ -12,7 +12,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 
-export interface MemberNotificationItem {
+export interface MemberAnnouncementItem {
   id: string;
   title: string;
   body: string;
@@ -30,14 +30,14 @@ const isSignInRequiredError = (error: unknown): boolean =>
   isRpcError(error, Code.Unauthenticated, Code.InvalidArgument);
 
 const mapErrorToMessage = (error: unknown): string =>
-  rpcErrorMessage(error, "通知の取得に失敗しました。", {
+  rpcErrorMessage(error, "お知らせの取得に失敗しました。", {
     "invalid-argument": "セッションが無効です。再ログインしてください。",
   });
 
-const mapNotificationItems = (
-  response: Awaited<ReturnType<typeof apiClient.auth.listNotifications>>
-): MemberNotificationItem[] =>
-  (response.notifications ?? []).map((item) => ({
+const mapAnnouncementItems = (
+  response: Awaited<ReturnType<typeof apiClient.auth.listAnnouncements>>
+): MemberAnnouncementItem[] =>
+  (response.announcements ?? []).map((item) => ({
     body: item.body,
     createdAt: item.createdAt,
     id: item.id,
@@ -51,17 +51,17 @@ const mapNotificationItems = (
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
  * `proto/README.md`.
  */
-export interface ListMyNotificationsOptions {
+export interface ListMyAnnouncementsOptions {
   limit?: number;
   token?: string;
 }
 
-const listNotificationsRpc = (
+const listAnnouncementsRpc = (
   tenantId: string,
   sessionId: string,
-  { limit = 20, token = "" }: ListMyNotificationsOptions
-): Promise<Awaited<ReturnType<typeof apiClient.auth.listNotifications>>> =>
-  apiClient.auth.listNotifications(
+  { limit = 20, token = "" }: ListMyAnnouncementsOptions
+): Promise<Awaited<ReturnType<typeof apiClient.auth.listAnnouncements>>> =>
+  apiClient.auth.listAnnouncements(
     {
       limit,
       tenant: { tenantId },
@@ -70,40 +70,40 @@ const listNotificationsRpc = (
     buildSessionHeaders(sessionId)
   );
 
-interface MyNotificationsPage {
-  notifications: MemberNotificationItem[];
+interface MyAnnouncementsPage {
+  announcements: MemberAnnouncementItem[];
   /** Token for the previous page. Empty on the first page. */
   previousToken: string;
   /** Token for the next page. Empty on the last page. */
   nextToken: string;
 }
 
-export type ListMyNotificationsResult =
-  | ({ ok: true } & MyNotificationsPage)
+export type ListMyAnnouncementsResult =
+  | ({ ok: true } & MyAnnouncementsPage)
   | ({
       ok: false;
       message: string;
       /** The reader has to sign in again before this list can be shown. */
       requiresSignIn: boolean;
-    } & MyNotificationsPage);
+    } & MyAnnouncementsPage);
 
-const fetchNotifications = async (
+const fetchAnnouncements = async (
   tenantId: string,
   sessionId: string,
-  options: ListMyNotificationsOptions
-): Promise<ListMyNotificationsResult> => {
+  options: ListMyAnnouncementsOptions
+): Promise<ListMyAnnouncementsResult> => {
   try {
-    const response = await listNotificationsRpc(tenantId, sessionId, options);
+    const response = await listAnnouncementsRpc(tenantId, sessionId, options);
 
     return {
+      announcements: mapAnnouncementItems(response),
       nextToken: response.nextToken ?? "",
-      notifications: mapNotificationItems(response),
       ok: true,
       previousToken: response.previousToken ?? "",
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    console.warn("[web-host] listNotifications failed", {
+    console.warn("[web-host] listAnnouncements failed", {
       error: error instanceof Error ? error.message : String(error),
       hasSessionId: sessionId.length > 0,
       sessionIdLength: sessionId.length,
@@ -111,9 +111,9 @@ const fetchNotifications = async (
     });
 
     return {
+      announcements: [],
       message: mapErrorToMessage(error),
       nextToken: "",
-      notifications: [],
       ok: false,
       previousToken: "",
       requiresSignIn: isSignInRequiredError(error),
@@ -121,20 +121,20 @@ const fetchNotifications = async (
   }
 };
 
-export const listMyNotifications = async (
+export const listMyAnnouncements = async (
   tenantId: string,
   sessionId?: string,
-  options: ListMyNotificationsOptions = {}
-): Promise<ListMyNotificationsResult> => {
+  options: ListMyAnnouncementsOptions = {}
+): Promise<ListMyAnnouncementsResult> => {
   noStore();
 
   const sid = await resolveAccessToken(sessionId);
-  return fetchNotifications(tenantId, sid, options);
+  return fetchAnnouncements(tenantId, sid, options);
 };
 
-export const markNotificationAsRead = async (
+export const markAnnouncementAsRead = async (
   tenantId: string,
-  notificationId: string,
+  announcementId: string,
   sessionId?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(sessionId);
@@ -143,9 +143,9 @@ export const markNotificationAsRead = async (
   }
 
   try {
-    const response = await apiClient.auth.markNotificationAsRead(
+    const response = await apiClient.auth.markAnnouncementAsRead(
       {
-        notificationId,
+        announcementId,
         tenant: { tenantId },
       },
       buildSessionHeaders(sid)
@@ -158,7 +158,7 @@ export const markNotificationAsRead = async (
   }
 };
 
-export const markAllNotificationsAsRead = async (
+export const markAllAnnouncementsAsRead = async (
   tenantId: string,
   sessionId?: string
 ): Promise<number> => {
@@ -168,7 +168,7 @@ export const markAllNotificationsAsRead = async (
   }
 
   try {
-    const response = await apiClient.auth.markAllNotificationsAsRead(
+    const response = await apiClient.auth.markAllAnnouncementsAsRead(
       {
         tenant: { tenantId },
       },

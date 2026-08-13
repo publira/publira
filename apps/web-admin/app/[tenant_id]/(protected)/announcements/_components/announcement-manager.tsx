@@ -23,16 +23,16 @@ import { PaginationFooter } from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 
-import type { NotificationItem } from "../notification-types";
+import type { AnnouncementItem } from "../announcement-types";
 
-type NotificationManagerProps = CursorPageHrefs & {
+type AnnouncementManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
-  notifications: NotificationItem[];
+  announcements: AnnouncementItem[];
   pageSize: number;
   timeZone: string;
 };
 
-const formatAudience = (item: NotificationItem): string => {
+const formatAudience = (item: AnnouncementItem): string => {
   if (item.audienceType === "all") {
     return "全体";
   }
@@ -52,38 +52,38 @@ const excerpt = (text: string, maxLength: number): string => {
 
 // Absolute API timestamp → tenant display zone. `formatDateTime` falls back to
 // the raw value when it cannot be parsed, so only the empty case is special.
-const formatNotificationDateTime = (value: string, timeZone: string): string =>
+const formatAnnouncementDateTime = (value: string, timeZone: string): string =>
   value ? formatDateTime(value, { timeZone }) : "—";
 
-const NotificationListBody = ({
+const AnnouncementListBody = ({
   hasPageLinks,
   listErrorMessage,
-  notifications,
+  announcements,
   timeZone,
 }: {
   hasPageLinks: boolean;
   listErrorMessage?: string;
-  notifications: NotificationItem[];
+  announcements: AnnouncementItem[];
   timeZone: string;
 }) => {
-  // A failed fetch still hands an empty `notifications` array; do not show the
+  // A failed fetch still hands an empty `announcements` array; do not show the
   // empty list state alongside the error or operators will read it as "none".
   if (listErrorMessage) {
     return (
       <SectionError
         description={listErrorMessage}
-        title="通知一覧を表示できませんでした"
+        title="お知らせ一覧を表示できませんでした"
       />
     );
   }
 
-  if (notifications.length === 0) {
+  if (announcements.length === 0) {
     return (
       <CursorPageEmptyState
-        description="通知作成から対象ユーザーに通知を配信してください。"
+        description="お知らせ作成から対象ユーザーにお知らせを配信してください。"
         hasPageLinks={hasPageLinks}
-        itemLabel="通知"
-        title="通知がまだありません。"
+        itemLabel="お知らせ"
+        title="お知らせがまだありません。"
       />
     );
   }
@@ -100,15 +100,15 @@ const NotificationListBody = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {notifications.map((notification) => (
-          <TableRow key={notification.id}>
+        {announcements.map((announcement) => (
+          <TableRow key={announcement.id}>
             <TableCell>
-              {formatNotificationDateTime(notification.createdAt, timeZone)}
+              {formatAnnouncementDateTime(announcement.createdAt, timeZone)}
             </TableCell>
-            <TableCell className="font-medium">{notification.title}</TableCell>
-            <TableCell>{excerpt(notification.body, 72)}</TableCell>
-            <TableCell>{formatAudience(notification)}</TableCell>
-            <TableCell>{notification.linkUrl || "—"}</TableCell>
+            <TableCell className="font-medium">{announcement.title}</TableCell>
+            <TableCell>{excerpt(announcement.body, 72)}</TableCell>
+            <TableCell>{formatAudience(announcement)}</TableCell>
+            <TableCell>{announcement.linkUrl || "—"}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -116,48 +116,48 @@ const NotificationListBody = ({
   );
 };
 
-export const NotificationManager = ({
+export const AnnouncementManager = ({
   listErrorMessage,
   nextHref,
-  notifications,
+  announcements,
   pageSize,
   previousHref,
   timeZone,
-}: NotificationManagerProps) => {
+}: AnnouncementManagerProps) => {
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
   const showPagination =
-    !listErrorMessage && (notifications.length > 0 || hasPageLinks);
+    !listErrorMessage && (announcements.length > 0 || hasPageLinks);
 
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-1">
-          <CardTitle>通知一覧</CardTitle>
+          <CardTitle>お知らせ一覧</CardTitle>
           <CardDescription>
-            作成済みの通知と配信対象を確認できます。
+            作成済みのお知らせと配信対象を確認できます。
           </CardDescription>
         </div>
         <LinkButton
-          render={<Link href="/notifications/new" />}
+          render={<Link href="/announcements/new" />}
           variant="outline"
         >
-          通知を作成
+          お知らせを作成
         </LinkButton>
       </CardHeader>
 
       <CardContent className="grid gap-4">
-        <NotificationListBody
+        <AnnouncementListBody
           hasPageLinks={hasPageLinks}
           listErrorMessage={listErrorMessage}
-          notifications={notifications}
+          announcements={announcements}
           timeZone={timeZone}
         />
 
         {showPagination ? (
           <PaginationFooter
-            ariaLabel="通知一覧のページ送り"
+            ariaLabel="お知らせ一覧のページ送り"
             description={`新しい順に、1ページあたり ${pageSize} 件まで表示します。`}
             nextHref={nextHref}
             previousHref={previousHref}

@@ -28,6 +28,8 @@ type Querier interface {
 	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
+	// お知らせを作成
+	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
 	CreateCreator(ctx context.Context, arg CreateCreatorParams) (Creator, error)
 	CreateCreatorImage(ctx context.Context, arg CreateCreatorImageParams) (CreatorImage, error)
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
@@ -38,8 +40,6 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error)
 	CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error)
-	// 通知を作成
-	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	// ページを新規作成する
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
 	// ページバージョンを新規作成する
@@ -163,6 +163,24 @@ type Querier interface {
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]uuid.UUID, error)
 	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]uuid.UUID, error)
+	// テナント管理画面向けお知らせ一覧（前ページ方向）
+	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error)
+	// Admin ListAnnouncements は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで idx_announcements_tenant_created_at を
+	// 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
+	// 索引順に読めないため、走査方向ごとにクエリを分ける。
+	// cursor の共通仕様は proto/README.md を参照。
+	// テナント管理画面向けお知らせ一覧（次ページ方向）
+	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error)
+	// お知らせ一覧を取得（既読状態付き・前ページ方向）
+	ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error)
+	// 公開サイトの ListAnnouncements は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+	// 読めないため、走査方向ごとにクエリを分ける。
+	// cursor の共通仕様は proto/README.md を参照。
+	// お知らせ一覧を取得（既読状態付き・次ページ方向）
+	ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnnouncementsForUserDescParams) ([]ListAnnouncementsForUserDescRow, error)
 	ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error)
 	// ListAuditLogs は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
@@ -200,24 +218,6 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
-	// テナント管理画面向け通知一覧（前ページ方向）
-	ListNotificationsForTenantAsc(ctx context.Context, arg ListNotificationsForTenantAscParams) ([]ListNotificationsForTenantAscRow, error)
-	// Admin ListNotifications は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで idx_notifications_tenant_created_at を
-	// 走査し、前ページだけ handler で表示順へ戻す。ORDER BY をパラメータで分岐させると
-	// 索引順に読めないため、走査方向ごとにクエリを分ける。
-	// cursor の共通仕様は proto/README.md を参照。
-	// テナント管理画面向け通知一覧（次ページ方向）
-	ListNotificationsForTenantDesc(ctx context.Context, arg ListNotificationsForTenantDescParams) ([]ListNotificationsForTenantDescRow, error)
-	// 通知一覧を取得（既読状態付き・前ページ方向）
-	ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error)
-	// 公開サイトの ListNotifications は (created_at, id) の降順で表示する。
-	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
-	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
-	// 読めないため、走査方向ごとにクエリを分ける。
-	// cursor の共通仕様は proto/README.md を参照。
-	// 通知一覧を取得（既読状態付き・次ページ方向）
-	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
 	// ページのバージョン一覧を新しい順に取得する
 	ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error)
 	// Admin ListPages は (created_at, id) の昇順で表示する。
@@ -270,11 +270,11 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
-	// 指定ユーザーの未読通知を一括既読化
-	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
+	// 指定ユーザーの未読お知らせを一括既読化
+	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
+	// 指定したお知らせを既読にする（未読時は新規作成、既読済みなら時刻更新）
+	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
-	// 指定した通知を既読にする（未読時は新規作成、既読済みなら時刻更新）
-	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
 	MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error

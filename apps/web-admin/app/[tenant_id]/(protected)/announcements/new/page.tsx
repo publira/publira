@@ -14,20 +14,20 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
-import { listAllNotificationTargetUsers } from "#lib/notification";
+import { listAllAnnouncementTargetUsers } from "#lib/announcement";
 import { getTenantId } from "#lib/tenant-id";
 
-import { NotificationForm } from "../_components/notification-form";
-import { createNotificationAction } from "../_lib/actions";
+import { AnnouncementForm } from "../_components/announcement-form";
+import { createAnnouncementAction } from "../_lib/actions";
 
 export const metadata: Metadata = {
-  title: "通知作成",
+  title: "お知らせ作成",
 };
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-const NotificationFormSkeleton = () => (
+const AnnouncementFormSkeleton = () => (
   <div className="rounded-2xl border border-border/70 bg-card p-6">
     <div className="grid gap-4">
       <div className="h-10 animate-pulse rounded bg-muted/70" />
@@ -38,41 +38,41 @@ const NotificationFormSkeleton = () => (
   </div>
 );
 
-const NotificationFormData = async () => {
+const AnnouncementFormData = async () => {
   const tenantId = await getTenantId();
-  const usersResult = await listAllNotificationTargetUsers(tenantId);
+  const usersResult = await listAllAnnouncementTargetUsers(tenantId);
 
   return (
-    <NotificationForm
-      action={createNotificationAction}
+    <AnnouncementForm
+      action={createAnnouncementAction}
       users={usersResult.users}
       usersErrorMessage={usersResult.ok ? undefined : usersResult.message}
     />
   );
 };
 
-const NewNotificationPage = () => (
+const NewAnnouncementPage = () => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
         <AdminPageEyebrow>Console</AdminPageEyebrow>
-        <AdminPageTitle>通知を作成</AdminPageTitle>
+        <AdminPageTitle>お知らせを作成</AdminPageTitle>
         <AdminPageDescription>
-          本文・リンク先・配信対象を指定して通知を配信します。
+          本文・リンク先・配信対象を指定してお知らせを配信します。
         </AdminPageDescription>
       </AdminPageHeading>
       <AdminPageActions>
-        <LinkButton render={<Link href="/notifications" />} variant="outline">
+        <LinkButton render={<Link href="/announcements" />} variant="outline">
           一覧へ戻る
         </LinkButton>
       </AdminPageActions>
     </AdminPageHeader>
     <AdminPageContent>
-      <Suspense fallback={<NotificationFormSkeleton />}>
-        <NotificationFormData />
+      <Suspense fallback={<AnnouncementFormSkeleton />}>
+        <AnnouncementFormData />
       </Suspense>
     </AdminPageContent>
   </AdminPage>
 );
 
-export default NewNotificationPage;
+export default NewAnnouncementPage;
