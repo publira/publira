@@ -12,6 +12,7 @@
 - `@publira/utils/form-data`: `FormData` を zod の検証対象オブジェクトへ変換するヘルパー
 - `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー
 - `@publira/utils/cached-read`: `"use cache"` の読み取りで失敗を「値」として返し、その失敗をキャッシュに残さないためのヘルパー
+- `@publira/utils/i18n`: ロケール判定と、動的 `import()` したメッセージカタログからキーに一致する文字列を返すヘルパー
 
 ## 使い方
 
@@ -37,7 +38,8 @@ import {
 } from "@publira/utils";
 
 // 表示（テナント向けは getTenantDisplayTimeZone の値を渡す。省略時は DEFAULT_TIME_ZONE）
-formatDateTime(iso, { timeZone: tenantTimeZone, fallback: "-" });
+// locale は UI ロケール。省略時は ja（従来の ja-JP 固定と同じ出力）
+formatDateTime(iso, { locale, timeZone: tenantTimeZone, fallback: "-" });
 
 // 絶対時刻 ↔ datetime-local 壁時計（ホストのローカル TZ に依存しない）
 const local = toDateTimeLocalValue(iso, tenantTimeZone); // "YYYY-MM-DDTHH:mm"
@@ -212,6 +214,49 @@ export const getTenantSiteInfo = async (
 - `next.config.ts` の名前付きプロファイルには `expire > revalidate` や `stale` 最小値の検証があるが、`cacheLife()` の**インライン呼び出しには検証がない**（`next/dist/server/use-cache/cache-life.js` は明示値を記録するだけ）。この 3 値の組み合わせは #672 で production ビルド上の実測により、エラーを出さず、失敗が保存されないことを確認している
 - エラーの分類はキャッシュスコープの**内側**で行う。`"use cache"` 境界を越えたエラーは production で message が digest に置き換わり、`Code`（`rpcErrorDisposition()` / `rpcErrorMessage()`）が失われる
 - 呼び出し側は `ok: false` を `SectionError` / `PageLoadError` として描画する。画面側の使い分けは `apps/AGENTS.md`
+
+## ロケールとメッセージ（`i18n`）
+
+i18n ライブラリは使いません。Server Components がロケールごとの JSON を動的 `import()` し、キーに一致した文字列を返します。カタログの正本はリポジトリルートの [`locales/`](../../locales/README.md) です。Go と Flutter も同じ JSON を読みます。
+
+Cookie や `next/root-params` の読み取りはこのパッケージにはありません。アプリが値を渡し、共有層は「受け取った値でカタログを返す」までです。`"use cache"` の中から呼ぶときは locale を引数で渡してください。
+
+```ts
+import {
+  getMessage,
+  loadMessages,
+  LOCALE_COOKIE_NAME,
+  parseLocaleCookie,
+  type ExactCatalog,
+  type Locale,
+} from "@publira/utils/i18n";
+import en from "../../locales/en.json";
+import ja from "../../locales/ja.json";
+
+export type Messages = typeof ja;
+
+// ja が型の正。JSON import はオブジェクトリテラルではないので
+// `satisfies Messages` では余剰キーを拾えない。ExactCatalog を使う。
+const _en: ExactCatalog<typeof en, Messages> = en;
+
+const loadCatalog = (locale: Locale) =>
+  loadMessages<Messages>(locale, {
+    // テンプレート文字列の動的パスは使わない（全ロケールが束ねられる）
+    en: () => import("../../locales/en.json"),
+    ja: () => import("../../locales/ja.json"),
+  });
+
+const locale = parseLocaleCookie(cookieStore.get(LOCALE_COOKIE_NAME)?.value);
+const catalog = await loadCatalog(locale);
+const label = getMessage(catalog, "locale.ja");
+const greeting = getMessage(catalog, "greeting", { name: "山田" });
+```
+
+- 未知のロケール文字列は `ja` に落ちる（`parseLocale` / `parseLocaleCookie`）
+- Cookie 名定数は `LOCALE_COOKIE_NAME`（`publira_locale`）。`cookies()` は呼ばない
+- 存在するキーは一致した文字列を返し、`{name}` だけを補間する
+- 未知キーは開発時に throw、本番ではキーをそのまま返す
+- TypeScript のカタログモジュールを手で書く場合は、`export default { … } satisfies Messages` でも欠け・余剰を型エラーにできる
 
 ## ビルド
 
