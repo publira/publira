@@ -7,6 +7,7 @@
 - `cn`: `clsx` + `tailwind-merge` を使った className 結合ヘルパー
 - `formatDateTime` / `formatDate` / `toDateTimeLocalValue` / `fromDateTimeLocalValue`: テナントタイムゾーン対応の日時・日付表示、`datetime-local` 相互変換（`Temporal` 前提）
 - `parseInstant` / `toInstantIsoString` / `startOfDayIsoString` / `endOfDayIsoString`: 絶対時刻のパース・比較、フォーム値の正規化、date-only フィルタの日境界
+- `listSupportedTimeZones` / `isValidTimeZone`: テナントタイムゾーン設定 UI 向けの IANA タイムゾーン一覧と検証
 - `@publira/utils/search-params`: `searchParams`（`string | string[] | undefined`）を zod で検証するためのスキーマ生成関数
 - `@publira/utils/form-data`: `FormData` を zod の検証対象オブジェクトへ変換するヘルパー
 - `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー
@@ -67,6 +68,27 @@ toInstantIsoString(formValue, tenantTimeZone); // "...Z" / 解釈できなけれ
 startOfDayIsoString("2024-03-10", tenantTimeZone); // その TZ の 00:00
 endOfDayIsoString("2024-03-10", tenantTimeZone); // 同日の終端（inclusive）
 ```
+
+### タイムゾーンの選択と検証
+
+テナントタイムゾーン設定（[#565](https://github.com/publira/publira/issues/565)）のように、IANA 名を選ばせて保存する画面向けのヘルパーです。
+
+```ts
+import { isValidTimeZone, listSupportedTimeZones } from "@publira/utils";
+
+// 選択肢（ランタイムの ICU が持つゾーン名 + UTC、名前順・メモ化済み）
+const items = listSupportedTimeZones().map((zone) => ({
+  label: zone,
+  value: zone,
+}));
+
+// Server Action の zod スキーマで即時フィードバックに使う
+const schema = z.object({
+  timezone: z.string().trim().min(1).refine(isValidTimeZone),
+});
+```
+
+正本は Go サーバ（`server/internal/tenanttz`、埋め込み IANA tzdata で検証）です。`isValidTimeZone` はそこを緩めないための前段チェックで、`Local` とオフセット表記（`+09:00`）は `time.LoadLocation` に合わせて拒否します。列挙されないエイリアス（`Asia/Calcutta`）は有効値として受け付けます。
 
 ## 信頼できない入力の検証（zod）
 

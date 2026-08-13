@@ -1,5 +1,8 @@
 "use server";
 
+import { isValidTimeZone } from "@publira/utils";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -16,6 +19,10 @@ import {
 } from "#lib/email-settings-shared";
 import { getAccessToken } from "#lib/session";
 import { updateTenantSiteSettings } from "#lib/site-settings";
+import {
+  tenantTimezoneCacheTag,
+  updateTenantTimezone,
+} from "#lib/tenant-timezone";
 import { updateTenantThemeSettings } from "#lib/theme-settings";
 
 import type {
@@ -25,6 +32,7 @@ import type {
   ThemeSettingsFieldErrors,
   TenantEmailSettingsFormState,
   TenantSmtpTestFormState,
+  TenantTimezoneActionState,
 } from "../settings-types";
 
 interface ParsedTenantSmtpFormData {
@@ -77,6 +85,21 @@ const tenantThemeSchema = z.object({
   surfaceForegroundColor: hexColorCodeSchema,
   warningColor: hexColorCodeSchema,
   warningForegroundColor: hexColorCodeSchema,
+});
+
+/**
+ * The Go server validates against the IANA tzdata it embeds
+ * (`server/internal/tenanttz`) and stays the authority; this only gives the
+ * operator immediate feedback instead of a round trip.
+ */
+const tenantTimezoneSchema = z.object({
+  timezone: z
+    .string({ error: "タイムゾーンを選択してください。" })
+    .trim()
+    .min(1, "タイムゾーンを選択してください。")
+    .refine(isValidTimeZone, {
+      error: "有効なタイムゾーンを選択してください。",
+    }),
 });
 
 const tenantThemeFormFieldMap = [
@@ -256,6 +279,52 @@ export const updateTenantThemeSettingsAction = async (
     message: "テーマを保存しました。",
     ok: true,
     theme: result.theme,
+  };
+};
+
+export const updateTenantTimezoneAction = async (
+  _prevState: TenantTimezoneActionState,
+  formData: FormData
+): Promise<TenantTimezoneActionState> => {
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) {
+    return {
+      message: "テナント ID が見つかりません。",
+      ok: false,
+    };
+  }
+
+  const parsed = tenantTimezoneSchema.safeParse(
+    toFormDataInput(formData, { timezone: "value" })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return {
+      message: toFormErrorMessage(parsed.error),
+      ok: false,
+    };
+  }
+
+  const result = await updateTenantTimezone({
+    tenantId,
+    timezone: parsed.data.timezone,
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the time zone through a private cache, so without
+  // this the operator would keep seeing the previous value in the same session.
+  updateTag(tenantTimezoneCacheTag(tenantId));
+
+  return {
+    message: "タイムゾーンを保存しました。",
+    ok: true,
+    timezone: result.timezone,
   };
 };
 
