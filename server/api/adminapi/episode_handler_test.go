@@ -1240,3 +1240,54 @@ func TestAdminGetEpisodeValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestAdminGetEpisodeDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+		WithArgs(tenantID, "SERIES001", "EPISODE001").
+		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
+
+	req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId: "SERIES001",
+		PublicId:       "EPISODE001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetEpisode(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestAdminGetEpisodePreservesContextCanceled(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+		WithArgs(tenantID, "SERIES001", "EPISODE001").
+		WillReturnError(context.Canceled)
+
+	req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId: "SERIES001",
+		PublicId:       "EPISODE001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetEpisode(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertExpectations(t, mock)
+}

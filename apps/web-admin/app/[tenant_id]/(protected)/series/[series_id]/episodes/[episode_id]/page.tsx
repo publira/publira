@@ -112,22 +112,20 @@ const EditEpisodePage = async ({
         />
 
         <div className="grid gap-6">
-          {episodeResult.ok ? null : (
+          {episodeResult.ok ? (
+            <EpisodeScheduleForm
+              action={updateEpisodeScheduleAction}
+              episodePublicId={episode_id}
+              scheduledAt={episodeResult.episode.scheduledAt}
+              seriesPublicId={series_id}
+              timeZone={timeZone}
+            />
+          ) : (
             <SectionError
               description={episodeResult.message}
               title="公開設定を表示できませんでした"
             />
           )}
-
-          <EpisodeScheduleForm
-            action={updateEpisodeScheduleAction}
-            episodePublicId={episode_id}
-            scheduledAt={
-              episodeResult.ok ? episodeResult.episode.scheduledAt : ""
-            }
-            seriesPublicId={series_id}
-            timeZone={timeZone}
-          />
           <EpisodePagesForm
             action={uploadEpisodePagesAction}
             episodePublicId={episode_id}

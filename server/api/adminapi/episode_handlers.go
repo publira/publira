@@ -305,7 +305,7 @@ func (s *adminServer) GetEpisode(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get episode", err, "tenant_id", tenant.ID.String())
 	}
 
 	return connect.NewResponse(&publiraadminv1.GetEpisodeResponse{
