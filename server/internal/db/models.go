@@ -199,6 +199,13 @@ type PlatformAuditLog struct {
 	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
 }
 
+type PlatformConfig struct {
+	Singleton       bool      `json:"singleton"`
+	DefaultTimezone string    `json:"default_timezone"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
 type PlatformSmtpConfig struct {
 	Singleton         bool           `json:"singleton"`
 	Host              string         `json:"host"`

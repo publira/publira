@@ -15,6 +15,7 @@ import (
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 func TestListTenantsReturnsEmptyList(t *testing.T) {
@@ -83,14 +84,15 @@ func TestCreateTenantRetriesDuplicatePublicID(t *testing.T) {
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	attempted := &publicIDArgument{}
 	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, now)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default).
 		WillReturnError(duplicatePublicIDError())
 	expectPublicIDAttemptRolledBack(mock)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
+		WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default).
 		WillReturnRows(sqlmock.NewRows(integrationTenantColumns()).
 			AddRow(tenantID, "4ERDqTx5YB8m", "dup.example.com", "Duplicate Tenant", nil, now, "active", nil, "Asia/Tokyo"))
 	expectPublicIDAttemptReleased(mock)
@@ -120,10 +122,11 @@ func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
 
 	attempted := &publicIDArgument{}
 	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, now)
 	for range publicid.MaxAttempts {
 		expectPublicIDAttempt(mock)
 		mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
-			WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant").
+			WithArgs(sqlmock.AnyArg(), attempted, sql.NullString{String: "dup.example.com", Valid: true}, sql.NullString{}, "Duplicate Tenant", tenanttz.Default).
 			WillReturnError(duplicatePublicIDError())
 		expectPublicIDAttemptRolledBack(mock)
 	}
@@ -148,9 +151,10 @@ func TestCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, now)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "existing.example.com", Valid: true}, sql.NullString{}, "Domain Duplicate Tenant").
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "existing.example.com", Valid: true}, sql.NullString{}, "Domain Duplicate Tenant", tenanttz.Default).
 		WillReturnError(duplicateDomainError())
 	mock.ExpectRollback()
 
@@ -172,9 +176,10 @@ func TestCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
 	mock.ExpectBegin()
+	expectPlatformConfigLookup(mock, tenanttz.Default, now)
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(integrationCreateTenantQuery)).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "sub001.example.com", Valid: true}, sql.NullString{String: "admin.sub001.example.com", Valid: true}, "Subdomain Duplicate Tenant").
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sql.NullString{String: "sub001.example.com", Valid: true}, sql.NullString{String: "admin.sub001.example.com", Valid: true}, "Subdomain Duplicate Tenant", tenanttz.Default).
 		WillReturnError(duplicateAdminDomainError())
 	mock.ExpectRollback()
 

@@ -1044,8 +1044,8 @@ func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeries
 }
 
 const createTenant = `-- name: CreateTenant :one
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status)
-VALUES ($1, $2, $3, $4, $5, 'active')
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone)
+VALUES ($1, $2, $3, $4, $5, 'active', $6)
 RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
 `
 
@@ -1055,9 +1055,11 @@ type CreateTenantParams struct {
 	Domain      string         `json:"domain"`
 	AdminDomain sql.NullString `json:"admin_domain"`
 	Name        string         `json:"name"`
+	Timezone    string         `json:"timezone"`
 }
 
 // プラットフォーム管理者向けテナント作成
+// timezone は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, createTenant,
 		arg.ID,
@@ -1065,6 +1067,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		arg.Domain,
 		arg.AdminDomain,
 		arg.Name,
+		arg.Timezone,
 	)
 	var i Tenant
 	err := row.Scan(

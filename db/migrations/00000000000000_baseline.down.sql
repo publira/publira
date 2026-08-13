@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS page_versions CASCADE;
 DROP TABLE IF EXISTS pages CASCADE;
 DROP TABLE IF EXISTS platform_audit_logs CASCADE;
+DROP TABLE IF EXISTS platform_config CASCADE;
 DROP TABLE IF EXISTS platform_smtp_config CASCADE;
 DROP TABLE IF EXISTS platform_user_email_change_tokens CASCADE;
 DROP TABLE IF EXISTS platform_user_password_reset_tokens CASCADE;

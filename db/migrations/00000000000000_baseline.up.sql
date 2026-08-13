@@ -217,6 +217,19 @@ CREATE TABLE platform_audit_logs (
     actor_platform_user_id uuid NOT NULL
 );
 
+-- TABLE: platform_config
+CREATE TABLE platform_config (
+    singleton boolean DEFAULT true NOT NULL,
+    -- Platform-wide default IANA time zone. New tenants start from this value and
+    -- it is the fallback when a tenant row has no usable timezone.
+    -- Strict allow-list validation is enforced at the application/API layer.
+    default_timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT platform_config_default_timezone_not_blank_check CHECK ((btrim(default_timezone) <> '')),
+    CONSTRAINT platform_config_singleton_check CHECK (singleton)
+);
+
 -- TABLE: platform_smtp_config
 CREATE TABLE platform_smtp_config (
     singleton boolean DEFAULT true NOT NULL,
@@ -610,6 +623,10 @@ ALTER TABLE ONLY pages
 -- CONSTRAINT: pages pages_tenant_id_slug_key
 ALTER TABLE ONLY pages
     ADD CONSTRAINT pages_tenant_id_slug_key UNIQUE (tenant_id, slug);
+
+-- CONSTRAINT: platform_config platform_config_pkey
+ALTER TABLE ONLY platform_config
+    ADD CONSTRAINT platform_config_pkey PRIMARY KEY (singleton);
 
 -- CONSTRAINT: platform_smtp_config platform_smtp_config_pkey
 ALTER TABLE ONLY platform_smtp_config

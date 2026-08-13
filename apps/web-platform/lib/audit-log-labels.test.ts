@@ -12,6 +12,9 @@ describe("audit-log-labels", () => {
     expect(getAuditActionLabel("platform_smtp_test_email_sent")).toBe(
       "SMTP 接続テストメールを送信"
     );
+    expect(getAuditActionLabel("platform_settings_updated")).toBe(
+      "プラットフォーム設定を更新"
+    );
   });
 
   it("returns original action for unknown values", () => {
@@ -33,6 +36,11 @@ describe("audit-log-labels", () => {
     expect(
       auditActionOptions.some(
         (item) => item.value === "platform_smtp_test_email_sent"
+      )
+    ).toBe(true);
+    expect(
+      auditActionOptions.some(
+        (item) => item.value === "platform_settings_updated"
       )
     ).toBe(true);
   });

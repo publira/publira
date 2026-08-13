@@ -5,6 +5,7 @@ const auditActionLabelMap = {
   operator_suspended: "オペレーターを停止",
   operator_updated: "オペレーターを更新",
   platform_email_settings_updated: "SMTP設定を更新",
+  platform_settings_updated: "プラットフォーム設定を更新",
   platform_smtp_test_email_sent: "SMTP 接続テストメールを送信",
   tenant_created: "テナントを作成",
   tenant_info_updated: "テナント情報を更新",

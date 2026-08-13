@@ -17,6 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -51,7 +52,9 @@ func nullableTrimmedString(v string) sql.NullString {
 	return sql.NullString{String: trimmed, Valid: true}
 }
 
-func tenantToProto(t dbmodels.Tenant) *publirasplatformv1.Tenant {
+// tenantToProto renders a tenant row. platformDefaultTimezone yields the
+// platform-wide default and is consulted only when the stored value is unusable.
+func tenantToProto(t dbmodels.Tenant, platformDefaultTimezone func() string) *publirasplatformv1.Tenant {
 	adminDomain := ""
 	if t.AdminDomain.Valid {
 		adminDomain = strings.TrimSpace(t.AdminDomain.String)
@@ -64,7 +67,7 @@ func tenantToProto(t dbmodels.Tenant) *publirasplatformv1.Tenant {
 		CreatedAt:   t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 		Domain:      t.Domain,
 		AdminDomain: adminDomain,
-		Timezone:    tenanttz.Resolve(t.Timezone),
+		Timezone:    tenanttz.Resolve(t.Timezone, platformDefaultTimezone),
 	}
 }
 
@@ -99,8 +102,9 @@ func (s *platformServer) ListTenants(
 	resp := &publirasplatformv1.ListTenantsResponse{
 		Tenants: make([]*publirasplatformv1.Tenant, len(tenants)),
 	}
+	platformDefaultTimezone := platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))
 	for i, t := range tenants {
-		resp.Tenants[i] = tenantToProto(t)
+		resp.Tenants[i] = tenantToProto(t, platformDefaultTimezone)
 	}
 	switch {
 	case len(tenants) > 0:
@@ -169,7 +173,7 @@ func (s *platformServer) GetTenant(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.GetTenantResponse{
-		Tenant: tenantToProto(tenant),
+		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }
 
@@ -221,6 +225,11 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	// The platform default is applied explicitly instead of relying on the
+	// tenants.timezone column default, so an install that changed the default
+	// starts every new tenant on it.
+	defaultTimezone := platformconfig.DefaultTimeZone(ctx, txq)
+
 	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
 		return txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
 			ID:          tenantID,
@@ -228,6 +237,7 @@ func (s *platformServer) CreateTenant(
 			Domain:      domain,
 			AdminDomain: adminDomain,
 			Name:        name,
+			Timezone:    defaultTimezone,
 		})
 	})
 	if err != nil {
@@ -325,7 +335,7 @@ func (s *platformServer) CreateTenant(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.CreateTenantResponse{
-		Tenant: tenantToProto(tenant),
+		Tenant: tenantToProto(tenant, func() string { return defaultTimezone }),
 	}), nil
 }
 
@@ -361,7 +371,7 @@ func (s *platformServer) SuspendTenant(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.SuspendTenantResponse{
-		Tenant: tenantToProto(tenant),
+		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }
 
@@ -408,7 +418,7 @@ func (s *platformServer) UpdateTenant(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.UpdateTenantResponse{
-		Tenant: tenantToProto(tenant),
+		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }
 
@@ -444,7 +454,7 @@ func (s *platformServer) ResumeTenant(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.ResumeTenantResponse{
-		Tenant: tenantToProto(tenant),
+		Tenant: tenantToProto(tenant, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }
 
