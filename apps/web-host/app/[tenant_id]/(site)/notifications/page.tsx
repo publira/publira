@@ -1,4 +1,5 @@
 import { SectionError } from "@publira/ui-components/section-error";
+import { formatDateTime } from "@publira/utils";
 import { revalidateTag } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -11,6 +12,7 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "#lib/notifications";
+import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
@@ -165,10 +167,13 @@ const NotificationsSection = async ({
   const { token } = parseNotificationsListSearchParams(resolvedSearchParams);
   await connection();
 
-  const result = await listMyNotifications(tenantId, undefined, {
-    limit: NOTIFICATIONS_PAGE_SIZE,
-    token,
-  });
+  const [result, timeZone] = await Promise.all([
+    listMyNotifications(tenantId, undefined, {
+      limit: NOTIFICATIONS_PAGE_SIZE,
+      token,
+    }),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
   if (!result.ok && result.requiresSignIn) {
     // Come back to the page the reader was actually on, not just the first one.
     redirect(
@@ -296,7 +301,10 @@ const NotificationsSection = async ({
                       {notification.isRead ? "既読" : "未読"}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {notification.createdAt || "-"}
+                      {formatDateTime(notification.createdAt, {
+                        fallback: "-",
+                        timeZone,
+                      })}
                     </span>
                   </div>
                 </div>
