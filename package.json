@@ -18,8 +18,8 @@
   "devDependencies": {
     "eslint-plugin-github": "6.1.2",
     "eslint-plugin-sonarjs": "4.2.0",
-    "oxfmt": "0.62.0",
-    "oxlint": "1.77.0",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
     "oxlint-plugin-react-doctor": "0.9.11",
     "turbo": "2.10.9",
     "typescript": "catalog:",
