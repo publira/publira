@@ -55,6 +55,26 @@ func EpisodeFromGetEpisodeByPublicIDForTenantRow(row dbmodels.GetEpisodeByPublic
 	return episode
 }
 
+func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisodeByPublicIDForTenantAndSeriesRow) *publirattypesv1.Episode {
+	episode := &publirattypesv1.Episode{
+		PublicId:   row.PublicID,
+		Title:      row.Title,
+		OrderIndex: row.OrderIndex,
+		Price:      row.Price,
+		Status:     row.Status,
+	}
+	if row.ReadingPeriodHours.Valid {
+		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
+	}
+	if row.ScheduledAt.Valid {
+		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
+	}
+	if row.PublishedAt.Valid {
+		episode.PublishedAt = row.PublishedAt.Time.UTC().Format(time.RFC3339)
+	}
+	return episode
+}
+
 func EpisodeFromGetPublishedEpisodeByPublicIDForTenantRow(row dbmodels.GetPublishedEpisodeByPublicIDForTenantRow) *publirattypesv1.Episode {
 	episode := &publirattypesv1.Episode{
 		PublicId:   row.PublicID,

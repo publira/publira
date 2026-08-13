@@ -1,12 +1,17 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockListEpisodes, mockReorderEpisodes } =
-  vi.hoisted(() => ({
-    mockGetAccessToken: vi.fn(),
-    mockListEpisodes: vi.fn(),
-    mockReorderEpisodes: vi.fn(),
-  }));
+const {
+  mockGetAccessToken,
+  mockGetEpisode,
+  mockListEpisodes,
+  mockReorderEpisodes,
+} = vi.hoisted(() => ({
+  mockGetAccessToken: vi.fn(),
+  mockGetEpisode: vi.fn(),
+  mockListEpisodes: vi.fn(),
+  mockReorderEpisodes: vi.fn(),
+}));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -15,6 +20,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     series: {
+      getEpisode: mockGetEpisode,
       listEpisodes: mockListEpisodes,
       reorderEpisodes: mockReorderEpisodes,
     },
@@ -133,6 +139,81 @@ describe("listEpisodes", () => {
       ok: false,
       previousToken: "",
     });
+  });
+});
+
+describe("getEpisode", () => {
+  it("単体取得 RPC を呼び、エピソードを返す", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockGetEpisode).toHaveBeenCalledWith(
+      {
+        publicId: "EPISODE001",
+        seriesPublicId: "SERIES001",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockListEpisodes).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      episode: {
+        orderIndex: 1,
+        price: 0,
+        publicId: "EPISODE001",
+        publishedAt: "",
+        readingPeriodHours: 0,
+        scheduledAt: "",
+        status: "draft",
+        title: "EPISODE001",
+      },
+      ok: true,
+    });
+  });
+
+  it("予約中の scheduledAt をそのまま返す", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE002", 2),
+        scheduledAt: "2030-01-01T01:00:00Z",
+        status: "scheduled",
+      },
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode({
+      publicId: "EPISODE002",
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toMatchObject({
+      episode: { scheduledAt: "2030-01-01T01:00:00Z", status: "scheduled" },
+      ok: true,
+    });
+  });
+
+  it("不在・テナント外は notFound にする", async () => {
+    mockGetEpisode.mockRejectedValue(
+      new ConnectError("episode not found", Code.NotFound)
+    );
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode({
+      publicId: "EPISODE_MISSING",
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toEqual({ notFound: true, ok: false });
   });
 });
 

@@ -6,6 +6,7 @@ import {
 } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import {
   AdminPage,
@@ -18,7 +19,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
-import { listEpisodeImages } from "#lib/episode";
+import { getEpisode, listEpisodeImages } from "#lib/episode";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -48,13 +49,21 @@ const EditEpisodePage = async ({
   guardPlaceholder(series_id);
   guardPlaceholder(episode_id);
 
-  const [imagesResult, timeZone] = await Promise.all([
+  const [episodeResult, imagesResult, timeZone] = await Promise.all([
+    getEpisode({
+      publicId: episode_id,
+      seriesPublicId: series_id,
+      tenantId,
+    }),
     listEpisodeImages({
       episodePublicId: episode_id,
       tenantId,
     }),
     getTenantDisplayTimeZone(tenantId),
   ]);
+  if (!episodeResult.ok && episodeResult.notFound) {
+    notFound();
+  }
 
   return (
     <AdminPage>
@@ -103,9 +112,19 @@ const EditEpisodePage = async ({
         />
 
         <div className="grid gap-6">
+          {episodeResult.ok ? null : (
+            <SectionError
+              description={episodeResult.message}
+              title="公開設定を表示できませんでした"
+            />
+          )}
+
           <EpisodeScheduleForm
             action={updateEpisodeScheduleAction}
             episodePublicId={episode_id}
+            scheduledAt={
+              episodeResult.ok ? episodeResult.episode.scheduledAt : ""
+            }
             seriesPublicId={series_id}
             timeZone={timeZone}
           />

@@ -48,6 +48,9 @@ const (
 	// AdminSeriesServiceListEpisodesProcedure is the fully-qualified name of the AdminSeriesService's
 	// ListEpisodes RPC.
 	AdminSeriesServiceListEpisodesProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodes"
+	// AdminSeriesServiceGetEpisodeProcedure is the fully-qualified name of the AdminSeriesService's
+	// GetEpisode RPC.
+	AdminSeriesServiceGetEpisodeProcedure = "/publira.admin.v1.AdminSeriesService/GetEpisode"
 	// AdminSeriesServiceReorderEpisodesProcedure is the fully-qualified name of the
 	// AdminSeriesService's ReorderEpisodes RPC.
 	AdminSeriesServiceReorderEpisodesProcedure = "/publira.admin.v1.AdminSeriesService/ReorderEpisodes"
@@ -75,6 +78,7 @@ type AdminSeriesServiceClient interface {
 	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
 	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
 	ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error)
 	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
 	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
@@ -124,6 +128,12 @@ func NewAdminSeriesServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodes")),
 			connect.WithClientOptions(opts...),
 		),
+		getEpisode: connect.NewClient[v1.GetEpisodeRequest, v1.GetEpisodeResponse](
+			httpClient,
+			baseURL+AdminSeriesServiceGetEpisodeProcedure,
+			connect.WithSchema(adminSeriesServiceMethods.ByName("GetEpisode")),
+			connect.WithClientOptions(opts...),
+		),
 		reorderEpisodes: connect.NewClient[v1.ReorderEpisodesRequest, v1.ReorderEpisodesResponse](
 			httpClient,
 			baseURL+AdminSeriesServiceReorderEpisodesProcedure,
@@ -170,6 +180,7 @@ type adminSeriesServiceClient struct {
 	listSeries                   *connect.Client[v1.ListSeriesRequest, v1.ListSeriesResponse]
 	getSeries                    *connect.Client[v1.GetSeriesRequest, v1.GetSeriesResponse]
 	listEpisodes                 *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
+	getEpisode                   *connect.Client[v1.GetEpisodeRequest, v1.GetEpisodeResponse]
 	reorderEpisodes              *connect.Client[v1.ReorderEpisodesRequest, v1.ReorderEpisodesResponse]
 	createEpisode                *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
 	uploadEpisodeImages          *connect.Client[v1.UploadEpisodeImagesRequest, v1.UploadEpisodeImagesResponse]
@@ -201,6 +212,11 @@ func (c *adminSeriesServiceClient) GetSeries(ctx context.Context, req *connect.R
 // ListEpisodes calls publira.admin.v1.AdminSeriesService.ListEpisodes.
 func (c *adminSeriesServiceClient) ListEpisodes(ctx context.Context, req *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error) {
 	return c.listEpisodes.CallUnary(ctx, req)
+}
+
+// GetEpisode calls publira.admin.v1.AdminSeriesService.GetEpisode.
+func (c *adminSeriesServiceClient) GetEpisode(ctx context.Context, req *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error) {
+	return c.getEpisode.CallUnary(ctx, req)
 }
 
 // ReorderEpisodes calls publira.admin.v1.AdminSeriesService.ReorderEpisodes.
@@ -242,6 +258,7 @@ type AdminSeriesServiceHandler interface {
 	ListSeries(context.Context, *connect.Request[v1.ListSeriesRequest]) (*connect.Response[v1.ListSeriesResponse], error)
 	GetSeries(context.Context, *connect.Request[v1.GetSeriesRequest]) (*connect.Response[v1.GetSeriesResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
 	ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error)
 	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
 	UploadEpisodeImages(context.Context, *connect.Request[v1.UploadEpisodeImagesRequest]) (*connect.Response[v1.UploadEpisodeImagesResponse], error)
@@ -285,6 +302,12 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 		AdminSeriesServiceListEpisodesProcedure,
 		svc.ListEpisodes,
 		connect.WithSchema(adminSeriesServiceMethods.ByName("ListEpisodes")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminSeriesServiceGetEpisodeHandler := connect.NewUnaryHandler(
+		AdminSeriesServiceGetEpisodeProcedure,
+		svc.GetEpisode,
+		connect.WithSchema(adminSeriesServiceMethods.ByName("GetEpisode")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminSeriesServiceReorderEpisodesHandler := connect.NewUnaryHandler(
@@ -335,6 +358,8 @@ func NewAdminSeriesServiceHandler(svc AdminSeriesServiceHandler, opts ...connect
 			adminSeriesServiceGetSeriesHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceListEpisodesProcedure:
 			adminSeriesServiceListEpisodesHandler.ServeHTTP(w, r)
+		case AdminSeriesServiceGetEpisodeProcedure:
+			adminSeriesServiceGetEpisodeHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceReorderEpisodesProcedure:
 			adminSeriesServiceReorderEpisodesHandler.ServeHTTP(w, r)
 		case AdminSeriesServiceCreateEpisodeProcedure:
@@ -374,6 +399,10 @@ func (UnimplementedAdminSeriesServiceHandler) GetSeries(context.Context, *connec
 
 func (UnimplementedAdminSeriesServiceHandler) ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.ListEpisodes is not implemented"))
+}
+
+func (UnimplementedAdminSeriesServiceHandler) GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminSeriesService.GetEpisode is not implemented"))
 }
 
 func (UnimplementedAdminSeriesServiceHandler) ReorderEpisodes(context.Context, *connect.Request[v1.ReorderEpisodesRequest]) (*connect.Response[v1.ReorderEpisodesResponse], error) {

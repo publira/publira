@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { toDateTimeLocalValue } from "@publira/utils";
 import { useActionState, useCallback } from "react";
 
 import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
@@ -20,6 +21,7 @@ import type { EpisodeEditActionState } from "../episode-edit-types";
 interface EpisodeScheduleFormProps {
   seriesPublicId: string;
   episodePublicId: string;
+  scheduledAt?: string;
   action: (
     prevState: EpisodeEditActionState,
     formData: FormData
@@ -30,6 +32,7 @@ interface EpisodeScheduleFormProps {
 export const EpisodeScheduleForm = ({
   seriesPublicId,
   episodePublicId,
+  scheduledAt = "",
   action,
   timeZone,
 }: EpisodeScheduleFormProps) => {
@@ -70,6 +73,7 @@ export const EpisodeScheduleForm = ({
           />
 
           <PublishAtInput
+            defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
             id="episode_edit_publish_at"
             name="publish_at"
             timeZone={timeZone}

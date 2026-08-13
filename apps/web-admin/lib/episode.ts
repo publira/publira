@@ -1,5 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorMentions,
 } from "@publira/api-client/errors";
@@ -45,6 +46,17 @@ export type ListEpisodesResult = CursorPageTokens &
     | { ok: false; message: string; episodes: EpisodeItem[] }
   );
 
+/**
+ * `notFound: true` is the "there is nothing to show here" failure the edit
+ * screen turns into `notFound()`. It carries no message: the screen is replaced
+ * by `not-found.tsx`, and wording that distinguished a missing episode from
+ * another tenant's episode would leak whether it exists.
+ */
+export type GetEpisodeResult =
+  | { ok: true; episode: EpisodeItem }
+  | { notFound: true; ok: false }
+  | { message: string; notFound?: false; ok: false };
+
 export type UpdateEpisodePublishScheduleResult =
   | { ok: true; episode: EpisodeItem }
   | { ok: false; message: string };
@@ -75,6 +87,8 @@ const genericMutationErrorMessage =
   "エピソードの入稿に失敗しました。時間をおいて再試行してください。";
 const genericListErrorMessage =
   "エピソード一覧の取得に失敗しました。時間をおいて再試行してください。";
+const genericGetErrorMessage =
+  "エピソードの取得に失敗しました。時間をおいて再試行してください。";
 const genericScheduleErrorMessage =
   "公開設定の更新に失敗しました。時間をおいて再試行してください。";
 const genericUploadErrorMessage =
@@ -297,6 +311,52 @@ export const listEpisodes = async (
       ...emptyCursorPageTokens,
       episodes: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
+      ok: false,
+    };
+  }
+};
+
+export const getEpisode = async (input: {
+  tenantId: string;
+  seriesPublicId: string;
+  publicId: string;
+}): Promise<GetEpisodeResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.getEpisode(
+      {
+        publicId: input.publicId,
+        seriesPublicId: input.seriesPublicId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.episode?.publicId?.trim()) {
+      return {
+        message: genericGetErrorMessage,
+        ok: false,
+      };
+    }
+
+    return {
+      episode: mapEpisode(response.episode),
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    if (isMissingResourceRpcError(error)) {
+      return { notFound: true, ok: false };
+    }
+    return {
+      message: mapErrorToMessage(error, genericGetErrorMessage),
       ok: false,
     };
   }
