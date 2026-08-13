@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
+import { formatDate } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -24,6 +25,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { canManageEndUsers } from "#lib/roles";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import { getPlatformEndUser } from "#lib/users";
@@ -78,9 +80,10 @@ const UserDetailContent = async ({
 }: Pick<UserDetailPageProps, "params">) => {
   const { user_public_id: userPublicId } = await params;
 
-  const [userResult, currentOperator] = await Promise.all([
+  const [userResult, currentOperator, timeZone] = await Promise.all([
     getPlatformEndUser(userPublicId),
     getPlatformCurrentOperator(),
+    getPlatformDisplayTimeZone(),
   ]);
 
   if (!userResult.ok || !userResult.user) {
@@ -166,7 +169,9 @@ const UserDetailContent = async ({
               </Field>
               <Field>
                 <FieldLabel>登録日</FieldLabel>
-                <p className="text-sm">{user.createdAt || "未設定"}</p>
+                <p className="text-sm">
+                  {formatDate(user.createdAt, { fallback: "未設定", timeZone })}
+                </p>
               </Field>
               <Field>
                 <FieldLabel>ステータス</FieldLabel>

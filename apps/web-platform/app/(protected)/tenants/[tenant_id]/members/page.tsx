@@ -15,6 +15,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import {
   getPlatformTenant,
   listPlatformTenantAdminInvitations,
@@ -71,7 +72,7 @@ const TenantMembersContent = async ({
   const { tenant_id: tenantId } = await params;
   const invitationFilters = parseMemberInvitationFilters(await searchParams);
 
-  const [tenant, members, invitationsResult] = await Promise.all([
+  const [tenant, members, invitationsResult, timeZone] = await Promise.all([
     getPlatformTenant(tenantId),
     listPlatformTenantMembers(tenantId),
     listPlatformTenantAdminInvitations({
@@ -79,6 +80,7 @@ const TenantMembersContent = async ({
       tenantId,
       token: invitationFilters.token || undefined,
     }),
+    getPlatformDisplayTimeZone(),
   ]);
 
   if (!tenant) {
@@ -130,6 +132,7 @@ const TenantMembersContent = async ({
             removeAction={removeTenantMemberAction}
             resendInvitationAction={resendTenantAdminInvitationAction}
             tenantId={tenant.publicId}
+            timeZone={timeZone}
             updateRoleAction={updateTenantMemberRoleAction}
           />
         </div>
