@@ -225,6 +225,7 @@ Cookie や `next/root-params` の読み取りはこのパッケージにはあ�
 import {
   getMessage,
   loadMessages,
+  LOCALE_COOKIE_NAME,
   parseLocaleCookie,
   type ExactCatalog,
   type Locale,
@@ -245,7 +246,7 @@ const loadCatalog = (locale: Locale) =>
     ja: () => import("../../locales/ja.json"),
   });
 
-const locale = parseLocaleCookie(cookieStore.get("publira_locale")?.value);
+const locale = parseLocaleCookie(cookieStore.get(LOCALE_COOKIE_NAME)?.value);
 const catalog = await loadCatalog(locale);
 const label = getMessage(catalog, "locale.ja");
 const greeting = getMessage(catalog, "greeting", { name: "山田" });

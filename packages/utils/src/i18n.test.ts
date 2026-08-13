@@ -34,6 +34,11 @@ const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
 
 const missing: unknown = undefined;
 
+const asModuleNamespace = <T extends object>(value: T): T =>
+  Object.defineProperty(value, Symbol.toStringTag, {
+    value: "Module",
+  });
+
 describe("LOCALES", () => {
   it("starts with ja and en, default ja", () => {
     expect(LOCALES).toEqual(["ja", "en"]);
@@ -135,11 +140,25 @@ describe("loadMessages", () => {
 
   it("unwraps a default export from import()", async () => {
     const catalog = await loadMessages<MessageTree>("ja", {
-      en: () => Promise.resolve({ default: enFixture }),
-      ja: () => Promise.resolve({ default: fixture }),
+      en: () => Promise.resolve(asModuleNamespace({ default: enFixture })),
+      ja: () => Promise.resolve(asModuleNamespace({ default: fixture })),
     });
 
     expect(catalog).toEqual(fixture);
+  });
+
+  it("does not unwrap a catalog that has its own default object key", async () => {
+    const catalogWithDefault = {
+      default: { greeting: "既定" },
+      other: "ほか",
+    };
+    const loaded = await loadMessages<MessageTree>("ja", {
+      en: () => Promise.resolve(enFixture),
+      ja: () => Promise.resolve(catalogWithDefault),
+    });
+
+    expect(loaded).toEqual(catalogWithDefault);
+    expect(getMessage(loaded, "default.greeting")).toBe("既定");
   });
 });
 

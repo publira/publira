@@ -112,11 +112,15 @@ export const parseLocaleCookie = (value: string | null | undefined): Locale => {
 /** BCP 47 tag for `Intl.DateTimeFormat`. `<html lang>` stays `ja` / `en`. */
 export const toIntlLocale = (locale: Locale): string => INTL_LOCALES[locale];
 
+const isModuleNamespace = (value: object): boolean =>
+  Object.prototype.toString.call(value) === "[object Module]";
+
 const hasDefaultExport = <TCatalog>(
   mod: CatalogModule<TCatalog>
 ): mod is { default: TCatalog } =>
   typeof mod === "object" &&
   mod !== null &&
+  isModuleNamespace(mod) &&
   "default" in mod &&
   typeof mod.default === "object" &&
   mod.default !== null;
