@@ -72,8 +72,9 @@ const parsePublishAtToRFC3339 = (
     return { iso: "", ok: true };
   }
 
-  // The form posts a `datetime-local` wall clock; read it in the tenant's
-  // display zone instead of whatever zone the server process happens to run in.
+  // The form posts an absolute instant resolved against the zone it was
+  // rendered in. A leftover `datetime-local` wall clock (no JS) is still
+  // accepted and read in the tenant's current display zone.
   const iso = toInstantIsoString(trimmed, timeZone);
   const parsed = parseInstant(iso);
   if (!parsed) {

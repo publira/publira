@@ -22,10 +22,11 @@ export const PublishAtInput = ({
   <Field>
     <FieldLabel htmlFor={id}>publish_at</FieldLabel>
     <FieldContent>
+      <input defaultValue="" name={name} type="hidden" />
       <Input
         defaultValue={defaultValue}
         id={id}
-        name={name}
+        name={`${name}_local`}
         step={60}
         type="datetime-local"
       />

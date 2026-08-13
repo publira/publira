@@ -9,9 +9,10 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import type { SeriesActionState } from "../series-types";
 
 /**
- * `published_at` arrives either as an absolute timestamp or as the zone-less
- * wall clock of a `datetime-local` input. The wall clock is read in the
- * tenant's display zone rather than being glued to a hardcoded `+09:00` or
+ * `published_at` arrives either as an absolute timestamp (the form resolves
+ * the wall clock against the zone it was rendered in) or as a leftover
+ * zone-less `datetime-local` value. The latter is read in the tenant's
+ * current display zone rather than being glued to a hardcoded `+09:00` or
  * reinterpreted in the server's local zone.
  */
 const parsePublishedAt = (value: string, timeZone: string): string =>

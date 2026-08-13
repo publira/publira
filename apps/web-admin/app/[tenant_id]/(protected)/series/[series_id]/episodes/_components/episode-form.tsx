@@ -16,8 +16,9 @@ import {
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { useActionState } from "react";
+import { useActionState, useCallback } from "react";
 
+import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
 import type { EpisodeActionState } from "../episode-types";
@@ -40,6 +41,17 @@ export const EpisodeForm = ({
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
 
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      fillInstantFromDateTimeLocal(event.currentTarget, {
+        isoName: "publish_at",
+        localName: "publish_at_local",
+        timeZone,
+      });
+    },
+    [timeZone]
+  );
+
   let submitLabel = "エピソードを入稿";
   if (isPending) {
     submitLabel = "送信中...";
@@ -54,7 +66,11 @@ export const EpisodeForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="grid gap-4">
+        <form
+          action={formAction}
+          className="grid gap-4"
+          onSubmit={handleSubmit}
+        >
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
