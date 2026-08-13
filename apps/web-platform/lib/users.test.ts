@@ -1,18 +1,27 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { listPlatformEndUsers, listPlatformTenantFilterOptions } from "./users";
+import {
+  listPlatformEndUsers,
+  searchPlatformTenantFilterOptions,
+} from "./users";
 
-const { mockListEndUsers, mockListTenants, mockResolveSessionId } = vi.hoisted(
-  () => ({
-    mockListEndUsers: vi.fn(),
-    mockListTenants: vi.fn(),
-    mockResolveSessionId: vi.fn(),
-  })
-);
+const {
+  mockGetTenant,
+  mockListEndUsers,
+  mockListTenants,
+  mockResolveSessionId,
+} = vi.hoisted(() => ({
+  mockGetTenant: vi.fn(),
+  mockListEndUsers: vi.fn(),
+  mockListTenants: vi.fn(),
+  mockResolveSessionId: vi.fn(),
+}));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     tenants: {
+      getTenant: mockGetTenant,
       listTenants: mockListTenants,
     },
     users: {
@@ -172,63 +181,179 @@ describe("listPlatformEndUsers", () => {
   });
 });
 
-describe("listPlatformTenantFilterOptions", () => {
+describe("searchPlatformTenantFilterOptions", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockResolveSessionId.mockResolvedValue("sess_abc");
   });
 
-  it("cursor でテナントを辿って絞り込み選択肢を返す", async () => {
-    mockListTenants
-      .mockResolvedValueOnce({
-        nextToken: "page-2",
-        tenants: [{ name: "Tenant A", publicId: "tenant_a" }],
-      })
-      .mockResolvedValueOnce({
-        nextToken: "",
-        tenants: [{ name: "Tenant B", publicId: "tenant_b" }],
-      });
+  it("空の検索語では RPC を呼ばない", async () => {
+    await expect(searchPlatformTenantFilterOptions("   ")).resolves.toEqual({
+      hasMore: false,
+      ok: true,
+      tenants: [],
+    });
 
-    await expect(listPlatformTenantFilterOptions()).resolves.toEqual([
-      { name: "Tenant A", publicId: "tenant_a" },
-      { name: "Tenant B", publicId: "tenant_b" },
-    ]);
+    expect(mockListTenants).not.toHaveBeenCalled();
+    expect(mockGetTenant).not.toHaveBeenCalled();
+  });
 
-    expect(mockListTenants).toHaveBeenNthCalledWith(
-      1,
+  it("ListTenants を 1 回だけ呼び、name で候補を返す", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "page-2",
+      tenants: [
+        { name: "Tenant A", publicId: "tenant_a" },
+        { name: "Tenant B", publicId: "tenant_b" },
+      ],
+    });
+
+    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+      hasMore: true,
+      ok: true,
+      tenants: [
+        { name: "Tenant A", publicId: "tenant_a" },
+        { name: "Tenant B", publicId: "tenant_b" },
+      ],
+    });
+
+    expect(mockListTenants).toHaveBeenCalledTimes(1);
+    expect(mockListTenants).toHaveBeenCalledWith(
       {
-        limit: 100,
-        name: "",
+        limit: 20,
+        name: "Tenant",
         publicId: "",
         status: "",
         token: "",
       },
       sessionHeaders
     );
-    expect(mockListTenants).toHaveBeenNthCalledWith(
-      2,
-      {
-        limit: 100,
-        name: "",
-        publicId: "",
-        status: "",
-        token: "page-2",
-      },
+    expect(mockGetTenant).not.toHaveBeenCalled();
+  });
+
+  it("12 文字の検索語は GetTenant も試し、完全一致を先頭に置く", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [
+        { name: "Nearby", publicId: "abcdefghijkL" },
+        { name: "Exact", publicId: "abcdefghijkl" },
+      ],
+    });
+    mockGetTenant.mockResolvedValueOnce({
+      tenant: { name: "Exact", publicId: "abcdefghijkl" },
+    });
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).resolves.toEqual({
+      hasMore: false,
+      ok: true,
+      tenants: [
+        { name: "Exact", publicId: "abcdefghijkl" },
+        { name: "Nearby", publicId: "abcdefghijkL" },
+      ],
+    });
+
+    expect(mockListTenants).toHaveBeenCalledTimes(1);
+    expect(mockGetTenant).toHaveBeenCalledWith(
+      { publicId: "abcdefghijkl" },
       sessionHeaders
     );
   });
 
-  it("テナント走査が上限で途切れたときは空の選択肢を返す", async () => {
-    let page = 0;
-    mockListTenants.mockImplementation(() => {
-      page += 1;
-      return {
-        nextToken: `page-${page}`,
-        tenants: [{ name: "Tenant A", publicId: "tenant_a" }],
-      };
+  it("GetTenant が権限不足でも存在しないものとして name 検索の候補は返す", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("permission denied", Code.PermissionDenied)
+    );
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).resolves.toEqual({
+      hasMore: false,
+      ok: true,
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+  });
+
+  it("GetTenant が not found でも name 検索の候補は返す", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("tenant not found", Code.NotFound)
+    );
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).resolves.toEqual({
+      hasMore: false,
+      ok: true,
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+  });
+
+  it("セッションがなければ RPC を呼ばずエラーを返す", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+      hasMore: false,
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+      tenants: [],
     });
 
-    await expect(listPlatformTenantFilterOptions()).resolves.toEqual([]);
-    expect(mockListTenants).toHaveBeenCalledTimes(100);
+    expect(mockListTenants).not.toHaveBeenCalled();
+    expect(mockGetTenant).not.toHaveBeenCalled();
+  });
+
+  it("ListTenants が拒否されたら候補を返さない", async () => {
+    mockListTenants.mockRejectedValueOnce(
+      new ConnectError("permission denied", Code.PermissionDenied)
+    );
+
+    await expect(searchPlatformTenantFilterOptions("Tenant")).resolves.toEqual({
+      hasMore: false,
+      message: "この操作を行う権限がありません。",
+      ok: false,
+      tenants: [],
+    });
+  });
+
+  it("GetTenant の接続失敗は候補取得失敗にする", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("unavailable", Code.Unavailable)
+    );
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).resolves.toEqual({
+      hasMore: false,
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+      tenants: [],
+    });
+  });
+
+  it("GetTenant の未分類エラーは再送出する", async () => {
+    mockListTenants.mockResolvedValueOnce({
+      nextToken: "",
+      tenants: [{ name: "Nearby", publicId: "tenant_near" }],
+    });
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(
+      searchPlatformTenantFilterOptions("abcdefghijkl")
+    ).rejects.toMatchObject({ code: Code.Internal });
   });
 });

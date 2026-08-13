@@ -1,7 +1,8 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { forEachPageWithToken } from "@publira/api-client/pagination";
-import type { CursorPageVisitResult } from "@publira/api-client/pagination";
+import {
+  isMissingResourceRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 
 import {
   apiClient,
@@ -83,33 +84,40 @@ const normalizePublicIds = (input: ListPlatformEndUsersInput): string[] => [
 const listErrorMessage =
   "ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。";
 
-interface PlatformTenantRef {
+const tenantFilterSearchErrorMessage =
+  "テナント候補の取得に失敗しました。時間をおいて再試行してください。";
+
+// One page of ListTenants. The picker searches instead of walking every tenant.
+const platformTenantFilterSearchLimit = 20;
+
+// public_id is 12 Base58 characters (`server/internal/publicid`). A query of
+// that length may be an exact id, so the picker also tries GetTenant.
+const publicIdLength = 12;
+
+const toTenantFilterOption = (tenant: {
   name: string;
   publicId: string;
-}
+}): PlatformTenantFilterOption => ({
+  name: tenant.name,
+  publicId: tenant.publicId,
+});
 
-const walkPlatformTenants = (
-  sid: string,
-  onPage: (
-    tenants: readonly PlatformTenantRef[]
-  ) => CursorPageVisitResult | Promise<CursorPageVisitResult>
-) =>
-  forEachPageWithToken(async (token, limit) => {
-    const response = await apiClient.tenants.listTenants(
-      {
-        limit,
-        name: "",
-        publicId: "",
-        status: "",
-        token,
-      },
-      buildSessionHeaders(sid)
-    );
-    return {
-      items: response.tenants ?? [],
-      nextToken: response.nextToken ?? "",
-    };
-  }, onPage);
+const mergeTenantFilterOptions = (
+  tenants: readonly { name: string; publicId: string }[]
+): PlatformTenantFilterOption[] => {
+  const options: PlatformTenantFilterOption[] = [];
+  const seen = new Set<string>();
+
+  for (const tenant of tenants) {
+    if (seen.has(tenant.publicId)) {
+      continue;
+    }
+    seen.add(tenant.publicId);
+    options.push(toTenantFilterOption(tenant));
+  }
+
+  return options;
+};
 
 export const listPlatformEndUsers = async (
   input: ListPlatformEndUsersInput
@@ -151,37 +159,90 @@ export const listPlatformEndUsers = async (
   }
 };
 
-export const listPlatformTenantFilterOptions = async (): Promise<
-  PlatformTenantFilterOption[]
-> => {
+export type SearchPlatformTenantFilterOptionsResult =
+  | {
+      hasMore: boolean;
+      ok: true;
+      tenants: PlatformTenantFilterOption[];
+    }
+  | {
+      hasMore: false;
+      message: string;
+      ok: false;
+      tenants: [];
+    };
+
+export const searchPlatformTenantFilterOptions = async (
+  query: string
+): Promise<SearchPlatformTenantFilterOptionsResult> => {
   "use cache: private";
+
+  const normalized = query.trim();
+  if (!normalized) {
+    return { hasMore: false, ok: true, tenants: [] };
+  }
 
   const sid = await resolveAccessToken();
   if (!sid) {
-    return [];
+    return {
+      hasMore: false,
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+      tenants: [],
+    };
   }
 
-  try {
-    const options: PlatformTenantFilterOption[] = [];
+  const headers = buildSessionHeaders(sid);
 
-    const tenantStop = await walkPlatformTenants(sid, (tenants) => {
-      options.push(
-        ...tenants.map((tenant) => ({
-          name: tenant.name,
-          publicId: tenant.publicId,
-        }))
-      );
-    });
-
-    // A partial option list would look like the complete tenant set.
-    if (tenantStop !== "completed") {
-      return [];
+  const lookupExactTenant = async () => {
+    if (normalized.length !== publicIdLength) {
+      return null;
     }
 
-    return options;
+    try {
+      return await apiClient.tenants.getTenant(
+        { publicId: normalized } as never,
+        headers
+      );
+    } catch (error) {
+      if (isMissingResourceRpcError(error)) {
+        return null;
+      }
+      throw error;
+    }
+  };
+
+  try {
+    const [listResponse, exactTenant] = await Promise.all([
+      apiClient.tenants.listTenants(
+        {
+          limit: platformTenantFilterSearchLimit,
+          name: normalized,
+          publicId: "",
+          status: "",
+          token: "",
+        },
+        headers
+      ),
+      lookupExactTenant(),
+    ]);
+
+    return {
+      hasMore: Boolean(listResponse.nextToken),
+      ok: true,
+      tenants: mergeTenantFilterOptions([
+        ...(exactTenant?.tenant ? [exactTenant.tenant] : []),
+        ...(listResponse.tenants ?? []),
+      ]),
+    };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    return [];
+    return {
+      hasMore: false,
+      message: rpcErrorMessage(error, tenantFilterSearchErrorMessage),
+      ok: false,
+      tenants: [],
+    };
   }
 };
 
