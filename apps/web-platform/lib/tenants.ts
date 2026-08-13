@@ -221,7 +221,7 @@ export const listPlatformTenantMembers = async (
 
   try {
     const response = await apiClient.tenants.listTenantMembers(
-      { tenantId } as never,
+      { tenantPublicId: tenantId },
       buildSessionHeaders(sid)
     );
     return (response.members ?? []).map((member) => ({
