@@ -10,6 +10,7 @@ export default defineConfig({
     "src/form-data.ts",
     "src/format-date-time.ts",
     "src/health.ts",
+    "src/i18n.ts",
     "src/next-static-params.ts",
     "src/search-params.ts",
     "src/static-param-placeholder.ts",

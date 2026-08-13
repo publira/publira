@@ -35,6 +35,10 @@
       "types": "./dist/health.d.mts",
       "default": "./dist/health.mjs"
     },
+    "./i18n": {
+      "types": "./dist/i18n.d.mts",
+      "default": "./dist/i18n.mjs"
+    },
     "./static-param-placeholder": {
       "types": "./dist/static-param-placeholder.d.mts",
       "default": "./dist/static-param-placeholder.mjs"

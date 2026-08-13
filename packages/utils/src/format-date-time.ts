@@ -10,11 +10,19 @@
  * (`YYYY-MM-DDTHH:mm`, optionally with seconds / fractional seconds).
  */
 
+import { parseLocale, toIntlLocale } from "./i18n";
+import type { Locale } from "./i18n";
+
 /** Default IANA zone when `timeZone` is omitted (gradual migration from fixed JST). */
 export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
 
 export interface FormatDateTimeOptions {
   fallback?: string;
+  /**
+   * UI locale (`ja` | `en`). Unknown values fall back to `ja`.
+   * Defaults to `ja`, which keeps the previous `ja-JP` `Intl` output.
+   */
+  locale?: Locale | string;
   /**
    * IANA time zone used for display (e.g. `Asia/Tokyo`, `America/Los_Angeles`).
    * Defaults to {@link DEFAULT_TIME_ZONE}.
@@ -40,28 +48,47 @@ const PLAIN_DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;
 const dateTimeFormatterCache = new Map<string, Intl.DateTimeFormat>();
 const dateFormatterCache = new Map<string, Intl.DateTimeFormat>();
 
+const formatterCacheKey = (intlLocale: string, timeZone: string): string =>
+  `${intlLocale}\0${timeZone}`;
+
 const getCachedFormatter = (
   cache: Map<string, Intl.DateTimeFormat>,
+  intlLocale: string,
   timeZone: string,
   options: Intl.DateTimeFormatOptions
 ): Intl.DateTimeFormat => {
-  const cached = cache.get(timeZone);
+  const key = formatterCacheKey(intlLocale, timeZone);
+  const cached = cache.get(key);
   if (cached) {
     return cached;
   }
-  const formatter = new Intl.DateTimeFormat("ja-JP", { ...options, timeZone });
-  cache.set(timeZone, formatter);
+  const formatter = new Intl.DateTimeFormat(intlLocale, {
+    ...options,
+    timeZone,
+  });
+  cache.set(key, formatter);
   return formatter;
 };
 
-const getDateTimeFormatter = (timeZone: string): Intl.DateTimeFormat =>
-  getCachedFormatter(dateTimeFormatterCache, timeZone, {
+const resolveIntlLocale = (locale: Locale | string | undefined): string =>
+  toIntlLocale(parseLocale(locale));
+
+const getDateTimeFormatter = (
+  intlLocale: string,
+  timeZone: string
+): Intl.DateTimeFormat =>
+  getCachedFormatter(dateTimeFormatterCache, intlLocale, timeZone, {
     dateStyle: "medium",
     timeStyle: "short",
   });
 
-const getDateFormatter = (timeZone: string): Intl.DateTimeFormat =>
-  getCachedFormatter(dateFormatterCache, timeZone, { dateStyle: "medium" });
+const getDateFormatter = (
+  intlLocale: string,
+  timeZone: string
+): Intl.DateTimeFormat =>
+  getCachedFormatter(dateFormatterCache, intlLocale, timeZone, {
+    dateStyle: "medium",
+  });
 
 /**
  * Parse an absolute timestamp to `Temporal.Instant`.
@@ -97,13 +124,16 @@ export const formatDateTime = (
 ): string => {
   const fallback = options?.fallback ?? value;
   const timeZone = options?.timeZone ?? DEFAULT_TIME_ZONE;
+  const intlLocale = resolveIntlLocale(options?.locale);
 
   const instant = parseInstant(value);
   if (!instant) {
     return fallback;
   }
 
-  return getDateTimeFormatter(timeZone).format(instant.epochMilliseconds);
+  return getDateTimeFormatter(intlLocale, timeZone).format(
+    instant.epochMilliseconds
+  );
 };
 
 /**
@@ -117,13 +147,16 @@ export const formatDate = (
 ): string => {
   const fallback = options?.fallback ?? value;
   const timeZone = options?.timeZone ?? DEFAULT_TIME_ZONE;
+  const intlLocale = resolveIntlLocale(options?.locale);
 
   const instant = parseInstant(value);
   if (!instant) {
     return fallback;
   }
 
-  return getDateFormatter(timeZone).format(instant.epochMilliseconds);
+  return getDateFormatter(intlLocale, timeZone).format(
+    instant.epochMilliseconds
+  );
 };
 
 /**

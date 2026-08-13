@@ -90,6 +90,7 @@ jobs:
             check:
               - *docs_excluded
               - 'apps/**'
+              - 'locales/**'
               - 'packages/**'
               - 'e2e/**'
               - 'server/**'
@@ -128,6 +129,7 @@ jobs:
             test_ts:
               - *docs_excluded
               - 'apps/**'
+              - 'locales/**'
               - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'

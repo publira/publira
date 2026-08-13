@@ -9,7 +9,7 @@
   // any worktree), oldest entry first.
   "cacheMaxAge": "3d",
   "cacheMaxSize": "20GB",
-  "globalDependencies": ["**/.env.*local"],
+  "globalDependencies": ["**/.env.*local", "locales/**"],
   "tasks": {
     "//#check": {},
     "//#fix": {

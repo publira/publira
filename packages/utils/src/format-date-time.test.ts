@@ -60,6 +60,33 @@ describe("formatDateTime", () => {
     expect(formatDateTime("2024-03-10T10:00:00", { fallback: "-" })).toBe("-");
     expect(formatDateTime("2024-03-10", { fallback: "-" })).toBe("-");
   });
+
+  it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
+    const instant = parseInstant(UTC_INSTANT);
+    if (!instant) {
+      throw new Error("expected UTC_INSTANT to parse");
+    }
+
+    const ja = formatDateTime(UTC_INSTANT, { locale: "ja", timeZone: "UTC" });
+    const en = formatDateTime(UTC_INSTANT, { locale: "en", timeZone: "UTC" });
+    const omitted = formatDateTime(UTC_INSTANT, { timeZone: "UTC" });
+    const unknown = formatDateTime(UTC_INSTANT, {
+      locale: "fr",
+      timeZone: "UTC",
+    });
+
+    expect(ja).toBe("2024/03/10 10:00");
+    expect(omitted).toBe(ja);
+    expect(unknown).toBe(ja);
+    expect(en).not.toBe(ja);
+    expect(en).toBe(
+      new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(instant.epochMilliseconds)
+    );
+  });
 });
 
 describe("formatDate", () => {
@@ -83,6 +110,27 @@ describe("formatDate", () => {
     expect(formatDate("", { fallback: "-" })).toBe("-");
     expect(formatDate("not-a-date", { fallback: "-" })).toBe("-");
     expect(formatDate("2024-03-10", { fallback: "-" })).toBe("-");
+  });
+
+  it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
+    const lateInstant = "2024-03-10T23:00:00.000Z";
+    const instant = parseInstant(lateInstant);
+    if (!instant) {
+      throw new Error("expected lateInstant to parse");
+    }
+
+    const ja = formatDate(lateInstant, { locale: "ja", timeZone: "UTC" });
+    const en = formatDate(lateInstant, { locale: "en", timeZone: "UTC" });
+
+    expect(ja).toBe("2024/03/10");
+    expect(formatDate(lateInstant, { timeZone: "UTC" })).toBe(ja);
+    expect(en).not.toBe(ja);
+    expect(en).toBe(
+      new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeZone: "UTC",
+      }).format(instant.epochMilliseconds)
+    );
   });
 });
 

@@ -27,6 +27,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 │   └── docker/         # 本番用 Dockerfile（ロール別・ルートからビルド）
 ├── mobile/             # [Flutter] モバイルアプリ (iOS/Android)
 ├── proto/              # Protocol Buffers スキーマ定義
+├── locales/            # 共有 UI メッセージ（JSON。Go / Web / Flutter が同じファイルを読む）
 └── db/                 # PostgreSQL migration/クエリ
 ```
 
