@@ -53,6 +53,8 @@ cursor 一覧 RPC をアプリ側で順に辿るときは、共有 helper を使
 
 `forEachPageWithToken` は停止理由を返します: `completed` / `stopped-by-callback` / `max-pages` / `max-rows` / `repeated-token`。
 
+まだ cursor に移っていない offset 一覧は `forEachPageWithOffset` を使います。停止理由は `repeated-token` を除いた同じ集合です。最終ページが満杯のまま上限に達したときは `completed` ではなく `max-pages` / `max-rows` です。
+
 ### 単体検索
 
 単体取得 RPC がないリソースを `publicId` で探す場合（暫定）:

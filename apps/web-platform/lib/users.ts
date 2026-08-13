@@ -1,6 +1,9 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { forEachPageWithToken } from "@publira/api-client/pagination";
+import {
+  forEachPageWithOffset,
+  forEachPageWithToken,
+} from "@publira/api-client/pagination";
 import type { CursorPageVisitResult } from "@publira/api-client/pagination";
 import { parseInstant } from "@publira/utils";
 
@@ -223,13 +226,37 @@ const paginateUsers = (
   return sortedUsers.slice(offset, offset + limit);
 };
 
-const walkPlatformTenants = async (
+const listErrorMessage =
+  "ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。";
+
+interface PlatformTenantRef {
+  name: string;
+  publicId: string;
+}
+
+const visitEach = async <T>(
+  items: readonly T[],
+  visit: (item: T) => Promise<CursorPageVisitResult>,
+  index = 0
+): Promise<CursorPageVisitResult> => {
+  const item = items[index];
+  if (!item) {
+    return;
+  }
+  const result = await visit(item);
+  if (result === false) {
+    return false;
+  }
+  return visitEach(items, visit, index + 1);
+};
+
+const walkPlatformTenants = (
   sid: string,
   onPage: (
-    tenants: readonly { name: string; publicId: string }[]
+    tenants: readonly PlatformTenantRef[]
   ) => CursorPageVisitResult | Promise<CursorPageVisitResult>
-): Promise<void> => {
-  await forEachPageWithToken(async (token, limit) => {
+) =>
+  forEachPageWithToken(async (token, limit) => {
     const response = await apiClient.tenants.listTenants(
       {
         limit,
@@ -245,11 +272,8 @@ const walkPlatformTenants = async (
       nextToken: response.nextToken ?? "",
     };
   }, onPage);
-};
 
-const membersPerPage = 100;
-
-const walkTenantMembers = async (
+const walkTenantMembers = (
   sid: string,
   tenantPublicId: string,
   onMembers: (
@@ -260,64 +284,70 @@ const walkTenantMembers = async (
       status: string;
       userPublicId: string;
     }[]
-  ) => void
-): Promise<void> => {
-  for (let page = 0; page < 100; page += 1) {
-    // Sequential pagination depends on previous page results.
-    // oxlint-disable-next-line no-await-in-loop
+  ) => CursorPageVisitResult | Promise<CursorPageVisitResult>
+) =>
+  forEachPageWithOffset(async (offset, limit) => {
     const response = await apiClient.tenants.listTenantMembers(
       {
-        limit: membersPerPage,
-        offset: page * membersPerPage,
+        limit,
+        offset,
         tenantPublicId,
       },
       buildSessionHeaders(sid)
     );
-
-    const members = response.members ?? [];
-    if (members.length === 0) {
-      break;
-    }
-    onMembers(members);
-    if (members.length < membersPerPage) {
-      break;
-    }
-  }
-};
+    return { items: response.members ?? [] };
+  }, onMembers);
 
 const listTenantScopedUsersFallback = async (
   sid: string,
   input: ListPlatformEndUsersInput,
   publicIdsSet: Set<string>
-): Promise<{
-  tenantNameMap: Map<string, string>;
-  users: PlatformEndUserSummary[];
-}> => {
+): Promise<
+  | {
+      ok: true;
+      tenantNameMap: Map<string, string>;
+      users: PlatformEndUserSummary[];
+    }
+  | { ok: false }
+> => {
   const normalizedTenantId = normalizeTenantId(input);
   const allUsers = new Map<string, PlatformEndUserSummary>();
   const tenantNameMap = new Map<string, string>();
 
-  await walkPlatformTenants(sid, async (tenants) => {
-    for (const tenant of tenants) {
+  const tenantStop = await walkPlatformTenants(sid, (tenants) =>
+    visitEach(tenants, async (tenant) => {
       tenantNameMap.set(tenant.publicId, tenant.name ?? tenant.publicId);
       if (normalizedTenantId && tenant.publicId !== normalizedTenantId) {
-        continue;
+        return;
       }
 
-      // Sequential: the first tenant a user belongs to wins on the shared map.
-      // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop
-      await walkTenantMembers(sid, tenant.publicId, (members) => {
-        for (const member of members) {
-          if (shouldSkipFallbackMember(member, input, publicIdsSet, allUsers)) {
-            continue;
+      const memberStop = await walkTenantMembers(
+        sid,
+        tenant.publicId,
+        (members) => {
+          for (const member of members) {
+            if (
+              shouldSkipFallbackMember(member, input, publicIdsSet, allUsers)
+            ) {
+              continue;
+            }
+            addFallbackMemberUser(allUsers, member, tenant);
           }
-          addFallbackMemberUser(allUsers, member, tenant);
         }
-      });
-    }
-  });
+      );
+      // A full last page at the budget is not the end of the list.
+      if (memberStop !== "completed") {
+        return false;
+      }
+    })
+  );
+
+  if (tenantStop !== "completed") {
+    return { ok: false };
+  }
 
   return {
+    ok: true,
     tenantNameMap,
     users: [...allUsers.values()],
   };
@@ -363,13 +393,24 @@ export const listPlatformEndUsers = async (
       }
       return [user];
     });
-    const { tenantNameMap, users: tenantScopedUsers } =
-      await listTenantScopedUsersFallback(sid, input, publicIdsSet);
+    const fallback = await listTenantScopedUsersFallback(
+      sid,
+      input,
+      publicIdsSet
+    );
+    // Match the announcement pickers: a partial walk must not surface a
+    // half-built list that operators read as every user.
+    if (!fallback.ok) {
+      return {
+        message: listErrorMessage,
+        ok: false,
+      };
+    }
 
-    const mergedUsers = mergeUsers(mappedUsers, tenantScopedUsers);
+    const mergedUsers = mergeUsers(mappedUsers, fallback.users);
     const usersWithTenantInfo = enrichUsersWithTenantInfo(
       mergedUsers,
-      tenantNameMap,
+      fallback.tenantNameMap,
       normalizedTenantId
     );
 
@@ -380,10 +421,7 @@ export const listPlatformEndUsers = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: rpcErrorMessage(
-        error,
-        "ユーザー一覧の取得に失敗しました。時間をおいて再試行してください。"
-      ),
+      message: rpcErrorMessage(error, listErrorMessage),
       ok: false,
     };
   }
@@ -402,7 +440,7 @@ export const listPlatformTenantFilterOptions = async (): Promise<
   try {
     const options: PlatformTenantFilterOption[] = [];
 
-    await walkPlatformTenants(sid, (tenants) => {
+    const tenantStop = await walkPlatformTenants(sid, (tenants) => {
       options.push(
         ...tenants.map((tenant) => ({
           name: tenant.name,
@@ -410,6 +448,11 @@ export const listPlatformTenantFilterOptions = async (): Promise<
         }))
       );
     });
+
+    // A partial option list would look like the complete tenant set.
+    if (tenantStop !== "completed") {
+      return [];
+    }
 
     return options;
   } catch (error) {
