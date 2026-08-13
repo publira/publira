@@ -1,5 +1,6 @@
-// Package httpserver builds the http.Server used by the API process
-// entrypoints, with the shared timeout and protocol policy.
+// Package httpserver builds the http.Server used by long-lived HTTP
+// process entrypoints (API and image servers), with the shared timeout
+// and protocol policy.
 //
 // Timeouts:
 //
@@ -14,9 +15,10 @@
 //     accepts zip/epub archives of unbounded compressed size (each of up
 //     to 1000 entries is capped at 20 MiB uncompressed). A timeout short
 //     enough to stop a slow-body attack would fail legitimate uploads.
-//     WriteTimeout similarly covers handler work plus the response; image
-//     processing alone can run 15s per image. Per-route deadlines belong
-//     on the handler once those RPCs have explicit budgets.
+//     WriteTimeout similarly covers handler work plus the response: image
+//     processing can run 15s per image, and the image servers stream
+//     object bytes to the client. Per-route deadlines belong on the
+//     handler once those paths have explicit budgets.
 package httpserver
 
 import (
@@ -37,7 +39,7 @@ const (
 
 // New returns an http.Server that serves handler on addr with the shared
 // timeout policy and with HTTP/1.1 plus prior-knowledge unencrypted HTTP/2
-// enabled (what Connect and gRPC clients in this stack use).
+// enabled (what Connect and gRPC clients use; HTTP/1.1 clients are unchanged).
 func New(addr string, handler http.Handler) *http.Server {
 	return newServer(addr, handler, ReadHeaderTimeout, IdleTimeout)
 }

@@ -17,6 +17,7 @@ import (
 
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
 )
 
@@ -64,7 +65,7 @@ func main() {
 	}
 
 	logger.Info("starting image server", "addr", addr)
-	server := &http.Server{Addr: addr, Handler: imageHandler}
+	server := httpserver.New(addr, imageHandler)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error("image server failed", "error", err)
 		os.Exit(1)
