@@ -77,12 +77,42 @@ describe("updateTenantTimezoneAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:timezone");
   });
 
-  it("不正なタイムゾーンは API を呼ばずに拒否する", async () => {
+  it("列挙されないエイリアスもサーバと同じく保存できる", async () => {
+    mockUpdateTenantTimezone.mockResolvedValueOnce({
+      ok: true,
+      timezone: "Asia/Calcutta",
+    });
+
     const { updateTenantTimezoneAction } = await import("./actions");
 
     const result = await updateTenantTimezoneAction(
       null,
-      timezoneFormData({ tenant_id: "TENANT001", timezone: "Asia/Nowhere" })
+      timezoneFormData({ tenant_id: "TENANT001", timezone: "Asia/Calcutta" })
+    );
+
+    expect(result).toEqual({
+      message: "タイムゾーンを保存しました。",
+      ok: true,
+      timezone: "Asia/Calcutta",
+    });
+    expect(mockUpdateTenantTimezone).toHaveBeenCalledWith({
+      tenantId: "TENANT001",
+      timezone: "Asia/Calcutta",
+    });
+  });
+
+  it.each([
+    { label: "未知の IANA 名", timezone: "Asia/Nowhere" },
+    // `Local` は Go の time.LoadLocation では通るが、API プロセス自身のゾーンを
+    // 指すためテナント設定にはならない。オフセット表記は逆に Temporal だけが通す。
+    { label: "サーバプロセスのゾーンを指す Local", timezone: "Local" },
+    { label: "オフセット表記", timezone: "+09:00" },
+  ])("$label は API を呼ばずに拒否する", async ({ timezone }) => {
+    const { updateTenantTimezoneAction } = await import("./actions");
+
+    const result = await updateTenantTimezoneAction(
+      null,
+      timezoneFormData({ tenant_id: "TENANT001", timezone })
     );
 
     expect(result).toEqual({
