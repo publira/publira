@@ -191,3 +191,104 @@ func TestDBUpdateEpisodePublishScheduleRejectsPastTime(t *testing.T) {
 		t.Fatalf("scheduled listings = %d, want 0", count)
 	}
 }
+
+func TestDBGetEpisodeReturnsDraftAndScheduled(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "GetEpisode Host Series")
+
+	draft, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+		Title:          "Draft Episode",
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode draft: %v", err)
+	}
+
+	gotDraft, err := client.GetEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetEpisodeRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+		PublicId:       draft.Msg.Episode.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisode draft: %v", err)
+	}
+	if gotDraft.Msg.Episode.Status != "draft" {
+		t.Fatalf("draft status = %q, want draft", gotDraft.Msg.Episode.Status)
+	}
+	if gotDraft.Msg.Episode.ScheduledAt != "" {
+		t.Fatalf("draft scheduled_at = %q, want empty", gotDraft.Msg.Episode.ScheduledAt)
+	}
+
+	scheduledAt := "2030-01-01T01:00:00Z"
+	scheduled, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+		Title:          "Scheduled Episode",
+		ScheduledAt:    scheduledAt,
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode scheduled: %v", err)
+	}
+
+	gotScheduled, err := client.GetEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetEpisodeRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+		PublicId:       scheduled.Msg.Episode.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetEpisode scheduled: %v", err)
+	}
+	if gotScheduled.Msg.Episode.Status != "scheduled" {
+		t.Fatalf("scheduled status = %q, want scheduled", gotScheduled.Msg.Episode.Status)
+	}
+	if gotScheduled.Msg.Episode.ScheduledAt != scheduledAt {
+		t.Fatalf("scheduled_at = %q, want %q", gotScheduled.Msg.Episode.ScheduledAt, scheduledAt)
+	}
+}
+
+func TestDBGetEpisodeTenantBoundary(t *testing.T) {
+	env := newAdminDBEnv(t)
+	first, second := seedTwoTenants(t, env)
+	client := env.seriesClient()
+
+	theirSeries := createDBSeries(t, client, second, "Tenant B Series")
+	theirs, err := client.CreateEpisode(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:         second.tenantContext(),
+		SeriesPublicId: theirSeries,
+		Title:          "Tenant B Episode",
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode for tenant B: %v", err)
+	}
+
+	_, err = client.GetEpisode(context.Background(), newAdminDBRequest(first, &publiraadminv1.GetEpisodeRequest{
+		Tenant:         first.tenantContext(),
+		SeriesPublicId: theirSeries,
+		PublicId:       theirs.Msg.Episode.PublicId,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetEpisode across tenants code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+
+	mineSeries := createDBSeries(t, client, first, "Tenant A Series")
+	_, err = client.GetEpisode(context.Background(), newAdminDBRequest(first, &publiraadminv1.GetEpisodeRequest{
+		Tenant:         first.tenantContext(),
+		SeriesPublicId: mineSeries,
+		PublicId:       theirs.Msg.Episode.PublicId,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetEpisode wrong series code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+
+	_, err = client.GetEpisode(context.Background(), newAdminDBRequest(first, &publiraadminv1.GetEpisodeRequest{
+		Tenant:         first.tenantContext(),
+		SeriesPublicId: mineSeries,
+		PublicId:       "EPISODE_MISSING",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetEpisode missing code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+}

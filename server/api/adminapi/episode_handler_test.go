@@ -1107,3 +1107,187 @@ func TestListEpisodesDatabaseErrorIsHidden(t *testing.T) {
 	}
 	assertExpectations(t, mock)
 }
+
+func TestAdminGetEpisode(t *testing.T) {
+	scheduledAt := time.Date(2030, 1, 1, 1, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name            string
+		seriesPublicID  string
+		publicID        string
+		rows            *sqlmock.Rows
+		wantCode        connect.Code
+		wantPublicID    string
+		wantStatus      string
+		wantScheduledAt string
+	}{
+		{
+			name:           "draft",
+			seriesPublicID: "SERIES001",
+			publicID:       "EPISODE001",
+			rows: episodeColumns().AddRow(
+				uuid.Must(uuid.NewV7()), "EPISODE001", "Draft Episode", int32(1), int32(0), nil, "draft", nil, nil,
+			),
+			wantPublicID: "EPISODE001",
+			wantStatus:   "draft",
+		},
+		{
+			name:           "scheduled",
+			seriesPublicID: "SERIES001",
+			publicID:       "EPISODE002",
+			rows: episodeColumns().AddRow(
+				uuid.Must(uuid.NewV7()), "EPISODE002", "Scheduled Episode", int32(2), int32(100), int32(24), "scheduled", scheduledAt, nil,
+			),
+			wantPublicID:    "EPISODE002",
+			wantStatus:      "scheduled",
+			wantScheduledAt: "2030-01-01T01:00:00Z",
+		},
+		{
+			name:           "cross-tenant",
+			seriesPublicID: "SERIES_OTHER",
+			publicID:       "EPISODE_OTHER",
+			rows:           episodeColumns(),
+			wantCode:       connect.CodeNotFound,
+		},
+		{
+			name:           "not-found",
+			seriesPublicID: "SERIES001",
+			publicID:       "EPISODE_MISSING",
+			rows:           episodeColumns(),
+			wantCode:       connect.CodeNotFound,
+		},
+		{
+			name:           "wrong-series",
+			seriesPublicID: "SERIES_OTHER",
+			publicID:       "EPISODE001",
+			rows:           episodeColumns(),
+			wantCode:       connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+			mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+				WithArgs(tenantID, tc.seriesPublicID, tc.publicID).
+				WillReturnRows(tc.rows)
+
+			req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				SeriesPublicId: tc.seriesPublicID,
+				PublicId:       tc.publicID,
+			})
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+			resp, err := client.GetEpisode(context.Background(), req)
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("GetEpisode: %v", err)
+				}
+				if resp.Msg.Episode == nil {
+					t.Fatal("episode is nil")
+				}
+				if resp.Msg.Episode.PublicId != tc.wantPublicID {
+					t.Fatalf("public_id = %q, want %q", resp.Msg.Episode.PublicId, tc.wantPublicID)
+				}
+				if resp.Msg.Episode.Status != tc.wantStatus {
+					t.Fatalf("status = %q, want %q", resp.Msg.Episode.Status, tc.wantStatus)
+				}
+				if resp.Msg.Episode.ScheduledAt != tc.wantScheduledAt {
+					t.Fatalf("scheduled_at = %q, want %q", resp.Msg.Episode.ScheduledAt, tc.wantScheduledAt)
+				}
+			} else if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestAdminGetEpisodeValidation(t *testing.T) {
+	tests := []struct {
+		name           string
+		seriesPublicID string
+		publicID       string
+	}{
+		{name: "missing-series-public-id", publicID: "EPISODE001"},
+		{name: "missing-public-id", seriesPublicID: "SERIES001"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+			req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				SeriesPublicId: tc.seriesPublicID,
+				PublicId:       tc.publicID,
+			})
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+			_, err := client.GetEpisode(context.Background(), req)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestAdminGetEpisodeDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+		WithArgs(tenantID, "SERIES001", "EPISODE001").
+		WillReturnError(errors.New(`pq: relation "episodes" does not exist`))
+
+	req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId: "SERIES001",
+		PublicId:       "EPISODE001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetEpisode(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestAdminGetEpisodePreservesContextCanceled(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantAndSeriesQuery)).
+		WithArgs(tenantID, "SERIES001", "EPISODE001").
+		WillReturnError(context.Canceled)
+
+	req := connect.NewRequest(&publiraadminv1.GetEpisodeRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId: "SERIES001",
+		PublicId:       "EPISODE001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetEpisode(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetEpisode code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertExpectations(t, mock)
+}

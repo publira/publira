@@ -281,6 +281,38 @@ func (s *adminServer) ListEpisodes(
 	return connect.NewResponse(res), nil
 }
 
+func (s *adminServer) GetEpisode(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetEpisodeRequest],
+) (*connect.Response[publiraadminv1.GetEpisodeResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
+	}
+	if strings.TrimSpace(req.Msg.PublicId) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+	}
+
+	row, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenantAndSeries(ctx, dbmodels.GetEpisodeByPublicIDForTenantAndSeriesParams{
+		TenantID:   tenant.ID,
+		PublicID:   req.Msg.SeriesPublicId,
+		PublicID_2: req.Msg.PublicId,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+		}
+		return nil, s.internalDBError("failed to get episode", err, "tenant_id", tenant.ID.String())
+	}
+
+	return connect.NewResponse(&publiraadminv1.GetEpisodeResponse{
+		Episode: protomapper.EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row),
+	}), nil
+}
+
 func (s *adminServer) ReorderEpisodes(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ReorderEpisodesRequest],

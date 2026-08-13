@@ -91,6 +91,16 @@ message ListEpisodesResponse {
   string next_token = 3;
 }
 
+message GetEpisodeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_public_id = 2;
+  string public_id = 3;
+}
+
+message GetEpisodeResponse {
+  publira.types.v1.Episode episode = 1;
+}
+
 message ReorderEpisodesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
@@ -173,6 +183,7 @@ service AdminSeriesService {
   rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {}
   rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
   rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse) {}
+  rpc GetEpisode(GetEpisodeRequest) returns (GetEpisodeResponse) {}
   rpc ReorderEpisodes(ReorderEpisodesRequest) returns (ReorderEpisodesResponse) {}
   rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse) {}
   rpc UploadEpisodeImages(UploadEpisodeImagesRequest) returns (UploadEpisodeImagesResponse) {}
