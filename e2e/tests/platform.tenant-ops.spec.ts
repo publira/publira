@@ -11,6 +11,7 @@ import {
   formMessage,
   signInAsScenarioPlatformOperator,
   signInAsSeedPlatformSuperAdmin,
+  signOutPlatform,
 } from "../src/platform";
 import {
   PLATFORM_OPERATORS_SCENARIO,
@@ -309,7 +310,7 @@ test.describe("platform tenant operations", () => {
     applyScenarioSql(PLATFORM_OPERATORS_SCENARIO);
 
     // Drop super-admin session and sign in as platform_operator.
-    await page.goto(platformUrl("/logout"));
+    await signOutPlatform(page);
     await signInAsScenarioPlatformOperator(page, "/operators/new");
 
     await expect(
@@ -339,7 +340,7 @@ test.describe("platform tenant operations", () => {
     const domain = `e2e-visible-${suffix}.localhost`;
     trackTenant(await createTenantViaUi(page, { domain, name }));
 
-    await page.goto(platformUrl("/logout"));
+    await signOutPlatform(page);
     await signInAsScenarioPlatformOperator(page, "/tenants");
 
     await expect(page.getByText(name)).toBeVisible();

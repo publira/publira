@@ -1,0 +1,62 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+  mockDeleteCookie,
+  mockLogoutPlatform,
+  mockRedirect,
+  mockResolveAccessToken,
+} = vi.hoisted(() => ({
+  mockDeleteCookie: vi.fn(),
+  mockLogoutPlatform: vi.fn(),
+  mockRedirect: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: () => ({
+    delete: mockDeleteCookie,
+  }),
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: mockRedirect,
+}));
+
+vi.mock("./api-client", () => ({
+  resolveAccessToken: mockResolveAccessToken,
+}));
+
+vi.mock("./auth", () => ({
+  PLATFORM_SESSION_COOKIE_NAME: "publira_web_platform_auth",
+  logoutPlatform: mockLogoutPlatform,
+}));
+
+describe("logoutAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockResolveAccessToken.mockResolvedValue("tok_abc");
+  });
+
+  it("upstream を revoke して Cookie を消し、ログインへ redirect する", async () => {
+    const { logoutAction } = await import("./logout-action");
+
+    await logoutAction();
+
+    expect(mockResolveAccessToken).toHaveBeenCalledOnce();
+    expect(mockLogoutPlatform).toHaveBeenCalledWith("tok_abc");
+    expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_platform_auth");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
+  });
+
+  it("revoke が失敗しても Cookie 削除と redirect は行う", async () => {
+    mockLogoutPlatform.mockRejectedValueOnce(new Error("upstream down"));
+
+    const { logoutAction } = await import("./logout-action");
+
+    await logoutAction();
+
+    expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_platform_auth");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
+  });
+});

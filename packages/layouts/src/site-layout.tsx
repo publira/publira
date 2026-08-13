@@ -10,11 +10,6 @@ export interface LayoutLinkItem {
 
 export interface LayoutActionItem extends LayoutLinkItem {
   className?: string;
-  /**
-   * リンク先が Route Handler など「クライアント遷移でも prefetch でも踏ませたくない」
-   * 場合に true。素の `<a>` として描画する。
-   */
-  hardNavigation?: boolean;
 }
 
 export const defaultSiteLayoutNavItems: LayoutLinkItem[] = [

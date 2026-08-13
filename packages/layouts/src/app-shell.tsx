@@ -87,6 +87,7 @@ export interface AppShellHeaderProps {
   eyebrow: string;
   contextLabel: string;
   currentUser: AppShellCurrentUser;
+  logoutAction: (formData: FormData) => void | Promise<void>;
   actions?: ReactNode;
 }
 
@@ -97,6 +98,7 @@ export const AppShellHeader = ({
   eyebrow,
   contextLabel,
   currentUser,
+  logoutAction,
   actions,
 }: AppShellHeaderProps) => (
   <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 backdrop-blur">
@@ -136,7 +138,7 @@ export const AppShellHeader = ({
           {currentUser.role}
         </StatusChip>
         {actions}
-        <form action="/logout" method="post">
+        <form action={logoutAction}>
           <Button size="sm" type="submit" variant="outline">
             ログアウト
           </Button>

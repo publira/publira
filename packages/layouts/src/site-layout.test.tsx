@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { getAuthActions } from "./auth-actions";
 import {
   SiteLayout,
   SiteLayoutBrandSkeleton,
@@ -97,25 +98,37 @@ describe("SiteLayoutActions", () => {
     expect(signIn.dataset.nextLink).toBe("true");
   });
 
-  it("hardNavigation のアクションは prefetch されない素の <a> にする", () => {
+  it("logoutAction があるときは form + submit ボタンで描画する", () => {
+    const logoutAction = vi.fn();
     render(
       <SiteLayoutActions
+        logoutAction={logoutAction}
         primaryAction={{ href: "/my", label: "My Page" }}
-        secondaryAction={{
-          hardNavigation: true,
-          href: "/logout",
-          label: "Logout",
-        }}
       />
     );
 
-    const logout = screen.getByRole("link", { name: "Logout" });
-    expect(logout.getAttribute("href")).toBe("/logout");
-    expect(logout.dataset.nextLink).toBeUndefined();
+    const logout = screen.getByRole("button", { name: "Logout" });
+    expect(logout.getAttribute("type")).toBe("submit");
+    expect(logout.closest("form")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Logout" })).toBeNull();
 
-    // 同じ描画の中でも hardNavigation でない方は next/link のまま
     expect(screen.getByRole("link", { name: "My Page" }).dataset.nextLink).toBe(
       "true"
     );
+  });
+});
+
+describe("getAuthActions", () => {
+  it("未ログインでは Sign in / Start のリンクを返す", () => {
+    expect(getAuthActions(false)).toEqual({
+      primaryAction: { href: "/signup", label: "Start" },
+      secondaryAction: { href: "/login", label: "Sign in" },
+    });
+  });
+
+  it("ログイン済みでは My Page のみ返し、ログアウトはリンクにしない", () => {
+    expect(getAuthActions(true)).toEqual({
+      primaryAction: { href: "/my", label: "My Page" },
+    });
   });
 });

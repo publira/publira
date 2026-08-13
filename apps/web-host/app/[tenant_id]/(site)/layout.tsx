@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { logoutAction } from "#lib/logout-action";
 import { listPublishedPageLinks } from "#lib/pages";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -25,7 +26,7 @@ const siteNavItems: LayoutLinkItem[] = [
 ];
 
 const getHeaderActionsContent = async () => {
-  const cookieStore = await cookies();
+  const [cookieStore, tenantId] = await Promise.all([cookies(), getTenantId()]);
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
@@ -33,6 +34,7 @@ const getHeaderActionsContent = async () => {
 
   return (
     <SiteLayoutActions
+      logoutAction={hasSession ? logoutAction.bind(null, tenantId) : undefined}
       primaryAction={actions.primaryAction}
       secondaryAction={actions.secondaryAction}
     />

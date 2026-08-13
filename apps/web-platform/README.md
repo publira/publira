@@ -18,7 +18,7 @@
 
 ### 認証・認可の前提
 
-- `proxy.ts` で `PUBLIC_PATHS`（`/login`, `/logout`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`）に含まれないパスを保護対象にする
+- `proxy.ts` で `PUBLIC_PATHS`（`/login`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`）に含まれないパスを保護対象にする
 - セッション Cookie: `publira_platform_session`
 - 初期ロール定義: `platform_owner`, `platform_operator`, `platform_auditor`
 - 画面ガードは `(protected)/layout.tsx` で行う

@@ -56,7 +56,6 @@ export default defineConfig({
         "apps/*/lib/auth.test.ts",
         "apps/web-admin/lib/admin-auth.ts",
         // Cookie clearing uses `new Date(0)`.
-        "apps/*/app/**/logout/route.ts",
         "apps/web-host/app/**/settings/page.tsx",
       ],
       rules: {

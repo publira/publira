@@ -10,7 +10,6 @@ const PUBLIC_PATHS = new Set([
   "/confirm-password",
   "/livez",
   "/login",
-  "/logout",
   "/readyz",
   "/reset-password",
   "/reset-password/requested",

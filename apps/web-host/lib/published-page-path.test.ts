@@ -12,6 +12,7 @@ describe("isReservedTopLevelSegment", () => {
     expect(isReservedTopLevelSegment("announcements")).toBe(true);
     expect(isReservedTopLevelSegment("notifications")).toBe(true);
     expect(isReservedTopLevelSegment("login")).toBe(true);
+    expect(isReservedTopLevelSegment("logout")).toBe(false);
     expect(isReservedTopLevelSegment("page")).toBe(true);
     expect(isReservedTopLevelSegment("api")).toBe(true);
     expect(isReservedTopLevelSegment("theme.css")).toBe(true);
@@ -28,6 +29,7 @@ describe("isReservedTopLevelSegment", () => {
 
 describe("getPublishedPageSlugFromPathname", () => {
   it("単一・複数セグメントの公開ページ候補を返す", () => {
+    expect(getPublishedPageSlugFromPathname("/logout")).toBe("logout");
     expect(getPublishedPageSlugFromPathname("/privacy")).toBe("privacy");
     expect(getPublishedPageSlugFromPathname("/terms-of-service")).toBe(
       "terms-of-service"

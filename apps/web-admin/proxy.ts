@@ -18,7 +18,6 @@ const PUBLIC_PATHS = new Set([
   "/forgot-password",
   "/livez",
   "/login",
-  "/logout",
   "/readyz",
   "/theme.css",
 ]);

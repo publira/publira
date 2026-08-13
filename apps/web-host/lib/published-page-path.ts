@@ -12,7 +12,6 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "livez",
   "readyz",
   "login",
-  "logout",
   "my",
   "notifications",
   "page",
