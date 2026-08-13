@@ -39,6 +39,11 @@ export const PlatformTimezoneForm = ({
   const [state, formAction, isPending] = useActionState(action, null);
   const [timezone, setTimezone] = useState(initialTimezone);
 
+  // A failed read hands the form `DEFAULT_TIME_ZONE` as a stand-in, not the
+  // stored value, so saving from that state would overwrite the real default
+  // with the fallback. Editing stays closed until the read succeeds.
+  const hasLoadError = Boolean(loadErrorMessage);
+
   const items = useMemo<ComboboxItem[]>(() => {
     const zones = listSupportedTimeZones();
     // A stored alias (`Asia/Calcutta`) is valid but is not always enumerated by
@@ -67,6 +72,7 @@ export const PlatformTimezoneForm = ({
             <FieldLabel htmlFor="default_timezone">既定タイムゾーン</FieldLabel>
             <FieldContent>
               <Combobox
+                disabled={hasLoadError}
                 emptyMessage="一致するタイムゾーンが見つかりません。"
                 id="default_timezone"
                 items={items}
@@ -83,7 +89,10 @@ export const PlatformTimezoneForm = ({
           </Field>
 
           {loadErrorMessage ? (
-            <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
+            <FormMessage variant="destructive">
+              {loadErrorMessage}
+              保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。
+            </FormMessage>
           ) : null}
 
           {state ? (
@@ -93,7 +102,7 @@ export const PlatformTimezoneForm = ({
           ) : null}
 
           <div className="mt-2 flex justify-end gap-2">
-            <Button disabled={isPending} type="submit">
+            <Button disabled={hasLoadError || isPending} type="submit">
               {isPending ? "保存中..." : "既定タイムゾーンを保存"}
             </Button>
           </div>

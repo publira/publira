@@ -427,19 +427,22 @@ const UsersContent = async ({
   searchParams,
 }: Pick<UsersPageProps, "searchParams">) => {
   const filters = parseUsersFilters(await searchParams);
-  const timeZone = await getPlatformDisplayTimeZone();
 
-  const [tenantItems, result] = await Promise.all([
+  // Only the user list needs the zone (its date filters are day boundaries), so
+  // the tenant options start alongside the zone read instead of behind it.
+  const [tenantItems, timeZone] = await Promise.all([
     listPlatformTenantFilterOptions(),
-    listPlatformEndUsers({
-      createdAfter: createdRangeStart(filters.createdFromFilter, timeZone),
-      createdBefore: createdRangeEnd(filters.createdToFilter, timeZone),
-      limit: filters.limit,
-      offset: filters.offset,
-      status: filters.statusFilter || undefined,
-      tenantId: filters.tenantIdFilter || undefined,
-    }),
+    getPlatformDisplayTimeZone(),
   ]);
+
+  const result = await listPlatformEndUsers({
+    createdAfter: createdRangeStart(filters.createdFromFilter, timeZone),
+    createdBefore: createdRangeEnd(filters.createdToFilter, timeZone),
+    limit: filters.limit,
+    offset: filters.offset,
+    status: filters.statusFilter || undefined,
+    tenantId: filters.tenantIdFilter || undefined,
+  });
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(
