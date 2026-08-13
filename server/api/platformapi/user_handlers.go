@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auditlog"
@@ -20,15 +21,38 @@ const (
 	userStatusInactive  = "inactive"
 )
 
-func endUserToProto(u dbmodels.ListEndUsersRow, tenantIDs []string) *publirasplatformv1.EndUser {
-	return &publirasplatformv1.EndUser{
-		PublicId:  u.PublicID,
-		Name:      u.Name,
-		Email:     u.Email,
-		Status:    u.Status,
-		CreatedAt: u.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		TenantIds: tenantIDs,
+func tenantIDs(publicID string) []string {
+	if publicID == "" {
+		return []string{}
 	}
+	return []string{publicID}
+}
+
+func newEndUser(publicID, name, email, status string, createdAt time.Time, tenantPublicID, tenantName string) *publirasplatformv1.EndUser {
+	return &publirasplatformv1.EndUser{
+		PublicId:   publicID,
+		Name:       name,
+		Email:      email,
+		Status:     status,
+		CreatedAt:  createdAt.UTC().Format("2006-01-02T15:04:05Z"),
+		TenantIds:  tenantIDs(tenantPublicID),
+		TenantName: tenantName,
+	}
+}
+
+func endUserFromListRow(u dbmodels.ListEndUsersRow) *publirasplatformv1.EndUser {
+	return newEndUser(u.PublicID, u.Name, u.Email, u.Status, u.CreatedAt, u.TenantPublicID, u.TenantName)
+}
+
+func (s *platformServer) endUserTenant(ctx context.Context, userID uuid.UUID) (publicID, name string, err error) {
+	tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", nil
+		}
+		return "", "", connect.NewError(connect.CodeInternal, err)
+	}
+	return tenant.PublicID, tenant.Name, nil
 }
 
 func normalizePublicIDs(values []string) []string {
@@ -118,14 +142,16 @@ func (s *platformServer) ListEndUsers(
 
 	filterStatus := strings.TrimSpace(req.Msg.Status)
 	publicIDs := normalizePublicIDs(req.Msg.PublicIds)
+	filterTenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
 
 	users, err := s.queriesFor(ctx).ListEndUsers(ctx, dbmodels.ListEndUsersParams{
-		Limit:         limit,
-		Offset:        offset,
-		CreatedAfter:  createdAfterFilter,
-		CreatedBefore: createdBeforeFilter,
-		PublicIds:     publicIDs,
-		Status:        sql.NullString{String: filterStatus, Valid: filterStatus != ""},
+		Limit:          limit,
+		Offset:         offset,
+		CreatedAfter:   createdAfterFilter,
+		CreatedBefore:  createdBeforeFilter,
+		PublicIds:      publicIDs,
+		Status:         sql.NullString{String: filterStatus, Valid: filterStatus != ""},
+		TenantPublicID: sql.NullString{String: filterTenantPublicID, Valid: filterTenantPublicID != ""},
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -134,19 +160,8 @@ func (s *platformServer) ListEndUsers(
 	resp := &publirasplatformv1.ListEndUsersResponse{
 		Users: make([]*publirasplatformv1.EndUser, 0, len(users)),
 	}
-
 	for _, u := range users {
-		tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, u.ID)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-
-		tenantIDs := []string{}
-		if err == nil {
-			tenantIDs = []string{tenant.PublicID}
-		}
-
-		resp.Users = append(resp.Users, endUserToProto(u, tenantIDs))
+		resp.Users = append(resp.Users, endUserFromListRow(u))
 	}
 
 	return connect.NewResponse(resp), nil
@@ -174,27 +189,13 @@ func (s *platformServer) GetEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, user.ID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tenantIDs := []string{}
-	if err == nil {
-		tenantIDs = []string{tenant.PublicID}
-	}
-
-	endUser := &publirasplatformv1.EndUser{
-		PublicId:  user.PublicID,
-		Name:      user.Name,
-		Email:     user.Email,
-		Status:    user.Status,
-		CreatedAt: user.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		TenantIds: tenantIDs,
+	tenantPublicID, tenantName, err := s.endUserTenant(ctx, user.ID)
+	if err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&publirasplatformv1.GetEndUserResponse{
-		User: endUser,
+		User: newEndUser(user.PublicID, user.Name, user.Email, user.Status, user.CreatedAt, tenantPublicID, tenantName),
 	}), nil
 }
 
@@ -231,23 +232,9 @@ func (s *platformServer) SuspendEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, updated.ID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tenantIDs := []string{}
-	if err == nil {
-		tenantIDs = []string{tenant.PublicID}
-	}
-
-	endUser := &publirasplatformv1.EndUser{
-		PublicId:  updated.PublicID,
-		Name:      updated.Name,
-		Email:     updated.Email,
-		Status:    updated.Status,
-		CreatedAt: updated.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		TenantIds: tenantIDs,
+	tenantPublicID, tenantName, err := s.endUserTenant(ctx, updated.ID)
+	if err != nil {
+		return nil, err
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
@@ -261,7 +248,7 @@ func (s *platformServer) SuspendEndUser(
 	})
 
 	return connect.NewResponse(&publirasplatformv1.SuspendEndUserResponse{
-		User: endUser,
+		User: newEndUser(updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
 	}), nil
 }
 
@@ -296,23 +283,9 @@ func (s *platformServer) UnsuspendEndUser(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	tenant, err := s.queriesFor(ctx).GetTenantByUserID(ctx, updated.ID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	tenantIDs := []string{}
-	if err == nil {
-		tenantIDs = []string{tenant.PublicID}
-	}
-
-	endUser := &publirasplatformv1.EndUser{
-		PublicId:  updated.PublicID,
-		Name:      updated.Name,
-		Email:     updated.Email,
-		Status:    updated.Status,
-		CreatedAt: updated.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-		TenantIds: tenantIDs,
+	tenantPublicID, tenantName, err := s.endUserTenant(ctx, updated.ID)
+	if err != nil {
+		return nil, err
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
@@ -326,7 +299,7 @@ func (s *platformServer) UnsuspendEndUser(
 	})
 
 	return connect.NewResponse(&publirasplatformv1.UnsuspendEndUserResponse{
-		User: endUser,
+		User: newEndUser(updated.PublicID, updated.Name, updated.Email, updated.Status, updated.CreatedAt, tenantPublicID, tenantName),
 	}), nil
 }
 

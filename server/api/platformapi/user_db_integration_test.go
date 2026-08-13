@@ -37,6 +37,64 @@ func TestDBListEndUsersExcludesTenantMembers(t *testing.T) {
 	if got := listResp.Msg.Users[0].TenantIds; !slices.Equal(got, []string{"TENANT000001"}) {
 		t.Fatalf("tenant_ids = %v, want the tenant the user belongs to", got)
 	}
+	if got := listResp.Msg.Users[0].TenantName; got != "Readers" {
+		t.Fatalf("tenant_name = %q, want Readers", got)
+	}
+}
+
+func TestDBListEndUsersFiltersByTenantPublicID(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	readersID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
+	writersID := seedTenant(t, pg, "TENANT000002", "writers.example.com", "Writers")
+	reader := seedEndUser(t, pg, readersID, "ENDUSER00001", "reader@example.com", "Reader One")
+	_ = seedEndUser(t, pg, writersID, "ENDUSER00002", "writer@example.com", "Writer One")
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	listResp, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+		TenantPublicId: "TENANT000001",
+	}))
+	if err != nil {
+		t.Fatalf("ListEndUsers: %v", err)
+	}
+	if got := endUserPublicIDs(listResp.Msg.Users); !slices.Equal(got, []string{reader.PublicID}) {
+		t.Fatalf("tenant filter public IDs = %v, want only %q", got, reader.PublicID)
+	}
+	if got := listResp.Msg.Users[0].TenantName; got != "Readers" {
+		t.Fatalf("tenant_name = %q, want Readers", got)
+	}
+}
+
+func TestDBListEndUsersPagesAreStableWhenCreatedAtTies(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
+	older := seedEndUser(t, pg, tenantID, "ENDUSER00001", "older@example.com", "Older")
+	newer := seedEndUser(t, pg, tenantID, "ENDUSER00002", "newer@example.com", "Newer")
+	tiedAt := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	setUserCreatedAt(t, pg, older.ID, tiedAt)
+	setUserCreatedAt(t, pg, newer.ID, tiedAt)
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
+	first, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+		Limit:  1,
+		Offset: 0,
+	}))
+	if err != nil {
+		t.Fatalf("ListEndUsers first page: %v", err)
+	}
+	second, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
+		Limit:  1,
+		Offset: 1,
+	}))
+	if err != nil {
+		t.Fatalf("ListEndUsers second page: %v", err)
+	}
+	got := append(endUserPublicIDs(first.Msg.Users), endUserPublicIDs(second.Msg.Users)...)
+	want := []string{newer.PublicID, older.PublicID}
+	if !slices.Equal(got, want) {
+		t.Fatalf("adjacent pages = %v, want %v (id DESC on a created_at tie)", got, want)
+	}
 }
 
 func TestDBListEndUsersFiltersByStatusAndPublicIDs(t *testing.T) {
@@ -202,6 +260,16 @@ func endUserPublicIDs(users []*publirasplatformv1.EndUser) []string {
 		publicIDs = append(publicIDs, user.PublicId)
 	}
 	return publicIDs
+}
+
+func setUserCreatedAt(t *testing.T, pg *testutil.PostgresEnv, userID uuid.UUID, createdAt time.Time) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := pg.DB.ExecContext(ctx, `UPDATE users SET created_at = $2 WHERE id = $1`, userID, createdAt); err != nil {
+		t.Fatalf("set created_at for %s: %v", userID, err)
+	}
 }
 
 func setUserStatus(t *testing.T, pg *testutil.PostgresEnv, publicID, status string) {

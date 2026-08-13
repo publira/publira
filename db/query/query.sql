@@ -1694,14 +1694,19 @@ WHERE el.episode_id = e.id
     AND e.public_id = $2;
 
 -- name: ListEndUsers :many
--- エンドユーザー（tenant_user_roles未保持）の一覧取得
+-- エンドユーザー（tenant_user_roles未保持）の一覧取得。
+-- テナントメンバーは意図的に含めない。プラットフォームのユーザー一覧は
+-- この結果が完全な集合であり、クライアントが ListTenantMembers で補完しない。
 SELECT u.id,
     u.public_id,
     u.name,
     u.email,
     u.status,
-    u.created_at
+    u.created_at,
+    COALESCE(t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(t.name, ''::text) AS tenant_name
 FROM users u
+    LEFT JOIN tenants t ON t.id = u.tenant_id
 WHERE NOT EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -1715,7 +1720,12 @@ WHERE NOT EXISTS (
         OR u.status = sqlc.narg('status')::text
     )
     AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
-ORDER BY u.created_at DESC
+    AND (
+        sqlc.narg('tenant_public_id')::text IS NULL
+        OR sqlc.narg('tenant_public_id')::text = ''
+        OR t.public_id = sqlc.narg('tenant_public_id')::text
+    )
+ORDER BY u.created_at DESC, u.id DESC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: ListTenantUsers :many
@@ -2184,6 +2194,7 @@ LIMIT 1;
 -- ユーザーが所属するテナントを取得
 SELECT t.id,
     t.public_id,
+    t.name,
     t.created_at
 FROM tenants t
     JOIN users u ON u.tenant_id = t.id

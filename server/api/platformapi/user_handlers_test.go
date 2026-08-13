@@ -19,9 +19,13 @@ func endUserGetByPublicIDColumns() []string {
 	return []string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}
 }
 
-// ListEndUsers の結果カラム（tenant_id なし）
+// ListEndUsers の結果カラム（所属テナントは JOIN で同梱）
 func listEndUsersResultColumns() []string {
-	return []string{"id", "public_id", "name", "email", "status", "created_at"}
+	return []string{"id", "public_id", "name", "email", "status", "created_at", "tenant_public_id", "tenant_name"}
+}
+
+func getTenantByUserIDColumns() []string {
+	return []string{"id", "public_id", "name", "created_at"}
 }
 
 // UpdateUserStatus の RETURNING カラム
@@ -40,11 +44,7 @@ func TestListEndUsers(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(testListEndUsersQuery)).
 		WillReturnRows(sqlmock.NewRows(listEndUsersResultColumns()).
-			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now))
-
-	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
-		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
+			AddRow(endUserID, "EUSER00001", "End User", "enduser@example.com", "active", now, "TENANT000001", "Readers"))
 
 	resp, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{}))
 	if err != nil {
@@ -55,6 +55,12 @@ func TestListEndUsers(t *testing.T) {
 	}
 	if resp.Msg.Users[0].PublicId != "EUSER00001" {
 		t.Fatalf("public_id = %v, want EUSER00001", resp.Msg.Users[0].PublicId)
+	}
+	if got := resp.Msg.Users[0].TenantIds; len(got) != 1 || got[0] != "TENANT000001" {
+		t.Fatalf("tenant_ids = %v, want [TENANT000001]", got)
+	}
+	if resp.Msg.Users[0].TenantName != "Readers" {
+		t.Fatalf("tenant_name = %q, want Readers", resp.Msg.Users[0].TenantName)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }
@@ -86,7 +92,7 @@ func TestGetEndUser(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
 		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
+		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
 
 	resp, err := server.GetEndUser(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetEndUserRequest{PublicId: "EUSER00001"}))
 	if err != nil {
@@ -152,7 +158,7 @@ func TestSuspendEndUser(t *testing.T) {
 	// テナント情報取得（なし）
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
 		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
+		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
 
 	expectOperatorAuditLogInsert(mock)
 
@@ -217,7 +223,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByUserIDQuery)).
 		WithArgs(endUserID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "created_at"}))
+		WillReturnRows(sqlmock.NewRows(getTenantByUserIDColumns()))
 
 	expectOperatorAuditLogInsert(mock)
 

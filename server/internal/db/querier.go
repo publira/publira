@@ -194,7 +194,9 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
-	// エンドユーザー（tenant_user_roles未保持）の一覧取得
+	// エンドユーザー（tenant_user_roles未保持）の一覧取得。
+	// テナントメンバーは意図的に含めない。プラットフォームのユーザー一覧は
+	// この結果が完全な集合であり、クライアントが ListTenantMembers で補完しない。
 	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
