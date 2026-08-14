@@ -62,9 +62,11 @@ describe("web-admin proxy", () => {
     );
   });
 
-  it("古い /notifications は /announcements へリダイレクトする", async () => {
+  it("/notifications はお知らせへリダイレクトせず保護ルートとして扱う", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
+
+    mockResolveTenantId.mockResolvedValueOnce("tenant_001");
 
     const response = await proxy(
       new NextRequest("https://admin.example.com/notifications?token=abc")
@@ -72,9 +74,9 @@ describe("web-admin proxy", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://admin.example.com/announcements?token=abc"
+      "https://admin.example.com/login?next=%2Fnotifications%3Ftoken%3Dabc"
     );
-    expect(mockResolveTenantId).not.toHaveBeenCalled();
+    expect(mockResolveTenantId).toHaveBeenCalledOnce();
   });
 
   it("GET /logout はテナント解決もセッション操作もせず 404 を返す", async () => {

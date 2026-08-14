@@ -15,8 +15,13 @@ import type { ReactNode } from "react";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
 import { logoutAction } from "../lib/logout-action";
+import { countUnreadNotifications } from "../lib/notification";
 import { getTenantId } from "../lib/tenant-id";
 import { navigation } from "./admin-navigation";
+import {
+  NotificationBell,
+  NotificationBellSkeleton,
+} from "./notification-bell";
 
 export interface AdminLayoutCurrentUser {
   name: string;
@@ -42,6 +47,13 @@ export const AdminUser = async () => {
   }
 
   return <ConsoleHeaderUser currentUser={currentUser} />;
+};
+
+export const AdminNotificationBell = async () => {
+  const tenantId = await getTenantId();
+  const unread = await countUnreadNotifications(tenantId);
+
+  return <NotificationBell unreadCount={unread.unreadCount} />;
 };
 
 export const AdminLayout = ({
@@ -70,6 +82,9 @@ export const AdminLayout = ({
         eyebrow="現在の運用先"
         logoutAction={logoutAction.bind(null, tenant.publicId)}
       >
+        <Suspense fallback={<NotificationBellSkeleton />}>
+          <AdminNotificationBell />
+        </Suspense>
         <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
           <AdminUser />
         </Suspense>

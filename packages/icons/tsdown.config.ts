@@ -4,6 +4,7 @@ export default defineConfig({
   dts: true,
   entry: [
     "src/index.ts",
+    "src/bell-icon.tsx",
     "src/check-icon.tsx",
     "src/chevron-down-icon.tsx",
     "src/close-icon.tsx",
