@@ -584,6 +584,13 @@ FROM platform_user_roles
 WHERE platform_user_id = $1
 ORDER BY role;
 
+-- Worker fan-out: every platform user that holds a role is an operator.
+-- name: ListPlatformOperatorIDs :many
+SELECT DISTINCT pu.id
+FROM platform_users pu
+    INNER JOIN platform_user_roles pur ON pur.platform_user_id = pu.id
+ORDER BY pu.id;
+
 -- Platform ListOperators は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 -- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
@@ -975,10 +982,18 @@ WHERE el.status = 'scheduled'
     AND el.scheduled_at <= NOW();
 -- name: ListEpisodesReadyToPublishWithTenantInfo :many
 SELECT el.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
     t.id AS tenant_id,
+    t.public_id AS tenant_public_id,
+    t.name AS tenant_name,
     t.domain AS tenant_domain
 FROM episode_listings el
-JOIN tenants t ON t.id = el.tenant_id
+    JOIN episodes e ON e.id = el.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN tenants t ON t.id = el.tenant_id
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
     AND el.scheduled_at <= NOW();

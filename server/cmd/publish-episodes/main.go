@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -26,6 +28,8 @@ const (
 	defaultMaxRetries      = 3
 	defaultRetryBaseDelay  = 2 * time.Second
 	defaultWorkerDBURL     = "postgres://postgres:password@db:5432/publira?sslmode=disable"
+
+	notificationTypeEpisodePublishFailed = "episode_publish_failed"
 )
 
 func main() {
@@ -97,6 +101,17 @@ type runner struct {
 	reval      *revalidate.Client
 	logger     *slog.Logger
 	maxRetries int
+	// publish, when set, replaces publishEpisode so tests can force a final failure.
+	publish func(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error
+}
+
+type episodePublishFailedPayload struct {
+	EpisodeID    string `json:"episode_id"`
+	EpisodeTitle string `json:"episode_title"`
+	SeriesID     string `json:"series_id"`
+	SeriesTitle  string `json:"series_title"`
+	TenantID     string `json:"tenant_id"`
+	TenantName   string `json:"tenant_name"`
 }
 
 func (r *runner) runOnce(ctx context.Context) {
@@ -136,7 +151,7 @@ func (r *runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 			}
 		}
 
-		if err := r.publishEpisode(ctx, row.EpisodeID, row.TenantID.String(), row.TenantDomain); err != nil {
+		if err := r.publishOne(ctx, row); err != nil {
 			lastErr = err
 			r.logger.Warn("failed to publish episode",
 				"episode_id", row.EpisodeID,
@@ -160,6 +175,70 @@ func (r *runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 		"max_retries", r.maxRetries,
 		"error", lastErr,
 	)
+	r.notifyOperatorsOfPublishFailure(ctx, row)
+}
+
+func (r *runner) publishOne(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+	if r.publish != nil {
+		return r.publish(ctx, row)
+	}
+	return r.publishEpisode(ctx, row.EpisodeID, row.TenantID.String(), row.TenantDomain)
+}
+
+func (r *runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) {
+	operators, err := r.queries.ListPlatformOperatorIDs(ctx)
+	if err != nil {
+		r.logger.Error("failed to list operators for publish-failed notification",
+			"episode_id", row.EpisodeID,
+			"tenant_id", row.TenantID.String(),
+			"error", err,
+		)
+		return
+	}
+
+	payload, err := json.Marshal(episodePublishFailedPayload{
+		EpisodeID:    row.EpisodePublicID,
+		EpisodeTitle: row.EpisodeTitle,
+		SeriesID:     row.SeriesPublicID,
+		SeriesTitle:  row.SeriesTitle,
+		TenantID:     row.TenantPublicID,
+		TenantName:   row.TenantName,
+	})
+	if err != nil {
+		r.logger.Error("failed to encode publish-failed notification payload",
+			"episode_id", row.EpisodeID,
+			"tenant_id", row.TenantID.String(),
+			"error", err,
+		)
+		return
+	}
+
+	subjectKey := "episode:" + row.EpisodePublicID
+	for _, operatorID := range operators {
+		notificationID, err := uuid.NewV7()
+		if err != nil {
+			r.logger.Error("failed to allocate publish-failed notification id",
+				"episode_id", row.EpisodeID,
+				"platform_user_id", operatorID,
+				"error", err,
+			)
+			continue
+		}
+		_, err = r.queries.CreatePlatformNotification(ctx, dbmodels.CreatePlatformNotificationParams{
+			ID:               notificationID,
+			PlatformUserID:   operatorID,
+			NotificationType: notificationTypeEpisodePublishFailed,
+			SubjectKey:       subjectKey,
+			Payload:          payload,
+		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			r.logger.Error("failed to insert publish-failed notification",
+				"episode_id", row.EpisodeID,
+				"platform_user_id", operatorID,
+				"error", err,
+			)
+		}
+	}
 }
 
 func (r *runner) publishEpisode(ctx context.Context, episodeID uuid.UUID, tenantID, tenantDomain string) error {
