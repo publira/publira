@@ -85,6 +85,7 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 		db:       db,
 		recorder: auditlog.New(queries, slog.Default()),
 		tokens:   auth.MustTokenManagerFromEnv(),
+		logger:   slog.Default(),
 	}, mock
 }
 

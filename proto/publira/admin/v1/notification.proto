@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+message AdminNotification {
+  string id = 1;
+  string notification_type = 2;
+  // JSON object. Display copy is derived from notification_type + payload.
+  string payload = 3;
+  bool is_read = 4;
+  string read_at = 5;
+  string created_at = 6;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListNotificationsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListNotificationsResponse {
+  repeated AdminNotification notifications = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message CountUnreadNotificationsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message CountUnreadNotificationsResponse {
+  int32 unread_count = 1;
+}
+
+message MarkNotificationAsReadRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string notification_id = 2;
+}
+
+message MarkNotificationAsReadResponse {
+  bool marked = 1;
+}
+
+message MarkAllNotificationsAsReadRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message MarkAllNotificationsAsReadResponse {
+  int32 marked_count = 1;
+}
+
+service AdminNotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {}
+  rpc CountUnreadNotifications(CountUnreadNotificationsRequest) returns (CountUnreadNotificationsResponse) {}
+  rpc MarkNotificationAsRead(MarkNotificationAsReadRequest) returns (MarkNotificationAsReadResponse) {}
+  rpc MarkAllNotificationsAsRead(MarkAllNotificationsAsReadRequest) returns (MarkAllNotificationsAsReadResponse) {}
+}

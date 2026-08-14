@@ -74,6 +74,40 @@ func TestDBRLSHidesRowsOfAnotherTenant(t *testing.T) {
 	})
 }
 
+func TestDBRLSHidesNotificationsOfAnotherTenant(t *testing.T) {
+	env := newAdminDBEnv(t)
+	first, second := seedTwoTenants(t, env)
+
+	mine := insertAdminNotification(t, env, first.Tenant.ID, first.User.ID, "episode_published", "episode:mine", `{"episode_id":"mine"}`)
+	theirs := insertAdminNotification(t, env, second.Tenant.ID, second.User.ID, "episode_published", "episode:theirs", `{"episode_id":"theirs"}`)
+
+	env.withTenantConn(t, first.Tenant.ID, func(ctx context.Context, conn *sql.Conn) {
+		var visible int
+		if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM notifications").Scan(&visible); err != nil {
+			t.Fatalf("count notifications: %v", err)
+		}
+		if visible != 1 {
+			t.Fatalf("visible notifications = %d, want only the one owned by tenant A", visible)
+		}
+
+		var notificationType string
+		err := conn.QueryRowContext(ctx, "SELECT notification_type FROM notifications WHERE id = $1", theirs).Scan(&notificationType)
+		if err == nil {
+			t.Fatalf("read tenant B notification as tenant A: got %q, want no rows", notificationType)
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("read tenant B notification error = %v, want sql.ErrNoRows", err)
+		}
+
+		if err := conn.QueryRowContext(ctx, "SELECT notification_type FROM notifications WHERE id = $1", mine).Scan(&notificationType); err != nil {
+			t.Fatalf("read own notification: %v", err)
+		}
+		if notificationType != "episode_published" {
+			t.Fatalf("own notification type = %q, want episode_published", notificationType)
+		}
+	})
+}
+
 func TestDBRLSRefusesWritesToAnotherTenant(t *testing.T) {
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)

@@ -300,6 +300,16 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(announcementPath, announcementHandler)
+	notificationPath, notificationHandler := publiraadminv1connect.NewAdminNotificationServiceHandler(
+		server,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(notificationPath, notificationHandler)
 	accessTicketPath, accessTicketHandler := publiraadminv1connect.NewAdminAccessTicketServiceHandler(
 		server,
 		connect.WithInterceptors(

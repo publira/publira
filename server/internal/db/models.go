@@ -162,6 +162,23 @@ type LabelImageVariant struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type Notification struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	UserID           uuid.UUID       `json:"user_id"`
+	NotificationType string          `json:"notification_type"`
+	SubjectKey       string          `json:"subject_key"`
+	Payload          json.RawMessage `json:"payload"`
+	CreatedAt        time.Time       `json:"created_at"`
+}
+
+type NotificationRead struct {
+	NotificationID uuid.UUID `json:"notification_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	ReadAt         time.Time `json:"read_at"`
+}
+
 type Page struct {
 	ID                 uuid.UUID     `json:"id"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
@@ -204,6 +221,21 @@ type PlatformConfig struct {
 	DefaultTimezone string    `json:"default_timezone"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type PlatformNotification struct {
+	ID               uuid.UUID       `json:"id"`
+	PlatformUserID   uuid.UUID       `json:"platform_user_id"`
+	NotificationType string          `json:"notification_type"`
+	SubjectKey       string          `json:"subject_key"`
+	Payload          json.RawMessage `json:"payload"`
+	CreatedAt        time.Time       `json:"created_at"`
+}
+
+type PlatformNotificationRead struct {
+	PlatformNotificationID uuid.UUID `json:"platform_notification_id"`
+	PlatformUserID         uuid.UUID `json:"platform_user_id"`
+	ReadAt                 time.Time `json:"read_at"`
 }
 
 type PlatformSmtpConfig struct {
