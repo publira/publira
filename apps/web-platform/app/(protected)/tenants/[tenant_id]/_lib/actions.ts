@@ -1,8 +1,16 @@
 "use server";
 
 import type { FormActionState } from "@publira/ui-components/action-form";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
+import { emailFormSchema } from "#lib/auth-input";
+import {
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import {
   addPlatformTenantMember,
   cancelPlatformTenantAdminInvitation,
@@ -15,27 +23,93 @@ import {
   updatePlatformTenantMemberRole,
 } from "#lib/tenants";
 
+const tenantIdFormSchema = requiredTrimmedString(
+  "必須項目が入力されていません。"
+);
+
+const tenantMemberRoleFormSchema = z.enum(
+  ["tenant_admin", "tenant_auditor", "tenant_editor"],
+  { error: "必須項目が入力されていません。" }
+);
+
+const tenantIdOnlySchema = z.object({
+  tenantId: tenantIdFormSchema,
+});
+
+const updateTenantNameFormSchema = z.object({
+  currentDomain: optionalTrimmedString(),
+  name: requiredTrimmedString("必須項目が入力されていません。"),
+  tenantId: tenantIdFormSchema,
+});
+
+const updateTenantDomainFormSchema = z.object({
+  adminDomain: optionalTrimmedString(),
+  currentName: requiredTrimmedString("必須項目が入力されていません。"),
+  domain: requiredTrimmedString("ドメインは必須です。"),
+  tenantId: tenantIdFormSchema,
+});
+
+const addTenantMemberFormSchema = z.object({
+  email: emailFormSchema,
+  role: tenantMemberRoleFormSchema,
+  tenantId: tenantIdFormSchema,
+});
+
+const updateTenantMemberRoleFormSchema = z.object({
+  role: tenantMemberRoleFormSchema,
+  tenantId: tenantIdFormSchema,
+  userPublicId: requiredTrimmedString("必須項目が入力されていません。"),
+});
+
+const removeTenantMemberFormSchema = z.object({
+  tenantId: tenantIdFormSchema,
+  userPublicId: requiredTrimmedString("必須項目が入力されていません。"),
+});
+
+const createInvitationFormSchema = z.object({
+  email: emailFormSchema,
+  tenantId: tenantIdFormSchema,
+});
+
+const invitationIdFormSchema = z.object({
+  invitationId: requiredTrimmedString("必須項目が入力されていません。"),
+  tenantId: tenantIdFormSchema,
+});
+
+const revalidateTenantMemberPaths = (tenantId: string) => {
+  revalidatePath(`/tenants/${tenantId}`);
+  revalidatePath(`/tenants/${tenantId}/members`);
+};
+
 export const suspendTenantAction = async (
   formData: FormData
 ): Promise<void> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  if (!tenantId) {
+  const parsed = tenantIdOnlySchema.safeParse(
+    toFormDataInput(formData, {
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
     return;
   }
 
-  await suspendPlatformTenant(tenantId);
-  revalidatePath(`/tenants/${tenantId}`);
+  await suspendPlatformTenant(parsed.data.tenantId);
+  revalidatePath(`/tenants/${parsed.data.tenantId}`);
   revalidatePath("/tenants");
 };
 
 export const resumeTenantAction = async (formData: FormData): Promise<void> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  if (!tenantId) {
+  const parsed = tenantIdOnlySchema.safeParse(
+    toFormDataInput(formData, {
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
     return;
   }
 
-  await resumePlatformTenant(tenantId);
-  revalidatePath(`/tenants/${tenantId}`);
+  await resumePlatformTenant(parsed.data.tenantId);
+  revalidatePath(`/tenants/${parsed.data.tenantId}`);
   revalidatePath("/tenants");
 };
 
@@ -43,17 +117,23 @@ export const updateTenantNameAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const name = String(formData.get("tenant_name") ?? "").trim();
-  const currentDomain = String(
-    formData.get("tenant_current_domain") ?? ""
-  ).trim();
-  if (!tenantId || !name) {
-    return { message: "必須項目が入力されていません。", ok: false };
+  const parsed = updateTenantNameFormSchema.safeParse(
+    toFormDataInput(formData, {
+      currentDomain: { kind: "value", name: "tenant_current_domain" },
+      name: { kind: "value", name: "tenant_name" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await updatePlatformTenant(tenantId, name, currentDomain);
-  revalidatePath(`/tenants/${tenantId}`);
+  const result = await updatePlatformTenant(
+    parsed.data.tenantId,
+    parsed.data.name,
+    parsed.data.currentDomain
+  );
+  revalidatePath(`/tenants/${parsed.data.tenantId}`);
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -64,24 +144,25 @@ export const updateTenantDomainAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const currentName = String(formData.get("tenant_current_name") ?? "").trim();
-  const domain = String(formData.get("tenant_domain") ?? "").trim();
-  const adminDomain = String(formData.get("tenant_admin_domain") ?? "").trim();
-  if (!tenantId || !currentName) {
-    return { message: "必須項目が入力されていません。", ok: false };
-  }
-  if (!domain) {
-    return { message: "ドメインは必須です。", ok: false };
+  const parsed = updateTenantDomainFormSchema.safeParse(
+    toFormDataInput(formData, {
+      adminDomain: { kind: "value", name: "tenant_admin_domain" },
+      currentName: { kind: "value", name: "tenant_current_name" },
+      domain: { kind: "value", name: "tenant_domain" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
   const result = await updatePlatformTenant(
-    tenantId,
-    currentName,
-    domain,
-    adminDomain
+    parsed.data.tenantId,
+    parsed.data.currentName,
+    parsed.data.domain,
+    parsed.data.adminDomain
   );
-  revalidatePath(`/tenants/${tenantId}`);
+  revalidatePath(`/tenants/${parsed.data.tenantId}`);
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -92,18 +173,20 @@ export const addTenantMemberAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const email = String(formData.get("member_email") ?? "").trim();
-  const role = String(formData.get("member_role") ?? "").trim();
+  const parsed = addTenantMemberFormSchema.safeParse(
+    toFormDataInput(formData, {
+      email: { kind: "value", name: "member_email" },
+      role: { kind: "value", name: "member_role" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
-  const result = await addPlatformTenantMember({
-    email,
-    role,
-    tenantId,
-  });
+  const result = await addPlatformTenantMember(parsed.data);
 
-  revalidatePath(`/tenants/${tenantId}`);
-  revalidatePath(`/tenants/${tenantId}/members`);
+  revalidateTenantMemberPaths(parsed.data.tenantId);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -116,20 +199,24 @@ export const updateTenantMemberRoleAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const userPublicId = String(
-    formData.get("member_user_public_id") ?? ""
-  ).trim();
-  const role = String(formData.get("member_role") ?? "").trim();
+  const parsed = updateTenantMemberRoleFormSchema.safeParse(
+    toFormDataInput(formData, {
+      role: { kind: "value", name: "member_role" },
+      tenantId: { kind: "value", name: "tenant_id" },
+      userPublicId: { kind: "value", name: "member_user_public_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
   const result = await updatePlatformTenantMemberRole(
-    tenantId,
-    userPublicId,
-    role
+    parsed.data.tenantId,
+    parsed.data.userPublicId,
+    parsed.data.role
   );
 
-  revalidatePath(`/tenants/${tenantId}`);
-  revalidatePath(`/tenants/${tenantId}/members`);
+  revalidateTenantMemberPaths(parsed.data.tenantId);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -142,15 +229,22 @@ export const removeTenantMemberAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const userPublicId = String(
-    formData.get("member_user_public_id") ?? ""
-  ).trim();
+  const parsed = removeTenantMemberFormSchema.safeParse(
+    toFormDataInput(formData, {
+      tenantId: { kind: "value", name: "tenant_id" },
+      userPublicId: { kind: "value", name: "member_user_public_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
-  const result = await removePlatformTenantMember(tenantId, userPublicId);
+  const result = await removePlatformTenantMember(
+    parsed.data.tenantId,
+    parsed.data.userPublicId
+  );
 
-  revalidatePath(`/tenants/${tenantId}`);
-  revalidatePath(`/tenants/${tenantId}/members`);
+  revalidateTenantMemberPaths(parsed.data.tenantId);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -163,13 +257,22 @@ export const createTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const email = String(formData.get("invite_email") ?? "").trim();
+  const parsed = createInvitationFormSchema.safeParse(
+    toFormDataInput(formData, {
+      email: { kind: "value", name: "invite_email" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
-  const result = await createPlatformTenantAdminInvitation(tenantId, email);
+  const result = await createPlatformTenantAdminInvitation(
+    parsed.data.tenantId,
+    parsed.data.email
+  );
 
-  revalidatePath(`/tenants/${tenantId}`);
-  revalidatePath(`/tenants/${tenantId}/members`);
+  revalidateTenantMemberPaths(parsed.data.tenantId);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -189,16 +292,22 @@ export const resendTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const invitationId = String(formData.get("invitation_id") ?? "").trim();
+  const parsed = invitationIdFormSchema.safeParse(
+    toFormDataInput(formData, {
+      invitationId: { kind: "value", name: "invitation_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
   const result = await resendPlatformTenantAdminInvitation(
-    tenantId,
-    invitationId
+    parsed.data.tenantId,
+    parsed.data.invitationId
   );
 
-  revalidatePath(`/tenants/${tenantId}`);
-  revalidatePath(`/tenants/${tenantId}/members`);
+  revalidateTenantMemberPaths(parsed.data.tenantId);
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -211,16 +320,22 @@ export const cancelTenantAdminInvitationAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const invitationId = String(formData.get("invitation_id") ?? "").trim();
+  const parsed = invitationIdFormSchema.safeParse(
+    toFormDataInput(formData, {
+      invitationId: { kind: "value", name: "invitation_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
   const result = await cancelPlatformTenantAdminInvitation(
-    tenantId,
-    invitationId
+    parsed.data.tenantId,
+    parsed.data.invitationId
   );
 
-  revalidatePath(`/tenants/${tenantId}`);
-  revalidatePath(`/tenants/${tenantId}/members`);
+  revalidateTenantMemberPaths(parsed.data.tenantId);
 
   if (!result.ok) {
     return { message: result.message, ok: false };

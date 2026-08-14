@@ -5,17 +5,10 @@ import { Suspense } from "react";
 
 import { confirmPlatformEmailChange } from "#lib/email-change";
 
+import { parseConfirmEmailSearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "メールアドレス変更確認",
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
 };
 
 const ConfirmationResult = async ({ token }: { token: string }) => {
@@ -96,8 +89,7 @@ const ConfirmEmailPageContent = async ({
 }) => {
   await connection();
 
-  const sp = await searchParams;
-  const token = pickFirstQueryParam(sp.token)?.trim() ?? "";
+  const { token } = parseConfirmEmailSearchParams(await searchParams);
 
   return (
     <>

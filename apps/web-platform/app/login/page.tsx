@@ -1,36 +1,24 @@
-import type { ParsedUrlQuery } from "node:querystring";
-
 import { Skeleton } from "@publira/ui-components";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { z } from "zod";
 
 import { LoginForm } from "./_components/login-form";
+import { parseLoginSearchParams } from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "ログイン",
 };
 
-const searchParamsSchema = z.object({
-  next: z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
-    z.string().optional()
-  ),
-  reset: z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
-    z.string().optional()
-  ),
-});
-
 const LoginFormWrapper = async ({
   searchParams,
 }: {
-  searchParams: Promise<ParsedUrlQuery>;
+  searchParams: PageProps<"/login">["searchParams"];
 }) => {
-  const params = await searchParams;
-  const { next, reset } = searchParamsSchema.parse(params);
+  const { nextPath, passwordResetDone } = parseLoginSearchParams(
+    await searchParams
+  );
 
-  return <LoginForm nextPath={next} resetDone={reset === "done"} />;
+  return <LoginForm nextPath={nextPath} resetDone={passwordResetDone} />;
 };
 
 const LoginFormSkeleton = () => (

@@ -1,15 +1,16 @@
+import type { SearchParamValue } from "@publira/utils/search-params";
+import {
+  searchParamEnum,
+  searchParamString,
+} from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { cursorTokenSchema } from "#lib/cursor-token";
 
-const maxSearchParamLength = 255;
-
-type QueryParamValue = string | string[] | undefined;
-
 interface ParseTenantFiltersInput {
-  name?: QueryParamValue;
-  status?: QueryParamValue;
-  token?: QueryParamValue;
+  name?: SearchParamValue;
+  status?: SearchParamValue;
+  token?: SearchParamValue;
 }
 
 export interface TenantFilters {
@@ -38,19 +39,15 @@ export const buildTenantsPath = ({
   return query ? `/tenants?${query}` : "/tenants";
 };
 
-const singleSearchParamSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value.trim() : ""),
-  z
-    .string()
-    .transform((value) => (value.length <= maxSearchParamLength ? value : ""))
-);
-
+/**
+ * Every filter falls back to the default list view: an unusable query string
+ * still renders `/tenants` instead of 404ing an operator out of the list.
+ * Cursor tokens stay opaque — they are not trimmed or length-capped here.
+ */
 const createTenantFiltersSchema = (allowedStatusValues: ReadonlySet<string>) =>
   z.object({
-    name: singleSearchParamSchema,
-    status: singleSearchParamSchema.transform((value) =>
-      value && allowedStatusValues.has(value) ? value : ""
-    ),
+    name: searchParamString({ fallback: "" }),
+    status: searchParamEnum(allowedStatusValues, { fallback: "" }),
     token: cursorTokenSchema,
   });
 

@@ -1,0 +1,77 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  commaOrNewlineStringListFormSchema,
+  intFormSchema,
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "./form-schemas";
+
+describe("requiredTrimmedString", () => {
+  const schema = requiredTrimmedString("名前は必須です。");
+
+  it("trims and accepts a non-empty value", () => {
+    expect(schema.parse("  山田  ")).toBe("山田");
+  });
+
+  it("rejects empty or missing values with the given message", () => {
+    expect(schema.safeParse("").error?.issues[0]?.message).toBe(
+      "名前は必須です。"
+    );
+    expect(schema.safeParse(null).error?.issues[0]?.message).toBe(
+      "名前は必須です。"
+    );
+  });
+});
+
+describe("optionalTrimmedString", () => {
+  it("turns a missing or non-string value into an empty string", () => {
+    expect(optionalTrimmedString().parse(null)).toBe("");
+    expect(optionalTrimmedString().parse("  note  ")).toBe("note");
+  });
+
+  it("uses the given message when the value is too long", () => {
+    expect(
+      optionalTrimmedString(4, "4文字以内で入力してください。").safeParse(
+        "12345"
+      ).error?.issues[0]?.message
+    ).toBe("4文字以内で入力してください。");
+  });
+});
+
+describe("intFormSchema", () => {
+  const schema = intFormSchema("ポートは 1〜65535 の整数で入力してください。", {
+    fallback: 587,
+    max: 65_535,
+    min: 1,
+  });
+
+  it("uses the fallback for a blank field", () => {
+    expect(schema.parse("")).toBe(587);
+    expect(schema.parse(null)).toBe(587);
+  });
+
+  it("clamps an out-of-range value", () => {
+    expect(schema.parse("0")).toBe(1);
+    expect(schema.parse("70000")).toBe(65_535);
+  });
+
+  it("rejects a non-number", () => {
+    expect(schema.safeParse("abc").success).toBe(false);
+    expect(schema.safeParse("0x10").success).toBe(false);
+  });
+});
+
+describe("commaOrNewlineStringListFormSchema", () => {
+  it("splits on commas and newlines and drops empty entries", () => {
+    expect(
+      commaOrNewlineStringListFormSchema.parse(
+        " a@example.com, \nb@example.com,\n  "
+      )
+    ).toEqual(["a@example.com", "b@example.com"]);
+  });
+
+  it("turns a missing value into an empty list", () => {
+    expect(commaOrNewlineStringListFormSchema.parse(null)).toEqual([]);
+  });
+});
