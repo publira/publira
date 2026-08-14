@@ -12,6 +12,9 @@ ROUTING_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROUTING_DIR="$(cd "${ROUTING_SCRIPTS_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${ROUTING_DIR}/../.." && pwd)"
 
+# Capture before defaults so we can tell "caller set ROUTING_RUN_DIR" from unset.
+_ROUTING_RUN_DIR_FROM_ENV="${ROUTING_RUN_DIR-}"
+
 # Dedicated project name: a run never touches the Dev Container stack.
 export COMPOSE_PROJECT_NAME="${ROUTING_PROJECT_NAME:-publira-routing}"
 DEVCONTAINER_COMPOSE_FILE="${REPO_ROOT}/.devcontainer/compose.yaml"
@@ -26,8 +29,32 @@ export ROUTING_ECHO_PY="${ROUTING_DIR}/echo.py"
 export ROUTING_TRAEFIK_PORT="${ROUTING_TRAEFIK_PORT:-13080}"
 export ROUTING_TRAEFIK_API_PORT="${ROUTING_TRAEFIK_API_PORT:-18080}"
 
-RUN_DIR="${ROUTING_DIR}/.run"
+# Logs for one stack run. Concurrent stacks that override ports or
+# ROUTING_PROJECT_NAME must not share diagnostics: a failure would overwrite
+# the other run. When ROUTING_RUN_DIR is unset and any of those knobs leave
+# the defaults, isolate under a subdirectory named from the project + ports.
+# Explicit ROUTING_RUN_DIR always wins. The default path e2e/routing/.run is
+# kept for the standard single-stack / CI layout so artifacts stay stable.
+if [[ -n "${_ROUTING_RUN_DIR_FROM_ENV}" ]]; then
+  export ROUTING_RUN_DIR="${_ROUTING_RUN_DIR_FROM_ENV}"
+else
+  if [[ "${COMPOSE_PROJECT_NAME}" == "publira-routing" ]] &&
+    [[ "${ROUTING_TRAEFIK_PORT}" == "13080" ]] &&
+    [[ "${ROUTING_TRAEFIK_API_PORT}" == "18080" ]]; then
+    export ROUTING_RUN_DIR="${ROUTING_DIR}/.run"
+  else
+    export ROUTING_RUN_DIR="${ROUTING_DIR}/.run/${COMPOSE_PROJECT_NAME}-tf${ROUTING_TRAEFIK_PORT}-api${ROUTING_TRAEFIK_API_PORT}"
+  fi
+fi
+unset _ROUTING_RUN_DIR_FROM_ENV
+RUN_DIR="${ROUTING_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
+
+# Exclusive lock for the compose project. up.sh does `compose down` before
+# starting, so a second run with the same project name would kill the first.
+# The lock file is keyed by project name (the shared Docker resource), not by
+# RUN_DIR. flock -n fails immediately; same ports still fail on port_in_use.
+ROUTING_LOCK_FILE="${ROUTING_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lock"
 
 ROUTING_READY_TIMEOUT_SEC="${ROUTING_READY_TIMEOUT_SEC:-60}"
 ROUTING_READY_INTERVAL_SEC="${ROUTING_READY_INTERVAL_SEC:-1}"
@@ -65,6 +92,22 @@ compose() {
 
 ensure_run_dirs() {
   mkdir -p "${LOG_DIR}"
+}
+
+# Hold until this shell exits (the FD stays open). Children inherit
+# ROUTING_LOCK_HELD=1 and skip re-acquire so `bash up.sh` from run.sh works.
+acquire_routing_lock() {
+  if [[ "${ROUTING_LOCK_HELD:-0}" == "1" ]]; then
+    return 0
+  fi
+  command -v flock >/dev/null 2>&1 ||
+    routing_fail "flock is not available; compose project lock cannot be taken"
+  mkdir -p "$(dirname "${ROUTING_LOCK_FILE}")"
+  exec {ROUTING_LOCK_FD}>"${ROUTING_LOCK_FILE}"
+  if ! flock -n "${ROUTING_LOCK_FD}"; then
+    routing_fail "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set ROUTING_PROJECT_NAME"
+  fi
+  export ROUTING_LOCK_HELD=1
 }
 
 require_port_tool() {

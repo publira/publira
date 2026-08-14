@@ -149,7 +149,7 @@ Node 側の `request` fixture は OS の名前解決を使うので、`localhost
 
 ジョブ名: **Test / E2E**（`.github/workflows/ci.yml`）
 
-- path filter: `e2e/**`, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**` など
+- path filter: `e2e/**`（`e2e/routing/**` を除外）、`apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**` など
 - 失敗時 artifact: `e2e-artifacts`（report / test-results / app logs）
 - Playwright Chromium のみ、workers=1、CI 時 retries=1
 - 必須ブランチチェックは最終ジョブ **Summary** が集約（他ジョブと同様）
@@ -172,7 +172,7 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 5. **ローカルで確認**  
    `task e2e` または stack 固定 + `task e2e:test`。
 6. **CI**  
-   上記 path に触れていれば `Test / E2E` が走る。
+   上記 path に触れていれば `Test / E2E` が走る。`e2e/routing/**` だけを変えた場合は **Test / Routing**（`task e2e:routing`）が走り、Playwright は起動しない。
 
 ### シナリオ一覧（現状）
 

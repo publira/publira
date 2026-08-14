@@ -11,6 +11,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 ensure_run_dirs
+acquire_routing_lock
 
 for cmd in docker curl; do
   if ! command -v "${cmd}" >/dev/null 2>&1; then
@@ -20,7 +21,7 @@ done
 
 cleanup_done=0
 cleanup() {
-  local status=$?
+  local status="${1:-$?}"
   if [[ "${cleanup_done}" -eq 1 ]]; then
     return
   fi
@@ -28,15 +29,18 @@ cleanup() {
   if [[ "${status}" -ne 0 ]]; then
     collect_diagnostics
   fi
-  bash "${ROUTING_SCRIPTS_DIR}/down.sh" || true
+  # Preserve the probe/signal status even if teardown itself fails.
+  bash "${ROUTING_SCRIPTS_DIR}/down.sh" ||
+    routing_err "teardown failed (exit $?); compose project ${COMPOSE_PROJECT_NAME} may still be up"
 }
 
 on_signal() {
   local signal="$1"
+  local status=$((128 + $(kill -l "${signal}")))
   routing_err "received SIG${signal}; aborting"
-  cleanup
+  cleanup "${status}"
   trap - EXIT
-  exit $((128 + $(kill -l "${signal}")))
+  exit "${status}"
 }
 
 trap cleanup EXIT

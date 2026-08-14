@@ -24,6 +24,8 @@ Traefik の振り分けは `.devcontainer/compose.yaml` の `app` labels だけ�
 
 `db` / `redis` / `mailpit` は起動しない。`task dev` を動かしたままでも、既定ポートが衝突しなければ同時に走らせられる。
 
+ログは既定で `e2e/routing/.run/` に置く。`ROUTING_TRAEFIK_PORT` / `ROUTING_TRAEFIK_API_PORT` / `ROUTING_PROJECT_NAME` を既定から変えた場合、`lib.sh` は project 名とポートを組み合わせたサブディレクトリに state を分ける。明示的な `ROUTING_RUN_DIR` があればそちらを優先する。同じ compose project の並行起動は flock で拒否する。同じポートでの並行起動はポート競合で失敗する想定。
+
 ## 実行
 
 ```bash
@@ -98,7 +100,7 @@ e2e/routing/
 
 - path filter: `.devcontainer/**`, `e2e/routing/**`。ラベルの正本と本チェック自身だけ
 - `workflow_dispatch` では他ジョブと同様に必ず実行する。Nightly には載せない（compose を触る PR で既に走る）
-- 失敗時 artifact: `routing-artifacts`（`.run/logs/`）
+- 失敗時 artifact: `routing-artifacts`（`.run/`）
 
 `e2e/routing/**` の変更では Playwright の **Test / E2E** は起動しない。
 

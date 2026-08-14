@@ -164,6 +164,7 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョ�
    - `Test / Mobile` → `task mobile:check`（format / analyze / test）
    - `Test / E2E` → readiness 失敗かテスト失敗か（artifact `e2e-artifacts`）
    - `Test / Bootstrap` → どの phase で落ちたか（artifact `bootstrap-artifacts`）
+   - `Test / Routing` → どのプローブが落ちたか（artifact `routing-artifacts`）
    - `Build` → `pnpm build` / `go build`
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
 2. **ローカルで同じコマンドを再現する**
@@ -177,6 +178,7 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョ�
    | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） |
    | `Test / E2E` | `task e2e`（常に teardown する） |
    | `Test / Bootstrap` | `task e2e:bootstrap`（常に teardown する。`task dev` を止められないときは `BOOTSTRAP_SKIP_DEV=1`） |
+   | `Test / Routing` | `task e2e:routing`（常に teardown する） |
    | `Build` | `pnpm build` / `task server:build` |
    | `Docker / <target>` | CI ログの `task docker:build:…` 行をそのまま実行、または `task docker:verify` |
 

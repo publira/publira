@@ -6,10 +6,12 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 ensure_run_dirs
+acquire_routing_lock
 
 routing_log "=== up (project=${COMPOSE_PROJECT_NAME}) ==="
 
-compose down -v --remove-orphans >/dev/null 2>&1 || true
+# Safe: this process (or its parent run.sh) holds the project lock.
+compose down -v --remove-orphans
 
 for port in "${ROUTING_TRAEFIK_PORT}" "${ROUTING_TRAEFIK_API_PORT}"; do
   if port_in_use "${port}"; then
