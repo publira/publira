@@ -1,0 +1,155 @@
+name: Organize issues
+
+# Bucket for Issue-hygiene automation. Add a job per concern; keep this
+# workflow's name stable so later Issue-maintenance steps land here.
+
+on:
+  issues:
+    types: [closed]
+  sub_issues:
+    # Last remaining open child may be unlinked rather than closed.
+    types: [sub_issue_removed]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to check (empty = scan all open epics)"
+        required: false
+        type: string
+
+# Repo default GITHUB_TOKEN is read-only; jobs that mutate Issues need write.
+permissions:
+  issues: write
+
+jobs:
+  close-completed-epics:
+    name: Close completed epics
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 10
+    # Two children closing at once must not both see the parent as incomplete.
+    # Do not cancel: a mid-walk close must finish.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.job }}
+      cancel-in-progress: false
+    steps:
+      - name: Close epics whose sub-issues are all closed
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const EPIC = 'epic';
+            const MAX_DEPTH = 8;
+            const COMMENT = 'すべての sub-issue がクローズされたため、この Epic をクローズします。';
+            const { owner, repo } = context.repo;
+
+            function startNumbers() {
+              if (context.eventName === 'workflow_dispatch') {
+                const raw = context.payload.inputs?.issue_number?.trim();
+                if (raw) {
+                  return [Number(raw)];
+                }
+                return null;
+              }
+              const number = context.payload.parent_issue?.number ?? context.payload.issue?.number;
+              return number ? [number] : [];
+            }
+
+            async function getIssue(number) {
+              const { data } = await github.rest.issues.get({
+                owner,
+                repo,
+                issue_number: number,
+              });
+              return data;
+            }
+
+            async function parentNumber(number) {
+              try {
+                const { data } = await github.request(
+                  'GET /repos/{owner}/{repo}/issues/{issue_number}/parent',
+                  { owner, repo, issue_number: number },
+                );
+                return data.number;
+              } catch (error) {
+                if (error.status === 404) {
+                  return null;
+                }
+                throw error;
+              }
+            }
+
+            async function listSubIssues(number) {
+              return github.paginate(
+                'GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues',
+                { owner, repo, issue_number: number, per_page: 100 },
+              );
+            }
+
+            function isEpic(issue) {
+              return issue.labels.some((label) => label.name === EPIC);
+            }
+
+            async function closeIfComplete(issue) {
+              if (issue.state !== 'open' || !isEpic(issue)) {
+                return false;
+              }
+              const children = await listSubIssues(issue.number);
+              if (children.length === 0 || children.some((child) => child.state === 'open')) {
+                return false;
+              }
+              core.info(`Closing #${issue.number} (all ${children.length} sub-issues closed)`);
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: COMMENT,
+              });
+              return true;
+            }
+
+            async function walk(start) {
+              const seen = new Set();
+              let current = start;
+              for (let depth = 0; current && depth < MAX_DEPTH; depth++) {
+                if (seen.has(current)) {
+                  throw new Error(`Cycle detected at #${current}`);
+                }
+                seen.add(current);
+                const issue = await getIssue(current);
+                if (issue.state === 'open') {
+                  if (!(await closeIfComplete(issue))) {
+                    core.info(`#${current}: leave open`);
+                    return;
+                  }
+                } else {
+                  core.info(`#${current}: already closed`);
+                }
+                current = await parentNumber(current);
+              }
+            }
+
+            async function openEpicNumbers() {
+              const issues = await github.paginate(github.rest.issues.listForRepo, {
+                owner,
+                repo,
+                state: 'open',
+                labels: EPIC,
+                per_page: 100,
+              });
+              return issues.filter((issue) => !issue.pull_request).map((issue) => issue.number);
+            }
+
+            const starts = startNumbers();
+            const numbers = starts ?? (await openEpicNumbers());
+            for (const number of numbers) {
+              if (!Number.isInteger(number) || number <= 0) {
+                throw new Error(`Invalid issue number: ${number}`);
+              }
+              core.info(`Starting from #${number}`);
+              await walk(number);
+            }

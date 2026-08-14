@@ -1,3 +1,26 @@
+# GitHub Actions ワークフロー
+
+| ワークフロー | ファイル | 役割 |
+| --- | --- | --- |
+| `CI` | [`ci.yml`](./ci.yml) | 検証ジョブ（下記） |
+| `Skills Update` | [`skills-update.yml`](./skills-update.yml) | 週次の agent skills 更新 PR |
+| `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue 整備の自動化 |
+
+## Organize issues
+
+[`organize-issues.yml`](./organize-issues.yml)（workflow 名 `Organize issues`）は Issue 整備用の受け皿。処理の単位は **ジョブ** で足す。実装は `actions/github-script`（checkout なし）。
+
+| ジョブ（表示名） | 内容 |
+| --- | --- |
+| `Close completed epics` | native sub-issues がすべて閉じた `epic` Issue を `completed` でクローズする |
+
+`Close completed epics` の補足:
+
+- トリガ: Issue の `closed`、sub-issue の `sub_issue_removed`、手動の `workflow_dispatch`（番号省略時は open な `epic` を走査）
+- 対象は `epic` ラベル付きの親だけ。sub-issue が 0 件の Epic は閉じない
+- 入れ子の Epic は同一 run で祖先方向へ辿る（`GITHUB_TOKEN` による close は別 run を起こさない）
+- 同時クローズの取りこぼしを避けるため、このジョブだけ直列化する
+
 # CI ワークフロー
 
 [`ci.yml`](./ci.yml)（workflow 名 `CI`）のジョブ構成・トリガ・path filter・失敗時のトリアージを定義する。  
