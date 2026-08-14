@@ -30,12 +30,16 @@ test.describe("web-host notification bell", () => {
     await expect(bell).toHaveAttribute("href", "/notifications");
 
     await expect(page).toHaveURL(/\/notifications\/?$/u);
-    await expect(page.getByRole("heading", { name: "通知" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, level: 1, name: "通知" })
+    ).toBeVisible();
     await expect(page.getByText("通知はまだありません。")).toBeVisible();
 
     await page.goto("/announcements");
     await expect(page).toHaveURL(/\/announcements\/?$/u);
-    await expect(page.getByRole("heading", { name: "お知らせ" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, level: 1, name: "お知らせ" })
+    ).toBeVisible();
     await expect(page.getByText("通知はまだありません。")).toHaveCount(0);
   });
 
