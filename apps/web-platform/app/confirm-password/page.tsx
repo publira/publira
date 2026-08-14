@@ -4,97 +4,14 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { confirmPlatformPasswordReset } from "#lib/password-reset";
+import { confirmPasswordAction } from "./_lib/actions";
+import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "新しいパスワードの設定",
-};
-
-const buildConfirmPasswordPath = ({
-  error,
-  status,
-  token,
-}: {
-  error?: string;
-  status?: "expired" | "invalid";
-  token?: string;
-}): string => {
-  const params = new URLSearchParams();
-
-  if (error?.trim()) {
-    params.set("error", error.trim());
-  }
-  if (status) {
-    params.set("status", status);
-  }
-  if (token?.trim()) {
-    params.set("token", token.trim());
-  }
-
-  const query = params.toString();
-  return query ? `/confirm-password?${query}` : "/confirm-password";
-};
-
-const buildLoginPath = (): string =>
-  `/login?${new URLSearchParams({ reset: "done" }).toString()}`;
-
-const confirmPasswordAction = async (formData: FormData): Promise<void> => {
-  "use server";
-
-  const token = String(formData.get("token") ?? "").trim();
-  const password = String(formData.get("password") ?? "").trim();
-  const confirmPassword = String(formData.get("confirm_password") ?? "").trim();
-
-  if (!token) {
-    redirect(buildConfirmPasswordPath({ status: "invalid" }));
-  }
-
-  if (!password || !confirmPassword) {
-    redirect(
-      buildConfirmPasswordPath({
-        error: "新しいパスワードと確認用パスワードを入力してください。",
-        token,
-      })
-    );
-  }
-
-  if (password !== confirmPassword) {
-    redirect(
-      buildConfirmPasswordPath({
-        error: "パスワード確認が一致しません。",
-        token,
-      })
-    );
-  }
-
-  const result = await confirmPlatformPasswordReset(token, password);
-  if (!result.ok) {
-    if (result.reason === "expired" || result.reason === "invalid") {
-      redirect(buildConfirmPasswordPath({ status: result.reason }));
-    }
-
-    redirect(
-      buildConfirmPasswordPath({
-        error: result.message,
-        token,
-      })
-    );
-  }
-
-  redirect(buildLoginPath());
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
 };
 
 const FailureState = ({ status }: { status: "expired" | "invalid" }) => {
@@ -145,10 +62,9 @@ const ConfirmPasswordPageContent = async ({
 }) => {
   await connection();
 
-  const sp = await searchParams;
-  const errorMessage = pickFirstQueryParam(sp.error)?.trim();
-  const status = pickFirstQueryParam(sp.status)?.trim();
-  const token = pickFirstQueryParam(sp.token)?.trim() ?? "";
+  const { errorMessage, status, token } = parseConfirmPasswordSearchParams(
+    await searchParams
+  );
 
   let failureStatus: "expired" | "invalid" | null = null;
   if (status === "expired" || status === "invalid") {

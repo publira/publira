@@ -39,6 +39,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { MAX_LIST_OFFSET } from "#lib/list-pagination";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getPlatformTenant } from "#lib/tenants";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
@@ -135,12 +136,18 @@ const buildPaginationState = (
   result: ListPlatformEndUsersResult,
   offset: number,
   limit: number
-): PaginationState => ({
-  hasNext: result.ok && result.users.length === limit,
-  hasPrev: offset > 0,
-  nextOffset: offset + limit,
-  prevOffset: Math.max(0, offset - limit),
-});
+): PaginationState => {
+  const nextOffset = offset + limit;
+  return {
+    hasNext:
+      result.ok &&
+      result.users.length === limit &&
+      nextOffset <= MAX_LIST_OFFSET,
+    hasPrev: offset > 0,
+    nextOffset,
+    prevOffset: Math.max(0, offset - limit),
+  };
+};
 
 const buildSummaryText = (
   result: ListPlatformEndUsersResult,

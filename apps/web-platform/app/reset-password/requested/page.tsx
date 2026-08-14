@@ -5,17 +5,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { parseResetPasswordRequestedSearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "再設定メール送信完了",
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
 };
 
 const RequestedContent = async ({
@@ -25,8 +18,7 @@ const RequestedContent = async ({
 }) => {
   await connection();
 
-  const sp = await searchParams;
-  const email = pickFirstQueryParam(sp.email)?.trim();
+  const { email } = parseResetPasswordRequestedSearchParams(await searchParams);
 
   return (
     <>

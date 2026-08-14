@@ -41,23 +41,25 @@ import type {
   ListPlatformAuditLogsResult,
   PlatformAuditLogSummary,
 } from "#lib/audit-logs";
+import { DEFAULT_LIST_PAGE_SIZE, MAX_LIST_OFFSET } from "#lib/list-pagination";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
+
+import {
+  buildAuditLogsPath,
+  parseAuditLogFilters,
+  toAllowedActionValues,
+} from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "監査ログ",
 };
 
-interface AuditLogsPageProps {
-  searchParams: Promise<{
-    action?: string;
-    actor_user_public_id?: string;
-    offset?: string;
-  }>;
-}
+type AuditLogsPageProps = PageProps<"/audit-logs">;
 
-const pageSize = 20;
+const allowedActionValues = toAllowedActionValues(auditActionOptions);
+const pageSize = DEFAULT_LIST_PAGE_SIZE;
 
 const AuditLogsSkeleton = () => (
   <Card>
@@ -80,33 +82,6 @@ const AuditLogsSkeleton = () => (
     </CardContent>
   </Card>
 );
-
-const parseOffset = (value: string | undefined): number => {
-  const parsed = Math.trunc(Number(value ?? "0"));
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
-  }
-  return parsed;
-};
-
-const buildAuditLogsPath = (params: {
-  action?: string;
-  actorUserPublicId?: string;
-  offset: number;
-}): string => {
-  const search = new URLSearchParams();
-  if (params.actorUserPublicId) {
-    search.set("actor_user_public_id", params.actorUserPublicId);
-  }
-  if (params.action) {
-    search.set("action", params.action);
-  }
-  if (params.offset > 0) {
-    search.set("offset", String(params.offset));
-  }
-  const query = search.toString();
-  return query ? `/audit-logs?${query}` : "/audit-logs";
-};
 
 const getOutcomeTone = (
   outcome: string
@@ -247,8 +222,8 @@ const AuditLogsPagination = ({
   summaryText: string;
 }) => {
   const filterParams = {
-    action: actionFilter || undefined,
-    actorUserPublicId: actorFilter || undefined,
+    action: actionFilter,
+    actorUserPublicId: actorFilter,
   };
 
   return (
@@ -403,10 +378,11 @@ const AuditLogsTableBody = ({
 const AuditLogsContent = async ({
   searchParams,
 }: Pick<AuditLogsPageProps, "searchParams">) => {
-  const params = await searchParams;
-  const actorFilter = params.actor_user_public_id?.trim() ?? "";
-  const actionFilter = params.action?.trim() ?? "";
-  const offset = parseOffset(params.offset);
+  const {
+    action: actionFilter,
+    actorUserPublicId: actorFilter,
+    offset,
+  } = parseAuditLogFilters(await searchParams, allowedActionValues);
 
   const hasFilter = Boolean(actorFilter || actionFilter);
 
@@ -423,9 +399,12 @@ const AuditLogsContent = async ({
   ]);
 
   const hasPrev = offset > 0;
-  const hasNext = result.ok && result.auditLogs.length === pageSize;
   const prevOffset = Math.max(0, offset - pageSize);
   const nextOffset = offset + pageSize;
+  const hasNext =
+    result.ok &&
+    result.auditLogs.length === pageSize &&
+    nextOffset <= MAX_LIST_OFFSET;
   const summaryText = getSummaryText(result, offset);
 
   return (

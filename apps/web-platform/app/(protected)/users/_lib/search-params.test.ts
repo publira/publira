@@ -46,6 +46,10 @@ describe("parseUsersFilters", () => {
       tenantQuery: "",
     });
   });
+
+  it("clamps an out-of-range offset", () => {
+    expect(parseUsersFilters({ offset: "100000" }).offset).toBe(10_000);
+  });
 });
 
 describe("buildUsersPath", () => {

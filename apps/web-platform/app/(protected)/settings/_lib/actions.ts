@@ -6,6 +6,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 
+import { emailFormSchema, passwordFormSchema } from "#lib/auth-input";
 import { requestPlatformEmailChange } from "#lib/email-change";
 import {
   sendPlatformSmtpTestEmail,
@@ -18,6 +19,7 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
+import { intFormSchema, optionalTrimmedString } from "#lib/form-schemas";
 import {
   platformSettingsCacheTag,
   updatePlatformDefaultTimezone,
@@ -58,78 +60,84 @@ const platformDefaultTimezoneSchema = z.object({
     }),
 });
 
-interface ParsedSmtpFormData {
-  encryption: string;
-  fromAddress: string;
-  host: string;
-  password: string;
-  passwordUpdateMode: number;
-  port: number;
-  recipientEmail: string;
-  recipientType: number;
-  replyTo: string;
-  username: string;
-}
+const secretUpdateModeFormSchema = z.preprocess((value) => {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return raw === String(SECRET_UPDATE_MODE_REPLACE)
+    ? SECRET_UPDATE_MODE_REPLACE
+    : SECRET_UPDATE_MODE_UNCHANGED;
+}, z.number());
 
-const parseIntOrFallback = (value: string, fallback: number): number => {
-  const parsed = Math.trunc(Number(value));
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
+const recipientTypeFormSchema = z.preprocess((value) => {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return raw === String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
+    ? TEST_EMAIL_RECIPIENT_TYPE_CUSTOM
+    : TEST_EMAIL_RECIPIENT_TYPE_SELF;
+}, z.number());
 
-  return parsed;
-};
-
-const parseSecretUpdateMode = (value: string): number => {
-  const parsed = parseIntOrFallback(value, SECRET_UPDATE_MODE_UNCHANGED);
-  if (parsed === SECRET_UPDATE_MODE_REPLACE) {
-    return SECRET_UPDATE_MODE_REPLACE;
-  }
-  return SECRET_UPDATE_MODE_UNCHANGED;
-};
-
-const parseRecipientType = (value: string): number => {
-  const parsed = parseIntOrFallback(value, TEST_EMAIL_RECIPIENT_TYPE_SELF);
-  if (parsed === TEST_EMAIL_RECIPIENT_TYPE_CUSTOM) {
-    return TEST_EMAIL_RECIPIENT_TYPE_CUSTOM;
-  }
-  return TEST_EMAIL_RECIPIENT_TYPE_SELF;
-};
-
-const parseSmtpFormData = (formData: FormData): ParsedSmtpFormData => ({
-  encryption: String(formData.get("encryption") ?? "")
-    .trim()
-    .toLowerCase(),
-  fromAddress: String(formData.get("from_address") ?? "").trim(),
-  host: String(formData.get("host") ?? "").trim(),
-  password: String(formData.get("password") ?? ""),
-  passwordUpdateMode: parseSecretUpdateMode(
-    String(formData.get("password_update_mode") ?? "")
+const smtpFormSchema = z.object({
+  encryption: z.preprocess(
+    (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
+    z.enum(["none", "starttls", "tls"], {
+      error: "暗号化方式を選択してください。",
+    })
   ),
-  port: parseIntOrFallback(String(formData.get("port") ?? "587"), 587),
-  recipientEmail: String(formData.get("recipient_email") ?? "").trim(),
-  recipientType: parseRecipientType(
-    String(formData.get("recipient_type") ?? "")
+  fromAddress: optionalTrimmedString(),
+  host: optionalTrimmedString(),
+  password: z.preprocess(
+    (value) => (typeof value === "string" ? value : ""),
+    z.string()
   ),
-  replyTo: String(formData.get("reply_to") ?? "").trim(),
-  username: String(formData.get("username") ?? "").trim(),
+  passwordUpdateMode: secretUpdateModeFormSchema,
+  port: intFormSchema("ポートは 1〜65535 の整数で入力してください。", {
+    fallback: 587,
+    max: 65_535,
+    min: 1,
+  }),
+  recipientEmail: optionalTrimmedString(),
+  recipientType: recipientTypeFormSchema,
+  replyTo: optionalTrimmedString(),
+  username: optionalTrimmedString(),
+});
+
+const smtpFormFields = {
+  encryption: "value",
+  fromAddress: { kind: "value", name: "from_address" },
+  host: "value",
+  password: "value",
+  passwordUpdateMode: { kind: "value", name: "password_update_mode" },
+  port: "value",
+  recipientEmail: { kind: "value", name: "recipient_email" },
+  recipientType: { kind: "value", name: "recipient_type" },
+  replyTo: { kind: "value", name: "reply_to" },
+  username: "value",
+} as const;
+
+const emailChangeFormSchema = z.object({
+  currentEmail: emailFormSchema,
+  currentPassword: passwordFormSchema,
+  newEmail: emailFormSchema,
 });
 
 export const updatePlatformEmailSettingsAction = async (
   _prevState: PlatformEmailSettingsFormState,
   formData: FormData
 ): Promise<PlatformEmailSettingsFormState> => {
-  const input = parseSmtpFormData(formData);
+  const parsed = smtpFormSchema.safeParse(
+    toFormDataInput(formData, smtpFormFields)
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
   const result = await updatePlatformEmailSettings({
-    encryption: input.encryption,
-    fromAddress: input.fromAddress,
-    host: input.host,
-    password: input.password,
-    passwordUpdateMode: input.passwordUpdateMode,
-    port: input.port,
-    replyTo: input.replyTo,
-    username: input.username,
+    encryption: parsed.data.encryption,
+    fromAddress: parsed.data.fromAddress,
+    host: parsed.data.host,
+    password: parsed.data.password,
+    passwordUpdateMode: parsed.data.passwordUpdateMode,
+    port: parsed.data.port,
+    replyTo: parsed.data.replyTo,
+    username: parsed.data.username,
   });
 
   if (!result.ok) {
@@ -181,19 +189,24 @@ export const sendPlatformSmtpTestEmailAction = async (
   _prevState: PlatformSmtpTestFormState,
   formData: FormData
 ): Promise<PlatformSmtpTestFormState> => {
-  const input = parseSmtpFormData(formData);
+  const parsed = smtpFormSchema.safeParse(
+    toFormDataInput(formData, smtpFormFields)
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
+  }
 
   const result = await sendPlatformSmtpTestEmail({
-    encryption: input.encryption,
-    fromAddress: input.fromAddress,
-    host: input.host,
-    password: input.password,
-    passwordUpdateMode: input.passwordUpdateMode,
-    port: input.port,
-    recipientEmail: input.recipientEmail,
-    recipientType: input.recipientType,
-    replyTo: input.replyTo,
-    username: input.username,
+    encryption: parsed.data.encryption,
+    fromAddress: parsed.data.fromAddress,
+    host: parsed.data.host,
+    password: parsed.data.password,
+    passwordUpdateMode: parsed.data.passwordUpdateMode,
+    port: parsed.data.port,
+    recipientEmail: parsed.data.recipientEmail,
+    recipientType: parsed.data.recipientType,
+    replyTo: parsed.data.replyTo,
+    username: parsed.data.username,
   });
 
   if (!result.ok) {
@@ -211,18 +224,21 @@ export const requestPlatformEmailChangeAction = async (
   _prevState: PlatformEmailChangeActionState,
   formData: FormData
 ): Promise<PlatformEmailChangeActionState> => {
-  const currentEmail = String(formData.get("current_email") ?? "").trim();
-  const newEmail = String(formData.get("new_email") ?? "").trim();
-  const currentPassword = String(formData.get("current_password") ?? "");
-
-  if (!currentEmail || !newEmail || !currentPassword) {
-    return { message: "すべての項目を入力してください。", ok: false };
+  const parsed = emailChangeFormSchema.safeParse(
+    toFormDataInput(formData, {
+      currentEmail: { kind: "value", name: "current_email" },
+      currentPassword: { kind: "value", name: "current_password" },
+      newEmail: { kind: "value", name: "new_email" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
   const result = await requestPlatformEmailChange(
-    currentEmail,
-    newEmail,
-    currentPassword
+    parsed.data.currentEmail,
+    parsed.data.newEmail,
+    parsed.data.currentPassword
   );
 
   if (!result.ok) {

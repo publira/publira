@@ -2,14 +2,18 @@ import type { SearchParamValue } from "@publira/utils/search-params";
 import {
   searchParamDate,
   searchParamEnum,
-  searchParamNumber,
   searchParamString,
 } from "@publira/utils/search-params";
 import { z } from "zod";
 
-export const defaultUsersPageSize = 20;
+import {
+  DEFAULT_LIST_PAGE_SIZE,
+  listLimitSearchParam,
+  listOffsetSearchParam,
+} from "#lib/list-pagination";
 
-const pageSizeValues = ["10", "20", "50"] as const;
+export const defaultUsersPageSize = DEFAULT_LIST_PAGE_SIZE;
+
 const statusValues = ["active", "suspended"] as const;
 
 interface ParseUsersFiltersInput {
@@ -39,8 +43,8 @@ export interface UsersFilters {
 const usersFiltersSchema = z.object({
   created_from: searchParamDate({ fallback: "" }),
   created_to: searchParamDate({ fallback: "" }),
-  limit: searchParamEnum(pageSizeValues, { fallback: "20" }),
-  offset: searchParamNumber({ fallback: 0, min: 0 }),
+  limit: listLimitSearchParam,
+  offset: listOffsetSearchParam,
   status: searchParamEnum(statusValues, { fallback: "" }),
   tenant_id: searchParamString({ fallback: "" }),
   tenant_q: searchParamString({ fallback: "" }),
