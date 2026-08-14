@@ -145,8 +145,10 @@ Host ベース URL は `src/urls.ts` を参照。
 | `web-host` / `web-admin` / `web-platform` | 通常 spec（3 worker で並列） | 同時開始 |
 | `catalog-outage` | `catalog.outage.spec.ts` | 上記 3 project の完了後 |
 | `catalog-error-boundary` | `catalog.error-boundary.spec.ts` | `catalog-outage` の完了後（同じ public API） |
-| `admin-error-boundary` | `admin.error-boundary.spec.ts` | main 3 project の完了後（admin API。catalog 側とは並列可） |
-| `platform-error-boundary` | `platform.outage.spec.ts` / `platform.error-boundary.spec.ts`（未追加） | main 3 project の完了後（platform API。他の隔離 project とは並列可） |
+| `admin-outage` | `admin.outage.spec.ts`（未追加） | main 3 project の完了後（admin API。catalog 側とは並列可） |
+| `admin-error-boundary` | `admin.error-boundary.spec.ts` | `admin-outage` の完了後（同じ admin API） |
+| `platform-outage` | `platform.outage.spec.ts`（未追加） | main 3 project の完了後（platform API。他系統とは並列可） |
+| `platform-error-boundary` | `platform.error-boundary.spec.ts`（未追加） | `platform-outage` の完了後（同じ platform API） |
 
 同じファイル内で共有シードを書き換える suite（お知らせの既読など）は `test.describe.configure({ mode: "serial" })` でファイル内だけ直列にする。
 
@@ -204,7 +206,7 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
    `e2e/tests/<area>.spec.ts` を作成。`@playwright/test` の `test` / `expect` を使う。  
    web-admin 向けはファイル名を `admin.*.spec.ts` にすると `web-admin` project（baseURL=`admin.localhost:4000`）に載る。  
    web-platform 向けは `platform.*.spec.ts`（baseURL=`platform.localhost:4100`）。  
-   共有プロセスを止める spec（`stopApiServer` や `admin-api-server.sh stop`）はファイル名に `.outage.` または `.error-boundary.` を含め、`playwright.config.ts` の隔離 project に載せる。既存の `catalog-outage` / `catalog-error-boundary` / `admin-error-boundary` / `platform-error-boundary` に足すか、同じ API を落とすならその project に `dependencies` でチェーンする。
+   共有プロセスを止める spec（`stopApiServer` や `admin-api-server.sh stop`）はファイル名に `.outage.` または `.error-boundary.` を含め、同じ API を落とす隔離 project へ `dependencies` でチェーンする（`catalog-outage` → `catalog-error-boundary`、`admin-outage` → `admin-error-boundary`、`platform-outage` → `platform-error-boundary`）。
 3. **Host が必要な場合**  
    `playwright.config.ts` の `projects` に `baseURL` を足すか、テスト内で `page.goto` の絶対 URL を使う。定数は `src/urls.ts` に集約する。
 4. **起動対象を増やす場合**  

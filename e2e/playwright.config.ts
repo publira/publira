@@ -89,9 +89,21 @@ export default defineConfig({
       },
     },
     // admin-api-server, not the public API. Safe to overlap with the catalog
-    // outage projects; not safe to overlap with web-admin.
+    // outage projects; not safe to overlap with web-admin. One project per
+    // filename so two stop-admin-api files cannot share the worker pool.
     {
       dependencies: ["web-host", "web-admin", "web-platform"],
+      fullyParallel: false,
+      name: "admin-outage",
+      testMatch: [/admin\.outage\./u],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_ADMIN_BASE_URL,
+      },
+    },
+    {
+      dependencies: ["admin-outage"],
       fullyParallel: false,
       name: "admin-error-boundary",
       testMatch: [/admin\.error-boundary\./u],
@@ -101,13 +113,23 @@ export default defineConfig({
         baseURL: WEB_ADMIN_BASE_URL,
       },
     },
-    // platform-api-server. Same filename contract as admin; no spec yet.
-    // Two files that stop this API must be split and chained, as catalog is.
+    // platform-api-server. Same one-file-per-project chain as admin.
     {
       dependencies: ["web-host", "web-admin", "web-platform"],
       fullyParallel: false,
+      name: "platform-outage",
+      testMatch: [/platform\.outage\./u],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_PLATFORM_BASE_URL,
+      },
+    },
+    {
+      dependencies: ["platform-outage"],
+      fullyParallel: false,
       name: "platform-error-boundary",
-      testMatch: [/platform\.(?:outage|error-boundary)\./u],
+      testMatch: [/platform\.error-boundary\./u],
       timeout: 120_000,
       use: {
         ...desktopChrome,
