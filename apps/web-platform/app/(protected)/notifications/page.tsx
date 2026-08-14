@@ -1,0 +1,93 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+
+import {
+  PlatformPage,
+  PlatformPageContent,
+  PlatformPageDescription,
+  PlatformPageEyebrow,
+  PlatformPageHeader,
+  PlatformPageHeading,
+  PlatformPageTitle,
+} from "#components/platform-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { countUnreadNotifications, listNotifications } from "#lib/notification";
+import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+
+import { NotificationManager } from "./_components/notification-manager";
+import {
+  buildNotificationsPath,
+  defaultNotificationsPageSize,
+  parseNotificationsSearchParams,
+} from "./_lib/search-params";
+
+export const metadata: Metadata = {
+  title: "通知",
+};
+
+type NotificationsPageProps = PageProps<"/notifications">;
+
+const NotificationManagerSkeleton = () => (
+  <div className="rounded-2xl border border-border/70 bg-card p-6">
+    <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
+    <div className="grid gap-3">
+      <div className="h-12 animate-pulse rounded bg-muted/70" />
+      <div className="h-12 animate-pulse rounded bg-muted/70" />
+      <div className="h-12 animate-pulse rounded bg-muted/70" />
+    </div>
+  </div>
+);
+
+const NotificationManagerData = async ({
+  searchParams,
+}: Pick<NotificationsPageProps, "searchParams">) => {
+  const { token } = parseNotificationsSearchParams(await searchParams);
+  const [listResult, unreadResult, timeZone] = await Promise.all([
+    listNotifications({ token }),
+    countUnreadNotifications(),
+    getPlatformDisplayTimeZone(),
+  ]);
+
+  return (
+    <NotificationManager
+      listErrorMessage={listResult.ok ? undefined : listResult.message}
+      nextHref={
+        listResult.nextToken
+          ? buildNotificationsPath({ token: listResult.nextToken })
+          : undefined
+      }
+      notifications={listResult.notifications}
+      pageSize={defaultNotificationsPageSize}
+      previousHref={
+        listResult.previousToken
+          ? buildNotificationsPath({ token: listResult.previousToken })
+          : undefined
+      }
+      timeZone={timeZone}
+      unreadCount={unreadResult.unreadCount}
+    />
+  );
+};
+
+const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
+  <PlatformPage>
+    <PlatformPageHeader>
+      <PlatformPageHeading>
+        <PlatformPageEyebrow>Platform Operations</PlatformPageEyebrow>
+        <PlatformPageTitle>通知</PlatformPageTitle>
+        <PlatformPageDescription>
+          自分宛の業務イベントを確認し、既読にできます。
+        </PlatformPageDescription>
+      </PlatformPageHeading>
+    </PlatformPageHeader>
+    <PlatformPageContent>
+      <SectionErrorBoundary title="通知一覧を表示できませんでした">
+        <Suspense fallback={<NotificationManagerSkeleton />}>
+          <NotificationManagerData searchParams={searchParams} />
+        </Suspense>
+      </SectionErrorBoundary>
+    </PlatformPageContent>
+  </PlatformPage>
+);
+
+export default NotificationsPage;

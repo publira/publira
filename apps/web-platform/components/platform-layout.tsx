@@ -15,6 +15,11 @@ import type { ReactNode } from "react";
 
 import { getPlatformCurrentOperator } from "../lib/auth";
 import { logoutAction } from "../lib/logout-action";
+import { countUnreadNotifications } from "../lib/notification";
+import {
+  NotificationBell,
+  NotificationBellSkeleton,
+} from "./notification-bell";
 import { navigation } from "./platform-navigation";
 
 const platformGradient =
@@ -27,6 +32,12 @@ export const PlatformUser = async () => {
   }
 
   return <ConsoleHeaderUser currentUser={currentOperator} />;
+};
+
+export const PlatformNotificationBell = async () => {
+  const unread = await countUnreadNotifications();
+
+  return <NotificationBell unreadCount={unread.unreadCount} />;
 };
 
 export const PlatformLayout = ({ children }: { children: ReactNode }) => (
@@ -49,6 +60,9 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
         eyebrow="Platform Operations"
         logoutAction={logoutAction}
       >
+        <Suspense fallback={<NotificationBellSkeleton />}>
+          <PlatformNotificationBell />
+        </Suspense>
         <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
           <PlatformUser />
         </Suspense>
