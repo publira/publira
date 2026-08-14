@@ -133,6 +133,11 @@ export const listMyAnnouncements = async (
 };
 
 const ANNOUNCEMENT_LOOKUP_PAGE_SIZE = 100;
+/**
+ * Runaway bound only. AuthService has no GetAnnouncement; the walk follows
+ * `nextToken` until the list is exhausted or the cursor stops advancing.
+ * 20 × 100 is the max walk so a broken cursor cannot fan out unbounded RPCs.
+ */
 const ANNOUNCEMENT_LOOKUP_MAX_PAGES = 20;
 
 /**
@@ -164,7 +169,8 @@ export const getMyAnnouncement = async (
       return found;
     }
 
-    if (result.nextToken.length === 0) {
+    // Empty nextToken = last page. Same token as sent = cursor did not move.
+    if (result.nextToken.length === 0 || result.nextToken === token) {
       return null;
     }
 

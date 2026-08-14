@@ -171,6 +171,16 @@ describe("web-host announcements", () => {
       title: "対象",
     });
     expect(mockListAnnouncements).toHaveBeenCalledTimes(2);
+    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
+      1,
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "" },
+      expect.anything()
+    );
+    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
+      2,
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "djF8Zg" },
+      expect.anything()
+    );
   });
 
   it("getMyAnnouncement: 見つからない行は null", async () => {
@@ -182,6 +192,37 @@ describe("web-host announcements", () => {
     });
 
     await expect(getMyAnnouncement("TENANT001", "N999")).resolves.toBeNull();
+  });
+
+  it("getMyAnnouncement: nextToken が進まなければ打ち切る", async () => {
+    const { getMyAnnouncement } = await importAnnouncements();
+    mockListAnnouncements.mockResolvedValue({
+      announcements: [
+        {
+          body: "他",
+          createdAt: "2026-04-05T10:00:00Z",
+          id: "N000",
+          isRead: true,
+          linkUrl: "",
+          title: "他",
+        },
+      ],
+      nextToken: "djF8Zg",
+      previousToken: "",
+    });
+
+    await expect(getMyAnnouncement("TENANT001", "N999")).resolves.toBeNull();
+    expect(mockListAnnouncements).toHaveBeenCalledTimes(2);
+    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
+      1,
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "" },
+      expect.anything()
+    );
+    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
+      2,
+      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "djF8Zg" },
+      expect.anything()
+    );
   });
 
   it("markAnnouncementAsRead: session が無ければ false", async () => {
