@@ -89,6 +89,24 @@ else
   pass "distinct port overrides get distinct RUN_DIRs"
 fi
 
+compute_redis_url() {
+  stack_env "$@" bash -c 'source "$1"; printf %s "$REDIS_URL"' bash "${LIB}"
+}
+
+default_redis="$(compute_redis_url REDIS_URL=redis://redis:6379)"
+if [[ "${default_redis}" == "redis://127.0.0.1:6380" ]]; then
+  pass "ambient REDIS_URL does not override E2E Redis"
+else
+  fail "ambient REDIS_URL leaked through as ${default_redis}"
+fi
+
+port_redis="$(compute_redis_url E2E_REDIS_PORT=6381 REDIS_URL=redis://redis:6379)"
+if [[ "${port_redis}" == "redis://127.0.0.1:6381" ]]; then
+  pass "E2E_REDIS_PORT drives REDIS_URL"
+else
+  fail "E2E_REDIS_PORT=6381 produced REDIS_URL=${port_redis}"
+fi
+
 # Two stacks, two sleep stand-ins. Dedicated temp RUN_DIRs so this never
 # overwrites a live stack's api-server.pid (run.sh invokes us before locking).
 pid_root="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-pids.XXXXXX")"
