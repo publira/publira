@@ -55,6 +55,10 @@ const movePage = async (page: Page, label: string): Promise<void> => {
  * are known to have caught up with the URL.
  */
 test.describe("web-host member announcements", () => {
+  // Shared seed member: one test marks a notice as read, which would race
+  // the pagination assertions if the file were fullyParallel.
+  test.describe.configure({ mode: "serial" });
+
   test.beforeAll(() => {
     applyScenarioSql(MEMBER_ANNOUNCEMENTS_SCENARIO);
   });

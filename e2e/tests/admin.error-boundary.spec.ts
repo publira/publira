@@ -36,6 +36,9 @@ const runAdminApiServerScript = (action: "start-wait" | "stop"): void => {
  * `admin.publish-flow.spec.ts` exercises as part of the normal flows.
  */
 test.describe("web-admin console error boundary", () => {
+  // Isolated project `admin-error-boundary` (see playwright.config.ts).
+  // Filename `.error-boundary.` is what keeps this file off the parallel
+  // web-admin project; it stops admin-api-server, not the public API.
   test.describe.configure({ mode: "serial" });
 
   test.afterAll(() => {

@@ -22,6 +22,8 @@ const uncachedSeriesId = `OUTAGE${randomUUID().replaceAll("-", "").slice(0, 10)}
  * web-host's in-process tenant cache cannot answer it.
  */
 test.describe("web-host public API outage", () => {
+  // Isolated project `catalog-outage` (see playwright.config.ts). Filename
+  // `.outage.` is what keeps this file off the parallel web-host project.
   test.describe.configure({ mode: "serial" });
 
   test.beforeAll(() => {

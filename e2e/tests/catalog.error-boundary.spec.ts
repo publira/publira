@@ -41,6 +41,10 @@ import { startApiServer, stopApiServer } from "../src/api-server";
  * the failure not being cached); this file owns the retry affordance.
  */
 test.describe("web-host site error boundary", () => {
+  // Isolated project `catalog-error-boundary` (see playwright.config.ts).
+  // Filename `.error-boundary.` is what keeps this file off the parallel
+  // web-host project; it is chained after `catalog-outage` so the two
+  // stopApiServer specs cannot overlap.
   test.describe.configure({ mode: "serial" });
 
   test.afterAll(() => {

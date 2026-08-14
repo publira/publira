@@ -110,15 +110,19 @@ test.describe("admin publish flow", () => {
     );
 
     await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
-    await expect(page.locator("#series_title")).toHaveValue(title);
-    await expect(page.locator("#series_synopsis")).toHaveValue(synopsis);
+    // After create the edit form may briefly coexist with a streaming shell.
+    const titleField = page.getByRole("textbox", { name: /タイトル/u });
+    await expect(titleField).toHaveValue(title);
+    await expect(page.locator("#series_synopsis").first()).toHaveValue(
+      synopsis
+    );
     // Draft: published_at left empty.
-    await expect(page.locator("#series_published_at")).toHaveValue("");
+    await expect(page.locator("#series_published_at").first()).toHaveValue("");
 
     const editedTitle = `${title} (edited)`;
     const editedSynopsis = `${synopsis} (edited)`;
-    await page.locator("#series_title").fill(editedTitle);
-    await page.locator("#series_synopsis").fill(editedSynopsis);
+    await titleField.fill(editedTitle);
+    await page.locator("#series_synopsis").first().fill(editedSynopsis);
     await page.getByRole("button", { name: "シリーズを更新" }).click();
     // FlashToast strips `?updated=1` via client replace; assert on values
     // rather than waiting for a load event that may never re-fire.

@@ -37,7 +37,7 @@ Dev Container Traefik のホストベースルーティングは、同じく Pla
 | E2E Redis（compose 公開）                              | `6380` |
 
 PID / ログ / ローカル storage は既定で `e2e/.run/` に置く。  
-`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。同じポートでの並行起動はポート競合で失敗する想定。
+`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。同じポートでの並行起動はポート競合で失敗する想定。`REDIS_URL` は常に `E2E_REDIS_PORT` から組み立てる（devcontainer の `redis://redis:6379` を引き継がない）。
 
 ## 1 コマンド実行
 
@@ -117,7 +117,9 @@ e2e/
     ├── catalog.browse.spec.ts
     ├── catalog.not-found.spec.ts
     ├── catalog.outage.spec.ts
+    ├── catalog.error-boundary.spec.ts
     ├── catalog.tenant-boundary.spec.ts
+    ├── admin.error-boundary.spec.ts
     ├── announcements.pagination.spec.ts
     ├── platform.tenant-ops.spec.ts
     ├── smoke.health.spec.ts
@@ -131,6 +133,21 @@ e2e/
 - **seed:** 開発用 `task db:setup`（public domain `localhost` / admin domain `admin.localhost` / テナント名 `Seed Tenant` / platform `platform@example.com`）
 
 Host ベース URL は `src/urls.ts` を参照。
+
+### Playwright の並列と隔離
+
+`playwright.config.ts` は `workers: 3` / `fullyParallel: false`（ファイル単位で並列、ファイル内は直列）。CI（`ubicloud-standard-4`、4 vCPU）と同じ数をローカルでも使い、隔離の前提を揃える。一時的に直列へ戻すときは `task e2e:test -- --workers=1`。
+
+共有プロセスを落とす spec は並列 pool に載せない:
+
+| project | 対象 | 開始条件 |
+| --- | --- | --- |
+| `web-host` / `web-admin` / `web-platform` | 通常 spec（3 worker で並列） | 同時開始 |
+| `catalog-outage` | `catalog.outage.spec.ts` | 上記 3 project の完了後 |
+| `catalog-error-boundary` | `catalog.error-boundary.spec.ts` | `catalog-outage` の完了後（同じ public API） |
+| `admin-error-boundary` | `admin.error-boundary.spec.ts` | main 3 project の完了後（admin API。catalog 側とは並列可） |
+
+同じファイル内で共有シードを書き換える suite（お知らせの既読など）は `test.describe.configure({ mode: "serial" })` でファイル内だけ直列にする。
 
 ### Host によるテナント切り替え
 
@@ -172,7 +189,8 @@ Node 側の `request` fixture は OS の名前解決を使うので、`localhost
 
 - path filter: `e2e/**`（`e2e/routing/**` を除外）、`apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**` など
 - 失敗時 artifact: `e2e-artifacts`（report / test-results / app logs）
-- Playwright Chromium のみ、workers=1、CI 時 retries=1
+- Playwright Chromium のみ、`workers: 3` / `fullyParallel: false`（ファイル単位の並列）、CI 時 retries=1
+- 障害シナリオ（`.outage.` / `.error-boundary.`）は専用 project に分け、main 3 project のあとに `dependencies` で直列実行する（共有 API を落とすため）
 - 必須ブランチチェックは最終ジョブ **Summary** が集約（他ジョブと同様）
 
 CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/README.md](../.github/workflows/README.md)
@@ -184,7 +202,8 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 2. **spec を追加**  
    `e2e/tests/<area>.spec.ts` を作成。`@playwright/test` の `test` / `expect` を使う。  
    web-admin 向けはファイル名を `admin.*.spec.ts` にすると `web-admin` project（baseURL=`admin.localhost:4000`）に載る。  
-   web-platform 向けは `platform.*.spec.ts`（baseURL=`platform.localhost:4100`）。
+   web-platform 向けは `platform.*.spec.ts`（baseURL=`platform.localhost:4100`）。  
+   共有プロセスを止める spec（`stopApiServer` や `admin-api-server.sh stop`）はファイル名に `.outage.` または `.error-boundary.` を含め、`playwright.config.ts` の隔離 project に載せる。既存の `catalog-outage` / `catalog-error-boundary` / `admin-error-boundary` に足すか、同じ API を落とすならその project に `dependencies` でチェーンする。
 3. **Host が必要な場合**  
    `playwright.config.ts` の `projects` に `baseURL` を足すか、テスト内で `page.goto` の絶対 URL を使う。定数は `src/urls.ts` に集約する。
 4. **起動対象を増やす場合**  
@@ -203,15 +222,17 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 | `smoke.web-host-home.spec.ts` | Host `localhost` で seed テナントのカタログトップ |
 | `catalog.browse.spec.ts` | カタログトップの各セクション、シリーズ一覧 → 詳細 → エピソード、レーベル一覧、著者一覧 → 詳細 |
 | `catalog.not-found.spec.ts` | 存在しないシリーズ / エピソード / 著者 |
-| `catalog.outage.spec.ts` | 公開 API 停止中のテナント解決失敗（503 + `Retry-After`）と復旧 |
+| `catalog.outage.spec.ts` | 公開 API 停止中のテナント解決失敗（503 + `Retry-After`）と復旧。隔離 project `catalog-outage` |
+| `catalog.error-boundary.spec.ts` | 公開 API 停止中のサイトエラー画面と再試行。隔離 project `catalog-error-boundary`（`catalog-outage` のあと） |
 | `catalog.tenant-boundary.spec.ts` | Host による別テナント解決、公開中コンテンツのみの表示、テナント跨ぎ参照の遮断、未知 Host の 404 |
+| `admin.error-boundary.spec.ts` | 管理 API 停止中のコンソールエラー画面と再試行。隔離 project `admin-error-boundary` |
 | `announcements.pagination.spec.ts` | 会員お知らせ一覧の cursor ページングと既読 |
 | `admin.publish-flow.spec.ts` | web-admin 入稿（シリーズ/エピソード作成・編集・公開）→ 管理画面再表示 → web-host 反映、バリデーションエラー、tenant 境界 |
 | `platform.tenant-ops.spec.ts` | Platform Console のテナント作成・編集・停止/再開、domain の公開/管理側解決、監査ログ、operator ロール別の操作可否 |
 
 `catalog.tenant-boundary.spec.ts` / `admin.publish-flow.spec.ts`（tenant 境界ケース）は `db/seeds/scenarios/010_multi_tenant.sql` を適用します（`applyScenarioSql`）。  
 `platform.tenant-ops.spec.ts`（ロール拒否ケース）は `db/seeds/scenarios/030_platform_operators.sql` を適用します。  
-`catalog.outage.spec.ts` は `src/api-server.ts` 経由で api-server を落として戻すので、単体で走らせる場合も `task e2e:test`（`scripts/test.sh` が `lib.sh` を読み込む）を使ってください。
+`catalog.outage.spec.ts` / `catalog.error-boundary.spec.ts` は `src/api-server.ts` 経由で api-server を落として戻すので、単体で走らせる場合も `task e2e:test`（`scripts/test.sh` が `lib.sh` を読み込む）を使ってください。ファイル名で絞ると依存 project にマッチするテストが無いため、隔離 project だけが走ります。隔離 project 名を直接指定するとき（`--project=catalog-outage`）は、先に main 3 project 全部が走らないよう `--no-deps` を付けてください。
 
 `admin.publish-flow.spec.ts` は dev seed の `admin@example.com` / `adminpass` でログインします（ログイン網羅は #67）。  
 `platform.tenant-ops.spec.ts` は dev seed の `platform@example.com` / `platformpass`（super admin）と scenario の `platform-operator@example.com` を使います。  

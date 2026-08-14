@@ -32,7 +32,10 @@ export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL:-postgres://publira_admin:adminpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL:-postgres://publira_platform:platformpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
-export REDIS_URL="${REDIS_URL:-redis://127.0.0.1:${E2E_REDIS_PORT}}"
+# Always the E2E compose Redis. Do not inherit ambient REDIS_URL — the
+# devcontainer / `task dev` value is redis://redis:6379 and would serve
+# another build's cached HTML (login then hangs waiting to hydrate).
+export REDIS_URL="redis://127.0.0.1:${E2E_REDIS_PORT}"
 export PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
 export PUBLIRA_ADMIN_GRPC_URL="${PUBLIRA_ADMIN_GRPC_URL:-http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}}"
 export PUBLIRA_PLATFORM_GRPC_URL="${PUBLIRA_PLATFORM_GRPC_URL:-http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}}"
