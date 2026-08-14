@@ -20,6 +20,7 @@ import {
   NotificationBell,
   NotificationBellSkeleton,
 } from "./notification-bell";
+import { NotificationBellErrorBoundary } from "./notification-bell-error-boundary";
 import { navigation } from "./platform-navigation";
 
 const platformGradient =
@@ -60,9 +61,11 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
         eyebrow="Platform Operations"
         logoutAction={logoutAction}
       >
-        <Suspense fallback={<NotificationBellSkeleton />}>
-          <PlatformNotificationBell />
-        </Suspense>
+        <NotificationBellErrorBoundary>
+          <Suspense fallback={<NotificationBellSkeleton />}>
+            <PlatformNotificationBell />
+          </Suspense>
+        </NotificationBellErrorBoundary>
         <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
           <PlatformUser />
         </Suspense>
