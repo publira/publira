@@ -7,6 +7,7 @@ import { getTenantAdminInvitationState } from "#lib/admin-auth";
 import { getTenantId } from "#lib/tenant-id";
 
 import { AcceptInviteForm } from "./_components/accept-invite-form";
+import { parseAcceptInviteSearchParams } from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "管理者招待の承諾",
@@ -80,8 +81,7 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
 const AcceptInvitePageContent = async ({
   searchParams,
 }: Pick<AcceptInvitePageProps, "searchParams">) => {
-  const sp = await searchParams;
-  const token = sp.token?.trim() ?? "";
+  const { token } = parseAcceptInviteSearchParams(await searchParams);
 
   if (!token) {
     return (

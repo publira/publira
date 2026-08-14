@@ -1,96 +1,125 @@
 "use server";
 
 import { parseInstant, toInstantIsoString } from "@publira/utils";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import {
   reorderEpisodeImages,
   updateEpisodePublishSchedule,
   uploadEpisodePages,
 } from "#lib/episode";
+import {
+  fileListFormSchema,
+  optionalFileFormSchema,
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import type { EpisodeEditActionState } from "../episode-edit-types";
+import type {
+  EpisodeEditActionState,
+  EpisodeEditMode,
+} from "../episode-edit-types";
 
-interface EpisodeEditErrorState {
-  ok: false;
-  message: string;
-  mode: "schedule" | "pages";
-}
+const hiddenParamsSchema = z.object({
+  episodePublicId: requiredTrimmedString("エピソード ID が見つかりません。"),
+  seriesPublicId: requiredTrimmedString("シリーズ ID が見つかりません。"),
+  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+});
 
-const parseHiddenParams = (formData: FormData) => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const seriesPublicId = String(formData.get("series_public_id") ?? "").trim();
-  const episodePublicId = String(
-    formData.get("episode_public_id") ?? ""
-  ).trim();
+const scheduleFormSchema = hiddenParamsSchema.extend({
+  publishAt: optionalTrimmedString(),
+});
 
-  return {
-    episodePublicId,
-    seriesPublicId,
-    tenantId,
-  };
-};
+const uploadModeSchema = z.preprocess(
+  (value) => {
+    if (value === "zip" || value === "epub" || value === "pages") {
+      return value;
+    }
 
-const validateHiddenParams = (
-  input: ReturnType<typeof parseHiddenParams>,
-  mode: "schedule" | "pages"
-): EpisodeEditErrorState | null => {
-  if (!input.tenantId) {
-    return {
-      message: "テナント ID が見つかりません。",
-      mode,
-      ok: false,
-    };
+    return "pages";
+  },
+  z.enum(["pages", "zip", "epub"])
+);
+
+const uploadPagesFormSchema = hiddenParamsSchema.extend({
+  archive: optionalFileFormSchema,
+  pages: fileListFormSchema,
+  uploadMode: uploadModeSchema,
+});
+
+const jsonStringArraySchema = z.preprocess((value): string[] => {
+  if (typeof value !== "string" || value.trim() === "") {
+    return [];
   }
 
-  if (!input.seriesPublicId) {
-    return {
-      message: "シリーズ ID が見つかりません。",
-      mode,
-      ok: false,
-    };
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is string => typeof entry === "string")
+      : [];
+  } catch {
+    return [];
   }
+}, z.array(z.string()));
 
-  if (!input.episodePublicId) {
-    return {
-      message: "エピソード ID が見つかりません。",
-      mode,
-      ok: false,
-    };
-  }
+const reorderImagesSchema = hiddenParamsSchema
+  .extend({
+    orderedImageIds: jsonStringArraySchema,
+  })
+  .extend({
+    episodePublicId: requiredTrimmedString(
+      "並び順の更新に必要な情報が不足しています。"
+    ),
+    seriesPublicId: requiredTrimmedString(
+      "並び順の更新に必要な情報が不足しています。"
+    ),
+    tenantId: requiredTrimmedString(
+      "並び順の更新に必要な情報が不足しています。"
+    ),
+  });
 
-  return null;
-};
+const hiddenFormFields = {
+  episodePublicId: { kind: "value", name: "episode_public_id" },
+  seriesPublicId: { kind: "value", name: "series_public_id" },
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
 
-const parsePublishAtToRFC3339 = (
+const toFailure = (
+  message: string,
+  mode: EpisodeEditMode
+): { message: string; mode: EpisodeEditMode; ok: false } => ({
+  message,
+  mode,
+  ok: false,
+});
+
+const parsePublishAtToRFC3339 = async (
   value: string,
-  timeZone: string
-): { ok: true; iso: string } | EpisodeEditErrorState => {
-  const trimmed = value.trim();
-  if (!trimmed) {
+  tenantId: string
+): Promise<{ ok: true; iso: string } | ReturnType<typeof toFailure>> => {
+  if (!value) {
     return { iso: "", ok: true };
   }
 
   // The form posts an absolute instant resolved against the zone it was
   // rendered in. A leftover `datetime-local` wall clock (no JS) is still
   // accepted and read in the tenant's current display zone.
-  const iso = toInstantIsoString(trimmed, timeZone);
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  const iso = toInstantIsoString(value, timeZone);
   const parsed = parseInstant(iso);
   if (!parsed) {
-    return {
-      message: "publish_at の形式が正しくありません。",
-      mode: "schedule",
-      ok: false,
-    };
+    return toFailure("publish_at の形式が正しくありません。", "schedule");
   }
 
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-    return {
-      message: "publish_at は現在時刻より未来を指定してください。",
-      mode: "schedule",
-      ok: false,
-    };
+    return toFailure(
+      "publish_at は現在時刻より未来を指定してください。",
+      "schedule"
+    );
   }
 
   return { iso, ok: true };
@@ -100,35 +129,36 @@ export const updateEpisodeScheduleAction = async (
   _prevState: EpisodeEditActionState,
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
-  const hidden = parseHiddenParams(formData);
-  const hiddenValidation = validateHiddenParams(hidden, "schedule");
-  if (hiddenValidation) {
-    return hiddenValidation;
+  const parsed = scheduleFormSchema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      publishAt: { kind: "value", name: "publish_at" },
+    })
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "schedule");
   }
 
-  const publishAtRaw = String(formData.get("publish_at") ?? "");
-  const timeZone = await getTenantDisplayTimeZone(hidden.tenantId);
-  const schedule = parsePublishAtToRFC3339(publishAtRaw, timeZone);
+  const schedule = await parsePublishAtToRFC3339(
+    parsed.data.publishAt,
+    parsed.data.tenantId
+  );
   if (!schedule.ok) {
     return schedule;
   }
 
   const result = await updateEpisodePublishSchedule({
-    episodePublicId: hidden.episodePublicId,
+    episodePublicId: parsed.data.episodePublicId,
     publishAt: schedule.iso,
-    tenantId: hidden.tenantId,
+    tenantId: parsed.data.tenantId,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "schedule",
-      ok: false,
-    };
+    return toFailure(result.message, "schedule");
   }
 
   redirect(
-    `/series/${hidden.seriesPublicId}/episodes/${hidden.episodePublicId}?schedule_updated=1`
+    `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?schedule_updated=1`
   );
 };
 
@@ -136,25 +166,35 @@ export const uploadEpisodePagesAction = async (
   _prevState: EpisodeEditActionState,
   formData: FormData
 ): Promise<EpisodeEditActionState> => {
-  const hidden = parseHiddenParams(formData);
-  const hiddenValidation = validateHiddenParams(hidden, "pages");
-  if (hiddenValidation) {
-    return hiddenValidation;
+  const parsed = uploadPagesFormSchema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      archive: { kind: "file", name: "archive" },
+      pages: { kind: "files", name: "pages" },
+      uploadMode: { kind: "value", name: "upload_mode" },
+    })
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "pages");
   }
 
-  const uploadMode = String(formData.get("upload_mode") ?? "pages").trim();
+  const {
+    archive,
+    episodePublicId,
+    pages,
+    seriesPublicId,
+    tenantId,
+    uploadMode,
+  } = parsed.data;
 
   if (uploadMode === "zip" || uploadMode === "epub") {
-    const archive = formData.get("archive");
-    if (!(archive instanceof File) || archive.size <= 0) {
-      return {
-        message:
-          uploadMode === "zip"
-            ? "入稿する ZIP ファイルを選択してください。"
-            : "入稿する ePub ファイルを選択してください。",
-        mode: "pages",
-        ok: false,
-      };
+    if (!archive) {
+      return toFailure(
+        uploadMode === "zip"
+          ? "入稿する ZIP ファイルを選択してください。"
+          : "入稿する ePub ファイルを選択してください。",
+        "pages"
+      );
     }
 
     const normalizedName = archive.name.toLowerCase();
@@ -166,97 +206,68 @@ export const uploadEpisodePagesAction = async (
           normalizedName.endsWith(".epub");
 
     if (!isValidArchive) {
-      return {
-        message:
-          uploadMode === "zip"
-            ? "ZIP 形式（.zip）のファイルを選択してください。"
-            : "ePub 形式（.epub）のファイルを選択してください。",
-        mode: "pages",
-        ok: false,
-      };
+      return toFailure(
+        uploadMode === "zip"
+          ? "ZIP 形式（.zip）のファイルを選択してください。"
+          : "ePub 形式（.epub）のファイルを選択してください。",
+        "pages"
+      );
     }
 
     const result = await uploadEpisodePages({
       archive,
-      episodePublicId: hidden.episodePublicId,
-      seriesPublicId: hidden.seriesPublicId,
-      tenantId: hidden.tenantId,
+      episodePublicId,
+      seriesPublicId,
+      tenantId,
     });
 
     if (!result.ok) {
-      return {
-        message: result.message,
-        mode: "pages",
-        ok: false,
-      };
+      return toFailure(result.message, "pages");
     }
 
     redirect(
-      `/series/${hidden.seriesPublicId}/episodes/${hidden.episodePublicId}?pages_uploaded=1`
+      `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
     );
   }
 
-  const pages = formData
-    .getAll("pages")
-    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
-
   if (pages.length === 0) {
-    return {
-      message: "追加するページ画像を選択してください。",
-      mode: "pages",
-      ok: false,
-    };
+    return toFailure("追加するページ画像を選択してください。", "pages");
   }
 
   const result = await uploadEpisodePages({
-    episodePublicId: hidden.episodePublicId,
+    episodePublicId,
     pages,
-    tenantId: hidden.tenantId,
+    tenantId,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "pages",
-      ok: false,
-    };
+    return toFailure(result.message, "pages");
   }
 
   redirect(
-    `/series/${hidden.seriesPublicId}/episodes/${hidden.episodePublicId}?pages_uploaded=1`
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?pages_uploaded=1`
   );
 };
 
 export const reorderEpisodeImagesAction = async (formData: FormData) => {
   "use server";
 
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const seriesPublicId = String(formData.get("series_public_id") ?? "").trim();
-  const episodePublicId = String(
-    formData.get("episode_public_id") ?? ""
-  ).trim();
-  const orderedImageIdsRaw = String(
-    formData.get("ordered_image_ids") ?? ""
-  ).trim();
-
-  if (!tenantId || !seriesPublicId || !episodePublicId || !orderedImageIdsRaw) {
+  const parsed = reorderImagesSchema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      orderedImageIds: { kind: "value", name: "ordered_image_ids" },
+    })
+  );
+  if (!parsed.success) {
     return {
-      message: "並び順の更新に必要な情報が不足しています。",
+      message: toFormErrorMessage(parsed.error, {
+        fallback: "並び順の更新に必要な情報が不足しています。",
+      }),
       ok: false,
     };
   }
 
-  let orderedImageIds: string[];
-  try {
-    const parsed = JSON.parse(orderedImageIdsRaw);
-    orderedImageIds = Array.isArray(parsed)
-      ? parsed.filter((value): value is string => typeof value === "string")
-      : [];
-  } catch {
-    orderedImageIds = [];
-  }
-
-  if (orderedImageIds.length === 0) {
+  if (parsed.data.orderedImageIds.length === 0) {
     return {
       message: "並び替え対象の画像がありません。",
       ok: false,
@@ -264,9 +275,9 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
   }
 
   const result = await reorderEpisodeImages({
-    episodePublicId,
-    imageIds: orderedImageIds,
-    tenantId,
+    episodePublicId: parsed.data.episodePublicId,
+    imageIds: parsed.data.orderedImageIds,
+    tenantId: parsed.data.tenantId,
   });
 
   if (!result.ok) {

@@ -23,6 +23,7 @@ import {
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listAllCreators } from "#lib/creator";
+import { parseEditTab } from "#lib/edit-tab-search-params";
 import { listAllLabels } from "#lib/label";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
@@ -66,10 +67,7 @@ interface EditSeriesPageProps {
 
 const resolveActiveTab = async (
   searchParams: EditSeriesPageProps["searchParams"]
-): Promise<"basic" | "eye-catch"> => {
-  const { tab } = await searchParams;
-  return tab === "eye-catch" ? "eye-catch" : "basic";
-};
+): Promise<"basic" | "eye-catch"> => parseEditTab(await searchParams);
 
 const EditSeriesTitle = async ({
   searchParams,

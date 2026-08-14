@@ -1,89 +1,70 @@
 "use server";
 
 import { parseInstant, toInstantIsoString } from "@publira/utils";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
+import {
+  nonNegativeIntFormSchema,
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { EpisodeActionState } from "../episode-types";
 
-interface EpisodeCreateErrorState {
-  ok: false;
-  message: string;
-  mode: "create";
-}
-
-const parseCreateEpisodeInput = (formData: FormData) => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const seriesPublicId = String(formData.get("series_public_id") ?? "").trim();
-  const title = String(formData.get("title") ?? "").trim();
-  const priceRaw = String(formData.get("price") ?? "").trim();
-  const readingPeriodHoursRaw = String(
-    formData.get("reading_period_hours") ?? ""
-  ).trim();
-  const publishAtRaw = String(formData.get("publish_at") ?? "").trim();
-
-  return {
-    price: Math.trunc(Number(priceRaw)),
-    publishAtRaw,
-    readingPeriodHours: Math.trunc(Number(readingPeriodHoursRaw)),
-    seriesPublicId,
-    tenantId,
-    title,
-  };
-};
-
-const validateCreateEpisodeInput = (
-  input: ReturnType<typeof parseCreateEpisodeInput>
-): EpisodeCreateErrorState | null => {
-  if (!input.tenantId) {
-    return {
-      message: "テナント ID が見つかりません。",
-      mode: "create",
-      ok: false,
-    };
+const jsonStringArraySchema = z.preprocess((value): string[] => {
+  if (typeof value !== "string" || value.trim() === "") {
+    return [];
   }
 
-  if (!input.seriesPublicId) {
-    return {
-      message: "シリーズ ID が見つかりません。",
-      mode: "create",
-      ok: false,
-    };
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is string => typeof entry === "string")
+      : [];
+  } catch {
+    return [];
   }
+}, z.array(z.string()));
 
-  if (!input.title) {
-    return {
-      message: "タイトルは必須です。",
-      mode: "create",
-      ok: false,
-    };
-  }
+const createEpisodeSchema = z.object({
+  price: nonNegativeIntFormSchema("価格は 0 以上の整数で入力してください。"),
+  publishAt: optionalTrimmedString(),
+  readingPeriodHours: nonNegativeIntFormSchema(
+    "閲覧可能期間は 0 以上の整数で入力してください。"
+  ),
+  seriesPublicId: requiredTrimmedString("シリーズ ID が見つかりません。"),
+  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  title: requiredTrimmedString("タイトルは必須です。"),
+});
 
-  if (Number.isNaN(input.price) || input.price < 0) {
-    return {
-      message: "価格は 0 以上の整数で入力してください。",
-      mode: "create",
-      ok: false,
-    };
-  }
+const reorderEpisodesSchema = z.object({
+  currentEpisodeIds: jsonStringArraySchema,
+  orderedEpisodeIds: jsonStringArraySchema,
+  seriesPublicId: requiredTrimmedString(
+    "並び順の更新に必要な情報が不足しています。"
+  ),
+  tenantId: requiredTrimmedString("並び順の更新に必要な情報が不足しています。"),
+});
 
-  if (Number.isNaN(input.readingPeriodHours) || input.readingPeriodHours < 0) {
-    return {
-      message: "閲覧可能期間は 0 以上の整数で入力してください。",
-      mode: "create",
-      ok: false,
-    };
-  }
+const toCreateFailure = (
+  message: string
+): { message: string; mode: "create"; ok: false } => ({
+  message,
+  mode: "create",
+  ok: false,
+});
 
-  return null;
-};
-
-const toScheduledAt = (
+const toScheduledAt = async (
   publishAtRaw: string,
-  timeZone: string
-): { ok: true; value: string } | EpisodeCreateErrorState => {
+  tenantId: string
+): Promise<
+  { ok: true; value: string } | ReturnType<typeof toCreateFailure>
+> => {
   if (!publishAtRaw) {
     return { ok: true, value: "" };
   }
@@ -91,22 +72,15 @@ const toScheduledAt = (
   // The form posts an absolute instant resolved against the zone it was
   // rendered in. A leftover `datetime-local` wall clock (no JS) is still
   // accepted and read in the tenant's current display zone.
+  const timeZone = await getTenantDisplayTimeZone(tenantId);
   const value = toInstantIsoString(publishAtRaw, timeZone);
   const parsed = parseInstant(value);
   if (!parsed) {
-    return {
-      message: "publish_at の形式が正しくありません。",
-      mode: "create",
-      ok: false,
-    };
+    return toCreateFailure("publish_at の形式が正しくありません。");
   }
 
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-    return {
-      message: "publish_at は現在時刻より未来を指定してください。",
-      mode: "create",
-      ok: false,
-    };
+    return toCreateFailure("publish_at は現在時刻より未来を指定してください。");
   }
 
   return { ok: true, value };
@@ -116,14 +90,24 @@ export const createEpisodeAction = async (
   _prevState: EpisodeActionState,
   formData: FormData
 ): Promise<EpisodeActionState> => {
-  const input = parseCreateEpisodeInput(formData);
-  const validation = validateCreateEpisodeInput(input);
-  if (validation) {
-    return validation;
+  const parsed = createEpisodeSchema.safeParse(
+    toFormDataInput(formData, {
+      price: "value",
+      publishAt: { kind: "value", name: "publish_at" },
+      readingPeriodHours: { kind: "value", name: "reading_period_hours" },
+      seriesPublicId: { kind: "value", name: "series_public_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+      title: "value",
+    })
+  );
+  if (!parsed.success) {
+    return toCreateFailure(toFormErrorMessage(parsed.error));
   }
 
-  const timeZone = await getTenantDisplayTimeZone(input.tenantId);
-  const scheduledAt = toScheduledAt(input.publishAtRaw, timeZone);
+  const scheduledAt = await toScheduledAt(
+    parsed.data.publishAt,
+    parsed.data.tenantId
+  );
   if (!scheduledAt.ok) {
     return scheduledAt;
   }
@@ -131,77 +115,54 @@ export const createEpisodeAction = async (
   // orderIndex は送らない。ListEpisodes がページ単位で返すようになったため
   // 全件を読んで末尾を数える形は使えず、末尾への追加はサーバーが決める。
   const result = await createEpisode({
-    price: input.price,
+    price: parsed.data.price,
     publishAt: scheduledAt.value,
-    readingPeriodHours: input.readingPeriodHours,
-    seriesPublicId: input.seriesPublicId,
-    tenantId: input.tenantId,
-    title: input.title,
+    readingPeriodHours: parsed.data.readingPeriodHours,
+    seriesPublicId: parsed.data.seriesPublicId,
+    tenantId: parsed.data.tenantId,
+    title: parsed.data.title,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "create",
-      ok: false,
-    };
+    return toCreateFailure(result.message);
   }
 
   redirect(
-    `/series/${input.seriesPublicId}/episodes/${result.episode.publicId}?created=1`
+    `/series/${parsed.data.seriesPublicId}/episodes/${result.episode.publicId}?created=1`
   );
-};
-
-const parseEpisodeIdList = (raw: string): string[] => {
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((value): value is string => typeof value === "string")
-      : [];
-  } catch {
-    return [];
-  }
 };
 
 export const reorderEpisodesAction = async (formData: FormData) => {
   "use server";
 
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const seriesPublicId = String(formData.get("series_public_id") ?? "").trim();
-  const orderedEpisodeIdsRaw = String(
-    formData.get("ordered_episode_public_ids") ?? ""
-  ).trim();
-  // The order the page was showing before the drag, so the merge can tell a
-  // stale page from one the series still agrees with.
-  const currentEpisodeIdsRaw = String(
-    formData.get("current_episode_public_ids") ?? ""
-  ).trim();
-
-  if (
-    !(
-      tenantId &&
-      seriesPublicId &&
-      orderedEpisodeIdsRaw &&
-      currentEpisodeIdsRaw
-    )
-  ) {
+  const parsed = reorderEpisodesSchema.safeParse(
+    toFormDataInput(formData, {
+      currentEpisodeIds: { kind: "value", name: "current_episode_public_ids" },
+      orderedEpisodeIds: { kind: "value", name: "ordered_episode_public_ids" },
+      seriesPublicId: { kind: "value", name: "series_public_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
     return {
-      message: "並び順の更新に必要な情報が不足しています。",
+      message: toFormErrorMessage(parsed.error, {
+        fallback: "並び順の更新に必要な情報が不足しています。",
+      }),
       ok: false,
     };
   }
 
-  const orderedEpisodeIds = parseEpisodeIdList(orderedEpisodeIdsRaw);
-  const currentEpisodeIds = parseEpisodeIdList(currentEpisodeIdsRaw);
-
-  if (orderedEpisodeIds.length === 0) {
+  if (parsed.data.orderedEpisodeIds.length === 0) {
     return {
       message: "並び替え対象のエピソードがありません。",
       ok: false,
     };
   }
 
-  if (currentEpisodeIds.length !== orderedEpisodeIds.length) {
+  if (
+    parsed.data.currentEpisodeIds.length !==
+    parsed.data.orderedEpisodeIds.length
+  ) {
     return {
       message: "並び順の更新に必要な情報が不足しています。",
       ok: false,
@@ -211,10 +172,10 @@ export const reorderEpisodesAction = async (formData: FormData) => {
   // The list screen posts the order of the page that was dragged on, not of the
   // whole series; the merge back into the series' order happens in the lib.
   const reordered = await reorderEpisodePage({
-    currentEpisodePublicIds: currentEpisodeIds,
-    episodePublicIds: orderedEpisodeIds,
-    seriesPublicId,
-    tenantId,
+    currentEpisodePublicIds: parsed.data.currentEpisodeIds,
+    episodePublicIds: parsed.data.orderedEpisodeIds,
+    seriesPublicId: parsed.data.seriesPublicId,
+    tenantId: parsed.data.tenantId,
   });
   if (!reordered.ok) {
     return reordered;

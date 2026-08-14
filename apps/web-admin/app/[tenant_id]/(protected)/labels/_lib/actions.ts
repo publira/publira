@@ -1,81 +1,89 @@
 "use server";
 
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
+import {
+  flagOneFormSchema,
+  optionalFileFormSchema,
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { createLabel, updateLabel } from "#lib/label";
 
-import type { LabelActionState } from "../label-types";
+import type { LabelActionState, LabelMutationMode } from "../label-types";
 
-const parseCommonFields = async (formData: FormData) => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const name = String(formData.get("name") ?? "").trim();
+const labelCommonSchema = z.object({
+  eyeCatchImage: optionalFileFormSchema,
+  name: requiredTrimmedString("レーベル名は必須です。"),
+  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+});
 
-  const eyeCatchImageFile = formData.get("eye_catch_image");
-  let eyeCatchImageData: Uint8Array | undefined;
-  let eyeCatchImageContentType: string | undefined;
-  if (eyeCatchImageFile instanceof File && eyeCatchImageFile.size > 0) {
-    eyeCatchImageData = new Uint8Array(await eyeCatchImageFile.arrayBuffer());
-    eyeCatchImageContentType = eyeCatchImageFile.type || undefined;
+const labelUpdateSchema = labelCommonSchema.extend({
+  clearEyeCatchImage: flagOneFormSchema,
+  currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
+  publicId: requiredTrimmedString("更新対象のレーベル ID が見つかりません。"),
+});
+
+const labelFormFields = {
+  eyeCatchImage: { kind: "file", name: "eye_catch_image" },
+  name: "value",
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+const toFailure = (
+  message: string,
+  mode: LabelMutationMode
+): LabelActionState => ({
+  message,
+  mode,
+  ok: false,
+});
+
+const toEyeCatchImage = async (file: File | undefined) => {
+  if (!file) {
+    return {
+      eyeCatchImageContentType: undefined,
+      eyeCatchImageData: undefined,
+    };
   }
 
   return {
-    eyeCatchImageContentType,
-    eyeCatchImageData,
-    name,
-    tenantId,
+    eyeCatchImageContentType: file.type || undefined,
+    eyeCatchImageData: new Uint8Array(await file.arrayBuffer()),
   };
-};
-
-const validateCommonFields = (
-  input: Awaited<ReturnType<typeof parseCommonFields>>,
-  mode: "create" | "update"
-): LabelActionState | null => {
-  if (!input.tenantId) {
-    return {
-      message: "テナント ID が見つかりません。",
-      mode,
-      ok: false,
-    };
-  }
-
-  if (!input.name) {
-    return {
-      message: "レーベル名は必須です。",
-      mode,
-      ok: false,
-    };
-  }
-
-  return null;
 };
 
 export const createLabelAction = async (
   _prevState: LabelActionState,
   formData: FormData
 ): Promise<LabelActionState> => {
-  const input = await parseCommonFields(formData);
-  const commonValidation = validateCommonFields(input, "create");
-  if (commonValidation) {
-    return commonValidation;
+  const parsed = labelCommonSchema.safeParse(
+    toFormDataInput(formData, labelFormFields)
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "create");
   }
 
+  const { eyeCatchImage, name, tenantId } = parsed.data;
+  const { eyeCatchImageContentType, eyeCatchImageData } =
+    await toEyeCatchImage(eyeCatchImage);
+
   const result = await createLabel({
-    eyeCatchImageContentType: input.eyeCatchImageContentType,
-    eyeCatchImageData: input.eyeCatchImageData,
-    name: input.name,
-    tenantId: input.tenantId,
+    eyeCatchImageContentType,
+    eyeCatchImageData,
+    name,
+    tenantId,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "create",
-      ok: false,
-    };
+    return toFailure(result.message, "create");
   }
 
-  updateTag(`labels-${input.tenantId}`);
+  updateTag(`labels-${tenantId}`);
 
   redirect(`/labels/${result.label.publicId}?created=1`);
 };
@@ -84,73 +92,70 @@ export const updateLabelAction = async (
   _prevState: LabelActionState,
   formData: FormData
 ): Promise<LabelActionState> => {
-  const input = await parseCommonFields(formData);
-  const commonValidation = validateCommonFields(input, "update");
-  if (commonValidation) {
-    return commonValidation;
+  const parsed = labelUpdateSchema.safeParse(
+    toFormDataInput(formData, {
+      ...labelFormFields,
+      clearEyeCatchImage: { kind: "value", name: "clear_eye_catch_image" },
+      currentEyeCatchImageUpdatedAt: {
+        kind: "value",
+        name: "current_eye_catch_image_updated_at",
+      },
+      publicId: { kind: "value", name: "public_id" },
+    })
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "update");
   }
 
-  const publicId = String(formData.get("public_id") ?? "").trim();
-  if (!publicId) {
-    return {
-      message: "更新対象のレーベル ID が見つかりません。",
-      mode: "update",
-      ok: false,
-    };
-  }
-
-  const clearEyeCatchImage =
-    String(formData.get("clear_eye_catch_image") ?? "") === "1";
-  const currentEyeCatchImageUpdatedAt = String(
-    formData.get("current_eye_catch_image_updated_at") ?? ""
-  ).trim();
+  const {
+    clearEyeCatchImage,
+    currentEyeCatchImageUpdatedAt,
+    eyeCatchImage,
+    name,
+    publicId,
+    tenantId,
+  } = parsed.data;
+  const { eyeCatchImageContentType, eyeCatchImageData } =
+    await toEyeCatchImage(eyeCatchImage);
 
   const result = await updateLabel({
     clearEyeCatchImage,
-    eyeCatchImageContentType: input.eyeCatchImageContentType,
-    eyeCatchImageData: input.eyeCatchImageData,
-    name: input.name,
+    eyeCatchImageContentType,
+    eyeCatchImageData,
+    name,
     publicId,
-    tenantId: input.tenantId,
+    tenantId,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "update",
-      ok: false,
-    };
+    return toFailure(result.message, "update");
   }
 
   if (
-    input.eyeCatchImageData &&
+    eyeCatchImageData &&
     !clearEyeCatchImage &&
     (result.label.eyeCatchImageVariants?.length ?? 0) === 0
   ) {
-    return {
-      message:
-        "アップロードは受け付けましたが、生成画像を確認できませんでした。再試行してください。",
-      mode: "update",
-      ok: false,
-    };
+    return toFailure(
+      "アップロードは受け付けましたが、生成画像を確認できませんでした。再試行してください。",
+      "update"
+    );
   }
 
   if (
-    input.eyeCatchImageData &&
+    eyeCatchImageData &&
     !clearEyeCatchImage &&
     currentEyeCatchImageUpdatedAt.length > 0 &&
     result.label.eyeCatchImageUpdatedAt === currentEyeCatchImageUpdatedAt
   ) {
-    return {
-      message:
-        "アップロード処理が反映されていません。画像を選び直して再試行してください。",
-      mode: "update",
-      ok: false,
-    };
+    return toFailure(
+      "アップロード処理が反映されていません。画像を選び直して再試行してください。",
+      "update"
+    );
   }
 
-  updateTag(`labels-${input.tenantId}`);
-  updateTag(`label-${input.tenantId}-${publicId}`);
+  updateTag(`labels-${tenantId}`);
+  updateTag(`label-${tenantId}-${publicId}`);
 
   return {
     label: result.label,

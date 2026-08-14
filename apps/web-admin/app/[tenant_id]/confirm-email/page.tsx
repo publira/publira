@@ -7,6 +7,8 @@ import { Suspense } from "react";
 import { confirmAdminEmailChange } from "#lib/admin-auth";
 import { getTenantId } from "#lib/tenant-id";
 
+import { parseConfirmEmailSearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "メールアドレス変更確認",
 };
@@ -121,8 +123,7 @@ const ConfirmEmailFallback = () => (
 const ConfirmEmailPageContent = async ({
   searchParams,
 }: ConfirmEmailPageProps) => {
-  const sp = await searchParams;
-  const token = sp.token?.trim() ?? "";
+  const { token } = parseConfirmEmailSearchParams(await searchParams);
 
   return <ConfirmationResult token={token} />;
 };

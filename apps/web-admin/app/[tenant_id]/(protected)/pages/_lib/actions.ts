@@ -1,8 +1,15 @@
 "use server";
 
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
+import {
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import {
   createPage,
   createPageVersion,
@@ -12,97 +19,91 @@ import {
 } from "#lib/page";
 
 import { normalizePageSlugInput } from "../page-types";
-import type { PageFormState } from "../page-types";
+import type { PageFormState, PageMutationMode } from "../page-types";
 
-const parseDisplayInFooter = (formData: FormData): boolean | undefined => {
-  // Absence means "do not change" on update; create treats undefined as false.
-  if (!formData.has("display_in_footer")) {
-    return undefined;
+const displayInFooterSchema = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return;
   }
-  const raw = String(formData.get("display_in_footer") ?? "")
-    .trim()
-    .toLowerCase();
-  return raw === "1" || raw === "true" || raw === "on";
-};
 
-const parseCommonFields = (formData: FormData) => ({
-  displayInFooter: parseDisplayInFooter(formData),
-  pageId: String(formData.get("page_id") ?? "").trim(),
-  slug: String(formData.get("slug") ?? "").trim(),
-  tenantId: String(formData.get("tenant_id") ?? "").trim(),
-  title: String(formData.get("title") ?? "").trim(),
-  versionId: String(formData.get("version_id") ?? "").trim(),
+  const raw = value.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "on";
+}, z.boolean().optional());
+
+const pageCommonSchema = z.object({
+  contentMarkdown: z
+    .string()
+    .optional()
+    .transform((value) => value ?? ""),
+  displayInFooter: displayInFooterSchema,
+  pageId: optionalTrimmedString(),
+  slug: optionalTrimmedString().transform((value) =>
+    normalizePageSlugInput(value)
+  ),
+  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  title: optionalTrimmedString(),
+  versionId: optionalTrimmedString(),
 });
 
-type PageActionMode = "create" | "update" | "draft";
+const pageFormFields = {
+  contentMarkdown: { kind: "value", name: "content_markdown" },
+  displayInFooter: { kind: "value", name: "display_in_footer" },
+  pageId: { kind: "value", name: "page_id" },
+  slug: "value",
+  tenantId: { kind: "value", name: "tenant_id" },
+  title: "value",
+  versionId: { kind: "value", name: "version_id" },
+} as const;
 
-const validateTenant = (
-  tenantId: string,
-  mode: PageActionMode
-): PageFormState => {
-  if (tenantId) {
-    return null;
-  }
+const toFailure = (
+  message: string,
+  mode: PageMutationMode
+): NonNullable<PageFormState> => ({
+  message,
+  mode,
+  ok: false,
+});
 
-  return {
-    message: "テナント ID が見つかりません。",
-    mode,
-    ok: false,
-  };
-};
+const parsePageForm = (formData: FormData) =>
+  pageCommonSchema.safeParse(toFormDataInput(formData, pageFormFields));
 
 export const createPageAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
-  const input = parseCommonFields(formData);
-  input.slug = normalizePageSlugInput(input.slug);
-  const contentMarkdown = String(formData.get("content_markdown") ?? "");
-  const tenantValidation = validateTenant(input.tenantId, "create");
-  if (tenantValidation) {
-    return tenantValidation;
+  const parsed = parsePageForm(formData);
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "create");
   }
-  if (!input.title) {
-    return {
-      message: "タイトルは必須です。",
-      mode: "create",
-      ok: false,
-    };
+  if (!parsed.data.title) {
+    return toFailure("タイトルは必須です。", "create");
   }
 
   const result = await createPage({
-    displayInFooter: input.displayInFooter === true,
-    slug: input.slug,
-    tenantId: input.tenantId,
-    title: input.title,
+    displayInFooter: parsed.data.displayInFooter === true,
+    slug: parsed.data.slug,
+    tenantId: parsed.data.tenantId,
+    title: parsed.data.title,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "create",
-      ok: false,
-    };
+    return toFailure(result.message, "create");
   }
 
-  updateTag(`pages-${input.tenantId}`);
+  updateTag(`pages-${parsed.data.tenantId}`);
 
-  if (contentMarkdown.trim()) {
+  if (parsed.data.contentMarkdown.trim()) {
     const versionResult = await createPageVersion({
-      contentMarkdown,
+      contentMarkdown: parsed.data.contentMarkdown,
       pageId: result.page.id,
-      tenantId: input.tenantId,
+      tenantId: parsed.data.tenantId,
     });
 
     if (!versionResult.ok) {
-      return {
-        message: versionResult.message,
-        mode: "create",
-        ok: false,
-      };
+      return toFailure(versionResult.message, "create");
     }
 
-    updateTag(`page-${input.tenantId}-${result.page.id}`);
+    updateTag(`page-${parsed.data.tenantId}-${result.page.id}`);
   }
 
   redirect(`/pages/${result.page.id}?created=1`);
@@ -112,123 +113,100 @@ export const updatePageAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
-  const input = parseCommonFields(formData);
-  const tenantValidation = validateTenant(input.tenantId, "update");
-  if (tenantValidation) {
-    return tenantValidation;
+  const parsed = parsePageForm(formData);
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "update");
   }
-  if (!input.pageId) {
-    return {
-      message: "更新対象のページ ID が見つかりません。",
-      mode: "update",
-      ok: false,
-    };
+  if (!parsed.data.pageId) {
+    return toFailure("更新対象のページ ID が見つかりません。", "update");
   }
-  if (!input.title) {
-    return {
-      message: "タイトルは必須です。",
-      mode: "update",
-      ok: false,
-    };
+  if (!parsed.data.title) {
+    return toFailure("タイトルは必須です。", "update");
   }
 
   const result = await updatePage({
-    displayInFooter: input.displayInFooter,
-    pageId: input.pageId,
-    tenantId: input.tenantId,
-    title: input.title,
+    displayInFooter: parsed.data.displayInFooter,
+    pageId: parsed.data.pageId,
+    tenantId: parsed.data.tenantId,
+    title: parsed.data.title,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "update",
-      ok: false,
-    };
+    return toFailure(result.message, "update");
   }
 
-  updateTag(`pages-${input.tenantId}`);
-  updateTag(`page-${input.tenantId}-${input.pageId}`);
+  updateTag(`pages-${parsed.data.tenantId}`);
+  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
 
-  redirect(`/pages/${input.pageId}?updated=1`);
+  redirect(`/pages/${parsed.data.pageId}?updated=1`);
 };
 
 export const createDraftVersionAction = async (
   _prevState: PageFormState,
   formData: FormData
 ): Promise<PageFormState> => {
-  const input = parseCommonFields(formData);
-  const tenantValidation = validateTenant(input.tenantId, "draft");
-  if (tenantValidation) {
-    return tenantValidation;
+  const parsed = parsePageForm(formData);
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "draft");
   }
-  if (!input.pageId) {
-    return {
-      message: "ページ ID が見つかりません。",
-      mode: "draft",
-      ok: false,
-    };
+  if (!parsed.data.pageId) {
+    return toFailure("ページ ID が見つかりません。", "draft");
   }
 
-  const contentMarkdown = String(formData.get("content_markdown") ?? "");
   const result = await createPageVersion({
-    contentMarkdown,
-    pageId: input.pageId,
-    tenantId: input.tenantId,
+    contentMarkdown: parsed.data.contentMarkdown,
+    pageId: parsed.data.pageId,
+    tenantId: parsed.data.tenantId,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "draft",
-      ok: false,
-    };
+    return toFailure(result.message, "draft");
   }
 
-  updateTag(`page-${input.tenantId}-${input.pageId}`);
+  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
 
-  redirect(`/pages/${input.pageId}?draft_saved=1`);
+  redirect(`/pages/${parsed.data.pageId}?draft_saved=1`);
 };
 
 export const publishVersionAction = async (formData: FormData) => {
-  const input = parseCommonFields(formData);
-  if (!input.tenantId || !input.pageId || !input.versionId) {
+  const parsed = parsePageForm(formData);
+  if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
 
   const result = await publishPageVersion({
-    pageId: input.pageId,
-    tenantId: input.tenantId,
-    versionId: input.versionId,
+    pageId: parsed.data.pageId,
+    tenantId: parsed.data.tenantId,
+    versionId: parsed.data.versionId,
   });
 
   if (!result.ok) {
     throw new Error(result.message);
   }
 
-  updateTag(`pages-${input.tenantId}`);
-  updateTag(`page-${input.tenantId}-${input.pageId}`);
+  updateTag(`pages-${parsed.data.tenantId}`);
+  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
 
-  redirect(`/pages/${input.pageId}?published=1`);
+  redirect(`/pages/${parsed.data.pageId}?published=1`);
 };
 
 export const rollbackVersionAction = async (formData: FormData) => {
-  const input = parseCommonFields(formData);
-  if (!input.tenantId || !input.pageId || !input.versionId) {
+  const parsed = parsePageForm(formData);
+  if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
 
   const result = await rollbackPageVersion({
-    pageId: input.pageId,
-    tenantId: input.tenantId,
-    versionId: input.versionId,
+    pageId: parsed.data.pageId,
+    tenantId: parsed.data.tenantId,
+    versionId: parsed.data.versionId,
   });
 
   if (!result.ok) {
     throw new Error(result.message);
   }
 
-  updateTag(`page-${input.tenantId}-${input.pageId}`);
+  updateTag(`page-${parsed.data.tenantId}-${parsed.data.pageId}`);
 
-  redirect(`/pages/${input.pageId}?rolled_back=1`);
+  redirect(`/pages/${parsed.data.pageId}?rolled_back=1`);
 };

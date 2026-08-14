@@ -22,6 +22,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getLabel } from "#lib/label";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -58,10 +59,7 @@ const EditLabelFormSkeleton = () => (
 
 const resolveActiveTab = async (
   searchParams: EditLabelPageProps["searchParams"]
-): Promise<"basic" | "eye-catch"> => {
-  const { tab } = await searchParams;
-  return tab === "eye-catch" ? "eye-catch" : "basic";
-};
+): Promise<"basic" | "eye-catch"> => parseEditTab(await searchParams);
 
 const EditLabelTitle = async ({
   searchParams,
