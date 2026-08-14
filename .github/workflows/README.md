@@ -46,6 +46,7 @@ Docker イメージの配置規約・ビルド手順・Docker 固有のトリア
 | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`（ビルド → readiness → Playwright → teardown） | [`e2e/README.md`](../../e2e/README.md) |
 | `Test / Bootstrap` | `task e2e:bootstrap`（空 volume → `task setup` → DB 再起動 → `task dev`） | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
+| `Test / Routing` | `task e2e:routing`（Dev Container Traefik のホスト / `/api` / `/images` 疎通） | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Build` | `pnpm build`（Web）・`task server:build`（Go） | 本ファイル |
 | `Docker / <target>` | `task docker:build:*`（web は続けて `task docker:smoke:web`） | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | 全ジョブの結果を集約する最終ジョブ | 本ファイル |
@@ -76,8 +77,9 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Test / TypeScript` | `apps/**`, `locales/**`, `packages/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
-| `Test / E2E` | `e2e/**`, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
+| `Test / E2E` | `e2e/**`（`e2e/routing/**` を除外）, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
 | `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
+| `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |
 | `Build` | `apps/**`, `packages/**`, `server/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Docker`（ロール別） | [`infra/docker/README.md`](../../infra/docker/README.md) の「変更検知のロール対応」 |
 
@@ -121,7 +123,7 @@ fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
 
 ### テストを分割している理由
 
-Go / TypeScript / DB migration / Mobile / E2E / Bootstrap は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
+Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
 
 `sqlc diff` は、`sqlc.yaml` の `schema` 設定が指すスキーマファイル（`db/migrations/`）と `queries`（`db/query/`）を読んで生成結果との差分を検証する codegen チェックであり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
 
@@ -162,6 +164,7 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap は**ジョブを分�
    - `Test / Mobile` → `task mobile:check`（format / analyze / test）
    - `Test / E2E` → readiness 失敗かテスト失敗か（artifact `e2e-artifacts`）
    - `Test / Bootstrap` → どの phase で落ちたか（artifact `bootstrap-artifacts`）
+   - `Test / Routing` → どのプローブが落ちたか（artifact `routing-artifacts`）
    - `Build` → `pnpm build` / `go build`
    - `Docker / <target>` → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
 2. **ローカルで同じコマンドを再現する**
@@ -175,6 +178,7 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap は**ジョブを分�
    | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） |
    | `Test / E2E` | `task e2e`（常に teardown する） |
    | `Test / Bootstrap` | `task e2e:bootstrap`（常に teardown する。`task dev` を止められないときは `BOOTSTRAP_SKIP_DEV=1`） |
+   | `Test / Routing` | `task e2e:routing`（常に teardown する） |
    | `Build` | `pnpm build` / `task server:build` |
    | `Docker / <target>` | CI ログの `task docker:build:…` 行をそのまま実行、または `task docker:verify` |
 

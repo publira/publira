@@ -1,0 +1,39 @@
+version: "3"
+
+# Run from repository root via: task e2e:routing
+# Include is declared in e2e/Taskfile.yaml (cwd stays at repo root).
+
+vars:
+  # Directory of this Taskfile (e2e/routing/), stable whether included or not.
+  ROUTING_DIR: "{{.TASKFILE_DIR}}"
+
+tasks:
+  default:
+    desc: Verify Dev Container Traefik routing (hosts, /api strip, /images)
+    cmds:
+      - task: run
+
+  run:
+    desc: Full routing check (up → probe → down), always tears down
+    cmds:
+      - bash "{{.ROUTING_DIR}}/scripts/run.sh"
+
+  up:
+    desc: Start Traefik + echo app from .devcontainer/compose.yaml
+    cmds:
+      - bash "{{.ROUTING_DIR}}/scripts/up.sh"
+
+  wait-ready:
+    desc: "Poll Traefik until every labeled router is advertised"
+    cmds:
+      - bash "{{.ROUTING_DIR}}/scripts/wait-ready.sh"
+
+  test:
+    desc: Probe hosts / /api / /images (stack must already be up)
+    cmds:
+      - bash "{{.ROUTING_DIR}}/scripts/test.sh"
+
+  down:
+    desc: Remove the routing compose project + volumes
+    cmds:
+      - bash "{{.ROUTING_DIR}}/scripts/down.sh"

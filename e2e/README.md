@@ -7,6 +7,8 @@ Playwright による Web 横断 E2E の共通基盤と、公開カタログ・�
 
 開発環境そのもの（空 DB volume からの `task setup`、`task dev` の全サービス起動）の検証は Playwright を使わない別ライフサイクルで、[`bootstrap/README.md`](./bootstrap/README.md) が正（`task e2e:bootstrap`）。
 
+Dev Container Traefik のホストベースルーティングは、同じく Playwright を使わない別ライフサイクルで、[`.devcontainer/compose.yaml`](../.devcontainer/compose.yaml) の labels を echo バックエンドで突く。[`routing/README.md`](./routing/README.md) が正（`task e2e:routing`）。
+
 ## 前提
 
 - Docker（Compose v2）が使えること（Dev Container の DinD 可）
@@ -78,6 +80,7 @@ task e2e:down
 ```text
 e2e/
 ├── bootstrap/             # 開発環境 bootstrap チェック（Playwright を使わない別ライフサイクル）
+├── routing/               # Dev Container Traefik 疎通（Playwright を使わない別ライフサイクル）
 ├── compose.yaml           # postgres + redis（project: publira-e2e）
 ├── playwright.config.ts
 ├── scripts/               # up / db / start / api-server / admin-api / platform-api / publish-episodes / wait-ready / stop-apps / test / run / down
@@ -146,7 +149,7 @@ Node 側の `request` fixture は OS の名前解決を使うので、`localhost
 
 ジョブ名: **Test / E2E**（`.github/workflows/ci.yml`）
 
-- path filter: `e2e/**`, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**` など
+- path filter: `e2e/**`（`e2e/routing/**` を除外）、`apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**` など
 - 失敗時 artifact: `e2e-artifacts`（report / test-results / app logs）
 - Playwright Chromium のみ、workers=1、CI 時 retries=1
 - 必須ブランチチェックは最終ジョブ **Summary** が集約（他ジョブと同様）
@@ -164,12 +167,12 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 3. **Host が必要な場合**  
    `playwright.config.ts` の `projects` に `baseURL` を足すか、テスト内で `page.goto` の絶対 URL を使う。定数は `src/urls.ts` に集約する。
 4. **起動対象を増やす場合**  
-   `scripts/start-apps.sh` / `wait-ready.sh` / `stop-apps.sh` にプロセスと probe を追加（start だけ足して stop を忘れると `task e2e:down` 後もポートが残る）。compose に Traefik を足す場合は Dev Container のルールを参考にする（#55）。  
+   `scripts/start-apps.sh` / `wait-ready.sh` / `stop-apps.sh` にプロセスと probe を追加（start だけ足して stop を忘れると `task e2e:down` 後もポートが残る）。Traefik の labels そのものを検証するのは [`routing/`](./routing/README.md)（#55）。  
    別ポートで stack を並行起動する場合、`lib.sh` がポート番号と project 名から `E2E_RUN_DIR` を自動で分ける。必要なら明示的に `E2E_RUN_DIR` を渡して上書きできる。
 5. **ローカルで確認**  
    `task e2e` または stack 固定 + `task e2e:test`。
 6. **CI**  
-   上記 path に触れていれば `Test / E2E` が走る。
+   上記 path に触れていれば `Test / E2E` が走る。`e2e/routing/**` だけを変えた場合は **Test / Routing**（`task e2e:routing`）が走り、Playwright は起動しない。
 
 ### シナリオ一覧（現状）
 
@@ -214,6 +217,6 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 
 - モバイルの業務シナリオ本体（#518）
 - ログイン・ログアウトとセッション失効の網羅（#67）
-- ホストベースルーティングの Traefik 疎通（#55）
+- ホストベースルーティングの Traefik 疎通（#55 → [`routing/`](./routing/README.md)）
 - 開発環境の bootstrap 検証（#514 → [`bootstrap/`](./bootstrap/README.md)）
 - 負荷試験

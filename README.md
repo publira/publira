@@ -52,6 +52,7 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 - Dockerfile 配置規約・ビルド検証（本番イメージ）: [infra/docker/README.md](infra/docker/README.md)
 - E2E（Playwright 基盤・CI）: [e2e/README.md](e2e/README.md)
 - 開発環境 bootstrap チェック（空 DB volume からの `task setup` / `task dev` 検証）: [e2e/bootstrap/README.md](e2e/bootstrap/README.md)
+- 開発環境 Traefik ルーティング疎通（ホスト / `/api` / `/images`）: [e2e/routing/README.md](e2e/routing/README.md)
 
 ## セットアップ
 
