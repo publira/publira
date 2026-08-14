@@ -27,6 +27,8 @@ type Querier interface {
 	// テナントの予約済みエピソード数を取得する（ダッシュボード用）
 	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
+	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
+	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
 	// お知らせを作成
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
@@ -40,10 +42,14 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	CreateLabelImage(ctx context.Context, arg CreateLabelImageParams) (LabelImage, error)
 	CreateLabelImageVariant(ctx context.Context, arg CreateLabelImageVariantParams) (LabelImageVariant, error)
+	// Worker insert. Same recipient / type / subject is a no-op so retries
+	// do not create a second row. :one returns no rows on conflict.
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	// ページを新規作成する
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
 	// ページバージョンを新規作成する
 	CreatePageVersion(ctx context.Context, arg CreatePageVersionParams) (PageVersion, error)
+	CreatePlatformNotification(ctx context.Context, arg CreatePlatformNotificationParams) (PlatformNotification, error)
 	CreatePlatformUser(ctx context.Context, arg CreatePlatformUserParams) (PlatformUser, error)
 	CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error)
 	CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error)
@@ -220,6 +226,12 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
+	ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error)
+	// ListNotifications is (created_at, id) DESC. Forward uses the DESC query;
+	// backward uses ASC so the index can be scanned in reverse. The handler
+	// flips ASC rows back into display order. Do not parameterize ORDER BY.
+	// cursor rules: proto/README.md.
+	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
 	// ページのバージョン一覧を新しい順に取得する
 	ListPageVersionsByPageID(ctx context.Context, pageID uuid.UUID) ([]PageVersion, error)
 	// Admin ListPages は (created_at, id) の昇順で表示する。
@@ -229,6 +241,8 @@ type Querier interface {
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error)
 	// 管理操作監査ログ一覧取得（フィルタ対応）
 	ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error)
+	ListPlatformNotificationsForUserAsc(ctx context.Context, arg ListPlatformNotificationsForUserAscParams) ([]ListPlatformNotificationsForUserAscRow, error)
+	ListPlatformNotificationsForUserDesc(ctx context.Context, arg ListPlatformNotificationsForUserDescParams) ([]ListPlatformNotificationsForUserDescRow, error)
 	ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatformOperatorsAscParams) ([]ListPlatformOperatorsAscRow, error)
 	// Platform ListOperators は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
@@ -274,9 +288,13 @@ type Querier interface {
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
 	// 指定ユーザーの未読お知らせを一括既読化
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
+	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
+	MarkAllPlatformNotificationsAsRead(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	// 指定したお知らせを既読にする（未読時は新規作成、既読済みなら時刻更新）
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) error
+	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
+	MarkPlatformNotificationAsRead(ctx context.Context, arg MarkPlatformNotificationAsReadParams) (PlatformNotificationRead, error)
 	MarkPlatformUserEmailChangeCompleted(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx context.Context, id uuid.UUID) error
 	MarkPlatformUserEmailChangeNewEmailConfirmed(ctx context.Context, id uuid.UUID) error

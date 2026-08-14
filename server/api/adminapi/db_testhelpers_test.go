@@ -113,6 +113,10 @@ func (e *adminDBEnv) auditClient() publiraadminv1connect.AdminAuditLogServiceCli
 	return publiraadminv1connect.NewAdminAuditLogServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *adminDBEnv) notificationClient() publiraadminv1connect.AdminNotificationServiceClient {
+	return publiraadminv1connect.NewAdminNotificationServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 // withTenantConn hands fn a publira_admin connection scoped to one tenant, the
 // same way the request interceptor scopes handler queries. Use it to look at
 // what RLS lets that tenant reach, rather than what a handler chose to return.

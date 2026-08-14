@@ -68,7 +68,7 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 }
 
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
-// CatalogService / AuthService / TenantService / DomainService を公開し、管理 API は含みません。
+// CatalogService / AuthService / NotificationService / TenantService / DomainService を公開し、管理 API は含みません。
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender) http.Handler {
 	server := &apiServer{
 		db:        db,
@@ -93,6 +93,8 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	mux.Handle(pagesPath, pagesHandler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(authPath, authHandler)
+	notificationPath, notificationHandler := publirav1connect.NewNotificationServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	mux.Handle(notificationPath, notificationHandler)
 	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(tenantPath, tenantHandler)
 	// DomainService is used before tenant context is known (e.g. proxy domain resolution),

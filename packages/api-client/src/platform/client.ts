@@ -8,6 +8,7 @@ import { PlatformAuditLogService } from "../gen/publira/platform/v1/audit_pb.js"
 import { PlatformAuthService } from "../gen/publira/platform/v1/auth_pb.js";
 import { PlatformDashboardService } from "../gen/publira/platform/v1/dashboard_pb.js";
 import { PlatformEmailSettingsService } from "../gen/publira/platform/v1/email_pb.js";
+import { PlatformNotificationService } from "../gen/publira/platform/v1/notification_pb.js";
 import { PlatformOperatorService } from "../gen/publira/platform/v1/operator_pb.js";
 import { PlatformSettingsService } from "../gen/publira/platform/v1/settings_pb.js";
 import { PlatformSetupService } from "../gen/publira/platform/v1/setup_pb.js";
@@ -29,6 +30,7 @@ export interface PlatformApiClient {
   auditLogs: Client<typeof PlatformAuditLogService>;
   dashboard: Client<typeof PlatformDashboardService>;
   emailSettings: Client<typeof PlatformEmailSettingsService>;
+  notification: Client<typeof PlatformNotificationService>;
   operators: Client<typeof PlatformOperatorService>;
   settings: Client<typeof PlatformSettingsService>;
   setup: Client<typeof PlatformSetupService>;
@@ -75,6 +77,7 @@ export const createPlatformApiClient = (
       PlatformEmailSettingsService,
       transportInstance
     ),
+    notification: createClient(PlatformNotificationService, transportInstance),
     operators: createClient(PlatformOperatorService, transportInstance),
     settings: createClient(PlatformSettingsService, transportInstance),
     setup: createClient(PlatformSetupService, transportInstance),

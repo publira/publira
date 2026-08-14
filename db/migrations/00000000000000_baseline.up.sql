@@ -174,6 +174,28 @@ CREATE TABLE announcements (
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+-- TABLE: notification_reads
+CREATE TABLE notification_reads (
+    notification_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    read_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- TABLE: notifications
+-- Personal in-app events for tenant members and tenant admins. Display copy
+-- is derived from notification_type + payload; there is no title/body column.
+CREATE TABLE notifications (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    notification_type character varying(64) NOT NULL,
+    subject_key character varying(255) NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT notifications_subject_key_check CHECK ((char_length((subject_key)::text) > 0))
+);
+
 -- TABLE: page_versions
 CREATE TABLE page_versions (
     id uuid NOT NULL,
@@ -215,6 +237,25 @@ CREATE TABLE platform_audit_logs (
     client_ip character varying(64),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     actor_platform_user_id uuid NOT NULL
+);
+
+-- TABLE: platform_notification_reads
+CREATE TABLE platform_notification_reads (
+    platform_notification_id uuid NOT NULL,
+    platform_user_id uuid NOT NULL,
+    read_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- TABLE: platform_notifications
+-- Personal in-app events for platform operators. No tenant_id and no tenant RLS.
+CREATE TABLE platform_notifications (
+    id uuid NOT NULL,
+    platform_user_id uuid NOT NULL,
+    notification_type character varying(64) NOT NULL,
+    subject_key character varying(255) NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT platform_notifications_subject_key_check CHECK ((char_length((subject_key)::text) > 0))
 );
 
 -- TABLE: platform_config
@@ -608,6 +649,19 @@ ALTER TABLE ONLY announcement_reads
 ALTER TABLE ONLY announcements
     ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
 
+-- CONSTRAINT: notification_reads notification_reads_pkey
+ALTER TABLE ONLY notification_reads
+    ADD CONSTRAINT notification_reads_pkey PRIMARY KEY (notification_id, user_id);
+
+-- CONSTRAINT: notifications notifications_pkey
+ALTER TABLE ONLY notifications
+    ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: notifications notifications_user_id_notification_type_subject_key_key
+-- One row per recipient / type / subject so workers can retry inserts.
+ALTER TABLE ONLY notifications
+    ADD CONSTRAINT notifications_user_id_notification_type_subject_key_key UNIQUE (user_id, notification_type, subject_key);
+
 -- CONSTRAINT: page_versions page_versions_page_id_version_number_key
 ALTER TABLE ONLY page_versions
     ADD CONSTRAINT page_versions_page_id_version_number_key UNIQUE (page_id, version_number);
@@ -623,6 +677,18 @@ ALTER TABLE ONLY pages
 -- CONSTRAINT: pages pages_tenant_id_slug_key
 ALTER TABLE ONLY pages
     ADD CONSTRAINT pages_tenant_id_slug_key UNIQUE (tenant_id, slug);
+
+-- CONSTRAINT: platform_notification_reads platform_notification_reads_pkey
+ALTER TABLE ONLY platform_notification_reads
+    ADD CONSTRAINT platform_notification_reads_pkey PRIMARY KEY (platform_notification_id, platform_user_id);
+
+-- CONSTRAINT: platform_notifications platform_notifications_pkey
+ALTER TABLE ONLY platform_notifications
+    ADD CONSTRAINT platform_notifications_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: platform_notifications platform_notifications_user_type_subject_key
+ALTER TABLE ONLY platform_notifications
+    ADD CONSTRAINT platform_notifications_user_type_subject_key UNIQUE (platform_user_id, notification_type, subject_key);
 
 -- CONSTRAINT: platform_config platform_config_pkey
 ALTER TABLE ONLY platform_config
@@ -863,6 +929,17 @@ CREATE INDEX idx_announcements_tenant_created_at ON announcements USING btree (t
 -- INDEX: idx_announcements_tenant_target_created_at
 CREATE INDEX idx_announcements_tenant_target_created_at ON announcements USING btree (tenant_id, target_user_id, created_at DESC, id DESC);
 
+-- INDEX: idx_notification_reads_user_notification
+CREATE INDEX idx_notification_reads_user_notification ON notification_reads USING btree (user_id, notification_id);
+
+-- INDEX: idx_notifications_user_created_at
+-- Trailing id is the ListNotifications cursor tie-breaker. btree scans
+-- backwards, so this one index covers both page directions.
+CREATE INDEX idx_notifications_user_created_at ON notifications USING btree (user_id, created_at DESC, id DESC);
+
+-- INDEX: idx_notifications_tenant_user_created_at
+CREATE INDEX idx_notifications_tenant_user_created_at ON notifications USING btree (tenant_id, user_id, created_at DESC, id DESC);
+
 -- INDEX: idx_page_versions_page_id_created_at
 CREATE INDEX idx_page_versions_page_id_created_at ON page_versions USING btree (page_id, created_at DESC);
 
@@ -887,6 +964,12 @@ CREATE INDEX idx_platform_audit_logs_created_at ON platform_audit_logs USING btr
 
 -- INDEX: idx_platform_audit_logs_target
 CREATE INDEX idx_platform_audit_logs_target ON platform_audit_logs USING btree (target_type, target_id);
+
+-- INDEX: idx_platform_notification_reads_user_notification
+CREATE INDEX idx_platform_notification_reads_user_notification ON platform_notification_reads USING btree (platform_user_id, platform_notification_id);
+
+-- INDEX: idx_platform_notifications_user_created_at
+CREATE INDEX idx_platform_notifications_user_created_at ON platform_notifications USING btree (platform_user_id, created_at DESC, id DESC);
 
 -- INDEX: idx_platform_users_created_at
 -- 末尾の id はオペレーター一覧の cursor のタイブレーカー。btree は逆順にも
@@ -1135,6 +1218,26 @@ ALTER TABLE ONLY announcements
 ALTER TABLE ONLY announcements
     ADD CONSTRAINT announcements_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: notification_reads notification_reads_notification_id_fkey
+ALTER TABLE ONLY notification_reads
+    ADD CONSTRAINT notification_reads_notification_id_fkey FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: notification_reads notification_reads_tenant_id_fkey
+ALTER TABLE ONLY notification_reads
+    ADD CONSTRAINT notification_reads_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: notification_reads notification_reads_user_id_fkey
+ALTER TABLE ONLY notification_reads
+    ADD CONSTRAINT notification_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: notifications notifications_tenant_id_fkey
+ALTER TABLE ONLY notifications
+    ADD CONSTRAINT notifications_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: notifications notifications_user_id_fkey
+ALTER TABLE ONLY notifications
+    ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: page_versions page_versions_author_user_id_fkey
 ALTER TABLE ONLY page_versions
     ADD CONSTRAINT page_versions_author_user_id_fkey FOREIGN KEY (author_user_id) REFERENCES users(id);
@@ -1154,6 +1257,18 @@ ALTER TABLE ONLY pages
 -- FK CONSTRAINT: platform_audit_logs platform_audit_logs_actor_platform_user_id_fkey
 ALTER TABLE ONLY platform_audit_logs
     ADD CONSTRAINT platform_audit_logs_actor_platform_user_id_fkey FOREIGN KEY (actor_platform_user_id) REFERENCES platform_users(id);
+
+-- FK CONSTRAINT: platform_notification_reads platform_notification_reads_notification_id_fkey
+ALTER TABLE ONLY platform_notification_reads
+    ADD CONSTRAINT platform_notification_reads_notification_id_fkey FOREIGN KEY (platform_notification_id) REFERENCES platform_notifications(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: platform_notification_reads platform_notification_reads_platform_user_id_fkey
+ALTER TABLE ONLY platform_notification_reads
+    ADD CONSTRAINT platform_notification_reads_platform_user_id_fkey FOREIGN KEY (platform_user_id) REFERENCES platform_users(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: platform_notifications platform_notifications_platform_user_id_fkey
+ALTER TABLE ONLY platform_notifications
+    ADD CONSTRAINT platform_notifications_platform_user_id_fkey FOREIGN KEY (platform_user_id) REFERENCES platform_users(id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: platform_user_email_change_tokens platform_user_email_change_tokens_platform_user_id_fkey
 ALTER TABLE ONLY platform_user_email_change_tokens
@@ -1328,6 +1443,18 @@ ALTER TABLE labels ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: labels labels_tenant_isolation
 CREATE POLICY labels_tenant_isolation ON labels USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: notification_reads
+ALTER TABLE notification_reads ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: notification_reads notification_reads_tenant_isolation
+CREATE POLICY notification_reads_tenant_isolation ON notification_reads USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: notifications
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: notifications notifications_tenant_isolation
+CREATE POLICY notifications_tenant_isolation ON notifications USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 -- ROW SECURITY: page_versions
 ALTER TABLE page_versions ENABLE ROW LEVEL SECURITY;

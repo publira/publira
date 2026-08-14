@@ -118,6 +118,11 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 	mux.Handle(settingsPath, settingsHandler)
 	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(server)
 	mux.Handle(operatorPath, operatorHandler)
+	notificationPath, notificationHandler := publirasplatformv1connect.NewPlatformNotificationServiceHandler(
+		server,
+		connect.WithInterceptors(authInterceptor),
+	)
+	mux.Handle(notificationPath, notificationHandler)
 	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server)
 	mux.Handle(authPath, authHandler)
 	// セットアップサービスは認証不要で公開する

@@ -98,6 +98,10 @@ func (e *publicDBEnv) authClient() publirav1connect.AuthServiceClient {
 	return publirav1connect.NewAuthServiceClient(e.Server.Client(), e.Server.URL)
 }
 
+func (e *publicDBEnv) notificationClient() publirav1connect.NotificationServiceClient {
+	return publirav1connect.NewNotificationServiceClient(e.Server.Client(), e.Server.URL)
+}
+
 func (e *publicDBEnv) pagesClient() publirav1connect.PublicPagesServiceClient {
 	return publirav1connect.NewPublicPagesServiceClient(e.Server.Client(), e.Server.URL)
 }
