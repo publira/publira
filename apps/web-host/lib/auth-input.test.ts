@@ -26,6 +26,7 @@ describe("returnToSearchParamSchema", () => {
   it("neutralizes open redirects and login loops", () => {
     expect(returnToSearchParamSchema.parse("https://evil.example")).toBe("/");
     expect(returnToSearchParamSchema.parse("//evil.example")).toBe("/");
+    expect(returnToSearchParamSchema.parse("/\\evil.example")).toBe("/");
     expect(returnToSearchParamSchema.parse("/login?returnTo=/dashboard")).toBe(
       "/"
     );
@@ -42,6 +43,7 @@ describe("returnToFormSchema", () => {
   it("applies the same sanitization as the query schema", () => {
     expect(returnToFormSchema.parse("/my")).toBe("/my");
     expect(returnToFormSchema.parse("https://evil.example")).toBe("/");
+    expect(returnToFormSchema.parse("/\\evil.example")).toBe("/");
     expect(returnToFormSchema.parse(null)).toBe("/");
   });
 });

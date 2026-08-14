@@ -132,6 +132,48 @@ export const listMyAnnouncements = async (
   return fetchAnnouncements(tenantId, sid, options);
 };
 
+const ANNOUNCEMENT_LOOKUP_PAGE_SIZE = 100;
+const ANNOUNCEMENT_LOOKUP_MAX_PAGES = 20;
+
+/**
+ * Walk the session-authorized list until the row is found. There is no
+ * GetAnnouncement RPC; a form-supplied `linkUrl` is not a substitute.
+ */
+export const getMyAnnouncement = async (
+  tenantId: string,
+  announcementId: string,
+  sessionId?: string
+): Promise<MemberAnnouncementItem | null> => {
+  let token = "";
+
+  for (let page = 0; page < ANNOUNCEMENT_LOOKUP_MAX_PAGES; page += 1) {
+    // Sequential pages; each token is only known after the previous RPC.
+    // oxlint-disable-next-line no-await-in-loop
+    const result = await listMyAnnouncements(tenantId, sessionId, {
+      limit: ANNOUNCEMENT_LOOKUP_PAGE_SIZE,
+      token,
+    });
+    if (!result.ok) {
+      return null;
+    }
+
+    const found = result.announcements.find(
+      (item) => item.id === announcementId
+    );
+    if (found) {
+      return found;
+    }
+
+    if (result.nextToken.length === 0) {
+      return null;
+    }
+
+    token = result.nextToken;
+  }
+
+  return null;
+};
+
 export const markAnnouncementAsRead = async (
   tenantId: string,
   announcementId: string,

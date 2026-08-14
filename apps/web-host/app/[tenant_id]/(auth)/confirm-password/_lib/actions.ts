@@ -6,23 +6,21 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { confirmPublicPasswordReset } from "#lib/auth";
-import { authTokenFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import {
+  authTokenFormSchema,
+  passwordFormSchema,
+  tenantIdFormSchema,
+} from "#lib/auth-input";
 
 const tokenOrEmpty = (value: string | undefined): string => {
   const parsed = authTokenFormSchema.safeParse(value);
   return parsed.success ? parsed.data : "";
 };
 
-const NEW_PASSWORD_REQUIRED = "新しいパスワードを入力してください。";
-
 const confirmPasswordFormSchema = z
   .object({
-    confirmPassword: z.string().trim().max(1024),
-    newPassword: z
-      .string({ error: NEW_PASSWORD_REQUIRED })
-      .trim()
-      .min(1, NEW_PASSWORD_REQUIRED)
-      .max(1024),
+    confirmPassword: passwordFormSchema,
+    newPassword: passwordFormSchema,
     tenantId: tenantIdFormSchema,
     token: authTokenFormSchema,
   })

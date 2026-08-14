@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
+  getMyAnnouncement,
   markAllAnnouncementsAsRead,
   markAnnouncementAsRead,
 } from "#lib/announcements";
@@ -14,21 +15,29 @@ import { tenantIdFormSchema } from "#lib/auth-input";
 const announcementIdFormSchema = z.string().trim().min(1).max(64);
 
 /**
- * Announcement links are operator-authored (internal path or http(s) URL).
- * Anything else is treated as missing so a tampered hidden field cannot
- * become a `javascript:` redirect.
+ * Operator-authored destination on the authorized announcement row.
+ * Form-supplied URLs never reach `redirect()`.
  */
-const announcementLinkUrlFormSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(2048)
-  .refine(
-    (value) =>
-      (value.startsWith("/") && !value.startsWith("//")) ||
-      value.startsWith("https://") ||
-      value.startsWith("http://")
-  );
+const toSafeAnnouncementLinkUrl = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 2048) {
+    return null;
+  }
+
+  const isInternalPath =
+    trimmed.startsWith("/") &&
+    !trimmed.startsWith("//") &&
+    !trimmed.startsWith("/\\");
+  if (
+    isInternalPath ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("http://")
+  ) {
+    return trimmed;
+  }
+
+  return null;
+};
 
 const markAnnouncementAsReadFormSchema = z.object({
   announcementId: announcementIdFormSchema,
@@ -40,13 +49,7 @@ const markAllAnnouncementsAsReadFormSchema = z.object({
 });
 
 const markAnnouncementAsReadAndNavigateFormSchema = z.object({
-  announcementId: z
-    .string()
-    .trim()
-    .max(64)
-    .transform((value) => (value.length > 0 ? value : undefined))
-    .optional(),
-  linkUrl: announcementLinkUrlFormSchema,
+  announcementId: announcementIdFormSchema,
   tenantId: tenantIdFormSchema,
 });
 
@@ -89,7 +92,6 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   const parsed = markAnnouncementAsReadAndNavigateFormSchema.safeParse(
     toFormDataInput(formData, {
       announcementId: "value",
-      linkUrl: "value",
       tenantId: "value",
     })
   );
@@ -97,10 +99,18 @@ export const markAnnouncementAsReadAndNavigateAction = async (
     return;
   }
 
-  const { announcementId, linkUrl, tenantId } = parsed.data;
-  if (announcementId) {
-    await markAnnouncementAsRead(tenantId, announcementId);
-    revalidateTag(`member-announcements-${tenantId}`, "max");
+  const { announcementId, tenantId } = parsed.data;
+  const announcement = await getMyAnnouncement(tenantId, announcementId);
+  if (!announcement) {
+    return;
+  }
+
+  await markAnnouncementAsRead(tenantId, announcementId);
+  revalidateTag(`member-announcements-${tenantId}`, "max");
+
+  const linkUrl = toSafeAnnouncementLinkUrl(announcement.linkUrl);
+  if (!linkUrl) {
+    return;
   }
 
   redirect(linkUrl);

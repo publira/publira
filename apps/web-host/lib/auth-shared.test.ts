@@ -24,5 +24,6 @@ describe("web-host auth-shared", () => {
     expect(sanitizeRedirectPath("/login?returnTo=/dashboard")).toBe("/");
     expect(sanitizeRedirectPath(null)).toBe("/");
     expect(sanitizeRedirectPath("//evil.example.com")).toBe("/");
+    expect(sanitizeRedirectPath("/\\evil.example.com")).toBe("/");
   });
 });
