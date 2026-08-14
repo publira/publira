@@ -1,47 +1,6 @@
-import { redirect } from "next/navigation";
-
-import { requestPublicEmailChange } from "#lib/auth";
 import { getTenantId } from "#lib/tenant-id";
 
-const buildSettingsPath = (status: "success" | "error", message: string) => {
-  const params = new URLSearchParams({ message, status });
-  return `/settings/security?${params.toString()}`;
-};
-
-const requestEmailChangeAction = async (formData: FormData): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const currentEmail = String(formData.get("currentEmail") ?? "").trim();
-  const newEmail = String(formData.get("newEmail") ?? "").trim();
-  const currentPassword = String(formData.get("currentPassword") ?? "");
-
-  if (!currentEmail || !newEmail || !currentPassword) {
-    redirect(buildSettingsPath("error", "入力内容を確認してください。"));
-  }
-
-  const requested = await requestPublicEmailChange(
-    tenantId,
-    currentEmail,
-    newEmail,
-    currentPassword
-  );
-  if (!requested) {
-    redirect(
-      buildSettingsPath(
-        "error",
-        "メール変更リクエストに失敗しました。入力内容をご確認ください。"
-      )
-    );
-  }
-
-  redirect(
-    buildSettingsPath(
-      "success",
-      "現在のメールアドレスと新しいメールアドレスの両方に確認メールを送信しました。両方のリンクを開いて変更を完了してください。"
-    )
-  );
-};
+import { requestEmailChangeAction } from "./_lib/actions";
 
 const SecuritySettingsPage = async () => {
   const tenantId = await getTenantId();

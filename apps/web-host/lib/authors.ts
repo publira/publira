@@ -82,18 +82,6 @@ const decodeFallbackAuthorId = (id: string): string | null => {
   }
 };
 
-const toPositiveInt = (
-  value: string | string[] | undefined,
-  fallback: number
-) => {
-  const raw = Array.isArray(value) ? value[0] : value;
-  const parsed = Math.trunc(Number(raw ?? ""));
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-};
-
 const addAuthorContribution = (
   authorSeriesMap: Map<
     string,
@@ -360,6 +348,3 @@ export const getPublishedAuthorDetail = async (
     },
   };
 };
-
-export const normalizeAuthorsPage = (pageParam?: string | string[]) =>
-  toPositiveInt(pageParam, 1);

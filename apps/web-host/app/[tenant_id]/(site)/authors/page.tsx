@@ -7,9 +7,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { listPublishedAuthors, normalizeAuthorsPage } from "#lib/authors";
+import { listPublishedAuthors } from "#lib/authors";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+
+import { parseAuthorsListSearchParams } from "./_lib/search-params";
 
 const AUTHORS_PAGE_SIZE = 12;
 const SECTION_TITLE = "著者一覧を表示できませんでした";
@@ -53,8 +55,7 @@ const AuthorsListData = async ({
 }) => {
   const tenantId = await getTenantId();
 
-  const resolvedSearchParams = await searchParams;
-  const page = normalizeAuthorsPage(resolvedSearchParams.page);
+  const { page } = parseAuthorsListSearchParams(await searchParams);
 
   const result = await listPublishedAuthors(tenantId, {
     page,

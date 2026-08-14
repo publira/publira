@@ -8,17 +8,10 @@ import { verifyPublicEmail } from "#lib/auth";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { parseVerifySearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "メール確認",
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
 };
 
 const VerificationResult = async ({ token }: { token: string }) => {
@@ -93,8 +86,7 @@ const VerifyPageContent = async ({
   const siteLabel = info?.siteLabel ?? "サイト";
   const siteTagline = info?.siteTagline?.trim();
 
-  const sp = await searchParams;
-  const token = pickFirstQueryParam(sp.token)?.trim() ?? "";
+  const { token } = parseVerifySearchParams(await searchParams);
 
   return (
     <>

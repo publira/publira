@@ -12,7 +12,12 @@ export const sanitizeRedirectPath = (
     return "/";
   }
 
-  if (path.startsWith("//") || path.startsWith("/login")) {
+  // Browsers can treat `/\evil.example` as the protocol-relative `//evil.example`.
+  if (
+    path.startsWith("//") ||
+    path.startsWith("/\\") ||
+    path.startsWith("/login")
+  ) {
     return "/";
   }
 
