@@ -1,3 +1,4 @@
+export { BellIcon } from "./bell-icon";
 export { CheckIcon } from "./check-icon";
 export { ChevronDownIcon } from "./chevron-down-icon";
 export { CloseIcon } from "./close-icon";

@@ -9,8 +9,6 @@ import {
 } from "./lib/admin-auth-shared";
 import { resolveTenantId } from "./lib/tenant";
 
-const LEGACY_ANNOUNCEMENTS_PREFIX = "/notifications";
-
 const PUBLIC_PATHS = new Set([
   "/accept-invite",
   "/confirm-email",
@@ -39,15 +37,6 @@ export const proxy = async (request: NextRequest) => {
   // Former Route Handler. GET must not clear the session (#655).
   if (pathname === "/logout") {
     return new NextResponse("Not Found", { status: 404 });
-  }
-
-  if (
-    pathname === LEGACY_ANNOUNCEMENTS_PREFIX ||
-    pathname.startsWith(`${LEGACY_ANNOUNCEMENTS_PREFIX}/`)
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/announcements${pathname.slice(LEGACY_ANNOUNCEMENTS_PREFIX.length)}`;
-    return NextResponse.redirect(url);
   }
 
   let tenantId: string | null;
