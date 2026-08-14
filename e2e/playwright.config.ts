@@ -15,8 +15,7 @@ const desktopChrome = devices["Desktop Chrome"];
  * They cannot overlap with each other (same API) or with the three main
  * projects (those still need the APIs up). Filename is the contract: a new
  * process-killing spec must match this pattern so it is kept out of the
- * parallel projects. See the `catalog-outage` / `catalog-error-boundary` /
- * `admin-error-boundary` projects below.
+ * parallel projects. See the isolated projects below.
  */
 const processIsolatedSpecs = /\.(?:outage|error-boundary)\./u;
 
@@ -57,6 +56,7 @@ export default defineConfig({
     },
     {
       name: "web-platform",
+      testIgnore: [processIsolatedSpecs],
       testMatch: [/platform\./u],
       timeout: 120_000,
       use: {
@@ -99,6 +99,19 @@ export default defineConfig({
       use: {
         ...desktopChrome,
         baseURL: WEB_ADMIN_BASE_URL,
+      },
+    },
+    // platform-api-server. Same filename contract as admin; no spec yet.
+    // Two files that stop this API must be split and chained, as catalog is.
+    {
+      dependencies: ["web-host", "web-admin", "web-platform"],
+      fullyParallel: false,
+      name: "platform-error-boundary",
+      testMatch: [/platform\.(?:outage|error-boundary)\./u],
+      timeout: 120_000,
+      use: {
+        ...desktopChrome,
+        baseURL: WEB_PLATFORM_BASE_URL,
       },
     },
   ],
