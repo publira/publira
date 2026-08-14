@@ -1,84 +1,88 @@
 "use server";
 
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { createCreator, updateCreator } from "#lib/creator";
+import {
+  flagOneFormSchema,
+  optionalFileFormSchema,
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 
-import type { CreatorActionState } from "../creator-types";
+import type { CreatorActionState, CreatorMutationMode } from "../creator-types";
 
-const parseCommonFields = (formData: FormData) => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const name = String(formData.get("name") ?? "").trim();
-  const profileText = String(formData.get("profile_text") ?? "").trim();
-  const clearIconImage = String(formData.get("clear_icon_image") ?? "") === "1";
+const creatorCommonSchema = z.object({
+  clearIconImage: flagOneFormSchema,
+  iconImage: optionalFileFormSchema,
+  name: requiredTrimmedString("名前は必須です。"),
+  profileText: optionalTrimmedString(10_000),
+  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+});
 
-  const iconImageFile = formData.get("icon_image");
-  const iconImage = iconImageFile instanceof File ? iconImageFile : null;
+const creatorUpdateSchema = creatorCommonSchema.extend({
+  publicId: requiredTrimmedString("更新対象の著者 ID が見つかりません。"),
+});
+
+const creatorFormFields = {
+  clearIconImage: { kind: "value", name: "clear_icon_image" },
+  iconImage: { kind: "file", name: "icon_image" },
+  name: "value",
+  profileText: { kind: "value", name: "profile_text" },
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+const toFailure = (
+  message: string,
+  mode: CreatorMutationMode
+): CreatorActionState => ({
+  message,
+  mode,
+  ok: false,
+});
+
+const toIconImage = async (file: File | undefined) => {
+  if (!file) {
+    return { iconImageContentType: undefined, iconImageData: undefined };
+  }
 
   return {
-    clearIconImage,
-    iconImage,
-    name,
-    profileText,
-    tenantId,
+    iconImageContentType: file.type || undefined,
+    iconImageData: new Uint8Array(await file.arrayBuffer()),
   };
-};
-
-const validateCommonFields = (
-  input: ReturnType<typeof parseCommonFields>,
-  mode: "create" | "update"
-): CreatorActionState | null => {
-  if (!input.tenantId) {
-    return {
-      message: "テナント ID が見つかりません。",
-      mode,
-      ok: false,
-    };
-  }
-
-  if (!input.name) {
-    return {
-      message: "名前は必須です。",
-      mode,
-      ok: false,
-    };
-  }
-
-  return null;
 };
 
 export const createCreatorAction = async (
   _prevState: CreatorActionState,
   formData: FormData
 ): Promise<CreatorActionState> => {
-  const input = parseCommonFields(formData);
-  const commonValidation = validateCommonFields(input, "create");
-  if (commonValidation) {
-    return commonValidation;
+  const parsed = creatorCommonSchema.safeParse(
+    toFormDataInput(formData, creatorFormFields)
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "create");
   }
 
-  const iconImageData = input.iconImage
-    ? new Uint8Array(await input.iconImage.arrayBuffer())
-    : undefined;
+  const { iconImage, name, profileText, tenantId } = parsed.data;
+  const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
   const result = await createCreator({
-    iconImageContentType: input.iconImage?.type,
+    iconImageContentType,
     iconImageData,
-    name: input.name,
-    profileText: input.profileText,
-    tenantId: input.tenantId,
+    name,
+    profileText,
+    tenantId,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "create",
-      ok: false,
-    };
+    return toFailure(result.message, "create");
   }
 
-  updateTag(`creators-${input.tenantId}`);
+  updateTag(`creators-${tenantId}`);
 
   redirect(`/creators/${result.creator.publicId}?created=1`);
 };
@@ -87,45 +91,36 @@ export const updateCreatorAction = async (
   _prevState: CreatorActionState,
   formData: FormData
 ): Promise<CreatorActionState> => {
-  const input = parseCommonFields(formData);
-  const commonValidation = validateCommonFields(input, "update");
-  if (commonValidation) {
-    return commonValidation;
+  const parsed = creatorUpdateSchema.safeParse(
+    toFormDataInput(formData, {
+      ...creatorFormFields,
+      publicId: { kind: "value", name: "public_id" },
+    })
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error), "update");
   }
 
-  const publicId = String(formData.get("public_id") ?? "").trim();
-  if (!publicId) {
-    return {
-      message: "更新対象の著者 ID が見つかりません。",
-      mode: "update",
-      ok: false,
-    };
-  }
-
-  const iconImageData = input.iconImage
-    ? new Uint8Array(await input.iconImage.arrayBuffer())
-    : undefined;
+  const { clearIconImage, iconImage, name, profileText, publicId, tenantId } =
+    parsed.data;
+  const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
   const result = await updateCreator({
-    clearIconImage: input.clearIconImage,
-    iconImageContentType: input.iconImage?.type,
+    clearIconImage,
+    iconImageContentType,
     iconImageData,
-    name: input.name,
-    profileText: input.profileText,
+    name,
+    profileText,
     publicId,
-    tenantId: input.tenantId,
+    tenantId,
   });
 
   if (!result.ok) {
-    return {
-      message: result.message,
-      mode: "update",
-      ok: false,
-    };
+    return toFailure(result.message, "update");
   }
 
-  updateTag(`creators-${input.tenantId}`);
-  updateTag(`creator-${input.tenantId}-${publicId}`);
+  updateTag(`creators-${tenantId}`);
+  updateTag(`creator-${tenantId}-${publicId}`);
 
   return {
     creator: result.creator,

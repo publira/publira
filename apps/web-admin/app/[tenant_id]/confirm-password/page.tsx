@@ -4,11 +4,12 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { confirmAdminPasswordReset } from "#lib/admin-auth";
 import { getTenantId } from "#lib/tenant-id";
+
+import { confirmPasswordAction } from "./_lib/actions";
+import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "新しいパスワードの設定",
@@ -22,90 +23,6 @@ interface ConfirmPasswordPageProps {
     token?: string;
   }>;
 }
-
-const buildConfirmPasswordPath = ({
-  error,
-  status,
-  token,
-}: {
-  error?: string;
-  status?: "expired" | "invalid";
-  token?: string;
-}): string => {
-  const params = new URLSearchParams();
-
-  if (error?.trim()) {
-    params.set("error", error.trim());
-  }
-  if (status) {
-    params.set("status", status);
-  }
-  if (token?.trim()) {
-    params.set("token", token.trim());
-  }
-
-  const query = params.toString();
-  return query ? `/confirm-password?${query}` : "/confirm-password";
-};
-
-const buildLoginPath = (): string =>
-  `/login?${new URLSearchParams({ reset: "done" }).toString()}`;
-
-const confirmPasswordAction = async (formData: FormData): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const token = String(formData.get("token") ?? "").trim();
-  const password = String(formData.get("password") ?? "").trim();
-  const confirmPassword = String(formData.get("confirm_password") ?? "").trim();
-
-  if (!tenantId) {
-    redirect(
-      buildConfirmPasswordPath({
-        error: "テナント識別子が見つかりませんでした。",
-        token,
-      })
-    );
-  }
-
-  if (!token) {
-    redirect(buildConfirmPasswordPath({ status: "invalid" }));
-  }
-
-  if (!password || !confirmPassword) {
-    redirect(
-      buildConfirmPasswordPath({
-        error: "新しいパスワードと確認用パスワードを入力してください。",
-        token,
-      })
-    );
-  }
-
-  if (password !== confirmPassword) {
-    redirect(
-      buildConfirmPasswordPath({
-        error: "パスワード確認が一致しません。",
-        token,
-      })
-    );
-  }
-
-  const result = await confirmAdminPasswordReset(tenantId, token, password);
-  if (!result.ok) {
-    if (result.reason === "expired" || result.reason === "invalid") {
-      redirect(buildConfirmPasswordPath({ status: result.reason }));
-    }
-
-    redirect(
-      buildConfirmPasswordPath({
-        error: result.message,
-        token,
-      })
-    );
-  }
-
-  redirect(buildLoginPath());
-};
 
 const FailureState = ({ status }: { status: "expired" | "invalid" }) => {
   const message =
@@ -152,10 +69,9 @@ const ConfirmPasswordPageContent = async ({
 }: ConfirmPasswordPageProps) => {
   const tenantId = await getTenantId();
 
-  const sp = await searchParams;
-  const errorMessage = sp.error?.trim();
-  const status = sp.status?.trim();
-  const token = sp.token?.trim() ?? "";
+  const { errorMessage, status, token } = parseConfirmPasswordSearchParams(
+    await searchParams
+  );
 
   let failureStatus: "expired" | "invalid" | null = null;
   if (status === "expired" || status === "invalid") {

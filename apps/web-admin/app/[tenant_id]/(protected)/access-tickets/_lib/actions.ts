@@ -1,71 +1,87 @@
 "use server";
 
 import { parseInstant } from "@publira/utils";
+import { toFormErrorMessage } from "@publira/utils/field-errors";
+import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { issueAccessTicket, revokeAccessTicket } from "#lib/access-ticket";
+import {
+  optionalTrimmedString,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 
 import type {
   IssueAccessTicketActionState,
   RevokeAccessTicketActionState,
 } from "../ticket-types";
 
+const issueTicketSchema = z
+  .object({
+    episodePublicId: requiredTrimmedString("エピソード public_id は必須です。"),
+    expiresAt: optionalTrimmedString(),
+    note: optionalTrimmedString(1000),
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+    userPublicId: requiredTrimmedString("ユーザー public_id は必須です。"),
+  })
+  .superRefine((value, ctx) => {
+    if (value.expiresAt === "") {
+      return;
+    }
+
+    // The form already converted the datetime-local wall clock to an absolute
+    // instant, so anything without `Z` / an offset is rejected here.
+    const parsed = parseInstant(value.expiresAt);
+    if (!parsed) {
+      ctx.addIssue({
+        code: "custom",
+        message: "有効期限の形式が正しくありません。",
+        path: ["expiresAt"],
+      });
+      return;
+    }
+    if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "有効期限は未来の日時を指定してください。",
+        path: ["expiresAt"],
+      });
+    }
+  });
+
+const revokeTicketSchema = z.object({
+  publicId: requiredTrimmedString("失効対象が不正です。"),
+  tenantId: requiredTrimmedString("失効対象が不正です。"),
+});
+
 export const issueAccessTicketAction = async (
   _prevState: IssueAccessTicketActionState,
   formData: FormData
 ): Promise<IssueAccessTicketActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const userPublicId = String(formData.get("user_public_id") ?? "").trim();
-  const episodePublicId = String(
-    formData.get("episode_public_id") ?? ""
-  ).trim();
-  // The form already converted the datetime-local wall clock to an absolute
-  // instant, so anything without `Z` / an offset is rejected below.
-  const expiresAt = String(formData.get("expires_at") ?? "").trim();
-  const note = String(formData.get("note") ?? "").trim();
-
-  if (!tenantId) {
+  const parsed = issueTicketSchema.safeParse(
+    toFormDataInput(formData, {
+      episodePublicId: { kind: "value", name: "episode_public_id" },
+      expiresAt: { kind: "value", name: "expires_at" },
+      note: "value",
+      tenantId: { kind: "value", name: "tenant_id" },
+      userPublicId: { kind: "value", name: "user_public_id" },
+    })
+  );
+  if (!parsed.success) {
     return {
-      message: "テナント ID が見つかりません。",
+      message: toFormErrorMessage(parsed.error),
       ok: false,
     };
-  }
-  if (!userPublicId) {
-    return {
-      message: "ユーザー public_id は必須です。",
-      ok: false,
-    };
-  }
-  if (!episodePublicId) {
-    return {
-      message: "エピソード public_id は必須です。",
-      ok: false,
-    };
-  }
-
-  if (expiresAt !== "") {
-    const parsed = parseInstant(expiresAt);
-    if (!parsed) {
-      return {
-        message: "有効期限の形式が正しくありません。",
-        ok: false,
-      };
-    }
-    if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
-      return {
-        message: "有効期限は未来の日時を指定してください。",
-        ok: false,
-      };
-    }
   }
 
   const result = await issueAccessTicket({
-    episodePublicId,
-    expiresAt,
-    note,
-    tenantId,
-    userPublicId,
+    episodePublicId: parsed.data.episodePublicId,
+    expiresAt: parsed.data.expiresAt,
+    note: parsed.data.note,
+    tenantId: parsed.data.tenantId,
+    userPublicId: parsed.data.userPublicId,
   });
 
   if (!result.ok) {
@@ -75,7 +91,7 @@ export const issueAccessTicketAction = async (
     };
   }
 
-  updateTag(`access-tickets-${tenantId}`);
+  updateTag(`access-tickets-${parsed.data.tenantId}`);
   redirect("/access-tickets");
 };
 
@@ -83,30 +99,37 @@ export const revokeAccessTicketAction = async (
   _prevState: RevokeAccessTicketActionState,
   formData: FormData
 ): Promise<RevokeAccessTicketActionState> => {
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const publicId = String(formData.get("public_id") ?? "").trim();
-
-  if (!tenantId || !publicId) {
+  const input = toFormDataInput(formData, {
+    publicId: { kind: "value", name: "public_id" },
+    tenantId: { kind: "value", name: "tenant_id" },
+  });
+  const parsed = revokeTicketSchema.safeParse(input);
+  const publicId =
+    typeof input.publicId === "string" ? input.publicId.trim() : "";
+  if (!parsed.success) {
     return {
-      message: "失効対象が不正です。",
+      message: toFormErrorMessage(parsed.error),
       ok: false,
       publicId,
     };
   }
 
-  const result = await revokeAccessTicket(tenantId, publicId);
+  const result = await revokeAccessTicket(
+    parsed.data.tenantId,
+    parsed.data.publicId
+  );
   if (!result.ok) {
     return {
       message: result.message,
       ok: false,
-      publicId,
+      publicId: parsed.data.publicId,
     };
   }
 
-  updateTag(`access-tickets-${tenantId}`);
+  updateTag(`access-tickets-${parsed.data.tenantId}`);
   return {
     message: "チケットを失効しました。",
     ok: true,
-    publicId,
+    publicId: parsed.data.publicId,
   };
 };

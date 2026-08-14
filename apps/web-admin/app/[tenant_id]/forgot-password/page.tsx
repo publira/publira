@@ -4,11 +4,12 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { requestAdminPasswordReset } from "#lib/admin-auth";
 import { getTenantId } from "#lib/tenant-id";
+
+import { requestPasswordResetAction } from "./_lib/actions";
+import { parseForgotPasswordSearchParams } from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "パスワード再設定",
@@ -23,69 +24,6 @@ interface ForgotPasswordPageProps {
   }>;
 }
 
-const buildForgotPasswordPath = ({
-  email,
-  error,
-  requested,
-}: {
-  email?: string;
-  error?: string;
-  requested?: boolean;
-}): string => {
-  const params = new URLSearchParams();
-
-  if (email?.trim()) {
-    params.set("email", email.trim());
-  }
-  if (error?.trim()) {
-    params.set("error", error.trim());
-  }
-  if (requested) {
-    params.set("requested", "done");
-  }
-
-  const query = params.toString();
-  return query ? `/forgot-password?${query}` : "/forgot-password";
-};
-
-const requestPasswordResetAction = async (
-  formData: FormData
-): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-
-  if (!tenantId) {
-    redirect(
-      buildForgotPasswordPath({
-        email,
-        error: "テナント識別子が見つかりませんでした。",
-      })
-    );
-  }
-
-  if (!email) {
-    redirect(
-      buildForgotPasswordPath({
-        error: "メールアドレスを入力してください。",
-      })
-    );
-  }
-
-  const result = await requestAdminPasswordReset(tenantId, email);
-  if (!result.ok) {
-    redirect(
-      buildForgotPasswordPath({
-        email,
-        error: result.message,
-      })
-    );
-  }
-
-  redirect(buildForgotPasswordPath({ requested: true }));
-};
-
 const ForgotPasswordFallback = () => (
   <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
     <div className="h-11 animate-pulse rounded bg-muted/70" />
@@ -98,10 +36,8 @@ const ForgotPasswordPageContent = async ({
 }: ForgotPasswordPageProps) => {
   const tenantId = await getTenantId();
 
-  const sp = await searchParams;
-  const defaultEmail = sp.email?.trim() ?? "";
-  const errorMessage = sp.error?.trim();
-  const requested = sp.requested?.trim() === "done";
+  const { defaultEmail, errorMessage, requested } =
+    parseForgotPasswordSearchParams(await searchParams);
 
   return requested ? (
     <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
