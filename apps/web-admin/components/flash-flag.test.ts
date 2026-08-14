@@ -13,4 +13,8 @@ describe("isFlashFlagSet", () => {
     expect(isFlashFlagSet("yes")).toBe(false);
     expect(isFlashFlagSet("1".repeat(300))).toBe(false);
   });
+
+  it("treats conflicting repeated values as unset", () => {
+    expect(isFlashFlagSet(["1", "0"])).toBe(false);
+  });
 });

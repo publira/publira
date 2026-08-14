@@ -51,7 +51,7 @@ const toIconImage = async (file: File | undefined) => {
   }
 
   return {
-    iconImageContentType: file.type,
+    iconImageContentType: file.type || undefined,
     iconImageData: new Uint8Array(await file.arrayBuffer()),
   };
 };

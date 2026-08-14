@@ -18,8 +18,14 @@ import type { CreateAnnouncementActionState } from "../announcement-types";
 const announcementFormSchema = z
   .object({
     audienceType: z.preprocess(
-      (value) => (value === "selected" ? "selected" : "all"),
-      z.enum(["all", "selected"])
+      (value) => {
+        if (typeof value !== "string" || value.trim() === "") {
+          return "all";
+        }
+
+        return value.trim();
+      },
+      z.enum(["all", "selected"], { error: "配信対象が不正です。" })
     ),
     body: requiredTrimmedString("本文は必須です。", 2000),
     linkUrl: optionalTrimmedString(2048),
@@ -40,9 +46,11 @@ const announcementFormSchema = z
       });
     }
 
+    const isInternalPath =
+      value.linkUrl.startsWith("/") && !value.linkUrl.startsWith("//");
     if (
       value.linkUrl !== "" &&
-      !value.linkUrl.startsWith("/") &&
+      !isInternalPath &&
       !value.linkUrl.startsWith("https://") &&
       !value.linkUrl.startsWith("http://")
     ) {

@@ -29,7 +29,7 @@ export const FlashToast = ({ keyName = "created", title }: FlashToastProps) => {
   });
 
   useEffect(() => {
-    if (!isFlashFlagSet(searchParams.get(keyName))) {
+    if (!isFlashFlagSet(searchParams.getAll(keyName))) {
       firedRef.current = false;
       return;
     }

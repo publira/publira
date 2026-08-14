@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
 import {
+  jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -15,21 +16,6 @@ import {
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import type { EpisodeActionState } from "../episode-types";
-
-const jsonStringArraySchema = z.preprocess((value): string[] => {
-  if (typeof value !== "string" || value.trim() === "") {
-    return [];
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((entry): entry is string => typeof entry === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}, z.array(z.string()));
 
 const createEpisodeSchema = z.object({
   price: nonNegativeIntFormSchema("価格は 0 以上の整数で入力してください。"),
@@ -43,8 +29,8 @@ const createEpisodeSchema = z.object({
 });
 
 const reorderEpisodesSchema = z.object({
-  currentEpisodeIds: jsonStringArraySchema,
-  orderedEpisodeIds: jsonStringArraySchema,
+  currentEpisodeIds: jsonStringArrayFormSchema,
+  orderedEpisodeIds: jsonStringArrayFormSchema,
   seriesPublicId: requiredTrimmedString(
     "並び順の更新に必要な情報が不足しています。"
   ),

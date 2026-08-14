@@ -19,15 +19,19 @@ export const requiredTrimmedString = (
   z.string({ error: message }).trim().min(1, message).max(maxLength, message);
 
 export const optionalTrimmedString = (
-  maxLength = 255
+  maxLength = 255,
+  message?: string
 ): z.ZodType<string, unknown> =>
-  z.preprocess((value) => {
-    if (typeof value !== "string") {
-      return "";
-    }
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return "";
+      }
 
-    return value.trim();
-  }, z.string().max(maxLength));
+      return value.trim();
+    },
+    z.string().max(maxLength, message)
+  );
 
 /**
  * Empty / missing becomes `0`. Existing number inputs treat a blank field
@@ -78,3 +82,19 @@ export const trimmedStringListFormSchema = z
       return trimmed.length > 0 ? [trimmed] : [];
     })
   );
+
+/** Hidden JSON array of strings (reorder payloads). Invalid JSON becomes []. */
+export const jsonStringArrayFormSchema = z.preprocess((value): string[] => {
+  if (typeof value !== "string" || value.trim() === "") {
+    return [];
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is string => typeof entry === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}, z.array(z.string()));

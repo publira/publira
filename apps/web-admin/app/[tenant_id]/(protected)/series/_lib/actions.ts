@@ -92,6 +92,10 @@ const resolvePublishedAt = async (
 ): Promise<
   { ok: true; publishedAt: string } | ReturnType<typeof toFailure>
 > => {
+  if (!publishedAtRaw) {
+    return { ok: true, publishedAt: "" };
+  }
+
   const timeZone = await getTenantDisplayTimeZone(tenantId);
   const publishedAt = toInstantIsoString(publishedAtRaw, timeZone);
   if (publishedAtRaw.length > 0 && publishedAt.length === 0) {

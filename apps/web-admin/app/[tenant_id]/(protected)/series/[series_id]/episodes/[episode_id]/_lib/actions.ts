@@ -13,6 +13,7 @@ import {
 } from "#lib/episode";
 import {
   fileListFormSchema,
+  jsonStringArrayFormSchema,
   optionalFileFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -51,36 +52,16 @@ const uploadPagesFormSchema = hiddenParamsSchema.extend({
   uploadMode: uploadModeSchema,
 });
 
-const jsonStringArraySchema = z.preprocess((value): string[] => {
-  if (typeof value !== "string" || value.trim() === "") {
-    return [];
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((entry): entry is string => typeof entry === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}, z.array(z.string()));
-
-const reorderImagesSchema = hiddenParamsSchema
-  .extend({
-    orderedImageIds: jsonStringArraySchema,
-  })
-  .extend({
-    episodePublicId: requiredTrimmedString(
-      "並び順の更新に必要な情報が不足しています。"
-    ),
-    seriesPublicId: requiredTrimmedString(
-      "並び順の更新に必要な情報が不足しています。"
-    ),
-    tenantId: requiredTrimmedString(
-      "並び順の更新に必要な情報が不足しています。"
-    ),
-  });
+const reorderImagesSchema = z.object({
+  episodePublicId: requiredTrimmedString(
+    "並び順の更新に必要な情報が不足しています。"
+  ),
+  orderedImageIds: jsonStringArrayFormSchema,
+  seriesPublicId: requiredTrimmedString(
+    "並び順の更新に必要な情報が不足しています。"
+  ),
+  tenantId: requiredTrimmedString("並び順の更新に必要な情報が不足しています。"),
+});
 
 const hiddenFormFields = {
   episodePublicId: { kind: "value", name: "episode_public_id" },

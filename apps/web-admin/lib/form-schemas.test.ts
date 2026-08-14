@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
+  jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -30,6 +31,24 @@ describe("optionalTrimmedString", () => {
   it("turns a missing or non-string value into an empty string", () => {
     expect(optionalTrimmedString().parse(null)).toBe("");
     expect(optionalTrimmedString().parse("  note  ")).toBe("note");
+  });
+
+  it("uses the given message when the value is too long", () => {
+    expect(
+      optionalTrimmedString(4, "4文字以内で入力してください。").safeParse(
+        "12345"
+      ).error?.issues[0]?.message
+    ).toBe("4文字以内で入力してください。");
+  });
+});
+
+describe("jsonStringArrayFormSchema", () => {
+  it("parses a JSON string array and drops invalid payloads", () => {
+    expect(jsonStringArrayFormSchema.parse(JSON.stringify(["a", "b"]))).toEqual(
+      ["a", "b"]
+    );
+    expect(jsonStringArrayFormSchema.parse("not-json")).toEqual([]);
+    expect(jsonStringArrayFormSchema.parse(null)).toEqual([]);
   });
 });
 

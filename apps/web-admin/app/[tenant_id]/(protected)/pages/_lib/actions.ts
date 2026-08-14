@@ -37,11 +37,15 @@ const pageCommonSchema = z.object({
     .transform((value) => value ?? ""),
   displayInFooter: displayInFooterSchema,
   pageId: optionalTrimmedString(),
-  slug: optionalTrimmedString().transform((value) =>
-    normalizePageSlugInput(value)
-  ),
+  slug: optionalTrimmedString(
+    255,
+    "slug は255文字以内で入力してください。"
+  ).transform((value) => normalizePageSlugInput(value)),
   tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  title: optionalTrimmedString(),
+  title: optionalTrimmedString(
+    255,
+    "タイトルは255文字以内で入力してください。"
+  ),
   versionId: optionalTrimmedString(),
 });
 
