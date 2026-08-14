@@ -198,6 +198,26 @@ describe("notification lib", () => {
     });
   });
 
+  it("壊れた cursor の InvalidArgument は再ログインにしない", async () => {
+    mockListNotificationsApi.mockRejectedValue(
+      new ConnectError("invalid cursor", Code.InvalidArgument)
+    );
+
+    const { listNotifications } = await import("./notification");
+    const result = await listNotifications("TENANT001", {
+      token: "djF8Znxh",
+    });
+
+    expect(result).toEqual({
+      message: "入力内容に誤りがあります。",
+      nextToken: "",
+      notifications: [],
+      ok: false,
+      previousToken: "",
+      requiresSignIn: false,
+    });
+  });
+
   it("分類できないエラーはキャッシュ関数から throw せず、呼び出し側で再送出する", async () => {
     mockListNotificationsApi.mockRejectedValue(
       new ConnectError("boom", Code.Internal)
@@ -289,5 +309,86 @@ describe("notification lib", () => {
     const result = await markAllNotificationsAsRead("TENANT001");
 
     expect(result).toEqual({ markedCount: 4, ok: true });
+  });
+
+  it("単件既読の権限エラーはメッセージを返す", async () => {
+    mockMarkNotificationAsReadApi.mockRejectedValue(
+      new ConnectError("permission denied", Code.PermissionDenied)
+    );
+
+    const { markNotificationAsRead } = await import("./notification");
+    const result = await markNotificationAsRead({
+      notificationId: "11111111-1111-4111-8111-111111111111",
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toEqual({
+      message: "この操作を行う権限がありません。",
+      ok: false,
+    });
+  });
+
+  it("単件既読の未分類エラーは再送出する", async () => {
+    mockMarkNotificationAsReadApi.mockRejectedValue(new Error("boom"));
+
+    const { markNotificationAsRead } = await import("./notification");
+
+    await expect(
+      markNotificationAsRead({
+        notificationId: "11111111-1111-4111-8111-111111111111",
+        tenantId: "TENANT001",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("セッションが無ければ単件既読の API を呼ばない", async () => {
+    mockResolveAccessToken.mockResolvedValue("");
+
+    const { markNotificationAsRead } = await import("./notification");
+    const result = await markNotificationAsRead({
+      notificationId: "11111111-1111-4111-8111-111111111111",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockMarkNotificationAsReadApi).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    });
+  });
+
+  it("全件既読の権限エラーはメッセージを返す", async () => {
+    mockMarkAllNotificationsAsReadApi.mockRejectedValue(
+      new ConnectError("permission denied", Code.PermissionDenied)
+    );
+
+    const { markAllNotificationsAsRead } = await import("./notification");
+    const result = await markAllNotificationsAsRead("TENANT001");
+
+    expect(result).toEqual({
+      message: "この操作を行う権限がありません。",
+      ok: false,
+    });
+  });
+
+  it("全件既読の未分類エラーは再送出する", async () => {
+    mockMarkAllNotificationsAsReadApi.mockRejectedValue(new Error("boom"));
+
+    const { markAllNotificationsAsRead } = await import("./notification");
+
+    await expect(markAllNotificationsAsRead("TENANT001")).rejects.toThrow();
+  });
+
+  it("セッションが無ければ全件既読の API を呼ばない", async () => {
+    mockResolveAccessToken.mockResolvedValue("");
+
+    const { markAllNotificationsAsRead } = await import("./notification");
+    const result = await markAllNotificationsAsRead("TENANT001");
+
+    expect(mockMarkAllNotificationsAsReadApi).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    });
   });
 });

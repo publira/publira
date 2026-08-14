@@ -49,12 +49,13 @@ const isUnexpectedError = (error: unknown): boolean =>
   rpcErrorDisposition(error) === "unexpected";
 
 /**
- * The only argument this call carries besides paging is the session header, so
- * a rejected one is a session problem rather than bad form input. The caller
- * sends the reader back through login on this.
+ * Only an expired or missing session sends the reader back through login.
+ * `InvalidArgument` is not a session problem here: a cursor token can pass
+ * the base64url shape check and still be rejected by `ListNotifications`.
+ * Treating that as sign-in would bounce the same `?token=` URL after login.
  */
 const isSignInRequiredError = (error: unknown): boolean =>
-  isRpcError(error, Code.Unauthenticated, Code.InvalidArgument);
+  isRpcError(error, Code.Unauthenticated);
 
 /**
  * A `"use cache"` fill must not throw. Classify inside the cache scope, return
