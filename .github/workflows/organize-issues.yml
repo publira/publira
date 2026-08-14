@@ -6,10 +6,6 @@ name: Organize issues
 on:
   issues:
     types: [closed]
-  # sub_issues is webhook-only; Actions cannot subscribe. Scan open epics
-  # so an unlink of the last remaining child is still picked up.
-  schedule:
-    - cron: "0 4 * * *"
   workflow_dispatch:
     inputs:
       issue_number:
@@ -48,9 +44,6 @@ jobs:
                 if (raw) {
                   return [Number(raw)];
                 }
-                return null;
-              }
-              if (context.eventName === 'schedule') {
                 return null;
               }
               const number = context.payload.issue?.number;
