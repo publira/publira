@@ -21,7 +21,7 @@ catalog:
   react: 19.2.8
   react-dom: 19.2.8
   react-markdown: 10.1.0
-  redis: 6.2.0
+  redis: 6.2.1
   tailwindcss: 4.3.3
   temporal-polyfill: 1.0.3
   tsdown: 0.22.14
