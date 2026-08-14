@@ -60,6 +60,11 @@ describe("intFormSchema", () => {
     expect(schema.safeParse("abc").success).toBe(false);
     expect(schema.safeParse("0x10").success).toBe(false);
   });
+
+  it("rejects a fraction instead of truncating it", () => {
+    expect(schema.safeParse("1.5").success).toBe(false);
+    expect(schema.safeParse("587.9").success).toBe(false);
+  });
 });
 
 describe("commaOrNewlineStringListFormSchema", () => {

@@ -41,7 +41,7 @@ import type {
   ListPlatformAuditLogsResult,
   PlatformAuditLogSummary,
 } from "#lib/audit-logs";
-import { DEFAULT_LIST_PAGE_SIZE } from "#lib/list-pagination";
+import { DEFAULT_LIST_PAGE_SIZE, MAX_LIST_OFFSET } from "#lib/list-pagination";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
@@ -399,9 +399,12 @@ const AuditLogsContent = async ({
   ]);
 
   const hasPrev = offset > 0;
-  const hasNext = result.ok && result.auditLogs.length === pageSize;
   const prevOffset = Math.max(0, offset - pageSize);
   const nextOffset = offset + pageSize;
+  const hasNext =
+    result.ok &&
+    result.auditLogs.length === pageSize &&
+    nextOffset <= MAX_LIST_OFFSET;
   const summaryText = getSummaryText(result, offset);
 
   return (

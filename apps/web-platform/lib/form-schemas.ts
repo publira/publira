@@ -7,10 +7,10 @@
 import { z } from "zod";
 
 /**
- * Decimal integers and fractions only. `Number()` alone would also accept
- * `0x10`, `1e3`, and `Infinity`.
+ * Signed decimal integers only. `Number()` alone would also accept `0x10`,
+ * `1e3`, fractions, and `Infinity`.
  */
-const NUMBER_RE = /^[+-]?\d+(?:\.\d+)?$/u;
+const INTEGER_RE = /^[+-]?\d+$/u;
 
 export const requiredTrimmedString = (
   message: string,
@@ -57,11 +57,11 @@ export const intFormSchema = (
     if (raw === "") {
       return fallback;
     }
-    if (!NUMBER_RE.test(raw)) {
+    if (!INTEGER_RE.test(raw)) {
       return;
     }
 
-    const parsed = Math.trunc(Number(raw));
+    const parsed = Number(raw);
     if (!Number.isFinite(parsed)) {
       return;
     }
