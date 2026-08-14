@@ -1,4 +1,4 @@
-package main
+package publishepisodes
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func TestPublishSuccessDoesNotNotifyOperators(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	r.runOnce(ctx)
+	r.RunOnce(ctx)
 
 	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
@@ -40,8 +40,8 @@ func TestPublishFinalFailureNotifiesEachOperatorOnce(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	r.runOnce(ctx)
-	r.runOnce(ctx)
+	r.RunOnce(ctx)
+	r.RunOnce(ctx)
 
 	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusScheduled {
 		t.Fatalf("listing status = %q, want still %s", got, testutil.EpisodeStatusScheduled)
@@ -102,7 +102,7 @@ func TestPublishFinalFailureSkipsUsersWithoutOperatorRole(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	r.runOnce(ctx)
+	r.RunOnce(ctx)
 
 	rows := listPlatformNotifications(t, pg)
 	if len(rows) != 2 {
@@ -150,13 +150,14 @@ func newPublishTestEnv(t *testing.T) (*testutil.PostgresEnv, publishTestEnv) {
 	}
 }
 
-func (env publishTestEnv) runner() *runner {
-	return &runner{
-		db:         env.pg.DB,
-		queries:    dbmodels.New(env.pg.DB),
-		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		maxRetries: 0,
-	}
+func (env publishTestEnv) runner() *Runner {
+	return New(
+		env.pg.DB,
+		dbmodels.New(env.pg.DB),
+		nil,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		0,
+	)
 }
 
 type notificationCounts struct {
