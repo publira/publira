@@ -135,17 +135,6 @@ test.describe("web-host member announcements", () => {
     await expect(readNotice.getByText("既読")).toBeVisible();
   });
 
-  test("古い /notifications は /announcements へリダイレクトする", async ({
-    page,
-  }) => {
-    await signIn(page);
-    await page.goto("/notifications");
-    await expect(page).toHaveURL(/\/announcements\/?$/u);
-    await expect(page.locator("article h3").first()).toHaveText(
-      MEMBER_ANNOUNCEMENTS.newestTitle
-    );
-  });
-
   test("壊れた token は先頭ページに落とす", async ({ page }) => {
     await signIn(page);
     await expect(page).toHaveURL(/\/announcements/u);

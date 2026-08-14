@@ -12,9 +12,16 @@ import {
 import type { LayoutLinkItem } from "@publira/layouts";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 
+import {
+  NotificationBell,
+  NotificationBellSkeleton,
+} from "#components/notification-bell";
+import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { logoutAction } from "#lib/logout-action";
+import { countUnreadNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -25,6 +32,13 @@ const siteNavItems: LayoutLinkItem[] = [
   { href: "/series", label: "Series" },
 ];
 
+const HostNotificationBell = async () => {
+  const tenantId = await getTenantId();
+  const unread = await countUnreadNotifications(tenantId);
+
+  return <NotificationBell unreadCount={unread.unreadCount} />;
+};
+
 const getHeaderActionsContent = async () => {
   const [cookieStore, tenantId] = await Promise.all([cookies(), getTenantId()]);
   const hasSession = Boolean(
@@ -33,11 +47,22 @@ const getHeaderActionsContent = async () => {
   const actions = getAuthActions(hasSession);
 
   return (
-    <SiteLayoutActions
-      logoutAction={hasSession ? logoutAction.bind(null, tenantId) : undefined}
-      primaryAction={actions.primaryAction}
-      secondaryAction={actions.secondaryAction}
-    />
+    <div className="flex items-center gap-2">
+      {hasSession ? (
+        <NotificationBellErrorBoundary>
+          <Suspense fallback={<NotificationBellSkeleton />}>
+            <HostNotificationBell />
+          </Suspense>
+        </NotificationBellErrorBoundary>
+      ) : null}
+      <SiteLayoutActions
+        logoutAction={
+          hasSession ? logoutAction.bind(null, tenantId) : undefined
+        }
+        primaryAction={actions.primaryAction}
+        secondaryAction={actions.secondaryAction}
+      />
+    </div>
   );
 };
 
