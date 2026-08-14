@@ -272,7 +272,7 @@ jobs:
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
       - name: Install Task
@@ -334,7 +334,7 @@ jobs:
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
       # The action installs the pinned binary and caches the analysis results;
@@ -360,7 +360,7 @@ jobs:
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
       - name: Validate / Go Tests
@@ -502,7 +502,7 @@ jobs:
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
       - name: Install Task
@@ -578,7 +578,7 @@ jobs:
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
       - name: Install Task
@@ -640,7 +640,7 @@ jobs:
       - name: Setup / Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
       - name: Install Task
