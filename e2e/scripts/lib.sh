@@ -92,6 +92,13 @@ RUN_DIR="${E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 PID_DIR="${RUN_DIR}/pids"
 
+# Lease for the compose project. Docker resources are keyed by
+# COMPOSE_PROJECT_NAME, so a second stack with the same project would
+# compose-down the first. A background holder keeps the lease after up.sh
+# exits; only the owning E2E_RUN_DIR may release it (down.sh).
+E2E_LOCK_FILE="${E2E_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lock"
+E2E_LEASE_FILE="${E2E_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lease"
+
 e2e_log() {
   printf '[e2e] %s\n' "$*"
 }
@@ -117,6 +124,123 @@ is_pid_running() {
 pid_start_time() {
   local pid="$1"
   ps -o lstart= -p "${pid}" 2>/dev/null | xargs || true
+}
+
+e2e_lease_run_dir() {
+  sed -n '1p' "${E2E_LEASE_FILE}" 2>/dev/null || true
+}
+
+e2e_lease_holder_alive() {
+  local pid recorded_start
+  [[ -f "${E2E_LEASE_FILE}" ]] || return 1
+  pid="$(sed -n '2p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
+  recorded_start="$(sed -n '3p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
+  is_pid_running "${pid}" || return 1
+  [[ -n "${recorded_start}" && "$(pid_start_time "${pid}")" == "${recorded_start}" ]]
+}
+
+e2e_refuse_foreign_lease() {
+  e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use (owned by $(e2e_lease_run_dir)); wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+  exit 1
+}
+
+# Detached holder so the lease outlives up.sh / start-apps.sh. Leftover-stack
+# commands with the same E2E_RUN_DIR join; a different RUN_DIR is refused.
+e2e_spawn_lease_holder() {
+  mkdir -p "$(dirname "${E2E_LOCK_FILE}")"
+  local ready pid waited
+  ready="$(mktemp)"
+  (
+    if command -v flock >/dev/null 2>&1; then
+      exec 9>"${E2E_LOCK_FILE}"
+      flock -n 9 || exit 1
+    fi
+    printf '%s\n' "${BASHPID}" >"${ready}"
+    while :; do
+      sleep 3600
+    done
+  ) &
+  waited=0
+  while [[ ! -s "${ready}" ]]; do
+    if ! kill -0 $! 2>/dev/null && [[ ! -s "${ready}" ]]; then
+      rm -f "${ready}"
+      e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+      exit 1
+    fi
+    if ((waited > 50)); then
+      rm -f "${ready}"
+      e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock holder did not start"
+      exit 1
+    fi
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  pid="$(cat "${ready}")"
+  rm -f "${ready}"
+  printf '%s\n%s\n%s\n' "${E2E_RUN_DIR}" "${pid}" "$(pid_start_time "${pid}")" >"${E2E_LEASE_FILE}"
+}
+
+# Spawn a holder or join the existing owner. Children inherit E2E_LOCK_HELD=1
+# and skip so `bash up.sh` from run.sh does not spawn a second holder.
+acquire_e2e_lock() {
+  if [[ "${E2E_LOCK_HELD:-0}" == "1" ]]; then
+    return 0
+  fi
+  if e2e_lease_holder_alive; then
+    if [[ "$(e2e_lease_run_dir)" == "${E2E_RUN_DIR}" ]]; then
+      export E2E_LOCK_HELD=1
+      return 0
+    fi
+    e2e_refuse_foreign_lease
+  fi
+  rm -f "${E2E_LEASE_FILE}"
+  e2e_spawn_lease_holder
+  export E2E_LOCK_HELD=1
+}
+
+# stop-apps must not create a lease; it only refuses a foreign owner.
+join_e2e_lease() {
+  if [[ "${E2E_LOCK_HELD:-0}" == "1" ]]; then
+    return 0
+  fi
+  if e2e_lease_holder_alive; then
+    if [[ "$(e2e_lease_run_dir)" == "${E2E_RUN_DIR}" ]]; then
+      export E2E_LOCK_HELD=1
+      return 0
+    fi
+    e2e_refuse_foreign_lease
+  fi
+}
+
+require_e2e_owner_or_free() {
+  if e2e_lease_holder_alive && [[ "$(e2e_lease_run_dir)" != "${E2E_RUN_DIR}" ]]; then
+    e2e_refuse_foreign_lease
+  fi
+}
+
+# Owner-only. A leftover `task e2e:down` matches the lease RUN_DIR and succeeds;
+# a second stack with another E2E_RUN_DIR cannot tear the first down.
+release_e2e_lease() {
+  local pid _
+  if ! e2e_lease_holder_alive; then
+    rm -f "${E2E_LEASE_FILE}"
+    return 0
+  fi
+  if [[ "$(e2e_lease_run_dir)" != "${E2E_RUN_DIR}" ]]; then
+    e2e_refuse_foreign_lease
+  fi
+  pid="$(sed -n '2p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
+  kill "${pid}" 2>/dev/null || true
+  for _ in $(seq 1 30); do
+    if ! is_pid_running "${pid}"; then
+      break
+    fi
+    sleep 0.1
+  done
+  if is_pid_running "${pid}"; then
+    kill -9 "${pid}" 2>/dev/null || true
+  fi
+  rm -f "${E2E_LEASE_FILE}"
 }
 
 read_pid() {

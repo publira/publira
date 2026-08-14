@@ -66,9 +66,14 @@ tasks:
       - bash {{.E2E_DIR}}/scripts/db-setup.sh
 
   start-apps:
-    desc: Start API servers, publish-episodes, web-host, web-admin, web-platform (background, logs in e2e/.run/logs)
+    desc: Start API servers, publish-episodes, web-host, web-admin, web-platform (background, logs in $E2E_RUN_DIR/logs)
     cmds:
       - bash {{.E2E_DIR}}/scripts/start-apps.sh
+
+  test-lib:
+    desc: Check E2E_RUN_DIR isolation and compose-project lease (no Docker)
+    cmds:
+      - bash {{.E2E_DIR}}/scripts/lib_test.sh
 
   stop-apps:
     desc: Stop background API/app processes started by start-apps
