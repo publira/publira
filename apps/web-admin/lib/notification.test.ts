@@ -190,6 +190,16 @@ describe("notification lib", () => {
     });
   });
 
+  it("分類できないエラーはキャッシュ関数から throw せず、呼び出し側で再送出する", async () => {
+    mockListNotificationsApi.mockRejectedValue(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { listNotifications } = await import("./notification");
+
+    await expect(listNotifications("TENANT001")).rejects.toThrow();
+  });
+
   it("セッションが無ければトークンなしの結果を返す", async () => {
     mockGetSessionId.mockResolvedValue("");
 
@@ -234,6 +244,14 @@ describe("notification lib", () => {
       ok: false,
       unreadCount: 0,
     });
+  });
+
+  it("未読件数の未分類エラーも呼び出し側で再送出する", async () => {
+    mockCountUnreadNotificationsApi.mockRejectedValue(new Error("boom"));
+
+    const { countUnreadNotifications } = await import("./notification");
+
+    await expect(countUnreadNotifications("TENANT001")).rejects.toThrow();
   });
 
   it("単件既読に notification_id を渡す", async () => {

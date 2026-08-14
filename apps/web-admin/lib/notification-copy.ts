@@ -13,31 +13,34 @@ const resourceIdSchema = z
   .trim()
   .regex(/^[A-Za-z0-9_-]{1,64}$/u);
 
-const readResourceId = (value: unknown): string | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+const labelSchema = z.string().trim().min(1);
+
+/**
+ * Invalid or empty values become `undefined` so one bad field does not drop
+ * the rest of the object. Used as the inner schema of {@link payloadSchema}.
+ */
+const optionalResourceId = z.preprocess((value) => {
   const parsed = resourceIdSchema.safeParse(value);
   return parsed.success ? parsed.data : undefined;
-};
+}, resourceIdSchema.optional());
 
-const readLabel = (value: unknown): string | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed === "" ? undefined : trimmed;
-};
+const optionalLabel = z.preprocess((value) => {
+  const parsed = labelSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}, labelSchema.optional());
 
-const isJsonObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+/**
+ * Known inbox fields only. `z.object` strips unknown keys. A bad value on one
+ * field becomes `undefined` so the rest of the payload can still be used.
+ */
+const payloadSchema = z.object({
+  episode_id: optionalResourceId,
+  episode_title: optionalLabel,
+  series_id: optionalResourceId,
+  series_title: optionalLabel,
+});
 
-export interface NotificationPayload {
-  episode_id?: string;
-  episode_title?: string;
-  series_id?: string;
-  series_title?: string;
-}
+export type NotificationPayload = z.output<typeof payloadSchema>;
 
 export interface NotificationDisplay {
   description: string;
@@ -80,28 +83,8 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
 
   try {
     const parsed: unknown = JSON.parse(trimmed);
-    if (!isJsonObject(parsed)) {
-      return {};
-    }
-    const record = parsed;
-    const payload: NotificationPayload = {};
-    const episodeId = readResourceId(record.episode_id);
-    const episodeTitle = readLabel(record.episode_title);
-    const seriesId = readResourceId(record.series_id);
-    const seriesTitle = readLabel(record.series_title);
-    if (episodeId) {
-      payload.episode_id = episodeId;
-    }
-    if (episodeTitle) {
-      payload.episode_title = episodeTitle;
-    }
-    if (seriesId) {
-      payload.series_id = seriesId;
-    }
-    if (seriesTitle) {
-      payload.series_title = seriesTitle;
-    }
-    return payload;
+    const result = payloadSchema.safeParse(parsed);
+    return result.success ? result.data : {};
   } catch {
     return {};
   }

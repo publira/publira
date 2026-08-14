@@ -1,5 +1,9 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
+} from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import type {
@@ -36,6 +40,20 @@ export const notificationsCacheTag = (tenantId: string): string =>
 const mapErrorMessage = (error: unknown, fallback: string): string =>
   rpcErrorMessage(error, fallback);
 
+const isUnexpectedError = (error: unknown): boolean =>
+  rpcErrorDisposition(error) === "unexpected";
+
+/**
+ * A `"use cache"` fill must not throw. Classify inside the cache scope, return
+ * the failure as a value, then throw here so an unexpected error still reaches
+ * the boundary with the fill already committed.
+ */
+const throwIfUnexpected = (unexpected: boolean, message: string): void => {
+  if (unexpected) {
+    throw new Error(message);
+  }
+};
+
 const mapNotification = (item: {
   createdAt: string;
   id: string;
@@ -59,16 +77,18 @@ const mapNotification = (item: {
   };
 };
 
-/**
- * One page of the signed-in admin's inbox, newest first.
- *
- * The rows keep the server's keyset order (`created_at`, `id` descending).
- * Sorting them here would only sort the rows that happen to share a page.
- */
-export const listNotifications = async (
+type CachedListNotificationsResult = ListNotificationsResult & {
+  unexpected: boolean;
+};
+
+type CachedUnreadCountResult = CountUnreadNotificationsResult & {
+  unexpected: boolean;
+};
+
+const readNotificationList = async (
   tenantId: string,
   options: CursorPageOptions = {}
-): Promise<ListNotificationsResult> => {
+): Promise<CachedListNotificationsResult> => {
   "use cache: private";
   cacheTag(notificationsCacheTag(tenantId));
 
@@ -79,6 +99,7 @@ export const listNotifications = async (
       message: sessionErrorMessage,
       notifications: [],
       ok: false,
+      unexpected: false,
     };
   }
 
@@ -97,26 +118,23 @@ export const listNotifications = async (
         mapNotification(item)
       ),
       ok: true,
+      unexpected: false,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       ...emptyCursorPageTokens,
       message: mapErrorMessage(error, listErrorMessage),
       notifications: [],
       ok: false,
+      unexpected: isUnexpectedError(error),
     };
   }
 };
 
-/**
- * Unread count for the header bell. A classified failure is an empty bell, not
- * a header crash — the count is chrome, and the list page is the source of
- * truth when the operator opens it.
- */
-export const countUnreadNotifications = async (
+const readUnreadNotificationCount = async (
   tenantId: string
-): Promise<CountUnreadNotificationsResult> => {
+): Promise<CachedUnreadCountResult> => {
   "use cache: private";
   cacheTag(notificationsCacheTag(tenantId));
 
@@ -125,6 +143,7 @@ export const countUnreadNotifications = async (
     return {
       message: sessionErrorMessage,
       ok: false,
+      unexpected: false,
       unreadCount: 0,
     };
   }
@@ -137,16 +156,49 @@ export const countUnreadNotifications = async (
 
     return {
       ok: true,
+      unexpected: false,
       unreadCount: response.unreadCount ?? 0,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
+    dropFailedCacheEntry();
     return {
       message: mapErrorMessage(error, countErrorMessage),
       ok: false,
+      unexpected: isUnexpectedError(error),
       unreadCount: 0,
     };
   }
+};
+
+/**
+ * One page of the signed-in admin's inbox, newest first.
+ *
+ * The rows keep the server's keyset order (`created_at`, `id` descending).
+ * Sorting them here would only sort the rows that happen to share a page.
+ */
+export const listNotifications = async (
+  tenantId: string,
+  options: CursorPageOptions = {}
+): Promise<ListNotificationsResult> => {
+  const { unexpected, ...result } = await readNotificationList(
+    tenantId,
+    options
+  );
+  throwIfUnexpected(unexpected, result.ok ? listErrorMessage : result.message);
+  return result;
+};
+
+/**
+ * Unread count for the header bell. A classified failure is an empty bell, not
+ * a header crash — the count is chrome, and the list page is the source of
+ * truth when the operator opens it.
+ */
+export const countUnreadNotifications = async (
+  tenantId: string
+): Promise<CountUnreadNotificationsResult> => {
+  const { unexpected, ...result } = await readUnreadNotificationCount(tenantId);
+  throwIfUnexpected(unexpected, result.ok ? countErrorMessage : result.message);
+  return result;
 };
 
 export const markNotificationAsRead = async (input: {
