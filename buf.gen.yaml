@@ -1,11 +1,20 @@
 version: v2
+# Remote plugin versions are pinned so `buf generate` is reproducible: without a
+# pin, buf resolves the latest plugin at run time, so the same proto produces a
+# different stamp depending on who ran `task gen` and when. Each pin must equal
+# the runtime library the generated code is compiled against; the `# renovate:`
+# annotations let Renovate bump the pin in the same PR as that library (see the
+# customManagers in .github/renovate.json5).
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  # renovate: datasource=go depName=google.golang.org/protobuf
+  - remote: buf.build/protocolbuffers/go:v1.36.12
     out: server/gen
     opt: paths=source_relative
-  - remote: buf.build/connectrpc/go
+  # renovate: datasource=go depName=connectrpc.com/connect
+  - remote: buf.build/connectrpc/go:v1.20.0
     out: server/gen
     opt: paths=source_relative
-  - remote: buf.build/bufbuild/es
+  # renovate: datasource=npm depName=@bufbuild/protobuf
+  - remote: buf.build/bufbuild/es:v2.13.0
     out: packages/api-client/src/gen
     opt: target=ts
