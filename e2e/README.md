@@ -37,7 +37,7 @@ Dev Container Traefik のホストベースルーティングは、同じく Pla
 | E2E Redis（compose 公開）                              | `6380` |
 
 PID / ログ / ローカル storage は既定で `e2e/.run/` に置く。  
-`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project の並行起動は、flock がある環境では拒否する（無い環境ではポート競合に頼る）。同じポートでの並行起動はポート競合で失敗する想定。
+`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。同じポートでの並行起動はポート競合で失敗する想定。
 
 ## 1 コマンド実行
 
@@ -92,7 +92,7 @@ COMPOSE_PROJECT_NAME=publira-e2e-alt \
   task e2e
 ```
 
-未指定の `E2E_*_PORT` は既定のままなので、片方だけ変えるとポート競合で失敗する。明示的な `E2E_RUN_DIR` があれば state ディレクトリはそちらを使う。同じ `COMPOSE_PROJECT_NAME` のまま 2 本立てることは、flock がある環境では拒否される。
+未指定の `E2E_*_PORT` は既定のままなので、片方だけ変えるとポート競合で失敗する。明示的な `E2E_RUN_DIR` があれば state ディレクトリはそちらを使う。同じ `COMPOSE_PROJECT_NAME` を別の `E2E_RUN_DIR` で触る操作は、先に立った stack の lease が残っている間は拒否される。
 
 開発中に Next の HMR を使いたい場合: `E2E_WEB_MODE=dev task e2e`（CI では使わない）。
 

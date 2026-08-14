@@ -89,8 +89,11 @@ else
   pass "distinct port overrides get distinct RUN_DIRs"
 fi
 
-# Two stacks, two sleep stand-ins. Stopping via stack A's PID dir must not
-# touch stack B's process — this is the stopApiServer cross-talk #685 forbids.
+# Two stacks, two sleep stand-ins. Dedicated temp RUN_DIRs so this never
+# overwrites a live stack's api-server.pid (run.sh invokes us before locking).
+pid_root="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-pids.XXXXXX")"
+dir_a="${pid_root}/a"
+dir_b="${pid_root}/b"
 sleep 120 &
 pid_a=$!
 sleep 120 &
@@ -98,21 +101,22 @@ pid_b=$!
 cleanup_sleeps() {
   kill "${pid_a}" "${pid_b}" 2>/dev/null || true
   wait "${pid_a}" "${pid_b}" 2>/dev/null || true
+  rm -rf "${pid_root}"
 }
 trap cleanup_sleeps EXIT
 
-stack_env E2E_WEB_HOST_PORT=3100 bash -c '
+stack_env E2E_RUN_DIR="${dir_a}" bash -c '
   source "$1"
   ensure_run_dirs
   write_pid api-server "$2"
 ' bash "${LIB}" "${pid_a}"
-stack_env E2E_WEB_HOST_PORT=3200 bash -c '
+stack_env E2E_RUN_DIR="${dir_b}" bash -c '
   source "$1"
   ensure_run_dirs
   write_pid api-server "$2"
 ' bash "${LIB}" "${pid_b}"
 
-stack_env E2E_WEB_HOST_PORT=3100 bash -c '
+stack_env E2E_RUN_DIR="${dir_a}" bash -c '
   source "$1"
   stop_pid_file api-server
 ' bash "${LIB}"
@@ -130,85 +134,108 @@ fi
 
 kill "${pid_b}" 2>/dev/null || true
 wait "${pid_a}" "${pid_b}" 2>/dev/null || true
-rm -rf "$(compute_run_dir E2E_WEB_HOST_PORT=3100)" "$(compute_run_dir E2E_WEB_HOST_PORT=3200)"
+rm -rf "${pid_root}"
 trap - EXIT
 
-if ! command -v flock >/dev/null 2>&1; then
-  pass "flock not available; skip compose-project lock tests"
-else
-  lock_project="publira-e2e-libtest-$$"
-  ready="$(mktemp)"
-  holder_log="$(mktemp)"
-  lock_err="$(mktemp)"
-  stack_env COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+# Lease outlives the acquiring shell (up.sh exits, stack stays). A foreign
+# E2E_RUN_DIR must not acquire or release; the owner leftover down may.
+lock_project="publira-e2e-libtest-$$"
+lease_root="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-lease.XXXXXX")"
+lease_a="${lease_root}/a"
+lease_b="${lease_root}/b"
+lock_err="$(mktemp)"
+cleanup_lease() {
+  stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
     source "$1"
-    acquire_e2e_lock
-    printf x >"$2"
-    sleep 30
-  ' bash "${LIB}" "${ready}" >"${holder_log}" 2>&1 &
-  holder=$!
-  cleanup_lock() {
-    kill "${holder}" 2>/dev/null || true
-    wait "${holder}" 2>/dev/null || true
-    rm -f "${ready}" "${holder_log}" "${lock_err}"
-  }
-  trap cleanup_lock EXIT
+    release_e2e_lease || true
+  ' bash "${LIB}" >/dev/null 2>&1 || true
+  stack_env E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}-other" bash -c '
+    source "$1"
+    release_e2e_lease || true
+  ' bash "${LIB}" >/dev/null 2>&1 || true
+  rm -rf "${lease_root}"
+  rm -f "${lock_err}"
+  rm -f "${E2E_DIR}/.run/locks/${lock_project}.lock" "${E2E_DIR}/.run/locks/${lock_project}.lease"
+  rm -f "${E2E_DIR}/.run/locks/${lock_project}-other.lock" "${E2E_DIR}/.run/locks/${lock_project}-other.lease"
+}
+trap cleanup_lease EXIT
 
-  waited=0
-  while [[ ! -s "${ready}" ]]; do
-    if ! kill -0 "${holder}" 2>/dev/null; then
-      fail "lock holder exited before acquire: $(cat "${holder_log}")"
-      waited=-1
-      break
-    fi
-    if ((waited > 50)); then
-      fail "lock holder did not acquire within 5s: $(cat "${holder_log}")"
-      waited=-1
-      break
-    fi
-    sleep 0.1
-    waited=$((waited + 1))
-  done
-
-  if ((waited >= 0)); then
-    if stack_env COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
-      source "$1"
-      acquire_e2e_lock
-    ' bash "${LIB}" >"${lock_err}" 2>&1; then
-      fail "second acquire on ${lock_project} succeeded"
-    else
-      if grep -q "already in use" "${lock_err}"; then
-        pass "second acquire on the same compose project is refused"
-      else
-        fail "second acquire failed without 'already in use': $(cat "${lock_err}")"
-      fi
-    fi
-
-    if stack_env COMPOSE_PROJECT_NAME="${lock_project}-other" bash -c '
-      source "$1"
-      acquire_e2e_lock
-    ' bash "${LIB}"; then
-      pass "distinct COMPOSE_PROJECT_NAME takes its own lock"
-    else
-      fail "distinct COMPOSE_PROJECT_NAME could not acquire lock"
-    fi
-
-    if stack_env E2E_LOCK_HELD=1 COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
-      source "$1"
-      acquire_e2e_lock
-    ' bash "${LIB}"; then
-      pass "E2E_LOCK_HELD=1 skips re-acquire"
-    else
-      fail "E2E_LOCK_HELD=1 still tried to take the lock"
-    fi
-  fi
-
-  kill "${holder}" 2>/dev/null || true
-  wait "${holder}" 2>/dev/null || true
-  trap - EXIT
-  rm -f "${ready}" "${holder_log}" "${lock_err}"
-  rm -f "${E2E_DIR}/.run/locks/${lock_project}.lock" "${E2E_DIR}/.run/locks/${lock_project}-other.lock"
+if ! stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+  source "$1"
+  acquire_e2e_lock
+' bash "${LIB}"; then
+  fail "owner acquire did not start a lease holder"
+else
+  pass "acquire starts a lease holder that outlives the shell"
 fi
+
+if stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+  source "$1"
+  acquire_e2e_lock
+' bash "${LIB}"; then
+  pass "same E2E_RUN_DIR joins the leftover lease"
+else
+  fail "owner leftover acquire (up then start-apps) was refused"
+fi
+
+if stack_env E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+  source "$1"
+  acquire_e2e_lock
+' bash "${LIB}" >"${lock_err}" 2>&1; then
+  fail "foreign E2E_RUN_DIR acquire succeeded after owner up"
+else
+  if grep -q "already in use" "${lock_err}"; then
+    pass "foreign E2E_RUN_DIR acquire is refused while the stack lease lives"
+  else
+    fail "foreign acquire failed without 'already in use': $(cat "${lock_err}")"
+  fi
+fi
+
+if stack_env E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+  source "$1"
+  require_e2e_owner_or_free
+  release_e2e_lease
+' bash "${LIB}" >"${lock_err}" 2>&1; then
+  fail "foreign down/release succeeded after owner up"
+else
+  if grep -q "already in use" "${lock_err}"; then
+    pass "foreign down is refused after up.sh exits"
+  else
+    fail "foreign down failed without 'already in use': $(cat "${lock_err}")"
+  fi
+fi
+
+if stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+  source "$1"
+  require_e2e_owner_or_free
+  release_e2e_lease
+' bash "${LIB}"; then
+  pass "owner leftover down releases the lease"
+else
+  fail "owner leftover down was refused"
+fi
+
+if stack_env E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}-other" bash -c '
+  source "$1"
+  acquire_e2e_lock
+  release_e2e_lease
+' bash "${LIB}"; then
+  pass "distinct COMPOSE_PROJECT_NAME takes its own lease"
+else
+  fail "distinct COMPOSE_PROJECT_NAME could not acquire lease"
+fi
+
+if stack_env E2E_LOCK_HELD=1 E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+  source "$1"
+  acquire_e2e_lock
+' bash "${LIB}"; then
+  pass "E2E_LOCK_HELD=1 skips re-acquire"
+else
+  fail "E2E_LOCK_HELD=1 still tried to take the lease"
+fi
+
+trap - EXIT
+cleanup_lease
 
 if ((failures > 0)); then
   printf '[e2e] ERROR: lib_test failed (%s)\n' "${failures}" >&2

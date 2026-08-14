@@ -71,7 +71,7 @@ tasks:
       - bash {{.E2E_DIR}}/scripts/start-apps.sh
 
   test-lib:
-    desc: Check E2E_RUN_DIR isolation and compose-project lock (no Docker)
+    desc: Check E2E_RUN_DIR isolation and compose-project lease (no Docker)
     cmds:
       - bash {{.E2E_DIR}}/scripts/lib_test.sh
 
