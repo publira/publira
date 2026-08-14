@@ -16,7 +16,7 @@
 
 `Close completed epics` の補足:
 
-- トリガ: Issue の `closed`、sub-issue の `sub_issue_removed`、手動の `workflow_dispatch`（番号省略時は open な `epic` を走査）
+- トリガ: Issue の `closed`、日次 04:00 UTC の `schedule`（unlink された最後の子を拾う）、手動の `workflow_dispatch`（番号省略時は open な `epic` を走査）。`sub_issues` は webhook 専用で Actions の `on:` には使えない
 - 対象は `epic` ラベル付きの親だけ。sub-issue が 0 件の Epic は閉じない
 - 入れ子の Epic は同一 run で祖先方向へ辿る（`GITHUB_TOKEN` による close は別 run を起こさない）
 - 同時クローズの取りこぼしを避けるため、このジョブだけ直列化する

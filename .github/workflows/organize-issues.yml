@@ -6,9 +6,10 @@ name: Organize issues
 on:
   issues:
     types: [closed]
-  sub_issues:
-    # Last remaining open child may be unlinked rather than closed.
-    types: [sub_issue_removed]
+  # sub_issues is webhook-only; Actions cannot subscribe. Scan open epics
+  # so an unlink of the last remaining child is still picked up.
+  schedule:
+    - cron: "0 4 * * *"
   workflow_dispatch:
     inputs:
       issue_number:
@@ -16,15 +17,16 @@ on:
         required: false
         type: string
 
-# Repo default GITHUB_TOKEN is read-only; jobs that mutate Issues need write.
-permissions:
-  issues: write
+permissions: {}
 
 jobs:
   close-completed-epics:
     name: Close completed epics
     runs-on: ubicloud-standard-2
     timeout-minutes: 10
+    # Close the parent epic and post the completion comment.
+    permissions:
+      issues: write
     # Two children closing at once must not both see the parent as incomplete.
     # Do not cancel: a mid-walk close must finish.
     concurrency:
@@ -48,7 +50,10 @@ jobs:
                 }
                 return null;
               }
-              const number = context.payload.parent_issue?.number ?? context.payload.issue?.number;
+              if (context.eventName === 'schedule') {
+                return null;
+              }
+              const number = context.payload.issue?.number;
               return number ? [number] : [];
             }
 
