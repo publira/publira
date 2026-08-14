@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"math"
 	"regexp"
 	"testing"
 	"time"
@@ -198,6 +199,29 @@ func TestNotificationMarkAllAsRead(t *testing.T) {
 	}
 	if resp.Msg.MarkedCount != 4 {
 		t.Fatalf("marked_count = %d, want 4", resp.Msg.MarkedCount)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestNotificationMarkAllAsReadRejectsOverflow(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock := newNotificationClient(t, tenantID, userID, now)
+
+	mock.ExpectExec(regexp.QuoteMeta(markAllNotificationsAsReadQuery)).
+		WithArgs(userID, tenantID).
+		WillReturnResult(sqlmock.NewResult(0, int64(math.MaxInt32)+1))
+
+	_, err := client.MarkAllNotificationsAsRead(context.Background(), newAuthedPublicRequest(&publirav1.MarkAllNotificationsAsReadRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, tenantID.String()))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("MarkAllNotificationsAsRead code = %v, want internal", connect.CodeOf(err))
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want overflow hidden behind a fixed message", err)
 	}
 
 	assertPublicExpectations(t, mock)

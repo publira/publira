@@ -577,7 +577,7 @@ WHERE n.id = $2
     AND n.tenant_id = $3
     AND n.user_id = $1
 ON CONFLICT (notification_id, user_id) DO UPDATE
-SET read_at = EXCLUDED.read_at
+SET read_at = notification_reads.read_at
 RETURNING notification_id, user_id, tenant_id, read_at
 `
 
@@ -606,7 +606,7 @@ FROM platform_notifications n
 WHERE n.id = $2
     AND n.platform_user_id = $1
 ON CONFLICT (platform_notification_id, platform_user_id) DO UPDATE
-SET read_at = EXCLUDED.read_at
+SET read_at = platform_notification_reads.read_at
 RETURNING platform_notification_id, platform_user_id, read_at
 `
 

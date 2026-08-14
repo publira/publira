@@ -243,6 +243,130 @@ func TestCountAndMarkNotificationsForUser(t *testing.T) {
 	}
 }
 
+func TestMarkNotificationAsReadKeepsFirstReadAt(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT1", "notif.example.com", "admin-notif.example.com", "Notification Tenant")
+	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER001", "notif-user@example.com", "Notification User")
+	createdAt := time.Now().UTC().Truncate(time.Microsecond)
+	id := mustInsertNotification(t, ctx, pg.DB, tenantID, userID, "episode_published", "episode:mine", createdAt)
+	queries := dbmodels.New(pg.DB)
+
+	if _, err := queries.MarkNotificationAsRead(ctx, dbmodels.MarkNotificationAsReadParams{
+		ID:       id,
+		TenantID: tenantID,
+		UserID:   userID,
+	}); err != nil {
+		t.Fatalf("MarkNotificationAsRead first: %v", err)
+	}
+
+	firstReadAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE notification_reads SET read_at = $1 WHERE notification_id = $2 AND user_id = $3
+	`, firstReadAt, id, userID); err != nil {
+		t.Fatalf("set first read_at: %v", err)
+	}
+
+	second, err := queries.MarkNotificationAsRead(ctx, dbmodels.MarkNotificationAsReadParams{
+		ID:       id,
+		TenantID: tenantID,
+		UserID:   userID,
+	})
+	if err != nil {
+		t.Fatalf("MarkNotificationAsRead second: %v", err)
+	}
+	if !second.ReadAt.UTC().Equal(firstReadAt) {
+		t.Fatalf("read_at = %s, want first value %s", second.ReadAt.UTC(), firstReadAt)
+	}
+}
+
+func TestMarkPlatformNotificationAsReadKeepsFirstReadAt(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	queries := dbmodels.New(pg.DB)
+	row, err := queries.CreatePlatformNotification(ctx, dbmodels.CreatePlatformNotificationParams{
+		ID:               uuid.Must(uuid.NewV7()),
+		PlatformUserID:   operator.ID,
+		NotificationType: "episode_publish_failed",
+		SubjectKey:       "episode:E001",
+		Payload:          json.RawMessage(`{"episode_id":"E001"}`),
+	})
+	if err != nil {
+		t.Fatalf("CreatePlatformNotification: %v", err)
+	}
+
+	if _, err := queries.MarkPlatformNotificationAsRead(ctx, dbmodels.MarkPlatformNotificationAsReadParams{
+		ID:             row.ID,
+		PlatformUserID: operator.ID,
+	}); err != nil {
+		t.Fatalf("MarkPlatformNotificationAsRead first: %v", err)
+	}
+
+	firstReadAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE platform_notification_reads SET read_at = $1
+		WHERE platform_notification_id = $2 AND platform_user_id = $3
+	`, firstReadAt, row.ID, operator.ID); err != nil {
+		t.Fatalf("set first read_at: %v", err)
+	}
+
+	second, err := queries.MarkPlatformNotificationAsRead(ctx, dbmodels.MarkPlatformNotificationAsReadParams{
+		ID:             row.ID,
+		PlatformUserID: operator.ID,
+	})
+	if err != nil {
+		t.Fatalf("MarkPlatformNotificationAsRead second: %v", err)
+	}
+	if !second.ReadAt.UTC().Equal(firstReadAt) {
+		t.Fatalf("read_at = %s, want first value %s", second.ReadAt.UTC(), firstReadAt)
+	}
+}
+
+func TestNotificationPayloadMustBeObject(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT1", "notif.example.com", "admin-notif.example.com", "Notification Tenant")
+	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER001", "notif-user@example.com", "Notification User")
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	queries := dbmodels.New(pg.DB)
+
+	_, err := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+		ID:               uuid.Must(uuid.NewV7()),
+		TenantID:         tenantID,
+		UserID:           userID,
+		NotificationType: "episode_published",
+		SubjectKey:       "episode:array",
+		Payload:          json.RawMessage(`["not-an-object"]`),
+	})
+	if err == nil {
+		t.Fatal("CreateNotification accepted a JSON array payload")
+	}
+
+	_, err = queries.CreatePlatformNotification(ctx, dbmodels.CreatePlatformNotificationParams{
+		ID:               uuid.Must(uuid.NewV7()),
+		PlatformUserID:   operator.ID,
+		NotificationType: "episode_publish_failed",
+		SubjectKey:       "episode:scalar",
+		Payload:          json.RawMessage(`"not-an-object"`),
+	})
+	if err == nil {
+		t.Fatal("CreatePlatformNotification accepted a JSON scalar payload")
+	}
+}
+
 func uniqueSubject(index int) string {
 	return "episode:EPISODE000" + string(rune('1'+index))
 }

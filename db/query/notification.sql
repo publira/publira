@@ -189,7 +189,7 @@ WHERE n.id = sqlc.arg('id')
     AND n.tenant_id = sqlc.arg('tenant_id')
     AND n.user_id = sqlc.arg('user_id')
 ON CONFLICT (notification_id, user_id) DO UPDATE
-SET read_at = EXCLUDED.read_at
+SET read_at = notification_reads.read_at
 RETURNING *;
 
 -- name: MarkPlatformNotificationAsRead :one
@@ -199,7 +199,7 @@ FROM platform_notifications n
 WHERE n.id = sqlc.arg('id')
     AND n.platform_user_id = sqlc.arg('platform_user_id')
 ON CONFLICT (platform_notification_id, platform_user_id) DO UPDATE
-SET read_at = EXCLUDED.read_at
+SET read_at = platform_notification_reads.read_at
 RETURNING *;
 
 -- name: MarkAllNotificationsAsRead :execrows

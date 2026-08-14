@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -149,7 +150,7 @@ func (s *platformServer) ListNotifications(
 
 	rows, err := s.notificationPage(ctx, actor.UserID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list notifications", err, "platform_user_id", actor.UserID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -189,7 +190,7 @@ func (s *platformServer) CountUnreadNotifications(
 
 	unread, err := s.queriesFor(ctx).CountUnreadPlatformNotificationsForUser(ctx, actor.UserID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to count unread notifications", err, "platform_user_id", actor.UserID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.CountUnreadNotificationsResponse{UnreadCount: unread}), nil
@@ -217,7 +218,7 @@ func (s *platformServer) MarkNotificationAsRead(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("notification not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark notification as read", err, "platform_user_id", actor.UserID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.MarkNotificationAsReadResponse{Marked: true}), nil
@@ -234,8 +235,19 @@ func (s *platformServer) MarkAllNotificationsAsRead(
 
 	marked, err := s.queriesFor(ctx).MarkAllPlatformNotificationsAsRead(ctx, actor.UserID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark notifications as read", err, "platform_user_id", actor.UserID.String())
+	}
+	markedCount, err := notificationMarkedCount(marked)
+	if err != nil {
+		return nil, err
 	}
 
-	return connect.NewResponse(&publirasplatformv1.MarkAllNotificationsAsReadResponse{MarkedCount: int32(marked)}), nil
+	return connect.NewResponse(&publirasplatformv1.MarkAllNotificationsAsReadResponse{MarkedCount: markedCount}), nil
+}
+
+func notificationMarkedCount(marked int64) (int32, error) {
+	if marked < 0 || marked > math.MaxInt32 {
+		return 0, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	}
+	return int32(marked), nil
 }

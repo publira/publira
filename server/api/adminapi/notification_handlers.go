@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -253,6 +254,17 @@ func (s *adminServer) MarkAllNotificationsAsRead(
 	if err != nil {
 		return nil, s.internalDBError("failed to mark notifications as read", err, "tenant_id", tenant.ID.String())
 	}
+	markedCount, err := notificationMarkedCount(marked)
+	if err != nil {
+		return nil, err
+	}
 
-	return connect.NewResponse(&publiraadminv1.MarkAllNotificationsAsReadResponse{MarkedCount: int32(marked)}), nil
+	return connect.NewResponse(&publiraadminv1.MarkAllNotificationsAsReadResponse{MarkedCount: markedCount}), nil
+}
+
+func notificationMarkedCount(marked int64) (int32, error) {
+	if marked < 0 || marked > math.MaxInt32 {
+		return 0, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	}
+	return int32(marked), nil
 }

@@ -34,6 +34,22 @@ type platformServer struct {
 	tester    internalsmtp.Tester
 	mailer    internalsmtp.Sender
 	tokens    *auth.TokenManager
+	logger    *slog.Logger
+}
+
+// internalDBError keeps context cancellation and deadline errors as-is so
+// Connect can map them to CodeCanceled / CodeDeadlineExceeded. Other DB
+// failures are logged and replaced with a generic client-facing message so
+// driver details never leave the server.
+func (s *platformServer) internalDBError(msg string, err error, keyvals ...any) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	args := make([]any, 0, len(keyvals)+2)
+	args = append(args, keyvals...)
+	args = append(args, "error", err)
+	s.logger.Error(msg, args...)
+	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 }
 
 type platformActor struct {
@@ -87,6 +103,7 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		tester:    tester,
 		mailer:    mailer,
 		tokens:    auth.MustTokenManagerFromEnv(),
+		logger:    logger,
 	}
 	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {

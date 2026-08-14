@@ -193,6 +193,7 @@ CREATE TABLE notifications (
     subject_key character varying(255) NOT NULL,
     payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT notifications_payload_object_check CHECK ((jsonb_typeof(payload) = 'object'::text)),
     CONSTRAINT notifications_subject_key_check CHECK ((char_length((subject_key)::text) > 0))
 );
 
@@ -255,6 +256,7 @@ CREATE TABLE platform_notifications (
     subject_key character varying(255) NOT NULL,
     payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT platform_notifications_payload_object_check CHECK ((jsonb_typeof(payload) = 'object'::text)),
     CONSTRAINT platform_notifications_subject_key_check CHECK ((char_length((subject_key)::text) > 0))
 );
 
