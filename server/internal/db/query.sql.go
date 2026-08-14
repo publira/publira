@@ -5027,19 +5027,33 @@ func (q *Queries) ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, 
 
 const listEpisodesReadyToPublishWithTenantInfo = `-- name: ListEpisodesReadyToPublishWithTenantInfo :many
 SELECT el.episode_id,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    s.public_id AS series_public_id,
+    s.title AS series_title,
     t.id AS tenant_id,
+    t.public_id AS tenant_public_id,
+    t.name AS tenant_name,
     t.domain AS tenant_domain
 FROM episode_listings el
-JOIN tenants t ON t.id = el.tenant_id
+    JOIN episodes e ON e.id = el.episode_id
+    JOIN series s ON s.id = e.series_id
+    JOIN tenants t ON t.id = el.tenant_id
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
     AND el.scheduled_at <= NOW()
 `
 
 type ListEpisodesReadyToPublishWithTenantInfoRow struct {
-	EpisodeID    uuid.UUID `json:"episode_id"`
-	TenantID     uuid.UUID `json:"tenant_id"`
-	TenantDomain string    `json:"tenant_domain"`
+	EpisodeID       uuid.UUID `json:"episode_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	TenantPublicID  string    `json:"tenant_public_id"`
+	TenantName      string    `json:"tenant_name"`
+	TenantDomain    string    `json:"tenant_domain"`
 }
 
 func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error) {
@@ -5051,7 +5065,17 @@ func (q *Queries) ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) 
 	var items []ListEpisodesReadyToPublishWithTenantInfoRow
 	for rows.Next() {
 		var i ListEpisodesReadyToPublishWithTenantInfoRow
-		if err := rows.Scan(&i.EpisodeID, &i.TenantID, &i.TenantDomain); err != nil {
+		if err := rows.Scan(
+			&i.EpisodeID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.TenantID,
+			&i.TenantPublicID,
+			&i.TenantName,
+			&i.TenantDomain,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -5339,6 +5363,37 @@ func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTe
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlatformOperatorIDs = `-- name: ListPlatformOperatorIDs :many
+SELECT DISTINCT pu.id
+FROM platform_users pu
+    INNER JOIN platform_user_roles pur ON pur.platform_user_id = pu.id
+ORDER BY pu.id
+`
+
+// Worker fan-out: every platform user that holds a role is an operator.
+func (q *Queries) ListPlatformOperatorIDs(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPlatformOperatorIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

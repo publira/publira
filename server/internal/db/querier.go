@@ -243,6 +243,8 @@ type Querier interface {
 	ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error)
 	ListPlatformNotificationsForUserAsc(ctx context.Context, arg ListPlatformNotificationsForUserAscParams) ([]ListPlatformNotificationsForUserAscRow, error)
 	ListPlatformNotificationsForUserDesc(ctx context.Context, arg ListPlatformNotificationsForUserDescParams) ([]ListPlatformNotificationsForUserDescRow, error)
+	// Worker fan-out: every platform user that holds a role is an operator.
+	ListPlatformOperatorIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListPlatformOperatorsAsc(ctx context.Context, arg ListPlatformOperatorsAscParams) ([]ListPlatformOperatorsAscRow, error)
 	// Platform ListOperators は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
