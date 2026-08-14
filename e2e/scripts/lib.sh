@@ -92,12 +92,41 @@ RUN_DIR="${E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 PID_DIR="${RUN_DIR}/pids"
 
+# Exclusive lock for the compose project. up.sh / down.sh / start-apps.sh share
+# Docker resources keyed by COMPOSE_PROJECT_NAME, so a second run with the same
+# project would compose-down or stop-apps the first. The lock file is keyed by
+# project name, not by RUN_DIR. flock -n fails immediately; same ports still
+# fail on the start-apps.sh port check.
+E2E_LOCK_FILE="${E2E_DIR}/.run/locks/${COMPOSE_PROJECT_NAME}.lock"
+
 e2e_log() {
   printf '[e2e] %s\n' "$*"
 }
 
 e2e_err() {
   printf '[e2e] ERROR: %s\n' "$*" >&2
+}
+
+# Hold until this shell exits (the FD stays open). Children inherit
+# E2E_LOCK_HELD=1 and skip re-acquire so `bash up.sh` from run.sh works.
+# flock is util-linux; skip rather than fail on hosts that lack it (macOS).
+# RUN_DIR isolation and the start-apps.sh port check still apply.
+acquire_e2e_lock() {
+  if [[ "${E2E_LOCK_HELD:-0}" == "1" ]]; then
+    return 0
+  fi
+  if ! command -v flock >/dev/null 2>&1; then
+    e2e_log "flock is not available; compose project lock skipped"
+    export E2E_LOCK_HELD=1
+    return 0
+  fi
+  mkdir -p "$(dirname "${E2E_LOCK_FILE}")"
+  exec {E2E_LOCK_FD}>"${E2E_LOCK_FILE}"
+  if ! flock -n "${E2E_LOCK_FD}"; then
+    e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+    exit 1
+  fi
+  export E2E_LOCK_HELD=1
 }
 
 compose() {

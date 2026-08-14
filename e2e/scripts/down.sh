@@ -4,6 +4,8 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+acquire_e2e_lock
+
 # shellcheck source=stop-apps.sh
 # stop apps first so they release DB connections
 bash "${E2E_SCRIPTS_DIR}/stop-apps.sh" || true

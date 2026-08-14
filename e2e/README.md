@@ -37,7 +37,7 @@ Dev Container Traefik のホストベースルーティングは、同じく Pla
 | E2E Redis（compose 公開）                              | `6380` |
 
 PID / ログ / ローカル storage は既定で `e2e/.run/` に置く。  
-`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じポートでの並行起動はポート競合で失敗する想定。
+`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project の並行起動は、flock がある環境では拒否する（無い環境ではポート競合に頼る）。同じポートでの並行起動はポート競合で失敗する想定。
 
 ## 1 コマンド実行
 
@@ -61,6 +61,7 @@ task e2e
 | `bash e2e/scripts/platform-api-server.sh <start\|start-wait\|stop>` | platform-api-server だけを操作 |
 | `task e2e:wait-ready` | readiness ポーリング（失敗時は `readiness failed: …`） |
 | `task e2e:test` | Playwright のみ（stack 起動済み前提） |
+| `task e2e:test-lib` | `E2E_RUN_DIR` 隔離と compose project lock の確認（Docker 不要。`task e2e` からも走る） |
 | `task e2e:down` | アプリ停止 + compose 削除（volume 含む） |
 
 ローカルで stack を残したまま反復する場合の例:
@@ -73,6 +74,26 @@ task e2e:test
 task e2e:down
 ```
 
+同じチェックアウトから 2 つ目の stack を並行起動するときは、compose project と **使うポートをすべて** ずらす。`lib.sh` が PID / ログを別ディレクトリに置くので、片方の障害シナリオ（`stopApiServer`）がもう片方の api-server を止めない。
+
+```bash
+COMPOSE_PROJECT_NAME=publira-e2e-alt \
+  E2E_POSTGRES_PORT=5434 \
+  E2E_REDIS_PORT=6381 \
+  E2E_WEB_HOST_PORT=3010 \
+  E2E_WEB_ADMIN_PORT=4010 \
+  E2E_WEB_PLATFORM_PORT=4110 \
+  E2E_PUBLIC_API_PORT=8010 \
+  E2E_PUBLIC_API_GRPC_PORT=8110 \
+  E2E_ADMIN_API_PORT=8011 \
+  E2E_ADMIN_API_GRPC_PORT=8111 \
+  E2E_PLATFORM_API_PORT=8012 \
+  E2E_PLATFORM_API_GRPC_PORT=8112 \
+  task e2e
+```
+
+未指定の `E2E_*_PORT` は既定のままなので、片方だけ変えるとポート競合で失敗する。明示的な `E2E_RUN_DIR` があれば state ディレクトリはそちらを使う。同じ `COMPOSE_PROJECT_NAME` のまま 2 本立てることは、flock がある環境では拒否される。
+
 開発中に Next の HMR を使いたい場合: `E2E_WEB_MODE=dev task e2e`（CI では使わない）。
 
 ## 構成
@@ -83,7 +104,7 @@ e2e/
 ├── routing/               # Dev Container Traefik 疎通（Playwright を使わない別ライフサイクル）
 ├── compose.yaml           # postgres + redis（project: publira-e2e）
 ├── playwright.config.ts
-├── scripts/               # up / db / start / api-server / admin-api / platform-api / publish-episodes / wait-ready / stop-apps / test / run / down
+├── scripts/               # up / db / start / api-server / admin-api / platform-api / publish-episodes / wait-ready / stop-apps / test / lib_test / run / down
 ├── src/
 │   ├── admin.ts           # web-admin ログイン・フォーム操作ヘルパー
 │   ├── api-server.ts      # api-server の停止・再起動（障害シナリオ用）
@@ -209,7 +230,7 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 ## 失敗時のトリアージ
 
 1. ログ先頭が `readiness failed:` か `Playwright tests failed` かを見る
-2. `e2e/.run/logs/api-server.log` / `admin-api-server.log` / `platform-api-server.log` / `publish-episodes.log` / `web-host.log` / `web-admin.log` / `web-platform.log`
+2. `$E2E_RUN_DIR/logs/`（既定は `e2e/.run/logs/`。ポートや project をずらした実行では `e2e/.run/<project>-pg…/` 配下）の `api-server.log` / `admin-api-server.log` / `platform-api-server.log` / `publish-episodes.log` / `web-host.log` / `web-admin.log` / `web-platform.log`
 3. `docker compose -p publira-e2e -f e2e/compose.yaml ps`
 4. CI なら artifact `e2e-artifacts` の HTML report と trace
 

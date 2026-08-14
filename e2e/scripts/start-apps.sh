@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 ensure_run_dirs
+acquire_e2e_lock
 
 # Avoid double-starts leaving orphan processes.
 bash "${E2E_SCRIPTS_DIR}/stop-apps.sh" || true

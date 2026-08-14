@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 ensure_run_dirs
+acquire_e2e_lock
 stop_pid_file "web-platform"
 stop_pid_file "web-admin"
 stop_pid_file "web-host"
