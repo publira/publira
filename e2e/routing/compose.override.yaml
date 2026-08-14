@@ -1,0 +1,41 @@
+# Overlay on ../../.devcontainer/compose.yaml for the Traefik routing check (#55).
+#
+# The check must exercise the *real* Docker labels on `app` (routers, priorities,
+# strip-prefix, host regexes). Only the process behind those ports is replaced:
+# a small echo server answers on 3000 / 4000 / 4100 / 8000 / 8200 / 8201 so a
+# probe can tell which backend Traefik chose and which path that backend saw.
+#
+# `db` / `redis` / `mailpit` stay down. Relative paths in the base file resolve
+# against `.devcontainer/` (the first `-f` wins), so this file uses the
+# absolute `ROUTING_ECHO_PY` exported by scripts/lib.sh.
+#
+# Published ports are offset from the Dev Container forwards (`traefik:3080`
+# / `traefik:8080`) so a local run never collides with the live stack.
+
+services:
+  traefik:
+    ports:
+      - "127.0.0.1:${ROUTING_TRAEFIK_PORT:-13080}:3080"
+      - "127.0.0.1:${ROUTING_TRAEFIK_API_PORT:-18080}:8080"
+
+  app:
+    # Pin the tag + digest the same way .devcontainer/compose.yaml does.
+    image: python:3.13-alpine@sha256:540c7d91f98ff6880174c40e99067bf5941eb54d818a7a5e094d188b196a934d
+    # Drop the Dev Container build; we only need the labels from the base file.
+    build: !reset
+    command: ["python", "/echo.py"]
+    volumes: !override
+      - ${ROUTING_ECHO_PY}:/echo.py:ro
+    depends_on: !reset
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/')",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 2s

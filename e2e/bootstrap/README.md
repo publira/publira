@@ -105,4 +105,4 @@ e2e/bootstrap/
 
 - 既存 DB データの major version upgrade
 - 個別画面の業務シナリオ（[`../README.md`](../README.md) と #515–#518）
-- Traefik のルーティング検証（[#55](https://github.com/publira/publira/issues/55)）
+- Traefik のルーティング検証（[#55](https://github.com/publira/publira/issues/55) → [`../routing/README.md`](../routing/README.md)）

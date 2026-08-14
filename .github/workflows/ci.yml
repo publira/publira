@@ -54,6 +54,7 @@ jobs:
       test_mobile: ${{ steps.plan.outputs.test_mobile }}
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
       test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
+      test_routing: ${{ steps.plan.outputs.test_routing }}
       build: ${{ steps.plan.outputs.build }}
       docker_any: ${{ steps.plan.outputs.docker_any }}
       docker_matrix: ${{ steps.plan.outputs.docker_matrix }}
@@ -152,6 +153,9 @@ jobs:
             test_e2e:
               - *docs_excluded
               - 'e2e/**'
+              # Traefik routing has its own job; a probe-only change must
+              # not start the Playwright suite.
+              - '!e2e/routing/**'
               - 'apps/web-host/**'
               - 'apps/web-admin/**'
               - 'apps/web-platform/**'
@@ -181,6 +185,12 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_routing:
+              - *docs_excluded
+              - '.devcontainer/**'
+              - 'e2e/routing/**'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             build:
@@ -246,6 +256,7 @@ jobs:
           FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
           FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
+          FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
@@ -621,6 +632,38 @@ jobs:
           path: e2e/bootstrap/.run/logs/
           if-no-files-found: ignore
 
+  test-routing:
+    name: Test / Routing
+    needs: changes
+    if: needs.changes.outputs.test_routing == 'true'
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 10
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      # Overlay on .devcontainer/compose.yaml; echo backends, no apps.
+      # Always tears the compose project down (trap).
+      - name: Routing check
+        run: task e2e:routing
+        env:
+          CI: true
+
+      - name: Upload / Routing artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: routing-artifacts
+          path: e2e/routing/.run/logs/
+          if-no-files-found: ignore
+
   build:
     name: Build
     needs: changes
@@ -718,6 +761,7 @@ jobs:
       - test-mobile
       - test-e2e
       - test-bootstrap
+      - test-routing
       - build
       - docker
     runs-on: ubicloud-standard-2
@@ -733,6 +777,7 @@ jobs:
           TEST_MOBILE: ${{ needs.test-mobile.result }}
           TEST_E2E: ${{ needs.test-e2e.result }}
           TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
+          TEST_ROUTING: ${{ needs.test-routing.result }}
           BUILD: ${{ needs.build.result }}
           DOCKER: ${{ needs.docker.result }}
         run: |
@@ -748,6 +793,7 @@ jobs:
             "Test / Mobile=${TEST_MOBILE}" \
             "Test / E2E=${TEST_E2E}" \
             "Test / Bootstrap=${TEST_BOOTSTRAP}" \
+            "Test / Routing=${TEST_ROUTING}" \
             "Build=${BUILD}" \
             "Docker=${DOCKER}"
           do

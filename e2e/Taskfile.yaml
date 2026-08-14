@@ -8,6 +8,10 @@ includes:
   # project, no Playwright.
   bootstrap:
     taskfile: ./bootstrap/Taskfile.yaml
+  # Dev Container Traefik routing check (#55). Same compose labels, echo
+  # backends, no Playwright.
+  routing:
+    taskfile: ./routing/Taskfile.yaml
 
 vars:
   # Directory of this Taskfile (e2e/), stable whether included or run directly.
