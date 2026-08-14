@@ -15,7 +15,7 @@ const buildSettingsPath = (status: "success" | "error", message: string) => {
 
 const updateNotificationSettingsFormSchema = z.object({
   emailNotificationsEnabled: z
-    .string()
+    .literal("on", { error: "通知設定の値が不正です。" })
     .optional()
     .transform((value) => value === "on"),
   tenantId: tenantIdFormSchema,

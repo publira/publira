@@ -7,27 +7,25 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { signupPublic } from "#lib/auth";
-import { tenantIdFormSchema } from "#lib/auth-input";
-
-const REQUIRED_FIELDS_MESSAGE = "名前・メールアドレス・パスワードは必須です。";
+import {
+  emailFormSchema,
+  passwordFormSchema,
+  tenantIdFormSchema,
+} from "#lib/auth-input";
 
 const signupFormSchema = z
   .object({
-    confirmPassword: z.string().max(1024),
-    email: z
-      .string({ error: REQUIRED_FIELDS_MESSAGE })
-      .trim()
-      .min(1, REQUIRED_FIELDS_MESSAGE)
-      .pipe(z.email("メールアドレスの形式が正しくありません。")),
+    confirmPassword: z
+      .string({ error: "パスワード確認を入力してください。" })
+      .min(1, "パスワード確認を入力してください。")
+      .max(1024, "パスワード確認は1024文字以内で入力してください。"),
+    email: emailFormSchema,
     name: z
-      .string({ error: REQUIRED_FIELDS_MESSAGE })
+      .string({ error: "表示名を入力してください。" })
       .trim()
-      .min(1, REQUIRED_FIELDS_MESSAGE)
+      .min(1, "表示名を入力してください。")
       .max(100, "表示名は100文字以内で入力してください。"),
-    password: z
-      .string({ error: REQUIRED_FIELDS_MESSAGE })
-      .min(1, REQUIRED_FIELDS_MESSAGE)
-      .max(1024),
+    password: passwordFormSchema,
     tenantId: tenantIdFormSchema,
   })
   .refine((value) => value.password === value.confirmPassword, {
