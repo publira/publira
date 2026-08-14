@@ -600,6 +600,18 @@ FROM tenant_user_roles tur
 WHERE tur.tenant_id = sqlc.arg('tenant_id')::uuid
 ORDER BY tur.user_id;
 
+-- Worker fan-out: members are tenant users that do not hold a tenant role.
+-- name: ListTenantMemberIDs :many
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')::uuid
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+ORDER BY u.id;
+
 -- Platform ListOperators は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 -- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。

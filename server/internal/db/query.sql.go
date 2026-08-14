@@ -6345,6 +6345,42 @@ func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTe
 	return items, nil
 }
 
+const listTenantMemberIDs = `-- name: ListTenantMemberIDs :many
+SELECT u.id
+FROM users u
+WHERE u.tenant_id = $1::uuid
+    AND NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+ORDER BY u.id
+`
+
+// Worker fan-out: members are tenant users that do not hold a tenant role.
+func (q *Queries) ListTenantMemberIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantMemberIDs, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenantUserRoles = `-- name: ListTenantUserRoles :many
 SELECT role
 FROM tenant_user_roles
