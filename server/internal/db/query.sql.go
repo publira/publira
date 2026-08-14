@@ -6163,6 +6163,39 @@ func (q *Queries) ListSeriesImageVariantsByImageIDs(ctx context.Context, imageId
 	return items, nil
 }
 
+const listTenantAdminIDs = `-- name: ListTenantAdminIDs :many
+SELECT DISTINCT tur.user_id
+FROM tenant_user_roles tur
+WHERE tur.tenant_id = $1::uuid
+ORDER BY tur.user_id
+`
+
+// Worker fan-out: every user that holds a tenant_user_roles row is a
+// tenant admin for that tenant. DISTINCT so one person with two roles
+// is still one notification.
+func (q *Queries) ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantAdminIDs, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenantAdminInvitationsAsc = `-- name: ListTenantAdminInvitationsAsc :many
 SELECT id, tenant_id, email, token_hash, expires_at, accepted_at, canceled_at, created_at, updated_at
 FROM tenant_admin_invitations

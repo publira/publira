@@ -591,6 +591,15 @@ FROM platform_users pu
     INNER JOIN platform_user_roles pur ON pur.platform_user_id = pu.id
 ORDER BY pu.id;
 
+-- Worker fan-out: every user that holds a tenant_user_roles row is a
+-- tenant admin for that tenant. DISTINCT so one person with two roles
+-- is still one notification.
+-- name: ListTenantAdminIDs :many
+SELECT DISTINCT tur.user_id
+FROM tenant_user_roles tur
+WHERE tur.tenant_id = sqlc.arg('tenant_id')::uuid
+ORDER BY tur.user_id;
+
 -- Platform ListOperators は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 -- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。

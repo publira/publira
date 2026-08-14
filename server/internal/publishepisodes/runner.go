@@ -1,5 +1,6 @@
-// Package publishepisodes publishes scheduled episodes and writes operator
-// notifications when the final attempt fails.
+// Package publishepisodes publishes scheduled episodes and writes tenant-admin
+// notifications for the result, plus operator notifications when the final
+// attempt fails.
 package publishepisodes
 
 import (
@@ -21,6 +22,7 @@ import (
 const (
 	defaultRetryBaseDelay = 2 * time.Second
 
+	notificationTypeEpisodePublished     = "episode_published"
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
 )
 
@@ -33,6 +35,13 @@ type Runner struct {
 	maxRetries int
 	// publish, when set, replaces publishEpisode so tests can force a final failure.
 	publish func(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error
+}
+
+type episodePublishedPayload struct {
+	EpisodeID    string `json:"episode_id"`
+	EpisodeTitle string `json:"episode_title"`
+	SeriesID     string `json:"series_id"`
+	SeriesTitle  string `json:"series_title"`
 }
 
 type episodePublishFailedPayload struct {
@@ -114,6 +123,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
 		)
+		r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublished)
 		return
 	}
 
@@ -123,6 +133,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 		"max_retries", r.maxRetries,
 		"error", lastErr,
 	)
+	r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublishFailed)
 	r.notifyOperatorsOfPublishFailure(ctx, row)
 }
 
@@ -131,6 +142,65 @@ func (r *Runner) publishOne(ctx context.Context, row dbmodels.ListEpisodesReadyT
 		return r.publish(ctx, row)
 	}
 	return r.publishEpisode(ctx, row.EpisodeID, row.TenantID.String(), row.TenantDomain)
+}
+
+func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow, notificationType string) {
+	admins, err := r.queries.ListTenantAdminIDs(ctx, row.TenantID)
+	if err != nil {
+		r.logger.Error("failed to list tenant admins for publish notification",
+			"episode_id", row.EpisodeID,
+			"tenant_id", row.TenantID.String(),
+			"notification_type", notificationType,
+			"error", err,
+		)
+		return
+	}
+
+	payload, err := json.Marshal(episodePublishedPayload{
+		EpisodeID:    row.EpisodePublicID,
+		EpisodeTitle: row.EpisodeTitle,
+		SeriesID:     row.SeriesPublicID,
+		SeriesTitle:  row.SeriesTitle,
+	})
+	if err != nil {
+		r.logger.Error("failed to encode publish notification payload",
+			"episode_id", row.EpisodeID,
+			"tenant_id", row.TenantID.String(),
+			"notification_type", notificationType,
+			"error", err,
+		)
+		return
+	}
+
+	subjectKey := "episode:" + row.EpisodePublicID
+	for _, adminID := range admins {
+		notificationID, err := uuid.NewV7()
+		if err != nil {
+			r.logger.Error("failed to allocate publish notification id",
+				"episode_id", row.EpisodeID,
+				"user_id", adminID,
+				"notification_type", notificationType,
+				"error", err,
+			)
+			continue
+		}
+		_, err = r.queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			ID:               notificationID,
+			TenantID:         row.TenantID,
+			UserID:           adminID,
+			NotificationType: notificationType,
+			SubjectKey:       subjectKey,
+			Payload:          payload,
+		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			r.logger.Error("failed to insert publish notification",
+				"episode_id", row.EpisodeID,
+				"user_id", adminID,
+				"notification_type", notificationType,
+				"error", err,
+			)
+		}
+	}
 }
 
 func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) {
