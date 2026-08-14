@@ -1,35 +1,9 @@
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { getNotificationSettings, updateNotificationSettings } from "#lib/auth";
+import { getNotificationSettings } from "#lib/auth";
 import { getTenantId } from "#lib/tenant-id";
 
-const buildSettingsPath = (status: "success" | "error", message: string) => {
-  const params = new URLSearchParams({ message, status });
-  return `/settings/notifications?${params.toString()}`;
-};
-
-const updateNotificationSettingsAction = async (
-  formData: FormData
-): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const enabled =
-    String(formData.get("emailNotificationsEnabled") ?? "") === "on";
-
-  const updated = await updateNotificationSettings(tenantId, enabled);
-  if (!updated) {
-    redirect(
-      buildSettingsPath(
-        "error",
-        "通知設定の更新に失敗しました。時間をおいて再度お試しください。"
-      )
-    );
-  }
-
-  redirect(buildSettingsPath("success", "通知設定を更新しました。"));
-};
+import { updateNotificationSettingsAction } from "./_lib/actions";
 
 const NotificationsSection = async () => {
   const tenantId = await getTenantId();

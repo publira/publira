@@ -1,20 +1,20 @@
 import { SectionError } from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
-import { revalidateTag } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import {
-  listMyAnnouncements,
-  markAllAnnouncementsAsRead,
-  markAnnouncementAsRead,
-} from "#lib/announcements";
+import { listMyAnnouncements } from "#lib/announcements";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import {
+  markAllAnnouncementsAsReadAction,
+  markAnnouncementAsReadAction,
+  markAnnouncementAsReadAndNavigateAction,
+} from "./_lib/actions";
 import {
   announcementsListHref,
   parseAnnouncementsListSearchParams,
@@ -28,57 +28,6 @@ const ANNOUNCEMENTS_PAGE_SIZE = 20;
  * a bearer token, so reading it here and passing the raw value on made every
  * call fail `unauthenticated`; only the library's own cookie path decrypts it.
  */
-
-const markAnnouncementAsReadAction = async (
-  formData: FormData
-): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const announcementId = String(formData.get("announcementId") ?? "").trim();
-
-  if (!tenantId || !announcementId) {
-    return;
-  }
-
-  await markAnnouncementAsRead(tenantId, announcementId);
-  revalidateTag(`member-announcements-${tenantId}`, "max");
-};
-
-const markAllAnnouncementsAsReadAction = async (
-  formData: FormData
-): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  if (!tenantId) {
-    return;
-  }
-
-  await markAllAnnouncementsAsRead(tenantId);
-  revalidateTag(`member-announcements-${tenantId}`, "max");
-};
-
-const markAnnouncementAsReadAndNavigateAction = async (
-  formData: FormData
-): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const announcementId = String(formData.get("announcementId") ?? "").trim();
-  const linkUrl = String(formData.get("linkUrl") ?? "").trim();
-
-  if (!tenantId || !linkUrl) {
-    return;
-  }
-
-  if (announcementId) {
-    await markAnnouncementAsRead(tenantId, announcementId);
-    revalidateTag(`member-announcements-${tenantId}`, "max");
-  }
-
-  redirect(linkUrl);
-};
 
 const AnnouncementsPagination = ({
   nextToken,

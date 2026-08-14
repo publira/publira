@@ -3,99 +3,18 @@ import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
-import { updateTag } from "next/cache";
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "#components/tenant-document-title";
-import { sealSessionCookieValue } from "#lib/api-client";
-import {
-  PUBLIC_SESSION_COOKIE_NAME,
-  loginPublic,
-  sanitizeRedirectPath,
-  sessionCookieOptions,
-} from "#lib/auth";
-import { getPublicSessionCacheTag } from "#lib/auth-shared";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { loginAction } from "./_lib/actions";
+import { parseLoginSearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "ログイン",
-};
-
-const buildLoginErrorPath = (message: string, returnToPath: string): string => {
-  const params = new URLSearchParams({
-    error: message,
-    returnTo: sanitizeRedirectPath(returnToPath),
-  });
-  return `/login?${params.toString()}`;
-};
-
-const loginAction = async (formData: FormData): Promise<void> => {
-  "use server";
-
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const returnToPath = sanitizeRedirectPath(
-    String(formData.get("returnTo") ?? "/")
-  );
-
-  const result = await loginPublic(email, password, tenantId);
-  if (!result) {
-    redirect(
-      buildLoginErrorPath(
-        "メールアドレスまたはパスワードが正しくありません。",
-        returnToPath
-      )
-    );
-  }
-
-  const sealed = await sealSessionCookieValue({
-    accessToken: result.accessToken,
-    expiresAt: result.expiresAt.toISOString(),
-    tenantId,
-  });
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions,
-    expires: result.expiresAt,
-    name: PUBLIC_SESSION_COOKIE_NAME,
-    value: sealed,
-  });
-  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
-
-  redirect(returnToPath);
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
-};
-
-const getLoginViewModel = async (
-  searchParams: PageProps<"/[tenant_id]/login">["searchParams"]
-): Promise<{
-  errorMessage?: string;
-  resetDone: boolean;
-  returnToPath: string;
-}> => {
-  const params = await searchParams;
-  const error = pickFirstQueryParam(params.error);
-  const reset = pickFirstQueryParam(params.reset);
-  const returnTo = pickFirstQueryParam(params.returnTo);
-
-  return {
-    errorMessage: error?.trim() || undefined,
-    resetDone: reset === "done",
-    returnToPath: sanitizeRedirectPath(returnTo),
-  };
 };
 
 const LoginForm = async ({
@@ -192,8 +111,9 @@ const LoginFormContent = async ({
 }: {
   searchParams: PageProps<"/[tenant_id]/login">["searchParams"];
 }) => {
-  const { errorMessage, resetDone, returnToPath } =
-    await getLoginViewModel(searchParams);
+  const { errorMessage, resetDone, returnToPath } = parseLoginSearchParams(
+    await searchParams
+  );
 
   return (
     <LoginForm

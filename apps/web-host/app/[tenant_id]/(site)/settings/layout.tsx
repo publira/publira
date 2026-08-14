@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { parseSettingsFlashSearchParams } from "./_lib/search-params";
 import { SettingsTabs } from "./settings-tabs";
 
 export const generateStaticParams = () =>
@@ -24,15 +25,6 @@ export const generateMetadata = async ({
   };
 };
 
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
-};
-
 const FlashMessage = async ({
   searchParams,
 }: {
@@ -44,13 +36,9 @@ const FlashMessage = async ({
     | undefined
   >;
 }) => {
-  const sp = await searchParams;
-  if (!sp) {
-    return null;
-  }
-
-  const message = pickFirstQueryParam(sp.message)?.trim() ?? "";
-  const status = pickFirstQueryParam(sp.status)?.trim() ?? "";
+  const { message, status } = parseSettingsFlashSearchParams(
+    (await searchParams) ?? {}
+  );
 
   if (!message) {
     return null;

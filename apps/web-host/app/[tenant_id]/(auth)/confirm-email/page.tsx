@@ -8,17 +8,10 @@ import { confirmPublicEmailChange } from "#lib/auth";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { parseConfirmEmailSearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "メール変更確認",
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
 };
 
 const ConfirmationResult = async ({ token }: { token: string }) => {
@@ -106,8 +99,7 @@ const ConfirmEmailPageContent = async ({
   const siteLabel = info?.siteLabel ?? "サイト";
   const siteTagline = info?.siteTagline?.trim();
 
-  const sp = await searchParams;
-  const token = pickFirstQueryParam(sp.token)?.trim() ?? "";
+  const { token } = parseConfirmEmailSearchParams(await searchParams);
 
   return (
     <>

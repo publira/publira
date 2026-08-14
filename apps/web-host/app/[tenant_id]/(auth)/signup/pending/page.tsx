@@ -7,17 +7,10 @@ import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { parseSignupPendingSearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "メール確認待ち",
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
 };
 
 const SignupPendingContent = async ({
@@ -34,8 +27,7 @@ const SignupPendingContent = async ({
   const siteLabel = info?.siteLabel ?? "サイト";
   const siteTagline = info?.siteTagline?.trim();
 
-  const sp = await searchParams;
-  const email = pickFirstQueryParam(sp.email)?.trim();
+  const { email } = parseSignupPendingSearchParams(await searchParams);
 
   return (
     <>

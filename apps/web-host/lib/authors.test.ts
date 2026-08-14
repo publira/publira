@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  getPublishedAuthorDetail,
-  listPublishedAuthors,
-  normalizeAuthorsPage,
-} from "./authors";
+import { getPublishedAuthorDetail, listPublishedAuthors } from "./authors";
 
 const { mockListPublishedSeries } = vi.hoisted(() => ({
   mockListPublishedSeries: vi.fn(),
@@ -344,12 +340,5 @@ describe("authors", () => {
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
     });
-  });
-
-  it("page パラメータを正規化する", () => {
-    expect(normalizeAuthorsPage()).toBe(1);
-    expect(normalizeAuthorsPage("0")).toBe(1);
-    expect(normalizeAuthorsPage("3")).toBe(3);
-    expect(normalizeAuthorsPage(["2", "9"])).toBe(2);
   });
 });

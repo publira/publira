@@ -1,80 +1,32 @@
+import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { deleteMe, getMe, updateMe } from "#lib/auth";
+import { deleteMe, getMe } from "#lib/auth";
 import {
   getPublicSessionCacheTag,
   PUBLIC_SESSION_COOKIE_NAME,
 } from "#lib/auth-shared";
 import { getTenantId } from "#lib/tenant-id";
 
+import { updateProfileAction } from "./_lib/actions";
+import {
+  buildSettingsPath,
+  parseDeleteAccountForm,
+} from "./_lib/settings-form";
 import { DeleteAccountModal } from "./delete-account-modal";
-
-const buildSettingsPath = (status: "success" | "error", message: string) => {
-  const params = new URLSearchParams({ message, status });
-  return `/settings?${params.toString()}`;
-};
-
-const sessionCookieOptions = {
-  httpOnly: true,
-  path: "/",
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-};
-
-const clearSessionCookie = async () => {
-  const cookieStore = await cookies();
-  cookieStore.set({
-    ...sessionCookieOptions,
-    expires: new Date(0),
-    name: PUBLIC_SESSION_COOKIE_NAME,
-    value: "",
-  });
-};
-
-const updateProfileAction = async (formData: FormData): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const name = String(formData.get("name") ?? "").trim();
-
-  if (!name) {
-    redirect(buildSettingsPath("error", "表示名を入力してください。"));
-  }
-
-  if (name.length > 100) {
-    redirect(
-      buildSettingsPath("error", "表示名は100文字以内で入力してください。")
-    );
-  }
-
-  const updated = await updateMe(tenantId, name);
-  if (!updated) {
-    redirect(
-      buildSettingsPath(
-        "error",
-        "プロフィールの更新に失敗しました。時間をおいて再度お試しください。"
-      )
-    );
-  }
-
-  redirect(buildSettingsPath("success", "プロフィールを更新しました。"));
-};
 
 const deleteAccountAction = async (formData: FormData): Promise<void> => {
   "use server";
 
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const password = String(formData.get("password") ?? "").trim();
-
-  if (!password) {
-    redirect(
-      buildSettingsPath("error", "退会には現在のパスワード入力が必要です。")
-    );
+  const parsed = parseDeleteAccountForm(formData);
+  if (!parsed.success) {
+    redirect(buildSettingsPath("error", toFormErrorMessage(parsed.error)));
   }
 
+  const { password, tenantId } = parsed.data;
   const deleted = await deleteMe(tenantId, password);
   if (!deleted) {
     redirect(
@@ -85,7 +37,8 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
     );
   }
 
-  await clearSessionCookie();
+  const cookieStore = await cookies();
+  cookieStore.delete(PUBLIC_SESSION_COOKIE_NAME);
   updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
   redirect(
     "/login?message=アカウントを削除しました。ご利用ありがとうございました。&status=success"

@@ -4,84 +4,18 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "#components/tenant-document-title";
-import { confirmPublicPasswordReset } from "#lib/auth";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { confirmPasswordAction } from "./_lib/actions";
+import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
+
 export const metadata: Metadata = {
   title: "新しいパスワード設定",
-};
-
-const buildConfirmPasswordErrorPath = (
-  token: string,
-  message: string
-): string => {
-  const params = new URLSearchParams({
-    error: message,
-    token,
-  });
-  return `/confirm-password?${params.toString()}`;
-};
-
-const buildLoginPathWithResetResult = (): string => {
-  const params = new URLSearchParams({ reset: "done" });
-  return `/login?${params.toString()}`;
-};
-
-const confirmPasswordAction = async (formData: FormData): Promise<void> => {
-  "use server";
-
-  const tenantId = String(formData.get("tenantId") ?? "").trim();
-  const token = String(formData.get("token") ?? "").trim();
-  const newPassword = String(formData.get("newPassword") ?? "").trim();
-  const confirmPassword = String(formData.get("confirmPassword") ?? "").trim();
-
-  if (!token) {
-    redirect(buildConfirmPasswordErrorPath("", "確認リンクが無効です。"));
-  }
-  if (!newPassword) {
-    redirect(
-      buildConfirmPasswordErrorPath(
-        token,
-        "新しいパスワードを入力してください。"
-      )
-    );
-  }
-  if (newPassword !== confirmPassword) {
-    redirect(
-      buildConfirmPasswordErrorPath(token, "パスワード確認が一致しません。")
-    );
-  }
-
-  const confirmed = await confirmPublicPasswordReset(
-    token,
-    newPassword,
-    tenantId
-  );
-  if (!confirmed) {
-    redirect(
-      buildConfirmPasswordErrorPath(
-        token,
-        "再設定に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。"
-      )
-    );
-  }
-
-  redirect(buildLoginPathWithResetResult());
-};
-
-const pickFirstQueryParam = (
-  value: string | string[] | undefined
-): string | undefined => {
-  if (Array.isArray(value)) {
-    return value.at(0);
-  }
-  return value;
 };
 
 const ConfirmPasswordForm = async ({
@@ -178,9 +112,9 @@ const ConfirmPasswordFormContent = async ({
 }) => {
   await connection();
 
-  const sp = await searchParams;
-  const token = pickFirstQueryParam(sp.token)?.trim() ?? "";
-  const errorMessage = pickFirstQueryParam(sp.error)?.trim();
+  const { errorMessage, token } = parseConfirmPasswordSearchParams(
+    await searchParams
+  );
 
   return <ConfirmPasswordForm errorMessage={errorMessage} token={token} />;
 };
