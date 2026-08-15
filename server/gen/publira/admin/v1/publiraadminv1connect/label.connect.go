@@ -36,6 +36,9 @@ const (
 	// AdminLabelServiceListLabelsProcedure is the fully-qualified name of the AdminLabelService's
 	// ListLabels RPC.
 	AdminLabelServiceListLabelsProcedure = "/publira.admin.v1.AdminLabelService/ListLabels"
+	// AdminLabelServiceGetLabelProcedure is the fully-qualified name of the AdminLabelService's
+	// GetLabel RPC.
+	AdminLabelServiceGetLabelProcedure = "/publira.admin.v1.AdminLabelService/GetLabel"
 	// AdminLabelServiceCreateLabelProcedure is the fully-qualified name of the AdminLabelService's
 	// CreateLabel RPC.
 	AdminLabelServiceCreateLabelProcedure = "/publira.admin.v1.AdminLabelService/CreateLabel"
@@ -47,6 +50,7 @@ const (
 // AdminLabelServiceClient is a client for the publira.admin.v1.AdminLabelService service.
 type AdminLabelServiceClient interface {
 	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
+	GetLabel(context.Context, *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error)
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
 	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
 }
@@ -68,6 +72,12 @@ func NewAdminLabelServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(adminLabelServiceMethods.ByName("ListLabels")),
 			connect.WithClientOptions(opts...),
 		),
+		getLabel: connect.NewClient[v1.GetLabelRequest, v1.GetLabelResponse](
+			httpClient,
+			baseURL+AdminLabelServiceGetLabelProcedure,
+			connect.WithSchema(adminLabelServiceMethods.ByName("GetLabel")),
+			connect.WithClientOptions(opts...),
+		),
 		createLabel: connect.NewClient[v1.CreateLabelRequest, v1.CreateLabelResponse](
 			httpClient,
 			baseURL+AdminLabelServiceCreateLabelProcedure,
@@ -86,6 +96,7 @@ func NewAdminLabelServiceClient(httpClient connect.HTTPClient, baseURL string, o
 // adminLabelServiceClient implements AdminLabelServiceClient.
 type adminLabelServiceClient struct {
 	listLabels  *connect.Client[v1.ListLabelsRequest, v1.ListLabelsResponse]
+	getLabel    *connect.Client[v1.GetLabelRequest, v1.GetLabelResponse]
 	createLabel *connect.Client[v1.CreateLabelRequest, v1.CreateLabelResponse]
 	updateLabel *connect.Client[v1.UpdateLabelRequest, v1.UpdateLabelResponse]
 }
@@ -93,6 +104,11 @@ type adminLabelServiceClient struct {
 // ListLabels calls publira.admin.v1.AdminLabelService.ListLabels.
 func (c *adminLabelServiceClient) ListLabels(ctx context.Context, req *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error) {
 	return c.listLabels.CallUnary(ctx, req)
+}
+
+// GetLabel calls publira.admin.v1.AdminLabelService.GetLabel.
+func (c *adminLabelServiceClient) GetLabel(ctx context.Context, req *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error) {
+	return c.getLabel.CallUnary(ctx, req)
 }
 
 // CreateLabel calls publira.admin.v1.AdminLabelService.CreateLabel.
@@ -108,6 +124,7 @@ func (c *adminLabelServiceClient) UpdateLabel(ctx context.Context, req *connect.
 // AdminLabelServiceHandler is an implementation of the publira.admin.v1.AdminLabelService service.
 type AdminLabelServiceHandler interface {
 	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
+	GetLabel(context.Context, *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error)
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
 	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
 }
@@ -123,6 +140,12 @@ func NewAdminLabelServiceHandler(svc AdminLabelServiceHandler, opts ...connect.H
 		AdminLabelServiceListLabelsProcedure,
 		svc.ListLabels,
 		connect.WithSchema(adminLabelServiceMethods.ByName("ListLabels")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminLabelServiceGetLabelHandler := connect.NewUnaryHandler(
+		AdminLabelServiceGetLabelProcedure,
+		svc.GetLabel,
+		connect.WithSchema(adminLabelServiceMethods.ByName("GetLabel")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminLabelServiceCreateLabelHandler := connect.NewUnaryHandler(
@@ -141,6 +164,8 @@ func NewAdminLabelServiceHandler(svc AdminLabelServiceHandler, opts ...connect.H
 		switch r.URL.Path {
 		case AdminLabelServiceListLabelsProcedure:
 			adminLabelServiceListLabelsHandler.ServeHTTP(w, r)
+		case AdminLabelServiceGetLabelProcedure:
+			adminLabelServiceGetLabelHandler.ServeHTTP(w, r)
 		case AdminLabelServiceCreateLabelProcedure:
 			adminLabelServiceCreateLabelHandler.ServeHTTP(w, r)
 		case AdminLabelServiceUpdateLabelProcedure:
@@ -156,6 +181,10 @@ type UnimplementedAdminLabelServiceHandler struct{}
 
 func (UnimplementedAdminLabelServiceHandler) ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminLabelService.ListLabels is not implemented"))
+}
+
+func (UnimplementedAdminLabelServiceHandler) GetLabel(context.Context, *connect.Request[v1.GetLabelRequest]) (*connect.Response[v1.GetLabelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminLabelService.GetLabel is not implemented"))
 }
 
 func (UnimplementedAdminLabelServiceHandler) CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error) {

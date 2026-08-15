@@ -3,11 +3,9 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import {
-  findByPublicIdWithToken,
-  forEachPageWithToken,
-} from "@publira/api-client/pagination";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
+import { z } from "zod";
 
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
@@ -337,13 +335,26 @@ export const updateLabel = async (input: {
   }
 };
 
+const getLabelInputSchema = z.object({
+  publicId: z.string().trim().min(1).max(255),
+  tenantId: z.string().trim().min(1).max(255),
+});
+
 export const getLabel = async (input: {
   tenantId: string;
   publicId: string;
 }): Promise<GetLabelResult> => {
   "use cache: private";
-  cacheTag(`labels-${input.tenantId}`);
-  cacheTag(`label-${input.tenantId}-${input.publicId}`);
+  const parsed = getLabelInputSchema.safeParse(input);
+  if (!parsed.success) {
+    // Same notFound as a missing / other-tenant label: the URL is not a
+    // resource, and wording that said "malformed" would only help an
+    // attacker probe which strings the server accepts.
+    return { notFound: true, ok: false };
+  }
+
+  cacheTag(`labels-${parsed.data.tenantId}`);
+  cacheTag(`label-${parsed.data.tenantId}-${parsed.data.publicId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -354,31 +365,23 @@ export const getLabel = async (input: {
   }
 
   try {
-    // `label.proto` has no `GetLabel`, so walk the cursor pages until the
-    // requested record is found.
-    const label = await findByPublicIdWithToken(
-      input.publicId,
-      async (token, limit) => {
-        const response = await apiClient.label.listLabels(
-          {
-            limit,
-            tenant: { tenantId: input.tenantId },
-            token,
-          },
-          withSessionHeaders(sessionId)
-        );
-        return {
-          items: response.labels,
-          nextToken: response.nextToken,
-        };
-      }
+    const response = await apiClient.label.getLabel(
+      {
+        publicId: parsed.data.publicId,
+        tenant: { tenantId: parsed.data.tenantId },
+      },
+      withSessionHeaders(sessionId)
     );
-    if (!label) {
-      return { notFound: true, ok: false };
+
+    if (!response.label?.publicId?.trim()) {
+      return {
+        message: genericListErrorMessage,
+        ok: false,
+      };
     }
 
     return {
-      label: mapLabel(label),
+      label: mapLabel(response.label),
       ok: true,
     };
   } catch (error) {

@@ -27,6 +27,15 @@ message ListLabelsResponse {
   string next_token = 3;
 }
 
+message GetLabelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetLabelResponse {
+  publira.types.v1.Label label = 1;
+}
+
 message CreateLabelRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
@@ -53,6 +62,7 @@ message UpdateLabelResponse {
 
 service AdminLabelService {
   rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse) {}
+  rpc GetLabel(GetLabelRequest) returns (GetLabelResponse) {}
   rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse) {}
   rpc UpdateLabel(UpdateLabelRequest) returns (UpdateLabelResponse) {}
 }

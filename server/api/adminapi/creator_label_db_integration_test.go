@@ -148,6 +148,46 @@ func TestDBGetCreatorOfAnotherTenantReturnsNotFound(t *testing.T) {
 	}
 }
 
+func TestDBGetLabelOfAnotherTenantReturnsNotFound(t *testing.T) {
+	env := newAdminDBEnv(t)
+	first, second := seedTwoTenants(t, env)
+	labels := env.labelClient()
+
+	mine, err := labels.CreateLabel(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateLabelRequest{
+		Tenant: first.tenantContext(),
+		Name:   "Tenant A Label",
+	}))
+	if err != nil {
+		t.Fatalf("CreateLabel for tenant A: %v", err)
+	}
+	theirs, err := labels.CreateLabel(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreateLabelRequest{
+		Tenant: second.tenantContext(),
+		Name:   "Tenant B Label",
+	}))
+	if err != nil {
+		t.Fatalf("CreateLabel for tenant B: %v", err)
+	}
+
+	got, err := labels.GetLabel(context.Background(), newAdminDBRequest(first, &publiraadminv1.GetLabelRequest{
+		Tenant:   first.tenantContext(),
+		PublicId: mine.Msg.Label.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetLabel: %v", err)
+	}
+	if got.Msg.Label.Name != "Tenant A Label" {
+		t.Fatalf("GetLabel = %+v, want name of %+v", got.Msg.Label, mine.Msg.Label)
+	}
+
+	_, err = labels.GetLabel(context.Background(), newAdminDBRequest(first, &publiraadminv1.GetLabelRequest{
+		Tenant:   first.tenantContext(),
+		PublicId: theirs.Msg.Label.PublicId,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetLabel across tenants code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
 func TestDBSeriesRejectsCreatorFromAnotherTenant(t *testing.T) {
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)

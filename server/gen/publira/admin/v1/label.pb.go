@@ -147,6 +147,102 @@ func (x *ListLabelsResponse) GetNextToken() string {
 	return ""
 }
 
+type GetLabelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLabelRequest) Reset() {
+	*x = GetLabelRequest{}
+	mi := &file_publira_admin_v1_label_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLabelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLabelRequest) ProtoMessage() {}
+
+func (x *GetLabelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_label_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLabelRequest.ProtoReflect.Descriptor instead.
+func (*GetLabelRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetLabelRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetLabelRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+type GetLabelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         *v1.Label              `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLabelResponse) Reset() {
+	*x = GetLabelResponse{}
+	mi := &file_publira_admin_v1_label_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLabelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLabelResponse) ProtoMessage() {}
+
+func (x *GetLabelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_label_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLabelResponse.ProtoReflect.Descriptor instead.
+func (*GetLabelResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetLabelResponse) GetLabel() *v1.Label {
+	if x != nil {
+		return x.Label
+	}
+	return nil
+}
+
 type CreateLabelRequest struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	Tenant                   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -159,7 +255,7 @@ type CreateLabelRequest struct {
 
 func (x *CreateLabelRequest) Reset() {
 	*x = CreateLabelRequest{}
-	mi := &file_publira_admin_v1_label_proto_msgTypes[2]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -171,7 +267,7 @@ func (x *CreateLabelRequest) String() string {
 func (*CreateLabelRequest) ProtoMessage() {}
 
 func (x *CreateLabelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_label_proto_msgTypes[2]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -184,7 +280,7 @@ func (x *CreateLabelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLabelRequest.ProtoReflect.Descriptor instead.
 func (*CreateLabelRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{2}
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CreateLabelRequest) GetTenant() *v1.TenantContext {
@@ -224,7 +320,7 @@ type CreateLabelResponse struct {
 
 func (x *CreateLabelResponse) Reset() {
 	*x = CreateLabelResponse{}
-	mi := &file_publira_admin_v1_label_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -236,7 +332,7 @@ func (x *CreateLabelResponse) String() string {
 func (*CreateLabelResponse) ProtoMessage() {}
 
 func (x *CreateLabelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_label_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -249,7 +345,7 @@ func (x *CreateLabelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLabelResponse.ProtoReflect.Descriptor instead.
 func (*CreateLabelResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{3}
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateLabelResponse) GetLabel() *v1.Label {
@@ -273,7 +369,7 @@ type UpdateLabelRequest struct {
 
 func (x *UpdateLabelRequest) Reset() {
 	*x = UpdateLabelRequest{}
-	mi := &file_publira_admin_v1_label_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -285,7 +381,7 @@ func (x *UpdateLabelRequest) String() string {
 func (*UpdateLabelRequest) ProtoMessage() {}
 
 func (x *UpdateLabelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_label_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -298,7 +394,7 @@ func (x *UpdateLabelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateLabelRequest.ProtoReflect.Descriptor instead.
 func (*UpdateLabelRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{4}
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UpdateLabelRequest) GetTenant() *v1.TenantContext {
@@ -352,7 +448,7 @@ type UpdateLabelResponse struct {
 
 func (x *UpdateLabelResponse) Reset() {
 	*x = UpdateLabelResponse{}
-	mi := &file_publira_admin_v1_label_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -364,7 +460,7 @@ func (x *UpdateLabelResponse) String() string {
 func (*UpdateLabelResponse) ProtoMessage() {}
 
 func (x *UpdateLabelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_label_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_label_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -377,7 +473,7 @@ func (x *UpdateLabelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateLabelResponse.ProtoReflect.Descriptor instead.
 func (*UpdateLabelResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_label_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateLabelResponse) GetLabel() *v1.Label {
@@ -400,7 +496,12 @@ const file_publira_admin_v1_label_proto_rawDesc = "" +
 	"\x06labels\x18\x01 \x03(\v2\x17.publira.types.v1.LabelR\x06labels\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd2\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"g\n" +
+	"\x0fGetLabelRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"A\n" +
+	"\x10GetLabelResponse\x12-\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label\"\xd2\x01\n" +
 	"\x12CreateLabelRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -416,10 +517,11 @@ const file_publira_admin_v1_label_proto_rawDesc = "" +
 	"\x1ceye_catch_image_content_type\x18\x05 \x01(\tR\x18eyeCatchImageContentType\x121\n" +
 	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\"D\n" +
 	"\x13UpdateLabelResponse\x12-\n" +
-	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label2\xaa\x02\n" +
+	"\x05label\x18\x01 \x01(\v2\x17.publira.types.v1.LabelR\x05label2\xff\x02\n" +
 	"\x11AdminLabelService\x12Y\n" +
 	"\n" +
-	"ListLabels\x12#.publira.admin.v1.ListLabelsRequest\x1a$.publira.admin.v1.ListLabelsResponse\"\x00\x12\\\n" +
+	"ListLabels\x12#.publira.admin.v1.ListLabelsRequest\x1a$.publira.admin.v1.ListLabelsResponse\"\x00\x12S\n" +
+	"\bGetLabel\x12!.publira.admin.v1.GetLabelRequest\x1a\".publira.admin.v1.GetLabelResponse\"\x00\x12\\\n" +
 	"\vCreateLabel\x12$.publira.admin.v1.CreateLabelRequest\x1a%.publira.admin.v1.CreateLabelResponse\"\x00\x12\\\n" +
 	"\vUpdateLabel\x12$.publira.admin.v1.UpdateLabelRequest\x1a%.publira.admin.v1.UpdateLabelResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
@@ -435,35 +537,41 @@ func file_publira_admin_v1_label_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_label_proto_rawDescData
 }
 
-var file_publira_admin_v1_label_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_publira_admin_v1_label_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_admin_v1_label_proto_goTypes = []any{
 	(*ListLabelsRequest)(nil),   // 0: publira.admin.v1.ListLabelsRequest
 	(*ListLabelsResponse)(nil),  // 1: publira.admin.v1.ListLabelsResponse
-	(*CreateLabelRequest)(nil),  // 2: publira.admin.v1.CreateLabelRequest
-	(*CreateLabelResponse)(nil), // 3: publira.admin.v1.CreateLabelResponse
-	(*UpdateLabelRequest)(nil),  // 4: publira.admin.v1.UpdateLabelRequest
-	(*UpdateLabelResponse)(nil), // 5: publira.admin.v1.UpdateLabelResponse
-	(*v1.TenantContext)(nil),    // 6: publira.types.v1.TenantContext
-	(*v1.Label)(nil),            // 7: publira.types.v1.Label
+	(*GetLabelRequest)(nil),     // 2: publira.admin.v1.GetLabelRequest
+	(*GetLabelResponse)(nil),    // 3: publira.admin.v1.GetLabelResponse
+	(*CreateLabelRequest)(nil),  // 4: publira.admin.v1.CreateLabelRequest
+	(*CreateLabelResponse)(nil), // 5: publira.admin.v1.CreateLabelResponse
+	(*UpdateLabelRequest)(nil),  // 6: publira.admin.v1.UpdateLabelRequest
+	(*UpdateLabelResponse)(nil), // 7: publira.admin.v1.UpdateLabelResponse
+	(*v1.TenantContext)(nil),    // 8: publira.types.v1.TenantContext
+	(*v1.Label)(nil),            // 9: publira.types.v1.Label
 }
 var file_publira_admin_v1_label_proto_depIdxs = []int32{
-	6, // 0: publira.admin.v1.ListLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	7, // 1: publira.admin.v1.ListLabelsResponse.labels:type_name -> publira.types.v1.Label
-	6, // 2: publira.admin.v1.CreateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
-	7, // 3: publira.admin.v1.CreateLabelResponse.label:type_name -> publira.types.v1.Label
-	6, // 4: publira.admin.v1.UpdateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
-	7, // 5: publira.admin.v1.UpdateLabelResponse.label:type_name -> publira.types.v1.Label
-	0, // 6: publira.admin.v1.AdminLabelService.ListLabels:input_type -> publira.admin.v1.ListLabelsRequest
-	2, // 7: publira.admin.v1.AdminLabelService.CreateLabel:input_type -> publira.admin.v1.CreateLabelRequest
-	4, // 8: publira.admin.v1.AdminLabelService.UpdateLabel:input_type -> publira.admin.v1.UpdateLabelRequest
-	1, // 9: publira.admin.v1.AdminLabelService.ListLabels:output_type -> publira.admin.v1.ListLabelsResponse
-	3, // 10: publira.admin.v1.AdminLabelService.CreateLabel:output_type -> publira.admin.v1.CreateLabelResponse
-	5, // 11: publira.admin.v1.AdminLabelService.UpdateLabel:output_type -> publira.admin.v1.UpdateLabelResponse
-	9, // [9:12] is the sub-list for method output_type
-	6, // [6:9] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	8,  // 0: publira.admin.v1.ListLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 1: publira.admin.v1.ListLabelsResponse.labels:type_name -> publira.types.v1.Label
+	8,  // 2: publira.admin.v1.GetLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 3: publira.admin.v1.GetLabelResponse.label:type_name -> publira.types.v1.Label
+	8,  // 4: publira.admin.v1.CreateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 5: publira.admin.v1.CreateLabelResponse.label:type_name -> publira.types.v1.Label
+	8,  // 6: publira.admin.v1.UpdateLabelRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 7: publira.admin.v1.UpdateLabelResponse.label:type_name -> publira.types.v1.Label
+	0,  // 8: publira.admin.v1.AdminLabelService.ListLabels:input_type -> publira.admin.v1.ListLabelsRequest
+	2,  // 9: publira.admin.v1.AdminLabelService.GetLabel:input_type -> publira.admin.v1.GetLabelRequest
+	4,  // 10: publira.admin.v1.AdminLabelService.CreateLabel:input_type -> publira.admin.v1.CreateLabelRequest
+	6,  // 11: publira.admin.v1.AdminLabelService.UpdateLabel:input_type -> publira.admin.v1.UpdateLabelRequest
+	1,  // 12: publira.admin.v1.AdminLabelService.ListLabels:output_type -> publira.admin.v1.ListLabelsResponse
+	3,  // 13: publira.admin.v1.AdminLabelService.GetLabel:output_type -> publira.admin.v1.GetLabelResponse
+	5,  // 14: publira.admin.v1.AdminLabelService.CreateLabel:output_type -> publira.admin.v1.CreateLabelResponse
+	7,  // 15: publira.admin.v1.AdminLabelService.UpdateLabel:output_type -> publira.admin.v1.UpdateLabelResponse
+	12, // [12:16] is the sub-list for method output_type
+	8,  // [8:12] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_label_proto_init() }
@@ -477,7 +585,7 @@ func file_publira_admin_v1_label_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_label_proto_rawDesc), len(file_publira_admin_v1_label_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
