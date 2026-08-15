@@ -208,7 +208,7 @@ docker build -f infra/docker/web/Dockerfile \
 
 ## Docker の CI 実行戦略
 
-ここで扱うのは `Docker / <target>` ジョブだけである。ホスト CI 全体（`Check` / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / `Test / E2E` / `Build` / `Summary`）の path filter・実行戦略は [`.github/workflows/README.md`](../../.github/workflows/README.md) を参照。
+ここで扱うのは `Docker / <target>` ジョブだけである。ホスト CI 全体（`Check` / `Test / Go` / `Test / TypeScript` / `Test / DB Migrations` / `Test / Mobile` / `Test / Mobile E2E` / `Test / E2E` / `Build` / `Summary`）の path filter・実行戦略は [`.github/workflows/README.md`](../../.github/workflows/README.md) を参照。
 
 ### 比較
 

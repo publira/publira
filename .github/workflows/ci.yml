@@ -52,6 +52,7 @@ jobs:
       test_ts: ${{ steps.plan.outputs.test_ts }}
       test_db_migrations: ${{ steps.plan.outputs.test_db_migrations }}
       test_mobile: ${{ steps.plan.outputs.test_mobile }}
+      test_mobile_e2e: ${{ steps.plan.outputs.test_mobile_e2e }}
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
       test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
       test_routing: ${{ steps.plan.outputs.test_routing }}
@@ -147,6 +148,24 @@ jobs:
             test_mobile:
               - *docs_excluded
               - 'mobile/**'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+            test_mobile_e2e:
+              - *docs_excluded
+              - 'mobile/**'
+              - 'e2e/compose.yaml'
+              - 'e2e/scripts/api-server.sh'
+              - 'e2e/scripts/db-setup.sh'
+              - 'e2e/scripts/down.sh'
+              - 'e2e/scripts/lib.sh'
+              - 'e2e/scripts/stop-apps.sh'
+              - 'e2e/scripts/up.sh'
+              - 'proto/publira/v1/catalog.proto'
+              - 'proto/publira/v1/domain.proto'
+              - 'server/**'
+              - 'db/migrations/**'
+              - 'db/seeds/**'
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
@@ -254,6 +273,7 @@ jobs:
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
           FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}
           FILTER_TEST_MOBILE: ${{ steps.filter.outputs.test_mobile }}
+          FILTER_TEST_MOBILE_E2E: ${{ steps.filter.outputs.test_mobile_e2e }}
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
           FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
           FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
@@ -507,6 +527,119 @@ jobs:
 
       - name: Validate / Format, Analyze, and Tests
         run: task mobile:check
+
+  test-mobile-e2e:
+    name: Test / Mobile E2E
+    needs: changes
+    if: needs.changes.outputs.test_mobile_e2e == 'true'
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 45
+    env:
+      COMPOSE_PROJECT_NAME: publira-mobile-e2e
+      E2E_RUN_DIR: ${{ github.workspace }}/mobile/.run
+      CI: true
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Flutter
+        run: |
+          set -euo pipefail
+          flutter_root="${RUNNER_TEMP}/flutter"
+          git clone \
+            --depth 1 \
+            --branch "${FLUTTER_VERSION}" \
+            https://github.com/flutter/flutter.git \
+            "${flutter_root}"
+          echo "${flutter_root}/bin" >> "${GITHUB_PATH}"
+          "${flutter_root}/bin/flutter" --version
+          "${flutter_root}/bin/dart" --version
+
+      - name: Setup / Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.6
+          cache-dependency-path: server/go.sum
+
+      - name: Setup / Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / Install migrate
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) migrate_arch="amd64" ;;
+            arm64) migrate_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="migrate.linux-${migrate_arch}.tar.gz"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/sha256sum.txt" -o /tmp/sha256sum.txt
+          (cd /tmp && sha256sum -c --ignore-missing sha256sum.txt)
+          tar -xzf "/tmp/${archive}" -C /tmp migrate
+          sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
+          rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      - name: Setup / PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dependencies / Install
+        run: task mobile:deps
+
+      - name: Build / Public API
+        run: task server:build
+
+      - name: Start / Public API stack
+        run: |
+          set -euo pipefail
+          bash e2e/scripts/up.sh
+          bash e2e/scripts/db-setup.sh
+          bash e2e/scripts/api-server.sh start-wait
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Validate / Mobile E2E
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: task mobile:test-integration
+        env:
+          PUBLIRA_LIVE_API: "true"
+          PUBLIRA_TENANT_HOST: localhost
+
+      - name: Teardown / Public API stack
+        if: always()
+        run: |
+          bash e2e/scripts/api-server.sh stop || true
+          bash e2e/scripts/down.sh || true
+
+      - name: Upload / Mobile E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mobile-e2e-artifacts
+          path: |
+            mobile/.run/artifacts/
+            mobile/.run/logs/
+          if-no-files-found: ignore
 
   test-e2e:
     name: Test / E2E
@@ -774,6 +907,7 @@ jobs:
       - test-ts
       - test-db-migrations
       - test-mobile
+      - test-mobile-e2e
       - test-e2e
       - test-bootstrap
       - test-routing
@@ -790,6 +924,7 @@ jobs:
           TEST_TS: ${{ needs.test-ts.result }}
           TEST_DB_MIGRATIONS: ${{ needs.test-db-migrations.result }}
           TEST_MOBILE: ${{ needs.test-mobile.result }}
+          TEST_MOBILE_E2E: ${{ needs.test-mobile-e2e.result }}
           TEST_E2E: ${{ needs.test-e2e.result }}
           TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
           TEST_ROUTING: ${{ needs.test-routing.result }}
@@ -806,6 +941,7 @@ jobs:
             "Test / TypeScript=${TEST_TS}" \
             "Test / DB Migrations=${TEST_DB_MIGRATIONS}" \
             "Test / Mobile=${TEST_MOBILE}" \
+            "Test / Mobile E2E=${TEST_MOBILE_E2E}" \
             "Test / E2E=${TEST_E2E}" \
             "Test / Bootstrap=${TEST_BOOTSTRAP}" \
             "Test / Routing=${TEST_ROUTING}" \

@@ -85,7 +85,7 @@ Run the checks for what you actually changed, from the repository root, and fix 
 | `apps/`, `packages/`, other TypeScript | `pnpm preflight` (typegen / typecheck / check / test) |
 | `server/` | `task server:test-short`, then `task server:test` before finishing |
 | `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` (must be clean), then re-run the server tests |
-| `mobile/` | `task mobile:check` |
+| `mobile/` | `task mobile:check` (integration tests require `task mobile:e2e`, Docker, and an Android emulator) |
 | `e2e/`, or app behavior the suite covers | `pnpm preflight`, plus `task e2e` for the suite itself |
 | Documentation, skills, workflows only | `pnpm preflight` still catches formatting; run it when Markdown or config under lint control changed |
 
