@@ -254,6 +254,90 @@ func TestDBCreateSeriesWithUnknownLabelReturnsInvalidArgument(t *testing.T) {
 	}
 }
 
+func TestDBCreateSeriesUnknownCreatorLeavesNoRows(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+
+	_, err := env.seriesClient().CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:           tenant.tenantContext(),
+		Title:            "Orphan Series",
+		Synopsis:         "Should not persist",
+		CreatorPublicIds: []string{"NOSUCHCREATOR"},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM series WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("series rows = %d, want 0 after a rejected create", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM series_listings WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("series_listings rows = %d, want 0 after a rejected create", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM series_creators WHERE tenant_id = $1", tenant.Tenant.ID); count != 0 {
+		t.Fatalf("series_creators rows = %d, want 0 after a rejected create", count)
+	}
+}
+
+func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+
+	createdCreator, err := env.creatorClient().CreateCreator(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateCreatorRequest{
+		Tenant: tenant.tenantContext(),
+		Name:   "Existing Creator",
+	}))
+	if err != nil {
+		t.Fatalf("CreateCreator: %v", err)
+	}
+	creatorPublicID := createdCreator.Msg.Creator.PublicId
+
+	created, err := client.CreateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateSeriesRequest{
+		Tenant:           tenant.tenantContext(),
+		Title:            "Original Title",
+		Synopsis:         "Original synopsis",
+		CreatorPublicIds: []string{creatorPublicID},
+	}))
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	publicID := created.Msg.Series.PublicId
+
+	_, err = client.UpdateSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:           tenant.tenantContext(),
+		PublicId:         publicID,
+		Title:            "Hijacked Title",
+		Synopsis:         "Hijacked synopsis",
+		CreatorPublicIds: []string{"NOSUCHCREATOR"},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateSeries code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+
+	got, err := client.GetSeries(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetSeriesRequest{
+		Tenant:   tenant.tenantContext(),
+		PublicId: publicID,
+	}))
+	if err != nil {
+		t.Fatalf("GetSeries after failed update: %v", err)
+	}
+	if got.Msg.Series.Title != "Original Title" {
+		t.Fatalf("title after failed update = %q, want Original Title", got.Msg.Series.Title)
+	}
+	if got.Msg.Series.Synopsis != "Original synopsis" {
+		t.Fatalf("synopsis after failed update = %q, want Original synopsis", got.Msg.Series.Synopsis)
+	}
+	if len(got.Msg.Series.Creators) != 1 || got.Msg.Series.Creators[0].PublicId != creatorPublicID {
+		t.Fatalf("creators after failed update = %+v, want the original creator %s", got.Msg.Series.Creators, creatorPublicID)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM series_creators WHERE tenant_id = $1", tenant.Tenant.ID); count != 1 {
+		t.Fatalf("series_creators rows = %d, want 1 after a rejected update", count)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM series WHERE title = $1", "Hijacked Title"); count != 0 {
+		t.Fatalf("series titled Hijacked Title = %d, want 0", count)
+	}
+}
+
 func TestDBListSeriesPaginatesWithTokens(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")

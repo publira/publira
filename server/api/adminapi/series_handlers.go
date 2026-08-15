@@ -234,17 +234,13 @@ func (s *adminServer) resolveCreatorsByPublicIDs(
 func (s *adminServer) syncSeriesCreators(
 	ctx context.Context,
 	tenantID, seriesID uuid.UUID,
-	creatorPublicIDs []string,
+	creators []dbmodels.ListCreatorsByPublicIDsForTenantRow,
 	replace bool,
 ) ([]*publirattypesv1.Creator, error) {
 	if replace {
 		if err := s.queriesFor(ctx).DeleteSeriesCreatorsBySeriesID(ctx, seriesID); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-	}
-	creators, err := s.resolveCreatorsByPublicIDs(ctx, tenantID, creatorPublicIDs)
-	if err != nil {
-		return nil, err
 	}
 	items := make([]*publirattypesv1.Creator, 0, len(creators))
 	for index, creator := range creators {
@@ -333,19 +329,31 @@ func (s *adminServer) CreateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
+	creatorsToLink, err := s.resolveCreatorsByPublicIDs(ctx, tenant.ID, req.Msg.CreatorPublicIds)
+	if err != nil {
+		return nil, err
+	}
 	seriesID, err := uuid.NewV7()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	base, err := publicid.Insert(func(publicID string) (dbmodels.Series, error) {
-		return s.queriesFor(ctx).CreateSeriesBase(ctx, dbmodels.CreateSeriesBaseParams{
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError("failed to begin create series transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+	base, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Series, error) {
+		return s.queriesFor(txCtx).CreateSeriesBase(txCtx, dbmodels.CreateSeriesBaseParams{
 			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Msg.Title,
 		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queriesFor(ctx).UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
+	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
 		TenantID:           tenant.ID,
 		SeriesID:           base.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
@@ -354,28 +362,31 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queriesFor(ctx).UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          base.ID,
 		PublishedAt: publishedAt,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	eyeCatchImageID, err := s.createSeriesEyeCatchImage(ctx, tenant, base.ID, base.PublicID, eyeCatchImage)
+	eyeCatchImageID, err := s.createSeriesEyeCatchImage(txCtx, tenant, base.ID, base.PublicID, eyeCatchImage)
 	if err != nil {
 		return nil, err
 	}
 	if eyeCatchImageID.Valid {
-		if err := s.queriesFor(ctx).UpdateSeriesEyeCatchImageID(ctx, dbmodels.UpdateSeriesEyeCatchImageIDParams{
+		if err := s.queriesFor(txCtx).UpdateSeriesEyeCatchImageID(txCtx, dbmodels.UpdateSeriesEyeCatchImageIDParams{
 			ID:              base.ID,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	}
-	creators, err := s.syncSeriesCreators(ctx, tenant.ID, base.ID, req.Msg.CreatorPublicIds, false)
+	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, base.ID, creatorsToLink, false)
 	if err != nil {
 		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError("failed to commit create series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -460,11 +471,23 @@ func (s *adminServer) UpdateSeries(
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
-	err = s.queriesFor(ctx).UpdateSeriesBase(ctx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
+	creatorsToLink, err := s.resolveCreatorsByPublicIDs(ctx, tenant.ID, req.Msg.CreatorPublicIds)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError("failed to begin update series transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	_, err = s.queriesFor(ctx).UpsertSeriesListing(ctx, dbmodels.UpsertSeriesListingParams{
+	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
 		TenantID:           tenant.ID,
 		SeriesID:           current.ID,
 		Synopsis:           sql.NullString{String: req.Msg.Synopsis, Valid: strings.TrimSpace(req.Msg.Synopsis) != ""},
@@ -473,7 +496,7 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	err = s.queriesFor(ctx).UpdateSeriesPublication(ctx, dbmodels.UpdateSeriesPublicationParams{
+	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,
 		PublishedAt: publishedAt,
 	})
@@ -484,23 +507,26 @@ func (s *adminServer) UpdateSeries(
 	if req.Msg.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
 	} else if eyeCatchImage != nil {
-		newEyeCatchImageID, uploadErr := s.createSeriesEyeCatchImage(ctx, tenant, current.ID, current.PublicID, eyeCatchImage)
+		newEyeCatchImageID, uploadErr := s.createSeriesEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchImage)
 		if uploadErr != nil {
 			return nil, uploadErr
 		}
 		eyeCatchImageID = newEyeCatchImageID
 	}
 	if eyeCatchImageID != current.EyeCatchImageID {
-		if err := s.queriesFor(ctx).UpdateSeriesEyeCatchImageID(ctx, dbmodels.UpdateSeriesEyeCatchImageIDParams{
+		if err := s.queriesFor(txCtx).UpdateSeriesEyeCatchImageID(txCtx, dbmodels.UpdateSeriesEyeCatchImageIDParams{
 			ID:              current.ID,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	}
-	creators, err := s.syncSeriesCreators(ctx, tenant.ID, current.ID, req.Msg.CreatorPublicIds, true)
+	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, current.ID, creatorsToLink, true)
 	if err != nil {
 		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError("failed to commit update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	updated, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
