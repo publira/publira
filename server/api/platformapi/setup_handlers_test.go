@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -43,6 +44,33 @@ func TestCheckSetupStatusCompleted(t *testing.T) {
 	}
 	if !resp.Msg.SetupCompleted {
 		t.Fatalf("setup_completed = false, want true")
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestCheckSetupStatusDatabaseErrorIsHidden(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+		WillReturnError(errors.New(`pq: relation "platform_users" does not exist`))
+
+	_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("CheckSetupStatus code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestCheckSetupStatusPreservesContextCanceled(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectQuery(regexp.QuoteMeta(testCountPlatformUsersQuery)).
+		WillReturnError(context.Canceled)
+
+	_, err := server.CheckSetupStatus(context.Background(), connect.NewRequest(&publirasplatformv1.CheckSetupStatusRequest{}))
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("CheckSetupStatus error = %v, want context.Canceled", err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

@@ -56,7 +56,8 @@ func (s *platformServer) ListAuditLogs(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListAuditLogsRequest],
 ) (*connect.Response[publirasplatformv1.ListAuditLogsResponse], error) {
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	_, actorUser, _, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	if err != nil {
 		return nil, err
 	}
 
@@ -80,7 +81,7 @@ func (s *platformServer) ListAuditLogs(
 		Limit:                   limit,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list platform audit logs", err, "platform_user_id", actorUser.ID.String())
 	}
 
 	items := make([]*publirasplatformv1.PlatformAuditLog, len(rows))

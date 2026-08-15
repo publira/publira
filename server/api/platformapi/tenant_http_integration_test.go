@@ -137,8 +137,8 @@ func TestCreateTenantPublicIDAttemptsExhaustedIsInternal(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateTenant code = %v, want internal (err=%v)", connect.CodeOf(err), err)
 	}
-	if strings.Contains(err.Error(), "already exists") {
-		t.Fatalf("CreateTenant error = %v, want an internal failure rather than a conflict", err)
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("CreateTenant error = %q, want database details hidden", err)
 	}
 	assertRetriedWithFreshPublicIDs(t, attempted, publicid.MaxAttempts)
 	assertIntegrationExpectations(t, mock)

@@ -3,6 +3,7 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -187,6 +188,67 @@ func TestGetDashboardSummaryClampLimit(t *testing.T) {
 	_, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{RecentEventsLimit: 999}))
 	if err != nil {
 		t.Fatalf("GetDashboardSummary: %v", err)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryDatabaseErrorIsHidden(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(integrationCountAllTenantsQuery)).
+		WillReturnError(errors.New(`pq: relation "tenants" does not exist`))
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetDashboardSummary code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestGetDashboardSummaryPreservesContextCanceled(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(integrationCountAllTenantsQuery)).
+		WillReturnError(context.Canceled)
+
+	client := publirasplatformv1connect.NewPlatformDashboardServiceClient(ts.Client(), ts.URL)
+	_, err := client.GetDashboardSummary(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetDashboardSummaryRequest{}))
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetDashboardSummary code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertIntegrationExpectations(t, mock)
+}
+
+func TestListAuditLogsDatabaseErrorIsHidden(t *testing.T) {
+	ts, mock := newIntegrationTestServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	expectIntegrationAuth(mock, tenantID, userID, integrationPlatformRole, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(integrationListAdminAuditLogsQuery)).
+		WithArgs(sql.NullString{}, sql.NullString{}, sql.NullString{}, int32(0), int32(20)).
+		WillReturnError(errors.New(`pq: relation "platform_audit_logs" does not exist`))
+
+	client := publirasplatformv1connect.NewPlatformAuditLogServiceClient(ts.Client(), ts.URL)
+	_, err := client.ListAuditLogs(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.ListAuditLogsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListAuditLogs code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertIntegrationExpectations(t, mock)
 }

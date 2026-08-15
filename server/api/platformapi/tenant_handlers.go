@@ -95,7 +95,7 @@ func (s *platformServer) ListTenants(
 
 	tenants, err := s.tenantPage(ctx, filterName, filterPublicID, filterStatus, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list tenants", err)
 	}
 	tenants, hasMore := pagination.Page(tenants, limit, cursor.Direction)
 
@@ -169,7 +169,7 @@ func (s *platformServer) GetTenant(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant", err, "public_id", publicID)
 	}
 
 	return connect.NewResponse(&publirasplatformv1.GetTenantResponse{
@@ -209,7 +209,7 @@ func (s *platformServer) CreateTenant(
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to begin create tenant transaction", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
@@ -244,7 +244,7 @@ func (s *platformServer) CreateTenant(
 		if field := tenantUniqueViolationField(err); field != "" {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New(field+" already exists"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create tenant", err)
 	}
 
 	for _, email := range initialAdminEmails {
@@ -254,7 +254,7 @@ func (s *platformServer) CreateTenant(
 		})
 		if err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, s.internalDBError("failed to get user by email for tenant", err, "tenant_id", tenant.ID.String())
 			}
 
 			token, tokenErr := generateInvitationToken()
@@ -273,7 +273,7 @@ func (s *platformServer) CreateTenant(
 				ExpiresAt: time.Now().Add(tenantAdminInvitationTTL),
 			})
 			if createInvitationErr != nil {
-				return nil, connect.NewError(connect.CodeInternal, createInvitationErr)
+				return nil, s.internalDBError("failed to create tenant admin invitation", createInvitationErr, "tenant_id", tenant.ID.String())
 			}
 			pendingInvites = append(pendingInvites, pendingTenantAdminInvite{email: email, token: token})
 			continue
@@ -281,7 +281,7 @@ func (s *platformServer) CreateTenant(
 
 		roles, err := txq.ListTenantUserRoles(ctx, user.ID)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to list tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		if len(roles) > 0 {
 			continue
@@ -297,12 +297,12 @@ func (s *platformServer) CreateTenant(
 			if dberr.IsUniqueViolation(err) {
 				continue
 			}
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to create tenant user role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to commit create tenant", err, "tenant_id", tenant.ID.String())
 	}
 
 	for _, invite := range pendingInvites {
@@ -357,7 +357,7 @@ func (s *platformServer) SuspendTenant(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to suspend tenant", err, "public_id", publicID)
 	}
 	if actor, ok := platformActorFromContext(ctx); ok {
 		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
@@ -404,7 +404,7 @@ func (s *platformServer) UpdateTenant(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update tenant", err, "public_id", publicID)
 	}
 	if actor, ok := platformActorFromContext(ctx); ok {
 		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
@@ -440,7 +440,7 @@ func (s *platformServer) ResumeTenant(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to resume tenant", err, "public_id", publicID)
 	}
 	if actor, ok := platformActorFromContext(ctx); ok {
 		s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
@@ -510,7 +510,7 @@ func (s *platformServer) ListTenantMembers(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
 	rows, err := s.queriesFor(ctx).ListTenantUsers(ctx, dbmodels.ListTenantUsersParams{
@@ -519,7 +519,7 @@ func (s *platformServer) ListTenantMembers(
 		Offset:   offset,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list tenant members", err, "tenant_id", tenant.ID.String())
 	}
 
 	resp := &publirasplatformv1.ListTenantMembersResponse{
@@ -562,7 +562,7 @@ func (s *platformServer) AddTenantMember(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
 	var user dbmodels.GetUserByPublicIDForTenantRow
@@ -592,12 +592,12 @@ func (s *platformServer) AddTenantMember(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant member", err, "tenant_id", tenant.ID.String())
 	}
 
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if len(roles) > 0 {
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("user already has tenant roles"))
@@ -605,7 +605,7 @@ func (s *platformServer) AddTenantMember(
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to begin add tenant member transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 
@@ -621,11 +621,11 @@ func (s *platformServer) AddTenantMember(
 		if dberr.IsUniqueViolation(err) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("user already has this role"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create tenant user role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to commit add tenant member", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.AddTenantMemberResponse{
@@ -662,7 +662,7 @@ func (s *platformServer) UpdateTenantMemberRole(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
 	user, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
@@ -673,12 +673,12 @@ func (s *platformServer) UpdateTenantMemberRole(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant member", err, "tenant_id", tenant.ID.String(), "public_id", userPublicID)
 	}
 
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if len(roles) == 0 {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
@@ -686,14 +686,14 @@ func (s *platformServer) UpdateTenantMemberRole(
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to begin update tenant member role transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 
 	txq := dbmodels.New(tx)
 
 	if err := txq.DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to delete tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
@@ -703,11 +703,11 @@ func (s *platformServer) UpdateTenantMemberRole(
 		Role:     normalizedRole,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create tenant user role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to commit update tenant member role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.UpdateTenantMemberRoleResponse{
@@ -740,7 +740,7 @@ func (s *platformServer) RemoveTenantMember(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
 	user, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
@@ -751,11 +751,11 @@ func (s *platformServer) RemoveTenantMember(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant member", err, "tenant_id", tenant.ID.String(), "public_id", userPublicID)
 	}
 
 	if err := s.queriesFor(ctx).DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to delete tenant user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	return connect.NewResponse(&publirasplatformv1.RemoveTenantMemberResponse{

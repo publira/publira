@@ -76,6 +76,24 @@ func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
+func TestUpdatePlatformSettingsDatabaseErrorIsHidden(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultTimezoneQuery)).
+		WithArgs("America/Los_Angeles").
+		WillReturnError(errors.New(`pq: relation "platform_config" does not exist`))
+
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone: "America/Los_Angeles",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("UpdatePlatformSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
 func TestUpdatePlatformSettingsRejectsInvalidTimezone(t *testing.T) {
 	tests := []struct {
 		name     string
