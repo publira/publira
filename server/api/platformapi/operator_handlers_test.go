@@ -251,8 +251,23 @@ func TestListOperatorsHidesDatabaseError(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListOperators code = %v, want internal", connect.CodeOf(err))
 	}
-	if err.Error() != "internal: failed to list operators" {
+	if err.Error() != "internal: internal server error" {
 		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListOperatorsPreservesContextCanceled(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPlatformOperatorsDescQuery)).
+		WithArgs(uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(context.Canceled)
+
+	_, err := server.ListOperators(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListOperatorsRequest{}))
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("ListOperators error = %v, want context.Canceled", err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

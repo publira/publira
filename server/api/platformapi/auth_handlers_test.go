@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -95,6 +96,25 @@ func TestPlatformAuthLoginSuccess(t *testing.T) {
 	}
 	if resp.Msg.AccessToken == nil || resp.Msg.AccessToken.Token == "" {
 		t.Fatalf("session is missing token")
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestPlatformAuthLoginDatabaseErrorIsHidden(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformUserByEmailQuery)).
+		WithArgs("platform@example.com").
+		WillReturnError(errors.New(`pq: relation "platform_users" does not exist`))
+
+	_, err := server.Login(context.Background(), connect.NewRequest(&publirasplatformv1.PlatformAuthServiceLoginRequest{
+		Email:    "platform@example.com",
+		Password: "secret-password",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("Login code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

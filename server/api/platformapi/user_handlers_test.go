@@ -3,6 +3,7 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -61,6 +62,24 @@ func TestListEndUsers(t *testing.T) {
 	}
 	if resp.Msg.Users[0].TenantName != "Readers" {
 		t.Fatalf("tenant_name = %q, want Readers", resp.Msg.Users[0].TenantName)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestListEndUsersDatabaseErrorIsHidden(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	userID := uuid.Must(uuid.NewV7())
+	expectOperatorAuth(mock, userID, "platform_operator", now)
+	mock.ExpectQuery(regexp.QuoteMeta(testListEndUsersQuery)).
+		WillReturnError(errors.New(`pq: relation "users" does not exist`))
+
+	_, err := server.ListEndUsers(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.ListEndUsersRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListEndUsers code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

@@ -67,7 +67,7 @@ func (s *platformServer) loadPlatformSMTPConfig(ctx context.Context) (dbmodels.P
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.PlatformSmtpConfig{}, false, nil
 		}
-		return dbmodels.PlatformSmtpConfig{}, false, connect.NewError(connect.CodeInternal, err)
+		return dbmodels.PlatformSmtpConfig{}, false, s.internalDBError("failed to get platform smtp config", err)
 	}
 	return config, true, nil
 }
@@ -126,7 +126,7 @@ func (s *platformServer) UpdatePlatformEmailSettings(
 		ReplyTo:           nullableString(settings.ReplyTo),
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to upsert platform smtp config", err)
 	}
 
 	if actor, ok := platformActorFromContext(ctx); ok {

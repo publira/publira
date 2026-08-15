@@ -3,6 +3,7 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -268,6 +269,27 @@ func TestListTenantsRejectsInvalidToken(t *testing.T) {
 		}
 		assertOperatorHandlerExpectations(t, mock)
 	}
+}
+
+func TestListTenantsDatabaseErrorIsHidden(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectQuery(regexp.QuoteMeta(listTenantsDescQuery)).
+		WithArgs(
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			sql.NullString{String: "", Valid: true},
+			uuid.NullUUID{}, false, sql.NullTime{}, int32(21),
+		).
+		WillReturnError(errors.New(`pq: relation "tenants" does not exist`))
+
+	_, err := server.ListTenants(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListTenants code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
 }
 
 func TestListTenantMembersSuccess(t *testing.T) {

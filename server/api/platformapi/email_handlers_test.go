@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -41,6 +42,21 @@ func newTestEncryptor(t *testing.T) *secretcrypto.Manager {
 
 func platformSMTPColumns() []string {
 	return []string{"singleton", "host", "port", "username", "password_encrypted", "encryption", "from_address", "reply_to", "created_at", "updated_at"}
+}
+
+func TestGetPlatformEmailSettingsDatabaseErrorIsHidden(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformSMTPConfigQuery)).
+		WillReturnError(errors.New(`pq: relation "platform_smtp_configs" does not exist`))
+
+	_, err := server.GetPlatformEmailSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformEmailSettingsRequest{}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetPlatformEmailSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
 }
 
 func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
