@@ -32,14 +32,10 @@ func TestPublishSuccessNotifiesEachAdminOnce(t *testing.T) {
 	}
 
 	rows := listTenantNotifications(t, pg)
-	if len(rows) != 2 {
-		t.Fatalf("notifications = %d, want 2", len(rows))
-	}
-
 	gotAdmins := map[uuid.UUID]dbmodels.Notification{}
 	for _, row := range rows {
 		if _, exists := gotAdmins[row.UserID]; exists {
-			t.Fatalf("duplicate notification for admin %s", row.UserID)
+			t.Fatalf("duplicate notification for user %s", row.UserID)
 		}
 		gotAdmins[row.UserID] = row
 	}
@@ -48,6 +44,9 @@ func TestPublishSuccessNotifiesEachAdminOnce(t *testing.T) {
 	}
 	if _, ok := gotAdmins[editor.ID]; !ok {
 		t.Fatal("missing notification for tenant editor")
+	}
+	if _, ok := gotAdmins[env.member.ID]; !ok {
+		t.Fatal("missing notification for member")
 	}
 
 	for _, row := range rows {
@@ -74,27 +73,94 @@ func TestPublishSuccessNotifiesEachAdminOnce(t *testing.T) {
 		}
 	}
 
-	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
+	assertNotificationCounts(t, pg, notificationCounts{tenant: 3})
 }
 
-func TestPublishSuccessSkipsMembersAndOtherTenants(t *testing.T) {
+func TestPublishSuccessNotifiesEachMemberOnce(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	otherMember := pg.SeedEndUser(t, env.tenant.ID, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")
+	r := env.runner()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	r.RunOnce(ctx)
+
+	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
+		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
+	}
+	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
+
+	r.RunOnce(ctx)
+	if err := r.notifyMembersOfPublish(ctx, dbmodels.New(pg.DB), env.readyRow()); err != nil {
+		t.Fatalf("notifyMembersOfPublish: %v", err)
+	}
+	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
+}
+
+func TestPublishRetriesMemberNotificationsAfterInsertFailure(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	otherMember := pg.SeedEndUser(t, env.tenant.ID, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")
+	r := env.runner()
+	r.maxRetries = 1
+	attempts := 0
+	r.notify = func(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+		attempts++
+		if attempts == 1 {
+			return errors.New("insert boom")
+		}
+		return r.notifyMembersOfPublish(ctx, q, row)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	if attempts != 2 {
+		t.Fatalf("notify attempts = %d, want 2", attempts)
+	}
+	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
+		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
+	}
+	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
+}
+
+func TestPublishSuccessSkipsOtherTenantAdmins(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
 	otherTenant := pg.SeedTenant(t, "TENANTFAIL02", "other.example.com", "Other Tenant")
-	pg.SeedTenantAdmin(t, otherTenant.ID, "ADMINOTHER01", "admin@other.example.com", "Other Admin")
+	otherAdmin := pg.SeedTenantAdmin(t, otherTenant.ID, "ADMINOTHER01", "admin@other.example.com", "Other Admin")
 	r := env.runner()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	r.RunOnce(ctx)
 
-	rows := listTenantNotifications(t, pg)
-	if len(rows) != 1 {
-		t.Fatalf("notifications = %d, want 1 admin row", len(rows))
+	assertPublishedUsers(t, pg, env.admin.ID, env.member.ID)
+	for _, row := range listTenantNotifications(t, pg) {
+		if row.UserID == otherAdmin.ID {
+			t.Fatal("notified other tenant admin")
+		}
 	}
-	if rows[0].UserID != env.admin.ID {
-		t.Fatalf("user_id = %s, want admin %s", rows[0].UserID, env.admin.ID)
+	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
+}
+
+func TestPublishSuccessSkipsOtherTenantMembers(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	otherTenant := pg.SeedTenant(t, "TENANTFAIL02", "other.example.com", "Other Tenant")
+	otherMember := pg.SeedEndUser(t, otherTenant.ID, "MEMBEROTHER1", "member@other.example.com", "Other Member")
+	r := env.runner()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	assertPublishedUsers(t, pg, env.admin.ID, env.member.ID)
+	for _, row := range listTenantNotifications(t, pg) {
+		if row.UserID == otherMember.ID {
+			t.Fatal("notified other tenant member")
+		}
 	}
-	assertNotificationCounts(t, pg, notificationCounts{tenant: 1})
+	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
 }
 
 func TestPublishSuccessDoesNotNotifyOperators(t *testing.T) {
@@ -109,7 +175,7 @@ func TestPublishSuccessDoesNotNotifyOperators(t *testing.T) {
 	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
 		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
 	}
-	assertNotificationCounts(t, pg, notificationCounts{tenant: 1})
+	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
 }
 
 func TestPublishFinalFailureNotifiesEachOperatorOnce(t *testing.T) {
@@ -342,6 +408,23 @@ func assertNotificationCounts(t *testing.T, pg *testutil.PostgresEnv, want notif
 	}
 }
 
+func assertPublishedUsers(t *testing.T, pg *testutil.PostgresEnv, userIDs ...uuid.UUID) {
+	t.Helper()
+	rows := listTenantNotifications(t, pg)
+	if len(rows) != len(userIDs) {
+		t.Fatalf("notifications = %d, want %d", len(rows), len(userIDs))
+	}
+	got := map[uuid.UUID]struct{}{}
+	for _, row := range rows {
+		got[row.UserID] = struct{}{}
+	}
+	for _, userID := range userIDs {
+		if _, ok := got[userID]; !ok {
+			t.Fatalf("missing notification for %s", userID)
+		}
+	}
+}
+
 func listingStatus(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -351,6 +434,53 @@ func listingStatus(t *testing.T, pg *testutil.PostgresEnv, episodeID uuid.UUID) 
 		t.Fatalf("listing status: %v", err)
 	}
 	return status
+}
+
+func assertMemberPublishedNotifications(t *testing.T, pg *testutil.PostgresEnv, env publishTestEnv, memberIDs ...uuid.UUID) {
+	t.Helper()
+	rows := listTenantNotifications(t, pg)
+	if len(rows) != len(memberIDs) {
+		t.Fatalf("notifications = %d, want %d", len(rows), len(memberIDs))
+	}
+
+	gotMembers := map[uuid.UUID]dbmodels.Notification{}
+	for _, row := range rows {
+		if _, exists := gotMembers[row.UserID]; exists {
+			t.Fatalf("duplicate notification for member %s", row.UserID)
+		}
+		gotMembers[row.UserID] = row
+	}
+	for _, memberID := range memberIDs {
+		if _, ok := gotMembers[memberID]; !ok {
+			t.Fatalf("missing notification for member %s", memberID)
+		}
+	}
+
+	for _, row := range rows {
+		if row.TenantID != env.tenant.ID {
+			t.Fatalf("tenant_id = %s, want %s", row.TenantID, env.tenant.ID)
+		}
+		if row.NotificationType != notificationTypeEpisodePublished {
+			t.Fatalf("type = %q, want %s", row.NotificationType, notificationTypeEpisodePublished)
+		}
+		if row.SubjectKey != "episode:"+env.episode.PublicID {
+			t.Fatalf("subject_key = %q, want episode:%s", row.SubjectKey, env.episode.PublicID)
+		}
+		var payload episodePublishedPayload
+		if err := json.Unmarshal(row.Payload, &payload); err != nil {
+			t.Fatalf("payload: %v", err)
+		}
+		if payload != (episodePublishedPayload{
+			EpisodeID:    env.episode.PublicID,
+			EpisodeTitle: "Failed Episode",
+			SeriesID:     env.series.PublicID,
+			SeriesTitle:  "Failed Series",
+		}) {
+			t.Fatalf("payload = %+v", payload)
+		}
+	}
+
+	assertNotificationCounts(t, pg, notificationCounts{tenant: len(memberIDs)})
 }
 
 func listTenantNotifications(t *testing.T, pg *testutil.PostgresEnv) []dbmodels.Notification {

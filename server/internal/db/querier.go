@@ -274,6 +274,8 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
+	// Worker fan-out: members are tenant users that do not hold a tenant role.
+	ListTenantMemberIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	// テナントユーザーのロール一覧を取得する
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	// テナントに所属する管理・編集ユーザー一覧を取得する
