@@ -182,6 +182,18 @@ describe("getLabel", () => {
     });
   });
 
+  it("不正な入力はRPCを呼ばずにnotFoundを返す", async () => {
+    const { getLabel } = await import("./label");
+    const result = await getLabel({
+      publicId: "   ",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockGetLabel).not.toHaveBeenCalled();
+    expect(mockCacheTag).not.toHaveBeenCalled();
+    expect(result).toEqual({ notFound: true, ok: false });
+  });
+
   it("セッションがない場合はRPCを呼ばずにエラーを返す", async () => {
     mockGetAccessToken.mockResolvedValue(null);
 

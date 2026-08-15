@@ -5,6 +5,7 @@ import {
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
+import { z } from "zod";
 
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
@@ -334,13 +335,26 @@ export const updateLabel = async (input: {
   }
 };
 
+const getLabelInputSchema = z.object({
+  publicId: z.string().trim().min(1).max(255),
+  tenantId: z.string().trim().min(1).max(255),
+});
+
 export const getLabel = async (input: {
   tenantId: string;
   publicId: string;
 }): Promise<GetLabelResult> => {
   "use cache: private";
-  cacheTag(`labels-${input.tenantId}`);
-  cacheTag(`label-${input.tenantId}-${input.publicId}`);
+  const parsed = getLabelInputSchema.safeParse(input);
+  if (!parsed.success) {
+    // Same notFound as a missing / other-tenant label: the URL is not a
+    // resource, and wording that said "malformed" would only help an
+    // attacker probe which strings the server accepts.
+    return { notFound: true, ok: false };
+  }
+
+  cacheTag(`labels-${parsed.data.tenantId}`);
+  cacheTag(`label-${parsed.data.tenantId}-${parsed.data.publicId}`);
 
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -353,8 +367,8 @@ export const getLabel = async (input: {
   try {
     const response = await apiClient.label.getLabel(
       {
-        publicId: input.publicId,
-        tenant: { tenantId: input.tenantId },
+        publicId: parsed.data.publicId,
+        tenant: { tenantId: parsed.data.tenantId },
       },
       withSessionHeaders(sessionId)
     );
