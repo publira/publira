@@ -263,8 +263,7 @@ export const getCatalogTopFeaturedAuthors = async (
   "use cache";
 
   const authorsResult = await listPublishedAuthors(tenantId, {
-    page: 1,
-    pageSize: maxAuthors,
+    limit: maxAuthors,
   });
   if (!authorsResult.ok) {
     return cachedReadFailure(authorsResult.message);

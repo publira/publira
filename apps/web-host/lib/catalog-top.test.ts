@@ -191,9 +191,8 @@ describe("catalog-top section loaders", () => {
           { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
           { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
         ],
-        hasNextPage: false,
-        page: 1,
-        pageSize: 6,
+        nextToken: "",
+        previousToken: "",
       },
     });
     mockListPublishedLabels.mockResolvedValue({
@@ -216,6 +215,9 @@ describe("catalog-top section loaders", () => {
         { id: "AUTHOR_1", name: "著者A", seriesCount: 2 },
         { id: "AUTHOR_2", name: "著者B", seriesCount: 1 },
       ],
+    });
+    expect(mockListPublishedAuthors).toHaveBeenCalledWith("TENANT_001", {
+      limit: 6,
     });
     await expect(
       getCatalogTopFeaturedLabels("TENANT_001", { maxLabels: 6 })

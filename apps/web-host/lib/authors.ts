@@ -1,27 +1,15 @@
-import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 
+import { apiClient } from "./api-client";
 import { applyCacheTag, tenantAuthorsTag } from "./cache-tags";
-import { listPublishedSeries } from "./catalog";
-import type { SeriesListItem } from "./catalog";
 
-const SERIES_FETCH_BATCH_SIZE = 50;
-/**
- * Series walk ceiling. Match `forEachPageWithToken` default `maxRows` so the
- * row budget is the binding limit (not a lower page count at batch size 50).
- * Temporary until author detail is a server-side API (#799).
- */
-const SERIES_SCAN_MAX_ROWS = 10_000;
-const SERIES_SCAN_MAX_PAGES = Math.ceil(
-  SERIES_SCAN_MAX_ROWS / SERIES_FETCH_BATCH_SIZE
-);
-const SERIES_SCAN_OPTIONS = {
-  maxPages: SERIES_SCAN_MAX_PAGES,
-  maxRows: SERIES_SCAN_MAX_ROWS,
-  pageSize: SERIES_FETCH_BATCH_SIZE,
-} as const;
-const FALLBACK_AUTHOR_ID_PREFIX = "name_";
+const AUTHORS_LIST_ERROR_MESSAGE =
+  "著者一覧を取得できませんでした。時間をおいて再試行してください。";
+const AUTHOR_DETAIL_ERROR_MESSAGE =
+  "著者を取得できませんでした。時間をおいて再試行してください。";
 
 export interface PublishedAuthorListItem {
   id: string;
@@ -30,321 +18,151 @@ export interface PublishedAuthorListItem {
   seriesCount: number;
 }
 
+export interface PublishedAuthorSeriesItem {
+  publicId: string;
+  title: string;
+}
+
 export interface PublishedAuthorDetail {
   id: string;
   name: string;
   iconImageUrl: string;
   profileText: string;
-  series: {
-    publicId: string;
-    title: string;
-  }[];
+  seriesCount: number;
+  series: PublishedAuthorSeriesItem[];
+  /** Token for the previous series page. Empty on the first page. */
+  previousToken: string;
+  /** Token for the next series page. Empty on the last page. */
+  nextToken: string;
 }
 
 export interface PublishedAuthorListResult {
   authors: PublishedAuthorListItem[];
-  hasNextPage: boolean;
-  page: number;
-  pageSize: number;
+  /** Token for the previous page. Empty on the first page. */
+  previousToken: string;
+  /** Token for the next page. Empty on the last page. */
+  nextToken: string;
 }
 
-const normalizeAuthorName = (value: string) => value.trim();
-
-const normalizeAuthorProfileText = (value: string) => value.trim();
-
-const encodeFallbackAuthorId = (name: string) =>
-  `${FALLBACK_AUTHOR_ID_PREFIX}${Buffer.from(name, "utf-8").toString("base64url")}`;
-
-const decodeFallbackAuthorId = (id: string): string | null => {
-  if (!id.startsWith(FALLBACK_AUTHOR_ID_PREFIX)) {
-    return null;
-  }
-
-  const encoded = id.slice(FALLBACK_AUTHOR_ID_PREFIX.length);
-  if (!/^[A-Za-z0-9_-]+$/u.test(encoded)) {
-    return null;
-  }
-
-  try {
-    const decoded = Buffer.from(encoded, "base64url").toString("utf-8").trim();
-    if (decoded.length === 0) {
-      return null;
-    }
-
-    const reencoded = Buffer.from(decoded, "utf-8").toString("base64url");
-    if (reencoded !== encoded) {
-      return null;
-    }
-
-    return decoded.length > 0 ? decoded : null;
-  } catch {
-    return null;
-  }
-};
-
-const addAuthorContribution = (
-  authorSeriesMap: Map<
-    string,
-    { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
-  >,
-  authorId: string,
-  authorName: string,
-  iconImageUrl: string,
-  seriesPublicId: string,
-  seriesTitle: string
-) => {
-  const existing = authorSeriesMap.get(authorId);
-  if (existing) {
-    if (existing.iconImageUrl.length === 0 && iconImageUrl.length > 0) {
-      existing.iconImageUrl = iconImageUrl;
-    }
-    existing.seriesMap.set(seriesPublicId, seriesTitle);
-    return;
-  }
-  authorSeriesMap.set(authorId, {
-    iconImageUrl,
-    name: authorName,
-    seriesMap: new Map([[seriesPublicId, seriesTitle]]),
-  });
-};
+const mapPublishedAuthor = (author: {
+  iconImageUrl?: string;
+  name?: string;
+  profileText?: string;
+  publicId?: string;
+  publishedSeriesCount?: number;
+}): Omit<PublishedAuthorDetail, "nextToken" | "previousToken" | "series"> => ({
+  iconImageUrl: author.iconImageUrl?.trim() ?? "",
+  id: author.publicId ?? "",
+  name: (author.name ?? "").trim(),
+  profileText: (author.profileText ?? "").trim(),
+  seriesCount: author.publishedSeriesCount ?? 0,
+});
 
 /**
- * One page of the series walk.
- *
- * `listPublishedSeries` answers with a result rather than throwing (#672), and
- * this walk runs inside a `"use cache"` scope of its own, so a failure has to
- * be carried out to the caller by hand: `onFailure` records the message and the
- * walk stops, leaving the caller to return the failure instead of a short list
- * that looks like real data.
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`.
  */
-const fetchPublishedSeriesPage = async (
-  tenantId: string,
-  token: string,
-  limit: number,
-  onFailure: (message: string) => void
-): Promise<{ items: readonly SeriesListItem[]; nextToken: string }> => {
-  const seriesPage = await listPublishedSeries(tenantId, {
-    limit,
-    token,
-  });
-
-  if (!seriesPage.ok) {
-    onFailure(seriesPage.message);
-    return { items: [], nextToken: "" };
-  }
-
-  return {
-    items: seriesPage.value.series,
-    nextToken: seriesPage.value.nextToken,
-  };
-};
-
-const collectAuthorsFromSeries = (
-  authorSeriesMap: Map<
-    string,
-    { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
-  >,
-  seriesList: readonly SeriesListItem[]
-) => {
-  for (const series of seriesList) {
-    const creatorsInSeries = new Map<string, string>();
-    const creatorIconsInSeries = new Map<string, string>();
-
-    for (const creator of series.creators) {
-      const name = normalizeAuthorName(creator.name);
-      if (name.length === 0) {
-        continue;
-      }
-
-      const creatorId = creator.publicId.trim() || encodeFallbackAuthorId(name);
-      creatorsInSeries.set(creatorId, name);
-      creatorIconsInSeries.set(creatorId, creator.iconImageUrl.trim());
-    }
-
-    if (creatorsInSeries.size === 0) {
-      for (const creatorName of series.creatorNames) {
-        const name = normalizeAuthorName(creatorName);
-        if (name.length === 0) {
-          continue;
-        }
-        creatorsInSeries.set(encodeFallbackAuthorId(name), name);
-      }
-    }
-
-    for (const [creatorId, creatorName] of creatorsInSeries.entries()) {
-      addAuthorContribution(
-        authorSeriesMap,
-        creatorId,
-        creatorName,
-        creatorIconsInSeries.get(creatorId) ?? "",
-        series.publicId,
-        series.title
-      );
-    }
-  }
-};
-
 export const listPublishedAuthors = async (
   tenantId: string,
-  {
-    page = 1,
-    pageSize = 12,
-  }: {
-    page?: number;
-    pageSize?: number;
-  } = {}
+  { limit = 20, token = "" }: { limit?: number; token?: string } = {}
 ): Promise<CachedReadResult<PublishedAuthorListResult>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
   applyCacheTag(tenantAuthorsTag(normalizedTenantId));
 
-  const targetEndIndex = page * pageSize + 1;
-  const authorSeriesMap = new Map<
-    string,
-    { name: string; iconImageUrl: string; seriesMap: Map<string, string> }
-  >();
-  let failureMessage: string | null = null;
-
-  // Aggregation needs every series page until enough unique authors exist for
-  // the requested window; infinite-scan bounds live in forEachPageWithToken.
-  await forEachPageWithToken(
-    (token, limit) =>
-      fetchPublishedSeriesPage(normalizedTenantId, token, limit, (message) => {
-        failureMessage = message;
-      }),
-    (seriesList) => {
-      collectAuthorsFromSeries(authorSeriesMap, seriesList);
-      return failureMessage === null && authorSeriesMap.size < targetEndIndex;
-    },
-    SERIES_SCAN_OPTIONS
-  );
-
-  if (failureMessage !== null) {
-    return cachedReadFailure(failureMessage);
+  let response: Awaited<
+    ReturnType<typeof apiClient.catalog.listPublishedAuthors>
+  >;
+  try {
+    response = await apiClient.catalog.listPublishedAuthors({
+      limit,
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    return cachedReadFailure(
+      rpcErrorMessage(error, AUTHORS_LIST_ERROR_MESSAGE)
+    );
   }
-
-  const allAuthors = [...authorSeriesMap.entries()]
-    .map(([id, value]) => ({
-      iconImageUrl: value.iconImageUrl,
-      id,
-      name: value.name,
-      seriesCount: value.seriesMap.size,
-    }))
-    .toSorted((left, right) => left.name.localeCompare(right.name, "ja"));
-
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
 
   return {
     ok: true,
     value: {
-      authors: allAuthors.slice(startIndex, endIndex),
-      hasNextPage: allAuthors.length > endIndex,
-      page,
-      pageSize,
+      authors: (response.authors ?? []).map((author) => {
+        const mapped = mapPublishedAuthor(author);
+        return {
+          iconImageUrl: mapped.iconImageUrl,
+          id: mapped.id,
+          name: mapped.name,
+          seriesCount: mapped.seriesCount,
+        };
+      }),
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
     },
   };
 };
 
+/**
+ * `ok: true` with a `null` value when the author does not exist, has no
+ * currently published series, or belongs to another tenant — the server
+ * returns `not_found` or `permission_denied` for those and the public site
+ * must not tell them apart.
+ *
+ * `ok: false` when the fetch itself failed. Neither case throws: a `"use cache"`
+ * fill that throws fails the whole request (#672).
+ *
+ * Related series are one cursor page. Pass the previous response's token to
+ * move; the first call (empty token) is enough to render the author.
+ */
 export const getPublishedAuthorDetail = async (
   tenantId: string,
-  authorId: string
+  authorId: string,
+  { limit = 20, token = "" }: { limit?: number; token?: string } = {}
 ): Promise<CachedReadResult<PublishedAuthorDetail | null>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
+  const normalizedAuthorId = authorId.trim();
   applyCacheTag(tenantAuthorsTag(normalizedTenantId));
 
-  const fallbackAuthorName = decodeFallbackAuthorId(authorId);
-  const isFallbackAuthor = fallbackAuthorName !== null;
-
-  const relatedSeries = new Map<string, string>();
-  let resolvedAuthorName = fallbackAuthorName ?? "";
-  let resolvedAuthorIconImageUrl = "";
-  let resolvedAuthorProfileText = "";
-  let failureMessage: string | null = null;
-
-  // Author detail is embedded in series creators; walk all series pages and
-  // collect matches. Explicit maxRows/maxPages so pageSize 50 does not cap the
-  // walk below the row budget (default maxPages alone would stop at 5_000).
-  await forEachPageWithToken(
-    (token, limit) =>
-      fetchPublishedSeriesPage(normalizedTenantId, token, limit, (message) => {
-        failureMessage = message;
-      }),
-    (seriesList) => {
-      if (failureMessage !== null) {
-        return false;
-      }
-
-      for (const series of seriesList) {
-        const matchedCreator = series.creators.find((creator) => {
-          const name = normalizeAuthorName(creator.name);
-          if (name.length === 0) {
-            return false;
-          }
-
-          if (isFallbackAuthor) {
-            return name === fallbackAuthorName;
-          }
-
-          return creator.publicId.trim() === authorId;
-        });
-
-        if (!matchedCreator) {
-          if (
-            isFallbackAuthor &&
-            series.creatorNames.some(
-              (name) => normalizeAuthorName(name) === fallbackAuthorName
-            )
-          ) {
-            resolvedAuthorName = fallbackAuthorName;
-            relatedSeries.set(series.publicId, series.title);
-          }
-          continue;
-        }
-
-        if (!resolvedAuthorName) {
-          resolvedAuthorName = normalizeAuthorName(matchedCreator.name);
-        }
-
-        if (!resolvedAuthorProfileText) {
-          resolvedAuthorProfileText = normalizeAuthorProfileText(
-            matchedCreator.profileText
-          );
-        }
-
-        if (!resolvedAuthorIconImageUrl) {
-          resolvedAuthorIconImageUrl = matchedCreator.iconImageUrl.trim();
-        }
-
-        if (resolvedAuthorName.length > 0) {
-          relatedSeries.set(series.publicId, series.title);
-        }
-      }
-    },
-    SERIES_SCAN_OPTIONS
-  );
-
-  if (failureMessage !== null) {
-    return cachedReadFailure(failureMessage);
+  let response: Awaited<
+    ReturnType<typeof apiClient.catalog.getPublishedAuthorDetail>
+  >;
+  try {
+    response = await apiClient.catalog.getPublishedAuthorDetail({
+      limit,
+      publicId: normalizedAuthorId,
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    if (isMissingResourceRpcError(error)) {
+      return { ok: true, value: null };
+    }
+    return cachedReadFailure(
+      rpcErrorMessage(error, AUTHOR_DETAIL_ERROR_MESSAGE)
+    );
   }
 
-  if (relatedSeries.size === 0) {
+  if (!response.author) {
     return { ok: true, value: null };
   }
 
   return {
     ok: true,
     value: {
-      iconImageUrl: resolvedAuthorIconImageUrl,
-      id: authorId,
-      name: resolvedAuthorName,
-      profileText: resolvedAuthorProfileText,
-      series: [...relatedSeries.entries()]
-        .map(([publicId, title]) => ({ publicId, title }))
-        .toSorted((left, right) => left.title.localeCompare(right.title, "ja")),
+      ...mapPublishedAuthor(response.author),
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+      series: (response.series ?? []).flatMap((series) => {
+        const publicId = series.publicId?.trim() ?? "";
+        return publicId.length > 0
+          ? [{ publicId, title: series.title?.trim() ?? "" }]
+          : [];
+      }),
     },
   };
 };

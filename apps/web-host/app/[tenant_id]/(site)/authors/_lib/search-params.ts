@@ -1,23 +1,23 @@
-import type { SearchParamValue } from "@publira/utils/search-params";
-import { searchParamNumber } from "@publira/utils/search-params";
 import { z } from "zod";
 
+import { cursorPageHref, cursorTokenSchema } from "#lib/cursor-token";
+
+const authorsListSearchParamsSchema = z.object({
+  token: cursorTokenSchema,
+});
+
 interface ParseAuthorsListSearchParamsInput {
-  page?: SearchParamValue;
+  token?: string | string[] | undefined;
 }
 
 export interface AuthorsListSearchParams {
-  page: number;
+  /** Empty on the first page. */
+  token: string;
 }
-
-/**
- * Offset pages start at 1. An unusable `page` still has a meaningful default
- * view (the first page), so the schema never 404s.
- */
-const authorsListSearchParamsSchema = z.object({
-  page: searchParamNumber({ fallback: 1, min: 1 }),
-});
 
 export const parseAuthorsListSearchParams = (
   input: ParseAuthorsListSearchParamsInput
 ): AuthorsListSearchParams => authorsListSearchParamsSchema.parse(input);
+
+export const authorsListHref = (token: string): string =>
+  cursorPageHref("/authors", token);
