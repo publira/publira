@@ -1,3 +1,5 @@
+import type { BadgeTone } from "@publira/ui-components/badge";
+import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   Card,
@@ -50,6 +52,23 @@ const statusLabel = (status: string): string => {
   }
 };
 
+const statusTone = (status: string): BadgeTone => {
+  switch (status) {
+    case "active": {
+      return "success";
+    }
+    case "expired": {
+      return "warning";
+    }
+    case "revoked": {
+      return "muted";
+    }
+    default: {
+      return "info";
+    }
+  }
+};
+
 // Absolute API timestamp → tenant display zone. `formatDateTime` falls back to
 // the raw value when it cannot be parsed, so only the empty case is special.
 const formatTicketDateTime = (value: string, timeZone: string): string =>
@@ -93,6 +112,7 @@ const TicketListBody = ({
           <TableHead className="w-40">状態</TableHead>
           <TableHead>ユーザー</TableHead>
           <TableHead>エピソード</TableHead>
+          <TableHead className="min-w-40">メモ</TableHead>
           <TableHead className="w-44">有効期限</TableHead>
           <TableHead className="w-44">作成日時</TableHead>
           <TableHead className="w-28">操作</TableHead>
@@ -102,13 +122,18 @@ const TicketListBody = ({
         {tickets.map((ticket) => (
           <TableRow key={ticket.publicId}>
             <TableCell>
-              <div className="grid gap-0.5">
-                <span className="font-medium">
+              <div className="grid gap-1">
+                <StatusChip status={statusTone(ticket.status)}>
                   {statusLabel(ticket.status)}
-                </span>
+                </StatusChip>
                 <span className="text-xs text-muted-foreground">
                   {ticket.publicId}
                 </span>
+                {ticket.status === "revoked" ? (
+                  <span className="text-xs text-muted-foreground">
+                    失効: {formatTicketDateTime(ticket.revokedAt, timeZone)}
+                  </span>
+                ) : null}
               </div>
             </TableCell>
             <TableCell>
@@ -132,6 +157,13 @@ const TicketListBody = ({
                     : ticket.episodePublicId}
                 </span>
               </div>
+            </TableCell>
+            <TableCell>
+              {ticket.note ? (
+                <span className="line-clamp-2 text-sm">{ticket.note}</span>
+              ) : (
+                <span className="text-sm text-muted-foreground">—</span>
+              )}
             </TableCell>
             <TableCell>
               {formatTicketDateTime(ticket.expiresAt, timeZone)}

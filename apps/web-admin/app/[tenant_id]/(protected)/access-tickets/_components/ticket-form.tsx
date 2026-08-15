@@ -2,6 +2,8 @@
 
 import { Button } from "@publira/ui-components/button";
 import { Card, CardContent } from "@publira/ui-components/card";
+import type { ComboboxItem } from "@publira/ui-components/combobox";
+import { Combobox } from "@publira/ui-components/combobox";
 import {
   Field,
   FieldContent,
@@ -11,46 +13,108 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
-import { fromDateTimeLocalValue } from "@publira/utils";
-import { useActionState, useCallback, useRef } from "react";
+import {
+  useActionState,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
+import { fillInstantFromDateTimeLocal } from "#lib/datetime-local-form";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type { IssueAccessTicketActionState } from "../ticket-types";
+import { listEpisodeOptionsAction } from "../_lib/actions";
+import type {
+  IssueAccessTicketActionState,
+  TicketEpisodeOption,
+  TicketSeriesOption,
+} from "../ticket-types";
 
 interface TicketFormProps {
   action: (
     prevState: IssueAccessTicketActionState,
     formData: FormData
   ) => Promise<IssueAccessTicketActionState>;
+  series: TicketSeriesOption[];
+  seriesErrorMessage?: string;
   timeZone: string;
 }
 
-export const TicketForm = ({ action, timeZone }: TicketFormProps) => {
+const toSeriesItems = (series: TicketSeriesOption[]): ComboboxItem[] =>
+  series.map((item) => ({
+    label: `${item.title} (${item.publicId})`,
+    value: item.publicId,
+  }));
+
+const toEpisodeItems = (episodes: TicketEpisodeOption[]): ComboboxItem[] =>
+  episodes.map((item) => ({
+    label: `${item.title} (${item.publicId})`,
+    value: item.publicId,
+  }));
+
+export const TicketForm = ({
+  action,
+  series,
+  seriesErrorMessage,
+  timeZone,
+}: TicketFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
-  const expiresAtIsoRef = useRef<HTMLInputElement>(null);
+  const [isEpisodePending, startEpisodeTransition] = useTransition();
+  const [seriesPublicId, setSeriesPublicId] = useState("");
+  const [episodePublicId, setEpisodePublicId] = useState("");
+  const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
+  const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
+  const episodeRequestIdRef = useRef(0);
+
+  const seriesItems = useMemo(() => toSeriesItems(series), [series]);
+  const episodeItems = useMemo(() => toEpisodeItems(episodes), [episodes]);
+  const useEpisodeFallbackInput =
+    Boolean(seriesErrorMessage) ||
+    seriesItems.length === 0 ||
+    Boolean(episodesErrorMessage);
+
+  const handleSeriesChange = useCallback(
+    (nextSeriesPublicId: string) => {
+      setSeriesPublicId(nextSeriesPublicId);
+      setEpisodePublicId("");
+      setEpisodes([]);
+      setEpisodesErrorMessage(undefined);
+
+      if (nextSeriesPublicId === "") {
+        return;
+      }
+
+      const requestId = episodeRequestIdRef.current + 1;
+      episodeRequestIdRef.current = requestId;
+
+      startEpisodeTransition(async () => {
+        const result = await listEpisodeOptionsAction(
+          tenantId,
+          nextSeriesPublicId
+        );
+        if (requestId !== episodeRequestIdRef.current) {
+          return;
+        }
+        if (result.ok) {
+          setEpisodes(result.episodes);
+          return;
+        }
+        setEpisodesErrorMessage(result.message);
+      });
+    },
+    [tenantId]
+  );
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
-      // datetime-local is a zone-free wall clock. Resolve it against the
-      // tenant's display zone — not the browser's, which would make the same
-      // input mean different instants for operators travelling or set to
-      // another TZ — and post an absolute instant so the server cannot
-      // reinterpret it.
-      const form = event.currentTarget;
-      const localInput = form.elements.namedItem(
-        "expires_at_local"
-      ) as HTMLInputElement | null;
-      const isoInput = expiresAtIsoRef.current;
-      if (!isoInput) {
-        return;
-      }
-      // Empty / unparseable values become "", which the server action rejects.
-      isoInput.value = fromDateTimeLocalValue(
-        localInput?.value ?? "",
-        timeZone
-      );
+      fillInstantFromDateTimeLocal(event.currentTarget, {
+        isoName: "expires_at",
+        localName: "expires_at_local",
+        timeZone,
+      });
     },
     [timeZone]
   );
@@ -64,12 +128,6 @@ export const TicketForm = ({ action, timeZone }: TicketFormProps) => {
           onSubmit={handleSubmit}
         >
           <input name="tenant_id" type="hidden" value={tenantId} />
-          <input
-            defaultValue=""
-            name="expires_at"
-            ref={expiresAtIsoRef}
-            type="hidden"
-          />
 
           <Field>
             <FieldLabel htmlFor="user_public_id" required>
@@ -89,23 +147,87 @@ export const TicketForm = ({ action, timeZone }: TicketFormProps) => {
             </FieldContent>
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor="episode_public_id" required>
-              エピソード public_id
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                id="episode_public_id"
-                name="episode_public_id"
-                placeholder="例: SeedEPSDAAA1"
-                required
-                type="text"
-              />
-              <FieldDescription>
-                対象エピソードの public_id を入力します。
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+          {useEpisodeFallbackInput ? (
+            <Field>
+              <FieldLabel htmlFor="episode_public_id" required>
+                エピソード public_id
+              </FieldLabel>
+              <FieldContent>
+                {seriesErrorMessage ? (
+                  <FormMessage variant="destructive">
+                    {seriesErrorMessage}
+                  </FormMessage>
+                ) : null}
+                {episodesErrorMessage ? (
+                  <FormMessage variant="destructive">
+                    {episodesErrorMessage}
+                  </FormMessage>
+                ) : null}
+                <Input
+                  id="episode_public_id"
+                  name="episode_public_id"
+                  placeholder="例: SeedEPSDAAA1"
+                  required
+                  type="text"
+                />
+                <FieldDescription>
+                  {seriesItems.length === 0 && !seriesErrorMessage
+                    ? "選択できるシリーズがありません。エピソードの public_id を直接入力してください。"
+                    : "対象エピソードの public_id を入力します。"}
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          ) : (
+            <>
+              <Field>
+                <FieldLabel htmlFor="ticket_series_combobox" required>
+                  シリーズ
+                </FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    emptyMessage="一致するシリーズが見つかりません。"
+                    id="ticket_series_combobox"
+                    items={seriesItems}
+                    onValueChange={handleSeriesChange}
+                    placeholder="シリーズ名で検索"
+                    value={seriesPublicId}
+                  />
+                  <FieldDescription>
+                    対象エピソードが属するシリーズを選ぶと、エピソード一覧が開きます。
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="ticket_episode_combobox" required>
+                  エピソード
+                </FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    disabled={isEpisodePending || seriesPublicId === ""}
+                    emptyMessage="一致するエピソードが見つかりません。"
+                    id="ticket_episode_combobox"
+                    items={episodeItems}
+                    onValueChange={setEpisodePublicId}
+                    placeholder={
+                      isEpisodePending ? "読み込み中…" : "エピソード名で検索"
+                    }
+                    value={episodePublicId}
+                  />
+                  <input
+                    name="episode_public_id"
+                    type="hidden"
+                    value={episodePublicId}
+                  />
+                  <FieldDescription>
+                    {seriesPublicId === ""
+                      ? "先にシリーズを選択してください。"
+                      : "閲覧権を付与するエピソードを選択します。"}
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+            </>
+          )}
 
           <Field>
             <FieldLabel htmlFor="expires_at_local">有効期限</FieldLabel>
@@ -115,6 +237,7 @@ export const TicketForm = ({ action, timeZone }: TicketFormProps) => {
                 name="expires_at_local"
                 type="datetime-local"
               />
+              <input defaultValue="" name="expires_at" type="hidden" />
               <FieldDescription>
                 未指定の場合は無期限です。テナントのタイムゾーン（{timeZone}
                 ）の壁時計として解釈し、送信時に絶対時刻へ変換します。失効操作でいつでも取り消せます。
@@ -127,7 +250,7 @@ export const TicketForm = ({ action, timeZone }: TicketFormProps) => {
             <FieldContent>
               <Textarea
                 id="note"
-                maxLength={500}
+                maxLength={1000}
                 name="note"
                 placeholder="例: レビュー用の限定閲覧"
                 rows={3}

@@ -64,9 +64,11 @@ describe("listAccessTickets", () => {
     expect(mockListAccessTickets).toHaveBeenCalledWith(
       {
         activeOnly: false,
+        episodePublicId: "",
         limit: 20,
         tenant: { tenantId: "TENANT001" },
         token: "current-page",
+        userPublicId: "",
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
@@ -86,9 +88,11 @@ describe("listAccessTickets", () => {
     expect(mockListAccessTickets).toHaveBeenCalledWith(
       {
         activeOnly: false,
+        episodePublicId: "",
         limit: 20,
         tenant: { tenantId: "TENANT001" },
         token: "",
+        userPublicId: "",
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
@@ -106,15 +110,19 @@ describe("listAccessTickets", () => {
     const { listAccessTickets } = await import("./access-ticket");
     await listAccessTickets("TENANT001", {
       activeOnly: true,
+      episodePublicId: "EPISODE001",
       token: "current-page",
+      userPublicId: "USER001",
     });
 
     expect(mockListAccessTickets).toHaveBeenCalledWith(
       {
         activeOnly: true,
+        episodePublicId: "EPISODE001",
         limit: 20,
         tenant: { tenantId: "TENANT001" },
         token: "current-page",
+        userPublicId: "USER001",
       },
       { headers: { Authorization: "Bearer session-token" } }
     );

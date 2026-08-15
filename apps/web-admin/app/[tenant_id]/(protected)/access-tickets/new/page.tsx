@@ -14,6 +14,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { listAllSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -40,8 +41,21 @@ const NewAccessTicketFormSkeleton = () => (
 
 const NewAccessTicketFormData = async () => {
   const tenantId = await getTenantId();
-  const timeZone = await getTenantDisplayTimeZone(tenantId);
-  return <TicketForm action={issueAccessTicketAction} timeZone={timeZone} />;
+  const [timeZone, seriesResult] = await Promise.all([
+    getTenantDisplayTimeZone(tenantId),
+    listAllSeries(tenantId),
+  ]);
+  return (
+    <TicketForm
+      action={issueAccessTicketAction}
+      series={seriesResult.series.map((item) => ({
+        publicId: item.publicId,
+        title: item.title,
+      }))}
+      seriesErrorMessage={seriesResult.ok ? undefined : seriesResult.message}
+      timeZone={timeZone}
+    />
+  );
 };
 
 const NewAccessTicketPage = () => (

@@ -3,6 +3,7 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
 
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
@@ -188,6 +189,91 @@ export const listSeries = async (
       defaultReadingPeriodHours: response.defaultReadingPeriodHours ?? 0,
       ok: true,
       series: (response.series ?? []).map((item) => mapSeries(item)),
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      ...emptyCursorPageTokens,
+      defaultReadingPeriodHours: 0,
+      message: mapErrorToMessage(error, genericListErrorMessage),
+      ok: false,
+      series: [],
+    };
+  }
+};
+
+/**
+ * Every series in the tenant for combobox pickers (access-ticket form).
+ *
+ * Walks `ListSeries` cursor pages so the client-side Combobox can search
+ * beyond a single RPC page. The `/series` list keeps {@link listSeries}
+ * (one page) so list paging stays independent of picker loading.
+ *
+ * Sorted by title for readable search results. An incomplete walk (budget
+ * exhausted or a repeated token) fails with an empty list rather than a
+ * partial option set that would hide series beyond the rows already read.
+ *
+ * Deliberately uncached: series mutations do not `updateTag` a tenant-wide
+ * series list, so a cache tag here would keep a newly created series out of
+ * the picker until the entry expired.
+ */
+export const listAllSeries = async (
+  tenantId: string
+): Promise<ListSeriesResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      ...emptyCursorPageTokens,
+      defaultReadingPeriodHours: 0,
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+      series: [],
+    };
+  }
+
+  try {
+    const series: SeriesItem[] = [];
+    let defaultReadingPeriodHours = 0;
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.series.listSeries(
+          {
+            limit,
+            tenant: { tenantId },
+            token,
+          },
+          withSessionHeaders(sessionId)
+        );
+        defaultReadingPeriodHours = response.defaultReadingPeriodHours ?? 0;
+        return {
+          items: response.series ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          series.push(mapSeries(item));
+        }
+      }
+    );
+
+    // Match listAllCreators / episode reorder: never hand the form a partial
+    // option list that operators treat as complete.
+    if (walkStop !== "completed") {
+      return {
+        ...emptyCursorPageTokens,
+        defaultReadingPeriodHours: 0,
+        message: genericListErrorMessage,
+        ok: false,
+        series: [],
+      };
+    }
+
+    return {
+      ...emptyCursorPageTokens,
+      defaultReadingPeriodHours,
+      ok: true,
+      series: series.toSorted((a, b) => a.title.localeCompare(b.title, "ja")),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);

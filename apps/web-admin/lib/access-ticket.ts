@@ -42,6 +42,8 @@ export interface AccessTicketItem {
 
 export type ListAccessTicketsOptions = CursorPageOptions & {
   activeOnly?: boolean;
+  episodePublicId?: string;
+  userPublicId?: string;
 };
 
 export type ListAccessTicketsResult = CursorPageTokens & {
@@ -147,7 +149,9 @@ export const listAccessTickets = async (
       {
         ...cursorPageRequest(options),
         activeOnly: options.activeOnly ?? false,
+        episodePublicId: options.episodePublicId ?? "",
         tenant: { tenantId },
+        userPublicId: options.userPublicId ?? "",
       },
       withSessionHeaders(sessionId)
     );
