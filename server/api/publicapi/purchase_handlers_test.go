@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v86"
 )
 
 func TestStripePurchaseMetadata(t *testing.T) {
