@@ -1610,6 +1610,60 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 	return i, err
 }
 
+const getAnnouncementForUser = `-- name: GetAnnouncementForUser :one
+SELECT
+    n.id, n.tenant_id, n.target_user_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at,
+    (nr.announcement_id IS NOT NULL) AS is_read,
+    nr.read_at
+FROM announcements n
+    LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
+    AND nr.user_id = $1
+WHERE n.id = $2
+    AND n.tenant_id = $3
+    AND (n.target_user_id IS NULL OR n.target_user_id = $1)
+`
+
+type GetAnnouncementForUserParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetAnnouncementForUserRow struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	TargetUserID     uuid.NullUUID   `json:"target_user_id"`
+	AnnouncementType string          `json:"announcement_type"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
+	LinkUrl          sql.NullString  `json:"link_url"`
+	Metadata         json.RawMessage `json:"metadata"`
+	CreatedAt        time.Time       `json:"created_at"`
+	IsRead           interface{}     `json:"is_read"`
+	ReadAt           sql.NullTime    `json:"read_at"`
+}
+
+// お知らせ 1 件を取得（既読状態付き）。inbox に属する行だけを返す。
+// 他人・他テナントの行は 0 件になり、存在の有無は区別しない。
+func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error) {
+	row := q.db.QueryRowContext(ctx, getAnnouncementForUser, arg.UserID, arg.ID, arg.TenantID)
+	var i GetAnnouncementForUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.TargetUserID,
+		&i.AnnouncementType,
+		&i.Title,
+		&i.Body,
+		&i.LinkUrl,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.IsRead,
+		&i.ReadAt,
+	)
+	return i, err
+}
+
 const getCreatorByPublicIDForTenant = `-- name: GetCreatorByPublicIDForTenant :one
 SELECT c.id,
     c.tenant_id,

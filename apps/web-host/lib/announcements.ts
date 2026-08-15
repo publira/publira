@@ -4,13 +4,16 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import { unstable_noStore as noStore } from "next/cache";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { z } from "zod";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { tenantIdFormSchema } from "./auth-input";
+import { applyCacheTag, tenantAnnouncementsTag } from "./cache-tags";
 
 export interface MemberAnnouncementItem {
   id: string;
@@ -29,22 +32,39 @@ export interface MemberAnnouncementItem {
 const isSignInRequiredError = (error: unknown): boolean =>
   isRpcError(error, Code.Unauthenticated, Code.InvalidArgument);
 
+const listErrorMessage = "お知らせの取得に失敗しました。";
+
+/**
+ * Tag the cached inbox read carries, so `updateTag` in the Server Action
+ * makes a mark-read visible on the next list render.
+ */
+export const announcementsCacheTag = tenantAnnouncementsTag;
+
 const mapErrorToMessage = (error: unknown): string =>
-  rpcErrorMessage(error, "お知らせの取得に失敗しました。", {
+  rpcErrorMessage(error, listErrorMessage, {
     "invalid-argument": "セッションが無効です。再ログインしてください。",
   });
+
+const mapAnnouncementItem = (item: {
+  body: string;
+  createdAt: string;
+  id: string;
+  isRead: boolean;
+  linkUrl: string;
+  title: string;
+}): MemberAnnouncementItem => ({
+  body: item.body,
+  createdAt: item.createdAt,
+  id: item.id,
+  isRead: item.isRead,
+  linkUrl: item.linkUrl,
+  title: item.title,
+});
 
 const mapAnnouncementItems = (
   response: Awaited<ReturnType<typeof apiClient.auth.listAnnouncements>>
 ): MemberAnnouncementItem[] =>
-  (response.announcements ?? []).map((item) => ({
-    body: item.body,
-    createdAt: item.createdAt,
-    id: item.id,
-    isRead: item.isRead,
-    linkUrl: item.linkUrl,
-    title: item.title,
-  }));
+  (response.announcements ?? []).map((item) => mapAnnouncementItem(item));
 
 /**
  * Cursor pagination: `token` is whatever the previous response returned as
@@ -87,13 +107,27 @@ export type ListMyAnnouncementsResult =
       requiresSignIn: boolean;
     } & MyAnnouncementsPage);
 
-const fetchAnnouncements = async (
+const emptyListPage = {
+  announcements: [] as MemberAnnouncementItem[],
+  nextToken: "",
+  previousToken: "",
+};
+
+type CachedListMyAnnouncementsResult = ListMyAnnouncementsResult & {
+  error?: unknown;
+};
+
+const readAnnouncementList = async (
   tenantId: string,
-  sessionId: string,
+  sessionId: string | undefined,
   options: ListMyAnnouncementsOptions
-): Promise<ListMyAnnouncementsResult> => {
+): Promise<CachedListMyAnnouncementsResult> => {
+  "use cache: private";
+  applyCacheTag(announcementsCacheTag(tenantId));
+
+  const sid = await resolveAccessToken(sessionId);
   try {
-    const response = await listAnnouncementsRpc(tenantId, sessionId, options);
+    const response = await listAnnouncementsRpc(tenantId, sid, options);
 
     return {
       announcements: mapAnnouncementItems(response),
@@ -102,20 +136,12 @@ const fetchAnnouncements = async (
       previousToken: response.previousToken ?? "",
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    console.warn("[web-host] listAnnouncements failed", {
-      error: error instanceof Error ? error.message : String(error),
-      hasSessionId: sessionId.length > 0,
-      sessionIdLength: sessionId.length,
-      tenantId,
-    });
-
+    dropFailedCacheEntry();
     return {
-      announcements: [],
+      ...emptyListPage,
+      error,
       message: mapErrorToMessage(error),
-      nextToken: "",
       ok: false,
-      previousToken: "",
       requiresSignIn: isSignInRequiredError(error),
     };
   }
@@ -126,58 +152,82 @@ export const listMyAnnouncements = async (
   sessionId?: string,
   options: ListMyAnnouncementsOptions = {}
 ): Promise<ListMyAnnouncementsResult> => {
-  noStore();
-
-  const sid = await resolveAccessToken(sessionId);
-  return fetchAnnouncements(tenantId, sid, options);
+  const { error, ...result } = await readAnnouncementList(
+    tenantId,
+    sessionId,
+    options
+  );
+  if (error !== undefined) {
+    rethrowUnclassifiedRpcError(error);
+  }
+  return result;
 };
 
-const ANNOUNCEMENT_LOOKUP_PAGE_SIZE = 100;
-/**
- * Runaway bound only. AuthService has no GetAnnouncement; the walk follows
- * `nextToken` until the list is exhausted or the cursor stops advancing.
- * 20 × 100 is the max walk so a broken cursor cannot fan out unbounded RPCs.
- */
-const ANNOUNCEMENT_LOOKUP_MAX_PAGES = 20;
+const getMyAnnouncementInputSchema = z.object({
+  announcementId: z.string().trim().pipe(z.uuid()),
+  tenantId: tenantIdFormSchema,
+});
+
+interface CachedGetMyAnnouncementResult {
+  error?: unknown;
+  value: MemberAnnouncementItem | null;
+}
+
+const readMyAnnouncement = async (
+  tenantId: string,
+  announcementId: string,
+  sessionId?: string
+): Promise<CachedGetMyAnnouncementResult> => {
+  "use cache: private";
+
+  const parsed = getMyAnnouncementInputSchema.safeParse({
+    announcementId,
+    tenantId,
+  });
+  if (!parsed.success) {
+    // Same null as a missing row: a malformed id is not a distinct outcome.
+    return { value: null };
+  }
+
+  applyCacheTag(announcementsCacheTag(parsed.data.tenantId));
+
+  const sid = await resolveAccessToken(sessionId);
+  if (!sid) {
+    return { value: null };
+  }
+
+  try {
+    const response = await apiClient.auth.getAnnouncement(
+      {
+        announcementId: parsed.data.announcementId,
+        tenant: { tenantId: parsed.data.tenantId },
+      },
+      buildSessionHeaders(sid)
+    );
+    if (!response.announcement) {
+      return { value: null };
+    }
+
+    return { value: mapAnnouncementItem(response.announcement) };
+  } catch (error) {
+    dropFailedCacheEntry();
+    return { error, value: null };
+  }
+};
 
 /**
- * Walk the session-authorized list until the row is found. There is no
- * GetAnnouncement RPC; a form-supplied `linkUrl` is not a substitute.
+ * Session-authorized get-by-id. A form-supplied `linkUrl` is not a substitute.
  */
 export const getMyAnnouncement = async (
   tenantId: string,
   announcementId: string,
   sessionId?: string
 ): Promise<MemberAnnouncementItem | null> => {
-  let token = "";
-
-  for (let page = 0; page < ANNOUNCEMENT_LOOKUP_MAX_PAGES; page += 1) {
-    // Sequential pages; each token is only known after the previous RPC.
-    // oxlint-disable-next-line no-await-in-loop
-    const result = await listMyAnnouncements(tenantId, sessionId, {
-      limit: ANNOUNCEMENT_LOOKUP_PAGE_SIZE,
-      token,
-    });
-    if (!result.ok) {
-      return null;
-    }
-
-    const found = result.announcements.find(
-      (item) => item.id === announcementId
-    );
-    if (found) {
-      return found;
-    }
-
-    // Empty nextToken = last page. Same token as sent = cursor did not move.
-    if (result.nextToken.length === 0 || result.nextToken === token) {
-      return null;
-    }
-
-    token = result.nextToken;
+  const result = await readMyAnnouncement(tenantId, announcementId, sessionId);
+  if (result.error !== undefined) {
+    rethrowUnclassifiedRpcError(result.error);
   }
-
-  return null;
+  return result.value;
 };
 
 export const markAnnouncementAsRead = async (

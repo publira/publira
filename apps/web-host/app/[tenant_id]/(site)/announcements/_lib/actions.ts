@@ -1,11 +1,12 @@
 "use server";
 
 import { toFormDataInput } from "@publira/utils/form-data";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
+  announcementsCacheTag,
   getMyAnnouncement,
   markAllAnnouncementsAsRead,
   markAnnouncementAsRead,
@@ -68,7 +69,7 @@ export const markAnnouncementAsReadAction = async (
 
   const { announcementId, tenantId } = parsed.data;
   await markAnnouncementAsRead(tenantId, announcementId);
-  revalidateTag(`member-announcements-${tenantId}`, "max");
+  updateTag(announcementsCacheTag(tenantId));
 };
 
 export const markAllAnnouncementsAsReadAction = async (
@@ -83,7 +84,7 @@ export const markAllAnnouncementsAsReadAction = async (
 
   const { tenantId } = parsed.data;
   await markAllAnnouncementsAsRead(tenantId);
-  revalidateTag(`member-announcements-${tenantId}`, "max");
+  updateTag(announcementsCacheTag(tenantId));
 };
 
 export const markAnnouncementAsReadAndNavigateAction = async (
@@ -106,7 +107,7 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   }
 
   await markAnnouncementAsRead(tenantId, announcementId);
-  revalidateTag(`member-announcements-${tenantId}`, "max");
+  updateTag(announcementsCacheTag(tenantId));
 
   const linkUrl = toSafeAnnouncementLinkUrl(announcement.linkUrl);
   if (!linkUrl) {

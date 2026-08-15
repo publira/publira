@@ -26,6 +26,9 @@ export const tenantPageTag = (tenantId: string, pageId: string) =>
 export const tenantNotificationsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:notifications`;
 
+export const tenantAnnouncementsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:announcements`;
+
 export const applyCacheTag = (tag: string) => {
   try {
     cacheTag(tag);

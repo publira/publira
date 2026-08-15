@@ -2675,6 +2675,20 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
 ORDER BY n.created_at ASC, n.id ASC
 LIMIT sqlc.arg('limit');
 
+-- name: GetAnnouncementForUser :one
+-- お知らせ 1 件を取得（既読状態付き）。inbox に属する行だけを返す。
+-- 他人・他テナントの行は 0 件になり、存在の有無は区別しない。
+SELECT
+    n.*,
+    (nr.announcement_id IS NOT NULL) AS is_read,
+    nr.read_at
+FROM announcements n
+    LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
+    AND nr.user_id = sqlc.arg('user_id')
+WHERE n.id = sqlc.arg('id')
+    AND n.tenant_id = sqlc.arg('tenant_id')
+    AND (n.target_user_id IS NULL OR n.target_user_id = sqlc.arg('user_id'));
+
 -- name: MarkAnnouncementAsRead :one
 -- 指定したお知らせを既読にする（未読時は新規作成、既読済みなら時刻更新）
 INSERT INTO announcement_reads (announcement_id, user_id, read_at)

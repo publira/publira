@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -25,6 +26,7 @@ const (
 	listTenantUserRolesQuery          = "-- name: ListTenantUserRoles :many\nSELECT role\nFROM tenant_user_roles\nWHERE user_id = $1\nORDER BY role\n"
 	listAnnouncementsForUserDescQuery = "-- name: ListAnnouncementsForUserDesc :many\n"
 	listAnnouncementsForUserAscQuery  = "-- name: ListAnnouncementsForUserAsc :many\n"
+	getAnnouncementForUserQuery       = "-- name: GetAnnouncementForUser :one\n"
 	markAnnouncementAsReadQuery       = "-- name: MarkAnnouncementAsRead :one\nINSERT INTO announcement_reads (announcement_id, user_id, read_at)\nSELECT n.id, $3, NOW()\nFROM announcements n\nWHERE n.id = $1\n    AND n.tenant_id = $2\n    AND (n.target_user_id IS NULL OR n.target_user_id = $3)\nON CONFLICT (announcement_id, user_id) DO UPDATE\nSET read_at = EXCLUDED.read_at\nRETURNING announcement_id, user_id, read_at\n"
 	markAllAnnouncementsAsReadQuery   = "-- name: MarkAllAnnouncementsAsRead :execrows\nINSERT INTO announcement_reads (announcement_id, user_id, read_at)\nSELECT n.id, $2, NOW()\nFROM announcements n\nWHERE n.tenant_id = $1\n    AND (n.target_user_id IS NULL OR n.target_user_id = $2)\n    AND NOT EXISTS (\n        SELECT 1\n        FROM announcement_reads nr\n        WHERE nr.announcement_id = n.id\n            AND nr.user_id = $2\n    )\nON CONFLICT (announcement_id, user_id) DO NOTHING\n"
 )
@@ -428,6 +430,109 @@ func TestAuthListAnnouncementsInvalidToken(t *testing.T) {
 			assertPublicExpectations(t, mock)
 		})
 	}
+}
+
+func TestAuthGetAnnouncement(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tenantID := uuid.Must(uuid.NewV7())
+		userID := uuid.Must(uuid.NewV7())
+		announcementID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC().Truncate(time.Microsecond)
+		client, mock := newAnnouncementClient(t, tenantID, userID, now)
+
+		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
+			WithArgs(userID, announcementID, tenantID).
+			WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "新着エピソード", now))
+
+		resp, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			AnnouncementId: announcementID.String(),
+		}, tenantID.String()))
+		if err != nil {
+			t.Fatalf("GetAnnouncement: %v", err)
+		}
+		if resp.Msg.Announcement == nil {
+			t.Fatal("announcement is nil")
+		}
+		if resp.Msg.Announcement.Id != announcementID.String() {
+			t.Fatalf("id = %q, want %q", resp.Msg.Announcement.Id, announcementID)
+		}
+		if resp.Msg.Announcement.LinkUrl != "/series/S001/episodes/E001" {
+			t.Fatalf("link_url = %q, want /series/S001/episodes/E001", resp.Msg.Announcement.LinkUrl)
+		}
+		if !resp.Msg.Announcement.IsRead {
+			t.Fatalf("is_read = false, want true")
+		}
+
+		assertPublicExpectations(t, mock)
+	})
+
+	t.Run("invalid-announcement-id", func(t *testing.T) {
+		tenantID := uuid.Must(uuid.NewV7())
+		userID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC()
+		client, mock := newAnnouncementClient(t, tenantID, userID, now)
+
+		_, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			AnnouncementId: "not-a-uuid",
+		}, tenantID.String()))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+		}
+
+		assertPublicExpectations(t, mock)
+	})
+
+	t.Run("not-found", func(t *testing.T) {
+		tenantID := uuid.Must(uuid.NewV7())
+		userID := uuid.Must(uuid.NewV7())
+		announcementID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC()
+		client, mock := newAnnouncementClient(t, tenantID, userID, now)
+
+		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
+			WithArgs(userID, announcementID, tenantID).
+			WillReturnRows(announcementColumns())
+
+		_, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			AnnouncementId: announcementID.String(),
+		}, tenantID.String()))
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
+		}
+		if err.Error() != "not_found: announcement not found" {
+			t.Fatalf("error = %q, want existence hidden", err)
+		}
+
+		assertPublicExpectations(t, mock)
+	})
+
+	t.Run("database-error-is-hidden", func(t *testing.T) {
+		tenantID := uuid.Must(uuid.NewV7())
+		userID := uuid.Must(uuid.NewV7())
+		announcementID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC()
+		client, mock := newAnnouncementClient(t, tenantID, userID, now)
+
+		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
+			WithArgs(userID, announcementID, tenantID).
+			WillReturnError(errors.New(`pq: relation "announcements" does not exist`))
+
+		_, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			AnnouncementId: announcementID.String(),
+		}, tenantID.String()))
+		if connect.CodeOf(err) != connect.CodeInternal {
+			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+		}
+		if err.Error() != "internal: internal server error" {
+			t.Fatalf("error = %q, want database details hidden", err)
+		}
+
+		assertPublicExpectations(t, mock)
+	})
 }
 
 func TestAuthMarkAnnouncementAsRead(t *testing.T) {

@@ -154,6 +154,61 @@ func TestListAnnouncementsForUserPaginatesRowsSharingCreatedAt(t *testing.T) {
 	}
 }
 
+func TestGetAnnouncementForUserRespectsInbox(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT2", "notif2.example.com", "admin-notif2.example.com", "Notification Tenant 2")
+	otherTenantID := mustInsertTenant(t, ctx, pg.DB, "NOTIFTENANT3", "notif3.example.com", "admin-notif3.example.com", "Notification Tenant 3")
+	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER011", "notif-user2@example.com", "Notification User")
+	otherUserID := mustInsertUser(t, ctx, pg.DB, tenantID, "NOTIFUSER012", "notif-other2@example.com", "Other User")
+	createdAt := time.Now().UTC().Truncate(time.Microsecond)
+
+	broadcastID := mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{}, createdAt)
+	mineID := mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: userID, Valid: true}, createdAt.Add(-time.Minute))
+	theirsID := mustInsertAnnouncement(t, ctx, pg.DB, tenantID, uuid.NullUUID{UUID: otherUserID, Valid: true}, createdAt.Add(-2*time.Minute))
+	foreignID := mustInsertAnnouncement(t, ctx, pg.DB, otherTenantID, uuid.NullUUID{}, createdAt)
+
+	queries := dbmodels.New(pg.DB)
+	broadcast, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
+		ID:       broadcastID,
+		TenantID: tenantID,
+		UserID:   userID,
+	})
+	if err != nil {
+		t.Fatalf("GetAnnouncementForUser broadcast: %v", err)
+	}
+	if broadcast.ID != broadcastID {
+		t.Fatalf("broadcast id = %v, want %v", broadcast.ID, broadcastID)
+	}
+
+	mine, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
+		ID:       mineID,
+		TenantID: tenantID,
+		UserID:   userID,
+	})
+	if err != nil {
+		t.Fatalf("GetAnnouncementForUser targeted: %v", err)
+	}
+	if mine.ID != mineID {
+		t.Fatalf("targeted id = %v, want %v", mine.ID, mineID)
+	}
+
+	for _, announcementID := range []uuid.UUID{theirsID, foreignID, uuid.Must(uuid.NewV7())} {
+		_, err := queries.GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
+			ID:       announcementID,
+			TenantID: tenantID,
+			UserID:   userID,
+		})
+		if err != sql.ErrNoRows {
+			t.Fatalf("GetAnnouncementForUser %s err = %v, want sql.ErrNoRows", announcementID, err)
+		}
+	}
+}
+
 func sortedUUIDs(ids []uuid.UUID) []uuid.UUID {
 	sorted := slices.Clone(ids)
 	slices.SortFunc(sorted, func(left, right uuid.UUID) int {
