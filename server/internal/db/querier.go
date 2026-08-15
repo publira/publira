@@ -110,6 +110,9 @@ type Querier interface {
 	GetPlatformUserByPublicID(ctx context.Context, publicID string) (PlatformUser, error)
 	GetPlatformUserEmailChangeTokenByHash(ctx context.Context, currentEmailTokenHash string) (GetPlatformUserEmailChangeTokenByHashRow, error)
 	GetPlatformUserPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PlatformUserPasswordResetToken, error)
+	// 公開中シリーズを 1 本以上持つ creator だけを返す。不在と同じく呼び出し側
+	// で not_found にするので、非公開の著者の存在は漏れない。
+	GetPublishedAuthorByPublicID(ctx context.Context, arg GetPublishedAuthorByPublicIDParams) (GetPublishedAuthorByPublicIDRow, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
 	// テナントの公開中ページをslugで取得する
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
@@ -251,9 +254,37 @@ type Querier interface {
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
+	// 公開著者一覧の cursor ページネーションは 2 段構え。
+	//
+	// 1 段目が ListPublishedAuthorIDsByName* で、公開中シリーズを 1 本以上持つ
+	// creator の id だけを決める。並び替えキーは (name, id)。id は UUIDv7 なので
+	// 同名でも一意に決まる。
+	//
+	// 名前順は web-host が localeCompare(..., "ja") で並べていたが、ICU の ja
+	// collation は環境ごとにロケールが揃っていないと cursor の比較結果が変わり、
+	// btree のキーセット走査が破綻する。そのため DB の既定 collation で name を
+	// 比較する。ja-x-icu を後から足すなら、その collation でインデックスを張り
+	// 直し、cursor の比較も同じ collation に揃える。
+	//
+	// EXISTS の公開判定は ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+	// ここがずれるとシリーズ一覧と著者ページで見える作品が食い違う。
+	// ORDER BY を向きごとに固定した別クエリに分けてあるのは、CASE で分岐させる
+	// と idx_creators_tenant_name を索引順に読めなくなるため。前ページ方向は
+	// 降順のクエリを呼んで呼び出し側で並べ直す。
+	//
+	// 2 段目が ListPublishedAuthorsByIDs で、決まった id の表示内容と公開
+	// シリーズ数だけを組み立てる。
+	ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListPublishedAuthorIDsByNameAscParams) ([]uuid.UUID, error)
+	ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error)
+	// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+	ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// テナントの公開中かつフッター表示対象のページ一覧を取得する
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
+	// 著者詳細の関連シリーズ。現状の UI がタイトル順で並べている
+	// (apps/web-host/lib/authors.ts)。公開判定は
+	// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+	ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error)
 	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)

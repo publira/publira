@@ -228,6 +228,90 @@ type episodeJSON struct {
 	PublishedAt        *string `json:"published_at"`
 }
 
+func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
+	item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
+	if row.Synopsis.Valid {
+		item.Synopsis = row.Synopsis.String
+	}
+	if row.EyeCatchImageUpdatedAt.Valid {
+		item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	creators := make([]creatorJSON, 0)
+	if len(row.Creators) > 0 {
+		if err := json.Unmarshal(row.Creators, &creators); err != nil {
+			return nil, err
+		}
+	}
+	item.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
+	for _, creator := range creators {
+		item.Creators = append(item.Creators, &publirattypesv1.Creator{
+			PublicId:               creator.PublicID,
+			Name:                   creator.Name,
+			Role:                   creator.Role,
+			ProfileText:            creator.ProfileText,
+			IconImageUrl:           creator.IconImageURL,
+			IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
+			IconImageUpdatedAt:     creator.IconImageUpdatedAt,
+		})
+	}
+
+	if len(row.LabelInfo) > 0 && string(row.LabelInfo) != "{}" {
+		var labelInfo map[string]any
+		if err := json.Unmarshal(row.LabelInfo, &labelInfo); err == nil {
+			if publicIDVal, ok := labelInfo["public_id"].(string); ok {
+				label := &publirattypesv1.Label{
+					PublicId: publicIDVal,
+				}
+				if nameVal, ok := labelInfo["name"].(string); ok {
+					label.Name = nameVal
+				}
+				if eyeCatchImageUpdatedAtVal, ok := labelInfo["eye_catch_image_updated_at"].(string); ok {
+					label.EyeCatchImageUpdatedAt = eyeCatchImageUpdatedAtVal
+				}
+				item.Label = label
+			}
+		}
+	}
+
+	return item, nil
+}
+
+func (s *apiServer) publishedSeriesItems(
+	ctx context.Context,
+	rows []dbmodels.ListActiveSeriesByIDsRow,
+) ([]*publirattypesv1.Series, error) {
+	items := make([]*publirattypesv1.Series, 0, len(rows))
+	imageIDs := make([]uuid.UUID, 0)
+	for _, row := range rows {
+		item, err := publishedSeriesFromRow(row)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if row.EyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
+		}
+		items = append(items, item)
+	}
+	if len(imageIDs) == 0 {
+		return items, nil
+	}
+
+	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		// Variants decorate the series; the page itself is still usable.
+		slog.WarnContext(ctx, "eye catch variants unavailable", "error", err)
+		return items, nil
+	}
+	for i, row := range rows {
+		if row.EyeCatchImageID.Valid {
+			if variants, ok := variantsByImageID[row.EyeCatchImageID.UUID]; ok {
+				items[i].EyeCatchImageVariants = variants
+			}
+		}
+	}
+	return items, nil
+}
+
 func mapSeriesEyeCatchVariants(seriesImageID uuid.UUID, rows []dbmodels.ListSeriesImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
 	items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(rows))
 	for _, row := range rows {
@@ -357,70 +441,9 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	items := make([]*publirattypesv1.Series, 0, len(rows))
-	imageIDs := make([]uuid.UUID, 0)
-	for _, row := range rows {
-		item := &publirattypesv1.Series{PublicId: row.PublicID, Title: row.Title}
-		if row.Synopsis.Valid {
-			item.Synopsis = row.Synopsis.String
-		}
-		if row.EyeCatchImageUpdatedAt.Valid {
-			item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
-		}
-		if row.EyeCatchImageID.Valid {
-			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
-		}
-		creators := make([]creatorJSON, 0)
-		if len(row.Creators) > 0 {
-			if err := json.Unmarshal(row.Creators, &creators); err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
-			}
-		}
-		item.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
-		for _, creator := range creators {
-			item.Creators = append(item.Creators, &publirattypesv1.Creator{
-				PublicId:               creator.PublicID,
-				Name:                   creator.Name,
-				Role:                   creator.Role,
-				ProfileText:            creator.ProfileText,
-				IconImageUrl:           creator.IconImageURL,
-				IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
-				IconImageUpdatedAt:     creator.IconImageUpdatedAt,
-			})
-		}
-
-		// ラベル情報を処理
-		if len(row.LabelInfo) > 0 && string(row.LabelInfo) != "{}" {
-			var labelInfo map[string]interface{}
-			if err := json.Unmarshal(row.LabelInfo, &labelInfo); err == nil {
-				if publicIDVal, ok := labelInfo["public_id"].(string); ok {
-					label := &publirattypesv1.Label{
-						PublicId: publicIDVal,
-					}
-					if nameVal, ok := labelInfo["name"].(string); ok {
-						label.Name = nameVal
-					}
-					if eyeCatchImageUpdatedAtVal, ok := labelInfo["eye_catch_image_updated_at"].(string); ok {
-						label.EyeCatchImageUpdatedAt = eyeCatchImageUpdatedAtVal
-					}
-					item.Label = label
-				}
-			}
-		}
-
-		items = append(items, item)
-	}
-	if len(imageIDs) > 0 {
-		variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
-		if err == nil {
-			for i, row := range rows {
-				if row.EyeCatchImageID.Valid {
-					if variants, ok := variantsByImageID[row.EyeCatchImageID.UUID]; ok {
-						items[i].EyeCatchImageVariants = variants
-					}
-				}
-			}
-		}
+	items, err := s.publishedSeriesItems(ctx, rows)
+	if err != nil {
+		return nil, err
 	}
 
 	res := &publirav1.ListPublishedSeriesResponse{Series: items}

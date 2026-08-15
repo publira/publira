@@ -886,6 +886,12 @@ CREATE INDEX idx_creator_images_tenant_id ON creator_images USING btree (tenant_
 -- INDEX: idx_creators_tenant_created_at
 CREATE INDEX idx_creators_tenant_created_at ON creators USING btree (tenant_id, created_at DESC, id DESC);
 
+-- INDEX: idx_creators_tenant_name
+-- 公開著者一覧の cursor 用。並び替えキーと同じ (name, id) の組で張る。
+-- btree は逆順にも走査できるので、この 1 本で名前昇順と前ページ用の降順の
+-- 両方を索引順に取り出せる。
+CREATE INDEX idx_creators_tenant_name ON creators USING btree (tenant_id, name, id);
+
 -- INDEX: idx_episode_image_variants_episode_image_id
 CREATE INDEX idx_episode_image_variants_episode_image_id ON episode_image_variants USING btree (episode_image_id);
 
@@ -995,6 +1001,11 @@ CREATE INDEX idx_platform_user_password_reset_tokens_user_id ON platform_user_pa
 
 -- INDEX: idx_purchases_tenant_id
 CREATE INDEX idx_purchases_tenant_id ON purchases USING btree (tenant_id);
+
+-- INDEX: idx_series_creators_tenant_creator
+-- 著者から公開シリーズを辿る EXISTS / JOIN 用。PK は (series_id, creator_id)
+-- なので creator_id からの検索には乗らない。
+CREATE INDEX idx_series_creators_tenant_creator ON series_creators USING btree (tenant_id, creator_id);
 
 -- INDEX: idx_series_creators_tenant_id
 CREATE INDEX idx_series_creators_tenant_id ON series_creators USING btree (tenant_id);
