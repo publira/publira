@@ -1,9 +1,15 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import {
+  Code,
+  isMissingResourceRpcError,
+  isRpcError,
+} from "@publira/api-client/errors";
+import { EpisodeAccess } from "@publira/api-client/public/catalog";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
+import { cacheLife } from "next/cache";
 
-import { apiClient } from "./api-client";
+import { apiClient, buildSessionHeaders } from "./api-client";
 import {
   applyCacheTag,
   tenantAuthorsTag,
@@ -99,6 +105,60 @@ export interface EpisodeDetail {
   status: string;
   title: string;
 }
+
+/**
+ * Viewer access for an episode body. Matches `EpisodeAccess` on
+ * GetEpisodeDetail: free body, paid-and-locked, or a valid purchase/ticket.
+ */
+export type EpisodeAccessState = "free" | "locked" | "entitled";
+
+/**
+ * Map the RPC enum onto the public-site union. Unspecified falls back to
+ * price so a missing field cannot open a paid body.
+ */
+export const toEpisodeAccessState = (
+  access: EpisodeAccess | number | undefined,
+  price: number
+): EpisodeAccessState => {
+  if (access === EpisodeAccess.FREE) {
+    return "free";
+  }
+  if (access === EpisodeAccess.ENTITLED) {
+    return "entitled";
+  }
+  if (access === EpisodeAccess.LOCKED) {
+    return "locked";
+  }
+  return price > 0 ? "locked" : "free";
+};
+
+export const isPublicEpisodeBody = (access: EpisodeAccessState): boolean =>
+  access === "free";
+
+const mapEpisodeImages = (
+  images:
+    | {
+        contentType?: string;
+        displayOrder?: number;
+        fileSizeBytes?: bigint | number;
+        height?: number;
+        id?: string;
+        imageUrl?: string;
+        width?: number;
+      }[]
+    | undefined
+): EpisodeImageItem[] =>
+  (images ?? [])
+    .map((image) => ({
+      contentType: image.contentType ?? "",
+      displayOrder: image.displayOrder ?? 0,
+      fileSizeBytes: Number(image.fileSizeBytes ?? 0),
+      height: image.height ?? 0,
+      id: image.id ?? "",
+      imageUrl: image.imageUrl ?? "",
+      width: image.width ?? 0,
+    }))
+    .toSorted((left, right) => left.displayOrder - right.displayOrder);
 
 export interface EpisodeSeriesSummary {
   publicId: string;
@@ -334,6 +394,7 @@ export const getEpisodeDetail = async (
   episodePublicId: string
 ): Promise<
   CachedReadResult<{
+    access: EpisodeAccessState;
     episode: EpisodeDetail;
     images: EpisodeImageItem[];
     series: EpisodeSeriesSummary;
@@ -377,30 +438,104 @@ export const getEpisodeDetail = async (
     return { ok: true, value: null };
   }
 
-  const episodeDetail = {
-    episode: {
-      orderIndex: response.episode.orderIndex,
-      price: response.episode.price,
-      publicId: response.episode.publicId,
-      publishedAt: response.episode.publishedAt,
-      readingPeriodHours: response.episode.readingPeriodHours ?? 0,
-      scheduledAt: response.episode.scheduledAt,
-      status: response.episode.status,
-      title: response.episode.title,
-    },
-    images: (response.images ?? [])
-      .map((image) => ({
-        contentType: image.contentType,
-        displayOrder: image.displayOrder,
-        fileSizeBytes: Number(image.fileSizeBytes),
-        height: image.height,
-        id: image.id,
-        imageUrl: image.imageUrl,
-        width: image.width,
-      }))
-      .toSorted((left, right) => left.displayOrder - right.displayOrder),
-    series,
+  const episode = {
+    orderIndex: response.episode.orderIndex,
+    price: response.episode.price,
+    publicId: response.episode.publicId,
+    publishedAt: response.episode.publishedAt,
+    readingPeriodHours: response.episode.readingPeriodHours ?? 0,
+    scheduledAt: response.episode.scheduledAt,
+    status: response.episode.status,
+    title: response.episode.title,
   };
 
-  return { ok: true, value: episodeDetail };
+  return {
+    ok: true,
+    value: {
+      access: toEpisodeAccessState(response.access, episode.price),
+      episode,
+      images: mapEpisodeImages(response.images),
+      series,
+    },
+  };
+};
+
+/**
+ * Session-aware body for a paid episode. Shared `getEpisodeDetail` is
+ * anonymous, so a ticket or purchase never appears there — this private read
+ * sends the bearer and returns entitled images or a locked gate.
+ *
+ * `accessToken` is an argument so the private cache key includes the session
+ * and the caller does not resolve cookies twice. Guests skip the RPC: no
+ * token means locked, same as the server would answer without a bearer.
+ */
+export const getEpisodeViewer = async (
+  tenantId: string,
+  seriesPublicId: string,
+  episodePublicId: string,
+  accessToken: string
+): Promise<
+  CachedReadResult<{
+    access: EpisodeAccessState;
+    images: EpisodeImageItem[];
+  } | null>
+> => {
+  "use cache: private";
+  try {
+    cacheLife({ stale: 30 });
+  } catch {
+    // Unit tests run without the Next.js cache runtime, same as applyCacheTag.
+  }
+
+  const normalizedTenantId = tenantId.trim();
+  const normalizedSeriesPublicId = seriesPublicId.trim();
+  const normalizedEpisodePublicId = episodePublicId.trim();
+  applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
+  applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
+
+  const sessionId = accessToken.trim();
+  if (!sessionId) {
+    return { ok: true, value: { access: "locked", images: [] } };
+  }
+
+  let response;
+  try {
+    response = await apiClient.catalog.getEpisodeDetail(
+      {
+        publicId: normalizedEpisodePublicId,
+        tenant: { tenantId: normalizedTenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+  } catch (error) {
+    // The public read already established this episode exists. A
+    // permission_denied here is a body-access denial, not an existence
+    // question, so it must not become notFound() on a page that already
+    // showed the title.
+    if (isRpcError(error, Code.PermissionDenied)) {
+      return { ok: true, value: { access: "locked", images: [] } };
+    }
+    if (isMissingResourceRpcError(error)) {
+      return { ok: true, value: null };
+    }
+    return cachedReadFailure(
+      rpcErrorMessage(error, EPISODE_DETAIL_ERROR_MESSAGE)
+    );
+  }
+
+  const seriesPublicIdFromResponse = response.series?.publicId ?? "";
+  if (
+    !response.episode ||
+    seriesPublicIdFromResponse !== normalizedSeriesPublicId
+  ) {
+    return { ok: true, value: null };
+  }
+
+  return {
+    ok: true,
+    value: {
+      access: toEpisodeAccessState(response.access, response.episode.price),
+      images: mapEpisodeImages(response.images),
+    },
+  };
 };
