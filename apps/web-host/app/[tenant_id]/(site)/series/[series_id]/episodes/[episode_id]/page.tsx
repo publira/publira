@@ -9,7 +9,7 @@ import { Suspense } from "react";
 
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { getEpisodeDetail } from "#lib/catalog";
+import { getEpisodeDetail, isPublicEpisodeBody } from "#lib/catalog";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -181,7 +181,7 @@ const EpisodeContent = async (
                       : "制限なし"}
                   </dd>
                 </div>
-                {access === "free" ? (
+                {isPublicEpisodeBody(access) ? (
                   <div className="flex items-start justify-between gap-4">
                     <dt className="text-muted-foreground">本文枚数</dt>
                     <dd className="font-medium">{images.length}枚</dd>

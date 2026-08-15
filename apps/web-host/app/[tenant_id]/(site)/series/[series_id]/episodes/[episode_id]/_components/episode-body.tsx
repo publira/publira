@@ -41,7 +41,8 @@ export const EpisodeBody = async ({
   const viewer = await getEpisodeViewer(
     tenantId,
     seriesPublicId,
-    episodePublicId
+    episodePublicId,
+    sessionId
   );
   if (!viewer.ok) {
     return (

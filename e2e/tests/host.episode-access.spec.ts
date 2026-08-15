@@ -56,6 +56,9 @@ test.describe("web-host episode access", () => {
         name: SEED_TENANT.series.paidEpisodeTitle,
       })
     ).toBeVisible();
+    await expect(
+      page.getByText("本文画像はまだ公開されていません。")
+    ).toBeVisible();
     await expect(page.getByText("このエピソードは有料です")).toHaveCount(0);
     await expect(page.getByText("このエピソードは閲覧できません")).toHaveCount(
       0
@@ -63,9 +66,6 @@ test.describe("web-host episode access", () => {
     await expect(
       page.getByRole("link", { name: "ログインして閲覧する" })
     ).toHaveCount(0);
-    await expect(
-      page.getByText("本文画像はまだ公開されていません。")
-    ).toBeVisible();
   });
 
   test("ゲートのログインから戻るとチケット閲覧できる", async ({ page }) => {
@@ -78,9 +78,9 @@ test.describe("web-host episode access", () => {
     await page.getByRole("button", { name: "ログイン" }).click();
 
     await expect(page).toHaveURL(new RegExp(`${paidEpisodePath}$`, "u"));
-    await expect(page.getByText("このエピソードは有料です")).toHaveCount(0);
     await expect(
       page.getByText("本文画像はまだ公開されていません。")
     ).toBeVisible();
+    await expect(page.getByText("このエピソードは有料です")).toHaveCount(0);
   });
 });

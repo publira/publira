@@ -9,9 +9,8 @@ import {
   toEpisodeAccessState,
 } from "./catalog";
 
-const { mockGetEpisodeDetail, mockResolveAccessToken } = vi.hoisted(() => ({
+const { mockGetEpisodeDetail } = vi.hoisted(() => ({
   mockGetEpisodeDetail: vi.fn(),
-  mockResolveAccessToken: vi.fn(),
 }));
 
 vi.mock("./api-client", () => ({
@@ -23,7 +22,6 @@ vi.mock("./api-client", () => ({
   buildSessionHeaders: (sessionId: string) => ({
     headers: { Authorization: `Bearer ${sessionId}` },
   }),
-  resolveAccessToken: mockResolveAccessToken,
 }));
 
 describe("toEpisodeAccessState", () => {
@@ -48,7 +46,6 @@ describe("toEpisodeAccessState", () => {
 describe("catalog.getEpisodeDetail", () => {
   beforeEach(() => {
     mockGetEpisodeDetail.mockReset();
-    mockResolveAccessToken.mockReset();
   });
 
   it("エピソード詳細と画像を整形して返す", async () => {
@@ -229,14 +226,11 @@ describe("catalog.getEpisodeDetail", () => {
 describe("catalog.getEpisodeViewer", () => {
   beforeEach(() => {
     mockGetEpisodeDetail.mockReset();
-    mockResolveAccessToken.mockReset();
   });
 
   it("セッションが無いときは RPC せず locked を返す", async () => {
-    mockResolveAccessToken.mockResolvedValueOnce("");
-
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010")
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "")
     ).resolves.toEqual({
       ok: true,
       value: { access: "locked", images: [] },
@@ -245,7 +239,6 @@ describe("catalog.getEpisodeViewer", () => {
   });
 
   it("有効チケットはセッション付きで entitled 画像を返す", async () => {
-    mockResolveAccessToken.mockResolvedValueOnce("session-token");
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.ENTITLED,
       episode: {
@@ -272,7 +265,12 @@ describe("catalog.getEpisodeViewer", () => {
       series: { publicId: "SERIES_001", title: "シリーズタイトル" },
     });
 
-    const result = await getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010");
+    const result = await getEpisodeViewer(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_010",
+      "session-token"
+    );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
       {
@@ -301,7 +299,6 @@ describe("catalog.getEpisodeViewer", () => {
   });
 
   it("ログイン済みでも権限が無ければ locked", async () => {
-    mockResolveAccessToken.mockResolvedValueOnce("session-token");
     mockGetEpisodeDetail.mockResolvedValueOnce({
       access: EpisodeAccess.LOCKED,
       episode: {
@@ -319,21 +316,65 @@ describe("catalog.getEpisodeViewer", () => {
     });
 
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010")
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
     ).resolves.toEqual({
       ok: true,
       value: { access: "locked", images: [] },
     });
   });
 
+  it("permission_denied は locked にする", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("episode is not published", Code.PermissionDenied)
+    );
+
+    await expect(
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+    ).resolves.toEqual({
+      ok: true,
+      value: { access: "locked", images: [] },
+    });
+  });
+
+  it("not_found は null", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("episode not found", Code.NotFound)
+    );
+
+    await expect(
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("URL の series_id とレスポンスが不一致なら null", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.ENTITLED,
+      episode: {
+        orderIndex: 10,
+        price: 500,
+        publicId: "EP_010",
+        publishedAt: "2026-03-26T00:00:00Z",
+        readingPeriodHours: 72,
+        scheduledAt: "",
+        status: "published",
+        title: "第10話",
+      },
+      images: [],
+      series: { publicId: "SERIES_OTHER", title: "別シリーズ" },
+    });
+
+    await expect(
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
   it("not_found 以外のエラーは throw せず失敗の値を返す", async () => {
-    mockResolveAccessToken.mockResolvedValueOnce("session-token");
     mockGetEpisodeDetail.mockRejectedValueOnce(
       new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
 
     await expect(
-      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010")
+      getEpisodeViewer("TENANT_001", "SERIES_001", "EP_010", "session-token")
     ).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",

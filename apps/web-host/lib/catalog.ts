@@ -1,15 +1,15 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { isMissingResourceRpcError } from "@publira/api-client/errors";
+import {
+  Code,
+  isMissingResourceRpcError,
+  isRpcError,
+} from "@publira/api-client/errors";
 import { EpisodeAccess } from "@publira/api-client/public/catalog";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
 
-import {
-  apiClient,
-  buildSessionHeaders,
-  resolveAccessToken,
-} from "./api-client";
+import { apiClient, buildSessionHeaders } from "./api-client";
 import {
   applyCacheTag,
   tenantAuthorsTag,
@@ -465,13 +465,15 @@ export const getEpisodeDetail = async (
  * anonymous, so a ticket or purchase never appears there — this private read
  * sends the bearer and returns entitled images or a locked gate.
  *
- * Guests skip the RPC: no token means locked, same as the server would
- * answer without a bearer.
+ * `accessToken` is an argument so the private cache key includes the session
+ * and the caller does not resolve cookies twice. Guests skip the RPC: no
+ * token means locked, same as the server would answer without a bearer.
  */
 export const getEpisodeViewer = async (
   tenantId: string,
   seriesPublicId: string,
-  episodePublicId: string
+  episodePublicId: string,
+  accessToken: string
 ): Promise<
   CachedReadResult<{
     access: EpisodeAccessState;
@@ -491,7 +493,7 @@ export const getEpisodeViewer = async (
   applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
-  const sessionId = await resolveAccessToken();
+  const sessionId = accessToken.trim();
   if (!sessionId) {
     return { ok: true, value: { access: "locked", images: [] } };
   }
@@ -506,6 +508,13 @@ export const getEpisodeViewer = async (
       buildSessionHeaders(sessionId)
     );
   } catch (error) {
+    // The public read already established this episode exists. A
+    // permission_denied here is a body-access denial, not an existence
+    // question, so it must not become notFound() on a page that already
+    // showed the title.
+    if (isRpcError(error, Code.PermissionDenied)) {
+      return { ok: true, value: { access: "locked", images: [] } };
+    }
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
