@@ -4832,7 +4832,7 @@ FROM episodes e
 WHERE s.tenant_id = $1
     AND s.public_id = $2
 ORDER BY e.order_index ASC,
-    e.created_at ASC
+    e.id ASC
 `
 
 type ListEpisodesBySeriesForTenantParams struct {
@@ -4854,6 +4854,8 @@ type ListEpisodesBySeriesForTenantRow struct {
 
 // 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
 // ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
+// 並びは ListEpisodes と同じ (order_index, id)。ReorderEpisodes がクライアントの
+// 読み戻しと比較するので、タイブレーカーが違うと競合していないのに拒否する。
 func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpisodesBySeriesForTenantParams) ([]ListEpisodesBySeriesForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEpisodesBySeriesForTenant, arg.TenantID, arg.PublicID)
 	if err != nil {
@@ -7333,10 +7335,11 @@ type LockSeriesByPublicIDForTenantParams struct {
 	PublicID string    `json:"public_id"`
 }
 
-// Lock the series row so concurrent CreateEpisode calls serialize. The
-// following MAX(order_index) must be a separate statement: READ COMMITTED
-// freezes its snapshot at statement start, so waiting for the lock in the
-// same statement would still see the pre-wait aggregate.
+// Lock the series row so concurrent CreateEpisode and ReorderEpisodes
+// calls serialize. The following read of the current order (or
+// MAX(order_index)) must be a separate statement: READ COMMITTED
+// freezes its snapshot at statement start, so waiting for the lock in
+// the same statement would still see the pre-wait rows.
 func (q *Queries) LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, lockSeriesByPublicIDForTenant, arg.TenantID, arg.PublicID)
 	var id uuid.UUID

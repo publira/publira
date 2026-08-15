@@ -1269,6 +1269,8 @@ ORDER BY e.order_index ASC;
 
 -- 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
 -- ページングしない一覧として残す。画面の一覧は下のキーセット走査を使う。
+-- 並びは ListEpisodes と同じ (order_index, id)。ReorderEpisodes がクライアントの
+-- 読み戻しと比較するので、タイブレーカーが違うと競合していないのに拒否する。
 -- name: ListEpisodesBySeriesForTenant :many
 SELECT e.id,
     e.public_id,
@@ -1285,7 +1287,7 @@ FROM episodes e
 WHERE s.tenant_id = $1
     AND s.public_id = $2
 ORDER BY e.order_index ASC,
-    e.created_at ASC;
+    e.id ASC;
 
 -- Admin ListEpisodes は (order_index, id) の昇順で表示する。次ページは昇順、
 -- 前ページは降順のクエリで idx_episodes_series_order_index を走査し、前ページ
@@ -1353,10 +1355,11 @@ ORDER BY e.order_index DESC,
 LIMIT sqlc.arg('limit');
 
 -- name: LockSeriesByPublicIDForTenant :one
--- Lock the series row so concurrent CreateEpisode calls serialize. The
--- following MAX(order_index) must be a separate statement: READ COMMITTED
--- freezes its snapshot at statement start, so waiting for the lock in the
--- same statement would still see the pre-wait aggregate.
+-- Lock the series row so concurrent CreateEpisode and ReorderEpisodes
+-- calls serialize. The following read of the current order (or
+-- MAX(order_index)) must be a separate statement: READ COMMITTED
+-- freezes its snapshot at statement start, so waiting for the lock in
+-- the same statement would still see the pre-wait rows.
 SELECT id
 FROM series
 WHERE tenant_id = $1

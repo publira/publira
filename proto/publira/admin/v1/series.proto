@@ -104,7 +104,13 @@ message GetEpisodeResponse {
 message ReorderEpisodesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
+  // Desired order after the write. Must be a permutation of
+  // expected_episode_public_ids.
   repeated string episode_public_ids = 3;
+  // The series order the client read before composing episode_public_ids.
+  // The RPC locks the series, re-reads the current order, and rejects the
+  // write with failed_precondition when this no longer matches.
+  repeated string expected_episode_public_ids = 4;
 }
 
 message ReorderEpisodesResponse {

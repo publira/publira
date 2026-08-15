@@ -17,35 +17,37 @@ import (
 )
 
 const (
-	getTenantByIDQuery                                   = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
-	getUserByPublicIDForTenantQuery                      = "-- name: GetUserByPublicIDForTenant :one\n"
-	getLabelByPublicIDForTenantQuery                     = "-- name: GetLabelByPublicIDForTenant :one\n"
-	listAuditLogsByTenantAscQuery                        = "-- name: ListAuditLogsByTenantAsc :many\n"
-	listAuditLogsByTenantDescQuery                       = "-- name: ListAuditLogsByTenantDesc :many\n"
-	getUserByIDQuery                                     = "-- name: GetUserByID :one\n"
-	listTenantRolesByUserAndTenantQuery                  = "-- name: ListTenantUserRoles :many\n"
-	getPlatformSMTPConfigQuery                           = "-- name: GetPlatformSMTPConfig :one\n"
-	getTenantSMTPConfigByTenantIDQuery                   = "-- name: GetTenantSMTPConfigByTenantID :one\n"
-	upsertTenantSMTPConfigQuery                          = "-- name: UpsertTenantSMTPConfig :one\n"
-	getTenantThemeByTenantIDQuery                        = "-- name: GetTenantThemeByTenantID :one\n"
-	upsertTenantThemeQuery                               = "-- name: UpsertTenantTheme :one\n"
-	updateTenantTimezoneQuery                            = "-- name: UpdateTenantTimezone :one\n"
-	listAccessTicketsForTenantAscQuery                   = "-- name: ListAccessTicketsForTenantAsc :many\n"
-	listAccessTicketsForTenantDescQuery                  = "-- name: ListAccessTicketsForTenantDesc :many\n"
-	listSeriesByTenantAscQuery                           = "-- name: ListSeriesByTenantAsc :many\n"
-	listSeriesByTenantDescQuery                          = "-- name: ListSeriesByTenantDesc :many\n"
-	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\n"
-	lockSeriesByPublicIDForTenantQuery                   = "-- name: LockSeriesByPublicIDForTenant :one\n"
-	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\n"
-	updateSeriesPublicationQuery                         = "-- name: UpdateSeriesPublication :exec\n"
-	listEpisodesBySeriesForTenantAscQuery                = "-- name: ListEpisodesBySeriesForTenantAsc :many\n"
-	listEpisodesBySeriesForTenantDescQuery               = "-- name: ListEpisodesBySeriesForTenantDesc :many\n"
-	getMaxEpisodeOrderIndexBySeriesForTenantQuery        = "-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one\n"
-	getEpisodeByPublicIDForTenantQuery                   = "-- name: GetEpisodeByPublicIDForTenant :one\n"
-	getEpisodeByPublicIDForTenantAndSeriesQuery          = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
-	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery       = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
-	updateEpisodePublishScheduleByPublicIDForTenantQuery = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
-	testUserPublicID                                     = "USER001"
+	getTenantByIDQuery                                       = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
+	getUserByPublicIDForTenantQuery                          = "-- name: GetUserByPublicIDForTenant :one\n"
+	getLabelByPublicIDForTenantQuery                         = "-- name: GetLabelByPublicIDForTenant :one\n"
+	listAuditLogsByTenantAscQuery                            = "-- name: ListAuditLogsByTenantAsc :many\n"
+	listAuditLogsByTenantDescQuery                           = "-- name: ListAuditLogsByTenantDesc :many\n"
+	getUserByIDQuery                                         = "-- name: GetUserByID :one\n"
+	listTenantRolesByUserAndTenantQuery                      = "-- name: ListTenantUserRoles :many\n"
+	getPlatformSMTPConfigQuery                               = "-- name: GetPlatformSMTPConfig :one\n"
+	getTenantSMTPConfigByTenantIDQuery                       = "-- name: GetTenantSMTPConfigByTenantID :one\n"
+	upsertTenantSMTPConfigQuery                              = "-- name: UpsertTenantSMTPConfig :one\n"
+	getTenantThemeByTenantIDQuery                            = "-- name: GetTenantThemeByTenantID :one\n"
+	upsertTenantThemeQuery                                   = "-- name: UpsertTenantTheme :one\n"
+	updateTenantTimezoneQuery                                = "-- name: UpdateTenantTimezone :one\n"
+	listAccessTicketsForTenantAscQuery                       = "-- name: ListAccessTicketsForTenantAsc :many\n"
+	listAccessTicketsForTenantDescQuery                      = "-- name: ListAccessTicketsForTenantDesc :many\n"
+	listSeriesByTenantAscQuery                               = "-- name: ListSeriesByTenantAsc :many\n"
+	listSeriesByTenantDescQuery                              = "-- name: ListSeriesByTenantDesc :many\n"
+	getSeriesByPublicIDForTenantQuery                        = "-- name: GetSeriesByPublicIDForTenant :one\n"
+	lockSeriesByPublicIDForTenantQuery                       = "-- name: LockSeriesByPublicIDForTenant :one\n"
+	updateSeriesBaseQuery                                    = "-- name: UpdateSeriesBase :exec\n"
+	updateSeriesPublicationQuery                             = "-- name: UpdateSeriesPublication :exec\n"
+	listEpisodesBySeriesForTenantQuery                       = "-- name: ListEpisodesBySeriesForTenant :many\n"
+	listEpisodesBySeriesForTenantAscQuery                    = "-- name: ListEpisodesBySeriesForTenantAsc :many\n"
+	listEpisodesBySeriesForTenantDescQuery                   = "-- name: ListEpisodesBySeriesForTenantDesc :many\n"
+	updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery = "-- name: UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries :exec\n"
+	getMaxEpisodeOrderIndexBySeriesForTenantQuery            = "-- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one\n"
+	getEpisodeByPublicIDForTenantQuery                       = "-- name: GetEpisodeByPublicIDForTenant :one\n"
+	getEpisodeByPublicIDForTenantAndSeriesQuery              = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
+	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery           = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
+	updateEpisodePublishScheduleByPublicIDForTenantQuery     = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
+	testUserPublicID                                         = "USER001"
 )
 
 func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
@@ -198,6 +200,18 @@ func expectLockSeriesByPublicID(mock sqlmock.Sqlmock, tenantID uuid.UUID, public
 	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
 		WithArgs(tenantID, publicID).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
+}
+
+func expectListEpisodesBySeries(mock sqlmock.Sqlmock, tenantID uuid.UUID, seriesPublicID string, rows *sqlmock.Rows) {
+	mock.ExpectQuery(regexp.QuoteMeta(listEpisodesBySeriesForTenantQuery)).
+		WithArgs(tenantID, seriesPublicID).
+		WillReturnRows(rows)
+}
+
+func expectUpdateEpisodeOrderIndex(mock sqlmock.Sqlmock, tenantID uuid.UUID, seriesPublicID, episodePublicID string, orderIndex int32) {
+	mock.ExpectExec(regexp.QuoteMeta(updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery)).
+		WithArgs(tenantID, seriesPublicID, episodePublicID, orderIndex).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 }
 
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {

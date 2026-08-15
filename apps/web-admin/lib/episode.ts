@@ -99,11 +99,20 @@ const genericEpisodeReorderErrorMessage =
   "エピソードの並び順更新に失敗しました。時間をおいて再試行してください。";
 const genericEpisodeImageReorderErrorMessage =
   "ページ画像の並び順更新に失敗しました。時間をおいて再試行してください。";
+const episodeOrderConflictMessage =
+  "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。";
 
 const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
   rpcErrorMessage(error, fallbackMessage, {
     "not-found":
       "シリーズが見つかりません。画面を再読み込みして再試行してください。",
+  });
+
+const mapReorderErrorToMessage = (error: unknown): string =>
+  rpcErrorMessage(error, genericEpisodeReorderErrorMessage, {
+    "not-found":
+      "シリーズが見つかりません。画面を再読み込みして再試行してください。",
+    precondition: episodeOrderConflictMessage,
   });
 
 const mapEpisode = (episode: {
@@ -571,6 +580,7 @@ const reorderEpisodes = async (input: {
   tenantId: string;
   seriesPublicId: string;
   episodePublicIds: string[];
+  expectedEpisodePublicIds: string[];
 }): Promise<ReorderEpisodesResult> => {
   const sessionId = await getAccessToken();
   if (!sessionId) {
@@ -591,6 +601,7 @@ const reorderEpisodes = async (input: {
     const response = await apiClient.series.reorderEpisodes(
       {
         episodePublicIds: input.episodePublicIds,
+        expectedEpisodePublicIds: input.expectedEpisodePublicIds,
         seriesPublicId: input.seriesPublicId,
         tenant: { tenantId: input.tenantId },
       },
@@ -604,7 +615,7 @@ const reorderEpisodes = async (input: {
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
-      message: mapErrorToMessage(error, genericEpisodeReorderErrorMessage),
+      message: mapReorderErrorToMessage(error),
       ok: false,
     };
   }
@@ -632,10 +643,10 @@ const reorderEpisodes = async (input: {
  * and the screen reloads instead of writing a guess.
  *
  * The check is against the order this request read back, so it closes the
- * window the page was on screen for, not the one between that read and the
- * write. Closing that last one needs `ReorderEpisodes` to take a revision and
- * verify it in the same transaction, which is a proto and server change and is
- * tracked in #805.
+ * window the page was on screen for. The remaining window — between that
+ * read and the write — is closed by sending the read order as
+ * `expectedEpisodePublicIds`. The server locks the series, compares, and
+ * rejects the write when it no longer matches.
  */
 export const mergeEpisodeOrder = (
   seriesPublicIds: readonly string[],
@@ -786,14 +797,14 @@ export const reorderEpisodePage = async (input: {
   );
   if (!episodePublicIds) {
     return {
-      message:
-        "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。",
+      message: episodeOrderConflictMessage,
       ok: false,
     };
   }
 
   return await reorderEpisodes({
     episodePublicIds,
+    expectedEpisodePublicIds: seriesPublicIds,
     seriesPublicId: input.seriesPublicId,
     tenantId: input.tenantId,
   });

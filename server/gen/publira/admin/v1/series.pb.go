@@ -825,12 +825,18 @@ func (x *GetEpisodeResponse) GetEpisode() *v1.Episode {
 }
 
 type ReorderEpisodesRequest struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Tenant           *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	SeriesPublicId   string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
-	EpisodePublicIds []string               `protobuf:"bytes,3,rep,name=episode_public_ids,json=episodePublicIds,proto3" json:"episode_public_ids,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SeriesPublicId string                 `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
+	// Desired order after the write. Must be a permutation of
+	// expected_episode_public_ids.
+	EpisodePublicIds []string `protobuf:"bytes,3,rep,name=episode_public_ids,json=episodePublicIds,proto3" json:"episode_public_ids,omitempty"`
+	// The series order the client read before composing episode_public_ids.
+	// The RPC locks the series, re-reads the current order, and rejects the
+	// write with failed_precondition when this no longer matches.
+	ExpectedEpisodePublicIds []string `protobuf:"bytes,4,rep,name=expected_episode_public_ids,json=expectedEpisodePublicIds,proto3" json:"expected_episode_public_ids,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *ReorderEpisodesRequest) Reset() {
@@ -880,6 +886,13 @@ func (x *ReorderEpisodesRequest) GetSeriesPublicId() string {
 func (x *ReorderEpisodesRequest) GetEpisodePublicIds() []string {
 	if x != nil {
 		return x.EpisodePublicIds
+	}
+	return nil
+}
+
+func (x *ReorderEpisodesRequest) GetExpectedEpisodePublicIds() []string {
+	if x != nil {
+		return x.ExpectedEpisodePublicIds
 	}
 	return nil
 }
@@ -1638,11 +1651,12 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x1b\n" +
 	"\tpublic_id\x18\x03 \x01(\tR\bpublicId\"I\n" +
 	"\x12GetEpisodeResponse\x123\n" +
-	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xa9\x01\n" +
+	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xe8\x01\n" +
 	"\x16ReorderEpisodesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12,\n" +
-	"\x12episode_public_ids\x18\x03 \x03(\tR\x10episodePublicIds\"P\n" +
+	"\x12episode_public_ids\x18\x03 \x03(\tR\x10episodePublicIds\x12=\n" +
+	"\x1bexpected_episode_public_ids\x18\x04 \x03(\tR\x18expectedEpisodePublicIds\"P\n" +
 	"\x17ReorderEpisodesResponse\x125\n" +
 	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\"\x9b\x02\n" +
 	"\x14CreateEpisodeRequest\x127\n" +

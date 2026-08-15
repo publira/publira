@@ -289,6 +289,202 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 	}
 }
 
+func TestReorderEpisodesSuccess(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+		addEpisodeRow(
+			addEpisodeRow(episodeColumns(), ids[0], "EP001", 1),
+			ids[1], "EP002", 2,
+		),
+		ids[2], "EP003", 3,
+	))
+	expectUpdateEpisodeOrderIndex(mock, tenantID, "SERIES001", "EP003", 1)
+	expectUpdateEpisodeOrderIndex(mock, tenantID, "SERIES001", "EP002", 2)
+	expectUpdateEpisodeOrderIndex(mock, tenantID, "SERIES001", "EP001", 3)
+	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+		addEpisodeRow(
+			addEpisodeRow(episodeColumns(), ids[2], "EP003", 1),
+			ids[1], "EP002", 2,
+		),
+		ids[0], "EP001", 3,
+	))
+	mock.ExpectCommit()
+
+	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
+		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId:           "SERIES001",
+		EpisodePublicIds:         []string{"EP003", "EP002", "EP001"},
+		ExpectedEpisodePublicIds: []string{"EP001", "EP002", "EP003"},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.ReorderEpisodes(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ReorderEpisodes: %v", err)
+	}
+	if !slices.Equal(episodePublicIDs(resp.Msg.Episodes), []string{"EP003", "EP002", "EP001"}) {
+		t.Fatalf("episodes = %v, want reversed order", episodePublicIDs(resp.Msg.Episodes))
+	}
+	assertExpectations(t, mock)
+}
+
+func TestReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	// The client still thinks the series is EP001, EP002, EP003, but another
+	// write has already swapped the first two.
+	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+		addEpisodeRow(
+			addEpisodeRow(episodeColumns(), ids[1], "EP002", 1),
+			ids[0], "EP001", 2,
+		),
+		ids[2], "EP003", 3,
+	))
+	mock.ExpectRollback()
+
+	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
+		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId:           "SERIES001",
+		EpisodePublicIds:         []string{"EP003", "EP002", "EP001"},
+		ExpectedEpisodePublicIds: []string{"EP001", "EP002", "EP003"},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.ReorderEpisodes(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeFailedPrecondition, err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestReorderEpisodesRollsBackWhenUpdateFails(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	ids := []uuid.UUID{uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())}
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectListEpisodesBySeries(mock, tenantID, "SERIES001", addEpisodeRow(
+		addEpisodeRow(episodeColumns(), ids[0], "EP001", 1),
+		ids[1], "EP002", 2,
+	))
+	mock.ExpectExec(regexp.QuoteMeta(updateEpisodeOrderIndexByPublicIDForTenantAndSeriesQuery)).
+		WithArgs(tenantID, "SERIES001", "EP002", int32(1)).
+		WillReturnError(errors.New("order update failed"))
+	mock.ExpectRollback()
+
+	req := connect.NewRequest(&publiraadminv1.ReorderEpisodesRequest{
+		Tenant:                   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId:           "SERIES001",
+		EpisodePublicIds:         []string{"EP002", "EP001"},
+		ExpectedEpisodePublicIds: []string{"EP001", "EP002"},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.ReorderEpisodes(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestReorderEpisodesValidationAndBoundary(t *testing.T) {
+	tests := []struct {
+		name     string
+		request  *publiraadminv1.ReorderEpisodesRequest
+		setup    func(mock sqlmock.Sqlmock, tenantID uuid.UUID)
+		wantCode connect.Code
+	}{
+		{
+			name: "expected-required",
+			request: &publiraadminv1.ReorderEpisodesRequest{
+				Tenant:           &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesPublicId:   "SERIES001",
+				EpisodePublicIds: []string{"EP001"},
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "not-a-permutation",
+			request: &publiraadminv1.ReorderEpisodesRequest{
+				Tenant:                   &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesPublicId:           "SERIES001",
+				EpisodePublicIds:         []string{"EP001", "EP002"},
+				ExpectedEpisodePublicIds: []string{"EP001", "EP003"},
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "duplicate-desired",
+			request: &publiraadminv1.ReorderEpisodesRequest{
+				Tenant:                   &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesPublicId:           "SERIES001",
+				EpisodePublicIds:         []string{"EP001", "EP001"},
+				ExpectedEpisodePublicIds: []string{"EP001", "EP002"},
+			},
+			wantCode: connect.CodeInvalidArgument,
+		},
+		{
+			name: "series-not-found",
+			request: &publiraadminv1.ReorderEpisodesRequest{
+				Tenant:                   &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesPublicId:           "SERIES_MISSING",
+				EpisodePublicIds:         []string{"EP001"},
+				ExpectedEpisodePublicIds: []string{"EP001"},
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+					WithArgs(tenantID, "SERIES_MISSING").
+					WillReturnRows(sqlmock.NewRows([]string{"id"}))
+				mock.ExpectRollback()
+			},
+			wantCode: connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+			if tc.request != nil && tc.request.Tenant != nil {
+				tc.request.Tenant.TenantId = tenantID.String()
+			}
+			if tc.setup != nil {
+				tc.setup(mock, tenantID)
+			}
+
+			req := connect.NewRequest(tc.request)
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
+			_, err := client.ReorderEpisodes(context.Background(), req)
+			if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), tc.wantCode, err)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 func TestUploadEpisodeImagesSuccess(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
