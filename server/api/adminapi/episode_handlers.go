@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -314,6 +315,47 @@ func (s *adminServer) GetEpisode(
 	}), nil
 }
 
+func validateEpisodePublicIDList(ids []string, field string) error {
+	if len(ids) == 0 {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s are required", field))
+	}
+	seen := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		if strings.TrimSpace(id) == "" {
+			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains empty value", field))
+		}
+		if _, ok := seen[id]; ok {
+			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s contains duplicate episode", field))
+		}
+		seen[id] = struct{}{}
+	}
+	return nil
+}
+
+func sameEpisodePublicIDSet(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	want := make(map[string]struct{}, len(left))
+	for _, id := range left {
+		want[id] = struct{}{}
+	}
+	for _, id := range right {
+		if _, ok := want[id]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func listEpisodePublicIDs(rows []dbmodels.ListEpisodesBySeriesForTenantRow) []string {
+	ids := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.PublicID)
+	}
+	return ids
+}
+
 func (s *adminServer) ReorderEpisodes(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ReorderEpisodesRequest],
@@ -325,56 +367,68 @@ func (s *adminServer) ReorderEpisodes(
 	if strings.TrimSpace(req.Msg.SeriesPublicId) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("series_public_id is required"))
 	}
-	if len(req.Msg.EpisodePublicIds) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids are required"))
+	if err := validateEpisodePublicIDList(req.Msg.EpisodePublicIds, "episode_public_ids"); err != nil {
+		return nil, err
+	}
+	if err := validateEpisodePublicIDList(req.Msg.ExpectedEpisodePublicIds, "expected_episode_public_ids"); err != nil {
+		return nil, err
+	}
+	if !sameEpisodePublicIDSet(req.Msg.EpisodePublicIds, req.Msg.ExpectedEpisodePublicIds) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids must be a permutation of expected_episode_public_ids"))
 	}
 
-	rows, err := s.queriesFor(ctx).ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError("failed to begin reorder episodes transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	q := dbmodels.New(tx)
+	seriesID, err := q.LockSeriesByPublicIDForTenant(ctx, dbmodels.LockSeriesByPublicIDForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: req.Msg.SeriesPublicId,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if len(rows) != len(req.Msg.EpisodePublicIds) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids must include all episodes in the series"))
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
+		}
+		return nil, s.internalDBError("failed to lock series for reorder episodes", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
 	}
 
-	validEpisodeIDs := make(map[string]struct{}, len(rows))
-	for _, row := range rows {
-		validEpisodeIDs[row.PublicID] = struct{}{}
+	// Read after the lock so READ COMMITTED sees rows committed while this
+	// transaction waited. Matching expected_episode_public_ids is what says
+	// the client's merge is still based on the current series order.
+	rows, err := q.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: req.Msg.SeriesPublicId,
+	})
+	if err != nil {
+		return nil, s.internalDBError("failed to list episodes for reorder", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
-	seen := make(map[string]struct{}, len(req.Msg.EpisodePublicIds))
-	for _, episodePublicID := range req.Msg.EpisodePublicIds {
-		if strings.TrimSpace(episodePublicID) == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids contains empty value"))
-		}
-		if _, ok := validEpisodeIDs[episodePublicID]; !ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids contains unknown episode"))
-		}
-		if _, ok := seen[episodePublicID]; ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_ids contains duplicate episode"))
-		}
-		seen[episodePublicID] = struct{}{}
+	if !slices.Equal(listEpisodePublicIDs(rows), req.Msg.ExpectedEpisodePublicIds) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode order has changed"))
 	}
 
 	for index, episodePublicID := range req.Msg.EpisodePublicIds {
-		if err := s.queriesFor(ctx).UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx, dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams{
+		if err := q.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx, dbmodels.UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams{
 			TenantID:   tenant.ID,
 			PublicID:   req.Msg.SeriesPublicId,
 			PublicID_2: episodePublicID,
 			OrderIndex: int32(index + 1),
 		}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to update episode order_index", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String(), "episode_public_id", episodePublicID)
 		}
 	}
 
-	updatedRows, err := s.queriesFor(ctx).ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
+	updatedRows, err := q.ListEpisodesBySeriesForTenant(ctx, dbmodels.ListEpisodesBySeriesForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: req.Msg.SeriesPublicId,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list episodes after reorder", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError("failed to commit reorder episodes", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 
 	episodes := make([]*publirattypesv1.Episode, 0, len(updatedRows))

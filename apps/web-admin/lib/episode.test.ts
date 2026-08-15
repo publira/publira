@@ -377,6 +377,12 @@ describe("reorderEpisodePage", () => {
           "EPISODE004",
           "EPISODE003",
         ],
+        expectedEpisodePublicIds: [
+          "EPISODE001",
+          "EPISODE002",
+          "EPISODE003",
+          "EPISODE004",
+        ],
         seriesPublicId: "SERIES001",
         tenant: { tenantId: "TENANT001" },
       },
@@ -425,6 +431,30 @@ describe("reorderEpisodePage", () => {
 
     expect(result.ok).toBe(false);
     expect(mockReorderEpisodes).not.toHaveBeenCalled();
+  });
+
+  it("サーバーが並びの競合を返したら書き込まず再読み込みを促す", async () => {
+    mockListEpisodes.mockResolvedValue({
+      episodes: [episode("EPISODE001", 1), episode("EPISODE002", 2)],
+      nextToken: "",
+    });
+    mockReorderEpisodes.mockRejectedValue(
+      new ConnectError("episode order has changed", Code.FailedPrecondition)
+    );
+
+    const { reorderEpisodePage } = await import("./episode");
+    const result = await reorderEpisodePage({
+      currentEpisodePublicIds: ["EPISODE001", "EPISODE002"],
+      episodePublicIds: ["EPISODE002", "EPISODE001"],
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result).toMatchObject({
+      message:
+        "他の操作でエピソードの構成か並び順が変わったため、並び順を更新できませんでした。画面を再読み込みして再試行してください。",
+    });
   });
 
   it("シリーズの読み出しに失敗したら RPC を呼ばない", async () => {

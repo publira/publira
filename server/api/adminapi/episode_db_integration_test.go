@@ -157,9 +157,10 @@ func TestDBReorderEpisodesPersistsNewOrder(t *testing.T) {
 
 	reversed := []string{created[2], created[1], created[0]}
 	reordered, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
-		Tenant:           tenant.tenantContext(),
-		SeriesPublicId:   seriesPublicID,
-		EpisodePublicIds: reversed,
+		Tenant:                   tenant.tenantContext(),
+		SeriesPublicId:           seriesPublicID,
+		EpisodePublicIds:         reversed,
+		ExpectedEpisodePublicIds: created,
 	}))
 	if err != nil {
 		t.Fatalf("ReorderEpisodes: %v", err)
@@ -177,6 +178,140 @@ func TestDBReorderEpisodesPersistsNewOrder(t *testing.T) {
 	}
 	if got := episodePublicIDs(listed.Msg.Episodes); !slices.Equal(got, reversed) {
 		t.Fatalf("reloaded order = %v, want %v", got, reversed)
+	}
+}
+
+func TestDBReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Stale Reorder Host Series")
+
+	created := make([]string, 0, 3)
+	for _, title := range []string{"First", "Second", "Third"} {
+		resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+			Tenant:         tenant.tenantContext(),
+			SeriesPublicId: seriesPublicID,
+			Title:          title,
+		}))
+		if err != nil {
+			t.Fatalf("CreateEpisode %s: %v", title, err)
+		}
+		created = append(created, resp.Msg.Episode.PublicId)
+	}
+
+	reversed := []string{created[2], created[1], created[0]}
+	if _, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
+		Tenant:                   tenant.tenantContext(),
+		SeriesPublicId:           seriesPublicID,
+		EpisodePublicIds:         reversed,
+		ExpectedEpisodePublicIds: created,
+	})); err != nil {
+		t.Fatalf("first ReorderEpisodes: %v", err)
+	}
+
+	_, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
+		Tenant:                   tenant.tenantContext(),
+		SeriesPublicId:           seriesPublicID,
+		EpisodePublicIds:         []string{created[1], created[0], created[2]},
+		ExpectedEpisodePublicIds: created,
+	}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("stale ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeFailedPrecondition, err)
+	}
+
+	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+	}))
+	if err != nil {
+		t.Fatalf("ListEpisodes after rejected reorder: %v", err)
+	}
+	if got := episodePublicIDs(listed.Msg.Episodes); !slices.Equal(got, reversed) {
+		t.Fatalf("order after rejected reorder = %v, want %v (the first write must stand)", got, reversed)
+	}
+}
+
+func TestDBReorderEpisodesConcurrentSameExpectedOneWins(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Concurrent Reorder Host Series")
+
+	created := make([]string, 0, 3)
+	for _, title := range []string{"First", "Second", "Third"} {
+		resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+			Tenant:         tenant.tenantContext(),
+			SeriesPublicId: seriesPublicID,
+			Title:          title,
+		}))
+		if err != nil {
+			t.Fatalf("CreateEpisode %s: %v", title, err)
+		}
+		created = append(created, resp.Msg.Episode.PublicId)
+	}
+
+	candidates := [][]string{
+		{created[2], created[1], created[0]},
+		{created[1], created[0], created[2]},
+	}
+	type outcome struct {
+		order []string
+		err   error
+	}
+	outcomes := make(chan outcome, len(candidates))
+	var wg sync.WaitGroup
+	for _, next := range candidates {
+		wg.Add(1)
+		go func(next []string) {
+			defer wg.Done()
+			resp, err := client.ReorderEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ReorderEpisodesRequest{
+				Tenant:                   tenant.tenantContext(),
+				SeriesPublicId:           seriesPublicID,
+				EpisodePublicIds:         next,
+				ExpectedEpisodePublicIds: created,
+			}))
+			if err != nil {
+				outcomes <- outcome{err: err}
+				return
+			}
+			outcomes <- outcome{order: episodePublicIDs(resp.Msg.Episodes)}
+		}(next)
+	}
+	wg.Wait()
+	close(outcomes)
+
+	var winner []string
+	failures := 0
+	for result := range outcomes {
+		if result.err == nil {
+			if winner != nil {
+				t.Fatalf("both reorders succeeded (%v and %v)", winner, result.order)
+			}
+			winner = result.order
+			continue
+		}
+		if connect.CodeOf(result.err) != connect.CodeFailedPrecondition {
+			t.Fatalf("losing ReorderEpisodes code = %v, want %v (err=%v)", connect.CodeOf(result.err), connect.CodeFailedPrecondition, result.err)
+		}
+		failures++
+	}
+	if winner == nil {
+		t.Fatal("both reorders failed, want exactly one to apply")
+	}
+	if failures != 1 {
+		t.Fatalf("FailedPrecondition count = %d, want 1", failures)
+	}
+
+	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+	}))
+	if err != nil {
+		t.Fatalf("ListEpisodes after concurrent reorder: %v", err)
+	}
+	if got := episodePublicIDs(listed.Msg.Episodes); !slices.Equal(got, winner) {
+		t.Fatalf("reloaded order = %v, want the winning write %v", got, winner)
 	}
 }
 
