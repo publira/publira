@@ -37,6 +37,9 @@ vi.mock("next/cache", () => ({
 
 const importAnnouncements = () => import("./announcements");
 
+const tenantId = "11111111-1111-4111-8111-111111111111";
+const announcementId = "22222222-2222-4222-8222-222222222222";
+
 describe("web-host announcements", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -112,33 +115,69 @@ describe("web-host announcements", () => {
       announcement: {
         body: "本文",
         createdAt: "2026-04-05T10:00:00Z",
-        id: "N001",
+        id: announcementId,
         isRead: false,
         linkUrl: "/series/S001",
         title: "お知らせ",
       },
     });
 
-    await expect(getMyAnnouncement("TENANT001", "N001")).resolves.toEqual({
+    await expect(getMyAnnouncement(tenantId, announcementId)).resolves.toEqual({
       body: "本文",
       createdAt: "2026-04-05T10:00:00Z",
-      id: "N001",
+      id: announcementId,
       isRead: false,
       linkUrl: "/series/S001",
       title: "お知らせ",
     });
     expect(mockGetAnnouncement).toHaveBeenCalledWith(
-      { announcementId: "N001", tenant: { tenantId: "TENANT001" } },
+      { announcementId, tenant: { tenantId } },
       expect.anything()
     );
     expect(mockListAnnouncements).not.toHaveBeenCalled();
+  });
+
+  it("getMyAnnouncement: 前後の空白を除いて RPC に渡す", async () => {
+    const { getMyAnnouncement } = await importAnnouncements();
+    mockGetAnnouncement.mockResolvedValueOnce({
+      announcement: {
+        body: "本文",
+        createdAt: "2026-04-05T10:00:00Z",
+        id: announcementId,
+        isRead: false,
+        linkUrl: "/series/S001",
+        title: "お知らせ",
+      },
+    });
+
+    await expect(
+      getMyAnnouncement(`  ${tenantId}  `, `  ${announcementId}  `)
+    ).resolves.toMatchObject({ id: announcementId });
+    expect(mockGetAnnouncement).toHaveBeenCalledWith(
+      { announcementId, tenant: { tenantId } },
+      expect.anything()
+    );
+  });
+
+  it("getMyAnnouncement: 不正な入力は RPC を呼ばずに null", async () => {
+    const { getMyAnnouncement } = await importAnnouncements();
+
+    await expect(
+      getMyAnnouncement("TENANT001", announcementId)
+    ).resolves.toBeNull();
+    await expect(getMyAnnouncement(tenantId, "N001")).resolves.toBeNull();
+    await expect(getMyAnnouncement(tenantId, "   ")).resolves.toBeNull();
+    expect(mockGetAnnouncement).not.toHaveBeenCalled();
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
   });
 
   it("getMyAnnouncement: session が無ければ null", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    await expect(getMyAnnouncement("TENANT001", "N001")).resolves.toBeNull();
+    await expect(
+      getMyAnnouncement(tenantId, announcementId)
+    ).resolves.toBeNull();
     expect(mockGetAnnouncement).not.toHaveBeenCalled();
   });
 
@@ -148,7 +187,9 @@ describe("web-host announcements", () => {
       new ConnectError("announcement not found", Code.NotFound)
     );
 
-    await expect(getMyAnnouncement("TENANT001", "N999")).resolves.toBeNull();
+    await expect(
+      getMyAnnouncement(tenantId, "33333333-3333-4333-8333-333333333333")
+    ).resolves.toBeNull();
     expect(mockListAnnouncements).not.toHaveBeenCalled();
   });
 
@@ -156,7 +197,9 @@ describe("web-host announcements", () => {
     const { getMyAnnouncement } = await importAnnouncements();
     mockGetAnnouncement.mockResolvedValueOnce({});
 
-    await expect(getMyAnnouncement("TENANT001", "N001")).resolves.toBeNull();
+    await expect(
+      getMyAnnouncement(tenantId, announcementId)
+    ).resolves.toBeNull();
   });
 
   it("markAnnouncementAsRead: session が無ければ false", async () => {

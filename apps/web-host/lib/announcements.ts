@@ -5,12 +5,14 @@ import {
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { unstable_noStore as noStore } from "next/cache";
+import { z } from "zod";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { tenantIdFormSchema } from "./auth-input";
 
 export interface MemberAnnouncementItem {
   id: string;
@@ -141,6 +143,11 @@ export const listMyAnnouncements = async (
   return fetchAnnouncements(tenantId, sid, options);
 };
 
+const getMyAnnouncementInputSchema = z.object({
+  announcementId: z.string().trim().pipe(z.uuid()),
+  tenantId: tenantIdFormSchema,
+});
+
 /**
  * Session-authorized get-by-id. A form-supplied `linkUrl` is not a substitute.
  */
@@ -151,6 +158,15 @@ export const getMyAnnouncement = async (
 ): Promise<MemberAnnouncementItem | null> => {
   noStore();
 
+  const parsed = getMyAnnouncementInputSchema.safeParse({
+    announcementId,
+    tenantId,
+  });
+  if (!parsed.success) {
+    // Same null as a missing row: a malformed id is not a distinct outcome.
+    return null;
+  }
+
   const sid = await resolveAccessToken(sessionId);
   if (!sid) {
     return null;
@@ -159,8 +175,8 @@ export const getMyAnnouncement = async (
   try {
     const response = await apiClient.auth.getAnnouncement(
       {
-        announcementId,
-        tenant: { tenantId },
+        announcementId: parsed.data.announcementId,
+        tenant: { tenantId: parsed.data.tenantId },
       },
       buildSessionHeaders(sid)
     );
