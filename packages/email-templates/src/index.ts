@@ -4,6 +4,8 @@ export { EmailButton } from "./button";
 export type { EmailButtonProps } from "./button";
 export { EmailLayout } from "./layout";
 export type { EmailLayoutProps } from "./layout";
+export { emailMessage, loadEmailMessages } from "./messages";
+export type { EmailMessageKey, Messages } from "./messages";
 export { isTemplateId, resolveEmail, TEMPLATE_IDS } from "./registry";
 export type {
   ResolveEmailFailure,

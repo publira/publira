@@ -1,4 +1,25 @@
 {
+  "email": {
+    "layout": {
+      "brand": "Publira",
+      "footer": "This email was sent by Publira."
+    },
+    "sample": {
+      "preview": "{body}",
+      "subject": "{title}"
+    },
+    "tenant_admin_invitation": {
+      "action": "Accept invitation",
+      "body": "You are invited as a tenant admin of {tenant_name}. Open the button below to accept the invitation.",
+      "expires": "This link expires at {expires_at}.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Admin invitation",
+      "ignore": "If you were not expecting this email, you can ignore it.",
+      "intro": "You have been invited to the Publira admin console.",
+      "preview": "You have been invited to the Publira admin console.",
+      "subject": "{tenant_name} admin invitation"
+    }
+  },
   "locale": {
     "en": "English",
     "ja": "Japanese"

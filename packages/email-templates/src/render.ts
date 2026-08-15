@@ -15,6 +15,7 @@ export interface RenderEmailSuccess {
   subject: string;
   template: TemplateId;
   text: string;
+  timeZone: string;
 }
 
 export type RenderEmailResult = RenderEmailSuccess | ResolveEmailFailure;
@@ -36,5 +37,6 @@ export const renderEmail = async (
     subject: resolved.subject,
     template: resolved.template,
     text: toPlainText(html),
+    timeZone: resolved.timeZone,
   };
 };

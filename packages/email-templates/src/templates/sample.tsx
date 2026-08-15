@@ -8,6 +8,7 @@ import { emailColors, emailFonts } from "../colors";
 import { isHttpUrl } from "../http-url";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
+import type { Messages } from "../messages";
 
 const headingStyle: CSSProperties = {
   color: emailColors.foreground,
@@ -39,22 +40,28 @@ export type SampleEmailData = z.output<typeof sampleEmailDataSchema>;
 
 export interface SampleEmailProps {
   data: SampleEmailData;
-  locale?: Locale | string;
+  locale: Locale | string;
+  messages: Messages;
 }
 
 export const sampleEmailSubject = (
   data: SampleEmailData,
-  locale?: Locale | string
+  messages: Messages
 ): string =>
-  emailMessage(locale ?? "", "sample.subject", { title: data.title });
+  emailMessage(messages, "email.sample.subject", { title: data.title });
 
 export const sampleEmailPreview = (
   data: SampleEmailData,
-  locale?: Locale | string
-): string => emailMessage(locale ?? "", "sample.preview", { body: data.body });
+  messages: Messages
+): string =>
+  emailMessage(messages, "email.sample.preview", { body: data.body });
 
-export const SampleEmail = ({ data, locale }: SampleEmailProps) => (
-  <EmailLayout locale={locale} preview={sampleEmailPreview(data, locale)}>
+export const SampleEmail = ({ data, locale, messages }: SampleEmailProps) => (
+  <EmailLayout
+    locale={locale}
+    messages={messages}
+    preview={sampleEmailPreview(data, messages)}
+  >
     <Text style={headingStyle}>{data.title}</Text>
     <Text style={bodyStyle}>{data.body}</Text>
     <EmailButton href={data.action_url}>{data.action_label}</EmailButton>

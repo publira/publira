@@ -13,6 +13,7 @@ import {
 
 import { emailColors, emailFonts } from "./colors";
 import { emailMessage } from "./messages";
+import type { Messages } from "./messages";
 
 const bodyStyle: CSSProperties = {
   backgroundColor: emailColors.background,
@@ -52,13 +53,15 @@ const footerStyle: CSSProperties = {
 
 export interface EmailLayoutProps {
   children: ReactNode;
-  locale?: Locale | string;
+  locale: Locale | string;
+  messages: Messages;
   preview: string;
 }
 
 export const EmailLayout = ({
   children,
   locale,
+  messages,
   preview,
 }: EmailLayoutProps) => {
   const resolvedLocale = parseLocale(locale);
@@ -70,11 +73,11 @@ export const EmailLayout = ({
       <Body lang={resolvedLocale} style={bodyStyle}>
         <Container style={containerStyle}>
           <Text style={brandStyle}>
-            {emailMessage(resolvedLocale, "layout.brand")}
+            {emailMessage(messages, "email.layout.brand")}
           </Text>
           <Section style={cardStyle}>{children}</Section>
           <Text style={footerStyle}>
-            {emailMessage(resolvedLocale, "layout.footer")}
+            {emailMessage(messages, "email.layout.footer")}
           </Text>
         </Container>
       </Body>

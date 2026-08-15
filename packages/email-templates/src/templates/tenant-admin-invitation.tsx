@@ -1,8 +1,4 @@
-import {
-  DEFAULT_TIME_ZONE,
-  formatDateTime,
-  parseInstant,
-} from "@publira/utils";
+import { formatDateTime, parseInstant } from "@publira/utils";
 import type { Locale } from "@publira/utils/i18n";
 import type { CSSProperties } from "react";
 import { Link, Text } from "react-email";
@@ -13,6 +9,7 @@ import { emailColors, emailFonts } from "../colors";
 import { isHttpUrl } from "../http-url";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
+import type { Messages } from "../messages";
 import "../temporal";
 
 const headingStyle: CSSProperties = {
@@ -77,59 +74,65 @@ export type TenantAdminInvitationData = z.output<
 
 export interface TenantAdminInvitationEmailProps {
   data: TenantAdminInvitationData;
-  locale?: Locale | string;
+  locale: Locale | string;
+  messages: Messages;
+  timeZone: string;
 }
 
 export const tenantAdminInvitationSubject = (
   data: TenantAdminInvitationData,
-  locale?: Locale | string
+  messages: Messages
 ): string =>
-  emailMessage(locale ?? "", "tenant_admin_invitation.subject", {
+  emailMessage(messages, "email.tenant_admin_invitation.subject", {
     tenant_name: data.tenant_name,
   });
 
 export const tenantAdminInvitationPreview = (
   _data: TenantAdminInvitationData,
-  locale?: Locale | string
-): string => emailMessage(locale ?? "", "tenant_admin_invitation.preview");
+  messages: Messages
+): string => emailMessage(messages, "email.tenant_admin_invitation.preview");
 
-const formatExpiry = (expiresAt: string, locale?: Locale | string): string =>
-  // Invitation payload has no tenant zone (#285). Asia/Tokyo stands in, same
-  // as DEFAULT_TIME_ZONE when a tenant read is unavailable.
-  formatDateTime(expiresAt, { locale, timeZone: DEFAULT_TIME_ZONE });
+const formatExpiry = (
+  expiresAt: string,
+  locale: Locale | string,
+  timeZone: string
+): string => formatDateTime(expiresAt, { locale, timeZone });
 
 export const TenantAdminInvitationEmail = ({
   data,
   locale,
+  messages,
+  timeZone,
 }: TenantAdminInvitationEmailProps) => (
   <EmailLayout
     locale={locale}
-    preview={tenantAdminInvitationPreview(data, locale)}
+    messages={messages}
+    preview={tenantAdminInvitationPreview(data, messages)}
   >
     <Text style={headingStyle}>
-      {emailMessage(locale ?? "", "tenant_admin_invitation.heading")}
+      {emailMessage(messages, "email.tenant_admin_invitation.heading")}
     </Text>
     <Text style={introStyle}>
-      {emailMessage(locale ?? "", "tenant_admin_invitation.intro")}
+      {emailMessage(messages, "email.tenant_admin_invitation.intro")}
     </Text>
     <Text style={bodyStyle}>
-      {emailMessage(locale ?? "", "tenant_admin_invitation.body", {
+      {emailMessage(messages, "email.tenant_admin_invitation.body", {
         tenant_name: data.tenant_name,
       })}
     </Text>
     <EmailButton href={data.invite_url}>
-      {emailMessage(locale ?? "", "tenant_admin_invitation.action")}
+      {emailMessage(messages, "email.tenant_admin_invitation.action")}
     </EmailButton>
     <Text style={metaStyle}>
-      {emailMessage(locale ?? "", "tenant_admin_invitation.expires", {
-        expires_at: formatExpiry(data.expires_at, locale),
+      {emailMessage(messages, "email.tenant_admin_invitation.expires", {
+        expires_at: formatExpiry(data.expires_at, locale, timeZone),
       })}
     </Text>
     <Text style={metaStyle}>
-      {emailMessage(locale ?? "", "tenant_admin_invitation.ignore")}
+      {emailMessage(messages, "email.tenant_admin_invitation.ignore")}
     </Text>
     <Text style={fallbackStyle}>
-      {emailMessage(locale ?? "", "tenant_admin_invitation.fallback_link")}{" "}
+      {emailMessage(messages, "email.tenant_admin_invitation.fallback_link")}{" "}
       <Link href={data.invite_url} style={fallbackLinkStyle}>
         {data.invite_url}
       </Link>

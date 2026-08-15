@@ -1,9 +1,11 @@
+import { isValidTimeZone } from "@publira/utils";
 import { parseLocale } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import { createElement } from "react";
 import type { ReactElement } from "react";
 import type { z } from "zod";
 
+import type { Messages } from "./messages";
 import {
   SampleEmail,
   sampleEmailDataSchema,
@@ -30,8 +32,10 @@ export const isTemplateId = (value: unknown): value is TemplateId =>
 
 export interface ResolveEmailInput {
   data: unknown;
-  locale?: string;
+  locale: string;
+  messages: Messages;
   template: string;
+  timeZone: string;
 }
 
 export interface ResolveEmailFailure {
@@ -47,6 +51,7 @@ export interface ResolveEmailSuccess {
   preview: string;
   subject: string;
   template: TemplateId;
+  timeZone: string;
 }
 
 export type ResolveEmailResult = ResolveEmailFailure | ResolveEmailSuccess;
@@ -79,7 +84,16 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
     };
   }
 
+  if (!isValidTimeZone(input.timeZone)) {
+    return {
+      message: "time_zone must be an IANA time zone",
+      ok: false,
+      reason: "invalid_data",
+    };
+  }
+
   const locale = parseLocale(input.locale);
+  const { messages, timeZone } = input;
 
   switch (input.template) {
     case "sample": {
@@ -95,12 +109,14 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
         element: createElement(SampleEmail, {
           data: parsed.data,
           locale,
+          messages,
         }),
         locale,
         ok: true,
-        preview: sampleEmailPreview(parsed.data, locale),
-        subject: sampleEmailSubject(parsed.data, locale),
+        preview: sampleEmailPreview(parsed.data, messages),
+        subject: sampleEmailSubject(parsed.data, messages),
         template: "sample",
+        timeZone,
       };
     }
     case "tenant_admin_invitation": {
@@ -116,12 +132,15 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
         element: createElement(TenantAdminInvitationEmail, {
           data: parsed.data,
           locale,
+          messages,
+          timeZone,
         }),
         locale,
         ok: true,
-        preview: tenantAdminInvitationPreview(parsed.data, locale),
-        subject: tenantAdminInvitationSubject(parsed.data, locale),
+        preview: tenantAdminInvitationPreview(parsed.data, messages),
+        subject: tenantAdminInvitationSubject(parsed.data, messages),
         template: "tenant_admin_invitation",
+        timeZone,
       };
     }
     default: {

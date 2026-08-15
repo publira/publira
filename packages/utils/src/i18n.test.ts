@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import enCatalog from "../../../locales/en.json";
-import jaCatalog from "../../../locales/ja.json";
+import enCatalog from "../../../locales/en.json" with { type: "json" };
+import jaCatalog from "../../../locales/ja.json" with { type: "json" };
 import {
   DEFAULT_LOCALE,
   getMessage,
