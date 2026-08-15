@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -444,6 +445,9 @@ func (s *adminServer) CreateEpisode(
 		})
 		if maxErr != nil {
 			return nil, s.internalDBError("failed to resolve episode order_index", maxErr, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
+		}
+		if maxOrderIndex == math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("episode order_index limit reached"))
 		}
 		orderIndex = maxOrderIndex + 1
 	}

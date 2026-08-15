@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -236,6 +237,23 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 				mock.ExpectRollback()
 			},
 			wantCode: connect.CodeNotFound,
+		},
+		{
+			name: "order-index-limit",
+			request: &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesPublicId: "SERIES001",
+				Title:          "Episode",
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectBegin()
+				expectLockSeriesByPublicID(mock, tenantID, "SERIES001", uuid.Must(uuid.NewV7()))
+				mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeOrderIndexBySeriesForTenantQuery)).
+					WithArgs(tenantID, "SERIES001").
+					WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(math.MaxInt32)))
+				mock.ExpectRollback()
+			},
+			wantCode: connect.CodeFailedPrecondition,
 		},
 	}
 
