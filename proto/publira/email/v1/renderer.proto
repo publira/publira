@@ -10,6 +10,8 @@ message RenderEmailRequest {
   string template = 1;
   string locale = 2;
   google.protobuf.Struct data = 3;
+  // IANA time zone used when a template formats an absolute timestamp.
+  string time_zone = 4;
 }
 
 message RenderEmailResponse {

@@ -21,6 +21,7 @@ export default defineConfig({
     "src/admin/tenant.ts",
     "src/admin/theme.ts",
     "src/admin/types.ts",
+    "src/email/renderer.ts",
     "src/platform/client.ts",
   ],
   format: "esm",
