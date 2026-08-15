@@ -173,6 +173,36 @@ message StartEpisodeCheckoutResponse {
   string checkout_url = 1;
 }
 
+// One purchase belonging to the signed-in reader. `is_active` is evaluated by
+// the API at read time: a purchase without an expiry is always active.
+message MyPurchase {
+  string id = 1;
+  publira.types.v1.Episode episode = 2;
+  publira.types.v1.Series series = 3;
+  int32 price_at_purchase = 4;
+  string purchased_at = 5;
+  // Empty when this purchase does not expire.
+  string expires_at = 6;
+  bool is_active = 7;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListMyPurchasesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListMyPurchasesResponse {
+  repeated MyPurchase purchases = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 // `web-host` forwards Stripe's raw request body and signature to this RPC.
 // Signature verification and all purchase validation stay on the API server.
 message ProcessStripeWebhookRequest {
@@ -185,5 +215,7 @@ message ProcessStripeWebhookResponse {}
 
 service PurchaseService {
   rpc StartEpisodeCheckout(StartEpisodeCheckoutRequest) returns (StartEpisodeCheckoutResponse) {}
+  // Lists only the authenticated reader's purchases in the requested tenant.
+  rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {}
   rpc ProcessStripeWebhook(ProcessStripeWebhookRequest) returns (ProcessStripeWebhookResponse) {}
 }

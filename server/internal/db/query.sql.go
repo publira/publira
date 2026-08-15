@@ -5631,6 +5631,206 @@ func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTe
 	return items, nil
 }
 
+const listMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.purchased_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = $1
+    AND p.user_id = $2
+    AND e.tenant_id = $1
+    AND s.tenant_id = $1
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (p.purchased_at, p.id) >= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (p.purchased_at, p.id) > (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at ASC,
+    p.id ASC
+LIMIT $6
+`
+
+type ListMyPurchasesAscParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	UserID            uuid.UUID     `json:"user_id"`
+	CursorPurchasedAt sql.NullTime  `json:"cursor_purchased_at"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	Limit             int32         `json:"limit"`
+}
+
+type ListMyPurchasesAscRow struct {
+	ID                uuid.UUID    `json:"id"`
+	PriceAtPurchase   int32        `json:"price_at_purchase"`
+	ExpiresAt         sql.NullTime `json:"expires_at"`
+	PurchasedAt       time.Time    `json:"purchased_at"`
+	EpisodePublicID   string       `json:"episode_public_id"`
+	EpisodeTitle      string       `json:"episode_title"`
+	EpisodeOrderIndex int32        `json:"episode_order_index"`
+	SeriesPublicID    string       `json:"series_public_id"`
+	SeriesTitle       string       `json:"series_title"`
+}
+
+func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyPurchasesAsc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorPurchasedAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyPurchasesAscRow
+	for rows.Next() {
+		var i ListMyPurchasesAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PriceAtPurchase,
+			&i.ExpiresAt,
+			&i.PurchasedAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.EpisodeOrderIndex,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyPurchasesDesc = `-- name: ListMyPurchasesDesc :many
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.purchased_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = $1
+    AND p.user_id = $2
+    AND e.tenant_id = $1
+    AND s.tenant_id = $1
+    AND (
+        $3::timestamptz IS NULL
+        OR (
+            $4::boolean
+            AND (p.purchased_at, p.id) <= (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (p.purchased_at, p.id) < (
+                $3::timestamptz,
+                $5::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at DESC,
+    p.id DESC
+LIMIT $6
+`
+
+type ListMyPurchasesDescParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	UserID            uuid.UUID     `json:"user_id"`
+	CursorPurchasedAt sql.NullTime  `json:"cursor_purchased_at"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	Limit             int32         `json:"limit"`
+}
+
+type ListMyPurchasesDescRow struct {
+	ID                uuid.UUID    `json:"id"`
+	PriceAtPurchase   int32        `json:"price_at_purchase"`
+	ExpiresAt         sql.NullTime `json:"expires_at"`
+	PurchasedAt       time.Time    `json:"purchased_at"`
+	EpisodePublicID   string       `json:"episode_public_id"`
+	EpisodeTitle      string       `json:"episode_title"`
+	EpisodeOrderIndex int32        `json:"episode_order_index"`
+	SeriesPublicID    string       `json:"series_public_id"`
+	SeriesTitle       string       `json:"series_title"`
+}
+
+func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMyPurchasesDesc,
+		arg.TenantID,
+		arg.UserID,
+		arg.CursorPurchasedAt,
+		arg.CursorInclusive,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyPurchasesDescRow
+	for rows.Next() {
+		var i ListMyPurchasesDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PriceAtPurchase,
+			&i.ExpiresAt,
+			&i.PurchasedAt,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.EpisodeOrderIndex,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlatformOperatorIDs = `-- name: ListPlatformOperatorIDs :many
 SELECT DISTINCT pu.id
 FROM platform_users pu

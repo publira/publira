@@ -56,6 +56,9 @@ const (
 	// PurchaseServiceStartEpisodeCheckoutProcedure is the fully-qualified name of the PurchaseService's
 	// StartEpisodeCheckout RPC.
 	PurchaseServiceStartEpisodeCheckoutProcedure = "/publira.v1.PurchaseService/StartEpisodeCheckout"
+	// PurchaseServiceListMyPurchasesProcedure is the fully-qualified name of the PurchaseService's
+	// ListMyPurchases RPC.
+	PurchaseServiceListMyPurchasesProcedure = "/publira.v1.PurchaseService/ListMyPurchases"
 	// PurchaseServiceProcessStripeWebhookProcedure is the fully-qualified name of the PurchaseService's
 	// ProcessStripeWebhook RPC.
 	PurchaseServiceProcessStripeWebhookProcedure = "/publira.v1.PurchaseService/ProcessStripeWebhook"
@@ -278,6 +281,8 @@ func (UnimplementedCatalogServiceHandler) GetPublishedAuthorDetail(context.Conte
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.
 type PurchaseServiceClient interface {
 	StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error)
+	// Lists only the authenticated reader's purchases in the requested tenant.
+	ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error)
 	ProcessStripeWebhook(context.Context, *connect.Request[v1.ProcessStripeWebhookRequest]) (*connect.Response[v1.ProcessStripeWebhookResponse], error)
 }
 
@@ -298,6 +303,12 @@ func NewPurchaseServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(purchaseServiceMethods.ByName("StartEpisodeCheckout")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyPurchases: connect.NewClient[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse](
+			httpClient,
+			baseURL+PurchaseServiceListMyPurchasesProcedure,
+			connect.WithSchema(purchaseServiceMethods.ByName("ListMyPurchases")),
+			connect.WithClientOptions(opts...),
+		),
 		processStripeWebhook: connect.NewClient[v1.ProcessStripeWebhookRequest, v1.ProcessStripeWebhookResponse](
 			httpClient,
 			baseURL+PurchaseServiceProcessStripeWebhookProcedure,
@@ -310,12 +321,18 @@ func NewPurchaseServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 // purchaseServiceClient implements PurchaseServiceClient.
 type purchaseServiceClient struct {
 	startEpisodeCheckout *connect.Client[v1.StartEpisodeCheckoutRequest, v1.StartEpisodeCheckoutResponse]
+	listMyPurchases      *connect.Client[v1.ListMyPurchasesRequest, v1.ListMyPurchasesResponse]
 	processStripeWebhook *connect.Client[v1.ProcessStripeWebhookRequest, v1.ProcessStripeWebhookResponse]
 }
 
 // StartEpisodeCheckout calls publira.v1.PurchaseService.StartEpisodeCheckout.
 func (c *purchaseServiceClient) StartEpisodeCheckout(ctx context.Context, req *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error) {
 	return c.startEpisodeCheckout.CallUnary(ctx, req)
+}
+
+// ListMyPurchases calls publira.v1.PurchaseService.ListMyPurchases.
+func (c *purchaseServiceClient) ListMyPurchases(ctx context.Context, req *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error) {
+	return c.listMyPurchases.CallUnary(ctx, req)
 }
 
 // ProcessStripeWebhook calls publira.v1.PurchaseService.ProcessStripeWebhook.
@@ -326,6 +343,8 @@ func (c *purchaseServiceClient) ProcessStripeWebhook(ctx context.Context, req *c
 // PurchaseServiceHandler is an implementation of the publira.v1.PurchaseService service.
 type PurchaseServiceHandler interface {
 	StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error)
+	// Lists only the authenticated reader's purchases in the requested tenant.
+	ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error)
 	ProcessStripeWebhook(context.Context, *connect.Request[v1.ProcessStripeWebhookRequest]) (*connect.Response[v1.ProcessStripeWebhookResponse], error)
 }
 
@@ -342,6 +361,12 @@ func NewPurchaseServiceHandler(svc PurchaseServiceHandler, opts ...connect.Handl
 		connect.WithSchema(purchaseServiceMethods.ByName("StartEpisodeCheckout")),
 		connect.WithHandlerOptions(opts...),
 	)
+	purchaseServiceListMyPurchasesHandler := connect.NewUnaryHandler(
+		PurchaseServiceListMyPurchasesProcedure,
+		svc.ListMyPurchases,
+		connect.WithSchema(purchaseServiceMethods.ByName("ListMyPurchases")),
+		connect.WithHandlerOptions(opts...),
+	)
 	purchaseServiceProcessStripeWebhookHandler := connect.NewUnaryHandler(
 		PurchaseServiceProcessStripeWebhookProcedure,
 		svc.ProcessStripeWebhook,
@@ -352,6 +377,8 @@ func NewPurchaseServiceHandler(svc PurchaseServiceHandler, opts ...connect.Handl
 		switch r.URL.Path {
 		case PurchaseServiceStartEpisodeCheckoutProcedure:
 			purchaseServiceStartEpisodeCheckoutHandler.ServeHTTP(w, r)
+		case PurchaseServiceListMyPurchasesProcedure:
+			purchaseServiceListMyPurchasesHandler.ServeHTTP(w, r)
 		case PurchaseServiceProcessStripeWebhookProcedure:
 			purchaseServiceProcessStripeWebhookHandler.ServeHTTP(w, r)
 		default:
@@ -365,6 +392,10 @@ type UnimplementedPurchaseServiceHandler struct{}
 
 func (UnimplementedPurchaseServiceHandler) StartEpisodeCheckout(context.Context, *connect.Request[v1.StartEpisodeCheckoutRequest]) (*connect.Response[v1.StartEpisodeCheckoutResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.StartEpisodeCheckout is not implemented"))
+}
+
+func (UnimplementedPurchaseServiceHandler) ListMyPurchases(context.Context, *connect.Request[v1.ListMyPurchasesRequest]) (*connect.Response[v1.ListMyPurchasesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.PurchaseService.ListMyPurchases is not implemented"))
 }
 
 func (UnimplementedPurchaseServiceHandler) ProcessStripeWebhook(context.Context, *connect.Request[v1.ProcessStripeWebhookRequest]) (*connect.Response[v1.ProcessStripeWebhookResponse], error) {
