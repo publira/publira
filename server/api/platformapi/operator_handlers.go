@@ -125,7 +125,7 @@ func (s *platformServer) ListOperators(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListOperatorsRequest],
 ) (*connect.Response[publirasplatformv1.ListOperatorsResponse], error) {
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
 		return nil, err
 	}
 
@@ -210,7 +210,7 @@ func (s *platformServer) GetOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.GetOperatorRequest],
 ) (*connect.Response[publirasplatformv1.GetOperatorResponse], error) {
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
 		return nil, err
 	}
 
@@ -236,11 +236,11 @@ func (s *platformServer) CreateOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CreateOperatorRequest],
 ) (*connect.Response[publirasplatformv1.CreateOperatorResponse], error) {
-	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	if err := ensurePlatformSuperAdmin(currentRole); err != nil {
+	if err := ensurePlatformSuperAdmin(actor.Role); err != nil {
 		return nil, err
 	}
 
@@ -332,8 +332,8 @@ func (s *platformServer) CreateOperator(
 		return nil, s.internalDBError("failed to commit create operator", err, "platform_user_id", user.ID.String())
 	}
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: currentUser.ID,
-		ActorRole:           currentRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "operator_created",
 		TargetType:          "operator",
 		TargetID:            operator.ID.String(),
@@ -350,11 +350,11 @@ func (s *platformServer) UpdateOperatorRole(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UpdateOperatorRoleRequest],
 ) (*connect.Response[publirasplatformv1.UpdateOperatorRoleResponse], error) {
-	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	if err := ensurePlatformSuperAdmin(currentRole); err != nil {
+	if err := ensurePlatformSuperAdmin(actor.Role); err != nil {
 		return nil, err
 	}
 
@@ -382,7 +382,7 @@ func (s *platformServer) UpdateOperatorRole(
 		}
 		return nil, s.internalDBError("failed to get operator", err, "public_id", publicID)
 	}
-	if operator.ID == currentUser.ID && role != rolePlatformSuperAdmin {
+	if operator.ID == actor.UserID && role != rolePlatformSuperAdmin {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot demote yourself"))
 	}
 
@@ -407,8 +407,8 @@ func (s *platformServer) UpdateOperatorRole(
 		return nil, s.internalDBError("failed to commit update operator role", err, "platform_user_id", operator.ID.String())
 	}
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: currentUser.ID,
-		ActorRole:           currentRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "operator_updated",
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
@@ -425,11 +425,11 @@ func (s *platformServer) SuspendOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.SuspendOperatorRequest],
 ) (*connect.Response[publirasplatformv1.SuspendOperatorResponse], error) {
-	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	if err := ensurePlatformSuperAdmin(currentRole); err != nil {
+	if err := ensurePlatformSuperAdmin(actor.Role); err != nil {
 		return nil, err
 	}
 
@@ -453,7 +453,7 @@ func (s *platformServer) SuspendOperator(
 		}
 		return nil, s.internalDBError("failed to get operator", err, "public_id", publicID)
 	}
-	if operator.ID == currentUser.ID {
+	if operator.ID == actor.UserID {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot suspend yourself"))
 	}
 	if operator.Status != userStatusActive {
@@ -480,8 +480,8 @@ func (s *platformServer) SuspendOperator(
 		return nil, s.internalDBError("failed to commit suspend operator", err, "platform_user_id", operator.ID.String())
 	}
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: currentUser.ID,
-		ActorRole:           currentRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "operator_suspended",
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
@@ -498,11 +498,11 @@ func (s *platformServer) UnsuspendOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.UnsuspendOperatorRequest],
 ) (*connect.Response[publirasplatformv1.UnsuspendOperatorResponse], error) {
-	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	if err := ensurePlatformSuperAdmin(currentRole); err != nil {
+	if err := ensurePlatformSuperAdmin(actor.Role); err != nil {
 		return nil, err
 	}
 
@@ -547,8 +547,8 @@ func (s *platformServer) UnsuspendOperator(
 		return nil, s.internalDBError("failed to commit unsuspend operator", err, "platform_user_id", operator.ID.String())
 	}
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: currentUser.ID,
-		ActorRole:           currentRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "operator_resumed",
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),
@@ -565,11 +565,11 @@ func (s *platformServer) DeactivateOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.DeactivateOperatorRequest],
 ) (*connect.Response[publirasplatformv1.DeactivateOperatorResponse], error) {
-	_, currentUser, currentRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
-	if err := ensurePlatformSuperAdmin(currentRole); err != nil {
+	if err := ensurePlatformSuperAdmin(actor.Role); err != nil {
 		return nil, err
 	}
 
@@ -593,7 +593,7 @@ func (s *platformServer) DeactivateOperator(
 		}
 		return nil, s.internalDBError("failed to get operator", err, "public_id", publicID)
 	}
-	if operator.ID == currentUser.ID {
+	if operator.ID == actor.UserID {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot deactivate yourself"))
 	}
 	if operator.Status == userStatusInactive {
@@ -620,8 +620,8 @@ func (s *platformServer) DeactivateOperator(
 		return nil, s.internalDBError("failed to commit deactivate operator", err, "platform_user_id", operator.ID.String())
 	}
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: currentUser.ID,
-		ActorRole:           currentRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "operator_deleted",
 		TargetType:          "operator",
 		TargetID:            updated.ID.String(),

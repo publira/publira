@@ -38,12 +38,8 @@ func notificationPayloadJSON(raw json.RawMessage) string {
 	return string(raw)
 }
 
-func (s *platformServer) requirePlatformActor(ctx context.Context) (platformActor, error) {
-	actor, ok := platformActorFromContext(ctx)
-	if !ok {
-		return platformActor{}, invalidSessionError()
-	}
-	return actor, nil
+func (s *platformServer) requirePlatformNotificationActor(ctx context.Context) (platformActor, error) {
+	return s.requirePlatformActor(ctx, nil)
 }
 
 func mapPlatformNotificationDescRows(rows []dbmodels.ListPlatformNotificationsForUserDescRow) []platformNotificationPageRow {
@@ -130,7 +126,7 @@ func (s *platformServer) ListNotifications(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListNotificationsRequest],
 ) (*connect.Response[publirasplatformv1.ListNotificationsResponse], error) {
-	actor, err := s.requirePlatformActor(ctx)
+	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +179,7 @@ func (s *platformServer) CountUnreadNotifications(
 	ctx context.Context,
 	_ *connect.Request[publirasplatformv1.CountUnreadNotificationsRequest],
 ) (*connect.Response[publirasplatformv1.CountUnreadNotificationsResponse], error) {
-	actor, err := s.requirePlatformActor(ctx)
+	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +196,7 @@ func (s *platformServer) MarkNotificationAsRead(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.MarkNotificationAsReadRequest],
 ) (*connect.Response[publirasplatformv1.MarkNotificationAsReadResponse], error) {
-	actor, err := s.requirePlatformActor(ctx)
+	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +224,7 @@ func (s *platformServer) MarkAllNotificationsAsRead(
 	ctx context.Context,
 	_ *connect.Request[publirasplatformv1.MarkAllNotificationsAsReadRequest],
 ) (*connect.Response[publirasplatformv1.MarkAllNotificationsAsReadResponse], error) {
-	actor, err := s.requirePlatformActor(ctx)
+	actor, err := s.requirePlatformNotificationActor(ctx)
 	if err != nil {
 		return nil, err
 	}
