@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -503,6 +504,31 @@ func TestAuthGetAnnouncement(t *testing.T) {
 		}
 		if err.Error() != "not_found: announcement not found" {
 			t.Fatalf("error = %q, want existence hidden", err)
+		}
+
+		assertPublicExpectations(t, mock)
+	})
+
+	t.Run("database-error-is-hidden", func(t *testing.T) {
+		tenantID := uuid.Must(uuid.NewV7())
+		userID := uuid.Must(uuid.NewV7())
+		announcementID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC()
+		client, mock := newAnnouncementClient(t, tenantID, userID, now)
+
+		mock.ExpectQuery(regexp.QuoteMeta(getAnnouncementForUserQuery)).
+			WithArgs(userID, announcementID, tenantID).
+			WillReturnError(errors.New(`pq: relation "announcements" does not exist`))
+
+		_, err := client.GetAnnouncement(context.Background(), newAuthedPublicRequest(&publirav1.GetAnnouncementRequest{
+			Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+			AnnouncementId: announcementID.String(),
+		}, tenantID.String()))
+		if connect.CodeOf(err) != connect.CodeInternal {
+			t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+		}
+		if err.Error() != "internal: internal server error" {
+			t.Fatalf("error = %q, want database details hidden", err)
 		}
 
 		assertPublicExpectations(t, mock)

@@ -1233,7 +1233,13 @@ func (s *apiServer) GetAnnouncement(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError(
+			"failed to get announcement",
+			err,
+			"tenant_id", tenant.ID.String(),
+			"user_id", user.ID.String(),
+			"announcement_id", announcementID.String(),
+		)
 	}
 
 	return connect.NewResponse(&publirav1.GetAnnouncementResponse{
