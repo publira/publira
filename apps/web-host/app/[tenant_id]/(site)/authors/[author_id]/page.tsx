@@ -21,6 +21,23 @@ import {
 
 const AUTHOR_SERIES_PAGE_SIZE = 20;
 
+type AuthorDetailPageProps = PageProps<"/[tenant_id]/authors/[author_id]">;
+
+/**
+ * `"use cache"` keys on the serialized arguments, so metadata and the page
+ * body have to pass the same `{ limit, token }` or one request fills two
+ * entries and hits the RPC twice.
+ */
+const loadPublishedAuthorDetail = (
+  tenantId: string,
+  authorId: string,
+  token: string
+) =>
+  getPublishedAuthorDetail(tenantId, authorId, {
+    limit: AUTHOR_SERIES_PAGE_SIZE,
+    token,
+  });
+
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "author_id");
 
@@ -43,16 +60,21 @@ const getAuthorInitials = (name: string) => {
 
 export const generateMetadata = async ({
   params,
-}: {
-  params: Promise<{ author_id: string; tenant_id: string }>;
-}): Promise<Metadata> => {
-  const [{ author_id }, tenantId] = await Promise.all([params, getTenantId()]);
+  searchParams,
+}: AuthorDetailPageProps): Promise<Metadata> => {
+  const [{ author_id }, tenantId, resolvedSearchParams] = await Promise.all([
+    params,
+    getTenantId(),
+    searchParams,
+  ]);
 
   guardPlaceholders({ author_id });
 
+  const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
+
   const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
-    getPublishedAuthorDetail(tenantId, author_id),
+    loadPublishedAuthorDetail(tenantId, author_id, token),
   ]);
 
   // An unavailable author reads as "not found" for the `<title>` alone; the
@@ -201,7 +223,7 @@ const AuthorRelatedSeries = ({
 const AuthorDetailContent = async ({
   params,
   searchParams,
-}: PageProps<"/[tenant_id]/authors/[author_id]">) => {
+}: AuthorDetailPageProps) => {
   const [{ author_id }, tenantId, resolvedSearchParams] = await Promise.all([
     params,
     getTenantId(),
@@ -217,10 +239,7 @@ const AuthorDetailContent = async ({
   // to render anything (#672).
   const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
-    getPublishedAuthorDetail(tenantId, author_id, {
-      limit: AUTHOR_SERIES_PAGE_SIZE,
-      token,
-    }),
+    loadPublishedAuthorDetail(tenantId, author_id, token),
   ]);
 
   if (!result.ok) {
@@ -312,7 +331,7 @@ const AuthorDetailContent = async ({
   );
 };
 
-const Page = (props: PageProps<"/[tenant_id]/authors/[author_id]">) => (
+const Page = (props: AuthorDetailPageProps) => (
   <Suspense fallback={<AuthorDetailSkeleton />}>
     <AuthorDetailContent {...props} />
   </Suspense>
