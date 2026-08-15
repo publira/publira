@@ -1,5 +1,5 @@
 import "temporal-polyfill/global";
-import { createEmailRendererServer, parsePort } from "./server.js";
+import { createEmailRendererServer, parsePort } from "./server.ts";
 
 const server = createEmailRendererServer();
 const port = parsePort(process.env.PORT);
