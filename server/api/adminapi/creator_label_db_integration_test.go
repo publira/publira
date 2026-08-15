@@ -107,6 +107,47 @@ func TestDBListCreatorsExcludesOtherTenants(t *testing.T) {
 	}
 }
 
+func TestDBGetCreatorOfAnotherTenantReturnsNotFound(t *testing.T) {
+	env := newAdminDBEnv(t)
+	first, second := seedTwoTenants(t, env)
+	creators := env.creatorClient()
+
+	mine, err := creators.CreateCreator(context.Background(), newAdminDBRequest(first, &publiraadminv1.CreateCreatorRequest{
+		Tenant:      first.tenantContext(),
+		Name:        "Tenant A Creator",
+		ProfileText: "Profile A",
+	}))
+	if err != nil {
+		t.Fatalf("CreateCreator for tenant A: %v", err)
+	}
+	theirs, err := creators.CreateCreator(context.Background(), newAdminDBRequest(second, &publiraadminv1.CreateCreatorRequest{
+		Tenant: second.tenantContext(),
+		Name:   "Tenant B Creator",
+	}))
+	if err != nil {
+		t.Fatalf("CreateCreator for tenant B: %v", err)
+	}
+
+	got, err := creators.GetCreator(context.Background(), newAdminDBRequest(first, &publiraadminv1.GetCreatorRequest{
+		Tenant:   first.tenantContext(),
+		PublicId: mine.Msg.Creator.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetCreator: %v", err)
+	}
+	if got.Msg.Creator.Name != "Tenant A Creator" || got.Msg.Creator.ProfileText != "Profile A" {
+		t.Fatalf("GetCreator = %+v, want name/profile of %+v", got.Msg.Creator, mine.Msg.Creator)
+	}
+
+	_, err = creators.GetCreator(context.Background(), newAdminDBRequest(first, &publiraadminv1.GetCreatorRequest{
+		Tenant:   first.tenantContext(),
+		PublicId: theirs.Msg.Creator.PublicId,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetCreator across tenants code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
 func TestDBSeriesRejectsCreatorFromAnotherTenant(t *testing.T) {
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)

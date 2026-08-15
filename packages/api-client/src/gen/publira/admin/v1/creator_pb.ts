@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/creator.proto.
  */
 export const file_publira_admin_v1_creator: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NyZWF0b3IucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEicgoTTGlzdENyZWF0b3JzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCJvChRMaXN0Q3JlYXRvcnNSZXNwb25zZRIrCghjcmVhdG9ycxgBIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIqUBChRDcmVhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFwoPaWNvbl9pbWFnZV9kYXRhGAQgASgMEh8KF2ljb25faW1hZ2VfY29udGVudF90eXBlGAUgASgJIkMKFUNyZWF0ZUNyZWF0b3JSZXNwb25zZRIqCgdjcmVhdG9yGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yItIBChRVcGRhdGVDcmVhdG9yUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMcHJvZmlsZV90ZXh0GAQgASgJEhcKD2ljb25faW1hZ2VfZGF0YRgFIAEoDBIfChdpY29uX2ltYWdlX2NvbnRlbnRfdHlwZRgGIAEoCRIYChBjbGVhcl9pY29uX2ltYWdlGAcgASgIIkMKFVVwZGF0ZUNyZWF0b3JSZXNwb25zZRIqCgdjcmVhdG9yGAEgASgLMhkucHVibGlyYS50eXBlcy52MS5DcmVhdG9yMr4CChNBZG1pbkNyZWF0b3JTZXJ2aWNlEl8KDExpc3RDcmVhdG9ycxIlLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuTGlzdENyZWF0b3JzUmVzcG9uc2UiABJiCg1DcmVhdGVDcmVhdG9yEiYucHVibGlyYS5hZG1pbi52MS5DcmVhdGVDcmVhdG9yUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQ3JlYXRvclJlc3BvbnNlIgASYgoNVXBkYXRlQ3JlYXRvchImLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ3JlYXRvclJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNyZWF0b3JSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch5wdWJsaXJhL2FkbWluL3YxL2NyZWF0b3IucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEicgoTTGlzdENyZWF0b3JzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCJvChRMaXN0Q3JlYXRvcnNSZXNwb25zZRIrCghjcmVhdG9ycxgBIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlcKEUdldENyZWF0b3JSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiQAoSR2V0Q3JlYXRvclJlc3BvbnNlEioKB2NyZWF0b3IYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3IipQEKFENyZWF0ZUNyZWF0b3JSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAIgASgJEhQKDHByb2ZpbGVfdGV4dBgDIAEoCRIXCg9pY29uX2ltYWdlX2RhdGEYBCABKAwSHwoXaWNvbl9pbWFnZV9jb250ZW50X3R5cGUYBSABKAkiQwoVQ3JlYXRlQ3JlYXRvclJlc3BvbnNlEioKB2NyZWF0b3IYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3Ii0gEKFFVwZGF0ZUNyZWF0b3JSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIUCgxwcm9maWxlX3RleHQYBCABKAkSFwoPaWNvbl9pbWFnZV9kYXRhGAUgASgMEh8KF2ljb25faW1hZ2VfY29udGVudF90eXBlGAYgASgJEhgKEGNsZWFyX2ljb25faW1hZ2UYByABKAgiQwoVVXBkYXRlQ3JlYXRvclJlc3BvbnNlEioKB2NyZWF0b3IYASABKAsyGS5wdWJsaXJhLnR5cGVzLnYxLkNyZWF0b3IymQMKE0FkbWluQ3JlYXRvclNlcnZpY2USXwoMTGlzdENyZWF0b3JzEiUucHVibGlyYS5hZG1pbi52MS5MaXN0Q3JlYXRvcnNSZXF1ZXN0GiYucHVibGlyYS5hZG1pbi52MS5MaXN0Q3JlYXRvcnNSZXNwb25zZSIAElkKCkdldENyZWF0b3ISIy5wdWJsaXJhLmFkbWluLnYxLkdldENyZWF0b3JSZXF1ZXN0GiQucHVibGlyYS5hZG1pbi52MS5HZXRDcmVhdG9yUmVzcG9uc2UiABJiCg1DcmVhdGVDcmVhdG9yEiYucHVibGlyYS5hZG1pbi52MS5DcmVhdGVDcmVhdG9yUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlQ3JlYXRvclJlc3BvbnNlIgASYgoNVXBkYXRlQ3JlYXRvchImLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlQ3JlYXRvclJlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUNyZWF0b3JSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -79,6 +79,45 @@ export const ListCreatorsResponseSchema: GenMessage<ListCreatorsResponse> = /*@_
   messageDesc(file_publira_admin_v1_creator, 1);
 
 /**
+ * @generated from message publira.admin.v1.GetCreatorRequest
+ */
+export type GetCreatorRequest = Message<"publira.admin.v1.GetCreatorRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetCreatorRequest.
+ * Use `create(GetCreatorRequestSchema)` to create a new message.
+ */
+export const GetCreatorRequestSchema: GenMessage<GetCreatorRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_creator, 2);
+
+/**
+ * @generated from message publira.admin.v1.GetCreatorResponse
+ */
+export type GetCreatorResponse = Message<"publira.admin.v1.GetCreatorResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.Creator creator = 1;
+   */
+  creator?: Creator | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetCreatorResponse.
+ * Use `create(GetCreatorResponseSchema)` to create a new message.
+ */
+export const GetCreatorResponseSchema: GenMessage<GetCreatorResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_creator, 3);
+
+/**
  * @generated from message publira.admin.v1.CreateCreatorRequest
  */
 export type CreateCreatorRequest = Message<"publira.admin.v1.CreateCreatorRequest"> & {
@@ -113,7 +152,7 @@ export type CreateCreatorRequest = Message<"publira.admin.v1.CreateCreatorReques
  * Use `create(CreateCreatorRequestSchema)` to create a new message.
  */
 export const CreateCreatorRequestSchema: GenMessage<CreateCreatorRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 2);
+  messageDesc(file_publira_admin_v1_creator, 4);
 
 /**
  * @generated from message publira.admin.v1.CreateCreatorResponse
@@ -130,7 +169,7 @@ export type CreateCreatorResponse = Message<"publira.admin.v1.CreateCreatorRespo
  * Use `create(CreateCreatorResponseSchema)` to create a new message.
  */
 export const CreateCreatorResponseSchema: GenMessage<CreateCreatorResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 3);
+  messageDesc(file_publira_admin_v1_creator, 5);
 
 /**
  * @generated from message publira.admin.v1.UpdateCreatorRequest
@@ -177,7 +216,7 @@ export type UpdateCreatorRequest = Message<"publira.admin.v1.UpdateCreatorReques
  * Use `create(UpdateCreatorRequestSchema)` to create a new message.
  */
 export const UpdateCreatorRequestSchema: GenMessage<UpdateCreatorRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 4);
+  messageDesc(file_publira_admin_v1_creator, 6);
 
 /**
  * @generated from message publira.admin.v1.UpdateCreatorResponse
@@ -194,7 +233,7 @@ export type UpdateCreatorResponse = Message<"publira.admin.v1.UpdateCreatorRespo
  * Use `create(UpdateCreatorResponseSchema)` to create a new message.
  */
 export const UpdateCreatorResponseSchema: GenMessage<UpdateCreatorResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_creator, 5);
+  messageDesc(file_publira_admin_v1_creator, 7);
 
 /**
  * @generated from service publira.admin.v1.AdminCreatorService
@@ -207,6 +246,14 @@ export const AdminCreatorService: GenService<{
     methodKind: "unary";
     input: typeof ListCreatorsRequestSchema;
     output: typeof ListCreatorsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminCreatorService.GetCreator
+   */
+  getCreator: {
+    methodKind: "unary";
+    input: typeof GetCreatorRequestSchema;
+    output: typeof GetCreatorResponseSchema;
   },
   /**
    * @generated from rpc publira.admin.v1.AdminCreatorService.CreateCreator

@@ -20,10 +20,11 @@ import (
 )
 
 const (
-	listCreatorsByTenantAscQuery  = "-- name: ListCreatorsByTenantAsc :many\n"
-	listCreatorsByTenantDescQuery = "-- name: ListCreatorsByTenantDesc :many\n"
-	listLabelsByTenantAscQuery    = "-- name: ListLabelsByTenantAsc :many\n"
-	listLabelsByTenantDescQuery   = "-- name: ListLabelsByTenantDesc :many\n"
+	listCreatorsByTenantAscQuery       = "-- name: ListCreatorsByTenantAsc :many\n"
+	listCreatorsByTenantDescQuery      = "-- name: ListCreatorsByTenantDesc :many\n"
+	getCreatorByPublicIDForTenantQuery = "-- name: GetCreatorByPublicIDForTenant :one\n"
+	listLabelsByTenantAscQuery         = "-- name: ListLabelsByTenantAsc :many\n"
+	listLabelsByTenantDescQuery        = "-- name: ListLabelsByTenantDesc :many\n"
 )
 
 func creatorColumns() *sqlmock.Rows {
@@ -516,6 +517,78 @@ func TestUpdateCreatorSuccess(t *testing.T) {
 		t.Fatalf("creator name = %q, want After", resp.Msg.Creator.Name)
 	}
 	assertExpectations(t, mock)
+}
+
+func TestGetCreatorSuccessAndNotFound(t *testing.T) {
+	tests := []struct {
+		name          string
+		publicID      string
+		rows          *sqlmock.Rows
+		wantCode      connect.Code
+		wantCreatorID string
+	}{
+		{
+			name:     "normal",
+			publicID: "CREATOR001",
+			rows: sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}).
+				AddRow(uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), "CREATOR001", "Aoi Sakura", "Draws things", time.Now(), nil, nil, int64(0), int32(0), int32(0)),
+			wantCreatorID: "CREATOR001",
+		},
+		{
+			// Another tenant's creator is filtered out by tenant_id, so it is
+			// indistinguishable from a missing one.
+			name:     "cross-tenant",
+			publicID: "CREATOR_OTHER_TENANT",
+			rows:     sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}),
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name:     "not-found",
+			publicID: "CREATOR_MISSING",
+			rows:     sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "profile_text", "created_at", "icon_image_id", "icon_image_updated_at", "icon_image_file_size_bytes", "icon_image_width", "icon_image_height"}),
+			wantCode: connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAdminServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			mock.ExpectQuery(regexp.QuoteMeta(getCreatorByPublicIDForTenantQuery)).
+				WithArgs(tenantID, tc.publicID).
+				WillReturnRows(tc.rows)
+
+			client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(&publiraadminv1.GetCreatorRequest{
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				PublicId: tc.publicID,
+			})
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+			resp, err := client.GetCreator(context.Background(), req)
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("GetCreator: %v", err)
+				}
+				if resp.Msg.Creator == nil {
+					t.Fatalf("creator is nil")
+				}
+				if resp.Msg.Creator.PublicId != tc.wantCreatorID {
+					t.Fatalf("creator public_id = %q, want %q", resp.Msg.Creator.PublicId, tc.wantCreatorID)
+				}
+			} else if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("GetCreator code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+			}
+			assertExpectations(t, mock)
+		})
+	}
 }
 
 func TestListLabelsSuccess(t *testing.T) {

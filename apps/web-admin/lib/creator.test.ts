@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheTag, mockGetAccessToken, mockListCreators } = vi.hoisted(
-  () => ({
+const { mockCacheTag, mockGetAccessToken, mockGetCreator, mockListCreators } =
+  vi.hoisted(() => ({
     mockCacheTag: vi.fn(),
     mockGetAccessToken: vi.fn(),
+    mockGetCreator: vi.fn(),
     mockListCreators: vi.fn(),
-  })
-);
+  }));
 
 vi.mock("next/cache", () => ({
   cacheTag: mockCacheTag,
@@ -19,6 +19,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     creator: {
+      getCreator: mockGetCreator,
       listCreators: mockListCreators,
     },
   },
@@ -133,18 +134,14 @@ describe("getCreator", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("cursor をたどって101件目の著者を取得する", async () => {
-    mockListCreators
-      .mockResolvedValueOnce({
-        creators: creatorPage(100),
-        nextToken: "page-2",
-      })
-      .mockResolvedValueOnce({
-        creators: [
-          { name: "Target", profileText: "profile", publicId: "CREATOR101" },
-        ],
-        nextToken: "",
-      });
+  it("一覧を走査せずGetCreatorを1回だけ呼ぶ", async () => {
+    mockGetCreator.mockResolvedValue({
+      creator: {
+        name: "Target",
+        profileText: "profile",
+        publicId: "CREATOR101",
+      },
+    });
 
     const { getCreator } = await import("./creator");
     const result = await getCreator({
@@ -152,24 +149,14 @@ describe("getCreator", () => {
       tenantId: "TENANT001",
     });
 
-    expect(mockListCreators).toHaveBeenNthCalledWith(
-      1,
+    expect(mockGetCreator).toHaveBeenCalledExactlyOnceWith(
       {
-        limit: 100,
+        publicId: "CREATOR101",
         tenant: { tenantId: "TENANT001" },
-        token: "",
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
-    expect(mockListCreators).toHaveBeenNthCalledWith(
-      2,
-      {
-        limit: 100,
-        tenant: { tenantId: "TENANT001" },
-        token: "page-2",
-      },
-      { headers: { Authorization: "Bearer session-token" } }
-    );
+    expect(mockListCreators).not.toHaveBeenCalled();
     expect(result).toEqual({
       creator: {
         iconImageFileSizeBytes: 0,
@@ -192,23 +179,20 @@ describe("getCreator", () => {
       tenantId: "TENANT001",
     });
 
-    expect(mockListCreators).not.toHaveBeenCalled();
+    expect(mockGetCreator).not.toHaveBeenCalled();
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
     });
   });
 
-  it("全ページに一致する著者がなければnotFoundを返す", async () => {
-    mockListCreators
-      .mockResolvedValueOnce({
-        creators: creatorPage(100),
-        nextToken: "page-2",
-      })
-      .mockResolvedValueOnce({
-        creators: [],
-        nextToken: "",
-      });
+  // 不在とテナント外はサーバーがどちらも not_found で返すため、区別せず
+  // notFound へ落とす。
+  it("not_foundが返った場合はnotFoundを返す", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockGetCreator.mockRejectedValue(
+      new ConnectError("creator not found", Code.NotFound)
+    );
 
     const { getCreator } = await import("./creator");
     const result = await getCreator({
@@ -216,32 +200,49 @@ describe("getCreator", () => {
       tenantId: "TENANT001",
     });
 
-    expect(mockListCreators).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ notFound: true, ok: false });
   });
 
-  it("同じnextTokenが返された場合はページ走査を停止する", async () => {
-    mockListCreators
-      .mockResolvedValueOnce({
-        creators: creatorPage(100),
-        nextToken: "page-2",
-      })
-      .mockResolvedValueOnce({
-        creators: [],
-        nextToken: "page-2",
-      });
+  it("not_found以外の失敗はメッセージを返す", async () => {
+    const { Code, ConnectError } = await import("@publira/api-client/errors");
+    mockGetCreator.mockRejectedValue(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
 
     const { getCreator } = await import("./creator");
     const result = await getCreator({
-      publicId: "MISSING",
+      publicId: "CREATOR001",
       tenantId: "TENANT001",
     });
 
-    expect(mockListCreators).toHaveBeenCalledTimes(2);
-    expect(result).toEqual({ notFound: true, ok: false });
+    expect(result.ok).toBe(false);
+    expect(result).not.toMatchObject({ notFound: true });
   });
 
-  it("listAllCreators は cursor をたどって101件目以降も含める", async () => {
+  it("creatorが欠けた応答はエラーとして扱う", async () => {
+    mockGetCreator.mockResolvedValue({});
+
+    const { getCreator } = await import("./creator");
+    const result = await getCreator({
+      publicId: "CREATOR001",
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toEqual({
+      message: "著者一覧の取得に失敗しました。時間をおいて再試行してください。",
+      ok: false,
+    });
+  });
+});
+
+describe("listAllCreators", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("cursor をたどって101件目以降も含める", async () => {
     mockListCreators
       .mockResolvedValueOnce({
         creators: creatorPage(100),
@@ -288,7 +289,7 @@ describe("getCreator", () => {
     ).toBe(true);
   });
 
-  it("listAllCreators はセッションがない場合RPCを呼ばない", async () => {
+  it("セッションがない場合RPCを呼ばない", async () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { listAllCreators } = await import("./creator");
@@ -304,7 +305,7 @@ describe("getCreator", () => {
     });
   });
 
-  it("listAllCreators は nextToken が繰り返されたら部分結果を返さない", async () => {
+  it("nextToken が繰り返されたら部分結果を返さない", async () => {
     mockListCreators
       .mockResolvedValueOnce({
         creators: creatorPage(100),

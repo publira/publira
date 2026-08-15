@@ -505,6 +505,34 @@ func (s *adminServer) ListCreators(
 	return connect.NewResponse(res), nil
 }
 
+func (s *adminServer) GetCreator(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetCreatorRequest],
+) (*connect.Response[publiraadminv1.GetCreatorResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	// Another tenant's creator is filtered out by the query's tenant_id, so it
+	// lands on the same not_found as a missing one and never leaks that the
+	// record exists.
+	row, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{Creator: protomapper.CreatorFromRow(
+		row.PublicID,
+		row.Name,
+		row.ProfileText.String,
+		row.IconImageID,
+		row.IconImageFileSizeBytes,
+		row.IconImageUpdatedAt,
+	)}), nil
+}
+
 func (s *adminServer) ListLabels(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.ListLabelsRequest],
