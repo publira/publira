@@ -875,6 +875,76 @@ func (q *Queries) CreatePlatformUserRole(ctx context.Context, arg CreatePlatform
 	return i, err
 }
 
+const createPurchaseFromStripeCheckout = `-- name: CreatePurchaseFromStripeCheckout :one
+WITH locked AS (
+    SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            $2::text || ':' || $3::text || ':' || $4::text,
+            0
+        )
+    )
+)
+INSERT INTO purchases (
+    id,
+    tenant_id,
+    user_id,
+    episode_id,
+    price_at_purchase,
+    expires_at,
+    stripe_checkout_session_id
+)
+SELECT $1, $2, $3, $4, $5, $6, $7
+FROM locked
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM purchases
+    WHERE tenant_id = $2
+        AND user_id = $3
+        AND episode_id = $4
+        AND (expires_at IS NULL OR expires_at > NOW())
+)
+ON CONFLICT (stripe_checkout_session_id) DO NOTHING
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, stripe_checkout_session_id
+`
+
+type CreatePurchaseFromStripeCheckoutParams struct {
+	ID                      uuid.UUID      `json:"id"`
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	UserID                  uuid.UUID      `json:"user_id"`
+	EpisodeID               uuid.UUID      `json:"episode_id"`
+	PriceAtPurchase         int32          `json:"price_at_purchase"`
+	ExpiresAt               sql.NullTime   `json:"expires_at"`
+	StripeCheckoutSessionID sql.NullString `json:"stripe_checkout_session_id"`
+}
+
+// The advisory lock serializes different Stripe Checkout sessions for the same
+// buyer and episode. Stripe's request idempotency prevents duplicate sessions
+// in the ordinary case; this also keeps an exceptional concurrent pair from
+// producing two entitlements.
+func (q *Queries) CreatePurchaseFromStripeCheckout(ctx context.Context, arg CreatePurchaseFromStripeCheckoutParams) (Purchase, error) {
+	row := q.db.QueryRowContext(ctx, createPurchaseFromStripeCheckout,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.EpisodeID,
+		arg.PriceAtPurchase,
+		arg.ExpiresAt,
+		arg.StripeCheckoutSessionID,
+	)
+	var i Purchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.PriceAtPurchase,
+		&i.ExpiresAt,
+		&i.PurchasedAt,
+		&i.TenantID,
+		&i.StripeCheckoutSessionID,
+	)
+	return i, err
+}
+
 const createSeriesBase = `-- name: CreateSeriesBase :one
 INSERT INTO series (
         id,
@@ -2490,6 +2560,56 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 		&i.PublishedAt,
 		&i.SeriesPublicID,
 		&i.SeriesTitle,
+	)
+	return i, err
+}
+
+const getPurchasableEpisodeByPublicIDForTenant = `-- name: GetPurchasableEpisodeByPublicIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    s.public_id AS series_public_id,
+    el.price,
+    el.reading_period_hours
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE e.public_id = $1
+    AND e.tenant_id = $2
+    AND s.tenant_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+LIMIT 1
+`
+
+type GetPurchasableEpisodeByPublicIDForTenantParams struct {
+	PublicID string    `json:"public_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetPurchasableEpisodeByPublicIDForTenantRow struct {
+	ID                 uuid.UUID     `json:"id"`
+	PublicID           string        `json:"public_id"`
+	Title              string        `json:"title"`
+	SeriesPublicID     string        `json:"series_public_id"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+}
+
+func (q *Queries) GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getPurchasableEpisodeByPublicIDForTenant, arg.PublicID, arg.TenantID)
+	var i GetPurchasableEpisodeByPublicIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Title,
+		&i.SeriesPublicID,
+		&i.Price,
+		&i.ReadingPeriodHours,
 	)
 	return i, err
 }
@@ -8614,4 +8734,28 @@ func (q *Queries) UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEp
 	var has_access sql.NullBool
 	err := row.Scan(&has_access)
 	return has_access, err
+}
+
+const userHasValidPurchaseForEpisode = `-- name: UserHasValidPurchaseForEpisode :one
+SELECT EXISTS (
+    SELECT 1
+    FROM purchases
+    WHERE tenant_id = $1
+        AND user_id = $2
+        AND episode_id = $3
+        AND (expires_at IS NULL OR expires_at > NOW())
+) AS has_purchase
+`
+
+type UserHasValidPurchaseForEpisodeParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+func (q *Queries) UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, userHasValidPurchaseForEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var has_purchase bool
+	err := row.Scan(&has_purchase)
+	return has_purchase, err
 }

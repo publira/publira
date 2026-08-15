@@ -347,13 +347,14 @@ type PlatformUserRole struct {
 }
 
 type Purchase struct {
-	ID              uuid.UUID    `json:"id"`
-	UserID          uuid.UUID    `json:"user_id"`
-	EpisodeID       uuid.UUID    `json:"episode_id"`
-	PriceAtPurchase int32        `json:"price_at_purchase"`
-	ExpiresAt       sql.NullTime `json:"expires_at"`
-	PurchasedAt     time.Time    `json:"purchased_at"`
-	TenantID        uuid.UUID    `json:"tenant_id"`
+	ID                      uuid.UUID      `json:"id"`
+	UserID                  uuid.UUID      `json:"user_id"`
+	EpisodeID               uuid.UUID      `json:"episode_id"`
+	PriceAtPurchase         int32          `json:"price_at_purchase"`
+	ExpiresAt               sql.NullTime   `json:"expires_at"`
+	PurchasedAt             time.Time      `json:"purchased_at"`
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	StripeCheckoutSessionID sql.NullString `json:"stripe_checkout_session_id"`
 }
 
 type Series struct {

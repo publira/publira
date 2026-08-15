@@ -5,7 +5,10 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import type { ConnectTransportOptions } from "@connectrpc/connect-web";
 
 import { AuthService } from "../gen/publira/v1/auth_pb.js";
-import { CatalogService } from "../gen/publira/v1/catalog_pb.js";
+import {
+  CatalogService,
+  PurchaseService,
+} from "../gen/publira/v1/catalog_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
 import { NotificationService } from "../gen/publira/v1/notification_pb.js";
 import { PublicPagesService } from "../gen/publira/v1/page_pb.js";
@@ -26,6 +29,7 @@ export interface PublicApiClient {
   catalog: Client<typeof CatalogService>;
   notification: Client<typeof NotificationService>;
   pages: Client<typeof PublicPagesService>;
+  purchase: Client<typeof PurchaseService>;
   tenant: Client<typeof TenantService>;
   domain: Client<typeof DomainService>;
 }
@@ -67,6 +71,7 @@ export const createPublicApiClient = (
     domain: createClient(DomainService, transportInstance),
     notification: createClient(NotificationService, transportInstance),
     pages: createClient(PublicPagesService, transportInstance),
+    purchase: createClient(PurchaseService, transportInstance),
     tenant: createClient(TenantService, transportInstance),
   };
 };

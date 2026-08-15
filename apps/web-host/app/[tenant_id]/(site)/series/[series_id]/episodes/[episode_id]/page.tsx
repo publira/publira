@@ -14,6 +14,7 @@ import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { EpisodeBody } from "./_components/episode-body";
+import { parsePurchaseSearchParams } from "./_lib/purchase-search-params";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
@@ -40,11 +41,11 @@ const EpisodeBodySkeleton = () => (
 const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
 ) => {
-  const [{ episode_id, series_id }, tenantId] = await Promise.all([
-    props.params,
-    getTenantId(),
-  ]);
+  const [{ episode_id, series_id }, tenantId, searchParams] = await Promise.all(
+    [props.params, getTenantId(), props.searchParams]
+  );
   guardPlaceholders({ episode_id, series_id });
+  const purchaseSearchParams = parsePurchaseSearchParams(searchParams);
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to
   // `null`, and the public site must not tell those apart. A failed read is a
@@ -115,10 +116,33 @@ const EpisodeContent = async (
           </header>
 
           <section aria-label="エピソード本文">
+            {purchaseSearchParams.checkout === "success" ? (
+              <output className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+                決済を確認しています。購入が反映されると本文を表示します。
+              </output>
+            ) : null}
+            {purchaseSearchParams.checkout === "cancelled" ? (
+              <output className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+                購入手続きをキャンセルしました。料金は発生していません。
+              </output>
+            ) : null}
+            {purchaseSearchParams.checkout === "error" ? (
+              <p
+                className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                role="alert"
+              >
+                購入手続きを開始できませんでした。時間をおいて再試行してください。
+              </p>
+            ) : null}
             <SectionErrorBoundary title="本文を表示できませんでした">
               <Suspense fallback={<EpisodeBodySkeleton />}>
                 <EpisodeBody
                   access={access}
+                  checkoutSessionId={
+                    purchaseSearchParams.checkout === "success"
+                      ? purchaseSearchParams.session_id
+                      : ""
+                  }
                   episodePublicId={episode.publicId}
                   episodeTitle={episode.title}
                   images={images}
