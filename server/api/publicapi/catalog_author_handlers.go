@@ -194,12 +194,12 @@ func (s *apiServer) ListPublishedAuthors(
 	descending := cursor.Direction == pagination.Backward
 	ids, err := s.publishedAuthorPageIDs(ctx, tenant.ID, descending, keys, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list published authors", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
 	rows, err := s.publishedAuthorRowsInOrder(ctx, tenant.ID, ids)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list published authors", err, "tenant_id", tenant.ID.String())
 	}
 
 	items := make([]*publirav1.PublishedAuthor, 0, len(rows))
@@ -241,7 +241,7 @@ func (s *apiServer) GetPublishedAuthorDetail(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("author not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get published author", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
 	}
 
 	series, previousToken, nextToken, err := s.publishedAuthorSeriesPage(
@@ -289,12 +289,12 @@ func (s *apiServer) publishedAuthorSeriesPage(
 	descending := cursor.Direction == pagination.Backward
 	ids, err := s.publishedAuthorSeriesPageIDs(ctx, tenantID, creatorID, descending, keys, limit+1)
 	if err != nil {
-		return nil, "", "", connect.NewError(connect.CodeInternal, err)
+		return nil, "", "", s.internalDBError("failed to list published author series", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
 	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, ids)
 	if err != nil {
-		return nil, "", "", connect.NewError(connect.CodeInternal, err)
+		return nil, "", "", s.internalDBError("failed to list published author series", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
 	items, err := s.publishedSeriesItems(ctx, rows)
 	if err != nil {

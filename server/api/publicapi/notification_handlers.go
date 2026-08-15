@@ -144,7 +144,7 @@ func (s *apiServer) ListNotifications(
 
 	rows, err := s.notificationPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list notifications", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -187,7 +187,7 @@ func (s *apiServer) CountUnreadNotifications(
 		UserID:   user.ID,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to count unread notifications", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	return connect.NewResponse(&publirav1.CountUnreadNotificationsResponse{UnreadCount: unread}), nil
@@ -216,7 +216,7 @@ func (s *apiServer) MarkNotificationAsRead(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("notification not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark notification as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String(), "notification_id", notificationID.String())
 	}
 
 	return connect.NewResponse(&publirav1.MarkNotificationAsReadResponse{Marked: true}), nil
@@ -236,7 +236,7 @@ func (s *apiServer) MarkAllNotificationsAsRead(
 		UserID:   user.ID,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark all notifications as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	markedCount, err := notificationMarkedCount(marked)
 	if err != nil {

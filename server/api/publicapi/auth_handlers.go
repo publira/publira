@@ -69,7 +69,7 @@ func (s *apiServer) issueAccessToken(
 func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, userID)
 	if err != nil {
-		return "", connect.NewError(connect.CodeInternal, err)
+		return "", s.internalDBError("failed to list tenant user roles", err, "user_id", userID.String())
 	}
 	return auth.ResolveTenantRole(roles), nil
 }
@@ -102,14 +102,14 @@ func (s *apiServer) authenticateAccessToken(
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+		return rpcmiddleware.SessionContext{}, s.internalDBError("failed to get user by public id", err, "tenant_id", tenant.ID.String(), "public_id", claims.Subject)
 	}
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, userRef.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+		return rpcmiddleware.SessionContext{}, s.internalDBError("failed to get user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
 	}
 	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
@@ -149,7 +149,7 @@ func (s *apiServer) Login(
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 		}
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for login", err, "tenant_id", tenant.ID.String())
 	}
 	if !auth.VerifyPassword(req.Msg.Password, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
@@ -216,7 +216,7 @@ func platformEmailSettingsFromRow(config dbmodels.PlatformSmtpConfig, password s
 func (s *apiServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
 	tenantConfig, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
+		return emailsettings.SMTPSettings{}, s.internalDBError("failed to get tenant smtp config", err, "tenant_id", tenantID.String())
 	}
 	if err == nil && tenantConfig.SmtpOverrideEnabled {
 		password, decryptErr := emailsettings.DecryptPassword(tenantConfig.PasswordEncrypted.String, s.encryptor)
@@ -235,7 +235,7 @@ func (s *apiServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID u
 		if errors.Is(err, sql.ErrNoRows) {
 			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
 		}
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
+		return emailsettings.SMTPSettings{}, s.internalDBError("failed to get platform smtp config", err)
 	}
 	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
 	if decryptErr != nil {
@@ -444,7 +444,7 @@ func (s *apiServer) CreateUser(
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to check email uniqueness", err, "tenant_id", tenant.ID.String())
 	}
 
 	passwordHash, err := auth.HashPassword(password)
@@ -474,13 +474,12 @@ func (s *apiServer) CreateUser(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create user", err, "tenant_id", tenant.ID.String(), "user_id", userID.String())
 	}
 
-	user, err = s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"})
-	if err != nil {
+	if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"}); err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "set_inactive_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to set user inactive", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	rawToken := make([]byte, 32)
@@ -503,7 +502,7 @@ func (s *apiServer) CreateUser(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create email verification token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := s.sendVerificationEmail(ctx, tenant, user, verificationToken); err != nil {
@@ -541,7 +540,7 @@ func (s *apiServer) VerifyUserEmail(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("verification token not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get email verification token", err, "tenant_id", tenant.ID.String())
 	}
 	if verificationToken.UsedAt.Valid {
 		return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
@@ -554,19 +553,19 @@ func (s *apiServer) VerifyUserEmail(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for email verification", err, "tenant_id", tenant.ID.String(), "user_id", verificationToken.UserID.String())
 	}
 	if err := s.queriesFor(ctx).MarkUserEmailVerificationTokenUsed(ctx, verificationToken.ID); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark email verification token used", err, "tenant_id", tenant.ID.String(), "token_id", verificationToken.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
 		ID:              user.ID,
 		EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
 	}); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark email verified", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to activate user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	return connect.NewResponse(&publirav1.VerifyUserEmailResponse{Verified: true}), nil
 }
@@ -619,12 +618,12 @@ func (s *apiServer) RequestEmailChange(
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to delete email change tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	rawToken := make([]byte, 32)
@@ -656,7 +655,7 @@ func (s *apiServer) RequestEmailChange(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create email change token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := s.sendEmailChangeVerificationEmail(ctx, tenant, user.Email, "current_email", user.Email, newEmail, currentEmailToken); err != nil {
@@ -700,7 +699,7 @@ func (s *apiServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("email change token not found"))
 		}
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get email change token", err, "tenant_id", tenant.ID.String())
 	}
 
 	if changeToken.CompletedAt.Valid {
@@ -718,7 +717,7 @@ func (s *apiServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for email change confirm", err, "tenant_id", tenant.ID.String(), "user_id", changeToken.UserID.String())
 	}
 	if !strings.EqualFold(user.Email, changeToken.CurrentEmail) {
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "stale_request")
@@ -729,12 +728,12 @@ func (s *apiServer) ConfirmEmailChange(
 	if matchedTarget == "current_email" {
 		if err := s.queriesFor(ctx).MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to confirm current email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
 	} else {
 		if err := s.queriesFor(ctx).MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to confirm new email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
 	}
 
@@ -762,11 +761,11 @@ func (s *apiServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update user email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to complete email change token", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 	}
 	if err := s.sendEmailChangedNotice(ctx, tenant, changeToken.CurrentEmail, changeToken.NewEmail); err != nil {
 		auth.AuditEvent(req.Header(), "email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_failed")
@@ -807,12 +806,12 @@ func (s *apiServer) RequestPasswordReset(
 			return connect.NewResponse(&publirav1.RequestPasswordResetResponse{Requested: true}), nil
 		}
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for password reset", err, "tenant_id", tenant.ID.String())
 	}
 
 	if err := s.queriesFor(ctx).DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to delete password reset tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	rawToken := make([]byte, 32)
@@ -835,7 +834,7 @@ func (s *apiServer) RequestPasswordReset(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create password reset token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := s.sendPasswordResetEmail(ctx, tenant, user.Email, resetToken); err != nil {
@@ -875,7 +874,7 @@ func (s *apiServer) ConfirmPasswordReset(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("password reset token not found"))
 		}
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get password reset token", err, "tenant_id", tenant.ID.String())
 	}
 
 	if resetToken.CompletedAt.Valid {
@@ -893,7 +892,7 @@ func (s *apiServer) ConfirmPasswordReset(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for password reset confirm", err, "tenant_id", tenant.ID.String(), "user_id", resetToken.UserID.String())
 	}
 
 	passwordHash, err := auth.HashPassword(newPassword)
@@ -907,15 +906,15 @@ func (s *apiServer) ConfirmPasswordReset(
 		PasswordHash: passwordHash,
 	}); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "token_complete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to complete password reset token", err, "tenant_id", tenant.ID.String(), "token_id", resetToken.ID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "password_reset_confirm", "success", tenant.PublicID, user.PublicID, "confirmed")
@@ -975,7 +974,7 @@ func (s *apiServer) UpdateMe(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "update_me", "failure", user.PublicID, user.PublicID, "update_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update user name", err, "user_id", user.ID.String())
 	}
 	auth.AuditEvent(req.Header(), "update_me", "success", user.PublicID, user.PublicID, "name_updated")
 	return connect.NewResponse(&publirav1.UpdateMeResponse{User: &publirattypesv1.User{PublicId: updated.PublicID, Name: updated.Name, Role: role}}), nil
@@ -1001,11 +1000,11 @@ func (s *apiServer) DeleteMe(
 	}
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to delete user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	auth.AuditEvent(req.Header(), "delete_me", "success", tenant.PublicID, user.PublicID, "user_deleted")
 	return connect.NewResponse(&publirav1.DeleteMeResponse{}), nil
@@ -1024,7 +1023,7 @@ func (s *apiServer) GetNotificationSettings(
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: true}), nil
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get notification settings", err, "user_id", user.ID.String())
 	}
 	return connect.NewResponse(&publirav1.GetNotificationSettingsResponse{EmailNotificationsEnabled: settings.EmailNotificationsEnabled}), nil
 }
@@ -1042,7 +1041,7 @@ func (s *apiServer) UpdateNotificationSettings(
 		EmailNotificationsEnabled: req.Msg.EmailNotificationsEnabled,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update notification settings", err, "user_id", user.ID.String())
 	}
 	return connect.NewResponse(&publirav1.UpdateNotificationSettingsResponse{EmailNotificationsEnabled: updated.EmailNotificationsEnabled}), nil
 }
@@ -1160,7 +1159,7 @@ func (s *apiServer) ListAnnouncements(
 
 	rows, err := s.announcementPage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list announcements", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -1230,7 +1229,7 @@ func (s *apiServer) MarkAnnouncementAsRead(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark announcement as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String(), "announcement_id", announcementID.String())
 	}
 
 	return connect.NewResponse(&publirav1.MarkAnnouncementAsReadResponse{Marked: true}), nil
@@ -1250,7 +1249,7 @@ func (s *apiServer) MarkAllAnnouncementsAsRead(
 		UserID:   user.ID,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark all announcements as read", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	return connect.NewResponse(&publirav1.MarkAllAnnouncementsAsReadResponse{MarkedCount: int32(marked)}), nil

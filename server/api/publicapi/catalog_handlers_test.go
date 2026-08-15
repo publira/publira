@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -767,6 +768,74 @@ func TestCatalogGetSeriesDetailReturnsNotFoundForMissingSeries(t *testing.T) {
 		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeNotFound)
 	}
 
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
+		WithArgs("SERIESPUB", tenantID).
+		WillReturnError(errors.New(`pq: relation "series" does not exist`))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIESPUB",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetSeriesDetailPreservesContextCanceled(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesDetailQuery)).
+		WithArgs("SERIESPUB", tenantID).
+		WillReturnError(context.Canceled)
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetSeriesDetail(context.Background(), connect.NewRequest(&publirav1.GetSeriesDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIESPUB",
+	}))
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetSeriesDetail code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedSeriesDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesIDsByPublishedAtDescQuery)).
+		WithArgs(tenantID, nil, false, nil, int32(21)).
+		WillReturnError(errors.New(`pq: relation "series" does not exist`))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedSeries(context.Background(), connect.NewRequest(&publirav1.ListPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListPublishedSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
 	assertPublicExpectations(t, mock)
 }
 

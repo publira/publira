@@ -35,10 +35,26 @@ type apiServer struct {
 	encryptor emailsettings.SecretManager
 	mailer    internalsmtp.Sender
 	tokens    *auth.TokenManager
+	logger    *slog.Logger
 }
 
 func invalidSessionError() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
+}
+
+// internalDBError keeps context cancellation and deadline errors as-is so
+// Connect can map them to CodeCanceled / CodeDeadlineExceeded. Other DB
+// failures are logged and replaced with a generic client-facing message so
+// driver details never leave the server.
+func (s *apiServer) internalDBError(msg string, err error, keyvals ...any) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	args := make([]any, 0, len(keyvals)+2)
+	args = append(args, keyvals...)
+	args = append(args, "error", err)
+	s.logger.Error(msg, args...)
+	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 }
 
 func tenantIDFromContext(ctx *publirattypesv1.TenantContext) (uuid.UUID, error) {
@@ -55,7 +71,7 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattype
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return dbmodels.Tenant{}, connect.NewError(connect.CodeInternal, err)
+		return dbmodels.Tenant{}, s.internalDBError("failed to get tenant", err, "tenant_id", tenantID.String())
 	}
 	return tenant, nil
 }
@@ -77,6 +93,7 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, e
 		encryptor: encryptor,
 		mailer:    mailer,
 		tokens:    auth.MustTokenManagerFromEnv(),
+		logger:    slog.Default(),
 	}
 	mux := http.NewServeMux()
 	health.Register(mux, health.WithDB(db))
@@ -128,12 +145,12 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 				}
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, s.internalDBError("failed to get tenant", err, "tenant_id", tenantID.String())
 			}
 
-			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, slog.Default())
+			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, s.internalDBError("failed to acquire tenant connection", err, "tenant_id", tenant.ID.String())
 			}
 			defer release()
 

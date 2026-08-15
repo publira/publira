@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -792,6 +793,30 @@ func TestCatalogGetPublishedAuthorDetailNotFound(t *testing.T) {
 	}
 	if err.Error() != "not_found: author not found" {
 		t.Fatalf("error = %q, want author not found", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetPublishedAuthorDetail code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertPublicExpectations(t, mock)
 }

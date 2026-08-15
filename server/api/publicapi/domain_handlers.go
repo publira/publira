@@ -31,7 +31,7 @@ func (s *apiServer) GetTenantByDomain(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant by domain", err, "domains", domains)
 	}
 
 	return connect.NewResponse(&publirav1.GetTenantByDomainResponse{

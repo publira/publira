@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"strings"
 	"testing"
@@ -130,6 +131,51 @@ func TestPagesGetPublishedPageValidationAndNotFound(t *testing.T) {
 		}
 		assertPublicExpectations(t, mock)
 	})
+}
+
+func TestPagesGetPublishedPageDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
+		WithArgs(tenantID, "/privacy").
+		WillReturnError(errors.New(`pq: relation "pages" does not exist`))
+
+	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Slug:   "privacy",
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetPublishedPage code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestPagesGetPublishedPagePreservesContextCanceled(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedPageBySlugQuery)).
+		WithArgs(tenantID, "/privacy").
+		WillReturnError(context.Canceled)
+
+	client := publirav1connect.NewPublicPagesServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedPage(context.Background(), connect.NewRequest(&publirav1.GetPublishedPageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Slug:   "privacy",
+	}))
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetPublishedPage code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertPublicExpectations(t, mock)
 }
 
 func TestPagesPublishedQueriesHavePublicationGuards(t *testing.T) {
