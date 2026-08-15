@@ -71,22 +71,17 @@ export const TicketForm = ({
 
   const seriesItems = useMemo(() => toSeriesItems(series), [series]);
   const episodeItems = useMemo(() => toEpisodeItems(episodes), [episodes]);
+  // Only the missing catalog falls back to a public_id field. An episode-list
+  // failure must keep the pickers so the operator can retry without a reload.
   const useEpisodeFallbackInput =
-    Boolean(seriesErrorMessage) ||
-    seriesItems.length === 0 ||
-    Boolean(episodesErrorMessage);
+    Boolean(seriesErrorMessage) || seriesItems.length === 0;
+  const canSubmit =
+    !isPending &&
+    !isEpisodePending &&
+    (useEpisodeFallbackInput || episodePublicId !== "");
 
-  const handleSeriesChange = useCallback(
+  const loadEpisodesForSeries = useCallback(
     (nextSeriesPublicId: string) => {
-      setSeriesPublicId(nextSeriesPublicId);
-      setEpisodePublicId("");
-      setEpisodes([]);
-      setEpisodesErrorMessage(undefined);
-
-      if (nextSeriesPublicId === "") {
-        return;
-      }
-
       const requestId = episodeRequestIdRef.current + 1;
       episodeRequestIdRef.current = requestId;
 
@@ -100,6 +95,7 @@ export const TicketForm = ({
         }
         if (result.ok) {
           setEpisodes(result.episodes);
+          setEpisodesErrorMessage(undefined);
           return;
         }
         setEpisodesErrorMessage(result.message);
@@ -107,6 +103,30 @@ export const TicketForm = ({
     },
     [tenantId]
   );
+
+  const handleSeriesChange = useCallback(
+    (nextSeriesPublicId: string) => {
+      setSeriesPublicId(nextSeriesPublicId);
+      setEpisodePublicId("");
+      setEpisodes([]);
+      setEpisodesErrorMessage(undefined);
+
+      if (nextSeriesPublicId === "") {
+        return;
+      }
+
+      loadEpisodesForSeries(nextSeriesPublicId);
+    },
+    [loadEpisodesForSeries]
+  );
+
+  const handleRetryEpisodes = useCallback(() => {
+    if (seriesPublicId === "") {
+      return;
+    }
+    setEpisodesErrorMessage(undefined);
+    loadEpisodesForSeries(seriesPublicId);
+  }, [loadEpisodesForSeries, seriesPublicId]);
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -156,11 +176,6 @@ export const TicketForm = ({
                 {seriesErrorMessage ? (
                   <FormMessage variant="destructive">
                     {seriesErrorMessage}
-                  </FormMessage>
-                ) : null}
-                {episodesErrorMessage ? (
-                  <FormMessage variant="destructive">
-                    {episodesErrorMessage}
                   </FormMessage>
                 ) : null}
                 <Input
@@ -219,6 +234,20 @@ export const TicketForm = ({
                     type="hidden"
                     value={episodePublicId}
                   />
+                  {episodesErrorMessage ? (
+                    <>
+                      <FormMessage variant="destructive">
+                        {episodesErrorMessage}
+                      </FormMessage>
+                      <Button
+                        onClick={handleRetryEpisodes}
+                        type="button"
+                        variant="outline"
+                      >
+                        再試行
+                      </Button>
+                    </>
+                  ) : null}
                   <FieldDescription>
                     {seriesPublicId === ""
                       ? "先にシリーズを選択してください。"
@@ -263,7 +292,7 @@ export const TicketForm = ({
           ) : null}
 
           <div className="flex justify-end">
-            <Button disabled={isPending} type="submit">
+            <Button disabled={!canSubmit} type="submit">
               {isPending ? "発行中…" : "チケットを発行"}
             </Button>
           </div>

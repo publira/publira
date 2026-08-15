@@ -70,7 +70,7 @@ test.describe("web-admin access tickets", () => {
     await page.locator("#note").fill(note);
     await page.getByRole("button", { name: "チケットを発行" }).click();
 
-    await expect(page).toHaveURL(/\/access-tickets\/?/u);
+    await expect(page).toHaveURL(/\/access-tickets(?:\?[^/]*)?$/u);
     await expect(page.getByText("チケットを発行しました。")).toBeVisible();
     await expect(page.getByText(note)).toBeVisible();
 
