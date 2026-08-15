@@ -57,6 +57,51 @@ type AuditLog struct {
 	CreatedAt   time.Time      `json:"created_at"`
 }
 
+type ContentDailyStat struct {
+	ID                uuid.UUID `json:"id"`
+	TenantID          uuid.UUID `json:"tenant_id"`
+	StatDate          time.Time `json:"stat_date"`
+	EntityType        string    `json:"entity_type"`
+	EntityID          uuid.UUID `json:"entity_id"`
+	ViewCount         int64     `json:"view_count"`
+	UniqueViewerCount int64     `json:"unique_viewer_count"`
+	PurchaseCount     int64     `json:"purchase_count"`
+	RatingCount       int64     `json:"rating_count"`
+	RatingSum         int64     `json:"rating_sum"`
+	FavoriteCount     int64     `json:"favorite_count"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type ContentEvent struct {
+	ID             uuid.UUID       `json:"id"`
+	TenantID       uuid.UUID       `json:"tenant_id"`
+	EventType      string          `json:"event_type"`
+	UserID         uuid.NullUUID   `json:"user_id"`
+	AnonymousID    uuid.NullUUID   `json:"anonymous_id"`
+	ActorKey       uuid.NullUUID   `json:"actor_key"`
+	SeriesID       uuid.NullUUID   `json:"series_id"`
+	EpisodeID      uuid.NullUUID   `json:"episode_id"`
+	DebounceBucket sql.NullInt64   `json:"debounce_bucket"`
+	RatingScore    sql.NullInt16   `json:"rating_score"`
+	SourceTable    sql.NullString  `json:"source_table"`
+	SourceID       uuid.NullUUID   `json:"source_id"`
+	Payload        json.RawMessage `json:"payload"`
+	OccurredAt     time.Time       `json:"occurred_at"`
+	CreatedAt      time.Time       `json:"created_at"`
+}
+
+type ContentRankingSnapshot struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	RankingKey       string          `json:"ranking_key"`
+	PeriodStart      time.Time       `json:"period_start"`
+	PeriodEnd        time.Time       `json:"period_end"`
+	EntityType       string          `json:"entity_type"`
+	Items            json.RawMessage `json:"items"`
+	AlgorithmVersion int32           `json:"algorithm_version"`
+	ComputedAt       time.Time       `json:"computed_at"`
+}
+
 type Creator struct {
 	ID          uuid.UUID      `json:"id"`
 	TenantID    uuid.UUID      `json:"tenant_id"`
@@ -128,6 +173,15 @@ type EpisodeListing struct {
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
+}
+
+type ItemRecommendFeature struct {
+	TenantID       uuid.UUID       `json:"tenant_id"`
+	EntityType     string          `json:"entity_type"`
+	EntityID       uuid.UUID       `json:"entity_id"`
+	Features       json.RawMessage `json:"features"`
+	FeatureVersion int32           `json:"feature_version"`
+	ComputedAt     time.Time       `json:"computed_at"`
 }
 
 type Label struct {
@@ -496,4 +550,12 @@ type UserPasswordResetToken struct {
 	ExpiresAt   time.Time    `json:"expires_at"`
 	CompletedAt sql.NullTime `json:"completed_at"`
 	CreatedAt   time.Time    `json:"created_at"`
+}
+
+type UserRecommendFeature struct {
+	TenantID       uuid.UUID       `json:"tenant_id"`
+	UserID         uuid.UUID       `json:"user_id"`
+	Features       json.RawMessage `json:"features"`
+	FeatureVersion int32           `json:"feature_version"`
+	ComputedAt     time.Time       `json:"computed_at"`
 }
