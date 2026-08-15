@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 acquire_e2e_lock
 
-# `task db:setup` (migrate + dev seed) against the E2E Postgres: db/Tafkfile.yaml
+# `task db:setup` (migrate + dev seed) against the E2E Postgres: db/Taskfile.yaml
 # prefers PUBLIRA_DB_URL over the Dev Container `db` hostname, which does not
 # resolve here.
 

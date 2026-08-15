@@ -2,7 +2,7 @@ version: "3"
 
 includes:
   db:
-    taskfile: ./db/Tafkfile.yaml
+    taskfile: ./db/Taskfile.yaml
     dir: ./db
   docker:
     # Keep cwd at repository root so docker build context stays `.`
