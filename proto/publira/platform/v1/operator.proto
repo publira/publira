@@ -28,6 +28,14 @@ message ListOperatorsResponse {
   string next_token = 3;
 }
 
+message GetOperatorRequest {
+  string public_id = 1;
+}
+
+message GetOperatorResponse {
+  PlatformOperator operator = 1;
+}
+
 message CreateOperatorRequest {
   string name = 1;
   string email = 2;
@@ -73,6 +81,7 @@ message DeactivateOperatorResponse {
 
 service PlatformOperatorService {
   rpc ListOperators(ListOperatorsRequest) returns (ListOperatorsResponse) {}
+  rpc GetOperator(GetOperatorRequest) returns (GetOperatorResponse) {}
   rpc CreateOperator(CreateOperatorRequest) returns (CreateOperatorResponse) {}
   rpc UpdateOperatorRole(UpdateOperatorRoleRequest) returns (UpdateOperatorRoleResponse) {}
   rpc SuspendOperator(SuspendOperatorRequest) returns (SuspendOperatorResponse) {}

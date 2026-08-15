@@ -1,6 +1,5 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { findByPublicIdWithToken } from "@publira/api-client/pagination";
 
 import {
   apiClient,
@@ -195,20 +194,11 @@ export const getPlatformOperator = async (
   }
 
   try {
-    const operator = await findByPublicIdWithToken(
-      publicId,
-      async (token, limit) => {
-        const response = await apiClient.operators.listOperators(
-          { limit, token },
-          buildSessionHeaders(sessionId)
-        );
-        return {
-          items: response.operators ?? [],
-          nextToken: response.nextToken ?? "",
-        };
-      }
+    const response = await apiClient.operators.getOperator(
+      { publicId },
+      buildSessionHeaders(sessionId)
     );
-    return operator ? mapOperator(operator) : null;
+    return response.operator ? mapOperator(response.operator) : null;
   } catch (error) {
     // Classified RPC failures mean "no operator to show"; unexpected ones rethrow.
     rethrowUnclassifiedRpcError(error);

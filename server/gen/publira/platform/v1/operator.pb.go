@@ -221,6 +221,94 @@ func (x *ListOperatorsResponse) GetNextToken() string {
 	return ""
 }
 
+type GetOperatorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PublicId      string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOperatorRequest) Reset() {
+	*x = GetOperatorRequest{}
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOperatorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOperatorRequest) ProtoMessage() {}
+
+func (x *GetOperatorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOperatorRequest.ProtoReflect.Descriptor instead.
+func (*GetOperatorRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetOperatorRequest) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+type GetOperatorResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operator      *PlatformOperator      `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOperatorResponse) Reset() {
+	*x = GetOperatorResponse{}
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOperatorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOperatorResponse) ProtoMessage() {}
+
+func (x *GetOperatorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOperatorResponse.ProtoReflect.Descriptor instead.
+func (*GetOperatorResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetOperatorResponse) GetOperator() *PlatformOperator {
+	if x != nil {
+		return x.Operator
+	}
+	return nil
+}
+
 type CreateOperatorRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -232,7 +320,7 @@ type CreateOperatorRequest struct {
 
 func (x *CreateOperatorRequest) Reset() {
 	*x = CreateOperatorRequest{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[3]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -244,7 +332,7 @@ func (x *CreateOperatorRequest) String() string {
 func (*CreateOperatorRequest) ProtoMessage() {}
 
 func (x *CreateOperatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[3]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -257,7 +345,7 @@ func (x *CreateOperatorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateOperatorRequest.ProtoReflect.Descriptor instead.
 func (*CreateOperatorRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{3}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateOperatorRequest) GetName() string {
@@ -290,7 +378,7 @@ type CreateOperatorResponse struct {
 
 func (x *CreateOperatorResponse) Reset() {
 	*x = CreateOperatorResponse{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -302,7 +390,7 @@ func (x *CreateOperatorResponse) String() string {
 func (*CreateOperatorResponse) ProtoMessage() {}
 
 func (x *CreateOperatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -315,7 +403,7 @@ func (x *CreateOperatorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateOperatorResponse.ProtoReflect.Descriptor instead.
 func (*CreateOperatorResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{4}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateOperatorResponse) GetOperator() *PlatformOperator {
@@ -335,7 +423,7 @@ type UpdateOperatorRoleRequest struct {
 
 func (x *UpdateOperatorRoleRequest) Reset() {
 	*x = UpdateOperatorRoleRequest{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -347,7 +435,7 @@ func (x *UpdateOperatorRoleRequest) String() string {
 func (*UpdateOperatorRoleRequest) ProtoMessage() {}
 
 func (x *UpdateOperatorRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -360,7 +448,7 @@ func (x *UpdateOperatorRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOperatorRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateOperatorRoleRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{5}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateOperatorRoleRequest) GetPublicId() string {
@@ -386,7 +474,7 @@ type UpdateOperatorRoleResponse struct {
 
 func (x *UpdateOperatorRoleResponse) Reset() {
 	*x = UpdateOperatorRoleResponse{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +486,7 @@ func (x *UpdateOperatorRoleResponse) String() string {
 func (*UpdateOperatorRoleResponse) ProtoMessage() {}
 
 func (x *UpdateOperatorRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +499,7 @@ func (x *UpdateOperatorRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOperatorRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateOperatorRoleResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{6}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateOperatorRoleResponse) GetOperator() *PlatformOperator {
@@ -430,7 +518,7 @@ type SuspendOperatorRequest struct {
 
 func (x *SuspendOperatorRequest) Reset() {
 	*x = SuspendOperatorRequest{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -442,7 +530,7 @@ func (x *SuspendOperatorRequest) String() string {
 func (*SuspendOperatorRequest) ProtoMessage() {}
 
 func (x *SuspendOperatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -455,7 +543,7 @@ func (x *SuspendOperatorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspendOperatorRequest.ProtoReflect.Descriptor instead.
 func (*SuspendOperatorRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{7}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SuspendOperatorRequest) GetPublicId() string {
@@ -474,7 +562,7 @@ type SuspendOperatorResponse struct {
 
 func (x *SuspendOperatorResponse) Reset() {
 	*x = SuspendOperatorResponse{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -486,7 +574,7 @@ func (x *SuspendOperatorResponse) String() string {
 func (*SuspendOperatorResponse) ProtoMessage() {}
 
 func (x *SuspendOperatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -499,7 +587,7 @@ func (x *SuspendOperatorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspendOperatorResponse.ProtoReflect.Descriptor instead.
 func (*SuspendOperatorResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{8}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SuspendOperatorResponse) GetOperator() *PlatformOperator {
@@ -518,7 +606,7 @@ type UnsuspendOperatorRequest struct {
 
 func (x *UnsuspendOperatorRequest) Reset() {
 	*x = UnsuspendOperatorRequest{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[9]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -530,7 +618,7 @@ func (x *UnsuspendOperatorRequest) String() string {
 func (*UnsuspendOperatorRequest) ProtoMessage() {}
 
 func (x *UnsuspendOperatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[9]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -543,7 +631,7 @@ func (x *UnsuspendOperatorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsuspendOperatorRequest.ProtoReflect.Descriptor instead.
 func (*UnsuspendOperatorRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{9}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UnsuspendOperatorRequest) GetPublicId() string {
@@ -562,7 +650,7 @@ type UnsuspendOperatorResponse struct {
 
 func (x *UnsuspendOperatorResponse) Reset() {
 	*x = UnsuspendOperatorResponse{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[10]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -574,7 +662,7 @@ func (x *UnsuspendOperatorResponse) String() string {
 func (*UnsuspendOperatorResponse) ProtoMessage() {}
 
 func (x *UnsuspendOperatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[10]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -587,7 +675,7 @@ func (x *UnsuspendOperatorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsuspendOperatorResponse.ProtoReflect.Descriptor instead.
 func (*UnsuspendOperatorResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{10}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UnsuspendOperatorResponse) GetOperator() *PlatformOperator {
@@ -606,7 +694,7 @@ type DeactivateOperatorRequest struct {
 
 func (x *DeactivateOperatorRequest) Reset() {
 	*x = DeactivateOperatorRequest{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[11]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -618,7 +706,7 @@ func (x *DeactivateOperatorRequest) String() string {
 func (*DeactivateOperatorRequest) ProtoMessage() {}
 
 func (x *DeactivateOperatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[11]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -631,7 +719,7 @@ func (x *DeactivateOperatorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateOperatorRequest.ProtoReflect.Descriptor instead.
 func (*DeactivateOperatorRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{11}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DeactivateOperatorRequest) GetPublicId() string {
@@ -650,7 +738,7 @@ type DeactivateOperatorResponse struct {
 
 func (x *DeactivateOperatorResponse) Reset() {
 	*x = DeactivateOperatorResponse{}
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[12]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -662,7 +750,7 @@ func (x *DeactivateOperatorResponse) String() string {
 func (*DeactivateOperatorResponse) ProtoMessage() {}
 
 func (x *DeactivateOperatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_operator_proto_msgTypes[12]
+	mi := &file_publira_platform_v1_operator_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -675,7 +763,7 @@ func (x *DeactivateOperatorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateOperatorResponse.ProtoReflect.Descriptor instead.
 func (*DeactivateOperatorResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{12}
+	return file_publira_platform_v1_operator_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DeactivateOperatorResponse) GetOperator() *PlatformOperator {
@@ -705,7 +793,11 @@ const file_publira_platform_v1_operator_proto_rawDesc = "" +
 	"\toperators\x18\x01 \x03(\v2%.publira.platform.v1.PlatformOperatorR\toperators\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"U\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"1\n" +
+	"\x12GetOperatorRequest\x12\x1b\n" +
+	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"X\n" +
+	"\x13GetOperatorResponse\x12A\n" +
+	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator\"U\n" +
 	"\x15CreateOperatorRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -728,9 +820,10 @@ const file_publira_platform_v1_operator_proto_rawDesc = "" +
 	"\x19DeactivateOperatorRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"_\n" +
 	"\x1aDeactivateOperatorResponse\x12A\n" +
-	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator2\xc8\x05\n" +
+	"\boperator\x18\x01 \x01(\v2%.publira.platform.v1.PlatformOperatorR\boperator2\xac\x06\n" +
 	"\x17PlatformOperatorService\x12h\n" +
-	"\rListOperators\x12).publira.platform.v1.ListOperatorsRequest\x1a*.publira.platform.v1.ListOperatorsResponse\"\x00\x12k\n" +
+	"\rListOperators\x12).publira.platform.v1.ListOperatorsRequest\x1a*.publira.platform.v1.ListOperatorsResponse\"\x00\x12b\n" +
+	"\vGetOperator\x12'.publira.platform.v1.GetOperatorRequest\x1a(.publira.platform.v1.GetOperatorResponse\"\x00\x12k\n" +
 	"\x0eCreateOperator\x12*.publira.platform.v1.CreateOperatorRequest\x1a+.publira.platform.v1.CreateOperatorResponse\"\x00\x12w\n" +
 	"\x12UpdateOperatorRole\x12..publira.platform.v1.UpdateOperatorRoleRequest\x1a/.publira.platform.v1.UpdateOperatorRoleResponse\"\x00\x12n\n" +
 	"\x0fSuspendOperator\x12+.publira.platform.v1.SuspendOperatorRequest\x1a,.publira.platform.v1.SuspendOperatorResponse\"\x00\x12t\n" +
@@ -749,46 +842,51 @@ func file_publira_platform_v1_operator_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_operator_proto_rawDescData
 }
 
-var file_publira_platform_v1_operator_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_publira_platform_v1_operator_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_publira_platform_v1_operator_proto_goTypes = []any{
 	(*PlatformOperator)(nil),           // 0: publira.platform.v1.PlatformOperator
 	(*ListOperatorsRequest)(nil),       // 1: publira.platform.v1.ListOperatorsRequest
 	(*ListOperatorsResponse)(nil),      // 2: publira.platform.v1.ListOperatorsResponse
-	(*CreateOperatorRequest)(nil),      // 3: publira.platform.v1.CreateOperatorRequest
-	(*CreateOperatorResponse)(nil),     // 4: publira.platform.v1.CreateOperatorResponse
-	(*UpdateOperatorRoleRequest)(nil),  // 5: publira.platform.v1.UpdateOperatorRoleRequest
-	(*UpdateOperatorRoleResponse)(nil), // 6: publira.platform.v1.UpdateOperatorRoleResponse
-	(*SuspendOperatorRequest)(nil),     // 7: publira.platform.v1.SuspendOperatorRequest
-	(*SuspendOperatorResponse)(nil),    // 8: publira.platform.v1.SuspendOperatorResponse
-	(*UnsuspendOperatorRequest)(nil),   // 9: publira.platform.v1.UnsuspendOperatorRequest
-	(*UnsuspendOperatorResponse)(nil),  // 10: publira.platform.v1.UnsuspendOperatorResponse
-	(*DeactivateOperatorRequest)(nil),  // 11: publira.platform.v1.DeactivateOperatorRequest
-	(*DeactivateOperatorResponse)(nil), // 12: publira.platform.v1.DeactivateOperatorResponse
+	(*GetOperatorRequest)(nil),         // 3: publira.platform.v1.GetOperatorRequest
+	(*GetOperatorResponse)(nil),        // 4: publira.platform.v1.GetOperatorResponse
+	(*CreateOperatorRequest)(nil),      // 5: publira.platform.v1.CreateOperatorRequest
+	(*CreateOperatorResponse)(nil),     // 6: publira.platform.v1.CreateOperatorResponse
+	(*UpdateOperatorRoleRequest)(nil),  // 7: publira.platform.v1.UpdateOperatorRoleRequest
+	(*UpdateOperatorRoleResponse)(nil), // 8: publira.platform.v1.UpdateOperatorRoleResponse
+	(*SuspendOperatorRequest)(nil),     // 9: publira.platform.v1.SuspendOperatorRequest
+	(*SuspendOperatorResponse)(nil),    // 10: publira.platform.v1.SuspendOperatorResponse
+	(*UnsuspendOperatorRequest)(nil),   // 11: publira.platform.v1.UnsuspendOperatorRequest
+	(*UnsuspendOperatorResponse)(nil),  // 12: publira.platform.v1.UnsuspendOperatorResponse
+	(*DeactivateOperatorRequest)(nil),  // 13: publira.platform.v1.DeactivateOperatorRequest
+	(*DeactivateOperatorResponse)(nil), // 14: publira.platform.v1.DeactivateOperatorResponse
 }
 var file_publira_platform_v1_operator_proto_depIdxs = []int32{
 	0,  // 0: publira.platform.v1.ListOperatorsResponse.operators:type_name -> publira.platform.v1.PlatformOperator
-	0,  // 1: publira.platform.v1.CreateOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
-	0,  // 2: publira.platform.v1.UpdateOperatorRoleResponse.operator:type_name -> publira.platform.v1.PlatformOperator
-	0,  // 3: publira.platform.v1.SuspendOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
-	0,  // 4: publira.platform.v1.UnsuspendOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
-	0,  // 5: publira.platform.v1.DeactivateOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
-	1,  // 6: publira.platform.v1.PlatformOperatorService.ListOperators:input_type -> publira.platform.v1.ListOperatorsRequest
-	3,  // 7: publira.platform.v1.PlatformOperatorService.CreateOperator:input_type -> publira.platform.v1.CreateOperatorRequest
-	5,  // 8: publira.platform.v1.PlatformOperatorService.UpdateOperatorRole:input_type -> publira.platform.v1.UpdateOperatorRoleRequest
-	7,  // 9: publira.platform.v1.PlatformOperatorService.SuspendOperator:input_type -> publira.platform.v1.SuspendOperatorRequest
-	9,  // 10: publira.platform.v1.PlatformOperatorService.UnsuspendOperator:input_type -> publira.platform.v1.UnsuspendOperatorRequest
-	11, // 11: publira.platform.v1.PlatformOperatorService.DeactivateOperator:input_type -> publira.platform.v1.DeactivateOperatorRequest
-	2,  // 12: publira.platform.v1.PlatformOperatorService.ListOperators:output_type -> publira.platform.v1.ListOperatorsResponse
-	4,  // 13: publira.platform.v1.PlatformOperatorService.CreateOperator:output_type -> publira.platform.v1.CreateOperatorResponse
-	6,  // 14: publira.platform.v1.PlatformOperatorService.UpdateOperatorRole:output_type -> publira.platform.v1.UpdateOperatorRoleResponse
-	8,  // 15: publira.platform.v1.PlatformOperatorService.SuspendOperator:output_type -> publira.platform.v1.SuspendOperatorResponse
-	10, // 16: publira.platform.v1.PlatformOperatorService.UnsuspendOperator:output_type -> publira.platform.v1.UnsuspendOperatorResponse
-	12, // 17: publira.platform.v1.PlatformOperatorService.DeactivateOperator:output_type -> publira.platform.v1.DeactivateOperatorResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	0,  // 1: publira.platform.v1.GetOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
+	0,  // 2: publira.platform.v1.CreateOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
+	0,  // 3: publira.platform.v1.UpdateOperatorRoleResponse.operator:type_name -> publira.platform.v1.PlatformOperator
+	0,  // 4: publira.platform.v1.SuspendOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
+	0,  // 5: publira.platform.v1.UnsuspendOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
+	0,  // 6: publira.platform.v1.DeactivateOperatorResponse.operator:type_name -> publira.platform.v1.PlatformOperator
+	1,  // 7: publira.platform.v1.PlatformOperatorService.ListOperators:input_type -> publira.platform.v1.ListOperatorsRequest
+	3,  // 8: publira.platform.v1.PlatformOperatorService.GetOperator:input_type -> publira.platform.v1.GetOperatorRequest
+	5,  // 9: publira.platform.v1.PlatformOperatorService.CreateOperator:input_type -> publira.platform.v1.CreateOperatorRequest
+	7,  // 10: publira.platform.v1.PlatformOperatorService.UpdateOperatorRole:input_type -> publira.platform.v1.UpdateOperatorRoleRequest
+	9,  // 11: publira.platform.v1.PlatformOperatorService.SuspendOperator:input_type -> publira.platform.v1.SuspendOperatorRequest
+	11, // 12: publira.platform.v1.PlatformOperatorService.UnsuspendOperator:input_type -> publira.platform.v1.UnsuspendOperatorRequest
+	13, // 13: publira.platform.v1.PlatformOperatorService.DeactivateOperator:input_type -> publira.platform.v1.DeactivateOperatorRequest
+	2,  // 14: publira.platform.v1.PlatformOperatorService.ListOperators:output_type -> publira.platform.v1.ListOperatorsResponse
+	4,  // 15: publira.platform.v1.PlatformOperatorService.GetOperator:output_type -> publira.platform.v1.GetOperatorResponse
+	6,  // 16: publira.platform.v1.PlatformOperatorService.CreateOperator:output_type -> publira.platform.v1.CreateOperatorResponse
+	8,  // 17: publira.platform.v1.PlatformOperatorService.UpdateOperatorRole:output_type -> publira.platform.v1.UpdateOperatorRoleResponse
+	10, // 18: publira.platform.v1.PlatformOperatorService.SuspendOperator:output_type -> publira.platform.v1.SuspendOperatorResponse
+	12, // 19: publira.platform.v1.PlatformOperatorService.UnsuspendOperator:output_type -> publira.platform.v1.UnsuspendOperatorResponse
+	14, // 20: publira.platform.v1.PlatformOperatorService.DeactivateOperator:output_type -> publira.platform.v1.DeactivateOperatorResponse
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_operator_proto_init() }
@@ -802,7 +900,7 @@ func file_publira_platform_v1_operator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_operator_proto_rawDesc), len(file_publira_platform_v1_operator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
