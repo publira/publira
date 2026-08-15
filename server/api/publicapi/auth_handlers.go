@@ -474,11 +474,10 @@ func (s *apiServer) CreateUser(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, "", "user_create_failed")
-		return nil, s.internalDBError("failed to create user", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError("failed to create user", err, "tenant_id", tenant.ID.String(), "user_id", userID.String())
 	}
 
-	user, err = s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"})
-	if err != nil {
+	if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "inactive"}); err != nil {
 		auth.AuditEvent(req.Header(), "signup", "failure", tenant.PublicID, user.PublicID, "set_inactive_failed")
 		return nil, s.internalDBError("failed to set user inactive", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}

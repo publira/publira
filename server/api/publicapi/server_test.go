@@ -36,8 +36,41 @@ func newPublicRouteTestServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(NewHandler(nil, nil, nil, nil, nil))
 }
 
+type captureHandler struct {
+	records []slog.Record
+}
+
+func (h *captureHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
+	h.records = append(h.records, r.Clone())
+	return nil
+}
+
+func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+func (h *captureHandler) WithGroup(string) slog.Handler { return h }
+
+func (h *captureHandler) errorAttr() error {
+	for _, rec := range h.records {
+		var logged error
+		rec.Attrs(func(a slog.Attr) bool {
+			if a.Key == "error" {
+				logged, _ = a.Value.Any().(error)
+				return false
+			}
+			return true
+		})
+		if logged != nil {
+			return logged
+		}
+	}
+	return nil
+}
+
 func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
-	server := &apiServer{logger: slog.Default()}
+	handler := &captureHandler{}
+	server := &apiServer{logger: slog.New(handler)}
 
 	if got := server.internalDBError("ignored", context.Canceled); !errors.Is(got, context.Canceled) {
 		t.Fatalf("canceled error = %v, want context.Canceled", got)
@@ -45,13 +78,26 @@ func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
 	if got := server.internalDBError("ignored", context.DeadlineExceeded); !errors.Is(got, context.DeadlineExceeded) {
 		t.Fatalf("deadline error = %v, want context.DeadlineExceeded", got)
 	}
+	if len(handler.records) != 0 {
+		t.Fatalf("context errors must not be logged, got %d records", len(handler.records))
+	}
 
-	err := server.internalDBError("failed to list example", errors.New(`pq: relation "x" does not exist`))
+	driverErr := errors.New(`pq: relation "x" does not exist`)
+	err := server.internalDBError("failed to list example", driverErr)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
 	if err.Error() != "internal: internal server error" {
 		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	if len(handler.records) != 1 {
+		t.Fatalf("logged %d records, want 1", len(handler.records))
+	}
+	if handler.records[0].Message != "failed to list example" {
+		t.Fatalf("log message = %q, want failed to list example", handler.records[0].Message)
+	}
+	if logged := handler.errorAttr(); logged == nil || logged.Error() != driverErr.Error() {
+		t.Fatalf("logged error = %v, want original database error", logged)
 	}
 }
 
