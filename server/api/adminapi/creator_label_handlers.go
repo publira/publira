@@ -521,7 +521,7 @@ func (s *adminServer) GetCreator(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get creator", err, "tenant_id", tenant.ID.String())
 	}
 	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{Creator: protomapper.CreatorFromRow(
 		row.PublicID,

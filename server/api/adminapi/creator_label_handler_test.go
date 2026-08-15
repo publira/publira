@@ -591,6 +591,37 @@ func TestGetCreatorSuccessAndNotFound(t *testing.T) {
 	}
 }
 
+func TestGetCreatorDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getCreatorByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "CREATOR001").
+		WillReturnError(errors.New(`pq: relation "creators" does not exist`))
+
+	client := publiraadminv1connect.NewAdminCreatorServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetCreatorRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "CREATOR001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetCreator(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetCreator code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
 func TestListLabelsSuccess(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
