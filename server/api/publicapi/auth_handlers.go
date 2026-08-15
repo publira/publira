@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
@@ -605,7 +606,7 @@ func (s *apiServer) RequestEmailChange(
 	}
 	if !auth.VerifyPassword(currentPassword, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_password")
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid current password"))
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
 
 	_, err = s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{

@@ -4,7 +4,7 @@ import {
   isMissingResourceRpcError,
   isRpcError,
   rethrowUnclassifiedRpcError,
-  rpcErrorMentions,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
@@ -94,8 +94,8 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
     conflict:
       "同じ slug のページが既に存在します。別の slug を指定してください。",
     // A page form is slug + title + body; only the slug has a format rule
-    // worth spelling out, and the server names it in the message.
-    "invalid-argument": rpcErrorMentions(error, "slug")
+    // worth spelling out, and the server identifies it in BadRequest details.
+    "invalid-argument": rpcErrorHasFieldViolation(error, "slug")
       ? "slug は空欄、または / で始まる半角小文字・数字・ハイフンで入力してください。"
       : "入力内容を確認してください。",
     "not-found":

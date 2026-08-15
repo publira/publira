@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -364,7 +365,7 @@ func (s *adminServer) IssueAccessTicket(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("user not found"), "user_public_id")
 		}
 		return nil, s.internalDBError("failed to get user for issue access ticket", err, "tenant_id", tenant.ID.String(), "user_public_id", userPublicID)
 	}
@@ -378,7 +379,7 @@ func (s *adminServer) IssueAccessTicket(
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), "episode_public_id")
 		}
 		return nil, s.internalDBError("failed to get episode for issue access ticket", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
 	}

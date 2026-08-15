@@ -1,3 +1,4 @@
+import { BadRequestSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import type { PlatformApiClient } from "@publira/api-client/platform/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -274,9 +275,46 @@ describe("createPlatformTenant", () => {
     expect(mockCreateTenant).not.toHaveBeenCalled();
   });
 
-  it("ドメイン重複エラーを専用メッセージに変換する", async () => {
+  it("details の無いドメイン重複は汎用メッセージにする", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("domain already exists", Code.AlreadyExists)
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "重複するデータがあるため作成できません。",
+      ok: false,
+    });
+  });
+
+  it("details の無い管理画面ドメイン重複も汎用メッセージにする", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("admin_domain already exists", Code.AlreadyExists)
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "重複するデータがあるため作成できません。",
+      ok: false,
+    });
+  });
+
+  it("domain の field violation を公開ドメイン重複として表示する", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "domain" }] },
+        },
+      ])
     );
 
     await expect(
@@ -290,10 +328,14 @@ describe("createPlatformTenant", () => {
     });
   });
 
-  // "admin_domain" contains "domain", so the checks must stay in this order.
-  it("管理画面ドメイン重複を公開ドメイン重複と取り違えない", async () => {
+  it("admin_domain の field violation を管理画面ドメイン重複として表示する", async () => {
     mockCreateTenant.mockRejectedValueOnce(
-      new ConnectError("admin_domain already exists", Code.AlreadyExists)
+      new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "admin_domain" }] },
+        },
+      ])
     );
 
     await expect(

@@ -1,3 +1,7 @@
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+} from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 import { ConnectError } from "@connectrpc/connect";
 import { describe, expect, it } from "vitest";
 
@@ -9,7 +13,8 @@ import {
   isUnauthenticatedRpcError,
   rpcErrorCode,
   rpcErrorDisposition,
-  rpcErrorMentions,
+  rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
 } from "./errors";
 
 /**
@@ -127,29 +132,63 @@ describe("共通ポリシー", () => {
   });
 });
 
-describe("rpcErrorMentions", () => {
-  it("ConnectError は code 接頭辞を含まない rawMessage を見る", () => {
+describe("Connect error details", () => {
+  it("BadRequest の field violation を型付きで読む", () => {
     const error = new ConnectError(
-      "admin_domain already exists",
-      Code.AlreadyExists
+      "invalid slug",
+      Code.InvalidArgument,
+      undefined,
+      [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "slug" }] },
+        },
+      ]
     );
-    expect(rpcErrorMentions(error, "admin_domain")).toBe(true);
-    expect(rpcErrorMentions(error, "already_exists")).toBe(false);
+    expect(rpcErrorHasFieldViolation(error, "slug")).toBe(true);
+    expect(rpcErrorHasFieldViolation(error, "title")).toBe(false);
   });
 
-  it("キャッシュ境界で再生成されたエラーは接頭辞を除いた本文を見る", () => {
-    const rehydrated = new Error(
-      "[already_exists] admin_domain already exists"
+  it("ErrorInfo の Publira reason を型付きで読む", () => {
+    const error = new ConnectError(
+      "invitation canceled",
+      Code.FailedPrecondition,
+      undefined,
+      [
+        {
+          desc: ErrorInfoSchema,
+          value: {
+            domain: "publira",
+            reason: "INVITATION_CANCELED",
+          },
+        },
+      ]
     );
-    rehydrated.name = "ConnectError";
+    expect(rpcErrorHasReason(error, "INVITATION_CANCELED")).toBe(true);
+    expect(rpcErrorHasReason(error, "ARCHIVE_INVALID_PATH")).toBe(false);
 
-    expect(rpcErrorMentions(rehydrated, "admin_domain")).toBe(true);
-    expect(rpcErrorMentions(rehydrated, "already_exists")).toBe(false);
+    const foreignError = new ConnectError(
+      "invitation canceled",
+      Code.FailedPrecondition,
+      undefined,
+      [
+        {
+          desc: ErrorInfoSchema,
+          value: {
+            domain: "other-service",
+            reason: "INVITATION_CANCELED",
+          },
+        },
+      ]
+    );
+
+    expect(rpcErrorHasReason(foreignError, "INVITATION_CANCELED")).toBe(false);
   });
 
-  it("RPC 由来でない値は false", () => {
-    expect(rpcErrorMentions("admin_domain", "admin_domain")).toBe(false);
-    // A plain Error must not become classifiable through this back door.
-    expect(rpcErrorMentions(new Error("canceled"), "canceled")).toBe(false);
+  it("RPC 由来でない値に details は無い", () => {
+    expect(rpcErrorHasFieldViolation(new Error("bad"), "slug")).toBe(false);
+    expect(
+      rpcErrorHasReason(new Error("canceled"), "INVITATION_CANCELED")
+    ).toBe(false);
   });
 });

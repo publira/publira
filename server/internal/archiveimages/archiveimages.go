@@ -20,6 +20,30 @@ type Input struct {
 	Data        []byte
 }
 
+// Rejection identifies an archive failure that callers present specially.
+type Rejection string
+
+const RejectionInvalidPath Rejection = "invalid_path"
+
+type rejectionError struct {
+	err       error
+	rejection Rejection
+}
+
+func (e *rejectionError) Error() string { return e.err.Error() }
+
+func (e *rejectionError) Unwrap() error { return e.err }
+
+// RejectionOf returns the stable category without requiring callers to inspect
+// the user-facing error text.
+func RejectionOf(err error) (Rejection, bool) {
+	var rejectionErr *rejectionError
+	if !errors.As(err, &rejectionErr) {
+		return "", false
+	}
+	return rejectionErr.rejection, true
+}
+
 func ExtractImageInputs(archiveData []byte, maxEntries int) ([]Input, error) {
 	reader, err := zip.NewReader(bytes.NewReader(archiveData), int64(len(archiveData)))
 	if err != nil {
@@ -89,7 +113,10 @@ func normalizeEntryPath(name string) (string, error) {
 	}
 	cleaned := path.Clean(normalized)
 	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") || strings.HasPrefix(cleaned, "/") {
-		return "", fmt.Errorf("archive contains invalid path %q", name)
+		return "", &rejectionError{
+			err:       fmt.Errorf("archive contains invalid path %q", name),
+			rejection: RejectionInvalidPath,
+		}
 	}
 	return cleaned, nil
 }

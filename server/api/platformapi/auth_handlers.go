@@ -22,6 +22,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -488,7 +489,7 @@ func (s *platformServer) RequestEmailChange(
 	}
 	if !auth.VerifyPassword(currentPassword, platformUser.PasswordHash) {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "invalid_password")
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid current password"))
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 	}
 
 	_, err = s.queriesFor(ctx).GetPlatformUserByEmail(ctx, newEmail)
