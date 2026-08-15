@@ -421,7 +421,10 @@ CREATE TABLE purchases (
     price_at_purchase integer NOT NULL,
     expires_at timestamp with time zone,
     purchased_at timestamp with time zone DEFAULT now() NOT NULL,
-    tenant_id uuid NOT NULL
+    tenant_id uuid NOT NULL,
+    -- Legacy/admin grants predate payment providers and leave this NULL.
+    -- Stripe-created purchases always store a unique Checkout Session ID.
+    stripe_checkout_session_id text
 );
 
 -- TABLE: series
@@ -848,6 +851,9 @@ ALTER TABLE ONLY platform_users
 -- CONSTRAINT: purchases purchases_pkey
 ALTER TABLE ONLY purchases
     ADD CONSTRAINT purchases_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY purchases
+    ADD CONSTRAINT purchases_stripe_checkout_session_id_key UNIQUE (stripe_checkout_session_id);
 
 -- CONSTRAINT: series_creators series_creators_pkey
 ALTER TABLE ONLY series_creators

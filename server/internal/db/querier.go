@@ -54,6 +54,11 @@ type Querier interface {
 	CreatePlatformUserEmailChangeToken(ctx context.Context, arg CreatePlatformUserEmailChangeTokenParams) (PlatformUserEmailChangeToken, error)
 	CreatePlatformUserPasswordResetToken(ctx context.Context, arg CreatePlatformUserPasswordResetTokenParams) (PlatformUserPasswordResetToken, error)
 	CreatePlatformUserRole(ctx context.Context, arg CreatePlatformUserRoleParams) (PlatformUserRole, error)
+	// The advisory lock serializes different Stripe Checkout sessions for the same
+	// buyer and episode. Stripe's request idempotency prevents duplicate sessions
+	// in the ordinary case; this also keeps an exceptional concurrent pair from
+	// producing two entitlements.
+	CreatePurchaseFromStripeCheckout(ctx context.Context, arg CreatePurchaseFromStripeCheckoutParams) (Purchase, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
@@ -123,6 +128,7 @@ type Querier interface {
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
 	// テナントの公開中ページをslugで取得する
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
+	GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
@@ -452,6 +458,7 @@ type Querier interface {
 	// True when the user may view paid body content for the episode via purchase or active access ticket.
 	// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)
+	UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

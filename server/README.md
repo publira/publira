@@ -70,6 +70,22 @@ task server:test
 - プラットフォーム API サーバー: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
 - 予約公開バッチ: [cmd/publish-episodes/README.md](cmd/publish-episodes/README.md)
 
+## Stripe Checkout（エピソード購入）
+
+有料エピソードは Stripe Checkout の一回払いで販売します。ブラウザが戻る URL は購入を確定しません。`web-host` の `POST /[tenant_id]/api/v1/webhook/stripe` は、Stripe の生 body と署名を PurchaseService へ転送するだけです。API サーバーが署名を検証し、`checkout.session.completed`（非同期決済は `checkout.session.async_payment_succeeded`）を受信したときだけ `purchases` を作成します。
+
+- `STRIPE_SECRET_KEY`: Stripe のシークレットキー。未設定時は Checkout 開始 API を無効化します。
+- `STRIPE_WEBHOOK_SECRET`: Stripe Webhook endpoint の signing secret。未設定時は Webhook を処理せず、web-host は 503 を返します。
+- `PUBLIRA_WEB_HOST_URL`: 購入完了・取消後に戻す web-host の絶対 URL。例: `http://localhost:3000`。
+
+Stripe Dashboard では `https://<web-host>/<tenant_id>/api/v1/webhook/stripe` を Webhook endpoint として登録し、上記 2 イベントを有効化してください。ローカル開発では次のように Stripe CLI で転送します。
+
+```bash
+stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
+```
+
+表示された `whsec_...` を `STRIPE_WEBHOOK_SECRET` に設定します。テストカードは Stripe の `4242 4242 4242 4242`、任意の将来日、有効な CVC を使えます。Webhook は再送されても `stripe_checkout_session_id` の一意制約により購入を重複作成しません。すでに有効な購入があるエピソードは Checkout を開始せず、期限切れ後は再購入できます。
+
 ## 画像ストレージ設定
 
 `UploadEpisodeImages` は `STORAGE_BACKEND` で保存先を切り替えます。

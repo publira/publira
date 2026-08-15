@@ -3033,3 +3033,69 @@ SELECT (
                 )
         )
     ) AS has_access;
+
+-- name: GetPurchasableEpisodeByPublicIDForTenant :one
+SELECT e.id,
+    e.public_id,
+    e.title,
+    s.public_id AS series_public_id,
+    el.price,
+    el.reading_period_hours
+FROM episodes e
+    JOIN series s ON s.id = e.series_id
+    JOIN episode_listings el ON el.episode_id = e.id
+WHERE e.public_id = sqlc.arg('public_id')
+    AND e.tenant_id = sqlc.arg('tenant_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND el.status = 'published'
+    AND el.published_at IS NOT NULL
+    AND el.published_at <= NOW()
+LIMIT 1;
+
+-- name: UserHasValidPurchaseForEpisode :one
+SELECT EXISTS (
+    SELECT 1
+    FROM purchases
+    WHERE tenant_id = sqlc.arg('tenant_id')
+        AND user_id = sqlc.arg('user_id')
+        AND episode_id = sqlc.arg('episode_id')
+        AND (expires_at IS NULL OR expires_at > NOW())
+) AS has_purchase;
+
+-- name: CreatePurchaseFromStripeCheckout :one
+-- The advisory lock serializes different Stripe Checkout sessions for the same
+-- buyer and episode. Stripe's request idempotency prevents duplicate sessions
+-- in the ordinary case; this also keeps an exceptional concurrent pair from
+-- producing two entitlements.
+WITH locked AS (
+    SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            $2::text || ':' || $3::text || ':' || $4::text,
+            0
+        )
+    )
+)
+INSERT INTO purchases (
+    id,
+    tenant_id,
+    user_id,
+    episode_id,
+    price_at_purchase,
+    expires_at,
+    stripe_checkout_session_id
+)
+SELECT $1, $2, $3, $4, $5, $6, $7
+FROM locked
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM purchases
+    WHERE tenant_id = $2
+        AND user_id = $3
+        AND episode_id = $4
+        AND (expires_at IS NULL OR expires_at > NOW())
+)
+ON CONFLICT (stripe_checkout_session_id) DO NOTHING
+RETURNING *;

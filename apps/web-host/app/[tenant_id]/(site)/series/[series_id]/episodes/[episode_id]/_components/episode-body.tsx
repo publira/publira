@@ -10,6 +10,7 @@ import { EpisodeViewer } from "./episode-viewer";
 
 export const EpisodeBody = async ({
   access,
+  checkoutSessionId,
   episodePublicId,
   episodeTitle,
   images,
@@ -17,6 +18,7 @@ export const EpisodeBody = async ({
   tenantId,
 }: {
   access: EpisodeAccessState;
+  checkoutSessionId: string;
   episodePublicId: string;
   episodeTitle: string;
   images: EpisodeImageItem[];
@@ -34,6 +36,7 @@ export const EpisodeBody = async ({
         episodePublicId={episodePublicId}
         seriesPublicId={seriesPublicId}
         signedIn={false}
+        tenantId={tenantId}
       />
     );
   }
@@ -42,7 +45,8 @@ export const EpisodeBody = async ({
     tenantId,
     seriesPublicId,
     episodePublicId,
-    sessionId
+    sessionId,
+    checkoutSessionId
   );
   if (!viewer.ok) {
     return (
@@ -66,6 +70,7 @@ export const EpisodeBody = async ({
       episodePublicId={episodePublicId}
       seriesPublicId={seriesPublicId}
       signedIn
+      tenantId={tenantId}
     />
   );
 };

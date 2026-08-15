@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -29,13 +31,15 @@ type Querier interface {
 }
 
 type apiServer struct {
-	db        *sql.DB
-	queries   Querier
-	storage   storage.Provider
-	encryptor emailsettings.SecretManager
-	mailer    internalsmtp.Sender
-	tokens    *auth.TokenManager
-	logger    *slog.Logger
+	db         *sql.DB
+	queries    Querier
+	storage    storage.Provider
+	encryptor  emailsettings.SecretManager
+	mailer     internalsmtp.Sender
+	tokens     *auth.TokenManager
+	logger     *slog.Logger
+	stripe     *stripeCheckoutProvider
+	webHostURL *url.URL
 }
 
 func invalidSessionError() error {
@@ -86,14 +90,20 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
 // CatalogService / AuthService / NotificationService / TenantService / DomainService を公開し、管理 API は含みません。
 func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender) http.Handler {
+	webHostURL, err := parseWebHostURL(os.Getenv("PUBLIRA_WEB_HOST_URL"))
+	if err != nil {
+		slog.Error("Stripe Checkout is disabled because PUBLIRA_WEB_HOST_URL is invalid", "error", err)
+	}
 	server := &apiServer{
-		db:        db,
-		queries:   queries,
-		storage:   storageProvider,
-		encryptor: encryptor,
-		mailer:    mailer,
-		tokens:    auth.MustTokenManagerFromEnv(),
-		logger:    slog.Default(),
+		db:         db,
+		queries:    queries,
+		storage:    storageProvider,
+		encryptor:  encryptor,
+		mailer:     mailer,
+		tokens:     auth.MustTokenManagerFromEnv(),
+		logger:     slog.Default(),
+		stripe:     newStripeCheckoutProvider(os.Getenv("STRIPE_SECRET_KEY")),
+		webHostURL: webHostURL,
 	}
 	mux := http.NewServeMux()
 	health.Register(mux, health.WithDB(db))
@@ -106,6 +116,8 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 
 	path, handler := publirav1connect.NewCatalogServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(path, handler)
+	purchasePath, purchaseHandler := publirav1connect.NewPurchaseServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	mux.Handle(purchasePath, purchaseHandler)
 	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, connect.WithInterceptors(tenantScoped))
 	mux.Handle(pagesPath, pagesHandler)
 	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, connect.WithInterceptors(tenantScoped))

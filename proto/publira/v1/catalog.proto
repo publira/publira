@@ -161,3 +161,29 @@ service CatalogService {
   // distinguished from one that does not exist.
   rpc GetPublishedAuthorDetail(GetPublishedAuthorDetailRequest) returns (GetPublishedAuthorDetailResponse) {}
 }
+
+// A one-time paid-episode checkout. Purchases are created only by the Stripe
+// webhook after a successful payment, never by the browser's return URL.
+message StartEpisodeCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_public_id = 2;
+}
+
+message StartEpisodeCheckoutResponse {
+  string checkout_url = 1;
+}
+
+// `web-host` forwards Stripe's raw request body and signature to this RPC.
+// Signature verification and all purchase validation stay on the API server.
+message ProcessStripeWebhookRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bytes payload = 2;
+  string stripe_signature = 3;
+}
+
+message ProcessStripeWebhookResponse {}
+
+service PurchaseService {
+  rpc StartEpisodeCheckout(StartEpisodeCheckoutRequest) returns (StartEpisodeCheckoutResponse) {}
+  rpc ProcessStripeWebhook(ProcessStripeWebhookRequest) returns (ProcessStripeWebhookResponse) {}
+}
