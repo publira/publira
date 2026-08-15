@@ -38,7 +38,7 @@ Docker イメージの配置規約・ビルド手順・Docker 固有のトリア
 | ジョブ（表示名） | 内容 | 詳細 |
 | --- | --- | --- |
 | `Detect changes` | path filter を評価し、実行するジョブと Docker 行列を決める | 本ファイル |
-| `Check` | `sqlc diff`・packages ビルド・`pnpm typegen`・`pnpm check`・べた書き `<svg>` の grep・`pnpm typecheck` | [`AGENTS.md`](../../AGENTS.md) |
+| `Check` | `sqlc diff`・buf 生成物のドリフト検出・packages ビルド・`pnpm typegen`・`pnpm check`・べた書き `<svg>` の grep・`pnpm typecheck` | [`AGENTS.md`](../../AGENTS.md) |
 | `Lint / Go` | `golangci-lint run ./...`（`server/`、設定は `server/.golangci.yml`） | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | `go test ./...`（`server/`） | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | packages ビルド後に `pnpm test` | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
@@ -127,6 +127,15 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョ�
 
 `sqlc diff` は、`sqlc.yaml` の `schema` 設定が指すスキーマファイル（`db/migrations/`）と `queries`（`db/query/`）を読んで生成結果との差分を検証する codegen チェックであり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
 
+### buf 生成物のドリフト検出
+
+`sqlc diff` に相当するサブコマンドが buf には無いので、`Validate / buf Generated Diff` は `buf generate --clean` で作り直してから、コミット済みのツリーと比べる（[#922](https://github.com/publira/publira/issues/922)）。リモートプラグインは `buf.gen.yaml` でピン留めしてあり `buf generate` が再現可能なので（[#919](https://github.com/publira/publira/pull/919)）、差分の有無がそのままドリフトの有無になる。
+
+- 比較対象は `server/gen/**` と `packages/api-client/src/gen/**`。どちらも buf の出力しか置かないディレクトリなので、`--clean` で丸ごと消してから生成できる。これにより、proto を消したのに残っている生成ファイルも差分として出る。
+- 比較の前に `git add -A` で stage するのは、`git diff` 単体では未追跡の新規ファイルが見えないため。stage すれば追加・削除・変更が同じ diff に揃う。
+- 落ちたときは手元で `task gen` を実行して結果をコミットする。エラーアノテーションにも同じ案内を出している。
+- path filter は `Check` の既存パターンで足りる。生成先は `server/**` と `packages/**` に、入力は `proto/**` / `buf.yaml` / `buf.gen.yaml` に含まれる。
+
 ## Lint / Go（golangci-lint）
 
 フロントの lint が `Check` に入っているのと対称に、Go の静的解析は独立ジョブ `Lint / Go` で回す（[#587](https://github.com/publira/publira/issues/587)）。`Test / Go` と分けているのは、Testcontainers を伴う Go テストの完了を待たずに lint 結果が出るため、および `Check` の広い path filter（`apps/**` など）でフロントだけの PR に golangci-lint を走らせないため。
@@ -157,7 +166,7 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョ�
 1. **どのゲートが落ちたか**（workflow `CI` 内のジョブ名）を見る
    - 最終ジョブ **`Summary`** が赤 → 依存ジョブのどれかが `failure` / `cancelled`（ログに `Job failed: <名前>` が出る）
    - `Detect changes` → path filter の base 解決（push イベントの checkout 履歴。上記「`Detect changes` の checkout」を参照）
-   - `Check` → lint・フォーマット・型・`sqlc diff`
+   - `Check` → lint・フォーマット・型・`sqlc diff`・buf 生成物のドリフト（`task gen` して差分をコミット）
    - `Test / Go` → `server/` の `go test`
    - `Test / TypeScript` → `pnpm test`
    - `Test / DB Migrations` → `db/migrations/00000000000000_baseline.{up,down}.sql` の SQL（`up` / `down -all` / `up` の往復）
