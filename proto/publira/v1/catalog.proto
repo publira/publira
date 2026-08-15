@@ -92,6 +92,48 @@ message GetEpisodeDetailResponse {
   EpisodeAccess access = 4;
 }
 
+// A creator that currently has at least one published series.
+message PublishedAuthor {
+  string public_id = 1;
+  string name = 2;
+  string profile_text = 3;
+  string icon_image_url = 4;
+  int64 icon_image_file_size_bytes = 5;
+  string icon_image_updated_at = 6;
+  int32 published_series_count = 7;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// Sorted by creator name, then id. There is no order field: name order is the
+// only list the storefront needs, and a later selectable order would have to
+// carry its name in the token (see proto/README.md).
+message ListPublishedAuthorsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+}
+
+message ListPublishedAuthorsResponse {
+  repeated PublishedAuthor authors = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+message GetPublishedAuthorDetailRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetPublishedAuthorDetailResponse {
+  PublishedAuthor author = 1;
+  // Published series credited to this author, title ascending.
+  repeated publira.types.v1.Series series = 2;
+}
+
 service CatalogService {
   rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
@@ -100,4 +142,10 @@ service CatalogService {
   // Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
   // to prevent content existence leakage.
   rpc GetEpisodeDetail(GetEpisodeDetailRequest) returns (GetEpisodeDetailResponse) {}
+  rpc ListPublishedAuthors(ListPublishedAuthorsRequest) returns (ListPublishedAuthorsResponse) {}
+  // Returns a creator only when they have at least one currently published
+  // series in the requested tenant. Cross-tenant, unpublished, and missing
+  // authors are all surfaced as NotFound so an unpublished author cannot be
+  // distinguished from one that does not exist.
+  rpc GetPublishedAuthorDetail(GetPublishedAuthorDetailRequest) returns (GetPublishedAuthorDetailResponse) {}
 }

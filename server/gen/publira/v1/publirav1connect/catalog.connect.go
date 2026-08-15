@@ -45,6 +45,12 @@ const (
 	// CatalogServiceGetEpisodeDetailProcedure is the fully-qualified name of the CatalogService's
 	// GetEpisodeDetail RPC.
 	CatalogServiceGetEpisodeDetailProcedure = "/publira.v1.CatalogService/GetEpisodeDetail"
+	// CatalogServiceListPublishedAuthorsProcedure is the fully-qualified name of the CatalogService's
+	// ListPublishedAuthors RPC.
+	CatalogServiceListPublishedAuthorsProcedure = "/publira.v1.CatalogService/ListPublishedAuthors"
+	// CatalogServiceGetPublishedAuthorDetailProcedure is the fully-qualified name of the
+	// CatalogService's GetPublishedAuthorDetail RPC.
+	CatalogServiceGetPublishedAuthorDetailProcedure = "/publira.v1.CatalogService/GetPublishedAuthorDetail"
 )
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
@@ -56,6 +62,12 @@ type CatalogServiceClient interface {
 	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
 	// to prevent content existence leakage.
 	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
+	ListPublishedAuthors(context.Context, *connect.Request[v1.ListPublishedAuthorsRequest]) (*connect.Response[v1.ListPublishedAuthorsResponse], error)
+	// Returns a creator only when they have at least one currently published
+	// series in the requested tenant. Cross-tenant, unpublished, and missing
+	// authors are all surfaced as NotFound so an unpublished author cannot be
+	// distinguished from one that does not exist.
+	GetPublishedAuthorDetail(context.Context, *connect.Request[v1.GetPublishedAuthorDetailRequest]) (*connect.Response[v1.GetPublishedAuthorDetailResponse], error)
 }
 
 // NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. By
@@ -93,15 +105,29 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("GetEpisodeDetail")),
 			connect.WithClientOptions(opts...),
 		),
+		listPublishedAuthors: connect.NewClient[v1.ListPublishedAuthorsRequest, v1.ListPublishedAuthorsResponse](
+			httpClient,
+			baseURL+CatalogServiceListPublishedAuthorsProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListPublishedAuthors")),
+			connect.WithClientOptions(opts...),
+		),
+		getPublishedAuthorDetail: connect.NewClient[v1.GetPublishedAuthorDetailRequest, v1.GetPublishedAuthorDetailResponse](
+			httpClient,
+			baseURL+CatalogServiceGetPublishedAuthorDetailProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("GetPublishedAuthorDetail")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // catalogServiceClient implements CatalogServiceClient.
 type catalogServiceClient struct {
-	listPublishedLabels *connect.Client[v1.ListPublishedLabelsRequest, v1.ListPublishedLabelsResponse]
-	listPublishedSeries *connect.Client[v1.ListPublishedSeriesRequest, v1.ListPublishedSeriesResponse]
-	getSeriesDetail     *connect.Client[v1.GetSeriesDetailRequest, v1.GetSeriesDetailResponse]
-	getEpisodeDetail    *connect.Client[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse]
+	listPublishedLabels      *connect.Client[v1.ListPublishedLabelsRequest, v1.ListPublishedLabelsResponse]
+	listPublishedSeries      *connect.Client[v1.ListPublishedSeriesRequest, v1.ListPublishedSeriesResponse]
+	getSeriesDetail          *connect.Client[v1.GetSeriesDetailRequest, v1.GetSeriesDetailResponse]
+	getEpisodeDetail         *connect.Client[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse]
+	listPublishedAuthors     *connect.Client[v1.ListPublishedAuthorsRequest, v1.ListPublishedAuthorsResponse]
+	getPublishedAuthorDetail *connect.Client[v1.GetPublishedAuthorDetailRequest, v1.GetPublishedAuthorDetailResponse]
 }
 
 // ListPublishedLabels calls publira.v1.CatalogService.ListPublishedLabels.
@@ -124,6 +150,16 @@ func (c *catalogServiceClient) GetEpisodeDetail(ctx context.Context, req *connec
 	return c.getEpisodeDetail.CallUnary(ctx, req)
 }
 
+// ListPublishedAuthors calls publira.v1.CatalogService.ListPublishedAuthors.
+func (c *catalogServiceClient) ListPublishedAuthors(ctx context.Context, req *connect.Request[v1.ListPublishedAuthorsRequest]) (*connect.Response[v1.ListPublishedAuthorsResponse], error) {
+	return c.listPublishedAuthors.CallUnary(ctx, req)
+}
+
+// GetPublishedAuthorDetail calls publira.v1.CatalogService.GetPublishedAuthorDetail.
+func (c *catalogServiceClient) GetPublishedAuthorDetail(ctx context.Context, req *connect.Request[v1.GetPublishedAuthorDetailRequest]) (*connect.Response[v1.GetPublishedAuthorDetailResponse], error) {
+	return c.getPublishedAuthorDetail.CallUnary(ctx, req)
+}
+
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
 type CatalogServiceHandler interface {
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
@@ -133,6 +169,12 @@ type CatalogServiceHandler interface {
 	// Unpublished, cross-tenant, and missing episodes are all surfaced as NotFound
 	// to prevent content existence leakage.
 	GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error)
+	ListPublishedAuthors(context.Context, *connect.Request[v1.ListPublishedAuthorsRequest]) (*connect.Response[v1.ListPublishedAuthorsResponse], error)
+	// Returns a creator only when they have at least one currently published
+	// series in the requested tenant. Cross-tenant, unpublished, and missing
+	// authors are all surfaced as NotFound so an unpublished author cannot be
+	// distinguished from one that does not exist.
+	GetPublishedAuthorDetail(context.Context, *connect.Request[v1.GetPublishedAuthorDetailRequest]) (*connect.Response[v1.GetPublishedAuthorDetailResponse], error)
 }
 
 // NewCatalogServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -166,6 +208,18 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("GetEpisodeDetail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceListPublishedAuthorsHandler := connect.NewUnaryHandler(
+		CatalogServiceListPublishedAuthorsProcedure,
+		svc.ListPublishedAuthors,
+		connect.WithSchema(catalogServiceMethods.ByName("ListPublishedAuthors")),
+		connect.WithHandlerOptions(opts...),
+	)
+	catalogServiceGetPublishedAuthorDetailHandler := connect.NewUnaryHandler(
+		CatalogServiceGetPublishedAuthorDetailProcedure,
+		svc.GetPublishedAuthorDetail,
+		connect.WithSchema(catalogServiceMethods.ByName("GetPublishedAuthorDetail")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CatalogServiceListPublishedLabelsProcedure:
@@ -176,6 +230,10 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceGetSeriesDetailHandler.ServeHTTP(w, r)
 		case CatalogServiceGetEpisodeDetailProcedure:
 			catalogServiceGetEpisodeDetailHandler.ServeHTTP(w, r)
+		case CatalogServiceListPublishedAuthorsProcedure:
+			catalogServiceListPublishedAuthorsHandler.ServeHTTP(w, r)
+		case CatalogServiceGetPublishedAuthorDetailProcedure:
+			catalogServiceGetPublishedAuthorDetailHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -199,4 +257,12 @@ func (UnimplementedCatalogServiceHandler) GetSeriesDetail(context.Context, *conn
 
 func (UnimplementedCatalogServiceHandler) GetEpisodeDetail(context.Context, *connect.Request[v1.GetEpisodeDetailRequest]) (*connect.Response[v1.GetEpisodeDetailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetEpisodeDetail is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListPublishedAuthors(context.Context, *connect.Request[v1.ListPublishedAuthorsRequest]) (*connect.Response[v1.ListPublishedAuthorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.ListPublishedAuthors is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) GetPublishedAuthorDetail(context.Context, *connect.Request[v1.GetPublishedAuthorDetailRequest]) (*connect.Response[v1.GetPublishedAuthorDetailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetPublishedAuthorDetail is not implemented"))
 }

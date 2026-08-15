@@ -2300,6 +2300,82 @@ func (q *Queries) GetPlatformUserPasswordResetTokenByHash(ctx context.Context, t
 	return i, err
 }
 
+const getPublishedAuthorByPublicID = `-- name: GetPublishedAuthorByPublicID :one
+SELECT c.id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    (
+        SELECT COUNT(*)::int4
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    ) AS published_series_count
+FROM creators c
+    LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM creator_image_variants
+        WHERE creator_image_id = ci.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) civ ON true
+WHERE c.tenant_id = $1
+    AND c.public_id = $2
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+LIMIT 1
+`
+
+type GetPublishedAuthorByPublicIDParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+type GetPublishedAuthorByPublicIDRow struct {
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	ProfileText            sql.NullString `json:"profile_text"`
+	IconImageID            uuid.NullUUID  `json:"icon_image_id"`
+	IconImageUpdatedAt     sql.NullTime   `json:"icon_image_updated_at"`
+	IconImageFileSizeBytes int64          `json:"icon_image_file_size_bytes"`
+	PublishedSeriesCount   int32          `json:"published_series_count"`
+}
+
+// 公開中シリーズを 1 本以上持つ creator だけを返す。不在と同じく呼び出し側
+// で not_found にするので、非公開の著者の存在は漏れない。
+func (q *Queries) GetPublishedAuthorByPublicID(ctx context.Context, arg GetPublishedAuthorByPublicIDParams) (GetPublishedAuthorByPublicIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedAuthorByPublicID, arg.TenantID, arg.PublicID)
+	var i GetPublishedAuthorByPublicIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.ProfileText,
+		&i.IconImageID,
+		&i.IconImageUpdatedAt,
+		&i.IconImageFileSizeBytes,
+		&i.PublishedSeriesCount,
+	)
+	return i, err
+}
+
 const getPublishedEpisodeByPublicIDForTenant = `-- name: GetPublishedEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
@@ -5627,6 +5703,252 @@ func (q *Queries) ListPlatformUserRoles(ctx context.Context, platformUserID uuid
 	return items, nil
 }
 
+const listPublishedAuthorIDsByNameAsc = `-- name: ListPublishedAuthorIDsByNameAsc :many
+SELECT c.id
+FROM creators c
+WHERE c.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (c.name, c.id) >= (
+                $4::text,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (c.name, c.id) > (
+                $4::text,
+                $2::uuid
+            )
+        )
+    )
+ORDER BY c.name ASC,
+    c.id ASC
+LIMIT $5
+`
+
+type ListPublishedAuthorIDsByNameAscParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorName      sql.NullString `json:"cursor_name"`
+	Limit           int32          `json:"limit"`
+}
+
+// 公開著者一覧の cursor ページネーションは 2 段構え。
+//
+// 1 段目が ListPublishedAuthorIDsByName* で、公開中シリーズを 1 本以上持つ
+// creator の id だけを決める。並び替えキーは (name, id)。id は UUIDv7 なので
+// 同名でも一意に決まる。
+//
+// 名前順は web-host が localeCompare(..., "ja") で並べていたが、ICU の ja
+// collation は環境ごとにロケールが揃っていないと cursor の比較結果が変わり、
+// btree のキーセット走査が破綻する。そのため DB の既定 collation で name を
+// 比較する。ja-x-icu を後から足すなら、その collation でインデックスを張り
+// 直し、cursor の比較も同じ collation に揃える。
+//
+// EXISTS の公開判定は ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+// ここがずれるとシリーズ一覧と著者ページで見える作品が食い違う。
+// ORDER BY を向きごとに固定した別クエリに分けてあるのは、CASE で分岐させる
+// と idx_creators_tenant_name を索引順に読めなくなるため。前ページ方向は
+// 降順のクエリを呼んで呼び出し側で並べ直す。
+//
+// 2 段目が ListPublishedAuthorsByIDs で、決まった id の表示内容と公開
+// シリーズ数だけを組み立てる。
+func (q *Queries) ListPublishedAuthorIDsByNameAsc(ctx context.Context, arg ListPublishedAuthorIDsByNameAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsByNameAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorName,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedAuthorIDsByNameDesc = `-- name: ListPublishedAuthorIDsByNameDesc :many
+SELECT c.id
+FROM creators c
+WHERE c.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    )
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (c.name, c.id) <= (
+                $4::text,
+                $2::uuid
+            )
+        )
+        OR (
+            NOT $3::boolean
+            AND (c.name, c.id) < (
+                $4::text,
+                $2::uuid
+            )
+        )
+    )
+ORDER BY c.name DESC,
+    c.id DESC
+LIMIT $5
+`
+
+type ListPublishedAuthorIDsByNameDescParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorName      sql.NullString `json:"cursor_name"`
+	Limit           int32          `json:"limit"`
+}
+
+func (q *Queries) ListPublishedAuthorIDsByNameDesc(ctx context.Context, arg ListPublishedAuthorIDsByNameDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedAuthorIDsByNameDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorName,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedAuthorsByIDs = `-- name: ListPublishedAuthorsByIDs :many
+SELECT c.id,
+    c.public_id,
+    c.name,
+    c.profile_text,
+    c.icon_image_id,
+    ci.updated_at AS icon_image_updated_at,
+    COALESCE(civ.file_size_bytes, 0)::bigint AS icon_image_file_size_bytes,
+    (
+        SELECT COUNT(*)::int4
+        FROM series_creators sc
+            JOIN series s ON s.id = sc.series_id
+        WHERE sc.creator_id = c.id
+            AND s.tenant_id = c.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    ) AS published_series_count
+FROM creators c
+    LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
+    LEFT JOIN LATERAL (
+        SELECT file_size_bytes
+        FROM creator_image_variants
+        WHERE creator_image_id = ci.id
+        ORDER BY width DESC
+        LIMIT 1
+    ) civ ON true
+WHERE c.tenant_id = $1
+    AND c.id = ANY($2::uuid [])
+`
+
+type ListPublishedAuthorsByIDsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
+}
+
+type ListPublishedAuthorsByIDsRow struct {
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	ProfileText            sql.NullString `json:"profile_text"`
+	IconImageID            uuid.NullUUID  `json:"icon_image_id"`
+	IconImageUpdatedAt     sql.NullTime   `json:"icon_image_updated_at"`
+	IconImageFileSizeBytes int64          `json:"icon_image_file_size_bytes"`
+	PublishedSeriesCount   int32          `json:"published_series_count"`
+}
+
+// 並び順は付けない。1 段目が決めた id の順に呼び出し側が並べ直す。
+func (q *Queries) ListPublishedAuthorsByIDs(ctx context.Context, arg ListPublishedAuthorsByIDsParams) ([]ListPublishedAuthorsByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedAuthorsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedAuthorsByIDsRow
+	for rows.Next() {
+		var i ListPublishedAuthorsByIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.ProfileText,
+			&i.IconImageID,
+			&i.IconImageUpdatedAt,
+			&i.IconImageFileSizeBytes,
+			&i.PublishedSeriesCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedEpisodesBySeries = `-- name: ListPublishedEpisodesBySeries :many
 SELECT e.id,
     e.series_id,
@@ -5692,6 +6014,50 @@ func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, arg ListPub
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedSeriesIDsByCreatorTitleAsc = `-- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
+SELECT s.id
+FROM series s
+    JOIN series_creators sc ON sc.series_id = s.id
+WHERE sc.creator_id = $1
+    AND s.tenant_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+ORDER BY s.title ASC,
+    s.id ASC
+`
+
+type ListPublishedSeriesIDsByCreatorTitleAscParams struct {
+	CreatorID uuid.UUID `json:"creator_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+}
+
+// 著者詳細の関連シリーズ。現状の UI がタイトル順で並べている
+// (apps/web-host/lib/authors.ts)。公開判定は
+// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleAsc, arg.CreatorID, arg.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/catalog.proto.
  */
 export const file_publira_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJGChtMaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2USJwoGbGFiZWxzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCKhAQoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJEiYKBW9yZGVyGAUgASgOMhcucHVibGlyYS52MS5TZXJpZXNPcmRlckoECAMQBFIGb2Zmc2V0InMKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlwKFkdldFNlcmllc0RldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJwChdHZXRTZXJpZXNEZXRhaWxSZXNwb25zZRIoCgZzZXJpZXMYASABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIrCghlcGlzb2RlcxgCIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZSJdChdHZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIssBChhHZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2USKgoHZXBpc29kZRgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZRIoCgZzZXJpZXMYAiABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIuCgZpbWFnZXMYAyADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZRIpCgZhY2Nlc3MYBCABKA4yGS5wdWJsaXJhLnYxLkVwaXNvZGVBY2Nlc3MqqwEKC1Nlcmllc09yZGVyEhwKGFNFUklFU19PUkRFUl9VTlNQRUNJRklFRBAAEiIKHlNFUklFU19PUkRFUl9QVUJMSVNIRURfQVRfREVTQxABEiEKHVNFUklFU19PUkRFUl9QVUJMSVNIRURfQVRfQVNDEAISGgoWU0VSSUVTX09SREVSX1RJVExFX0FTQxADEhsKF1NFUklFU19PUkRFUl9USVRMRV9ERVNDEAQqgAEKDUVwaXNvZGVBY2Nlc3MSHgoaRVBJU09ERV9BQ0NFU1NfVU5TUEVDSUZJRUQQABIXChNFUElTT0RFX0FDQ0VTU19GUkVFEAESGQoVRVBJU09ERV9BQ0NFU1NfTE9DS0VEEAISGwoXRVBJU09ERV9BQ0NFU1NfRU5USVRMRUQQAzKjAwoOQ2F0YWxvZ1NlcnZpY2USaAoTTGlzdFB1Ymxpc2hlZExhYmVscxImLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QaJy5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRMYWJlbHNSZXNwb25zZSIAEmgKE0xpc3RQdWJsaXNoZWRTZXJpZXMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRTZXJpZXNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVzcG9uc2UiABJcCg9HZXRTZXJpZXNEZXRhaWwSIi5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLkdldFNlcmllc0RldGFpbFJlc3BvbnNlIgASXwoQR2V0RXBpc29kZURldGFpbBIjLnB1YmxpcmEudjEuR2V0RXBpc29kZURldGFpbFJlcXVlc3QaJC5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXNwb25zZSIAQjxaOmdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEibAoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg4KBm9mZnNldBgDIAEoBSJGChtMaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2USJwoGbGFiZWxzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbCKhAQoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJEiYKBW9yZGVyGAUgASgOMhcucHVibGlyYS52MS5TZXJpZXNPcmRlckoECAMQBFIGb2Zmc2V0InMKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlwKFkdldFNlcmllc0RldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJwChdHZXRTZXJpZXNEZXRhaWxSZXNwb25zZRIoCgZzZXJpZXMYASABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIrCghlcGlzb2RlcxgCIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZSJdChdHZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIssBChhHZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2USKgoHZXBpc29kZRgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZRIoCgZzZXJpZXMYAiABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIuCgZpbWFnZXMYAyADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZRIpCgZhY2Nlc3MYBCABKA4yGS5wdWJsaXJhLnYxLkVwaXNvZGVBY2Nlc3MiwwEKD1B1Ymxpc2hlZEF1dGhvchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFgoOaWNvbl9pbWFnZV91cmwYBCABKAkSIgoaaWNvbl9pbWFnZV9maWxlX3NpemVfYnl0ZXMYBSABKAMSHQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAYgASgJEh4KFnB1Ymxpc2hlZF9zZXJpZXNfY291bnQYByABKAUibAobTGlzdFB1Ymxpc2hlZEF1dGhvcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJ4ChxMaXN0UHVibGlzaGVkQXV0aG9yc1Jlc3BvbnNlEiwKB2F1dGhvcnMYASADKAsyGy5wdWJsaXJhLnYxLlB1Ymxpc2hlZEF1dGhvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJImUKH0dldFB1Ymxpc2hlZEF1dGhvckRldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJ5CiBHZXRQdWJsaXNoZWRBdXRob3JEZXRhaWxSZXNwb25zZRIrCgZhdXRob3IYASABKAsyGy5wdWJsaXJhLnYxLlB1Ymxpc2hlZEF1dGhvchIoCgZzZXJpZXMYAiADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyqrAQoLU2VyaWVzT3JkZXISHAoYU0VSSUVTX09SREVSX1VOU1BFQ0lGSUVEEAASIgoeU0VSSUVTX09SREVSX1BVQkxJU0hFRF9BVF9ERVNDEAESIQodU0VSSUVTX09SREVSX1BVQkxJU0hFRF9BVF9BU0MQAhIaChZTRVJJRVNfT1JERVJfVElUTEVfQVNDEAMSGwoXU0VSSUVTX09SREVSX1RJVExFX0RFU0MQBCqAAQoNRXBpc29kZUFjY2VzcxIeChpFUElTT0RFX0FDQ0VTU19VTlNQRUNJRklFRBAAEhcKE0VQSVNPREVfQUNDRVNTX0ZSRUUQARIZChVFUElTT0RFX0FDQ0VTU19MT0NLRUQQAhIbChdFUElTT0RFX0FDQ0VTU19FTlRJVExFRBADMokFCg5DYXRhbG9nU2VydmljZRJoChNMaXN0UHVibGlzaGVkTGFiZWxzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkTGFiZWxzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZExhYmVsc1Jlc3BvbnNlIgASaAoTTGlzdFB1Ymxpc2hlZFNlcmllcxImLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QaJy5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZSIAElwKD0dldFNlcmllc0RldGFpbBIiLnB1YmxpcmEudjEuR2V0U2VyaWVzRGV0YWlsUmVxdWVzdBojLnB1YmxpcmEudjEuR2V0U2VyaWVzRGV0YWlsUmVzcG9uc2UiABJfChBHZXRFcGlzb2RlRGV0YWlsEiMucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBokLnB1YmxpcmEudjEuR2V0RXBpc29kZURldGFpbFJlc3BvbnNlIgASawoUTGlzdFB1Ymxpc2hlZEF1dGhvcnMSJy5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRBdXRob3JzUmVxdWVzdBooLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZEF1dGhvcnNSZXNwb25zZSIAEncKGEdldFB1Ymxpc2hlZEF1dGhvckRldGFpbBIrLnB1YmxpcmEudjEuR2V0UHVibGlzaGVkQXV0aG9yRGV0YWlsUmVxdWVzdBosLnB1YmxpcmEudjEuR2V0UHVibGlzaGVkQXV0aG9yRGV0YWlsUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.ListPublishedLabelsRequest
@@ -237,6 +237,168 @@ export const GetEpisodeDetailResponseSchema: GenMessage<GetEpisodeDetailResponse
   messageDesc(file_publira_v1_catalog, 7);
 
 /**
+ * A creator that currently has at least one published series.
+ *
+ * @generated from message publira.v1.PublishedAuthor
+ */
+export type PublishedAuthor = Message<"publira.v1.PublishedAuthor"> & {
+  /**
+   * @generated from field: string public_id = 1;
+   */
+  publicId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string profile_text = 3;
+   */
+  profileText: string;
+
+  /**
+   * @generated from field: string icon_image_url = 4;
+   */
+  iconImageUrl: string;
+
+  /**
+   * @generated from field: int64 icon_image_file_size_bytes = 5;
+   */
+  iconImageFileSizeBytes: bigint;
+
+  /**
+   * @generated from field: string icon_image_updated_at = 6;
+   */
+  iconImageUpdatedAt: string;
+
+  /**
+   * @generated from field: int32 published_series_count = 7;
+   */
+  publishedSeriesCount: number;
+};
+
+/**
+ * Describes the message publira.v1.PublishedAuthor.
+ * Use `create(PublishedAuthorSchema)` to create a new message.
+ */
+export const PublishedAuthorSchema: GenMessage<PublishedAuthor> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 8);
+
+/**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ * Sorted by creator name, then id. There is no order field: name order is the
+ * only list the storefront needs, and a later selectable order would have to
+ * carry its name in the token (see proto/README.md).
+ *
+ * @generated from message publira.v1.ListPublishedAuthorsRequest
+ */
+export type ListPublishedAuthorsRequest = Message<"publira.v1.ListPublishedAuthorsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 3;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.v1.ListPublishedAuthorsRequest.
+ * Use `create(ListPublishedAuthorsRequestSchema)` to create a new message.
+ */
+export const ListPublishedAuthorsRequestSchema: GenMessage<ListPublishedAuthorsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 9);
+
+/**
+ * @generated from message publira.v1.ListPublishedAuthorsResponse
+ */
+export type ListPublishedAuthorsResponse = Message<"publira.v1.ListPublishedAuthorsResponse"> & {
+  /**
+   * @generated from field: repeated publira.v1.PublishedAuthor authors = 1;
+   */
+  authors: PublishedAuthor[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.v1.ListPublishedAuthorsResponse.
+ * Use `create(ListPublishedAuthorsResponseSchema)` to create a new message.
+ */
+export const ListPublishedAuthorsResponseSchema: GenMessage<ListPublishedAuthorsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 10);
+
+/**
+ * @generated from message publira.v1.GetPublishedAuthorDetailRequest
+ */
+export type GetPublishedAuthorDetailRequest = Message<"publira.v1.GetPublishedAuthorDetailRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.v1.GetPublishedAuthorDetailRequest.
+ * Use `create(GetPublishedAuthorDetailRequestSchema)` to create a new message.
+ */
+export const GetPublishedAuthorDetailRequestSchema: GenMessage<GetPublishedAuthorDetailRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 11);
+
+/**
+ * @generated from message publira.v1.GetPublishedAuthorDetailResponse
+ */
+export type GetPublishedAuthorDetailResponse = Message<"publira.v1.GetPublishedAuthorDetailResponse"> & {
+  /**
+   * @generated from field: publira.v1.PublishedAuthor author = 1;
+   */
+  author?: PublishedAuthor | undefined;
+
+  /**
+   * Published series credited to this author, title ascending.
+   *
+   * @generated from field: repeated publira.types.v1.Series series = 2;
+   */
+  series: Series[];
+};
+
+/**
+ * Describes the message publira.v1.GetPublishedAuthorDetailResponse.
+ * Use `create(GetPublishedAuthorDetailResponseSchema)` to create a new message.
+ */
+export const GetPublishedAuthorDetailResponseSchema: GenMessage<GetPublishedAuthorDetailResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 12);
+
+/**
  * Sort order of a published series list.
  *
  * @generated from enum publira.v1.SeriesOrder
@@ -362,6 +524,27 @@ export const CatalogService: GenService<{
     methodKind: "unary";
     input: typeof GetEpisodeDetailRequestSchema;
     output: typeof GetEpisodeDetailResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.CatalogService.ListPublishedAuthors
+   */
+  listPublishedAuthors: {
+    methodKind: "unary";
+    input: typeof ListPublishedAuthorsRequestSchema;
+    output: typeof ListPublishedAuthorsResponseSchema;
+  },
+  /**
+   * Returns a creator only when they have at least one currently published
+   * series in the requested tenant. Cross-tenant, unpublished, and missing
+   * authors are all surfaced as NotFound so an unpublished author cannot be
+   * distinguished from one that does not exist.
+   *
+   * @generated from rpc publira.v1.CatalogService.GetPublishedAuthorDetail
+   */
+  getPublishedAuthorDetail: {
+    methodKind: "unary";
+    input: typeof GetPublishedAuthorDetailRequestSchema;
+    output: typeof GetPublishedAuthorDetailResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_catalog, 0);

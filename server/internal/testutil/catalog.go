@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/publira/publira/server/internal/publicid"
 )
 
 // Episode listing statuses, as stored in episode_listings.status. A seed that
@@ -126,6 +128,70 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 	}
 
 	return Series{ID: seriesID, PublicID: publicID, Title: title}
+}
+
+// Creator is a seeded creators row. The public catalog addresses an author by
+// public ID; the UUID is what series_creators hangs off.
+type Creator struct {
+	ID       uuid.UUID
+	PublicID string
+	Name     string
+}
+
+// CreatorSeed describes one creator to insert. The zero value is a nameless
+// unpublished author: they stay out of the public catalog until a published
+// series credits them.
+type CreatorSeed struct {
+	PublicID    string
+	Name        string
+	ProfileText string
+}
+
+// SeedCreator inserts a creator for the tenant. Uses the superuser connection,
+// which is not subject to RLS.
+func (e *PostgresEnv) SeedCreator(t *testing.T, tenantID uuid.UUID, seed CreatorSeed) Creator {
+	t.Helper()
+	e.requireDB(t)
+
+	creatorID := uuid.Must(uuid.NewV7())
+	publicID := seed.PublicID
+	if publicID == "" {
+		var err error
+		publicID, err = publicid.New()
+		if err != nil {
+			t.Fatalf("publicid.New: %v", err)
+		}
+	}
+	name := defaultIfEmpty(seed.Name, "Creator")
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	profileText := sql.NullString{String: seed.ProfileText, Valid: seed.ProfileText != ""}
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO creators (id, tenant_id, public_id, name, profile_text)
+		VALUES ($1, $2, $3, $4, $5)
+	`, creatorID, tenantID, publicID, name, profileText); err != nil {
+		t.Fatalf("insert creator %s: %v", publicID, err)
+	}
+
+	return Creator{ID: creatorID, PublicID: publicID, Name: name}
+}
+
+// SeedSeriesCreator credits the creator on the series. Role defaults to writer.
+func (e *PostgresEnv) SeedSeriesCreator(t *testing.T, tenantID, seriesID, creatorID uuid.UUID, role string) {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO series_creators (series_id, creator_id, role, display_order, tenant_id)
+		VALUES ($1, $2, $3, 0, $4)
+	`, seriesID, creatorID, defaultIfEmpty(role, "writer"), tenantID); err != nil {
+		t.Fatalf("insert series_creators series=%s creator=%s: %v", seriesID, creatorID, err)
+	}
 }
 
 // SeedEpisode inserts an episode of the series and the episode_listings row that
