@@ -35,6 +35,9 @@ type Runner struct {
 	maxRetries int
 	// publish, when set, replaces publishEpisode so tests can force a final failure.
 	publish func(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error
+	// notify, when set, replaces notifyMembersOfPublish so tests can force a
+	// failure after the listing is marked published and before commit.
+	notify func(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error
 }
 
 type episodePublishedPayload struct {
@@ -123,7 +126,6 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
 		)
-		r.notifyMembersOfPublish(ctx, row)
 		r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublished)
 		return
 	}
@@ -142,18 +144,20 @@ func (r *Runner) publishOne(ctx context.Context, row dbmodels.ListEpisodesReadyT
 	if r.publish != nil {
 		return r.publish(ctx, row)
 	}
-	return r.publishEpisode(ctx, row.EpisodeID, row.TenantID.String(), row.TenantDomain)
+	return r.publishEpisode(ctx, row)
 }
 
-func (r *Runner) notifyMembersOfPublish(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) {
-	members, err := r.queries.ListTenantMemberIDs(ctx, row.TenantID)
+func (r *Runner) notifyMembers(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+	if r.notify != nil {
+		return r.notify(ctx, q, row)
+	}
+	return r.notifyMembersOfPublish(ctx, q, row)
+}
+
+func (r *Runner) notifyMembersOfPublish(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+	members, err := q.ListTenantMemberIDs(ctx, row.TenantID)
 	if err != nil {
-		r.logger.Error("failed to list members for publish notification",
-			"episode_id", row.EpisodeID,
-			"tenant_id", row.TenantID.String(),
-			"error", err,
-		)
-		return
+		return fmt.Errorf("list members: %w", err)
 	}
 
 	payload, err := json.Marshal(episodePublishedPayload{
@@ -163,26 +167,16 @@ func (r *Runner) notifyMembersOfPublish(ctx context.Context, row dbmodels.ListEp
 		SeriesTitle:  row.SeriesTitle,
 	})
 	if err != nil {
-		r.logger.Error("failed to encode publish notification payload",
-			"episode_id", row.EpisodeID,
-			"tenant_id", row.TenantID.String(),
-			"error", err,
-		)
-		return
+		return fmt.Errorf("encode payload: %w", err)
 	}
 
 	subjectKey := "episode:" + row.EpisodePublicID
 	for _, memberID := range members {
 		notificationID, err := uuid.NewV7()
 		if err != nil {
-			r.logger.Error("failed to allocate publish notification id",
-				"episode_id", row.EpisodeID,
-				"user_id", memberID,
-				"error", err,
-			)
-			continue
+			return fmt.Errorf("allocate notification id: %w", err)
 		}
-		_, err = r.queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+		_, err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 			ID:               notificationID,
 			TenantID:         row.TenantID,
 			UserID:           memberID,
@@ -191,13 +185,10 @@ func (r *Runner) notifyMembersOfPublish(ctx context.Context, row dbmodels.ListEp
 			Payload:          payload,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			r.logger.Error("failed to insert publish notification",
-				"episode_id", row.EpisodeID,
-				"user_id", memberID,
-				"error", err,
-			)
+			return fmt.Errorf("insert notification for %s: %w", memberID, err)
 		}
 	}
+	return nil
 }
 
 func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow, notificationType string) {
@@ -315,16 +306,20 @@ func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmode
 	}
 }
 
-func (r *Runner) publishEpisode(ctx context.Context, episodeID uuid.UUID, tenantID, tenantDomain string) error {
+func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 
 	qtx := r.queries.WithTx(tx)
-	if err := qtx.MarkEpisodePublished(ctx, episodeID); err != nil {
+	if err := qtx.MarkEpisodePublished(ctx, row.EpisodeID); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("mark episode published: %w", err)
+	}
+	if err := r.notifyMembers(ctx, qtx, row); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("notify members: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -332,12 +327,13 @@ func (r *Runner) publishEpisode(ctx context.Context, episodeID uuid.UUID, tenant
 	}
 
 	if r.reval != nil {
+		tenantID := row.TenantID.String()
 		tags := []string{
 			fmt.Sprintf("tenant:%s:series:detail", tenantID),
 		}
-		if err := r.reval.RevalidateTags(ctx, tenantID, tenantDomain, tags); err != nil {
+		if err := r.reval.RevalidateTags(ctx, tenantID, row.TenantDomain, tags); err != nil {
 			r.logger.Warn("failed to revalidate after episode publish",
-				"episode_id", episodeID,
+				"episode_id", row.EpisodeID,
 				"tenant_id", tenantID,
 				"error", err,
 			)

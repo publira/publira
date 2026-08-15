@@ -92,7 +92,36 @@ func TestPublishSuccessNotifiesEachMemberOnce(t *testing.T) {
 	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
 
 	r.RunOnce(ctx)
-	r.notifyMembersOfPublish(ctx, env.readyRow())
+	if err := r.notifyMembersOfPublish(ctx, dbmodels.New(pg.DB), env.readyRow()); err != nil {
+		t.Fatalf("notifyMembersOfPublish: %v", err)
+	}
+	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
+}
+
+func TestPublishRetriesMemberNotificationsAfterInsertFailure(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	otherMember := pg.SeedEndUser(t, env.tenant.ID, "MEMBERFAIL02", "member2@fail.example.com", "Member Two")
+	r := env.runner()
+	r.maxRetries = 1
+	attempts := 0
+	r.notify = func(ctx context.Context, q *dbmodels.Queries, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+		attempts++
+		if attempts == 1 {
+			return errors.New("insert boom")
+		}
+		return r.notifyMembersOfPublish(ctx, q, row)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	if attempts != 2 {
+		t.Fatalf("notify attempts = %d, want 2", attempts)
+	}
+	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusPublished {
+		t.Fatalf("listing status = %q, want %s", got, testutil.EpisodeStatusPublished)
+	}
 	assertMemberPublishedNotifications(t, pg, env, env.member.ID, otherMember.ID, env.admin.ID)
 }
 
