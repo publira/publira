@@ -4,6 +4,8 @@ packages:
   - e2e
 
 allowBuilds:
+  # react-email ships an esbuild binary for its preview CLI.
+  esbuild: true
   sharp: true
 
 catalog:
@@ -20,6 +22,7 @@ catalog:
   next: 16.3.0
   react: 19.2.8
   react-dom: 19.2.8
+  react-email: 6.9.2
   react-markdown: 10.1.0
   redis: 6.2.1
   tailwindcss: 4.3.3
