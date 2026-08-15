@@ -147,6 +147,28 @@ describe("listPlatformOperators", () => {
 });
 
 describe("getPlatformOperator", () => {
+  it("不正な入力は RPC を呼ばずに null を返す", async () => {
+    await expect(getPlatformOperator("   ")).resolves.toBeNull();
+    expect(mockGetOperator).not.toHaveBeenCalled();
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("前後の空白を除いて GetOperator に渡す", async () => {
+    mockGetOperator.mockResolvedValueOnce(
+      createGetOperatorResponse(createOperator())
+    );
+
+    await expect(getPlatformOperator("  OPERATOR001  ")).resolves.toMatchObject(
+      {
+        publicId: "OPERATOR001",
+      }
+    );
+    expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
+      { publicId: "OPERATOR001" },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
   it("一覧を走査せず GetOperator を1回だけ呼ぶ", async () => {
     mockGetOperator.mockResolvedValueOnce(
       createGetOperatorResponse(
