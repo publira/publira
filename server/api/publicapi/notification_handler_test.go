@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"math"
 	"regexp"
 	"testing"
@@ -98,6 +99,28 @@ func TestNotificationListSuccess(t *testing.T) {
 		t.Fatal("is_read = true, want false")
 	}
 
+	assertPublicExpectations(t, mock)
+}
+
+func TestNotificationListDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock := newNotificationClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(listNotificationsForUserDescQuery)).
+		WithArgs(userID, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WillReturnError(errors.New(`pq: relation "notifications" does not exist`))
+
+	_, err := client.ListNotifications(context.Background(), newAuthedPublicRequest(&publirav1.ListNotificationsRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, tenantID.String()))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListNotifications code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
 	assertPublicExpectations(t, mock)
 }
 
