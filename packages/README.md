@@ -6,6 +6,7 @@ Node.js 側で共有するパッケージ群です。
 
 - `api-client/`: 公開 API 向け ConnectRPC TypeScript クライアント (`task gen` で再生成)
 - `brand/`: Web 向けブランドトークン (`theme.css`)
+- `email-templates/`: React Email の共通レイアウトとテンプレート（`email-renderer` が HTML/テキスト化する）
 - `layouts/`: 複数 Web アプリで共有するレイアウトコンポーネント
 - `next-cache-handlers/`: Redis 共有の Next.js `cacheHandler` / `cacheHandlers`（self-host multi-instance 用）
 - `tsconfig/`: ワークスペース共通 TypeScript 設定

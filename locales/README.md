@@ -31,28 +31,20 @@
 ### TypeScript（`@publira/utils/i18n`）
 
 ```ts
-import {
-  loadMessages,
-  type ExactCatalog,
-  type Locale,
-} from "@publira/utils/i18n";
-import en from "../../locales/en.json";
-import ja from "../../locales/ja.json";
+import { loadMessages, type Locale } from "@publira/utils/i18n";
+
+import type ja from "../../locales/ja.json";
 
 export type Messages = typeof ja;
 
-// 欠け・余剰は型エラー。`satisfies Messages` はオブジェクトリテラル向け。
-// JSON import には構造的型付けで余剰キーが通るので ExactCatalog を使う。
-const _en: ExactCatalog<typeof en, Messages> = en;
-
 export const loadCatalog = (locale: Locale) =>
   loadMessages<Messages>(locale, {
-    en: () => import("../../locales/en.json"),
-    ja: () => import("../../locales/ja.json"),
+    en: () => import("../../locales/en.json", { with: { type: "json" } }),
+    ja: () => import("../../locales/ja.json", { with: { type: "json" } }),
   });
 ```
 
-`import()` のパスはテンプレート文字列にしないでください。バンドラがロケール分を全部束ねます。
+JSON は import attributes（`with { type: "json" }`）を付けます。`import()` のパスはテンプレート文字列にしないでください。バンドラがロケール分を全部束ねます。欠け・余剰キーの検査は `packages/utils` の `ExactCatalog` テストがルートカタログ全体に対して行います。
 
 ### Go
 
