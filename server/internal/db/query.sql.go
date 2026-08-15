@@ -1160,19 +1160,25 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 }
 
 const createTenantUserRole = `-- name: CreateTenantUserRole :one
-INSERT INTO tenant_user_roles (id, user_id, role)
-VALUES ($1, $2, $3)
+INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
+VALUES ($1, $2, $3, $4)
 RETURNING id, user_id, role, created_at, tenant_id
 `
 
 type CreateTenantUserRoleParams struct {
-	ID     uuid.UUID `json:"id"`
-	UserID uuid.UUID `json:"user_id"`
-	Role   string    `json:"role"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	Role     string    `json:"role"`
 }
 
 func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error) {
-	row := q.db.QueryRowContext(ctx, createTenantUserRole, arg.ID, arg.UserID, arg.Role)
+	row := q.db.QueryRowContext(ctx, createTenantUserRole,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.Role,
+	)
 	var i TenantUserRole
 	err := row.Scan(
 		&i.ID,

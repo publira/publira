@@ -366,7 +366,7 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testCreateTenantUserRoleQuery)).
-		WithArgs(sqlmock.AnyArg(), targetUserID, "tenant_admin").
+		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
 	mock.ExpectCommit()
@@ -410,7 +410,7 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(testCreateTenantUserRoleQuery)).
-		WithArgs(sqlmock.AnyArg(), targetUserID, "tenant_admin").
+		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_admin", now, tenantID))
 	mock.ExpectCommit()
@@ -541,7 +541,7 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 		WithArgs(targetUserID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectQuery(regexp.QuoteMeta(testCreateTenantUserRoleQuery)).
-		WithArgs(sqlmock.AnyArg(), targetUserID, "tenant_editor").
+		WithArgs(sqlmock.AnyArg(), tenantID, targetUserID, "tenant_editor").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "role", "created_at", "tenant_id"}).
 			AddRow(uuid.Must(uuid.NewV7()), targetUserID, "tenant_editor", now, tenantID))
 	mock.ExpectCommit()

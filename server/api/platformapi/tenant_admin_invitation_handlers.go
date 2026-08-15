@@ -186,14 +186,15 @@ func (s *platformServer) sendTenantAdminInvitationEmail(ctx context.Context, ten
 	return nil
 }
 
-func ensureTenantAdminRole(ctx context.Context, txq *dbmodels.Queries, userID uuid.UUID) error {
+func ensureTenantAdminRole(ctx context.Context, txq *dbmodels.Queries, tenantID, userID uuid.UUID) error {
 	if err := txq.DeleteTenantUserRolesByUserID(ctx, userID); err != nil {
 		return err
 	}
 	_, err := txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
-		ID:     uuid.Must(uuid.NewV7()),
-		UserID: userID,
-		Role:   auth.RoleTenantAdmin,
+		ID:       uuid.Must(uuid.NewV7()),
+		TenantID: tenantID,
+		UserID:   userID,
+		Role:     auth.RoleTenantAdmin,
 	})
 	return err
 }
@@ -327,7 +328,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		defer tx.Rollback() //nolint:errcheck
 
 		txq := dbmodels.New(tx)
-		if err := ensureTenantAdminRole(ctx, txq, user.ID); err != nil {
+		if err := ensureTenantAdminRole(ctx, txq, tenant.ID, user.ID); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		if err := tx.Commit(); err != nil {

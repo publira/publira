@@ -132,13 +132,13 @@ func (e *PostgresEnv) SeedTenantUser(t *testing.T, tenantID uuid.UUID, publicID,
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// tenant_user_roles.tenant_id has no default, so the row is inserted
-	// directly rather than through CreateTenantUserRole.
-	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
-		VALUES ($1, $2, $3, $4)
-	`, uuid.Must(uuid.NewV7()), tenantID, user.ID, role); err != nil {
-		t.Fatalf("insert tenant_user_roles for %s: %v", user.PublicID, err)
+	if _, err := dbmodels.New(e.DB).CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
+		ID:       uuid.Must(uuid.NewV7()),
+		TenantID: tenantID,
+		UserID:   user.ID,
+		Role:     role,
+	}); err != nil {
+		t.Fatalf("CreateTenantUserRole for %s: %v", user.PublicID, err)
 	}
 
 	user.Role = role

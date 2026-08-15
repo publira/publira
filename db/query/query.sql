@@ -567,8 +567,8 @@ VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: CreateTenantUserRole :one
-INSERT INTO tenant_user_roles (id, user_id, role)
-VALUES ($1, $2, $3)
+INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: ListTenantUserRoles :many
