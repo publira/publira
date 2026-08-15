@@ -8,6 +8,10 @@ import { z } from "zod";
 
 import { requestPublicPasswordReset } from "#lib/auth";
 import { emailFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import {
+  RESET_PASSWORD_REQUESTED_EMAIL_COOKIE,
+  setEmailFlashCookie,
+} from "#lib/email-flash-cookie";
 
 const requestPasswordResetFormSchema = z.object({
   email: emailFormSchema,
@@ -40,6 +44,6 @@ export const requestPasswordResetAction = async (
     };
   }
 
-  const params = new URLSearchParams({ email });
-  redirect(`/reset-password/requested?${params.toString()}`);
+  await setEmailFlashCookie(RESET_PASSWORD_REQUESTED_EMAIL_COOKIE, email);
+  redirect("/reset-password/requested");
 };

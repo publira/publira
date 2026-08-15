@@ -4,7 +4,6 @@ import {
   authTokenFormSchema,
   authTokenSearchParamSchema,
   emailFormSchema,
-  emailSearchParamSchema,
   errorSearchParamSchema,
   passwordFormSchema,
   returnToFormSchema,
@@ -72,16 +71,6 @@ describe("authTokenFormSchema", () => {
     expect(authTokenFormSchema.safeParse(null).success).toBe(false);
     expect(authTokenFormSchema.safeParse("short").success).toBe(false);
     expect(authTokenFormSchema.parse(VALID_TOKEN)).toBe(VALID_TOKEN);
-  });
-});
-
-describe("emailSearchParamSchema", () => {
-  it("keeps a well-formed email and hides anything else", () => {
-    expect(emailSearchParamSchema.parse("user@example.com")).toBe(
-      "user@example.com"
-    );
-    expect(emailSearchParamSchema.parse("not-an-email")).toBe("");
-    expect(emailSearchParamSchema.parse(null)).toBe("");
   });
 });
 

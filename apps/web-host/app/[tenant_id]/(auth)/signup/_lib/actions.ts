@@ -12,6 +12,10 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import {
+  setEmailFlashCookie,
+  SIGNUP_PENDING_EMAIL_COOKIE,
+} from "#lib/email-flash-cookie";
 
 const signupFormSchema = z
   .object({
@@ -63,8 +67,8 @@ export const signupAction = async (
   }
 
   if (result.pendingVerification) {
-    const params = new URLSearchParams({ email });
-    redirect(`/signup/pending?${params.toString()}`);
+    await setEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE, email);
+    redirect("/signup/pending");
   }
 
   redirect("/my");
