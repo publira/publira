@@ -106,7 +106,7 @@ func (s *platformServer) ListEndUsers(
 	req *connect.Request[publirasplatformv1.ListEndUsersRequest],
 ) (*connect.Response[publirasplatformv1.ListEndUsersResponse], error) {
 	// Platform管理権限チェック
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
 		return nil, err
 	}
 
@@ -172,7 +172,7 @@ func (s *platformServer) GetEndUser(
 	req *connect.Request[publirasplatformv1.GetEndUserRequest],
 ) (*connect.Response[publirasplatformv1.GetEndUserResponse], error) {
 	// Platform管理権限チェック
-	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+	if _, err := s.requirePlatformActor(ctx, req.Header()); err != nil {
 		return nil, err
 	}
 
@@ -204,7 +204,7 @@ func (s *platformServer) SuspendEndUser(
 	req *connect.Request[publirasplatformv1.SuspendEndUserRequest],
 ) (*connect.Response[publirasplatformv1.SuspendEndUserResponse], error) {
 	// Platform管理権限チェック
-	_, actorUser, actorRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -238,8 +238,8 @@ func (s *platformServer) SuspendEndUser(
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: actorUser.ID,
-		ActorRole:           actorRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "user_suspended",
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
@@ -257,7 +257,7 @@ func (s *platformServer) UnsuspendEndUser(
 	req *connect.Request[publirasplatformv1.UnsuspendEndUserRequest],
 ) (*connect.Response[publirasplatformv1.UnsuspendEndUserResponse], error) {
 	// Platform管理権限チェック
-	_, actorUser, actorRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -289,8 +289,8 @@ func (s *platformServer) UnsuspendEndUser(
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: actorUser.ID,
-		ActorRole:           actorRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "user_activated",
 		TargetType:          "user",
 		TargetID:            updated.ID.String(),
@@ -308,7 +308,7 @@ func (s *platformServer) DeleteEndUser(
 	req *connect.Request[publirasplatformv1.DeleteEndUserRequest],
 ) (*connect.Response[publirasplatformv1.DeleteEndUserResponse], error) {
 	// Platform管理権限チェック
-	_, actorUser, actorRole, err := s.authenticatePlatformSession(ctx, "", req.Header())
+	actor, err := s.requirePlatformWriteActor(ctx, req.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -329,8 +329,8 @@ func (s *platformServer) DeleteEndUser(
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{
-		ActorPlatformUserID: actorUser.ID,
-		ActorRole:           actorRole,
+		ActorPlatformUserID: actor.UserID,
+		ActorRole:           actor.Role,
 		Action:              "user_deleted",
 		TargetType:          "user",
 		TargetID:            user.ID.String(),

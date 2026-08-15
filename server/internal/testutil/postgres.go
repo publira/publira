@@ -308,6 +308,12 @@ func (e *PostgresEnv) SeedPlatformSuperAdmin(t *testing.T, publicID, email, name
 	return e.seedPlatformUser(t, publicID, email, name, auth.RolePlatformSuperAdmin)
 }
 
+// SeedPlatformAuditor inserts an active read-only platform_auditor user.
+func (e *PostgresEnv) SeedPlatformAuditor(t *testing.T, publicID, email, name string) PlatformOperator {
+	t.Helper()
+	return e.seedPlatformUser(t, publicID, email, name, auth.RolePlatformAuditor)
+}
+
 func (e *PostgresEnv) seedPlatformUser(t *testing.T, publicID, email, name, role string) PlatformOperator {
 	t.Helper()
 	if e.DB == nil {

@@ -115,6 +115,11 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 				return nil, err
 			}
 			ctx = context.WithValue(ctx, platformActorContextKey{}, platformActor{UserID: user.ID, Role: role, Email: user.Email})
+			if isPlatformWriteProcedure(req.Spec().Procedure) {
+				if err := ensurePlatformWriteRole(role); err != nil {
+					return nil, err
+				}
+			}
 			return next(ctx, req)
 		}
 	})
@@ -136,7 +141,10 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(settingsPath, settingsHandler)
-	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(server)
+	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(
+		server,
+		connect.WithInterceptors(authInterceptor),
+	)
 	mux.Handle(operatorPath, operatorHandler)
 	notificationPath, notificationHandler := publirasplatformv1connect.NewPlatformNotificationServiceHandler(
 		server,
@@ -149,7 +157,10 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 	setupPath, setupHandler := publirasplatformv1connect.NewPlatformSetupServiceHandler(server)
 	mux.Handle(setupPath, setupHandler)
 	// エンドユーザー管理サービス
-	userPath, userHandler := publirasplatformv1connect.NewPlatformUserServiceHandler(server)
+	userPath, userHandler := publirasplatformv1connect.NewPlatformUserServiceHandler(
+		server,
+		connect.WithInterceptors(authInterceptor),
+	)
 	mux.Handle(userPath, userHandler)
 	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(server)
 	mux.Handle(dashboardPath, dashboardHandler)
