@@ -42,7 +42,10 @@ test.describe("web-admin access tickets", () => {
     ).toBeVisible();
     await expect(page.getByText("SeedTCKTAAA1")).toBeVisible();
     await expect(
-      page.getByRole("row").filter({ hasText: "SeedTCKTAAA1" }).getByText("有効")
+      page
+        .getByRole("row")
+        .filter({ hasText: "SeedTCKTAAA1" })
+        .getByText("有効")
     ).toBeVisible();
 
     const note = `e2e access ticket ${uniqueSuffix()}`;
