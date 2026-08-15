@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/label.proto.
  */
 export const file_publira_admin_v1_label: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2xhYmVsLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxInAKEUxpc3RMYWJlbHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgEIAEoCUoECAMQBFIGb2Zmc2V0ImkKEkxpc3RMYWJlbHNSZXNwb25zZRInCgZsYWJlbHMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkilwEKEkNyZWF0ZUxhYmVsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgDIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAQgASgJIj0KE0NyZWF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsIskBChJVcGRhdGVMYWJlbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIMCgRuYW1lGAMgASgJEhwKFGV5ZV9jYXRjaF9pbWFnZV9kYXRhGAQgASgMEiQKHGV5ZV9jYXRjaF9pbWFnZV9jb250ZW50X3R5cGUYBSABKAkSHQoVY2xlYXJfZXllX2NhdGNoX2ltYWdlGAYgASgIIj0KE1VwZGF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsMqoCChFBZG1pbkxhYmVsU2VydmljZRJZCgpMaXN0TGFiZWxzEiMucHVibGlyYS5hZG1pbi52MS5MaXN0TGFiZWxzUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuTGlzdExhYmVsc1Jlc3BvbnNlIgASXAoLQ3JlYXRlTGFiZWwSJC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUxhYmVsUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlTGFiZWxSZXNwb25zZSIAElwKC1VwZGF0ZUxhYmVsEiQucHVibGlyYS5hZG1pbi52MS5VcGRhdGVMYWJlbFJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZUxhYmVsUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2xhYmVsLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxInAKEUxpc3RMYWJlbHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgEIAEoCUoECAMQBFIGb2Zmc2V0ImkKEkxpc3RMYWJlbHNSZXNwb25zZRInCgZsYWJlbHMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiVQoPR2V0TGFiZWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkiOgoQR2V0TGFiZWxSZXNwb25zZRImCgVsYWJlbBgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwilwEKEkNyZWF0ZUxhYmVsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgCIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgDIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAQgASgJIj0KE0NyZWF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsIskBChJVcGRhdGVMYWJlbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCRIMCgRuYW1lGAMgASgJEhwKFGV5ZV9jYXRjaF9pbWFnZV9kYXRhGAQgASgMEiQKHGV5ZV9jYXRjaF9pbWFnZV9jb250ZW50X3R5cGUYBSABKAkSHQoVY2xlYXJfZXllX2NhdGNoX2ltYWdlGAYgASgIIj0KE1VwZGF0ZUxhYmVsUmVzcG9uc2USJgoFbGFiZWwYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkxhYmVsMv8CChFBZG1pbkxhYmVsU2VydmljZRJZCgpMaXN0TGFiZWxzEiMucHVibGlyYS5hZG1pbi52MS5MaXN0TGFiZWxzUmVxdWVzdBokLnB1YmxpcmEuYWRtaW4udjEuTGlzdExhYmVsc1Jlc3BvbnNlIgASUwoIR2V0TGFiZWwSIS5wdWJsaXJhLmFkbWluLnYxLkdldExhYmVsUmVxdWVzdBoiLnB1YmxpcmEuYWRtaW4udjEuR2V0TGFiZWxSZXNwb25zZSIAElwKC0NyZWF0ZUxhYmVsEiQucHVibGlyYS5hZG1pbi52MS5DcmVhdGVMYWJlbFJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUxhYmVsUmVzcG9uc2UiABJcCgtVcGRhdGVMYWJlbBIkLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlTGFiZWxSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVMYWJlbFJlc3BvbnNlIgBCR1pFZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -79,6 +79,45 @@ export const ListLabelsResponseSchema: GenMessage<ListLabelsResponse> = /*@__PUR
   messageDesc(file_publira_admin_v1_label, 1);
 
 /**
+ * @generated from message publira.admin.v1.GetLabelRequest
+ */
+export type GetLabelRequest = Message<"publira.admin.v1.GetLabelRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetLabelRequest.
+ * Use `create(GetLabelRequestSchema)` to create a new message.
+ */
+export const GetLabelRequestSchema: GenMessage<GetLabelRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_label, 2);
+
+/**
+ * @generated from message publira.admin.v1.GetLabelResponse
+ */
+export type GetLabelResponse = Message<"publira.admin.v1.GetLabelResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.Label label = 1;
+   */
+  label?: Label | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetLabelResponse.
+ * Use `create(GetLabelResponseSchema)` to create a new message.
+ */
+export const GetLabelResponseSchema: GenMessage<GetLabelResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_label, 3);
+
+/**
  * @generated from message publira.admin.v1.CreateLabelRequest
  */
 export type CreateLabelRequest = Message<"publira.admin.v1.CreateLabelRequest"> & {
@@ -108,7 +147,7 @@ export type CreateLabelRequest = Message<"publira.admin.v1.CreateLabelRequest"> 
  * Use `create(CreateLabelRequestSchema)` to create a new message.
  */
 export const CreateLabelRequestSchema: GenMessage<CreateLabelRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_label, 2);
+  messageDesc(file_publira_admin_v1_label, 4);
 
 /**
  * @generated from message publira.admin.v1.CreateLabelResponse
@@ -125,7 +164,7 @@ export type CreateLabelResponse = Message<"publira.admin.v1.CreateLabelResponse"
  * Use `create(CreateLabelResponseSchema)` to create a new message.
  */
 export const CreateLabelResponseSchema: GenMessage<CreateLabelResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_label, 3);
+  messageDesc(file_publira_admin_v1_label, 5);
 
 /**
  * @generated from message publira.admin.v1.UpdateLabelRequest
@@ -167,7 +206,7 @@ export type UpdateLabelRequest = Message<"publira.admin.v1.UpdateLabelRequest"> 
  * Use `create(UpdateLabelRequestSchema)` to create a new message.
  */
 export const UpdateLabelRequestSchema: GenMessage<UpdateLabelRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_label, 4);
+  messageDesc(file_publira_admin_v1_label, 6);
 
 /**
  * @generated from message publira.admin.v1.UpdateLabelResponse
@@ -184,7 +223,7 @@ export type UpdateLabelResponse = Message<"publira.admin.v1.UpdateLabelResponse"
  * Use `create(UpdateLabelResponseSchema)` to create a new message.
  */
 export const UpdateLabelResponseSchema: GenMessage<UpdateLabelResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_label, 5);
+  messageDesc(file_publira_admin_v1_label, 7);
 
 /**
  * @generated from service publira.admin.v1.AdminLabelService
@@ -197,6 +236,14 @@ export const AdminLabelService: GenService<{
     methodKind: "unary";
     input: typeof ListLabelsRequestSchema;
     output: typeof ListLabelsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.AdminLabelService.GetLabel
+   */
+  getLabel: {
+    methodKind: "unary";
+    input: typeof GetLabelRequestSchema;
+    output: typeof GetLabelResponseSchema;
   },
   /**
    * @generated from rpc publira.admin.v1.AdminLabelService.CreateLabel

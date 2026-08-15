@@ -3,10 +3,7 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import {
-  findByPublicIdWithToken,
-  forEachPageWithToken,
-} from "@publira/api-client/pagination";
+import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -354,31 +351,23 @@ export const getLabel = async (input: {
   }
 
   try {
-    // `label.proto` has no `GetLabel`, so walk the cursor pages until the
-    // requested record is found.
-    const label = await findByPublicIdWithToken(
-      input.publicId,
-      async (token, limit) => {
-        const response = await apiClient.label.listLabels(
-          {
-            limit,
-            tenant: { tenantId: input.tenantId },
-            token,
-          },
-          withSessionHeaders(sessionId)
-        );
-        return {
-          items: response.labels,
-          nextToken: response.nextToken,
-        };
-      }
+    const response = await apiClient.label.getLabel(
+      {
+        publicId: input.publicId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
     );
-    if (!label) {
-      return { notFound: true, ok: false };
+
+    if (!response.label?.publicId?.trim()) {
+      return {
+        message: genericListErrorMessage,
+        ok: false,
+      };
     }
 
     return {
-      label: mapLabel(label),
+      label: mapLabel(response.label),
       ok: true,
     };
   } catch (error) {

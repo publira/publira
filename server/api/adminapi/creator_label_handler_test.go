@@ -20,11 +20,12 @@ import (
 )
 
 const (
-	listCreatorsByTenantAscQuery       = "-- name: ListCreatorsByTenantAsc :many\n"
-	listCreatorsByTenantDescQuery      = "-- name: ListCreatorsByTenantDesc :many\n"
-	getCreatorByPublicIDForTenantQuery = "-- name: GetCreatorByPublicIDForTenant :one\n"
-	listLabelsByTenantAscQuery         = "-- name: ListLabelsByTenantAsc :many\n"
-	listLabelsByTenantDescQuery        = "-- name: ListLabelsByTenantDesc :many\n"
+	listCreatorsByTenantAscQuery          = "-- name: ListCreatorsByTenantAsc :many\n"
+	listCreatorsByTenantDescQuery         = "-- name: ListCreatorsByTenantDesc :many\n"
+	getCreatorByPublicIDForTenantQuery    = "-- name: GetCreatorByPublicIDForTenant :one\n"
+	listLabelsByTenantAscQuery            = "-- name: ListLabelsByTenantAsc :many\n"
+	listLabelsByTenantDescQuery           = "-- name: ListLabelsByTenantDesc :many\n"
+	listLabelImageVariantsByImageIDsQuery = "-- name: ListLabelImageVariantsByImageIDs :many\n"
 )
 
 func creatorColumns() *sqlmock.Rows {
@@ -615,6 +616,157 @@ func TestGetCreatorDatabaseErrorIsHidden(t *testing.T) {
 	_, err := client.GetCreator(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("GetCreator code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestGetLabelSuccessAndNotFound(t *testing.T) {
+	tests := []struct {
+		name        string
+		publicID    string
+		rows        *sqlmock.Rows
+		wantCode    connect.Code
+		wantLabelID string
+	}{
+		{
+			name:     "normal",
+			publicID: "LABEL001",
+			rows: sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+				AddRow(uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), "LABEL001", "Weekly", time.Now(), nil, nil),
+			wantLabelID: "LABEL001",
+		},
+		{
+			// Another tenant's label is filtered out by tenant_id, so it is
+			// indistinguishable from a missing one.
+			name:     "cross-tenant",
+			publicID: "LABEL_OTHER_TENANT",
+			rows:     sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}),
+			wantCode: connect.CodeNotFound,
+		},
+		{
+			name:     "not-found",
+			publicID: "LABEL_MISSING",
+			rows:     sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}),
+			wantCode: connect.CodeNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAdminServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now()
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+			mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+				WithArgs(tenantID, tc.publicID).
+				WillReturnRows(tc.rows)
+
+			client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+			req := connect.NewRequest(&publiraadminv1.GetLabelRequest{
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				PublicId: tc.publicID,
+			})
+			req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+			resp, err := client.GetLabel(context.Background(), req)
+			if tc.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("GetLabel: %v", err)
+				}
+				if resp.Msg.Label == nil {
+					t.Fatalf("label is nil")
+				}
+				if resp.Msg.Label.PublicId != tc.wantLabelID {
+					t.Fatalf("label public_id = %q, want %q", resp.Msg.Label.PublicId, tc.wantLabelID)
+				}
+			} else if connect.CodeOf(err) != tc.wantCode {
+				t.Fatalf("GetLabel code = %v, want %v", connect.CodeOf(err), tc.wantCode)
+			}
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestGetLabelReturnsEyeCatchVariants(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, imageID, now))
+	mock.ExpectQuery(regexp.QuoteMeta(listLabelImageVariantsByImageIDsQuery)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"label_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(imageID, "square", "md", "image/webp", int64(2048), int32(512), int32(512)))
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetLabelRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "LABEL001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.GetLabel(context.Background(), req)
+	if err != nil {
+		t.Fatalf("GetLabel: %v", err)
+	}
+	if resp.Msg.Label == nil {
+		t.Fatalf("label is nil")
+	}
+	if got := len(resp.Msg.Label.EyeCatchImageVariants); got != 1 {
+		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
+	}
+	variant := resp.Msg.Label.EyeCatchImageVariants[0]
+	if variant.Url == "" {
+		t.Fatalf("eye_catch_image_variants url is empty")
+	}
+	if variant.Label != "md" || variant.VariantType != "square" {
+		t.Fatalf("variant = %+v, want square/md", variant)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestGetLabelDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "LABEL001").
+		WillReturnError(errors.New(`pq: relation "labels" does not exist`))
+
+	client := publiraadminv1connect.NewAdminLabelServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetLabelRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "LABEL001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetLabel(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetLabel code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
 	if err.Error() != "internal: internal server error" {
 		t.Fatalf("error = %q, want database details hidden", err)

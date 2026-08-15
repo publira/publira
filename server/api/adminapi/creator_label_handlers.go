@@ -606,6 +606,35 @@ func (s *adminServer) ListLabels(
 	return connect.NewResponse(res), nil
 }
 
+func (s *adminServer) GetLabel(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetLabelRequest],
+) (*connect.Response[publiraadminv1.GetLabelResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	// Another tenant's label is filtered out by the query's tenant_id, so it
+	// lands on the same not_found as a missing one and never leaks that the
+	// record exists.
+	row, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
+		}
+		return nil, s.internalDBError("failed to get label", err, "tenant_id", tenant.ID.String())
+	}
+	var variants []*publirattypesv1.SeriesEyeCatchVariant
+	if row.EyeCatchImageID.Valid {
+		variantsByImageID, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		if variantErr != nil {
+			return nil, variantErr
+		}
+		variants = variantsByImageID[row.EyeCatchImageID.UUID]
+	}
+	return connect.NewResponse(&publiraadminv1.GetLabelResponse{Label: protomapper.LabelWithImage(row.PublicID, row.Name, row.EyeCatchImageUpdatedAt, variants)}), nil
+}
+
 func (s *adminServer) CreateCreator(
 	ctx context.Context,
 	req *connect.Request[publiraadminv1.CreateCreatorRequest],
