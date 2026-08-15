@@ -82,12 +82,16 @@ type Querier interface {
 	GetActiveAccessTicketForUserEpisode(ctx context.Context, arg GetActiveAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
+	GetContentDailyStatsByEntity(ctx context.Context, arg GetContentDailyStatsByEntityParams) (ContentDailyStat, error)
+	GetContentEventByID(ctx context.Context, id uuid.UUID) (ContentEvent, error)
+	GetContentRankingSnapshot(ctx context.Context, arg GetContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
+	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
@@ -142,10 +146,36 @@ type Querier interface {
 	// ユーザーの通知設定を取得
 	GetUserNotificationSettings(ctx context.Context, userID uuid.UUID) (UserNotificationSetting, error)
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
+	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	// テナント操作監査ログを記録する
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	// Engagement / recommend query skeleton (#589).
+	// Later issues fill handlers and batches; these queries pin the index-backed
+	// shapes so sqlc generates now and EXPLAIN stays checkable.
+	//
+	// Expected plans (empty table may still seq-scan; SET enable_seqscan = off
+	// in the integration test to confirm the index is eligible):
+	//   ListContentEventsByTenantOccurredAt
+	//     -> idx_content_events_tenant_occurred_at
+	//   ListContentEventsByTenantTypeOccurredAt
+	//     -> idx_content_events_tenant_type_occurred_at
+	//   GetContentDailyStatsByEntity
+	//     -> idx_content_daily_stats_unique / idx_content_daily_stats_tenant_entity
+	//   GetContentRankingSnapshot
+	//     -> idx_content_ranking_snapshots_unique
+	//   InsertDebouncedEpisodeViewEvent
+	//     -> idx_content_events_episode_view_debounce
+	//   InsertProjectedSourceEvent
+	//     -> idx_content_events_source_unique
+	InsertContentEvent(ctx context.Context, arg InsertContentEventParams) (ContentEvent, error)
+	// Fixed 30-minute epoch bucket. Same actor + episode + bucket is a no-op.
+	// :one returns no rows on conflict (same as CreateNotification).
+	InsertDebouncedEpisodeViewEvent(ctx context.Context, arg InsertDebouncedEpisodeViewEventParams) (ContentEvent, error)
+	InsertDebouncedSeriesViewEvent(ctx context.Context, arg InsertDebouncedSeriesViewEventParams) (ContentEvent, error)
 	// 管理操作監査ログを記録する
 	InsertPlatformAuditLog(ctx context.Context, arg InsertPlatformAuditLogParams) error
+	// Idempotent projection from a SoT row (purchases.id, access_tickets.id).
+	InsertProjectedSourceEvent(ctx context.Context, arg InsertProjectedSourceEventParams) (ContentEvent, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで idx_access_tickets_tenant_created_at
@@ -197,6 +227,11 @@ type Querier interface {
 	// 読めないため、走査方向ごとにクエリを分ける。
 	// cursor の共通仕様は proto/README.md を参照。
 	ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLogsByTenantDescParams) ([]ListAuditLogsByTenantDescRow, error)
+	ListContentDailyStatsByTenantDate(ctx context.Context, arg ListContentDailyStatsByTenantDateParams) ([]ContentDailyStat, error)
+	// Representative tenant timeline. EXPLAIN: idx_content_events_tenant_occurred_at.
+	ListContentEventsByTenantOccurredAt(ctx context.Context, arg ListContentEventsByTenantOccurredAtParams) ([]ContentEvent, error)
+	// Representative type-filtered timeline. EXPLAIN: idx_content_events_tenant_type_occurred_at.
+	ListContentEventsByTenantTypeOccurredAt(ctx context.Context, arg ListContentEventsByTenantTypeOccurredAtParams) ([]ContentEvent, error)
 	ListCreatorsByPublicIDsForTenant(ctx context.Context, arg ListCreatorsByPublicIDsForTenantParams) ([]ListCreatorsByPublicIDsForTenantRow, error)
 	ListCreatorsByTenantAsc(ctx context.Context, arg ListCreatorsByTenantAscParams) ([]ListCreatorsByTenantAscRow, error)
 	// Admin ListCreators は (created_at, id) の降順で表示する。
@@ -393,7 +428,12 @@ type Querier interface {
 	UpdateUserStatus(ctx context.Context, arg UpdateUserStatusParams) (User, error)
 	// ユーザーのステータスをID指定で更新
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
+	// Daily stats are full-day replacements (#593). Upsert keeps a single row per
+	// (tenant, date, entity). rating_* are that day's flow, not a stock average.
+	UpsertContentDailyStats(ctx context.Context, arg UpsertContentDailyStatsParams) (ContentDailyStat, error)
+	UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
+	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	// プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
 	UpsertPlatformDefaultTimezone(ctx context.Context, defaultTimezone string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
@@ -402,6 +442,7 @@ type Querier interface {
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 	// ユーザーの通知設定を作成または更新
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
+	UpsertUserRecommendFeatures(ctx context.Context, arg UpsertUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	// True when the user may view paid body content for the episode via purchase or active access ticket.
 	// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)

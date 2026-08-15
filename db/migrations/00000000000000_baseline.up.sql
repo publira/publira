@@ -66,6 +66,71 @@ CREATE TABLE creators (
     icon_image_id uuid
 );
 
+-- TABLE: content_daily_stats
+-- L2: daily per-item aggregates consumed by ranking (#39) and later feature builds.
+CREATE TABLE content_daily_stats (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    stat_date date NOT NULL,
+    entity_type character varying(16) NOT NULL,
+    entity_id uuid NOT NULL,
+    view_count bigint DEFAULT 0 NOT NULL,
+    unique_viewer_count bigint DEFAULT 0 NOT NULL,
+    purchase_count bigint DEFAULT 0 NOT NULL,
+    rating_count bigint DEFAULT 0 NOT NULL,
+    rating_sum bigint DEFAULT 0 NOT NULL,
+    favorite_count bigint DEFAULT 0 NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT content_daily_stats_entity_type_check CHECK (((entity_type)::text = ANY ((ARRAY['series'::character varying, 'episode'::character varying])::text[]))),
+    CONSTRAINT content_daily_stats_nonneg_check CHECK (((view_count >= 0) AND (unique_viewer_count >= 0) AND (purchase_count >= 0) AND (rating_count >= 0) AND (rating_sum >= 0) AND (favorite_count >= 0)))
+);
+
+-- TABLE: content_events
+-- L1: append-only engagement events (views, ratings, purchase projections).
+CREATE TABLE content_events (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    event_type character varying(32) NOT NULL,
+    user_id uuid,
+    anonymous_id uuid,
+    actor_key uuid GENERATED ALWAYS AS (COALESCE(user_id, anonymous_id)) STORED,
+    series_id uuid,
+    episode_id uuid,
+    debounce_bucket bigint,
+    rating_score smallint,
+    source_table character varying(64),
+    source_id uuid,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT content_events_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['series_view'::character varying, 'episode_view'::character varying, 'episode_complete'::character varying, 'purchase'::character varying, 'access_grant'::character varying, 'rating'::character varying, 'favorite'::character varying])::text[]))),
+    CONSTRAINT content_events_actor_check CHECK (((user_id IS NOT NULL) OR (anonymous_id IS NOT NULL))),
+    CONSTRAINT content_events_rating_score_check CHECK (((rating_score IS NULL) OR ((rating_score >= 1) AND (rating_score <= 5)))),
+    CONSTRAINT content_events_source_pair_check CHECK ((((source_table IS NULL) AND (source_id IS NULL)) OR ((source_table IS NOT NULL) AND (source_id IS NOT NULL)))),
+    CONSTRAINT content_events_target_by_type_check CHECK ((
+        (((event_type)::text = ANY ((ARRAY['episode_view'::character varying, 'episode_complete'::character varying, 'purchase'::character varying, 'access_grant'::character varying])::text[])) AND (episode_id IS NOT NULL) AND (series_id IS NOT NULL))
+        OR (((event_type)::text = ANY ((ARRAY['series_view'::character varying, 'favorite'::character varying])::text[])) AND (series_id IS NOT NULL) AND (episode_id IS NULL))
+        OR (((event_type)::text = 'rating'::text) AND (series_id IS NOT NULL))
+    )),
+    CONSTRAINT content_events_view_bucket_check CHECK ((((event_type)::text <> ALL ((ARRAY['episode_view'::character varying, 'series_view'::character varying])::text[])) OR (debounce_bucket IS NOT NULL))),
+    CONSTRAINT content_events_rating_requires_score_check CHECK ((((event_type)::text <> 'rating'::text) OR (rating_score IS NOT NULL)))
+);
+
+-- TABLE: content_ranking_snapshots
+-- L4: persisted ranking output (#39). Schema only in this change.
+CREATE TABLE content_ranking_snapshots (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    ranking_key character varying(64) NOT NULL,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    entity_type character varying(16) NOT NULL,
+    items jsonb DEFAULT '[]'::jsonb NOT NULL,
+    algorithm_version integer DEFAULT 1 NOT NULL,
+    computed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT content_ranking_snapshots_entity_type_check CHECK (((entity_type)::text = ANY ((ARRAY['series'::character varying, 'episode'::character varying])::text[])))
+);
+
 -- TABLE: episode_image_variants
 CREATE TABLE episode_image_variants (
     id uuid NOT NULL,
@@ -113,6 +178,19 @@ CREATE TABLE episodes (
     order_index integer NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     tenant_id uuid NOT NULL
+);
+
+-- TABLE: item_recommend_features
+-- L3: per-item feature snapshot for online inference.
+CREATE TABLE item_recommend_features (
+    tenant_id uuid NOT NULL,
+    entity_type character varying(16) NOT NULL,
+    entity_id uuid NOT NULL,
+    features jsonb DEFAULT '{}'::jsonb NOT NULL,
+    feature_version integer DEFAULT 1 NOT NULL,
+    computed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT item_recommend_features_entity_type_check CHECK (((entity_type)::text = ANY ((ARRAY['series'::character varying, 'episode'::character varying])::text[]))),
+    CONSTRAINT item_recommend_features_feature_version_check CHECK ((feature_version > 0))
 );
 
 -- TABLE: label_image_variants
@@ -555,6 +633,17 @@ CREATE TABLE user_password_reset_tokens (
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+-- TABLE: user_recommend_features
+-- L3: per-user feature snapshot for online inference.
+CREATE TABLE user_recommend_features (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    features jsonb DEFAULT '{}'::jsonb NOT NULL,
+    feature_version integer DEFAULT 1 NOT NULL,
+    computed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT user_recommend_features_feature_version_check CHECK ((feature_version > 0))
+);
+
 -- TABLE: users
 CREATE TABLE users (
     id uuid NOT NULL,
@@ -602,6 +691,18 @@ ALTER TABLE ONLY creators
 ALTER TABLE ONLY creators
     ADD CONSTRAINT creators_public_id_key UNIQUE (public_id);
 
+-- CONSTRAINT: content_daily_stats content_daily_stats_pkey
+ALTER TABLE ONLY content_daily_stats
+    ADD CONSTRAINT content_daily_stats_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: content_events content_events_pkey
+ALTER TABLE ONLY content_events
+    ADD CONSTRAINT content_events_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: content_ranking_snapshots content_ranking_snapshots_pkey
+ALTER TABLE ONLY content_ranking_snapshots
+    ADD CONSTRAINT content_ranking_snapshots_pkey PRIMARY KEY (id);
+
 -- CONSTRAINT: episode_image_variants episode_image_variants_pkey
 ALTER TABLE ONLY episode_image_variants
     ADD CONSTRAINT episode_image_variants_pkey PRIMARY KEY (id);
@@ -626,6 +727,10 @@ ALTER TABLE ONLY episodes
 -- Enables composite FKs that keep child rows on the same tenant as the episode.
 ALTER TABLE ONLY episodes
     ADD CONSTRAINT episodes_tenant_id_id_key UNIQUE (tenant_id, id);
+
+-- CONSTRAINT: item_recommend_features item_recommend_features_pkey
+ALTER TABLE ONLY item_recommend_features
+    ADD CONSTRAINT item_recommend_features_pkey PRIMARY KEY (tenant_id, entity_type, entity_id);
 
 -- CONSTRAINT: label_image_variants label_image_variants_pkey
 ALTER TABLE ONLY label_image_variants
@@ -768,6 +873,11 @@ ALTER TABLE ONLY series
 ALTER TABLE ONLY series
     ADD CONSTRAINT series_public_id_key UNIQUE (public_id);
 
+-- CONSTRAINT: series series_tenant_id_id_key
+-- Enables composite FKs that keep child rows on the same tenant as the series.
+ALTER TABLE ONLY series
+    ADD CONSTRAINT series_tenant_id_id_key UNIQUE (tenant_id, id);
+
 -- CONSTRAINT: tenant_admin_invitations tenant_admin_invitations_pkey
 ALTER TABLE ONLY tenant_admin_invitations
     ADD CONSTRAINT tenant_admin_invitations_pkey PRIMARY KEY (id);
@@ -844,6 +954,10 @@ ALTER TABLE ONLY user_password_reset_tokens
 ALTER TABLE ONLY user_password_reset_tokens
     ADD CONSTRAINT user_password_reset_tokens_token_hash_key UNIQUE (token_hash);
 
+-- CONSTRAINT: user_recommend_features user_recommend_features_pkey
+ALTER TABLE ONLY user_recommend_features
+    ADD CONSTRAINT user_recommend_features_pkey PRIMARY KEY (tenant_id, user_id);
+
 -- CONSTRAINT: users users_pkey
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
@@ -891,6 +1005,50 @@ CREATE INDEX idx_creators_tenant_created_at ON creators USING btree (tenant_id, 
 -- btree は逆順にも走査できるので、この 1 本で名前昇順と前ページ用の降順の
 -- 両方を索引順に取り出せる。
 CREATE INDEX idx_creators_tenant_name ON creators USING btree (tenant_id, name, id);
+
+-- INDEX: idx_content_daily_stats_tenant_date
+CREATE INDEX idx_content_daily_stats_tenant_date ON content_daily_stats USING btree (tenant_id, stat_date DESC);
+
+-- INDEX: idx_content_daily_stats_tenant_entity
+CREATE INDEX idx_content_daily_stats_tenant_entity ON content_daily_stats USING btree (tenant_id, entity_type, entity_id, stat_date DESC);
+
+-- INDEX: idx_content_daily_stats_unique
+CREATE UNIQUE INDEX idx_content_daily_stats_unique ON content_daily_stats USING btree (tenant_id, stat_date, entity_type, entity_id);
+
+-- INDEX: idx_content_events_episode_view_debounce
+-- Fixed 30-minute epoch bucket; same actor + episode + bucket collapses to one row.
+CREATE UNIQUE INDEX idx_content_events_episode_view_debounce ON content_events USING btree (tenant_id, event_type, episode_id, actor_key, debounce_bucket) WHERE ((event_type)::text = 'episode_view'::text);
+
+-- INDEX: idx_content_events_series_view_debounce
+CREATE UNIQUE INDEX idx_content_events_series_view_debounce ON content_events USING btree (tenant_id, event_type, series_id, actor_key, debounce_bucket) WHERE ((event_type)::text = 'series_view'::text);
+
+-- INDEX: idx_content_events_source_unique
+-- Idempotent projections from SoT tables (purchases, access_tickets).
+CREATE UNIQUE INDEX idx_content_events_source_unique ON content_events USING btree (tenant_id, source_table, source_id) WHERE (source_id IS NOT NULL);
+
+-- INDEX: idx_content_events_tenant_anon_occurred_at
+CREATE INDEX idx_content_events_tenant_anon_occurred_at ON content_events USING btree (tenant_id, anonymous_id, occurred_at DESC) WHERE (anonymous_id IS NOT NULL);
+
+-- INDEX: idx_content_events_tenant_episode_occurred_at
+CREATE INDEX idx_content_events_tenant_episode_occurred_at ON content_events USING btree (tenant_id, episode_id, occurred_at DESC) WHERE (episode_id IS NOT NULL);
+
+-- INDEX: idx_content_events_tenant_occurred_at
+CREATE INDEX idx_content_events_tenant_occurred_at ON content_events USING btree (tenant_id, occurred_at DESC);
+
+-- INDEX: idx_content_events_tenant_series_occurred_at
+CREATE INDEX idx_content_events_tenant_series_occurred_at ON content_events USING btree (tenant_id, series_id, occurred_at DESC) WHERE (series_id IS NOT NULL);
+
+-- INDEX: idx_content_events_tenant_type_occurred_at
+CREATE INDEX idx_content_events_tenant_type_occurred_at ON content_events USING btree (tenant_id, event_type, occurred_at DESC);
+
+-- INDEX: idx_content_events_tenant_user_occurred_at
+CREATE INDEX idx_content_events_tenant_user_occurred_at ON content_events USING btree (tenant_id, user_id, occurred_at DESC) WHERE (user_id IS NOT NULL);
+
+-- INDEX: idx_content_ranking_snapshots_tenant_key_computed
+CREATE INDEX idx_content_ranking_snapshots_tenant_key_computed ON content_ranking_snapshots USING btree (tenant_id, ranking_key, computed_at DESC);
+
+-- INDEX: idx_content_ranking_snapshots_unique
+CREATE UNIQUE INDEX idx_content_ranking_snapshots_unique ON content_ranking_snapshots USING btree (tenant_id, ranking_key, period_start, period_end, entity_type, algorithm_version);
 
 -- INDEX: idx_episode_image_variants_episode_image_id
 CREATE INDEX idx_episode_image_variants_episode_image_id ON episode_image_variants USING btree (episode_image_id);
@@ -1143,6 +1301,33 @@ ALTER TABLE ONLY creators
 ALTER TABLE ONLY creators
     ADD CONSTRAINT creators_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: content_daily_stats content_daily_stats_tenant_id_fkey
+ALTER TABLE ONLY content_daily_stats
+    ADD CONSTRAINT content_daily_stats_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: content_events content_events_tenant_episode_id_fkey
+-- MATCH SIMPLE: a NULL episode_id (series_view / favorite / series rating) skips this check.
+ALTER TABLE ONLY content_events
+    ADD CONSTRAINT content_events_tenant_episode_id_fkey FOREIGN KEY (tenant_id, episode_id) REFERENCES episodes(tenant_id, id) ON DELETE RESTRICT;
+
+-- FK CONSTRAINT: content_events content_events_tenant_id_fkey
+ALTER TABLE ONLY content_events
+    ADD CONSTRAINT content_events_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: content_events content_events_tenant_series_id_fkey
+-- MATCH SIMPLE: a NULL series_id skips this check. Requires series_tenant_id_id_key.
+ALTER TABLE ONLY content_events
+    ADD CONSTRAINT content_events_tenant_series_id_fkey FOREIGN KEY (tenant_id, series_id) REFERENCES series(tenant_id, id) ON DELETE RESTRICT;
+
+-- FK CONSTRAINT: content_events content_events_tenant_user_id_fkey
+-- MATCH SIMPLE: a NULL user_id (anonymous actor) skips this check.
+ALTER TABLE ONLY content_events
+    ADD CONSTRAINT content_events_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: content_ranking_snapshots content_ranking_snapshots_tenant_id_fkey
+ALTER TABLE ONLY content_ranking_snapshots
+    ADD CONSTRAINT content_ranking_snapshots_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: episode_image_variants episode_image_variants_episode_image_id_fkey
 ALTER TABLE ONLY episode_image_variants
     ADD CONSTRAINT episode_image_variants_episode_image_id_fkey FOREIGN KEY (episode_image_id) REFERENCES episode_images(id) ON DELETE CASCADE;
@@ -1170,6 +1355,10 @@ ALTER TABLE ONLY episode_listings
 -- FK CONSTRAINT: episodes fk_episodes_tenant_id
 ALTER TABLE ONLY episodes
     ADD CONSTRAINT fk_episodes_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: item_recommend_features item_recommend_features_tenant_id_fkey
+ALTER TABLE ONLY item_recommend_features
+    ADD CONSTRAINT item_recommend_features_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: page_versions fk_page_versions_tenant_id
 ALTER TABLE ONLY page_versions
@@ -1387,6 +1576,10 @@ ALTER TABLE ONLY user_password_reset_tokens
 ALTER TABLE ONLY user_password_reset_tokens
     ADD CONSTRAINT user_password_reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: user_recommend_features user_recommend_features_tenant_user_id_fkey
+ALTER TABLE ONLY user_recommend_features
+    ADD CONSTRAINT user_recommend_features_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: users users_tenant_id_fkey
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
@@ -1421,6 +1614,24 @@ ALTER TABLE creators ENABLE ROW LEVEL SECURITY;
 -- POLICY: creators creators_tenant_isolation
 CREATE POLICY creators_tenant_isolation ON creators USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
+-- ROW SECURITY: content_daily_stats
+ALTER TABLE content_daily_stats ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: content_daily_stats content_daily_stats_tenant_isolation
+CREATE POLICY content_daily_stats_tenant_isolation ON content_daily_stats USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: content_events
+ALTER TABLE content_events ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: content_events content_events_tenant_isolation
+CREATE POLICY content_events_tenant_isolation ON content_events USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: content_ranking_snapshots
+ALTER TABLE content_ranking_snapshots ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: content_ranking_snapshots content_ranking_snapshots_tenant_isolation
+CREATE POLICY content_ranking_snapshots_tenant_isolation ON content_ranking_snapshots USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
 -- ROW SECURITY: episode_images
 ALTER TABLE episode_images ENABLE ROW LEVEL SECURITY;
 
@@ -1438,6 +1649,12 @@ ALTER TABLE episodes ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: episodes episodes_tenant_isolation
 CREATE POLICY episodes_tenant_isolation ON episodes USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: item_recommend_features
+ALTER TABLE item_recommend_features ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: item_recommend_features item_recommend_features_tenant_isolation
+CREATE POLICY item_recommend_features_tenant_isolation ON item_recommend_features USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 -- ROW SECURITY: label_image_variants
 ALTER TABLE label_image_variants ENABLE ROW LEVEL SECURITY;
@@ -1564,6 +1781,12 @@ ALTER TABLE user_password_reset_tokens ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: user_password_reset_tokens user_password_reset_tokens_tenant_isolation
 CREATE POLICY user_password_reset_tokens_tenant_isolation ON user_password_reset_tokens USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: user_recommend_features
+ALTER TABLE user_recommend_features ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: user_recommend_features user_recommend_features_tenant_isolation
+CREATE POLICY user_recommend_features_tenant_isolation ON user_recommend_features USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 -- ROW SECURITY: users
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
