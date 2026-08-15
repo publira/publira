@@ -66,15 +66,6 @@ export const authTokenFormSchema = z
     error: "確認リンクが無効です。",
   });
 
-/**
- * Email shown on a confirmation-pending screen. Not an input we act on, so a
- * malformed value is dropped rather than 404ing the page.
- */
-export const emailSearchParamSchema = searchParamString({
-  fallback: "",
-  maxLength: 255,
-}).transform((value) => (z.email().safeParse(value).success ? value : ""));
-
 export const tenantIdFormSchema = z
   .string({ error: "テナント ID が見つかりません。" })
   .trim()

@@ -1,33 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { TenantDocumentTitle } from "#components/tenant-document-title";
+import {
+  readEmailFlashCookie,
+  SIGNUP_PENDING_EMAIL_COOKIE,
+} from "#lib/email-flash-cookie";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
-
-import { parseSignupPendingSearchParams } from "./_lib/search-params";
 
 export const metadata: Metadata = {
   title: "メール確認待ち",
 };
 
-const SignupPendingContent = async ({
-  searchParams,
-}: {
-  params: Promise<{ tenant_id: string }>;
-  searchParams: Promise<{ email?: string | string[] }>;
-}) => {
-  await connection();
-
+const SignupPendingContent = async () => {
   const tenantId = await getTenantId();
 
   const info = await getTenantSiteInfo(tenantId);
   const siteLabel = info?.siteLabel ?? "サイト";
   const siteTagline = info?.siteTagline?.trim();
 
-  const { email } = parseSignupPendingSearchParams(await searchParams);
+  const email = await readEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE);
 
   return (
     <>
@@ -79,17 +73,11 @@ const SignupPendingFallback = () => (
   </>
 );
 
-const SignupPendingPage = ({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ tenant_id: string }>;
-  searchParams: Promise<{ email?: string | string[] }>;
-}) => (
+const SignupPendingPage = () => (
   <main className="flex min-h-dvh items-center justify-center px-4 py-10">
     <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <Suspense fallback={<SignupPendingFallback />}>
-        <SignupPendingContent params={params} searchParams={searchParams} />
+        <SignupPendingContent />
       </Suspense>
     </div>
   </main>
