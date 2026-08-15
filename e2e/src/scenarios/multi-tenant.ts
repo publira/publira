@@ -42,6 +42,12 @@ export const SEED_TENANT = {
     /** `Seed Episode 001-10` is the priced one; 001-01 is free. */
     freeEpisodeId: "SeedEPSDAAA1",
     freeEpisodeTitle: "Seed Episode 001-01",
+    /**
+     * seq_no 10 → `SeedEPSD` + TRANSLATE('0010','0','A') in
+     * `db/seeds/dev/010_catalog.sql`. Complimentary ticket: SeedTCKTAAA1.
+     */
+    paidEpisodeId: "SeedEPSDAA1A",
+    paidEpisodeTitle: "Seed Episode 001-10",
     publicId: "SeedSERSAAA1",
     title: "Seed Series 001",
   },

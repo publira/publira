@@ -3,15 +3,17 @@ import {
   createPlaceholderStaticParams,
   guardPlaceholders,
 } from "@publira/utils/next-static-params";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageLoadError } from "#components/page-load-error";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getEpisodeDetail } from "#lib/catalog";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+
+import { EpisodeBody } from "./_components/episode-body";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
@@ -29,6 +31,10 @@ const EpisodeSkeleton = () => (
       </div>
     </div>
   </div>
+);
+
+const EpisodeBodySkeleton = () => (
+  <div className="h-96 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
 );
 
 const EpisodeContent = async (
@@ -57,7 +63,7 @@ const EpisodeContent = async (
     notFound();
   }
 
-  const { episode, images, series } = result.value;
+  const { access, episode, images, series } = result.value;
   const priceLabel =
     episode.price > 0 ? `¥${episode.price.toLocaleString("ja-JP")}` : "無料";
 
@@ -104,38 +110,23 @@ const EpisodeContent = async (
               {episode.title}
             </h1>
             <p className="text-sm text-muted-foreground sm:text-base">
-              シリーズ「{series.title}
-              」の本文ビューアです。画像は上から順に読む想定で表示しています。
+              シリーズ「{series.title}」のエピソードです。
             </p>
           </header>
 
           <section aria-label="エピソード本文">
-            {images.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center text-muted-foreground">
-                本文画像はまだ公開されていません。
-              </div>
-            ) : (
-              <ol className="space-y-4">
-                {images.map((image, index) => (
-                  <li
-                    key={image.id}
-                    className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm"
-                  >
-                    <Image
-                      alt={`${episode.title} ${index + 1}ページ`}
-                      className="h-auto w-full bg-muted object-contain"
-                      decoding="async"
-                      height={image.height}
-                      loading={index === 0 ? "eager" : "lazy"}
-                      sizes="100vw"
-                      src={image.imageUrl}
-                      unoptimized
-                      width={image.width}
-                    />
-                  </li>
-                ))}
-              </ol>
-            )}
+            <SectionErrorBoundary title="本文を表示できませんでした">
+              <Suspense fallback={<EpisodeBodySkeleton />}>
+                <EpisodeBody
+                  access={access}
+                  episodePublicId={episode.publicId}
+                  episodeTitle={episode.title}
+                  images={images}
+                  seriesPublicId={series.publicId}
+                  tenantId={tenantId}
+                />
+              </Suspense>
+            </SectionErrorBoundary>
           </section>
         </article>
 
@@ -190,10 +181,12 @@ const EpisodeContent = async (
                       : "制限なし"}
                   </dd>
                 </div>
-                <div className="flex items-start justify-between gap-4">
-                  <dt className="text-muted-foreground">本文枚数</dt>
-                  <dd className="font-medium">{images.length}枚</dd>
-                </div>
+                {access === "free" ? (
+                  <div className="flex items-start justify-between gap-4">
+                    <dt className="text-muted-foreground">本文枚数</dt>
+                    <dd className="font-medium">{images.length}枚</dd>
+                  </div>
+                ) : null}
                 {episode.scheduledAt && (
                   <div className="flex items-start justify-between gap-4">
                     <dt className="text-muted-foreground">公開予定</dt>
