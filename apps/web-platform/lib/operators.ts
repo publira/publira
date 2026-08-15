@@ -1,6 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import { findByPublicIdWithToken } from "@publira/api-client/pagination";
+import { z } from "zod";
 
 import {
   apiClient,
@@ -8,6 +8,10 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { normalizePlatformRole } from "./roles";
+
+const getPlatformOperatorInputSchema = z.object({
+  publicId: z.string().trim().min(1).max(255),
+});
 
 export interface PlatformOperatorSummary {
   createdAt: string;
@@ -189,26 +193,25 @@ export const getPlatformOperator = async (
 ): Promise<PlatformOperatorSummary | null> => {
   "use cache: private";
 
+  const parsed = getPlatformOperatorInputSchema.safeParse({ publicId });
+  if (!parsed.success) {
+    // Same null as a missing operator: the URL is not a resource, and
+    // wording that said "malformed" would only help an attacker probe
+    // which strings the server accepts.
+    return null;
+  }
+
   const sessionId = await resolveAccessToken();
-  if (!publicId.trim() || !sessionId) {
+  if (!sessionId) {
     return null;
   }
 
   try {
-    const operator = await findByPublicIdWithToken(
-      publicId,
-      async (token, limit) => {
-        const response = await apiClient.operators.listOperators(
-          { limit, token },
-          buildSessionHeaders(sessionId)
-        );
-        return {
-          items: response.operators ?? [],
-          nextToken: response.nextToken ?? "",
-        };
-      }
+    const response = await apiClient.operators.getOperator(
+      { publicId: parsed.data.publicId },
+      buildSessionHeaders(sessionId)
     );
-    return operator ? mapOperator(operator) : null;
+    return response.operator ? mapOperator(response.operator) : null;
   } catch (error) {
     // Classified RPC failures mean "no operator to show"; unexpected ones rethrow.
     rethrowUnclassifiedRpcError(error);

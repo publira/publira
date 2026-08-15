@@ -65,6 +65,19 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 		t.Fatalf("new operator role = %q, want %s", roles[created.PublicId], auth.RolePlatformOperator)
 	}
 
+	getResp, err := client.GetOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.GetOperatorRequest{
+		PublicId: created.PublicId,
+	}))
+	if err != nil {
+		t.Fatalf("GetOperator: %v", err)
+	}
+	if getResp.Msg.Operator.PublicId != created.PublicId {
+		t.Fatalf("GetOperator public_id = %q, want %q", getResp.Msg.Operator.PublicId, created.PublicId)
+	}
+	if getResp.Msg.Operator.Email != created.Email {
+		t.Fatalf("GetOperator email = %q, want %q", getResp.Msg.Operator.Email, created.Email)
+	}
+
 	// One role row per operator: the creation must not leave extras behind.
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM platform_user_roles"); got != 2 {
 		t.Fatalf("platform_user_roles rows = %d, want 2", got)
@@ -284,7 +297,14 @@ func TestDBOperatorNotFoundReturnsNotFound(t *testing.T) {
 	ts, _, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(ts.Client(), ts.URL)
 
-	_, err := client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
+	_, err := client.GetOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.GetOperatorRequest{
+		PublicId: "MISSINGUSER1",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetOperator code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
+	}
+
+	_, err = client.SuspendOperator(context.Background(), newDBAuthedRequest(superAdmin, publirasplatformv1.SuspendOperatorRequest{
 		PublicId: "MISSINGUSER1",
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {

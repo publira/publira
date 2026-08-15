@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPlatformOperator, listPlatformOperators } from "./operators";
 
+type GetOperatorMethod = PlatformApiClient["operators"]["getOperator"];
+type GetOperatorResponse = Awaited<ReturnType<GetOperatorMethod>>;
 type ListOperatorsMethod = PlatformApiClient["operators"]["listOperators"];
 type ListOperatorsResponse = Awaited<ReturnType<ListOperatorsMethod>>;
 type ListOperatorsResponseOperator = ListOperatorsResponse["operators"][number];
@@ -36,16 +38,29 @@ const createListOperatorsResponse = ({
   previousToken,
 });
 
-const { mockBuildSessionHeaders, mockListOperators, mockResolveAccessToken } =
-  vi.hoisted(() => ({
-    mockBuildSessionHeaders: vi.fn(),
-    mockListOperators: vi.fn<ListOperatorsMethod>(),
-    mockResolveAccessToken: vi.fn(),
-  }));
+const createGetOperatorResponse = (
+  operator?: ListOperatorsResponseOperator
+): GetOperatorResponse => ({
+  $typeName: "publira.platform.v1.GetOperatorResponse",
+  operator,
+});
+
+const {
+  mockBuildSessionHeaders,
+  mockGetOperator,
+  mockListOperators,
+  mockResolveAccessToken,
+} = vi.hoisted(() => ({
+  mockBuildSessionHeaders: vi.fn(),
+  mockGetOperator: vi.fn<GetOperatorMethod>(),
+  mockListOperators: vi.fn<ListOperatorsMethod>(),
+  mockResolveAccessToken: vi.fn(),
+}));
 
 vi.mock("./api-client", () => ({
   apiClient: {
     operators: {
+      getOperator: mockGetOperator,
       listOperators: mockListOperators,
     },
   },
@@ -132,26 +147,38 @@ describe("listPlatformOperators", () => {
 });
 
 describe("getPlatformOperator", () => {
-  it("次ページを辿って対象のオペレーターを返す", async () => {
-    mockListOperators
-      .mockResolvedValueOnce(
-        createListOperatorsResponse({
-          nextToken: "next-page",
-          operators: [createOperator({ publicId: "OPERATOR001" })],
+  it("不正な入力は RPC を呼ばずに null を返す", async () => {
+    await expect(getPlatformOperator("   ")).resolves.toBeNull();
+    expect(mockGetOperator).not.toHaveBeenCalled();
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("前後の空白を除いて GetOperator に渡す", async () => {
+    mockGetOperator.mockResolvedValueOnce(
+      createGetOperatorResponse(createOperator())
+    );
+
+    await expect(getPlatformOperator("  OPERATOR001  ")).resolves.toMatchObject(
+      {
+        publicId: "OPERATOR001",
+      }
+    );
+    expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
+      { publicId: "OPERATOR001" },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("一覧を走査せず GetOperator を1回だけ呼ぶ", async () => {
+    mockGetOperator.mockResolvedValueOnce(
+      createGetOperatorResponse(
+        createOperator({
+          email: "second@example.com",
+          name: "運営 次郎",
+          publicId: "OPERATOR101",
         })
       )
-      .mockResolvedValueOnce(
-        createListOperatorsResponse({
-          operators: [
-            createOperator({
-              email: "second@example.com",
-              name: "運営 次郎",
-              publicId: "OPERATOR101",
-            }),
-          ],
-          previousToken: "previous-page",
-        })
-      );
+    );
 
     await expect(getPlatformOperator("OPERATOR101")).resolves.toEqual({
       createdAt: "2026-08-01T00:00:00Z",
@@ -161,28 +188,23 @@ describe("getPlatformOperator", () => {
       role: "platform_operator",
       status: "active",
     });
-    expect(mockListOperators).toHaveBeenNthCalledWith(
-      1,
-      { limit: 100, token: "" },
+    expect(mockGetOperator).toHaveBeenCalledExactlyOnceWith(
+      { publicId: "OPERATOR101" },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
-    expect(mockListOperators).toHaveBeenNthCalledWith(
-      2,
-      { limit: 100, token: "next-page" },
-      { headers: { Authorization: "Bearer sess_abc" } }
-    );
+    expect(mockListOperators).not.toHaveBeenCalled();
   });
 
-  it("全ページに対象がなければ null を返す", async () => {
-    mockListOperators.mockResolvedValueOnce(
-      createListOperatorsResponse({ operators: [createOperator()] })
+  it("対象がなければ null を返す", async () => {
+    mockGetOperator.mockRejectedValueOnce(
+      new ConnectError("operator not found", Code.NotFound)
     );
 
     await expect(getPlatformOperator("UNKNOWN")).resolves.toBeNull();
   });
 
   it("分類済み RPC エラーは null を返す", async () => {
-    mockListOperators.mockRejectedValueOnce(
+    mockGetOperator.mockRejectedValueOnce(
       new ConnectError("upstream down", Code.Unavailable)
     );
 
@@ -190,7 +212,7 @@ describe("getPlatformOperator", () => {
   });
 
   it("分類できない RPC エラーは伝播する", async () => {
-    mockListOperators.mockRejectedValueOnce(
+    mockGetOperator.mockRejectedValueOnce(
       new ConnectError("boom", Code.Internal)
     );
 

@@ -208,6 +208,32 @@ func (s *platformServer) operatorPage(
 	return toOperatorPage(rows, operatorPageFromDesc), nil
 }
 
+func (s *platformServer) GetOperator(
+	ctx context.Context,
+	req *connect.Request[publirasplatformv1.GetOperatorRequest],
+) (*connect.Response[publirasplatformv1.GetOperatorResponse], error) {
+	if _, _, _, err := s.authenticatePlatformSession(ctx, "", req.Header()); err != nil {
+		return nil, err
+	}
+
+	publicID := strings.TrimSpace(req.Msg.PublicId)
+	if publicID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("public_id is required"))
+	}
+
+	operator, err := s.queriesFor(ctx).GetPlatformOperatorByPublicID(ctx, publicID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("operator not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publirasplatformv1.GetOperatorResponse{
+		Operator: getOperatorRowToProto(operator),
+	}), nil
+}
+
 func (s *platformServer) CreateOperator(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.CreateOperatorRequest],

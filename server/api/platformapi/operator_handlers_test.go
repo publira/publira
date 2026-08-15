@@ -257,6 +257,57 @@ func TestListOperatorsHidesDatabaseError(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
+func TestGetOperator(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	actorID := uuid.Must(uuid.NewV7())
+	targetID := uuid.Must(uuid.NewV7())
+	expectOperatorAuth(mock, actorID, rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+		WithArgs("PLATUSER002").
+		WillReturnRows(sqlmock.NewRows(operatorTestColumns()).
+			AddRow(targetID, "PLATUSER002", "operator2@example.com", "Operator Two", rolePlatformOperator, "active", now))
+
+	resp, err := server.GetOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetOperatorRequest{PublicId: "PLATUSER002"}))
+	if err != nil {
+		t.Fatalf("GetOperator: %v", err)
+	}
+	if resp.Msg.Operator == nil || resp.Msg.Operator.PublicId != "PLATUSER002" {
+		t.Fatalf("operator = %v, want public_id=PLATUSER002", resp.Msg.Operator)
+	}
+	if resp.Msg.Operator.Email != "operator2@example.com" {
+		t.Fatalf("email = %q, want operator2@example.com", resp.Msg.Operator.Email)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestGetOperatorNotFound(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
+	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformOperatorByPublicIDQuery)).
+		WithArgs("MISSINGUSER1").
+		WillReturnError(sql.ErrNoRows)
+
+	_, err := server.GetOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetOperatorRequest{PublicId: "MISSINGUSER1"}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetOperator code = %v, want not_found", connect.CodeOf(err))
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestGetOperatorRequiresPublicID(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectOperatorAuth(mock, uuid.Must(uuid.NewV7()), rolePlatformOperator, now)
+
+	_, err := server.GetOperator(context.Background(), newAuthedOperatorRequest(&publirasplatformv1.GetOperatorRequest{PublicId: "   "}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("GetOperator code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
 func TestCreateOperatorSuccess(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()

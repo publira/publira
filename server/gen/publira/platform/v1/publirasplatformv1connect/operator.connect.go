@@ -36,6 +36,9 @@ const (
 	// PlatformOperatorServiceListOperatorsProcedure is the fully-qualified name of the
 	// PlatformOperatorService's ListOperators RPC.
 	PlatformOperatorServiceListOperatorsProcedure = "/publira.platform.v1.PlatformOperatorService/ListOperators"
+	// PlatformOperatorServiceGetOperatorProcedure is the fully-qualified name of the
+	// PlatformOperatorService's GetOperator RPC.
+	PlatformOperatorServiceGetOperatorProcedure = "/publira.platform.v1.PlatformOperatorService/GetOperator"
 	// PlatformOperatorServiceCreateOperatorProcedure is the fully-qualified name of the
 	// PlatformOperatorService's CreateOperator RPC.
 	PlatformOperatorServiceCreateOperatorProcedure = "/publira.platform.v1.PlatformOperatorService/CreateOperator"
@@ -57,6 +60,7 @@ const (
 // service.
 type PlatformOperatorServiceClient interface {
 	ListOperators(context.Context, *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error)
+	GetOperator(context.Context, *connect.Request[v1.GetOperatorRequest]) (*connect.Response[v1.GetOperatorResponse], error)
 	CreateOperator(context.Context, *connect.Request[v1.CreateOperatorRequest]) (*connect.Response[v1.CreateOperatorResponse], error)
 	UpdateOperatorRole(context.Context, *connect.Request[v1.UpdateOperatorRoleRequest]) (*connect.Response[v1.UpdateOperatorRoleResponse], error)
 	SuspendOperator(context.Context, *connect.Request[v1.SuspendOperatorRequest]) (*connect.Response[v1.SuspendOperatorResponse], error)
@@ -80,6 +84,12 @@ func NewPlatformOperatorServiceClient(httpClient connect.HTTPClient, baseURL str
 			httpClient,
 			baseURL+PlatformOperatorServiceListOperatorsProcedure,
 			connect.WithSchema(platformOperatorServiceMethods.ByName("ListOperators")),
+			connect.WithClientOptions(opts...),
+		),
+		getOperator: connect.NewClient[v1.GetOperatorRequest, v1.GetOperatorResponse](
+			httpClient,
+			baseURL+PlatformOperatorServiceGetOperatorProcedure,
+			connect.WithSchema(platformOperatorServiceMethods.ByName("GetOperator")),
 			connect.WithClientOptions(opts...),
 		),
 		createOperator: connect.NewClient[v1.CreateOperatorRequest, v1.CreateOperatorResponse](
@@ -118,6 +128,7 @@ func NewPlatformOperatorServiceClient(httpClient connect.HTTPClient, baseURL str
 // platformOperatorServiceClient implements PlatformOperatorServiceClient.
 type platformOperatorServiceClient struct {
 	listOperators      *connect.Client[v1.ListOperatorsRequest, v1.ListOperatorsResponse]
+	getOperator        *connect.Client[v1.GetOperatorRequest, v1.GetOperatorResponse]
 	createOperator     *connect.Client[v1.CreateOperatorRequest, v1.CreateOperatorResponse]
 	updateOperatorRole *connect.Client[v1.UpdateOperatorRoleRequest, v1.UpdateOperatorRoleResponse]
 	suspendOperator    *connect.Client[v1.SuspendOperatorRequest, v1.SuspendOperatorResponse]
@@ -128,6 +139,11 @@ type platformOperatorServiceClient struct {
 // ListOperators calls publira.platform.v1.PlatformOperatorService.ListOperators.
 func (c *platformOperatorServiceClient) ListOperators(ctx context.Context, req *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error) {
 	return c.listOperators.CallUnary(ctx, req)
+}
+
+// GetOperator calls publira.platform.v1.PlatformOperatorService.GetOperator.
+func (c *platformOperatorServiceClient) GetOperator(ctx context.Context, req *connect.Request[v1.GetOperatorRequest]) (*connect.Response[v1.GetOperatorResponse], error) {
+	return c.getOperator.CallUnary(ctx, req)
 }
 
 // CreateOperator calls publira.platform.v1.PlatformOperatorService.CreateOperator.
@@ -159,6 +175,7 @@ func (c *platformOperatorServiceClient) DeactivateOperator(ctx context.Context, 
 // publira.platform.v1.PlatformOperatorService service.
 type PlatformOperatorServiceHandler interface {
 	ListOperators(context.Context, *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error)
+	GetOperator(context.Context, *connect.Request[v1.GetOperatorRequest]) (*connect.Response[v1.GetOperatorResponse], error)
 	CreateOperator(context.Context, *connect.Request[v1.CreateOperatorRequest]) (*connect.Response[v1.CreateOperatorResponse], error)
 	UpdateOperatorRole(context.Context, *connect.Request[v1.UpdateOperatorRoleRequest]) (*connect.Response[v1.UpdateOperatorRoleResponse], error)
 	SuspendOperator(context.Context, *connect.Request[v1.SuspendOperatorRequest]) (*connect.Response[v1.SuspendOperatorResponse], error)
@@ -177,6 +194,12 @@ func NewPlatformOperatorServiceHandler(svc PlatformOperatorServiceHandler, opts 
 		PlatformOperatorServiceListOperatorsProcedure,
 		svc.ListOperators,
 		connect.WithSchema(platformOperatorServiceMethods.ByName("ListOperators")),
+		connect.WithHandlerOptions(opts...),
+	)
+	platformOperatorServiceGetOperatorHandler := connect.NewUnaryHandler(
+		PlatformOperatorServiceGetOperatorProcedure,
+		svc.GetOperator,
+		connect.WithSchema(platformOperatorServiceMethods.ByName("GetOperator")),
 		connect.WithHandlerOptions(opts...),
 	)
 	platformOperatorServiceCreateOperatorHandler := connect.NewUnaryHandler(
@@ -213,6 +236,8 @@ func NewPlatformOperatorServiceHandler(svc PlatformOperatorServiceHandler, opts 
 		switch r.URL.Path {
 		case PlatformOperatorServiceListOperatorsProcedure:
 			platformOperatorServiceListOperatorsHandler.ServeHTTP(w, r)
+		case PlatformOperatorServiceGetOperatorProcedure:
+			platformOperatorServiceGetOperatorHandler.ServeHTTP(w, r)
 		case PlatformOperatorServiceCreateOperatorProcedure:
 			platformOperatorServiceCreateOperatorHandler.ServeHTTP(w, r)
 		case PlatformOperatorServiceUpdateOperatorRoleProcedure:
@@ -234,6 +259,10 @@ type UnimplementedPlatformOperatorServiceHandler struct{}
 
 func (UnimplementedPlatformOperatorServiceHandler) ListOperators(context.Context, *connect.Request[v1.ListOperatorsRequest]) (*connect.Response[v1.ListOperatorsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformOperatorService.ListOperators is not implemented"))
+}
+
+func (UnimplementedPlatformOperatorServiceHandler) GetOperator(context.Context, *connect.Request[v1.GetOperatorRequest]) (*connect.Response[v1.GetOperatorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.platform.v1.PlatformOperatorService.GetOperator is not implemented"))
 }
 
 func (UnimplementedPlatformOperatorServiceHandler) CreateOperator(context.Context, *connect.Request[v1.CreateOperatorRequest]) (*connect.Response[v1.CreateOperatorResponse], error) {
