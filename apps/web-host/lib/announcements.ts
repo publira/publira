@@ -3,7 +3,6 @@ import {
   Code,
   isRpcError,
   rethrowUnclassifiedRpcError,
-  rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
@@ -45,15 +44,6 @@ const mapErrorToMessage = (error: unknown): string =>
   rpcErrorMessage(error, listErrorMessage, {
     "invalid-argument": "セッションが無効です。再ログインしてください。",
   });
-
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
-
-const throwIfUnexpected = (unexpected: boolean, message: string): void => {
-  if (unexpected) {
-    throw new Error(message);
-  }
-};
 
 const mapAnnouncementItem = (item: {
   body: string;
@@ -124,7 +114,7 @@ const emptyListPage = {
 };
 
 type CachedListMyAnnouncementsResult = ListMyAnnouncementsResult & {
-  unexpected: boolean;
+  error?: unknown;
 };
 
 const readAnnouncementList = async (
@@ -144,16 +134,15 @@ const readAnnouncementList = async (
       nextToken: response.nextToken ?? "",
       ok: true,
       previousToken: response.previousToken ?? "",
-      unexpected: false,
     };
   } catch (error) {
     dropFailedCacheEntry();
     return {
       ...emptyListPage,
+      error,
       message: mapErrorToMessage(error),
       ok: false,
       requiresSignIn: isSignInRequiredError(error),
-      unexpected: isUnexpectedError(error),
     };
   }
 };
@@ -163,12 +152,14 @@ export const listMyAnnouncements = async (
   sessionId?: string,
   options: ListMyAnnouncementsOptions = {}
 ): Promise<ListMyAnnouncementsResult> => {
-  const { unexpected, ...result } = await readAnnouncementList(
+  const { error, ...result } = await readAnnouncementList(
     tenantId,
     sessionId,
     options
   );
-  throwIfUnexpected(unexpected, result.ok ? listErrorMessage : result.message);
+  if (error !== undefined) {
+    rethrowUnclassifiedRpcError(error);
+  }
   return result;
 };
 
@@ -178,7 +169,7 @@ const getMyAnnouncementInputSchema = z.object({
 });
 
 interface CachedGetMyAnnouncementResult {
-  unexpected: boolean;
+  error?: unknown;
   value: MemberAnnouncementItem | null;
 }
 
@@ -195,14 +186,14 @@ const readMyAnnouncement = async (
   });
   if (!parsed.success) {
     // Same null as a missing row: a malformed id is not a distinct outcome.
-    return { unexpected: false, value: null };
+    return { value: null };
   }
 
   applyCacheTag(announcementsCacheTag(parsed.data.tenantId));
 
   const sid = await resolveAccessToken(sessionId);
   if (!sid) {
-    return { unexpected: false, value: null };
+    return { value: null };
   }
 
   try {
@@ -214,19 +205,13 @@ const readMyAnnouncement = async (
       buildSessionHeaders(sid)
     );
     if (!response.announcement) {
-      return { unexpected: false, value: null };
+      return { value: null };
     }
 
-    return {
-      unexpected: false,
-      value: mapAnnouncementItem(response.announcement),
-    };
+    return { value: mapAnnouncementItem(response.announcement) };
   } catch (error) {
     dropFailedCacheEntry();
-    return {
-      unexpected: isUnexpectedError(error),
-      value: null,
-    };
+    return { error, value: null };
   }
 };
 
@@ -239,7 +224,9 @@ export const getMyAnnouncement = async (
   sessionId?: string
 ): Promise<MemberAnnouncementItem | null> => {
   const result = await readMyAnnouncement(tenantId, announcementId, sessionId);
-  throwIfUnexpected(result.unexpected, listErrorMessage);
+  if (result.error !== undefined) {
+    rethrowUnclassifiedRpcError(result.error);
+  }
   return result.value;
 };
 

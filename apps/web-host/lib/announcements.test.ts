@@ -108,6 +108,14 @@ describe("web-host announcements", () => {
     );
   });
 
+  it("listMyAnnouncements: 分類できない RPC エラーは伝播する", async () => {
+    const { listMyAnnouncements } = await importAnnouncements();
+    const error = new ConnectError("boom", Code.Internal);
+    mockListAnnouncements.mockRejectedValueOnce(error);
+
+    await expect(listMyAnnouncements("TENANT001")).rejects.toBe(error);
+  });
+
   it("getMyAnnouncement: 認可済み 1 件を返す", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
 
@@ -204,12 +212,11 @@ describe("web-host announcements", () => {
 
   it("getMyAnnouncement: 分類できない RPC エラーは伝播する", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
-    mockGetAnnouncement.mockRejectedValueOnce(
-      new ConnectError("boom", Code.Internal)
-    );
+    const error = new ConnectError("boom", Code.Internal);
+    mockGetAnnouncement.mockRejectedValueOnce(error);
 
-    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toThrow(
-      "お知らせの取得に失敗しました。"
+    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toBe(
+      error
     );
   });
 
