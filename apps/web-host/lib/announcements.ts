@@ -3,8 +3,9 @@ import {
   Code,
   isRpcError,
   rethrowUnclassifiedRpcError,
+  rpcErrorDisposition,
 } from "@publira/api-client/errors";
-import { unstable_noStore as noStore } from "next/cache";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
 
 import {
@@ -13,6 +14,7 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import { tenantIdFormSchema } from "./auth-input";
+import { applyCacheTag, tenantAnnouncementsTag } from "./cache-tags";
 
 export interface MemberAnnouncementItem {
   id: string;
@@ -31,10 +33,27 @@ export interface MemberAnnouncementItem {
 const isSignInRequiredError = (error: unknown): boolean =>
   isRpcError(error, Code.Unauthenticated, Code.InvalidArgument);
 
+const listErrorMessage = "お知らせの取得に失敗しました。";
+
+/**
+ * Tag the cached inbox read carries, so `updateTag` in the Server Action
+ * makes a mark-read visible on the next list render.
+ */
+export const announcementsCacheTag = tenantAnnouncementsTag;
+
 const mapErrorToMessage = (error: unknown): string =>
-  rpcErrorMessage(error, "お知らせの取得に失敗しました。", {
+  rpcErrorMessage(error, listErrorMessage, {
     "invalid-argument": "セッションが無効です。再ログインしてください。",
   });
+
+const isUnexpectedError = (error: unknown): boolean =>
+  rpcErrorDisposition(error) === "unexpected";
+
+const throwIfUnexpected = (unexpected: boolean, message: string): void => {
+  if (unexpected) {
+    throw new Error(message);
+  }
+};
 
 const mapAnnouncementItem = (item: {
   body: string;
@@ -98,36 +117,43 @@ export type ListMyAnnouncementsResult =
       requiresSignIn: boolean;
     } & MyAnnouncementsPage);
 
-const fetchAnnouncements = async (
+const emptyListPage = {
+  announcements: [] as MemberAnnouncementItem[],
+  nextToken: "",
+  previousToken: "",
+};
+
+type CachedListMyAnnouncementsResult = ListMyAnnouncementsResult & {
+  unexpected: boolean;
+};
+
+const readAnnouncementList = async (
   tenantId: string,
-  sessionId: string,
+  sessionId: string | undefined,
   options: ListMyAnnouncementsOptions
-): Promise<ListMyAnnouncementsResult> => {
+): Promise<CachedListMyAnnouncementsResult> => {
+  "use cache: private";
+  applyCacheTag(announcementsCacheTag(tenantId));
+
+  const sid = await resolveAccessToken(sessionId);
   try {
-    const response = await listAnnouncementsRpc(tenantId, sessionId, options);
+    const response = await listAnnouncementsRpc(tenantId, sid, options);
 
     return {
       announcements: mapAnnouncementItems(response),
       nextToken: response.nextToken ?? "",
       ok: true,
       previousToken: response.previousToken ?? "",
+      unexpected: false,
     };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    console.warn("[web-host] listAnnouncements failed", {
-      error: error instanceof Error ? error.message : String(error),
-      hasSessionId: sessionId.length > 0,
-      sessionIdLength: sessionId.length,
-      tenantId,
-    });
-
+    dropFailedCacheEntry();
     return {
-      announcements: [],
+      ...emptyListPage,
       message: mapErrorToMessage(error),
-      nextToken: "",
       ok: false,
-      previousToken: "",
       requiresSignIn: isSignInRequiredError(error),
+      unexpected: isUnexpectedError(error),
     };
   }
 };
@@ -137,10 +163,13 @@ export const listMyAnnouncements = async (
   sessionId?: string,
   options: ListMyAnnouncementsOptions = {}
 ): Promise<ListMyAnnouncementsResult> => {
-  noStore();
-
-  const sid = await resolveAccessToken(sessionId);
-  return fetchAnnouncements(tenantId, sid, options);
+  const { unexpected, ...result } = await readAnnouncementList(
+    tenantId,
+    sessionId,
+    options
+  );
+  throwIfUnexpected(unexpected, result.ok ? listErrorMessage : result.message);
+  return result;
 };
 
 const getMyAnnouncementInputSchema = z.object({
@@ -148,15 +177,17 @@ const getMyAnnouncementInputSchema = z.object({
   tenantId: tenantIdFormSchema,
 });
 
-/**
- * Session-authorized get-by-id. A form-supplied `linkUrl` is not a substitute.
- */
-export const getMyAnnouncement = async (
+interface CachedGetMyAnnouncementResult {
+  unexpected: boolean;
+  value: MemberAnnouncementItem | null;
+}
+
+const readMyAnnouncement = async (
   tenantId: string,
   announcementId: string,
   sessionId?: string
-): Promise<MemberAnnouncementItem | null> => {
-  noStore();
+): Promise<CachedGetMyAnnouncementResult> => {
+  "use cache: private";
 
   const parsed = getMyAnnouncementInputSchema.safeParse({
     announcementId,
@@ -164,12 +195,14 @@ export const getMyAnnouncement = async (
   });
   if (!parsed.success) {
     // Same null as a missing row: a malformed id is not a distinct outcome.
-    return null;
+    return { unexpected: false, value: null };
   }
+
+  applyCacheTag(announcementsCacheTag(parsed.data.tenantId));
 
   const sid = await resolveAccessToken(sessionId);
   if (!sid) {
-    return null;
+    return { unexpected: false, value: null };
   }
 
   try {
@@ -181,14 +214,33 @@ export const getMyAnnouncement = async (
       buildSessionHeaders(sid)
     );
     if (!response.announcement) {
-      return null;
+      return { unexpected: false, value: null };
     }
 
-    return mapAnnouncementItem(response.announcement);
+    return {
+      unexpected: false,
+      value: mapAnnouncementItem(response.announcement),
+    };
   } catch (error) {
-    rethrowUnclassifiedRpcError(error);
-    return null;
+    dropFailedCacheEntry();
+    return {
+      unexpected: isUnexpectedError(error),
+      value: null,
+    };
   }
+};
+
+/**
+ * Session-authorized get-by-id. A form-supplied `linkUrl` is not a substitute.
+ */
+export const getMyAnnouncement = async (
+  tenantId: string,
+  announcementId: string,
+  sessionId?: string
+): Promise<MemberAnnouncementItem | null> => {
+  const result = await readMyAnnouncement(tenantId, announcementId, sessionId);
+  throwIfUnexpected(result.unexpected, listErrorMessage);
+  return result.value;
 };
 
 export const markAnnouncementAsRead = async (

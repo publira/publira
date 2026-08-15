@@ -31,8 +31,8 @@ vi.mock("./api-client", () => ({
 }));
 
 vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
   cacheTag: vi.fn(),
-  unstable_noStore: vi.fn(),
 }));
 
 const importAnnouncements = () => import("./announcements");
@@ -200,6 +200,17 @@ describe("web-host announcements", () => {
     await expect(
       getMyAnnouncement(tenantId, announcementId)
     ).resolves.toBeNull();
+  });
+
+  it("getMyAnnouncement: 分類できない RPC エラーは伝播する", async () => {
+    const { getMyAnnouncement } = await importAnnouncements();
+    mockGetAnnouncement.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toThrow(
+      "お知らせの取得に失敗しました。"
+    );
   });
 
   it("markAnnouncementAsRead: session が無ければ false", async () => {

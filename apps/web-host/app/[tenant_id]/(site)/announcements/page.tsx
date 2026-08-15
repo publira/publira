@@ -2,7 +2,6 @@ import { SectionError } from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -114,7 +113,6 @@ const AnnouncementsSection = async ({
     getTenantId(),
   ]);
   const { token } = parseAnnouncementsListSearchParams(resolvedSearchParams);
-  await connection();
 
   const [result, timeZone] = await Promise.all([
     listMyAnnouncements(tenantId, undefined, {
