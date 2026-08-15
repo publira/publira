@@ -3065,6 +3065,82 @@ SELECT EXISTS (
         AND (expires_at IS NULL OR expires_at > NOW())
 ) AS has_purchase;
 
+-- name: ListMyPurchasesDesc :many
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.purchased_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.user_id = sqlc.arg('user_id')
+    AND e.tenant_id = sqlc.arg('tenant_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) <= (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) < (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at DESC,
+    p.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListMyPurchasesAsc :many
+SELECT p.id,
+    p.price_at_purchase,
+    p.expires_at,
+    p.purchased_at,
+    e.public_id AS episode_public_id,
+    e.title AS episode_title,
+    e.order_index AS episode_order_index,
+    s.public_id AS series_public_id,
+    s.title AS series_title
+FROM purchases p
+    JOIN episodes e ON e.id = p.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE p.tenant_id = sqlc.arg('tenant_id')
+    AND p.user_id = sqlc.arg('user_id')
+    AND e.tenant_id = sqlc.arg('tenant_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND (
+        sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) >= (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (p.purchased_at, p.id) > (
+                sqlc.narg('cursor_purchased_at')::timestamptz,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY p.purchased_at ASC,
+    p.id ASC
+LIMIT sqlc.arg('limit');
+
 -- name: CreatePurchaseFromStripeCheckout :one
 -- The advisory lock serializes different Stripe Checkout sessions for the same
 -- buyer and episode. Stripe's request idempotency prevents duplicate sessions

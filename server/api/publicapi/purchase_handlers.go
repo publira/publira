@@ -17,8 +17,10 @@ import (
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/webhook"
 
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 const (
@@ -27,6 +29,9 @@ const (
 	stripeMetadataEpisodeID          = "episode_id"
 	stripeMetadataPrice              = "price"
 	stripeMetadataReadingPeriodHours = "reading_period_hours"
+
+	defaultPurchasePageSize = int32(20)
+	maxPurchasePageSize     = int32(100)
 )
 
 type stripeCheckoutProvider struct {
@@ -112,6 +117,164 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("failed to start checkout"))
 	}
 	return connect.NewResponse(&publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}), nil
+}
+
+type purchasePageRow struct {
+	id                uuid.UUID
+	priceAtPurchase   int32
+	expiresAt         sql.NullTime
+	purchasedAt       time.Time
+	episodePublicID   string
+	episodeTitle      string
+	episodeOrderIndex int32
+	seriesPublicID    string
+	seriesTitle       string
+}
+
+func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageRow {
+	mapped := make([]purchasePageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, purchasePageRow{
+			id:                row.ID,
+			priceAtPurchase:   row.PriceAtPurchase,
+			expiresAt:         row.ExpiresAt,
+			purchasedAt:       row.PurchasedAt,
+			episodePublicID:   row.EpisodePublicID,
+			episodeTitle:      row.EpisodeTitle,
+			episodeOrderIndex: row.EpisodeOrderIndex,
+			seriesPublicID:    row.SeriesPublicID,
+			seriesTitle:       row.SeriesTitle,
+		})
+	}
+	return mapped
+}
+
+func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow {
+	mapped := make([]purchasePageRow, 0, len(rows))
+	for _, row := range rows {
+		mapped = append(mapped, purchasePageRow{
+			id:                row.ID,
+			priceAtPurchase:   row.PriceAtPurchase,
+			expiresAt:         row.ExpiresAt,
+			purchasedAt:       row.PurchasedAt,
+			episodePublicID:   row.EpisodePublicID,
+			episodeTitle:      row.EpisodeTitle,
+			episodeOrderIndex: row.EpisodeOrderIndex,
+			seriesPublicID:    row.SeriesPublicID,
+			seriesTitle:       row.SeriesTitle,
+		})
+	}
+	return mapped
+}
+
+func (s *apiServer) purchasePage(
+	ctx context.Context,
+	tenantID, userID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]purchasePageRow, error) {
+	queries := s.queriesFor(ctx)
+	params := dbmodels.ListMyPurchasesDescParams{
+		TenantID:          tenantID,
+		UserID:            userID,
+		CursorPurchasedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		CursorInclusive:   keys.Inclusive,
+		CursorID:          uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		Limit:             limit,
+	}
+	if direction == pagination.Backward {
+		rows, err := queries.ListMyPurchasesAsc(ctx, dbmodels.ListMyPurchasesAscParams(params))
+		if err != nil {
+			return nil, err
+		}
+		return mapPurchaseAscRows(rows), nil
+	}
+
+	rows, err := queries.ListMyPurchasesDesc(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return mapPurchaseDescRows(rows), nil
+}
+
+func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurchase {
+	expiresAt := ""
+	isActive := true
+	if row.expiresAt.Valid {
+		expiresAt = row.expiresAt.Time.UTC().Format(time.RFC3339)
+		isActive = row.expiresAt.Time.After(now)
+	}
+
+	return &publirav1.MyPurchase{
+		Id: row.id.String(),
+		Episode: &publirattypesv1.Episode{
+			OrderIndex: row.episodeOrderIndex,
+			PublicId:   row.episodePublicID,
+			Title:      row.episodeTitle,
+		},
+		ExpiresAt:       expiresAt,
+		IsActive:        isActive,
+		PriceAtPurchase: row.priceAtPurchase,
+		PurchasedAt:     row.purchasedAt.UTC().Format(time.RFC3339),
+		Series: &publirattypesv1.Series{
+			PublicId: row.seriesPublicID,
+			Title:    row.seriesTitle,
+		},
+	}
+}
+
+func (s *apiServer) ListMyPurchases(
+	ctx context.Context,
+	req *connect.Request[publirav1.ListMyPurchasesRequest],
+) (*connect.Response[publirav1.ListMyPurchasesResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultPurchasePageSize, maxPurchasePageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
+	}
+
+	rows, err := s.purchasePage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
+	if err != nil {
+		return nil, s.internalDBError("failed to list purchases", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+	now := time.Now()
+	items := make([]*publirav1.MyPurchase, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, purchaseItemFromRow(row, now))
+	}
+
+	res := &publirav1.ListMyPurchasesResponse{Purchases: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].purchasedAt, rows[0].id)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.purchasedAt, last.id)
+		}
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 type stripeCheckoutInput struct {

@@ -1166,6 +1166,10 @@ CREATE INDEX idx_platform_user_password_reset_tokens_user_id ON platform_user_pa
 -- INDEX: idx_purchases_tenant_id
 CREATE INDEX idx_purchases_tenant_id ON purchases USING btree (tenant_id);
 
+-- INDEX: idx_purchases_tenant_user_purchased_at
+-- Reader library keyset scans filter by tenant + user and run newest first.
+CREATE INDEX idx_purchases_tenant_user_purchased_at ON purchases USING btree (tenant_id, user_id, purchased_at DESC, id DESC);
+
 -- INDEX: idx_series_creators_tenant_creator
 -- 著者から公開シリーズを辿る EXISTS / JOIN 用。PK は (series_id, creator_id)
 -- なので creator_id からの検索には乗らない。

@@ -148,12 +148,20 @@ const MyPage = () => (
             登録情報と利用状況を確認できます。
           </p>
         </div>
-        <Link
-          className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-          href="/settings"
-        >
-          設定を開く
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+            href="/my/library"
+          >
+            購入済み一覧
+          </Link>
+          <Link
+            className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            href="/settings"
+          >
+            設定を開く
+          </Link>
+        </div>
       </div>
     </section>
 
