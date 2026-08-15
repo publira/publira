@@ -1,4 +1,33 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["github>publira/.github//renovate.json5"],
+  // buf has no Renovate manager, so the pinned remote plugin versions in
+  // buf.gen.yaml would silently go stale. Each pin tracks the runtime library
+  // the generated code is compiled against, so these resolve to the same
+  // packages as server/go.mod and packages/api-client/package.json and land in
+  // the shared connect-go / protobuf-es groups from the org preset.
+  // `customManagers` is a mergeable array, so these are appended to the
+  // dockerfileVersions / githubActionsVersions managers rather than replacing
+  // them. Two entries because the `go` datasource returns v-prefixed versions
+  // and `npm` does not, so the `v` sits inside the capture only for `go`.
+  customManagers: [
+    {
+      customType: "regex",
+      description: "buf.gen.yaml remote plugins backed by a Go module.",
+      managerFilePatterns: ["/^buf\\.gen\\.yaml$/"],
+      matchStrings: [
+        "# renovate: datasource=go depName=(?<depName>\\S+)\\s+- remote: \\S+:(?<currentValue>v\\S+)",
+      ],
+      datasourceTemplate: "go",
+    },
+    {
+      customType: "regex",
+      description: "buf.gen.yaml remote plugins backed by an npm package.",
+      managerFilePatterns: ["/^buf\\.gen\\.yaml$/"],
+      matchStrings: [
+        "# renovate: datasource=npm depName=(?<depName>\\S+)\\s+- remote: \\S+:v(?<currentValue>\\S+)",
+      ],
+      datasourceTemplate: "npm",
+    },
+  ],
 }
