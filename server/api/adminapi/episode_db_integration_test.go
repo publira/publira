@@ -2,7 +2,9 @@ package adminapi
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -69,6 +71,68 @@ func TestDBCreateEpisodesAppendInOrder(t *testing.T) {
 	}
 	if len(titles) != 3 || titles[0] != "Episode One" || titles[2] != "Episode Three" {
 		t.Fatalf("ListEpisodes titles = %v, want the three episodes in creation order", titles)
+	}
+}
+
+func TestDBCreateEpisodeConcurrentAppendsDistinctOrderIndexes(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	seriesPublicID := createDBSeries(t, client, tenant, "Concurrent Host Series")
+
+	const n = 8
+	indexes := make(chan int32, n)
+	errs := make(chan error, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			resp, err := client.CreateEpisode(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         tenant.tenantContext(),
+				SeriesPublicId: seriesPublicID,
+				Title:          fmt.Sprintf("Concurrent %d", i),
+			}))
+			if err != nil {
+				errs <- err
+				return
+			}
+			indexes <- resp.Msg.Episode.OrderIndex
+		}(i)
+	}
+	wg.Wait()
+	close(indexes)
+	close(errs)
+
+	for err := range errs {
+		t.Fatalf("CreateEpisode: %v", err)
+	}
+
+	seen := make(map[int32]struct{}, n)
+	for index := range indexes {
+		if _, exists := seen[index]; exists {
+			t.Fatalf("duplicate order_index %d", index)
+		}
+		seen[index] = struct{}{}
+	}
+	if len(seen) != n {
+		t.Fatalf("got %d distinct order_index values, want %d", len(seen), n)
+	}
+	for want := int32(1); want <= n; want++ {
+		if _, ok := seen[want]; !ok {
+			t.Fatalf("missing order_index %d in %v", want, seen)
+		}
+	}
+
+	listed, err := client.ListEpisodes(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.ListEpisodesRequest{
+		Tenant:         tenant.tenantContext(),
+		SeriesPublicId: seriesPublicID,
+	}))
+	if err != nil {
+		t.Fatalf("ListEpisodes: %v", err)
+	}
+	if len(listed.Msg.Episodes) != n {
+		t.Fatalf("ListEpisodes count = %d, want %d (every create must also write episode_listings)", len(listed.Msg.Episodes), n)
 	}
 }
 

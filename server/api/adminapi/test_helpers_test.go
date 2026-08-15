@@ -35,6 +35,7 @@ const (
 	listSeriesByTenantAscQuery                           = "-- name: ListSeriesByTenantAsc :many\n"
 	listSeriesByTenantDescQuery                          = "-- name: ListSeriesByTenantDesc :many\n"
 	getSeriesByPublicIDForTenantQuery                    = "-- name: GetSeriesByPublicIDForTenant :one\n"
+	lockSeriesByPublicIDForTenantQuery                   = "-- name: LockSeriesByPublicIDForTenant :one\n"
 	updateSeriesBaseQuery                                = "-- name: UpdateSeriesBase :exec\n"
 	updateSeriesPublicationQuery                         = "-- name: UpdateSeriesPublication :exec\n"
 	listEpisodesBySeriesForTenantAscQuery                = "-- name: ListEpisodesBySeriesForTenantAsc :many\n"
@@ -170,4 +171,27 @@ func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 func expectAdminAuditLogInsert(mock sqlmock.Sqlmock) {
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+func expectPublicIDAttempt(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectPublicIDAttemptReleased(mock sqlmock.Sqlmock) {
+	mock.ExpectExec("^RELEASE SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectLockSeriesByPublicID(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, seriesID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
+		WithArgs(tenantID, publicID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(seriesID))
+}
+
+func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {
+	expectPublicIDAttempt(mock)
+	mock.ExpectQuery("INSERT INTO episodes").
+		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), title, orderIndex, tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id"}).
+			AddRow(episodeID, seriesID, publicID, title, orderIndex, now, tenantID))
+	expectPublicIDAttemptReleased(mock)
 }

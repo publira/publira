@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -39,20 +40,14 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
-		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "eye_catch_image_file_size_bytes"}).
-			AddRow(seriesID, "SERIES001", "Series Title", nil, nil, "Synopsis", nil, true, now, nil, nil, int64(0)))
-
-	mock.ExpectQuery("INSERT INTO episodes").
-		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 1", int32(1), tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id"}).
-			AddRow(episodeID, seriesID, "EP001", "Episode 1", int32(1), now, tenantID))
-
+	mock.ExpectBegin()
+	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
 	mock.ExpectQuery("INSERT INTO episode_listings").
 		WithArgs(episodeID, int32(100), sql.NullInt32{Int32: 24, Valid: true}, "scheduled", sql.NullTime{Time: scheduledAtUTC, Valid: true}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(100), int32(24), "scheduled", scheduledAtUTC, nil, tenantID))
+	mock.ExpectCommit()
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -98,21 +93,17 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
-	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
-		WithArgs(tenantID, "SERIES001").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at", "eye_catch_image_id", "eye_catch_image_updated_at", "eye_catch_image_file_size_bytes"}).
-			AddRow(seriesID, "SERIES001", "Series Title", nil, nil, "Synopsis", nil, true, now, nil, nil, int64(0)))
+	mock.ExpectBegin()
+	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
 	mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeOrderIndexBySeriesForTenantQuery)).
 		WithArgs(tenantID, "SERIES001").
 		WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(30)))
-	mock.ExpectQuery("INSERT INTO episodes").
-		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), "Episode 31", int32(31), tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id"}).
-			AddRow(episodeID, seriesID, "EP031", "Episode 31", int32(31), now, tenantID))
+	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 31", int32(31), now, "EP031")
 	mock.ExpectQuery("INSERT INTO episode_listings").
 		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"episode_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "tenant_id"}).
 			AddRow(episodeID, int32(0), nil, "draft", nil, nil, tenantID))
+	mock.ExpectCommit()
 	mock.ExpectExec("INSERT INTO audit_logs").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -130,6 +121,42 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 	}
 	if resp.Msg.Episode.OrderIndex != 31 {
 		t.Fatalf("order_index = %d, want max_order_index + 1", resp.Msg.Episode.OrderIndex)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestCreateEpisodeRollsBackWhenListingInsertFails(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectBegin()
+	expectLockSeriesByPublicID(mock, tenantID, "SERIES001", seriesID)
+	expectCreateEpisodeBaseInsert(mock, seriesID, episodeID, tenantID, "Episode 1", int32(1), now, "EP001")
+	mock.ExpectQuery("INSERT INTO episode_listings").
+		WithArgs(episodeID, int32(0), sql.NullInt32{}, "draft", sql.NullTime{}, sql.NullTime{}, tenantID).
+		WillReturnError(errors.New("listing insert failed"))
+	mock.ExpectRollback()
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.CreateEpisodeRequest{
+		Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		SeriesPublicId: "SERIES001",
+		Title:          "Episode 1",
+		OrderIndex:     1,
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreateEpisode(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("CreateEpisode code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
 	}
 	assertExpectations(t, mock)
 }
@@ -203,11 +230,30 @@ func TestCreateEpisodeValidationAndBoundary(t *testing.T) {
 				OrderIndex:     1,
 			},
 			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
-				mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(lockSeriesByPublicIDForTenantQuery)).
 					WithArgs(tenantID, "SERIES_OTHER_TENANT").
-					WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "label_public_id", "label_name", "synopsis", "reading_period_hours", "is_published", "published_at"}))
+					WillReturnRows(sqlmock.NewRows([]string{"id"}))
+				mock.ExpectRollback()
 			},
 			wantCode: connect.CodeNotFound,
+		},
+		{
+			name: "order-index-limit",
+			request: &publiraadminv1.CreateEpisodeRequest{
+				Tenant:         &publirattypesv1.TenantContext{TenantId: ""},
+				SeriesPublicId: "SERIES001",
+				Title:          "Episode",
+			},
+			setup: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
+				mock.ExpectBegin()
+				expectLockSeriesByPublicID(mock, tenantID, "SERIES001", uuid.Must(uuid.NewV7()))
+				mock.ExpectQuery(regexp.QuoteMeta(getMaxEpisodeOrderIndexBySeriesForTenantQuery)).
+					WithArgs(tenantID, "SERIES001").
+					WillReturnRows(sqlmock.NewRows([]string{"max_order_index"}).AddRow(int32(math.MaxInt32)))
+				mock.ExpectRollback()
+			},
+			wantCode: connect.CodeFailedPrecondition,
 		},
 	}
 

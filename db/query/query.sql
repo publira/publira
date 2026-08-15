@@ -1128,6 +1128,17 @@ ORDER BY e.order_index DESC,
     e.id DESC
 LIMIT sqlc.arg('limit');
 
+-- name: LockSeriesByPublicIDForTenant :one
+-- Lock the series row so concurrent CreateEpisode calls serialize. The
+-- following MAX(order_index) must be a separate statement: READ COMMITTED
+-- freezes its snapshot at statement start, so waiting for the lock in the
+-- same statement would still see the pre-wait aggregate.
+SELECT id
+FROM series
+WHERE tenant_id = $1
+    AND public_id = $2
+FOR UPDATE;
+
 -- name: GetMaxEpisodeOrderIndexBySeriesForTenant :one
 SELECT COALESCE(MAX(e.order_index), 0)::int4 AS max_order_index
 FROM episodes e
