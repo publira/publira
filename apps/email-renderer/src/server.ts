@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 
-import { emailRendererRoutes } from "./routes.js";
+import { emailRendererRoutes } from "./routes.ts";
 
 const livezHeaders = {
   "cache-control": "no-store",

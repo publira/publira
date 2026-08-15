@@ -6,7 +6,7 @@ import { createConnectTransport } from "@connectrpc/connect-node";
 import { EmailRendererService } from "@publira/api-client/email/renderer";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createEmailRendererServer, parsePort } from "./server";
+import { createEmailRendererServer, parsePort } from "./server.ts";
 
 const servers: ReturnType<typeof createEmailRendererServer>[] = [];
 
