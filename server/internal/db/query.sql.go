@@ -1160,19 +1160,25 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfig
 }
 
 const createTenantUserRole = `-- name: CreateTenantUserRole :one
-INSERT INTO tenant_user_roles (id, user_id, role)
-VALUES ($1, $2, $3)
+INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
+VALUES ($1, $2, $3, $4)
 RETURNING id, user_id, role, created_at, tenant_id
 `
 
 type CreateTenantUserRoleParams struct {
-	ID     uuid.UUID `json:"id"`
-	UserID uuid.UUID `json:"user_id"`
-	Role   string    `json:"role"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	Role     string    `json:"role"`
 }
 
 func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error) {
-	row := q.db.QueryRowContext(ctx, createTenantUserRole, arg.ID, arg.UserID, arg.Role)
+	row := q.db.QueryRowContext(ctx, createTenantUserRole,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.Role,
+	)
 	var i TenantUserRole
 	err := row.Scan(
 		&i.ID,
@@ -6153,6 +6159,39 @@ func (q *Queries) ListSeriesImageVariantsByImageIDs(ctx context.Context, imageId
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantAdminIDs = `-- name: ListTenantAdminIDs :many
+SELECT DISTINCT tur.user_id
+FROM tenant_user_roles tur
+WHERE tur.tenant_id = $1::uuid
+ORDER BY tur.user_id
+`
+
+// Worker fan-out: every user that holds a tenant_user_roles row is a
+// tenant admin for that tenant. DISTINCT so one person with two roles
+// is still one notification.
+func (q *Queries) ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantAdminIDs, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

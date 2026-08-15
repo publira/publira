@@ -164,9 +164,10 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		return nil, connect.NewError(connect.CodeInternal, roleIDErr)
 	}
 	if _, err := s.queriesFor(ctx).CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
-		ID:     roleID,
-		UserID: user.ID,
-		Role:   auth.RoleTenantAdmin,
+		ID:       roleID,
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		Role:     auth.RoleTenantAdmin,
 	}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

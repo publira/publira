@@ -567,8 +567,8 @@ VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: CreateTenantUserRole :one
-INSERT INTO tenant_user_roles (id, user_id, role)
-VALUES ($1, $2, $3)
+INSERT INTO tenant_user_roles (id, tenant_id, user_id, role)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: ListTenantUserRoles :many
@@ -590,6 +590,15 @@ SELECT DISTINCT pu.id
 FROM platform_users pu
     INNER JOIN platform_user_roles pur ON pur.platform_user_id = pu.id
 ORDER BY pu.id;
+
+-- Worker fan-out: every user that holds a tenant_user_roles row is a
+-- tenant admin for that tenant. DISTINCT so one person with two roles
+-- is still one notification.
+-- name: ListTenantAdminIDs :many
+SELECT DISTINCT tur.user_id
+FROM tenant_user_roles tur
+WHERE tur.tenant_id = sqlc.arg('tenant_id')::uuid
+ORDER BY tur.user_id;
 
 -- Platform ListOperators は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ

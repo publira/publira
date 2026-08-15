@@ -265,6 +265,10 @@ type Querier interface {
 	ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error)
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
 	ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error)
+	// Worker fan-out: every user that holds a tenant_user_roles row is a
+	// tenant admin for that tenant. DISTINCT so one person with two roles
+	// is still one notification.
+	ListTenantAdminIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	ListTenantAdminInvitationsAsc(ctx context.Context, arg ListTenantAdminInvitationsAscParams) ([]TenantAdminInvitation, error)
 	// Platform ListTenantAdminInvitations は (created_at, id) の降順で表示する。
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ

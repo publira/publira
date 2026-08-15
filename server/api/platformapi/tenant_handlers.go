@@ -288,9 +288,10 @@ func (s *platformServer) CreateTenant(
 		}
 
 		_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
-			ID:     uuid.Must(uuid.NewV7()),
-			UserID: user.ID,
-			Role:   auth.RoleTenantAdmin,
+			ID:       uuid.Must(uuid.NewV7()),
+			TenantID: tenant.ID,
+			UserID:   user.ID,
+			Role:     auth.RoleTenantAdmin,
 		})
 		if err != nil {
 			if dberr.IsUniqueViolation(err) {
@@ -611,9 +612,10 @@ func (s *platformServer) AddTenantMember(
 	txq := dbmodels.New(tx)
 
 	_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
-		ID:     uuid.Must(uuid.NewV7()),
-		UserID: user.ID,
-		Role:   normalizedRole,
+		ID:       uuid.Must(uuid.NewV7()),
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		Role:     normalizedRole,
 	})
 	if err != nil {
 		if dberr.IsUniqueViolation(err) {
@@ -695,9 +697,10 @@ func (s *platformServer) UpdateTenantMemberRole(
 	}
 
 	_, err = txq.CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
-		ID:     uuid.Must(uuid.NewV7()),
-		UserID: user.ID,
-		Role:   normalizedRole,
+		ID:       uuid.Must(uuid.NewV7()),
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+		Role:     normalizedRole,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
