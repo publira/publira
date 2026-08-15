@@ -5,31 +5,30 @@ vars:
   # these tasks at an ephemeral database instead (e2e / bootstrap check), where
   # the `db` hostname does not resolve.
   DB_URL: '{{.PUBLIRA_DB_URL | default "postgres://postgres:password@db:5432/publira?sslmode=disable"}}'
-  MIGRATE: migrate -path ./migrations -database {{.DB_URL}}
 
 tasks:
   # Public tasks are alphabetized; internal tasks are at the bottom.
   console:
     desc: Open an interactive PostgreSQL console
     cmds:
-      - psql {{.DB_URL}}
+      - psql {{.DB_URL | q}}
 
   create:
     desc: Create a new migration template file
     cmds:
-      - migrate create -ext sql -dir ./migrations -tz UTC {{.NAME}}
+      - migrate create -ext sql -dir ./migrations -tz UTC {{.NAME | q}}
     requires:
       vars: [NAME]
 
   drop:
     desc: Drop and recreate the public schema
     cmds:
-      - psql {{.DB_URL}} -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+      - psql {{.DB_URL | q}} -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
   migrate:
     desc: Apply all pending database migrations
     cmds:
-      - "{{.MIGRATE}} up"
+      - migrate -path ./migrations -database {{.DB_URL | q}} up
 
   reset:
     desc: Rebuild the database from scratch
@@ -40,14 +39,18 @@ tasks:
   rollback:
     desc: Roll back the latest database migration
     cmds:
-      - "{{.MIGRATE}} down 1"
+      - migrate -path ./migrations -database {{.DB_URL | q}} down 1
 
   seed:
     desc: "Seed the database. ENV=prod for production seed, default: dev"
     vars:
-      ENV: '{{default "dev" .ENV}}'
+      ENV: '{{.ENV | default "dev"}}'
+    requires:
+      vars:
+        - name: ENV
+          enum: [dev, prod]
     cmds:
-      - psql {{.DB_URL}} -f seeds/{{.ENV}}.sql
+      - psql {{.DB_URL | q}} -f seeds/{{.ENV | q}}.sql
 
   setup:
     desc: Initialize database schema and seed data
