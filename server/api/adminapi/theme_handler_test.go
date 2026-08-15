@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -230,6 +231,34 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	}
 	if resp.Msg.Theme.LogoUrl != "" {
 		t.Fatalf("logo_url = %q, want empty", resp.Msg.Theme.LogoUrl)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestGetTenantThemeDatabaseErrorIsHidden(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(errors.New(`pq: relation "tenant_themes" does not exist`))
+
+	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
+	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	_, err := client.GetTenantTheme(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetTenantTheme code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
 	}
 	assertExpectations(t, mock)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -899,6 +900,9 @@ func TestCreateSeriesRollsBackWhenListingInsertFails(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateSeries code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
 	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
 	assertExpectations(t, mock)
 }
 
@@ -978,4 +982,63 @@ func TestAdminGetSeriesTenantBoundary(t *testing.T) {
 			assertExpectations(t, mock)
 		})
 	}
+}
+
+func TestAdminGetSeriesDatabaseErrorIsHidden(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnError(errors.New(`pq: relation "series" does not exist`))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIES001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestAdminGetSeriesPreservesContextCanceled(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getSeriesByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "SERIES001").
+		WillReturnError(context.Canceled)
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.GetSeriesRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "SERIES001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetSeries(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("GetSeries code = %v, want %v", connect.CodeOf(err), connect.CodeCanceled)
+	}
+	assertExpectations(t, mock)
 }

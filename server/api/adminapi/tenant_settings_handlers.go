@@ -66,7 +66,7 @@ func (s *adminServer) UpdateTenantTimezone(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update tenant timezone", err, "tenant_id", tenant.ID.String())
 	}
 
 	if s.reval != nil {
