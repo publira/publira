@@ -75,7 +75,7 @@ e2e/bootstrap/
     └── down.sh
 ```
 
-`task db:setup` を bootstrap の DB に向けられるのは、`db/Tafkfile.yaml` の `DB_URL` が `PUBLIRA_DB_URL` を既定値より優先するため。未設定なら従来どおり Dev Container の `db` サービスを指す。
+`task db:setup` を bootstrap の DB に向けられるのは、`db/Taskfile.yaml` の `DB_URL` が `PUBLIRA_DB_URL` を既定値より優先するため。未設定なら従来どおり Dev Container の `db` サービスを指す。
 
 ## 失敗時のトリアージ
 
