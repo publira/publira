@@ -44,6 +44,7 @@ Docker イメージの配置規約・ビルド手順・Docker 固有のトリア
 | `Test / TypeScript` | packages ビルド後に `pnpm test` | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / DB Migrations` | 空 Postgres に対する `migrate up` → `down -all` → `up` | [`db/AGENTS.md`](../../db/AGENTS.md) |
 | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） | [`mobile/README.md`](../../mobile/README.md) |
+| `Test / Mobile E2E` | Android エミュレータ上で `task mobile:test-integration`（公開 API + seed。失敗時 artifact） | [`mobile/README.md`](../../mobile/README.md) |
 | `Test / E2E` | `task e2e:run`（ビルド → readiness → Playwright → teardown） | [`e2e/README.md`](../../e2e/README.md) |
 | `Test / Bootstrap` | `task e2e:bootstrap`（空 volume → `task setup` → DB 再起動 → `task dev`） | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`（Dev Container Traefik のホスト / `/api` / `/images` 疎通） | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
@@ -77,6 +78,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Test / TypeScript` | `apps/**`, `locales/**`, `packages/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
+| `Test / Mobile E2E` | `mobile/**`, `e2e/compose.yaml`, `e2e/scripts/{up,down,db-setup,api-server,lib,stop-apps}.sh`, `proto/publira/v1/catalog.proto`, `proto/publira/v1/domain.proto`, `server/api/publicapi/**`, `server/cmd/api-server/**`, `db/seeds/**`, `Taskfile.yaml` |
 | `Test / E2E` | `e2e/**`（`e2e/routing/**` を除外）, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
 | `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |
@@ -123,7 +125,7 @@ fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
 
 ### テストを分割している理由
 
-Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
+Go / TypeScript / DB migration / Mobile / Mobile E2E / E2E / Bootstrap / Routing は**ジョブを分ける**。片方の言語しか触らない PR で無関係なツールチェーンのセットアップとテストを走らせないためで、`Summary` が集約するので必須チェックの数は増えない。
 
 `sqlc diff` は、`sqlc.yaml` の `schema` 設定が指すスキーマファイル（`db/migrations/`）と `queries`（`db/query/`）を読んで生成結果との差分を検証する codegen チェックであり、生きた DB 接続を必要としない。したがって `Check` に残し、`Check` 自体は Postgres service を持たない。
 
@@ -172,6 +174,7 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョ�
    - `Test / TypeScript` → `pnpm test`
    - `Test / DB Migrations` → `db/migrations/00000000000000_baseline.{up,down}.sql` の SQL（`up` / `down -all` / `up` の往復）
    - `Test / Mobile` → `task mobile:check`（format / analyze / test）
+   - `Test / Mobile E2E` → エミュレータ起動か integration test 失敗か（artifact `mobile-e2e-artifacts`）
    - `Test / E2E` → readiness 失敗かテスト失敗か（artifact `e2e-artifacts`）
    - `Test / Bootstrap` → どの phase で落ちたか（artifact `bootstrap-artifacts`）
    - `Test / Routing` → どのプローブが落ちたか（artifact `routing-artifacts`）
@@ -186,6 +189,7 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョ�
    | `Test / TypeScript` | `pnpm test`（先に `pnpm build --filter "./packages/*"`） |
    | `Test / DB Migrations` | `task db:reset`（`drop` → `migrate` → `seed`）。`down` 単体は `task db:rollback` |
    | `Test / Mobile` | `task mobile:check`（依存は `task mobile:deps`） |
+   | `Test / Mobile E2E` | `task mobile:e2e`（Android エミュレータと Docker が必要。常に teardown する） |
    | `Test / E2E` | `task e2e`（常に teardown する） |
    | `Test / Bootstrap` | `task e2e:bootstrap`（常に teardown する。`task dev` を止められないときは `BOOTSTRAP_SKIP_DEV=1`） |
    | `Test / Routing` | `task e2e:routing`（常に teardown する） |

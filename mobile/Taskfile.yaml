@@ -28,3 +28,13 @@ tasks:
     desc: Run Flutter unit and widget tests
     cmds:
       - flutter test
+
+  test-integration:
+    desc: Run Flutter integration tests (requires a device or emulator)
+    cmds:
+      - bash scripts/e2e-test.sh {{.CLI_ARGS}}
+
+  e2e:
+    desc: Start the public API stack, run integration tests, always tear down
+    cmds:
+      - bash scripts/e2e-run.sh {{.CLI_ARGS}}

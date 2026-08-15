@@ -78,7 +78,7 @@ task mobile:check
 ```bash
 task mobile:format    # dart format --output=none --set-exit-if-changed .
 task mobile:analyze   # flutter analyze --fatal-infos
-task mobile:test      # flutter test
+task mobile:test      # flutter test（unit / widget / HTTP fixture）
 ```
 
 `mobile/` 配下で直接 Flutter を使う場合:
@@ -92,6 +92,8 @@ flutter test
 ```
 
 PR で `mobile/**` が変更されると CI の `Test / Mobile` ジョブが同じゲートを実行します。  
+Android エミュレータ上の integration test は `Test / Mobile E2E` です（`task mobile:e2e`）。
+
 CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/README.md](../.github/workflows/README.md)
 
 ## ディレクトリ構成
@@ -100,40 +102,75 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 mobile/
 ├── lib/
 │   ├── main.dart                 # エントリポイント
-│   ├── app.dart                  # MaterialApp.router
+│   ├── app.dart                  # MaterialApp.router + CatalogScope
 │   ├── router.dart               # go_router 定義
-│   ├── data/sample_series.dart   # カタログ用サンプルデータ
+│   ├── config.dart               # --dart-define の API / tenant
+│   ├── api/                      # Connect JSON クライアント
+│   ├── catalog/                  # CatalogRepository
 │   ├── models/series_item.dart
-│   └── screens/                  # カタログ / シリーズ詳細 など
-├── test/          # ウィジェットテスト / ユニットテスト
-├── android/       # Android 固有ファイル
-├── ios/           # iOS 固有ファイル
-├── web/           # Web 固有ファイル
-├── pubspec.yaml   # 依存関係定義
-└── analysis_options.yaml  # lint / 静的解析設定
+│   └── screens/                  # カタログ / シリーズ詳細
+├── test/                         # ウィジェット / HTTP fixture
+├── integration_test/             # デバイス上の画面遷移
+├── scripts/                      # mobile E2E ライフサイクル
+├── android/                      # Android 固有ファイル
+├── ios/                          # iOS 固有ファイル
+├── web/                          # Web 固有ファイル
+├── pubspec.yaml
+└── analysis_options.yaml
 ```
 
 ## 画面遷移
 
-`go_router` で以下を定義しています（プレースホルダ UI）。
+`go_router` で以下を定義しています。カタログは公開 API（Connect JSON）から読みます。
 
 | パス                | 画面         |
 | ------------------- | ------------ |
 | `/`                 | カタログ一覧 |
 | `/series/:seriesId` | シリーズ詳細 |
 
-公開 API 連携・ビューアは後続 Issue で差し替えます。
+一覧はローディング / 空 / 通信エラー（再試行）、詳細はローディング / 見つからない / 通信エラーを出します。ビューアは後続 Issue です。
 
-## 環境変数 / フレーバー方針
+## 公開 API への接続
 
-環境ごとの設定は `--dart-define` を利用して切り替える方針です。
+`--dart-define` でテスト用 API と tenant host を切り替えます。
+
+| 定義 | 既定 | 意味 |
+| --- | --- | --- |
+| `PUBLIRA_API_BASE_URL` | `http://127.0.0.1:8000` | 公開 API の Connect HTTP（`api-server` の 8000。8100 の gRPC ではない） |
+| `PUBLIRA_TENANT_HOST` | `localhost` | `GetTenantByDomain` に渡す host。dev seed は `localhost` |
+| `PUBLIRA_LIVE_API` | 未設定 | integration test が実 API の live グループを回すか |
 
 ```bash
-# 例: ステージング環境
-flutter run --dart-define=ENV=staging
+# ローカルの api-server（task dev / e2e スタック）
+flutter run --dart-define=PUBLIRA_API_BASE_URL=http://127.0.0.1:8000 \
+  --dart-define=PUBLIRA_TENANT_HOST=localhost
 
-# 例: 本番環境
-flutter run --dart-define=ENV=production
+# Android エミュレータからホストの api-server へ
+flutter run -d android \
+  --dart-define=PUBLIRA_API_BASE_URL=http://10.0.2.2:8000 \
+  --dart-define=PUBLIRA_TENANT_HOST=localhost
 ```
 
 フレーバー (Android の productFlavors / iOS の Scheme) は、要件が確定した段階で導入します。
+
+## Integration test
+
+`integration_test/` は次を繰り返します。
+
+- アプリ起動とカタログ初期表示
+- 一覧 → 詳細 → 戻る
+- 存在しないシリーズ
+- 空カタログ
+- 到達できない API
+
+既定はデバイス上の Connect fixture サーバーです。`PUBLIRA_LIVE_API=true` のときは dev seed（`Seed Series 001` / `SeedSERSAAA1`）に対する公開 API も回します。
+
+```bash
+# スタック起動 + integration test + teardown（エミュレータまたは実機が必要）
+task mobile:e2e
+
+# すでに API とデバイスがあるとき
+task mobile:test-integration
+```
+
+失敗時は `mobile/.run/artifacts/` に logcat とスクリーンショットを残します。CI の `Test / Mobile E2E` は同じスクリプトを Android エミュレータで実行し、失敗時に artifact `mobile-e2e-artifacts` を上げます。
