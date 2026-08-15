@@ -15,6 +15,8 @@ class ConnectFixtureServer {
     this.listStatus = HttpStatus.ok,
     this.detailStatus = HttpStatus.ok,
     this.tenantStatus = HttpStatus.ok,
+    this.listResponse,
+    this.detailResponse,
   });
 
   static const defaultTenantId = '018f0e6a-1000-7000-8000-000000000001';
@@ -73,6 +75,8 @@ class ConnectFixtureServer {
   int listStatus;
   int detailStatus;
   int tenantStatus;
+  Object? listResponse;
+  Object? detailResponse;
 
   HttpServer? _server;
 
@@ -112,11 +116,16 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/ListPublishedSeries')) {
-      await _write(request, listStatus, {
-        if (listStatus == HttpStatus.ok) 'series': series,
-        if (listStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (listStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
+      await _write(
+        request,
+        listStatus,
+        listResponse ??
+            {
+              if (listStatus == HttpStatus.ok) 'series': series,
+              if (listStatus != HttpStatus.ok) 'code': 'unavailable',
+              if (listStatus != HttpStatus.ok) 'message': 'unavailable',
+            },
+      );
       return;
     }
 
@@ -141,7 +150,7 @@ class ConnectFixtureServer {
         });
         return;
       }
-      await _write(request, HttpStatus.ok, detail);
+      await _write(request, HttpStatus.ok, detailResponse ?? detail);
       return;
     }
 
@@ -149,11 +158,7 @@ class ConnectFixtureServer {
     await request.response.close();
   }
 
-  Future<void> _write(
-    HttpRequest request,
-    int status,
-    Map<String, Object?> body,
-  ) async {
+  Future<void> _write(HttpRequest request, int status, Object body) async {
     request.response.statusCode = status;
     request.response.headers.contentType = ContentType.json;
     request.response.write(jsonEncode(body));

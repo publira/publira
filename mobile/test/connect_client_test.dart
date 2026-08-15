@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 
@@ -53,10 +55,49 @@ void main() {
     );
   });
 
+  test('unary maps a non-JSON 502 response to unavailable', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient((_) async {
+        return http.Response('<html>Bad Gateway</html>', 502);
+      }),
+    );
+
+    expect(
+      () => client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+      throwsA(
+        isA<ConnectException>().having(
+          (error) => error.code,
+          'code',
+          'unavailable',
+        ),
+      ),
+    );
+  });
+
+  test('unary maps a malformed success response to internal', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient((_) async => http.Response('not JSON', 200)),
+    );
+
+    expect(
+      () => client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+      throwsA(
+        isA<ConnectException>().having(
+          (error) => error.code,
+          'code',
+          'internal',
+        ),
+      ),
+    );
+  });
+
   test('unary treats a closed port as unavailable', () async {
+    final closedBaseUrl = server.baseUrl;
     await server.close();
     final client = ConnectClient(
-      baseUrl: 'http://127.0.0.1:1',
+      baseUrl: closedBaseUrl,
       timeout: const Duration(milliseconds: 200),
     );
 

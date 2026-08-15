@@ -53,15 +53,38 @@ class ConnectClient {
       throw ConnectException(code: 'unavailable', message: error.message);
     }
 
-    final decoded = _decodeBody(response.body);
+    late final Map<String, Object?> decoded;
+    try {
+      decoded = _decodeBody(response.body);
+    } on FormatException {
+      throw ConnectException(
+        code: _fallbackCode(response.statusCode),
+        message: 'HTTP ${response.statusCode} returned a non-JSON response',
+      );
+    }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;
     }
 
+    final responseCode = _readString(decoded, 'code');
+    final responseMessage = _readString(decoded, 'message');
     throw ConnectException(
-      code: (decoded['code'] as String?)?.trim() ?? '',
-      message: (decoded['message'] as String?)?.trim() ?? response.body,
+      code: responseCode.isEmpty
+          ? _fallbackCode(response.statusCode)
+          : responseCode,
+      message: responseMessage.isEmpty
+          ? 'HTTP ${response.statusCode}'
+          : responseMessage,
     );
+  }
+
+  String _fallbackCode(int statusCode) {
+    return statusCode >= 500 ? 'unavailable' : 'internal';
+  }
+
+  String _readString(Map<String, Object?> body, String key) {
+    final value = body[key];
+    return value is String ? value.trim() : '';
   }
 
   Map<String, Object?> _decodeBody(String raw) {
@@ -69,12 +92,9 @@ class ConnectClient {
       return const {};
     }
     final decoded = jsonDecode(raw);
-    if (decoded is Map<String, Object?>) {
-      return decoded;
-    }
     if (decoded is Map) {
       return decoded.map((key, value) => MapEntry(key.toString(), value));
     }
-    return const {};
+    throw const FormatException('response body is not a JSON object');
   }
 }

@@ -94,26 +94,21 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   List<SeriesItem> _parseSeriesList(Object? raw) {
-    if (raw is! List) {
+    // protojson omits an empty repeated field, so a missing `series` is the
+    // valid wire representation of an empty catalog.
+    if (raw == null) {
       return const [];
     }
-    return raw
-        .map(_asStringKeyedMap)
-        .whereType<Map<String, Object?>>()
-        .map(_seriesFromJson)
-        .where((item) => item.id.isNotEmpty)
+    final series = _expectList(raw, 'series');
+    return series
+        .map((item) => _expectMap(item, 'series[]'))
+        .map((item) => _seriesFromJson(item, 'series[]'))
         .toList(growable: false);
   }
 
-  SeriesDetail? _parseSeriesDetail(Map<String, Object?> body) {
-    final rawSeries = _asStringKeyedMap(body['series']);
-    if (rawSeries == null) {
-      return null;
-    }
-    final series = _seriesFromJson(rawSeries);
-    if (series.id.isEmpty) {
-      return null;
-    }
+  SeriesDetail _parseSeriesDetail(Map<String, Object?> body) {
+    final rawSeries = _expectMap(body['series'], 'series');
+    final series = _seriesFromJson(rawSeries, 'series');
     final episodes = _parseEpisodes(body['episodes']);
     return SeriesDetail(
       series: SeriesItem(
@@ -127,55 +122,90 @@ class HttpCatalogRepository implements CatalogRepository {
     );
   }
 
-  SeriesItem _seriesFromJson(Map<String, Object?> json) {
-    final label = _asStringKeyedMap(json['label']);
-    final labelName = (label?['name'] as String?) ?? '';
+  SeriesItem _seriesFromJson(Map<String, Object?> json, String path) {
+    final rawLabel = json['label'];
+    final labelName = rawLabel == null
+        ? ''
+        : _readString(
+            _expectMap(rawLabel, '$path.label'),
+            'name',
+            '$path.label',
+          );
     return SeriesItem(
-      id: (json['publicId'] as String? ?? '').trim(),
-      title: (json['title'] as String? ?? '').trim(),
-      description: (json['synopsis'] as String? ?? '').trim(),
+      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
+      title: _readString(json, 'title', path),
+      description: _readString(json, 'synopsis', path),
       labelName: labelName.trim(),
     );
   }
 
   List<EpisodeItem> _parseEpisodes(Object? raw) {
-    if (raw is! List) {
+    if (raw == null) {
       return const [];
     }
-    final episodes = raw
-        .map(_asStringKeyedMap)
-        .whereType<Map<String, Object?>>()
+    final episodes = _expectList(raw, 'episodes')
+        .map((item) => _expectMap(item, 'episodes[]'))
         .map((json) {
           return EpisodeItem(
-            id: (json['publicId'] as String? ?? '').trim(),
-            title: (json['title'] as String? ?? '').trim(),
-            orderIndex: _asInt(json['orderIndex']),
-            price: _asInt(json['price']),
+            id: _readString(
+              json,
+              'publicId',
+              'episodes[]',
+              requiredNonEmpty: true,
+            ),
+            title: _readString(json, 'title', 'episodes[]'),
+            orderIndex: _readInt(json, 'orderIndex', 'episodes[]'),
+            price: _readInt(json, 'price', 'episodes[]'),
           );
         })
-        .where((item) => item.id.isNotEmpty)
         .toList();
     episodes.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     return List<EpisodeItem>.unmodifiable(episodes);
   }
 
-  Map<String, Object?>? _asStringKeyedMap(Object? value) {
-    if (value is Map<String, Object?>) {
+  List<Object?> _expectList(Object? value, String path) {
+    if (value is List) {
       return value;
     }
+    _invalidPayload('$path must be a list');
+  }
+
+  Map<String, Object?> _expectMap(Object? value, String path) {
     if (value is Map) {
       return value.map((key, item) => MapEntry(key.toString(), item));
     }
-    return null;
+    _invalidPayload('$path must be an object');
   }
 
-  int _asInt(Object? value) {
+  String _readString(
+    Map<String, Object?> json,
+    String key,
+    String path, {
+    bool requiredNonEmpty = false,
+  }) {
+    final value = json[key];
+    if (value == null && !requiredNonEmpty) {
+      return '';
+    }
+    if (value is! String || (requiredNonEmpty && value.trim().isEmpty)) {
+      final expected = requiredNonEmpty ? 'a non-empty string' : 'a string';
+      _invalidPayload('$path.$key must be $expected');
+    }
+    return value.trim();
+  }
+
+  int _readInt(Map<String, Object?> json, String key, String path) {
+    final value = json[key];
+    if (value == null) {
+      return 0;
+    }
     if (value is int) {
       return value;
     }
-    if (value is num) {
-      return value.toInt();
-    }
-    return 0;
+    _invalidPayload('$path.$key must be an integer');
+  }
+
+  Never _invalidPayload(String message) {
+    throw CatalogFailure(CatalogFailureKind.unexpected, message: message);
   }
 }

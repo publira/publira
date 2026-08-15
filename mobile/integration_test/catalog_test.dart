@@ -148,12 +148,11 @@ void main() {
 
     testWidgets('unreachable API shows a retryable error', (tester) async {
       await withFailureScreenshot(tester, 'fixture-error', () async {
+        final closedBaseUrl = server.baseUrl;
+        await server.close();
         await pumpApp(
           tester,
-          config: const AppConfig(
-            apiBaseUrl: 'http://127.0.0.1:1',
-            tenantHost: 'localhost',
-          ),
+          config: AppConfig(apiBaseUrl: closedBaseUrl, tenantHost: 'localhost'),
         );
         await pumpUntilFound(
           tester,

@@ -161,10 +161,10 @@ jobs:
               - 'e2e/scripts/lib.sh'
               - 'e2e/scripts/stop-apps.sh'
               - 'e2e/scripts/up.sh'
-              - 'server/cmd/api-server/**'
               - 'proto/publira/v1/catalog.proto'
               - 'proto/publira/v1/domain.proto'
-              - 'server/api/publicapi/**'
+              - 'server/**'
+              - 'db/migrations/**'
               - 'db/seeds/**'
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
@@ -623,7 +623,6 @@ jobs:
           script: task mobile:test-integration
         env:
           PUBLIRA_LIVE_API: "true"
-          PUBLIRA_API_BASE_URL: http://10.0.2.2:8000
           PUBLIRA_TENANT_HOST: localhost
 
       - name: Teardown / Public API stack

@@ -78,7 +78,7 @@ Nightly フルは path filter で拾えないサービス横断のドリフト�
 | `Test / TypeScript` | `apps/**`, `locales/**`, `packages/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
 | `Test / Mobile` | `mobile/**`, `Taskfile.yaml` |
-| `Test / Mobile E2E` | `mobile/**`, `e2e/compose.yaml`, `e2e/scripts/{up,down,db-setup,api-server,lib,stop-apps}.sh`, `proto/publira/v1/catalog.proto`, `proto/publira/v1/domain.proto`, `server/api/publicapi/**`, `server/cmd/api-server/**`, `db/seeds/**`, `Taskfile.yaml` |
+| `Test / Mobile E2E` | `mobile/**`, `e2e/compose.yaml`, `e2e/scripts/{up,down,db-setup,api-server,lib,stop-apps}.sh`, `proto/publira/v1/catalog.proto`, `proto/publira/v1/domain.proto`, `server/**`, `db/migrations/**`, `db/seeds/**`, `Taskfile.yaml` |
 | `Test / E2E` | `e2e/**`（`e2e/routing/**` を除外）, `apps/web-host/**`, `apps/web-admin/**`, `apps/web-platform/**`, `packages/**`, `server/**`, `db/**`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `Taskfile.yaml` |
 | `Test / Bootstrap` | `.devcontainer/**`, `db/**`, `e2e/bootstrap/**`, `apps/**`, `packages/**`, `server/**`, `Taskfile.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json` |
 | `Test / Routing` | `.devcontainer/**`, `e2e/routing/**` |

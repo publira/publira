@@ -40,6 +40,11 @@ void main() {
     expect(await catalog.listSeries(), isEmpty);
   });
 
+  test('listSeries accepts an omitted empty repeated field', () async {
+    server.listResponse = const <String, Object?>{};
+    expect(await catalog.listSeries(), isEmpty);
+  });
+
   test('getSeries returns detail and episode count', () async {
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
     expect(detail, isNotNull);
@@ -62,6 +67,39 @@ void main() {
           (error) => error.kind,
           'kind',
           CatalogFailureKind.network,
+        ),
+      ),
+    );
+  });
+
+  test('listSeries rejects a malformed success response', () async {
+    server.listResponse = const {'series': 'not a list'};
+
+    expect(
+      () => catalog.listSeries(),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
+        ),
+      ),
+    );
+  });
+
+  test('getSeries rejects a detail without a public id', () async {
+    server.detailResponse = const {
+      'series': {'title': 'Missing public id'},
+      'episodes': <Object?>[],
+    };
+
+    expect(
+      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
+      throwsA(
+        isA<CatalogFailure>().having(
+          (error) => error.kind,
+          'kind',
+          CatalogFailureKind.unexpected,
         ),
       ),
     );

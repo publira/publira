@@ -92,7 +92,7 @@ flutter test
 ```
 
 PR で `mobile/**` が変更されると CI の `Test / Mobile` ジョブが同じゲートを実行します。  
-Android エミュレータ上の integration test は `Test / Mobile E2E` です（`task mobile:e2e`）。
+Android エミュレータ上の integration test は `Test / Mobile E2E` です（`PUBLIRA_LIVE_API=true task mobile:test-integration`）。CI ジョブが公開 API と dev seed の起動・終了を担当します。
 
 CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/README.md](../.github/workflows/README.md)
 
@@ -173,4 +173,4 @@ task mobile:e2e
 task mobile:test-integration
 ```
 
-失敗時は `mobile/.run/artifacts/` に logcat とスクリーンショットを残します。CI の `Test / Mobile E2E` は同じスクリプトを Android エミュレータで実行し、失敗時に artifact `mobile-e2e-artifacts` を上げます。
+失敗時は `mobile/.run/artifacts/` に logcat とスクリーンショットを残します。CI の `Test / Mobile E2E` は公開 API と dev seed を起動してから `PUBLIRA_LIVE_API=true task mobile:test-integration` を Android エミュレータで実行し、失敗時に artifact `mobile-e2e-artifacts` を上げます。

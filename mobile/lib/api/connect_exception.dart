@@ -2,8 +2,8 @@
 class ConnectException implements Exception {
   const ConnectException({required this.code, required this.message});
 
-  /// Connect code such as `not_found` or `unavailable`. Empty when the
-  /// response was not a Connect error body (timeout, DNS, HTTP 502, …).
+  /// Connect code such as `not_found` or `unavailable`. Transport and invalid
+  /// responses use the closest synthetic Connect code for UI classification.
   final String code;
   final String message;
 
