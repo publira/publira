@@ -9,6 +9,7 @@ import { isHttpUrl } from "../http-url";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
 import type { Messages } from "../messages";
+import { hasNoLineBreaks } from "../single-line";
 
 const headingStyle: CSSProperties = {
   color: emailColors.foreground,
@@ -33,7 +34,9 @@ export const sampleEmailDataSchema = z.object({
     .trim()
     .refine(isHttpUrl, { error: "action_url must be an http(s) URL" }),
   body: z.string().trim().min(1).max(2000),
-  title: z.string().trim().min(1).max(200),
+  title: z.string().trim().min(1).max(200).refine(hasNoLineBreaks, {
+    error: "title must not contain CR or LF",
+  }),
 });
 
 export type SampleEmailData = z.output<typeof sampleEmailDataSchema>;

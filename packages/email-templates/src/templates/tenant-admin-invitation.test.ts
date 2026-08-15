@@ -38,6 +38,15 @@ describe("tenantAdminInvitationDataSchema", () => {
 
     expect(parsed.success).toBe(false);
   });
+
+  it("tenant_name の CR/LF を拒否する", () => {
+    const parsed = tenantAdminInvitationDataSchema.safeParse({
+      ...invitationData,
+      tenant_name: "青灯書房\r\nBcc: injected@example.com",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
 });
 
 describe("TenantAdminInvitationEmail", () => {
@@ -62,6 +71,8 @@ describe("TenantAdminInvitationEmail", () => {
     });
 
     expect(result.subject).toBe("青灯書房 管理者招待");
+    expect(result.html).toContain("Publira 管理画面へ招待されました。");
+    expect(result.html).not.toContain("招待を受け付けました");
     expect(result.html).toContain("招待を承諾する");
     expect(result.html).toContain(invitationData.invite_url);
     expect(result.html).toContain(expires);

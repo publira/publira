@@ -16,6 +16,15 @@ describe("sampleEmailDataSchema", () => {
     expect(sampleEmailDataSchema.parse(sampleData)).toEqual(sampleData);
   });
 
+  it("title の CR/LF を拒否する", () => {
+    const parsed = sampleEmailDataSchema.safeParse({
+      ...sampleData,
+      title: "Sample\r\nBcc: injected@example.com",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
   it("http(s) 以外の URL を拒否する", () => {
     const parsed = sampleEmailDataSchema.safeParse({
       ...sampleData,

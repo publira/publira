@@ -15,8 +15,8 @@
       "fallback_link": "ボタンが使えない場合は、次の URL をブラウザに貼り付けてください。",
       "heading": "管理者への招待",
       "ignore": "心当たりがない場合、このメールは破棄してください。",
-      "intro": "Publira 管理画面への招待を受け付けました。",
-      "preview": "Publira 管理画面への招待を受け付けました。",
+      "intro": "Publira 管理画面へ招待されました。",
+      "preview": "Publira 管理画面へ招待されました。",
       "subject": "{tenant_name} 管理者招待"
     }
   },

@@ -10,6 +10,7 @@ import { isHttpUrl } from "../http-url";
 import { EmailLayout } from "../layout";
 import { emailMessage } from "../messages";
 import type { Messages } from "../messages";
+import { hasNoLineBreaks } from "../single-line";
 import "../temporal";
 
 const headingStyle: CSSProperties = {
@@ -65,7 +66,9 @@ export const tenantAdminInvitationDataSchema = z.object({
     .string()
     .trim()
     .refine(isHttpUrl, { error: "invite_url must be an http(s) URL" }),
-  tenant_name: z.string().trim().min(1).max(255),
+  tenant_name: z.string().trim().min(1).max(255).refine(hasNoLineBreaks, {
+    error: "tenant_name must not contain CR or LF",
+  }),
 });
 
 export type TenantAdminInvitationData = z.output<
