@@ -13,7 +13,8 @@ OSSとして、ポータビリティ・運用のしやすさ・ベンダーロ�
 ├── apps/               # [Node.js] Web アプリ (Turborepo)
 │   ├── web-host/       # テナント公開サイト (カタログ/認証/マイページ)
 │   ├── web-admin/      # 出版社・編集者向け入稿/管理画面
-│   └── web-platform/   # プラットフォーム運営者向け横断運用画面
+│   ├── web-platform/   # プラットフォーム運営者向け横断運用画面
+│   └── email-renderer/ # React Email を ConnectRPC で描画する Node サービス
 ├── packages/           # [Node.js] 共有 UI / ユーティリティ
 ├── e2e/                # [Playwright] Web 横断 E2E 基盤
 ├── server/             # [Go] バックエンドシステム (単一モジュール)

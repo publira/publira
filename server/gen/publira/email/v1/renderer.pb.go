@@ -23,10 +23,12 @@ const (
 )
 
 type RenderEmailRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Template      string                 `protobuf:"bytes,1,opt,name=template,proto3" json:"template,omitempty"`
-	Locale        string                 `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
-	Data          *structpb.Struct       `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Template string                 `protobuf:"bytes,1,opt,name=template,proto3" json:"template,omitempty"`
+	Locale   string                 `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
+	Data     *structpb.Struct       `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	// IANA time zone used when a template formats an absolute timestamp.
+	TimeZone      string `protobuf:"bytes,4,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,6 +82,13 @@ func (x *RenderEmailRequest) GetData() *structpb.Struct {
 		return x.Data
 	}
 	return nil
+}
+
+func (x *RenderEmailRequest) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
 }
 
 type RenderEmailResponse struct {
@@ -146,11 +155,12 @@ var File_publira_email_v1_renderer_proto protoreflect.FileDescriptor
 
 const file_publira_email_v1_renderer_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/email/v1/renderer.proto\x12\x10publira.email.v1\x1a\x1cgoogle/protobuf/struct.proto\"u\n" +
+	"\x1fpublira/email/v1/renderer.proto\x12\x10publira.email.v1\x1a\x1cgoogle/protobuf/struct.proto\"\x92\x01\n" +
 	"\x12RenderEmailRequest\x12\x1a\n" +
 	"\btemplate\x18\x01 \x01(\tR\btemplate\x12\x16\n" +
 	"\x06locale\x18\x02 \x01(\tR\x06locale\x12+\n" +
-	"\x04data\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04data\"W\n" +
+	"\x04data\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04data\x12\x1b\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"W\n" +
 	"\x13RenderEmailResponse\x12\x18\n" +
 	"\asubject\x18\x01 \x01(\tR\asubject\x12\x12\n" +
 	"\x04html\x18\x02 \x01(\tR\x04html\x12\x12\n" +

@@ -11,7 +11,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file publira/email/v1/renderer.proto.
  */
 export const file_publira_email_v1_renderer: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL2VtYWlsL3YxL3JlbmRlcmVyLnByb3RvEhBwdWJsaXJhLmVtYWlsLnYxIl0KElJlbmRlckVtYWlsUmVxdWVzdBIQCgh0ZW1wbGF0ZRgBIAEoCRIOCgZsb2NhbGUYAiABKAkSJQoEZGF0YRgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QiQgoTUmVuZGVyRW1haWxSZXNwb25zZRIPCgdzdWJqZWN0GAEgASgJEgwKBGh0bWwYAiABKAkSDAoEdGV4dBgDIAEoCTJ0ChRFbWFpbFJlbmRlcmVyU2VydmljZRJcCgtSZW5kZXJFbWFpbBIkLnB1YmxpcmEuZW1haWwudjEuUmVuZGVyRW1haWxSZXF1ZXN0GiUucHVibGlyYS5lbWFpbC52MS5SZW5kZXJFbWFpbFJlc3BvbnNlIgBCR1pFZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL2VtYWlsL3YxO3B1YmxpcmFlbWFpbHYxYgZwcm90bzM", [file_google_protobuf_struct]);
+  fileDesc("Ch9wdWJsaXJhL2VtYWlsL3YxL3JlbmRlcmVyLnByb3RvEhBwdWJsaXJhLmVtYWlsLnYxInAKElJlbmRlckVtYWlsUmVxdWVzdBIQCgh0ZW1wbGF0ZRgBIAEoCRIOCgZsb2NhbGUYAiABKAkSJQoEZGF0YRgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSEQoJdGltZV96b25lGAQgASgJIkIKE1JlbmRlckVtYWlsUmVzcG9uc2USDwoHc3ViamVjdBgBIAEoCRIMCgRodG1sGAIgASgJEgwKBHRleHQYAyABKAkydAoURW1haWxSZW5kZXJlclNlcnZpY2USXAoLUmVuZGVyRW1haWwSJC5wdWJsaXJhLmVtYWlsLnYxLlJlbmRlckVtYWlsUmVxdWVzdBolLnB1YmxpcmEuZW1haWwudjEuUmVuZGVyRW1haWxSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9lbWFpbC92MTtwdWJsaXJhZW1haWx2MWIGcHJvdG8z", [file_google_protobuf_struct]);
 
 /**
  * @generated from message publira.email.v1.RenderEmailRequest
@@ -31,6 +31,13 @@ export type RenderEmailRequest = Message<"publira.email.v1.RenderEmailRequest"> 
    * @generated from field: google.protobuf.Struct data = 3;
    */
   data?: JsonObject | undefined;
+
+  /**
+   * IANA time zone used when a template formats an absolute timestamp.
+   *
+   * @generated from field: string time_zone = 4;
+   */
+  timeZone: string;
 };
 
 /**
