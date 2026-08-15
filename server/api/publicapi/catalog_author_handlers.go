@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
+	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/pagination"
@@ -243,24 +244,106 @@ func (s *apiServer) GetPublishedAuthorDetail(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	seriesIDs, err := s.queriesFor(ctx).ListPublishedSeriesIDsByCreatorTitleAsc(ctx, dbmodels.ListPublishedSeriesIDsByCreatorTitleAscParams{
-		CreatorID: row.ID,
-		TenantID:  tenant.ID,
-	})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, seriesIDs)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	series, err := s.publishedSeriesItems(ctx, seriesRows)
+	series, previousToken, nextToken, err := s.publishedAuthorSeriesPage(
+		ctx,
+		tenant.ID,
+		row.ID,
+		req.Msg.Limit,
+		req.Msg.Token,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	return connect.NewResponse(&publirav1.GetPublishedAuthorDetailResponse{
-		Author: publishedAuthorFromDetailRow(row),
-		Series: series,
+		Author:        publishedAuthorFromDetailRow(row),
+		Series:        series,
+		PreviousToken: previousToken,
+		NextToken:     nextToken,
 	}), nil
+}
+
+// publishedAuthorSeriesPage is the related-series half of GetPublishedAuthorDetail.
+// Title ascending is the only order; the scan direction and the page direction
+// fold the same way ListPublishedAuthors does.
+func (s *apiServer) publishedAuthorSeriesPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	creatorID uuid.UUID,
+	requestedLimit int32,
+	token string,
+) ([]*publirattypesv1.Series, string, string, error) {
+	order := seriesOrders[publirav1.SeriesOrder_SERIES_ORDER_TITLE_ASC]
+	limit := pagination.NormalizeLimit(requestedLimit, defaultSeriesPageSize, maxSeriesPageSize)
+	cursor, err := pagination.Decode(token)
+	if err != nil {
+		return nil, "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+	}
+	var keys seriesCursorKeys
+	if !cursor.IsZero() {
+		keys, err = decodeSeriesCursorKeys(cursor, order)
+		if err != nil {
+			return nil, "", "", err
+		}
+	}
+	descending := cursor.Direction == pagination.Backward
+	ids, err := s.publishedAuthorSeriesPageIDs(ctx, tenantID, creatorID, descending, keys, limit+1)
+	if err != nil {
+		return nil, "", "", connect.NewError(connect.CodeInternal, err)
+	}
+	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, ids)
+	if err != nil {
+		return nil, "", "", connect.NewError(connect.CodeInternal, err)
+	}
+	items, err := s.publishedSeriesItems(ctx, rows)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	var previousToken, nextToken string
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			previousToken = encodeSeriesCursor(pagination.Backward, order, rows[0])
+		}
+		if hasNext {
+			nextToken = encodeSeriesCursor(pagination.Forward, order, rows[len(rows)-1])
+		}
+	case cursor.Direction == pagination.Forward && !keys.inclusive:
+		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, keys)
+	case cursor.Direction == pagination.Backward && !keys.inclusive:
+		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, keys)
+	}
+	return items, previousToken, nextToken, nil
+}
+
+func (s *apiServer) publishedAuthorSeriesPageIDs(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	creatorID uuid.UUID,
+	descending bool,
+	keys seriesCursorKeys,
+	limit int32,
+) ([]uuid.UUID, error) {
+	queries := s.queriesFor(ctx)
+	if descending {
+		return queries.ListPublishedSeriesIDsByCreatorTitleDesc(ctx, dbmodels.ListPublishedSeriesIDsByCreatorTitleDescParams{
+			CreatorID:       creatorID,
+			TenantID:        tenantID,
+			CursorID:        keys.id,
+			CursorInclusive: keys.inclusive,
+			CursorTitle:     keys.title,
+			Limit:           limit,
+		})
+	}
+	return queries.ListPublishedSeriesIDsByCreatorTitleAsc(ctx, dbmodels.ListPublishedSeriesIDsByCreatorTitleAscParams{
+		CreatorID:       creatorID,
+		TenantID:        tenantID,
+		CursorID:        keys.id,
+		CursorInclusive: keys.inclusive,
+		CursorTitle:     keys.title,
+		Limit:           limit,
+	})
 }

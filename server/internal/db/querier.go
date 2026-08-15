@@ -281,10 +281,14 @@ type Querier interface {
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// テナントの公開中かつフッター表示対象のページ一覧を取得する
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
-	// 著者詳細の関連シリーズ。現状の UI がタイトル順で並べている
-	// (apps/web-host/lib/authors.ts)。公開判定は
+	// 著者詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
 	// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+	// ListActiveSeriesIDsByTitleAsc と同じ形で、creator で絞る。
+	// 前ページ方向は ListPublishedSeriesIDsByCreatorTitleDesc を呼んで
+	// 呼び出し側で並べ直す。
 	ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error)
+	// ListPublishedSeriesIDsByCreatorTitleAsc の前ページ方向。
+	ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleDescParams) ([]uuid.UUID, error)
 	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)

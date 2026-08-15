@@ -6033,20 +6033,122 @@ WHERE sc.creator_id = $1
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (s.title, s.id) >= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (s.title, s.id) > (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
 ORDER BY s.title ASC,
     s.id ASC
+LIMIT $6
 `
 
 type ListPublishedSeriesIDsByCreatorTitleAscParams struct {
-	CreatorID uuid.UUID `json:"creator_id"`
-	TenantID  uuid.UUID `json:"tenant_id"`
+	CreatorID       uuid.UUID      `json:"creator_id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
 }
 
-// 著者詳細の関連シリーズ。現状の UI がタイトル順で並べている
-// (apps/web-host/lib/authors.ts)。公開判定は
+// 著者詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
 // ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+// ListActiveSeriesIDsByTitleAsc と同じ形で、creator で絞る。
+// 前ページ方向は ListPublishedSeriesIDsByCreatorTitleDesc を呼んで
+// 呼び出し側で並べ直す。
 func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleAsc, arg.CreatorID, arg.TenantID)
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleAsc,
+		arg.CreatorID,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedSeriesIDsByCreatorTitleDesc = `-- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
+SELECT s.id
+FROM series s
+    JOIN series_creators sc ON sc.series_id = s.id
+WHERE sc.creator_id = $1
+    AND s.tenant_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (s.title, s.id) <= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (s.title, s.id) < (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT $6
+`
+
+type ListPublishedSeriesIDsByCreatorTitleDescParams struct {
+	CreatorID       uuid.UUID      `json:"creator_id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
+}
+
+// ListPublishedSeriesIDsByCreatorTitleAsc の前ページ方向。
+func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleDesc,
+		arg.CreatorID,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

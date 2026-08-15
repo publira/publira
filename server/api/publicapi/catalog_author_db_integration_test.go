@@ -209,6 +209,81 @@ func TestDBGetPublishedAuthorDetailListsPublishedSeriesByTitle(t *testing.T) {
 	if len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESZETA01" {
 		t.Fatalf("series = %v, want Alpha then Zeta", got)
 	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty when every series fits in one page", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+}
+
+func TestDBGetPublishedAuthorDetailPagesForwardAndBack(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	author := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{
+		PublicID: "AUTHORPUB01",
+		Name:     "Mika",
+	})
+
+	alpha := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESALPHA1", Title: "Alpha", Published: true})
+	beta := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESBETA01", Title: "Beta", Published: true})
+	zeta := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESZETA01", Title: "Zeta", Published: true})
+	draft := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft Only"})
+	env.PG.SeedSeriesCreator(t, tenant.ID, alpha.ID, author.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, beta.ID, author.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, zeta.ID, author.ID, "writer")
+	env.PG.SeedSeriesCreator(t, tenant.ID, draft.ID, author.ID, "writer")
+
+	client := env.catalogClient()
+	firstPage, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: author.PublicID,
+		Limit:    2,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail page 1: %v", err)
+	}
+	if got := seriesPublicIDs(firstPage.Msg.Series); len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESBETA01" {
+		t.Fatalf("page 1 = %v, want Alpha then Beta", got)
+	}
+	if firstPage.Msg.Author.PublishedSeriesCount != 3 {
+		t.Fatalf("published_series_count = %d, want 3 (draft excluded)", firstPage.Msg.Author.PublishedSeriesCount)
+	}
+	if firstPage.Msg.NextToken == "" {
+		t.Fatal("page 1 next_token is empty, want a token for the remaining series")
+	}
+	if firstPage.Msg.PreviousToken != "" {
+		t.Fatalf("page 1 previous_token = %q, want empty on the first page", firstPage.Msg.PreviousToken)
+	}
+
+	secondPage, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: author.PublicID,
+		Limit:    2,
+		Token:    firstPage.Msg.NextToken,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail page 2: %v", err)
+	}
+	if got := seriesPublicIDs(secondPage.Msg.Series); len(got) != 1 || got[0] != "SERIESZETA01" {
+		t.Fatalf("page 2 = %v, want Zeta alone", got)
+	}
+	if secondPage.Msg.NextToken != "" {
+		t.Fatalf("page 2 next_token = %q, want empty at the end of the list", secondPage.Msg.NextToken)
+	}
+	if secondPage.Msg.PreviousToken == "" {
+		t.Fatal("page 2 previous_token is empty, want a token back to the first page")
+	}
+
+	backAgain, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: author.PublicID,
+		Limit:    2,
+		Token:    secondPage.Msg.PreviousToken,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail back to page 1: %v", err)
+	}
+	if got := seriesPublicIDs(backAgain.Msg.Series); len(got) != 2 || got[0] != "SERIESALPHA1" || got[1] != "SERIESBETA01" {
+		t.Fatalf("page 1 revisited = %v, want Alpha then Beta again", got)
+	}
 }
 
 func TestDBGetPublishedAuthorDetailHidesAuthorsWithoutPublishedSeries(t *testing.T) {
