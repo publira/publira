@@ -18,8 +18,12 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/platformconfig"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/tenanttz"
 )
 
 const tenantAdminInvitationTTL = 24 * time.Hour
@@ -158,29 +162,59 @@ func tenantAdminInvitationURL(tenant dbmodels.Tenant, token string) (string, err
 	return "https://" + domain + "/accept-invite?token=" + url.QueryEscape(token), nil
 }
 
-func (s *platformServer) sendTenantAdminInvitationEmail(ctx context.Context, tenant dbmodels.Tenant, recipientEmail string, token string) error {
+func (s *platformServer) renderTenantAdminInvitationEmail(ctx context.Context, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token string) (emailrenderer.Email, error) {
+	if s.renderer == nil {
+		return emailrenderer.Email{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("email renderer is not configured"))
+	}
+	inviteURL, err := tenantAdminInvitationURL(tenant, token)
+	if err != nil {
+		return emailrenderer.Email{}, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	tenantName := strings.TrimSpace(tenant.Name)
+	if tenantName == "" {
+		tenantName = "Publira"
+	}
+	timeZone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx)))
+	rendered, err := s.renderer.Render(ctx, emailrenderer.Request{
+		Template: "tenant_admin_invitation",
+		Locale:   "ja",
+		Data: map[string]any{
+			"expires_at":  invitation.ExpiresAt.UTC().Format(time.RFC3339Nano),
+			"invite_url":  inviteURL,
+			"tenant_name": tenantName,
+		},
+		TimeZone: timeZone,
+	})
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return emailrenderer.Email{}, err
+		}
+		return emailrenderer.Email{}, connect.NewError(connect.CodeInternal, errors.New("failed to render tenant admin invitation email"))
+	}
+	return rendered, nil
+}
+
+func (s *platformServer) sendTenantAdminInvitationEmail(ctx context.Context, tenant dbmodels.Tenant, invitation dbmodels.TenantAdminInvitation, token string) error {
 	if s.mailer == nil {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender is not configured"))
+	}
+	htmlMailer, ok := s.mailer.(internalsmtp.RenderedSender)
+	if !ok {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("smtp sender does not support html email"))
 	}
 	settings, err := s.resolveSMTPSettingsForTenant(ctx, tenant.ID)
 	if err != nil {
 		return err
 	}
-	inviteURL, err := tenantAdminInvitationURL(tenant, token)
+	rendered, err := s.renderTenantAdminInvitationEmail(ctx, tenant, invitation, token)
 	if err != nil {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return err
 	}
-	subjectPrefix := strings.TrimSpace(tenant.Name)
-	if subjectPrefix == "" {
-		subjectPrefix = "Publira"
-	}
-	subject := subjectPrefix + " 管理者招待"
-	body := "Publira 管理画面への招待を受け付けました。\r\n" +
-		"以下のリンクを開いて、テナント管理者の招待を承諾してください。\r\n\r\n" +
-		inviteURL + "\r\n\r\n" +
-		"このリンクの有効期限は24時間です。\r\n" +
-		"心当たりがない場合、このメールは破棄してください。\r\n"
-	if err := s.mailer.SendEmail(ctx, settings, recipientEmail, subject, body); err != nil {
+	if err := htmlMailer.SendRenderedEmail(ctx, settings, invitation.Email, internalsmtp.RenderedEmail{
+		Subject: rendered.Subject,
+		HTML:    rendered.HTML,
+		Text:    rendered.Text,
+	}); err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}
 	return nil
@@ -392,7 +426,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		return nil, s.internalDBError("failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
 
-	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, email, token); err != nil {
+	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, invitation, token); err != nil {
 		return nil, err
 	}
 
@@ -466,7 +500,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 		return nil, s.internalDBError("failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
 	}
 
-	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, updated.Email, token); err != nil {
+	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, updated, token); err != nil {
 		return nil, err
 	}
 

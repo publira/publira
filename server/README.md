@@ -92,6 +92,13 @@ task server:test
   - 例: `https://platform.example.com`
   - 未設定時はローカル開発向けに `http://platform.localhost:3080` を使用
 
+## Email renderer
+
+- `EMAIL_RENDERER_URL`
+  - platform API がテナント管理者招待メールを HTML / プレーンテキストへ描画する ConnectRPC サービスの URL
+  - 例: `http://email-renderer:8080`（コンテナ間通信）
+  - 未設定時はローカル開発向けに `http://localhost:8080` を使用する
+
 ## 機密情報の暗号化設定 (AES-GCM)
 
 機密情報を保存時に AES-GCM で暗号化するための基盤を用意しています。現時点では機密項目の保存経路に適用したときに、以下の環境変数を設定してください。

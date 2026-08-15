@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -60,7 +61,7 @@ func main() {
 		grpcAddr = defaultPlatformGrpcServerURL
 	}
 
-	handler := platformapi.NewHandler(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient())
+	handler := platformapi.NewHandler(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), emailrenderer.NewClient(resolveEmailRendererURL()))
 
 	// Start Connect server on public port
 	logger.Info("starting platform api server (Connect)", "addr", addr)
@@ -118,4 +119,11 @@ func resolvePlatformDBURL() string {
 		return url
 	}
 	return defaultPlatformDBURL
+}
+
+func resolveEmailRendererURL() string {
+	if url := strings.TrimSpace(os.Getenv("EMAIL_RENDERER_URL")); url != "" {
+		return url
+	}
+	return emailrenderer.DefaultURL
 }

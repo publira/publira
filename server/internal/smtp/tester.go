@@ -23,6 +23,18 @@ type Sender interface {
 	SendEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient, subject, body string) error
 }
 
+// RenderedSender sends an email with both plain-text and HTML alternatives.
+// Sender remains the plain-text interface used by existing notification flows.
+type RenderedSender interface {
+	SendRenderedEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient string, email RenderedEmail) error
+}
+
+type RenderedEmail struct {
+	Subject string
+	HTML    string
+	Text    string
+}
+
 type Client struct {
 	DialTimeout time.Duration
 }
@@ -36,6 +48,17 @@ func (c *Client) SendTestEmail(ctx context.Context, settings emailsettings.SMTPS
 }
 
 func (c *Client) SendEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient, subject, body string) error {
+	return c.send(ctx, settings, recipient, RenderedEmail{Subject: subject, Text: body})
+}
+
+func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.SMTPSettings, recipient string, email RenderedEmail) error {
+	if strings.TrimSpace(email.HTML) == "" {
+		return errors.New("html body is required")
+	}
+	return c.send(ctx, settings, recipient, email)
+}
+
+func (c *Client) send(ctx context.Context, settings emailsettings.SMTPSettings, recipient string, email RenderedEmail) error {
 	settings = emailsettings.Normalize(settings)
 	if err := emailsettings.Validate(settings, true); err != nil {
 		return err
@@ -43,10 +66,10 @@ func (c *Client) SendEmail(ctx context.Context, settings emailsettings.SMTPSetti
 	if _, err := mail.ParseAddress(strings.TrimSpace(recipient)); err != nil {
 		return err
 	}
-	if strings.TrimSpace(subject) == "" {
+	if strings.TrimSpace(email.Subject) == "" {
 		return errors.New("subject is required")
 	}
-	if strings.TrimSpace(body) == "" {
+	if strings.TrimSpace(email.Text) == "" {
 		return errors.New("body is required")
 	}
 
@@ -79,7 +102,7 @@ func (c *Client) SendEmail(ctx context.Context, settings emailsettings.SMTPSetti
 		return err
 	}
 
-	message := buildMessage(settings, recipient, subject, body)
+	message := buildMessage(settings, recipient, email)
 	if _, err := io.WriteString(bodyWriter, message); err != nil {
 		_ = bodyWriter.Close()
 		return err
@@ -115,7 +138,7 @@ func UserFacingError(err error) string {
 	}
 }
 
-func buildMessage(settings emailsettings.SMTPSettings, recipient, subject, body string) string {
+func buildMessage(settings emailsettings.SMTPSettings, recipient string, email RenderedEmail) string {
 	from := settings.FromAddress
 	if settings.FromName != "" {
 		from = (&mail.Address{Name: settings.FromName, Address: settings.FromAddress}).String()
@@ -123,14 +146,32 @@ func buildMessage(settings emailsettings.SMTPSettings, recipient, subject, body 
 	headers := []string{
 		fmt.Sprintf("From: %s", from),
 		fmt.Sprintf("To: %s", recipient),
-		fmt.Sprintf("Subject: %s", subject),
+		fmt.Sprintf("Subject: %s", email.Subject),
 		"MIME-Version: 1.0",
-		"Content-Type: text/plain; charset=UTF-8",
 	}
 	if settings.ReplyTo != "" {
 		headers = append(headers, fmt.Sprintf("Reply-To: %s", settings.ReplyTo))
 	}
-	return strings.Join(headers, "\r\n") + "\r\n\r\n" + body
+	if email.HTML == "" {
+		headers = append(headers, "Content-Type: text/plain; charset=UTF-8")
+		return strings.Join(headers, "\r\n") + "\r\n\r\n" + email.Text
+	}
+
+	const boundary = "=_publira_alternative"
+	headers = append(headers, fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"", boundary))
+	parts := []string{
+		"--" + boundary,
+		"Content-Type: text/plain; charset=UTF-8",
+		"",
+		email.Text,
+		"--" + boundary,
+		"Content-Type: text/html; charset=UTF-8",
+		"",
+		email.HTML,
+		"--" + boundary + "--",
+		"",
+	}
+	return strings.Join(headers, "\r\n") + "\r\n\r\n" + strings.Join(parts, "\r\n")
 }
 
 func openClient(ctx context.Context, dialer *net.Dialer, addr string, settings emailsettings.SMTPSettings) (*smtp.Client, net.Conn, error) {
