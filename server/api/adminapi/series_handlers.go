@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -47,7 +48,7 @@ func normalizeSeriesEyeCatchImage(data []byte, contentType string) (*normalizedE
 		return nil, nil
 	}
 	if len(data) > imageproc.EyeCatchMaxBytes {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("eye_catch_image_data exceeds 10MB"))
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("eye_catch_image_data exceeds 10MB"), "eye_catch_image_data")
 	}
 
 	normalizedContentType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
@@ -55,7 +56,7 @@ func normalizeSeriesEyeCatchImage(data []byte, contentType string) (*normalizedE
 		normalizedContentType = strings.ToLower(strings.TrimSpace(http.DetectContentType(data)))
 	}
 	if normalizedContentType != "image/jpeg" && normalizedContentType != "image/png" && normalizedContentType != "image/webp" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("eye_catch_image_content_type must be image/jpeg, image/png, or image/webp"))
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("eye_catch_image_content_type must be image/jpeg, image/png, or image/webp"), "eye_catch_image_content_type")
 	}
 
 	return &normalizedEyeCatchImage{
@@ -88,7 +89,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 
 	variants, err := imageproc.BuildEyeCatchVariants(img.Data, img.ContentType)
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, err)
+		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
 	}
 
 	for _, variant := range variants {
@@ -436,7 +437,7 @@ func (s *adminServer) UpdateSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reading_period_hours must be greater than or equal to 0"))
 	}
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"))
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
 	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {

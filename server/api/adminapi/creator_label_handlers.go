@@ -26,6 +26,7 @@ import (
 	"github.com/publira/publira/server/internal/imageproc"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -287,7 +288,7 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 
 	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, err)
+		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
 	}
 
 	for _, variant := range variants {
@@ -868,7 +869,7 @@ func (s *adminServer) UpdateLabel(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 	if req.Msg.ClearEyeCatchImage && len(req.Msg.EyeCatchImageData) > 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"))
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
 	eyeCatchImage, err := normalizeLabelEyeCatchImage(req.Msg.EyeCatchImageData, req.Msg.EyeCatchImageContentType)
 	if err != nil {

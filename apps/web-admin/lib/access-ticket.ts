@@ -1,7 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
-  rpcErrorMentions,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
@@ -70,15 +70,14 @@ export type RevokeAccessTicketResult =
 
 /**
  * A ticket names both a user and an episode, so "対象が見つかりません。" is not
- * actionable. The code says only `not_found`; which of the two is missing comes
- * from the server's message and degrades to the generic wording if that text
- * ever changes.
+ * actionable. The code says only `not_found`, while the server identifies the
+ * missing request field with `google.rpc.BadRequest` details.
  */
 const missingTargetMessage = (error: unknown): string => {
-  if (rpcErrorMentions(error, "user")) {
+  if (rpcErrorHasFieldViolation(error, "user_public_id")) {
     return "指定したユーザーが見つかりません。";
   }
-  if (rpcErrorMentions(error, "episode")) {
+  if (rpcErrorHasFieldViolation(error, "episode_public_id")) {
     return "指定したエピソードが見つかりません。";
   }
   return "対象が見つかりません。";

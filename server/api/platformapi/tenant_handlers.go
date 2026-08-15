@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -242,7 +243,7 @@ func (s *platformServer) CreateTenant(
 	})
 	if err != nil {
 		if field := tenantUniqueViolationField(err); field != "" {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New(field+" already exists"))
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, errors.New(field+" already exists"), field)
 		}
 		return nil, s.internalDBError("failed to create tenant", err)
 	}
@@ -401,6 +402,9 @@ func (s *platformServer) UpdateTenant(
 		AdminDomain: adminDomain,
 	})
 	if err != nil {
+		if field := tenantUniqueViolationField(err); field != "" {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, errors.New(field+" already exists"), field)
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}

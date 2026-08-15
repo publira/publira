@@ -16,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 var slugSegmentPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9\-]*$`)
@@ -111,15 +112,16 @@ func normalizePageSlugForStorage(slug string) (string, error) {
 	}
 
 	if len(normalized) > slugMaxLen {
-		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug must not exceed %d characters", slugMaxLen))
+		return "", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("slug must not exceed %d characters", slugMaxLen), "slug")
 	}
 
 	segments := strings.Split(normalized, "/")
 	for _, segment := range segments {
 		if segment == "" || !slugSegmentPattern.MatchString(segment) {
-			return "", connect.NewError(
+			return "", rpcerrors.NewFieldViolationError(
 				connect.CodeInvalidArgument,
 				errors.New("slug must be empty or path segments of lowercase letters, digits, and hyphens (optionally starting with /)"),
+				"slug",
 			)
 		}
 	}

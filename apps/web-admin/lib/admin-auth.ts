@@ -5,7 +5,9 @@ import {
   isRejectedRequestRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
-  rpcErrorMentions,
+  RPC_ERROR_REASON,
+  rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 
 import { apiClient, withSessionHeaders } from "./api";
@@ -279,9 +281,10 @@ export const acceptTenantAdminInvitation = async (
         "招待の承諾に失敗しました。時間をおいて再試行してください。",
         {
           "not-found": "招待が見つかりません。",
-          // Expired and canceled invitations share `failed_precondition`; the
-          // server names which one, and both read as "no longer usable".
-          precondition: rpcErrorMentions(error, "canceled")
+          precondition: rpcErrorHasReason(
+            error,
+            RPC_ERROR_REASON.invitationCanceled
+          )
             ? "この招待は取り消されています。"
             : "招待リンクの有効期限が切れています。",
         }
@@ -433,15 +436,9 @@ export const requestAdminEmailChange = async (
     return {
       message: rpcErrorMessage(error, genericEmailChangeRequestErrorMessage, {
         conflict: "このメールアドレスは既に使用されています。",
-        "invalid-argument": "入力内容を確認してください。",
-        // Session rejection and a wrong current password share
-        // `unauthenticated`; the server names which one
-        // (`invalid current password`). If that wording ever changes this
-        // degrades to the shared session message rather than lying about the
-        // cause.
-        unauthenticated: rpcErrorMentions(error, "invalid current password")
+        "invalid-argument": rpcErrorHasFieldViolation(error, "current_password")
           ? "パスワードが正しくありません。"
-          : undefined,
+          : "入力内容を確認してください。",
       }),
       ok: false,
     };

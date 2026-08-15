@@ -21,6 +21,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/epubimages"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storage"
 )
@@ -94,7 +95,7 @@ func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []by
 			archiveInputs, err = archiveimages.ExtractImageInputs(archiveData, maxArchiveEntries)
 		}
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return nil, archiveRejectionError(err)
 		}
 		return archiveInputs, nil
 	}
@@ -108,6 +109,23 @@ func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []by
 		})
 	}
 	return inputs, nil
+}
+
+func archiveRejectionError(err error) error {
+	if rejection, ok := epubimages.RejectionOf(err); ok {
+		switch rejection {
+		case epubimages.RejectionInvalidEPUB:
+			return rpcerrors.NewErrorInfoError(connect.CodeInvalidArgument, err, rpcerrors.ReasonArchiveInvalidEPUB)
+		case epubimages.RejectionInvalidEPUBSpine:
+			return rpcerrors.NewErrorInfoError(connect.CodeInvalidArgument, err, rpcerrors.ReasonArchiveInvalidEPUBSpine)
+		case epubimages.RejectionInvalidPath:
+			return rpcerrors.NewErrorInfoError(connect.CodeInvalidArgument, err, rpcerrors.ReasonArchiveInvalidPath)
+		}
+	}
+	if rejection, ok := archiveimages.RejectionOf(err); ok && rejection == archiveimages.RejectionInvalidPath {
+		return rpcerrors.NewErrorInfoError(connect.CodeInvalidArgument, err, rpcerrors.ReasonArchiveInvalidPath)
+	}
+	return connect.NewError(connect.CodeInvalidArgument, err)
 }
 
 func shouldExtractFromEPUB(archiveFilename string, archiveContentType string) bool {

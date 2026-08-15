@@ -121,13 +121,16 @@ import {
 | `isRejectedRequestRpcError(error)` | サーバーがリクエスト自体を拒否した範囲。フォームがメッセージとして出してよい |
 | `rethrowUnclassifiedRpcError(error)` | 分類できないものだけ再 throw。メッセージ化する `catch` の先頭で呼ぶ |
 | `rpcErrorRawMessage(error)` | `[code]` 接頭辞を除いたサーバー本文。**運用者向けに書かれた文言を通す用途のみ** |
-| `rpcErrorMentions(error, token)` | **分類済みカテゴリの中で文言を選ぶためだけ** のエスケープハッチ (後述) |
+| `rpcErrorHasFieldViolation(error, field)` | `google.rpc.BadRequest` の request field を型付きで判定する |
+| `rpcErrorHasReason(error, reason)` | Publira の `google.rpc.ErrorInfo` reason を型付きで判定する |
+| `RPC_ERROR_REASON` | Publira が送る `ErrorInfo` reason の定数 |
 
 方針:
 
 - `not_found` と `permission_denied` は区別しない。区別するとレコードの存在有無が漏れる。サーバーは他テナントの行や未公開コンテンツにも `permission_denied` を返す
 - `unauthenticated` はセッションの問題なので再ログイン導線に振り分ける
 - 分類できないもの (`internal` / `unimplemented` / RPC 由来でない例外) は **握りつぶさず** エラーバウンダリまで伝播させる
+- 同じ `Code` の中で文言を選ぶ必要がある場合は、サーバーが付けた `BadRequest` field violation または `ErrorInfo` reason を使う。サーバー本文は読まない
 
 ```ts
 try {
@@ -155,12 +158,11 @@ return {
 };
 ```
 
-### メッセージ文字列を読む 2 箇所
+### メッセージ本文を分類に使う唯一の箇所
 
-1. `rpcErrorCode()` は、`ConnectError` の `code` が失われた場合のみ Connect 自身が付ける `[not_found]` 接頭辞を読む。`"use cache"` スコープで投げたエラーは Next.js が `name` と `message` だけから再生成するため、`instanceof` も `code` も残らない
-2. `rpcErrorMentions()` は `domain already exists` と `admin_domain already exists` のようなフィールド差を見分ける。`Code` にフィールド情報は無く、サーバーは `google.rpc.BadRequest` details をまだ付けていない (#679)。**分類済みのカテゴリ内で文言を選ぶ用途に限る**
+`rpcErrorCode()` は、`ConnectError` の `code` が失われた場合のみ Connect 自身が付ける `[not_found]` 接頭辞を読む。`"use cache"` スコープで投げたエラーは Next.js が `name` と `message` だけから再生成するため、`instanceof` も `code` も残らない。
 
-どちらも `name === "ConnectError"` を持つ値だけを対象にします。RPC 由来でない `Error` は分類されず (`rpcErrorCode()` は `null`、`rpcErrorMentions()` は `false`)、`new Error("[not_found] …")` のような値が `rethrowUnclassifiedRpcError()` をすり抜けることはありません。
+`rpcErrorHasFieldViolation()` と `rpcErrorHasReason()` は original の `ConnectError` から details を読むため、キャッシュ境界を越えた再生成エラーには `false` を返します。details が必要な分類は、必ず `"use cache"` 境界の内側で完了させます。RPC 由来でない `Error` はいずれの helper にも一致せず、`new Error("[not_found] …")` のような値が `rethrowUnclassifiedRpcError()` をすり抜けることはありません。
 
 ## 運用ルール
 

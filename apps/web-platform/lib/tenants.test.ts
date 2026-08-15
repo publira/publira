@@ -274,7 +274,7 @@ describe("createPlatformTenant", () => {
     expect(mockCreateTenant).not.toHaveBeenCalled();
   });
 
-  it("ドメイン重複エラーを専用メッセージに変換する", async () => {
+  it("details の無いドメイン重複は汎用メッセージにする", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("domain already exists", Code.AlreadyExists)
     );
@@ -285,13 +285,12 @@ describe("createPlatformTenant", () => {
         name: "n",
       })
     ).resolves.toEqual({
-      message: "ドメインが既に使用されています。",
+      message: "重複するデータがあるため作成できません。",
       ok: false,
     });
   });
 
-  // "admin_domain" contains "domain", so the checks must stay in this order.
-  it("管理画面ドメイン重複を公開ドメイン重複と取り違えない", async () => {
+  it("details の無い管理画面ドメイン重複も汎用メッセージにする", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("admin_domain already exists", Code.AlreadyExists)
     );
@@ -302,7 +301,7 @@ describe("createPlatformTenant", () => {
         name: "n",
       })
     ).resolves.toEqual({
-      message: "管理画面ドメインが既に使用されています。",
+      message: "重複するデータがあるため作成できません。",
       ok: false,
     });
   });

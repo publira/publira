@@ -14,28 +14,71 @@ import (
 	"github.com/publira/publira/server/internal/imageproc"
 )
 
+// Rejection identifies an ePub failure that callers present specially.
+type Rejection string
+
+const (
+	RejectionInvalidEPUB      Rejection = "invalid_epub"
+	RejectionInvalidEPUBSpine Rejection = "invalid_epub_spine"
+	RejectionInvalidPath      Rejection = "invalid_path"
+)
+
+type rejectionError struct {
+	err       error
+	rejection Rejection
+}
+
+func (e *rejectionError) Error() string { return e.err.Error() }
+
+func (e *rejectionError) Unwrap() error { return e.err }
+
+// RejectionOf returns the stable category without requiring callers to inspect
+// the user-facing error text.
+func RejectionOf(err error) (Rejection, bool) {
+	var rejectionErr *rejectionError
+	if !errors.As(err, &rejectionErr) {
+		return "", false
+	}
+	return rejectionErr.rejection, true
+}
+
 func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input, error) {
 	doc, err := epub.Decode(bytes.NewReader(epubData), int64(len(epubData)))
 	if err != nil {
-		return nil, fmt.Errorf("archive_data must be a valid epub file: %w", err)
+		return nil, &rejectionError{
+			err:       fmt.Errorf("archive_data must be a valid epub file: %w", err),
+			rejection: RejectionInvalidEPUB,
+		}
 	}
 	if len(doc.Pages) == 0 {
-		return nil, errors.New("epub contains no spine entries")
+		return nil, &rejectionError{
+			err:       errors.New("epub contains no spine entries"),
+			rejection: RejectionInvalidEPUBSpine,
+		}
 	}
 
 	spineRefs, err := doc.ExtractReferencedImagesFromSpine()
 	if err != nil {
-		return nil, fmt.Errorf("invalid epub spine reference: %w", err)
+		return nil, &rejectionError{
+			err:       fmt.Errorf("invalid epub spine reference: %w", err),
+			rejection: RejectionInvalidEPUBSpine,
+		}
 	}
 
 	inputs := make([]archiveimages.Input, 0, len(spineRefs))
 	for _, spineRef := range spineRefs {
 		if spineRef.Asset == nil {
-			return nil, errors.New("epub spine references a nil asset")
+			return nil, &rejectionError{
+				err:       errors.New("epub spine references a nil asset"),
+				rejection: RejectionInvalidEPUBSpine,
+			}
 		}
 		href, normalizeErr := normalizeEntryPath(spineRef.Href)
 		if normalizeErr != nil {
-			return nil, fmt.Errorf("epub manifest contains invalid path %q", spineRef.Href)
+			return nil, &rejectionError{
+				err:       fmt.Errorf("epub manifest contains invalid path %q", spineRef.Href),
+				rejection: RejectionInvalidPath,
+			}
 		}
 		ref := referencedAsset{href: href, asset: spineRef.Asset}
 		if len(inputs) >= maxEntries {
@@ -59,7 +102,10 @@ func ExtractImageInputs(epubData []byte, maxEntries int) ([]archiveimages.Input,
 	}
 
 	if len(inputs) == 0 {
-		return nil, errors.New("epub contains no spine image assets")
+		return nil, &rejectionError{
+			err:       errors.New("epub contains no spine image assets"),
+			rejection: RejectionInvalidEPUBSpine,
+		}
 	}
 
 	return inputs, nil

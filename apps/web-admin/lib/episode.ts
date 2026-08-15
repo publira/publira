@@ -2,7 +2,8 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
-  rpcErrorMentions,
+  RPC_ERROR_REASON,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 
@@ -156,22 +157,17 @@ const mapEpisodeImage = (image: {
 /**
  * Every archive rejection is `invalid_argument`, so the code alone cannot say
  * whether the ePub is unreadable, its spine is inconsistent, or an entry path
- * escapes the archive — and an uploader needs to know which.
- *
- * The tokens mirror the only three messages `server/internal/epubimages`
- * produces; anything else falls through to the generic wording, as does a
- * rewording on the server.
+ * escapes the archive — and an uploader needs to know which. The server sends
+ * those cases as stable `google.rpc.ErrorInfo` reasons.
  */
 const archiveRejectionMessage = (error: unknown): string | undefined => {
-  if (rpcErrorMentions(error, "valid epub file")) {
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUB)) {
     return "ePub の解析に失敗しました。壊れていない ePub（.epub）を選択してください。";
   }
-  if (rpcErrorMentions(error, "contains no spine")) {
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUBSpine)) {
     return "ePub の本文参照に不整合があります。spine と manifest の参照を確認してください。";
   }
-  // Covers both `epub manifest contains invalid path` and
-  // `archive contains invalid path`.
-  return rpcErrorMentions(error, "invalid path")
+  return rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidPath)
     ? "アーカイブ内に不正なパスが含まれています（越境パスや絶対パスは使用できません）。"
     : undefined;
 };

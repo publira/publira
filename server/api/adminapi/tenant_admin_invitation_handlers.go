@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 func adminInvitationStatus(invitation dbmodels.TenantAdminInvitation, now time.Time) string {
@@ -99,7 +100,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	case "accepted":
 		return connect.NewResponse(&publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationResponse{Accepted: true}), nil
 	case "canceled":
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation canceled"))
+		return nil, rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, errors.New("invitation canceled"), rpcerrors.ReasonInvitationCanceled)
 	case "expired":
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation expired"))
 	}

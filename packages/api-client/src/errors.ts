@@ -1,6 +1,20 @@
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+} from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 
 export { Code, ConnectError } from "@connectrpc/connect";
+
+/** Stable reasons attached by Publira APIs through `google.rpc.ErrorInfo`. */
+export const RPC_ERROR_REASON = {
+  archiveInvalidEPUB: "ARCHIVE_INVALID_EPUB",
+  archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
+  archiveInvalidPath: "ARCHIVE_INVALID_PATH",
+  invitationCanceled: "INVITATION_CANCELED",
+} as const;
+
+const RPC_ERROR_INFO_DOMAIN = "publira";
 
 /**
  * How a caught RPC failure should be handled.
@@ -204,22 +218,30 @@ export const rpcErrorRawMessage = (error: unknown): string | null => {
   return null;
 };
 
+/** Whether a Connect error has a `google.rpc.BadRequest` violation for `field`. */
+export const rpcErrorHasFieldViolation = (
+  error: unknown,
+  field: string
+): boolean =>
+  error instanceof ConnectError &&
+  error
+    .findDetails(BadRequestSchema)
+    .some((detail) =>
+      detail.fieldViolations.some((violation) => violation.field === field)
+    );
+
 /**
- * Whether the server's error message mentions `token`.
+ * Whether a Connect error has a Publira-owned `google.rpc.ErrorInfo` reason.
  *
- * Codes carry no field information, and the server does not attach
- * `google.rpc.BadRequest` details yet (#679), so this is the only way to tell
- * "domain already exists" from "admin_domain already exists". Use it **only**
- * to pick nicer copy inside a category that `rpcErrorDisposition` has already
- * decided, never to classify — a wording change on the server must degrade to
- * the generic message for that category, not to a different category.
- *
- * Anything that is not an RPC error returns `false`, so this can never become a
- * back door for classifying an arbitrary `Error` by its text.
+ * Details exist only while the original Connect error is available. A cached
+ * function must therefore classify an error before it crosses a `"use cache"`
+ * boundary, where Next.js re-creates it from name and message alone.
  */
-export const rpcErrorMentions = (error: unknown, token: string): boolean => {
-  const message = rpcErrorRawMessage(error);
-  return (
-    message !== null && message.toLowerCase().includes(token.toLowerCase())
-  );
-};
+export const rpcErrorHasReason = (error: unknown, reason: string): boolean =>
+  error instanceof ConnectError &&
+  error
+    .findDetails(ErrorInfoSchema)
+    .some(
+      (detail) =>
+        detail.domain === RPC_ERROR_INFO_DOMAIN && detail.reason === reason
+    );

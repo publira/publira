@@ -18,6 +18,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	golang.org/x/crypto v0.55.0
 	golang.org/x/image v0.45.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260810153831-ec0a7760b754
 	google.golang.org/protobuf v1.36.12
 )
 

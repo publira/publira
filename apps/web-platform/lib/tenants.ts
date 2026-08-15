@@ -2,7 +2,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
-  rpcErrorMentions,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 
 import {
@@ -279,17 +279,15 @@ export const resumePlatformTenant = async (
 };
 
 /**
- * `already_exists` says a unique constraint was hit but not which one, and the
- * two domain fields are the only ones an operator can fix. The server names the
- * column in its message (`server/api/platformapi/tenant_handlers.go`), so this
- * narrows the copy and degrades to the generic conflict wording if that text
- * changes.
+ * `already_exists` may name either domain field. The server identifies the
+ * rejected field with `google.rpc.BadRequest`, so this wording stays stable
+ * when its message changes.
  */
 const duplicateDomainMessage = (error: unknown, verb: string): string => {
-  if (rpcErrorMentions(error, "admin_domain")) {
+  if (rpcErrorHasFieldViolation(error, "admin_domain")) {
     return "管理画面ドメインが既に使用されています。";
   }
-  if (rpcErrorMentions(error, "domain")) {
+  if (rpcErrorHasFieldViolation(error, "domain")) {
     return "ドメインが既に使用されています。";
   }
   return `重複するデータがあるため${verb}できません。`;
