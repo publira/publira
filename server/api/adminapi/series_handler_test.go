@@ -430,13 +430,14 @@ func TestCreateSeriesSuccess(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 
+	labelID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(getLabelByPublicIDForTenantQuery)).
 		WithArgs(tenantID, "LABEL001").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
-			AddRow(uuid.Must(uuid.NewV7()), tenantID, "LABEL001", "Weekly", now, nil, nil))
+			AddRow(labelID, tenantID, "LABEL001", "Weekly", now, nil, nil))
 
 	mock.ExpectBegin()
-	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.Must(uuid.NewV7()))
+	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{UUID: labelID, Valid: true})
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id"}).
@@ -672,7 +673,7 @@ func TestCreateSeriesWithCreatorsSuccess(t *testing.T) {
 			AddRow(creatorID2, tenantID, "CREATOR002", "Creator Two", "", now))
 
 	mock.ExpectBegin()
-	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, nil)
+	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{})
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(tenantID, seriesID, sql.NullString{String: "Synopsis", Valid: true}, sql.NullInt32{}).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "synopsis", "reading_period_hours", "is_published", "published_at", "tenant_id"}).
@@ -881,7 +882,7 @@ func TestCreateSeriesRollsBackWhenListingInsertFails(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
 	mock.ExpectBegin()
-	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, nil)
+	expectCreateSeriesBaseInsert(mock, seriesID, tenantID, "New Series", "SERIESNEW001", now, uuid.NullUUID{})
 	mock.ExpectQuery("INSERT INTO series_listings").
 		WithArgs(tenantID, seriesID, sql.NullString{}, sql.NullInt32{}).
 		WillReturnError(sql.ErrConnDone)

@@ -239,7 +239,7 @@ func (s *adminServer) syncSeriesCreators(
 ) ([]*publirattypesv1.Creator, error) {
 	if replace {
 		if err := s.queriesFor(ctx).DeleteSeriesCreatorsBySeriesID(ctx, seriesID); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 		}
 	}
 	items := make([]*publirattypesv1.Creator, 0, len(creators))
@@ -252,7 +252,7 @@ func (s *adminServer) syncSeriesCreators(
 			DisplayOrder: int32(index),
 		})
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", creator.ID.String())
 		}
 		items = append(items, protomapper.Creator(creator.PublicID, creator.Name, creator.ProfileText.String))
 	}
@@ -351,7 +351,7 @@ func (s *adminServer) CreateSeries(
 		})
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create series", err, "tenant_id", tenant.ID.String())
 	}
 	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
 		TenantID:           tenant.ID,
@@ -360,14 +360,14 @@ func (s *adminServer) CreateSeries(
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          base.ID,
 		PublishedAt: publishedAt,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	eyeCatchImageID, err := s.createSeriesEyeCatchImage(txCtx, tenant, base.ID, base.PublicID, eyeCatchImage)
 	if err != nil {
@@ -378,7 +378,7 @@ func (s *adminServer) CreateSeries(
 			ID:              base.ID,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 		}
 	}
 	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, base.ID, creatorsToLink, false)
@@ -407,7 +407,7 @@ func (s *adminServer) CreateSeries(
 	}
 	created, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: base.PublicID})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get created series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(created)
 	if created.EyeCatchImageID.Valid {
@@ -485,7 +485,7 @@ func (s *adminServer) UpdateSeries(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
 		TenantID:           tenant.ID,
@@ -494,14 +494,14 @@ func (s *adminServer) UpdateSeries(
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,
 		PublishedAt: publishedAt,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.Msg.ClearEyeCatchImage {
@@ -518,7 +518,7 @@ func (s *adminServer) UpdateSeries(
 			ID:              current.ID,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
 	}
 	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, current.ID, creatorsToLink, true)
@@ -530,7 +530,7 @@ func (s *adminServer) UpdateSeries(
 	}
 	updated, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get updated series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{

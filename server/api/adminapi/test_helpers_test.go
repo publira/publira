@@ -185,10 +185,10 @@ func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
 	mock.ExpectExec("^ROLLBACK TO SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
 }
 
-func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.UUID, title, publicID string, now time.Time, labelID any) {
+func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.UUID, title, publicID string, now time.Time, labelID uuid.NullUUID) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery("INSERT INTO series").
-		WithArgs(sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(), title).
+		WithArgs(sqlmock.AnyArg(), tenantID, labelID, sqlmock.AnyArg(), title).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id"}).
 			AddRow(seriesID, tenantID, labelID, publicID, title, now, false, nil, now, nil))
 	expectPublicIDAttemptReleased(mock)
