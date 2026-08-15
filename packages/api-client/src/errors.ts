@@ -14,6 +14,9 @@ export const RPC_ERROR_REASON = {
   invitationCanceled: "INVITATION_CANCELED",
 } as const;
 
+export type RpcErrorReason =
+  (typeof RPC_ERROR_REASON)[keyof typeof RPC_ERROR_REASON];
+
 const RPC_ERROR_INFO_DOMAIN = "publira";
 
 /**
@@ -237,7 +240,10 @@ export const rpcErrorHasFieldViolation = (
  * function must therefore classify an error before it crosses a `"use cache"`
  * boundary, where Next.js re-creates it from name and message alone.
  */
-export const rpcErrorHasReason = (error: unknown, reason: string): boolean =>
+export const rpcErrorHasReason = (
+  error: unknown,
+  reason: RpcErrorReason
+): boolean =>
   error instanceof ConnectError &&
   error
     .findDetails(ErrorInfoSchema)

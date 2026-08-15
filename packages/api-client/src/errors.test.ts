@@ -166,6 +166,23 @@ describe("Connect error details", () => {
     );
     expect(rpcErrorHasReason(error, "INVITATION_CANCELED")).toBe(true);
     expect(rpcErrorHasReason(error, "ARCHIVE_INVALID_PATH")).toBe(false);
+
+    const foreignError = new ConnectError(
+      "invitation canceled",
+      Code.FailedPrecondition,
+      undefined,
+      [
+        {
+          desc: ErrorInfoSchema,
+          value: {
+            domain: "other-service",
+            reason: "INVITATION_CANCELED",
+          },
+        },
+      ]
+    );
+
+    expect(rpcErrorHasReason(foreignError, "INVITATION_CANCELED")).toBe(false);
   });
 
   it("RPC 由来でない値に details は無い", () => {

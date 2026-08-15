@@ -1,3 +1,4 @@
+import { BadRequestSchema } from "@buf/googleapis_googleapis.bufbuild_es/google/rpc/error_details_pb";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import type { PlatformApiClient } from "@publira/api-client/platform/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -302,6 +303,48 @@ describe("createPlatformTenant", () => {
       })
     ).resolves.toEqual({
       message: "重複するデータがあるため作成できません。",
+      ok: false,
+    });
+  });
+
+  it("domain の field violation を公開ドメイン重複として表示する", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "domain" }] },
+        },
+      ])
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "ドメインが既に使用されています。",
+      ok: false,
+    });
+  });
+
+  it("admin_domain の field violation を管理画面ドメイン重複として表示する", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "admin_domain" }] },
+        },
+      ])
+    );
+
+    await expect(
+      createPlatformTenant({
+        domain: "example.com",
+        name: "n",
+      })
+    ).resolves.toEqual({
+      message: "管理画面ドメインが既に使用されています。",
       ok: false,
     });
   });

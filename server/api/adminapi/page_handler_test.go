@@ -61,6 +61,27 @@ func newListPagesRequest(tenantID uuid.UUID, sessionToken string) *connect.Reque
 	return req
 }
 
+func TestCreatePageInvalidSlugIncludesFieldViolation(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	req := connect.NewRequest(&publiraadminv1.CreatePageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Slug:   "not_a_slug",
+		Title:  "Invalid slug",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.CreatePage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertBadRequestField(t, err, "slug")
+	assertExpectations(t, mock)
+}
+
 func TestListPagesFirstPageReportsNextToken(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())

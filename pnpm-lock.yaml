@@ -311,6 +311,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@buf/googleapis_googleapis.bufbuild_es':
+        specifier: 'catalog:'
+        version: 2.13.0-20260414192239-c17df5b2beca.1(@bufbuild/protobuf@2.13.0)
       '@publira/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig

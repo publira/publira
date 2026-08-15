@@ -38,6 +38,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@buf/googleapis_googleapis.bufbuild_es": "catalog:",
     "@publira/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/dom": "catalog:",
