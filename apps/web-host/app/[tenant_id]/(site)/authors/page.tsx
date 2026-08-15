@@ -11,7 +11,10 @@ import { listPublishedAuthors } from "#lib/authors";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
-import { parseAuthorsListSearchParams } from "./_lib/search-params";
+import {
+  authorsListHref,
+  parseAuthorsListSearchParams,
+} from "./_lib/search-params";
 
 const AUTHORS_PAGE_SIZE = 12;
 const SECTION_TITLE = "著者一覧を表示できませんでした";
@@ -48,35 +51,98 @@ const TenantSiteLabel = async () => {
   return getTenantSiteLabel(tenantId);
 };
 
+const AuthorsPagination = ({
+  nextToken,
+  previousToken,
+}: {
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <nav
+    aria-label="著者一覧ページング"
+    className="mt-8 flex items-center justify-center gap-6"
+  >
+    {previousToken ? (
+      <Link
+        href={authorsListHref(previousToken)}
+        className="text-sm text-primary underline-offset-4 hover:underline"
+      >
+        前のページ
+      </Link>
+    ) : (
+      <span className="text-sm text-muted-foreground">前のページ</span>
+    )}
+
+    {nextToken ? (
+      <Link
+        href={authorsListHref(nextToken)}
+        className="text-sm text-primary underline-offset-4 hover:underline"
+      >
+        次のページ
+      </Link>
+    ) : (
+      <span className="text-sm text-muted-foreground">次のページ</span>
+    )}
+  </nav>
+);
+
 const AuthorsListData = async ({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: PageProps<"/[tenant_id]/authors">["searchParams"];
 }) => {
-  const tenantId = await getTenantId();
-
-  const { page } = parseAuthorsListSearchParams(await searchParams);
+  const [resolvedSearchParams, tenantId] = await Promise.all([
+    searchParams,
+    getTenantId(),
+  ]);
+  const { token } = parseAuthorsListSearchParams(resolvedSearchParams);
 
   const result = await listPublishedAuthors(tenantId, {
-    page,
-    pageSize: AUTHORS_PAGE_SIZE,
+    limit: AUTHORS_PAGE_SIZE,
+    token,
   });
 
   if (!result.ok) {
     return <SectionError description={result.message} title={SECTION_TITLE} />;
   }
 
-  const { authors, hasNextPage } = result.value;
+  const { authors, nextToken, previousToken } = result.value;
 
   if (authors.length === 0) {
+    if (!token) {
+      return (
+        <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-6 py-20 text-center">
+          <h2 className="mb-2 font-serif text-2xl font-semibold">
+            まだ著者がいません
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            公開中のシリーズに著者が設定されると、ここに表示されます。
+          </p>
+        </div>
+      );
+    }
+
+    // The rows this page pointed at are gone. The server hands back a token for
+    // the neighbouring page when it can, and empty tokens when it cannot — then
+    // the only way out is the first page (`proto/README.md`).
     return (
-      <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-6 py-20 text-center">
-        <h2 className="mb-2 font-serif text-2xl font-semibold">
-          まだ著者がいません
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          公開中のシリーズに著者が設定されると、ここに表示されます。
+      <div className="py-20 text-center">
+        <p className="mb-4 text-muted-foreground">
+          このページに表示できる著者がいません。
         </p>
+        {previousToken || nextToken ? (
+          <AuthorsPagination
+            nextToken={nextToken}
+            previousToken={previousToken}
+          />
+        ) : (
+          <Link
+            href={authorsListHref("")}
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            著者一覧の先頭へ
+          </Link>
+        )}
       </div>
     );
   }
@@ -117,34 +183,7 @@ const AuthorsListData = async ({
         ))}
       </div>
 
-      <nav
-        className="mt-8 flex items-center justify-center gap-6"
-        aria-label="著者一覧ページング"
-      >
-        {page > 1 ? (
-          <Link
-            href={page === 2 ? "." : `?page=${page - 1}`}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            前のページ
-          </Link>
-        ) : (
-          <span className="text-sm text-muted-foreground">前のページ</span>
-        )}
-
-        <span className="text-sm text-muted-foreground">{page} ページ目</span>
-
-        {hasNextPage ? (
-          <Link
-            href={`?page=${page + 1}`}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            次のページ
-          </Link>
-        ) : (
-          <span className="text-sm text-muted-foreground">次のページ</span>
-        )}
-      </nav>
+      <AuthorsPagination nextToken={nextToken} previousToken={previousToken} />
     </>
   );
 };

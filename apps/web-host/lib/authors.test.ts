@@ -1,338 +1,239 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPublishedAuthorDetail, listPublishedAuthors } from "./authors";
 
-const { mockListPublishedSeries } = vi.hoisted(() => ({
-  mockListPublishedSeries: vi.fn(),
-}));
+const { mockGetPublishedAuthorDetail, mockListPublishedAuthors } = vi.hoisted(
+  () => ({
+    mockGetPublishedAuthorDetail: vi.fn(),
+    mockListPublishedAuthors: vi.fn(),
+  })
+);
 
-vi.mock("./catalog", () => ({
-  listPublishedSeries: mockListPublishedSeries,
-}));
-
-const seriesWithAuthor = (
-  seriesId: string,
-  authorId: string,
-  authorName: string
-) => ({
-  creatorNames: [authorName],
-  creators: [
-    {
-      iconImageUrl: "",
-      name: authorName,
-      profileText: "",
-      publicId: authorId,
+vi.mock("./api-client", () => ({
+  apiClient: {
+    catalog: {
+      getPublishedAuthorDetail: mockGetPublishedAuthorDetail,
+      listPublishedAuthors: mockListPublishedAuthors,
     },
-  ],
-  labelName: "",
-  publicId: seriesId,
-  synopsis: "",
-  title: seriesId,
-});
+  },
+}));
 
-/**
- * One page with nothing after it, which is what these fixtures stand for.
- * `listPublishedSeries` answers with a `CachedReadResult`, never a throw (#672).
- */
-const seriesPage = (series: unknown[]) => ({
-  ok: true,
-  value: { nextToken: "", previousToken: "", series },
-});
-
-describe("authors", () => {
+describe("listPublishedAuthors", () => {
   beforeEach(() => {
-    mockListPublishedSeries.mockReset();
+    mockListPublishedAuthors.mockReset();
   });
 
-  it("著者一覧をシリーズ実データから集約する", async () => {
-    mockListPublishedSeries.mockResolvedValueOnce(
-      seriesPage([
+  it("公開著者を整形し cursor トークンを返す", async () => {
+    mockListPublishedAuthors.mockResolvedValueOnce({
+      authors: [
         {
-          creatorNames: ["山田 太郎", "鈴木 花子", "山田 太郎"],
-          creators: [
-            {
-              iconImageUrl: "/images/creators/creator-yamada",
-              name: "山田 太郎",
-              profileText: "",
-              publicId: "CREATOR_YAMADA",
-            },
-            {
-              iconImageUrl: "",
-              name: "鈴木 花子",
-              profileText: "",
-              publicId: "CREATOR_SUZUKI",
-            },
-          ],
-          labelName: "",
-          publicId: "SERIES_1",
-          synopsis: "",
-          title: "シリーズ1",
+          iconImageUrl: "/images/creators/creator-yamada",
+          name: "山田 太郎",
+          publicId: "CREATOR_YAMADA",
+          publishedSeriesCount: 2,
         },
         {
-          creatorNames: ["山田 太郎"],
-          creators: [
-            {
-              iconImageUrl: "/images/creators/creator-yamada",
-              name: "山田 太郎",
-              profileText: "",
-              publicId: "CREATOR_YAMADA",
-            },
-          ],
-          labelName: "",
-          publicId: "SERIES_2",
-          synopsis: "",
-          title: "シリーズ2",
+          iconImageUrl: "",
+          name: "鈴木 花子",
+          publicId: "CREATOR_SUZUKI",
+          publishedSeriesCount: 1,
         },
-      ])
-    );
-
-    const result = await listPublishedAuthors("TENANT_1", {
-      page: 1,
-      pageSize: 10,
+      ],
+      nextToken: "NEXT",
+      previousToken: "PREV",
     });
 
-    expect(mockListPublishedSeries).toHaveBeenCalledWith("TENANT_1", {
-      limit: 50,
-      token: "",
-    });
-    expect(result.ok && result.value.authors).toHaveLength(2);
-    expect(result.ok && result.value.authors[0]?.id).toBe("CREATOR_YAMADA");
-    expect(result.ok && result.value.authors[0]?.iconImageUrl).toBe(
-      "/images/creators/creator-yamada"
-    );
-    expect(result.ok && result.value.authors[0]?.name).toBe("山田 太郎");
-    expect(result.ok && result.value.authors[0]?.seriesCount).toBe(2);
-    expect(result.ok && result.value.authors[1]?.iconImageUrl).toBe("");
-    expect(result.ok && result.value.authors[1]?.name).toBe("鈴木 花子");
-    expect(result.ok && result.value.authors[1]?.seriesCount).toBe(1);
-    expect(result.ok && result.value.hasNextPage).toBe(false);
-  });
-
-  it("ページングに応じて次ページ有無を返す", async () => {
-    mockListPublishedSeries.mockResolvedValueOnce(
-      seriesPage([
-        {
-          creatorNames: ["著者A"],
-          creators: [
-            {
-              iconImageUrl: "",
-              name: "著者A",
-              profileText: "",
-              publicId: "CREATOR_A",
-            },
-          ],
-          labelName: "",
-          publicId: "SERIES_1",
-          synopsis: "",
-          title: "シリーズ1",
-        },
-        {
-          creatorNames: ["著者B"],
-          creators: [
-            {
-              iconImageUrl: "",
-              name: "著者B",
-              profileText: "",
-              publicId: "CREATOR_B",
-            },
-          ],
-          labelName: "",
-          publicId: "SERIES_2",
-          synopsis: "",
-          title: "シリーズ2",
-        },
-        {
-          creatorNames: ["著者C"],
-          creators: [
-            {
-              iconImageUrl: "",
-              name: "著者C",
-              profileText: "",
-              publicId: "CREATOR_C",
-            },
-          ],
-          labelName: "",
-          publicId: "SERIES_3",
-          synopsis: "",
-          title: "シリーズ3",
-        },
-      ])
-    );
-
-    const result = await listPublishedAuthors("TENANT_1", {
-      page: 1,
-      pageSize: 2,
+    const result = await listPublishedAuthors(" TENANT_1 ", {
+      limit: 12,
+      token: "abc",
     });
 
-    expect(result.ok && result.value.authors).toHaveLength(2);
-    expect(result.ok && result.value.hasNextPage).toBe(true);
-  });
-
-  it("nextToken が返る限り次ページまで辿って集約する", async () => {
-    mockListPublishedSeries.mockResolvedValueOnce({
+    expect(mockListPublishedAuthors).toHaveBeenCalledWith({
+      limit: 12,
+      tenant: { tenantId: "TENANT_1" },
+      token: "abc",
+    });
+    expect(result).toEqual({
       ok: true,
       value: {
-        nextToken: "TOKEN_PAGE_2",
-        previousToken: "",
-        series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
+        authors: [
+          {
+            iconImageUrl: "/images/creators/creator-yamada",
+            id: "CREATOR_YAMADA",
+            name: "山田 太郎",
+            seriesCount: 2,
+          },
+          {
+            iconImageUrl: "",
+            id: "CREATOR_SUZUKI",
+            name: "鈴木 花子",
+            seriesCount: 1,
+          },
+        ],
+        nextToken: "NEXT",
+        previousToken: "PREV",
       },
     });
-    mockListPublishedSeries.mockResolvedValueOnce(
-      seriesPage([seriesWithAuthor("SERIES_2", "CREATOR_B", "著者B")])
-    );
-
-    const result = await listPublishedAuthors("TENANT_1", {
-      page: 1,
-      pageSize: 10,
-    });
-
-    expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
-    expect(mockListPublishedSeries).toHaveBeenNthCalledWith(1, "TENANT_1", {
-      limit: 50,
-      token: "",
-    });
-    expect(mockListPublishedSeries).toHaveBeenNthCalledWith(2, "TENANT_1", {
-      limit: 50,
-      token: "TOKEN_PAGE_2",
-    });
-    expect(
-      result.ok && result.value.authors.map((author) => author.id)
-    ).toEqual(["CREATOR_A", "CREATOR_B"]);
-    expect(result.ok && result.value.hasNextPage).toBe(false);
   });
 
-  it("著者IDから著者詳細と関連シリーズを返す", async () => {
-    const authorId = "CREATOR_A";
+  it("token を省略したら先頭ページを取る", async () => {
+    mockListPublishedAuthors.mockResolvedValueOnce({
+      authors: [],
+      nextToken: "",
+      previousToken: "",
+    });
 
-    mockListPublishedSeries.mockResolvedValueOnce(
-      seriesPage([
-        {
-          creatorNames: ["著者A", "著者B"],
-          creators: [
-            {
-              iconImageUrl: "/images/creators/creator-a",
-              name: "著者A",
-              profileText: "著者Aのプロフィール",
-              publicId: "CREATOR_A",
-            },
-            {
-              iconImageUrl: "",
-              name: "著者B",
-              profileText: "",
-              publicId: "CREATOR_B",
-            },
-          ],
-          labelName: "",
-          publicId: "SERIES_1",
-          synopsis: "",
-          title: "シリーズ1",
-        },
-        {
-          creatorNames: ["著者A"],
-          creators: [
-            {
-              iconImageUrl: "/images/creators/creator-a",
-              name: "著者A",
-              profileText: "別シリーズのプロフィール",
-              publicId: "CREATOR_A",
-            },
-          ],
-          labelName: "",
-          publicId: "SERIES_2",
-          synopsis: "",
-          title: "シリーズ2",
-        },
-      ])
-    );
+    await listPublishedAuthors("TENANT_1");
 
-    const detail = await getPublishedAuthorDetail("TENANT_1", authorId);
-
-    expect(detail.ok && detail.value?.iconImageUrl).toBe(
-      "/images/creators/creator-a"
-    );
-    expect(detail.ok && detail.value?.name).toBe("著者A");
-    expect(detail.ok && detail.value?.profileText).toBe("著者Aのプロフィール");
-    expect(detail.ok && detail.value?.series).toEqual([
-      { publicId: "SERIES_1", title: "シリーズ1" },
-      { publicId: "SERIES_2", title: "シリーズ2" },
-    ]);
-  });
-
-  it("存在しない著者IDは null を返す", async () => {
-    mockListPublishedSeries.mockResolvedValueOnce(seriesPage([]));
-
-    const detail = await getPublishedAuthorDetail(
-      "TENANT_1",
-      "UNKNOWN_CREATOR"
-    );
-    expect(detail).toEqual({ ok: true, value: null });
-    expect(mockListPublishedSeries).toHaveBeenCalledWith("TENANT_1", {
-      limit: 50,
+    expect(mockListPublishedAuthors).toHaveBeenCalledWith({
+      limit: 20,
+      tenant: { tenantId: "TENANT_1" },
       token: "",
     });
   });
 
-  it("著者詳細も nextToken が返る限り次ページまで辿る", async () => {
-    mockListPublishedSeries.mockResolvedValueOnce({
-      ok: true,
-      value: {
-        nextToken: "TOKEN_PAGE_2",
-        previousToken: "",
-        series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
-      },
-    });
-    mockListPublishedSeries.mockResolvedValueOnce(
-      seriesPage([seriesWithAuthor("SERIES_2", "CREATOR_A", "著者A")])
+  // A `"use cache"` function must not throw: the fill would fail the whole
+  // request instead of reaching the awaiting page (#672).
+  it("取得に失敗したら throw せず失敗の値を返す", async () => {
+    mockListPublishedAuthors.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
     );
 
-    const detail = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A");
-
-    expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
-    expect(detail.ok && detail.value?.series).toEqual([
-      { publicId: "SERIES_1", title: "SERIES_1" },
-      { publicId: "SERIES_2", title: "SERIES_2" },
-    ]);
-  });
-
-  it("同じ nextToken が繰り返されたら著者一覧の走査を止める", async () => {
-    mockListPublishedSeries.mockResolvedValue({
-      ok: true,
-      value: {
-        nextToken: "STUCK_TOKEN",
-        previousToken: "",
-        series: [seriesWithAuthor("SERIES_1", "CREATOR_A", "著者A")],
-      },
-    });
-
-    const result = await listPublishedAuthors("TENANT_1", {
-      page: 1,
-      pageSize: 10,
-    });
-
-    // first page with "" then one more with the stuck token, then stop
-    expect(mockListPublishedSeries).toHaveBeenCalledTimes(2);
-    expect(result.ok && result.value.authors).toHaveLength(1);
-  });
-
-  /**
-   * The walk is built on `listPublishedSeries`, which reports failure as a
-   * value (#672). Half an author list would read as real data, so the failure
-   * has to come out of the aggregation too.
-   */
-  it("シリーズ取得が失敗したら著者一覧・著者詳細も失敗を返す", async () => {
-    mockListPublishedSeries.mockResolvedValue({
+    await expect(listPublishedAuthors("TENANT_1")).resolves.toEqual({
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
+    });
+  });
+});
+
+describe("getPublishedAuthorDetail", () => {
+  beforeEach(() => {
+    mockGetPublishedAuthorDetail.mockReset();
+  });
+
+  it("著者詳細と関連シリーズの 1 ページを返す", async () => {
+    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
+      author: {
+        iconImageUrl: "/images/creators/creator-a",
+        name: "著者A",
+        profileText: "著者Aのプロフィール",
+        publicId: "CREATOR_A",
+        publishedSeriesCount: 3,
+      },
+      nextToken: "NEXT_SERIES",
+      previousToken: "",
+      series: [
+        { publicId: "SERIES_1", title: "シリーズ1" },
+        { publicId: "SERIES_2", title: "シリーズ2" },
+      ],
+    });
+
+    const result = await getPublishedAuthorDetail(" TENANT_1 ", " CREATOR_A ", {
+      limit: 12,
+      token: "",
+    });
+
+    expect(mockGetPublishedAuthorDetail).toHaveBeenCalledWith({
+      limit: 12,
+      publicId: "CREATOR_A",
+      tenant: { tenantId: "TENANT_1" },
+      token: "",
+    });
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        iconImageUrl: "/images/creators/creator-a",
+        id: "CREATOR_A",
+        name: "著者A",
+        nextToken: "NEXT_SERIES",
+        previousToken: "",
+        profileText: "著者Aのプロフィール",
+        series: [
+          { publicId: "SERIES_1", title: "シリーズ1" },
+          { publicId: "SERIES_2", title: "シリーズ2" },
+        ],
+        seriesCount: 3,
+      },
+    });
+  });
+
+  it("publicId の無いシリーズ行は落とす", async () => {
+    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
+      author: {
+        iconImageUrl: "",
+        name: "著者A",
+        profileText: "",
+        publicId: "CREATOR_A",
+        publishedSeriesCount: 1,
+      },
+      nextToken: "",
+      previousToken: "",
+      series: [
+        { publicId: "  ", title: "欠番" },
+        { publicId: "SERIES_1", title: " シリーズ1 " },
+      ],
+    });
+
+    const result = await getPublishedAuthorDetail("TENANT_1", "CREATOR_A");
+
+    expect(result.ok && result.value?.series).toEqual([
+      { publicId: "SERIES_1", title: "シリーズ1" },
+    ]);
+  });
+
+  it("author が欠けている場合は null", async () => {
+    mockGetPublishedAuthorDetail.mockResolvedValueOnce({
+      author: undefined,
+      nextToken: "",
+      previousToken: "",
+      series: [],
     });
 
     await expect(
-      listPublishedAuthors("TENANT_1", { page: 1, pageSize: 10 })
-    ).resolves.toEqual({
-      message:
-        "サーバーに接続できませんでした。時間をおいて再試行してください。",
-      ok: false,
-    });
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("API が not_found を返したら null", async () => {
+    mockGetPublishedAuthorDetail.mockRejectedValueOnce(
+      new ConnectError("author not found", Code.NotFound)
+    );
+
+    await expect(
+      getPublishedAuthorDetail("TENANT_1", "UNKNOWN_CREATOR")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  // `"use cache"` re-creates a thrown error from name + message, dropping
+  // `code`; classification has to survive on the message prefix alone.
+  it("キャッシュ境界で再生成された ConnectError も null になる", async () => {
+    const rehydrated = new Error("[not_found] author not found");
+    rehydrated.name = "ConnectError";
+    mockGetPublishedAuthorDetail.mockRejectedValueOnce(rehydrated);
+
+    await expect(
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  // Another tenant's author comes back as permission_denied, not not_found.
+  it("API が permission_denied を返したら null", async () => {
+    mockGetPublishedAuthorDetail.mockRejectedValueOnce(
+      new ConnectError("author is not published", Code.PermissionDenied)
+    );
+
+    await expect(
+      getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
+  it("not_found 以外のエラーは throw せず失敗の値を返す", async () => {
+    mockGetPublishedAuthorDetail.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
     await expect(
       getPublishedAuthorDetail("TENANT_1", "CREATOR_A")
     ).resolves.toEqual({

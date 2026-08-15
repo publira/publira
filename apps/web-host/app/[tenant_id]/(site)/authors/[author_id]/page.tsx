@@ -10,8 +10,16 @@ import { Suspense } from "react";
 
 import { PageLoadError } from "#components/page-load-error";
 import { getPublishedAuthorDetail } from "#lib/authors";
+import type { PublishedAuthorDetail } from "#lib/authors";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+
+import {
+  authorDetailHref,
+  parseAuthorDetailSearchParams,
+} from "./_lib/search-params";
+
+const AUTHOR_SERIES_PAGE_SIZE = 20;
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "author_id");
@@ -60,7 +68,7 @@ export const generateMetadata = async ({
   return {
     description:
       author.profileText ||
-      `${author.name} が関わっている公開中シリーズ ${author.series.length} 件`,
+      `${author.name} が関わっている公開中シリーズ ${author.seriesCount} 件`,
     title: `${author.name} | ${siteLabel}`,
   };
 };
@@ -88,19 +96,131 @@ const AuthorDetailSkeleton = () => (
   </div>
 );
 
+const AuthorSeriesPagination = ({
+  authorId,
+  nextToken,
+  previousToken,
+}: {
+  authorId: string;
+  nextToken: string;
+  previousToken: string;
+}) => (
+  <nav
+    aria-label="関連シリーズページング"
+    className="mt-8 flex items-center justify-center gap-6"
+  >
+    {previousToken ? (
+      <Link
+        href={authorDetailHref(authorId, previousToken)}
+        className="text-sm text-primary underline-offset-4 hover:underline"
+      >
+        前のページ
+      </Link>
+    ) : (
+      <span className="text-sm text-muted-foreground">前のページ</span>
+    )}
+
+    {nextToken ? (
+      <Link
+        href={authorDetailHref(authorId, nextToken)}
+        className="text-sm text-primary underline-offset-4 hover:underline"
+      >
+        次のページ
+      </Link>
+    ) : (
+      <span className="text-sm text-muted-foreground">次のページ</span>
+    )}
+  </nav>
+);
+
+const AuthorRelatedSeries = ({
+  author,
+  token,
+}: {
+  author: PublishedAuthorDetail;
+  token: string;
+}) => {
+  if (author.series.length === 0) {
+    if (!token) {
+      return (
+        <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-6 text-sm text-muted-foreground">
+          まだ公開中シリーズはありません。
+        </div>
+      );
+    }
+
+    return (
+      <div className="py-10 text-center">
+        <p className="mb-4 text-sm text-muted-foreground">
+          このページに表示できるシリーズがありません。
+        </p>
+        {author.previousToken || author.nextToken ? (
+          <AuthorSeriesPagination
+            authorId={author.id}
+            nextToken={author.nextToken}
+            previousToken={author.previousToken}
+          />
+        ) : (
+          <Link
+            href={authorDetailHref(author.id, "")}
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            関連シリーズの先頭へ
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ul className="grid gap-4">
+        {author.series.map((series) => (
+          <li key={series.publicId}>
+            <Link
+              href={`/series/${series.publicId}`}
+              className="block rounded-2xl border border-border/70 bg-card p-5 transition hover:border-secondary/40 hover:shadow-sm"
+            >
+              <p className="font-medium text-foreground">{series.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                シリーズ詳細を見る
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <AuthorSeriesPagination
+        authorId={author.id}
+        nextToken={author.nextToken}
+        previousToken={author.previousToken}
+      />
+    </>
+  );
+};
+
 const AuthorDetailContent = async ({
   params,
+  searchParams,
 }: PageProps<"/[tenant_id]/authors/[author_id]">) => {
-  const [{ author_id }, tenantId] = await Promise.all([params, getTenantId()]);
+  const [{ author_id }, tenantId, resolvedSearchParams] = await Promise.all([
+    params,
+    getTenantId(),
+    searchParams,
+  ]);
 
   guardPlaceholders({ author_id });
+
+  const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
 
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything (#672).
   const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
-    getPublishedAuthorDetail(tenantId, author_id),
+    getPublishedAuthorDetail(tenantId, author_id, {
+      limit: AUTHOR_SERIES_PAGE_SIZE,
+      token,
+    }),
   ]);
 
   if (!result.ok) {
@@ -146,7 +266,7 @@ const AuthorDetailContent = async ({
               {author.name}
             </h1>
             <p className="text-sm text-muted-foreground">
-              公開中シリーズ {author.series.length} 件
+              公開中シリーズ {author.seriesCount} 件
             </p>
 
             <div className="mt-6 rounded-2xl bg-muted/30 p-5">
@@ -177,27 +297,7 @@ const AuthorDetailContent = async ({
           </div>
         </div>
 
-        {author.series.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-6 text-sm text-muted-foreground">
-            まだ公開中シリーズはありません。
-          </div>
-        ) : (
-          <ul className="grid gap-4">
-            {author.series.map((series) => (
-              <li key={series.publicId}>
-                <Link
-                  href={`/series/${series.publicId}`}
-                  className="block rounded-2xl border border-border/70 bg-card p-5 transition hover:border-secondary/40 hover:shadow-sm"
-                >
-                  <p className="font-medium text-foreground">{series.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    シリーズ詳細を見る
-                  </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        <AuthorRelatedSeries author={author} token={token} />
       </section>
 
       <div className="mt-8">
