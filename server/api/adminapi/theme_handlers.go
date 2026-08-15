@@ -113,7 +113,7 @@ func (s *adminServer) GetTenantTheme(
 
 	theme, err := s.queriesFor(ctx).GetTenantThemeByTenantID(ctx, tenant.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant theme", err, "tenant_id", tenant.ID.String())
 	}
 
 	return connect.NewResponse(&publiraadminv1.GetTenantThemeResponse{
@@ -151,7 +151,7 @@ func (s *adminServer) UpsertTenantTheme(
 
 	updated, err := s.queriesFor(ctx).UpsertTenantTheme(ctx, params)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to upsert tenant theme", err, "tenant_id", tenant.ID.String())
 	}
 
 	if s.reval != nil {

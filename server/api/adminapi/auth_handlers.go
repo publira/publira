@@ -84,7 +84,7 @@ func platformSMTPSettingsFromRow(config dbmodels.PlatformSmtpConfig, password st
 func (s *adminServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
 	tenantConfig, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
+		return emailsettings.SMTPSettings{}, s.internalDBError("failed to get tenant smtp config", err, "tenant_id", tenantID.String())
 	}
 	if err == nil && tenantConfig.SmtpOverrideEnabled {
 		password, decryptErr := emailsettings.DecryptPassword(tenantConfig.PasswordEncrypted.String, s.encryptor)
@@ -103,7 +103,7 @@ func (s *adminServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID
 		if errors.Is(err, sql.ErrNoRows) {
 			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
 		}
-		return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeInternal, err)
+		return emailsettings.SMTPSettings{}, s.internalDBError("failed to get platform smtp config", err)
 	}
 	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
 	if decryptErr != nil {
@@ -152,7 +152,7 @@ func (s *adminServer) sendPasswordResetEmail(
 func (s *adminServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, userID)
 	if err != nil {
-		return "", connect.NewError(connect.CodeInternal, err)
+		return "", s.internalDBError("failed to list tenant user roles", err, "user_id", userID.String())
 	}
 	return auth.ResolveTenantRole(roles), nil
 }
@@ -185,7 +185,7 @@ func (s *adminServer) Login(
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 		}
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for login", err, "tenant_id", tenant.ID.String())
 	}
 	if !auth.VerifyPassword(req.Msg.Password, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "admin_login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
@@ -262,12 +262,12 @@ func (s *adminServer) RequestPasswordReset(
 			return connect.NewResponse(&publiraadminv1.AdminAuthServiceRequestPasswordResetResponse{Requested: true}), nil
 		}
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for password reset", err, "tenant_id", tenant.ID.String())
 	}
 
 	if err := s.queriesFor(ctx).DeleteUserPasswordResetTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to delete password reset tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	rawToken := make([]byte, 32)
@@ -290,7 +290,7 @@ func (s *adminServer) RequestPasswordReset(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create password reset token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := s.sendPasswordResetEmail(ctx, tenant, user.Email, resetToken); err != nil {
@@ -330,7 +330,7 @@ func (s *adminServer) ConfirmPasswordReset(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("password reset token not found"))
 		}
 		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get password reset token", err, "tenant_id", tenant.ID.String())
 	}
 
 	if resetToken.CompletedAt.Valid {
@@ -348,7 +348,7 @@ func (s *adminServer) ConfirmPasswordReset(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
 		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for password reset confirm", err, "tenant_id", tenant.ID.String(), "user_id", resetToken.UserID.String())
 	}
 
 	passwordHash, err := auth.HashPassword(newPassword)
@@ -362,15 +362,15 @@ func (s *adminServer) ConfirmPasswordReset(
 		PasswordHash: passwordHash,
 	}); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "password_update_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update password", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "failure", tenant.PublicID, user.PublicID, "token_complete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to complete password reset token", err, "tenant_id", tenant.ID.String(), "token_id", resetToken.ID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "admin_password_reset_confirm", "success", tenant.PublicID, user.PublicID, "confirmed")
@@ -433,7 +433,7 @@ func (s *adminServer) GetTenantByDomain(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant by domain", err)
 	}
 
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantByDomainResponse{
@@ -455,7 +455,7 @@ func (s *adminServer) GetTenantConfig(
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantConfigResponse{}), nil
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant config", err, "tenant_id", tenant.ID.String())
 	}
 
 	response := &publiraadminv1.AdminAuthServiceGetTenantConfigResponse{}
@@ -493,7 +493,7 @@ func (s *adminServer) UpdateTenantConfig(
 	})
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to update tenant config", err, "tenant_id", tenant.ID.String())
 		}
 
 		config, err = s.queriesFor(ctx).CreateTenantConfig(ctx, dbmodels.CreateTenantConfigParams{
@@ -503,7 +503,7 @@ func (s *adminServer) UpdateTenantConfig(
 			SiteTagline:     siteTagline,
 		})
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to create tenant config", err, "tenant_id", tenant.ID.String())
 		}
 	}
 
@@ -654,12 +654,12 @@ func (s *adminServer) RequestEmailChange(
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to check email uniqueness", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := s.queriesFor(ctx).DeleteUserEmailChangeTokensByUserID(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_delete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to delete email change tokens", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	rawToken := make([]byte, 32)
@@ -691,7 +691,7 @@ func (s *adminServer) RequestEmailChange(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_request", "failure", tenant.PublicID, user.PublicID, "token_create_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create email change token", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 
 	if err := s.sendAdminEmailChangeVerificationEmail(ctx, tenant, user.Email, "current_email", user.Email, newEmail, currentEmailToken); err != nil {
@@ -735,7 +735,7 @@ func (s *adminServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("email change token not found"))
 		}
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "token_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get email change token", err, "tenant_id", tenant.ID.String())
 	}
 
 	if changeToken.CompletedAt.Valid {
@@ -753,7 +753,7 @@ func (s *adminServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, "", "user_lookup_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get user for email change confirm", err, "tenant_id", tenant.ID.String(), "user_id", changeToken.UserID.String())
 	}
 	if !strings.EqualFold(user.Email, changeToken.CurrentEmail) {
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "stale_request")
@@ -764,12 +764,12 @@ func (s *adminServer) ConfirmEmailChange(
 	if matchedTarget == "current_email" {
 		if err := s.queriesFor(ctx).MarkUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "current_email_confirm_failed")
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to confirm current email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
 	} else {
 		if err := s.queriesFor(ctx).MarkUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "new_email_confirm_failed")
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to confirm new email", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 		}
 	}
 
@@ -797,11 +797,11 @@ func (s *adminServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "email_update_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update user email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "request_complete_failed")
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to complete email change token", err, "tenant_id", tenant.ID.String(), "token_id", changeToken.ID.String())
 	}
 	if err := s.sendAdminEmailChangedNotice(ctx, tenant, changeToken.CurrentEmail, changeToken.NewEmail); err != nil {
 		auth.AuditEvent(req.Header(), "admin_email_change_confirm", "failure", tenant.PublicID, user.PublicID, "old_email_notice_failed")

@@ -83,7 +83,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 		SeriesID: seriesID,
 	})
 	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err)
+		return uuid.NullUUID{}, s.internalDBError("failed to create series image", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 
 	variants, err := imageproc.BuildEyeCatchVariants(img.Data, img.ContentType)
@@ -128,7 +128,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 			Height:          int32(variant.Height),
 		})
 		if createVariantErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, createVariantErr)
+			return uuid.NullUUID{}, s.internalDBError("failed to create series image variant", createVariantErr, "tenant_id", tenant.ID.String(), "series_image_id", createdImage.ID.String())
 		}
 	}
 
@@ -211,7 +211,7 @@ func (s *adminServer) resolveCreatorsByPublicIDs(
 		PublicIds: normalized,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list creators by public ids", err, "tenant_id", tenantID.String())
 	}
 	if len(rows) != len(normalized) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
@@ -325,7 +325,7 @@ func (s *adminServer) CreateSeries(
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
 			}
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to get label for create series", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.LabelPublicId)
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
@@ -454,7 +454,7 @@ func (s *adminServer) UpdateSeries(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
 	}
 	labelPublicID := strings.TrimSpace(req.Msg.LabelPublicId)
 	if labelPublicID == "" && current.LabelPublicID.Valid {
@@ -467,7 +467,7 @@ func (s *adminServer) UpdateSeries(
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
 			}
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to get label for update series", err, "tenant_id", tenant.ID.String(), "label_public_id", labelPublicID)
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
@@ -787,7 +787,7 @@ func (s *adminServer) GetSeries(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get series", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
 	}
 	creatorsBySeriesID, err := s.seriesCreatorsBySeriesIDs(ctx, []uuid.UUID{row.ID})
 	if err != nil {

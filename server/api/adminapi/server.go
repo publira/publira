@@ -156,21 +156,21 @@ func (s *adminServer) authenticateSession(
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+		return rpcmiddleware.SessionContext{}, s.internalDBError("failed to get session user by public id", err, "tenant_id", tenant.ID.String())
 	}
 	user, err := s.queriesFor(ctx).GetUserByID(ctx, userRef.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return rpcmiddleware.SessionContext{}, invalidSessionError()
 		}
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+		return rpcmiddleware.SessionContext{}, s.internalDBError("failed to get session user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
 	}
 	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
 		return rpcmiddleware.SessionContext{}, invalidSessionError()
 	}
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
-		return rpcmiddleware.SessionContext{}, connect.NewError(connect.CodeInternal, err)
+		return rpcmiddleware.SessionContext{}, s.internalDBError("failed to list session user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	return rpcmiddleware.SessionContext{
 		Tenant: tenant,
@@ -370,7 +370,7 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 				}
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, s.internalDBError("failed to get tenant for request scope", err, "tenant_id", tenantID.String())
 			}
 
 			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)

@@ -643,11 +643,11 @@ func (s *adminServer) ReorderEpisodeImages(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get episode for reorder images", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
 	}
 	rows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list episode images for reorder", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	if len(rows) != len(req.Msg.ImageIds) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids must include all images in the episode"))
@@ -681,13 +681,13 @@ func (s *adminServer) ReorderEpisodeImages(
 			EpisodeID:    episode.ID,
 			DisplayOrder: int32(index + 1),
 		}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to update episode image order", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String(), "image_id", parsedImageID.String())
 		}
 	}
 
 	updatedRows, err := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, episode.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list episode images after reorder", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	images := make([]*publirattypesv1.EpisodeImage, 0, len(updatedRows))
 	for _, row := range updatedRows {
@@ -715,14 +715,14 @@ func (s *adminServer) UpdateEpisodePublishSchedule(
 	}
 	err = s.queriesFor(ctx).UpdateEpisodePublishScheduleByPublicIDForTenant(ctx, dbmodels.UpdateEpisodePublishScheduleByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId, ScheduledAt: scheduledAt})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to update episode publish schedule", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.EpisodePublicId)
 	}
 	ep, err := s.queriesFor(ctx).GetEpisodeByPublicIDForTenant(ctx, dbmodels.GetEpisodeByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.EpisodePublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get episode after schedule update", err, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.EpisodePublicId)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{

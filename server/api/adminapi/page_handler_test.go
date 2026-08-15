@@ -22,6 +22,7 @@ import (
 const (
 	listPagesForTenantAscQuery  = "-- name: ListPagesForTenantAsc :many\n"
 	listPagesForTenantDescQuery = "-- name: ListPagesForTenantDesc :many\n"
+	getPageByIDForTenantQuery   = "-- name: GetPageByIDForTenant :one\n"
 	updatePageQuery             = "-- name: UpdatePage :one\nUPDATE pages\nSET title = $1,\n\tdisplay_in_footer = COALESCE($2, display_in_footer),\n\tupdated_at = NOW()\nWHERE id = $3 AND tenant_id = $4\nRETURNING id, tenant_id, slug, title, published_version_id, display_in_footer, created_at, updated_at\n"
 )
 
@@ -262,6 +263,33 @@ func TestListPagesDatabaseErrorIsHidden(t *testing.T) {
 	_, err := client.ListPages(context.Background(), newListPagesRequest(tenantID, sessionToken))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("ListPages code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestGetPageDatabaseErrorIsHidden(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	pageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getPageByIDForTenantQuery)).
+		WithArgs(pageID, tenantID).
+		WillReturnError(errors.New(`pq: relation "pages" does not exist`))
+
+	req := connect.NewRequest(&publiraadminv1.GetPageRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PageId: pageID.String(),
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	_, err := client.GetPage(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetPage code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
 	if err.Error() != "internal: internal server error" {
 		t.Fatalf("error = %q, want database details hidden", err)

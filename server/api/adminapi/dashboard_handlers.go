@@ -20,17 +20,17 @@ func (s *adminServer) GetDashboard(
 
 	publishedSeriesCount, err := s.queriesFor(ctx).CountPublishedSeriesForTenant(ctx, tenant.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to count published series for dashboard", err, "tenant_id", tenant.ID.String())
 	}
 
 	draftEpisodeCount, err := s.queriesFor(ctx).CountDraftEpisodesForTenant(ctx, tenant.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to count draft episodes for dashboard", err, "tenant_id", tenant.ID.String())
 	}
 
 	scheduledEpisodeCount, err := s.queriesFor(ctx).CountScheduledEpisodesForTenant(ctx, tenant.ID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to count scheduled episodes for dashboard", err, "tenant_id", tenant.ID.String())
 	}
 
 	recentEpisodes, err := s.queriesFor(ctx).ListRecentEpisodesForDashboard(ctx, dbmodels.ListRecentEpisodesForDashboardParams{
@@ -38,7 +38,7 @@ func (s *adminServer) GetDashboard(
 		Limit:    10,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to list recent episodes for dashboard", err, "tenant_id", tenant.ID.String())
 	}
 
 	queue := make([]*publiraadminv1.DashboardQueueItem, 0, len(recentEpisodes))

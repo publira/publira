@@ -51,7 +51,7 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("invitation not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
 
 	_, userErr := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
@@ -59,7 +59,7 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		Email:    invitation.Email,
 	})
 	if userErr != nil && !errors.Is(userErr, sql.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeInternal, userErr)
+		return nil, s.internalDBError("failed to get invitation user", userErr, "tenant_id", tenant.ID.String())
 	}
 
 	return connect.NewResponse(&publiraadminv1.AdminAuthServiceGetTenantAdminInvitationStateResponse{
@@ -91,7 +91,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("invitation not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
 
 	status := adminInvitationStatus(invitation, time.Now())
@@ -111,7 +111,7 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 	accountCreated := false
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to get invitation user", err, "tenant_id", tenant.ID.String())
 		}
 
 		name := strings.TrimSpace(req.Msg.Name)
@@ -138,26 +138,26 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 			})
 		})
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to create invitation user", err, "tenant_id", tenant.ID.String())
 		}
 		if _, err := s.queriesFor(ctx).UpdateUserEmailVerifiedAtByID(ctx, dbmodels.UpdateUserEmailVerifiedAtByIDParams{
 			ID:              user.ID,
 			EmailVerifiedAt: sql.NullTime{Time: time.Now(), Valid: true},
 		}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to verify invitation user email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to activate invitation user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		accountCreated = true
 	} else if user.Status != "active" {
 		if _, err := s.queriesFor(ctx).UpdateUserStatusByID(ctx, dbmodels.UpdateUserStatusByIDParams{ID: user.ID, Status: "active"}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			return nil, s.internalDBError("failed to activate invitation user", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 	}
 
 	if err := s.queriesFor(ctx).DeleteTenantUserRolesByUserID(ctx, user.ID); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to reset invitation user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	roleID, roleIDErr := uuid.NewV7()
 	if roleIDErr != nil {
@@ -169,13 +169,13 @@ func (s *adminServer) AcceptTenantAdminInvitation(
 		UserID:   user.ID,
 		Role:     auth.RoleTenantAdmin,
 	}); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create invitation tenant admin role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).MarkTenantAdminInvitationAccepted(ctx, dbmodels.MarkTenantAdminInvitationAcceptedParams{
 		TenantID: tenant.ID,
 		ID:       invitation.ID,
 	}); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to mark tenant admin invitation accepted", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{

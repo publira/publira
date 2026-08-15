@@ -158,6 +158,9 @@ func TestCreateEpisodeRollsBackWhenListingInsertFails(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateEpisode code = %v, want %v (err=%v)", connect.CodeOf(err), connect.CodeInternal, err)
 	}
+	if err.Error() != "internal: internal server error" {
+		t.Fatalf("error = %q, want database details hidden", err)
+	}
 	assertExpectations(t, mock)
 }
 
