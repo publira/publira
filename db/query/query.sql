@@ -1126,9 +1126,11 @@ WHERE c.tenant_id = sqlc.arg('tenant_id')
     )
 LIMIT 1;
 -- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
--- 著者詳細の関連シリーズ。現状の UI がタイトル順で並べている
--- (apps/web-host/lib/authors.ts)。公開判定は
+-- 著者詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
 -- ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+-- ListActiveSeriesIDsByTitleAsc と同じ形で、creator で絞る。
+-- 前ページ方向は ListPublishedSeriesIDsByCreatorTitleDesc を呼んで
+-- 呼び出し側で並べ直す。
 SELECT s.id
 FROM series s
     JOIN series_creators sc ON sc.series_id = s.id
@@ -1137,8 +1139,56 @@ WHERE sc.creator_id = sqlc.arg('creator_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) >= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) > (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
 ORDER BY s.title ASC,
-    s.id ASC;
+    s.id ASC
+LIMIT sqlc.arg('limit');
+-- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
+-- ListPublishedSeriesIDsByCreatorTitleAsc の前ページ方向。
+SELECT s.id
+FROM series s
+    JOIN series_creators sc ON sc.series_id = s.id
+WHERE sc.creator_id = sqlc.arg('creator_id')
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) <= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) < (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT sqlc.arg('limit');
 -- name: CreateEpisodeBase :one
 -- エピソードのBaseレコードを作成する
 INSERT INTO episodes (

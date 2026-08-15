@@ -123,15 +123,27 @@ message ListPublishedAuthorsResponse {
   string next_token = 3;
 }
 
+// Cursor pagination for the author's published series. Field shape and token
+// rules: proto/README.md. Sorted by title, then id. There is no order field:
+// title order is the only series list the author page needs, and a later
+// selectable order would have to carry its name in the token.
 message GetPublishedAuthorDetailRequest {
   publira.types.v1.TenantContext tenant = 1;
   string public_id = 2;
+  // Max series in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
 }
 
 message GetPublishedAuthorDetailResponse {
   PublishedAuthor author = 1;
-  // Published series credited to this author, title ascending.
+  // One page of published series credited to this author, title ascending.
   repeated publira.types.v1.Series series = 2;
+  // Token for the previous series page. Empty on the first page.
+  string previous_token = 3;
+  // Token for the next series page. Empty on the last page.
+  string next_token = 4;
 }
 
 service CatalogService {

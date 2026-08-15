@@ -414,7 +414,7 @@ func TestCatalogGetPublishedAuthorDetailSuccess(t *testing.T) {
 		WillReturnRows(authorListColumns().
 			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", "Draws things", nil, nil, int64(0), int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
-		WithArgs(authorID, tenantID).
+		WithArgs(authorID, tenantID, nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -437,6 +437,337 @@ func TestCatalogGetPublishedAuthorDetailSuccess(t *testing.T) {
 	}
 	if len(resp.Msg.Series) != 1 || resp.Msg.Series[0].PublicId != "SERIESPUB" {
 		t.Fatalf("series = %+v, want SERIESPUB", resp.Msg.Series)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every series fits in one page", resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailFirstPageReportsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	ids := newSeriesIDs(3)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+		WithArgs(authorID, tenantID, nil, false, nil, int32(3)).
+		WillReturnRows(seriesIDRows(ids...))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)).
+			AddRow(ids[1], "SERIESBETA0", "Beta", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+		Limit:    2,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail: %v", err)
+	}
+	if got := len(resp.Msg.Series); got != 2 {
+		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token for the next page")
+	}
+	wantToken := pagination.Encode(pagination.Forward, "title_asc", "Beta", ids[1].String())
+	if resp.Msg.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned title cursor", resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailFollowsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Forward, "title_asc", "Beta", boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	ids := newSeriesIDs(1)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+		WithArgs(authorID, tenantID, boundaryID, false, "Beta", int32(3)).
+		WillReturnRows(seriesIDRows(ids...))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(ids[0], "SERIESZETA0", "Zeta", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+		Limit:    2,
+		Token:    token,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail: %v", err)
+	}
+	if got := len(resp.Msg.Series); got != 1 {
+		t.Fatalf("series count = %d, want 1", got)
+	}
+	if resp.Msg.PreviousToken == "" {
+		t.Fatal("previous_token is empty, want a token back to the page the client came from")
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty on the last page", resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailFollowsPreviousTokenBackwards(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Backward, "title_asc", "Zeta", boundaryID.String())
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	alphaID := uuid.Must(uuid.NewV7())
+	betaID := uuid.Must(uuid.NewV7())
+	// A backward page scans descending titles, so Zeta's predecessor Beta
+	// comes first, then Alpha. pagination.Page flips that back to title asc.
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleDescQuery)).
+		WithArgs(authorID, tenantID, boundaryID, false, "Zeta", int32(3)).
+		WillReturnRows(seriesIDRows(betaID, alphaID))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(alphaID, "SERIESALPHA", "Alpha", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)).
+			AddRow(betaID, "SERIESBETA0", "Beta", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+		Limit:    2,
+		Token:    token,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail: %v", err)
+	}
+
+	got := make([]string, 0, len(resp.Msg.Series))
+	for _, series := range resp.Msg.Series {
+		got = append(got, series.Title)
+	}
+	if !slices.Equal(got, []string{"Alpha", "Beta"}) {
+		t.Fatalf("series = %v, want the backward page flipped back to title ascending", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty once the scan reached the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken == "" {
+		t.Fatal("next_token is empty, want a token back to the page the client came from")
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailEmptyPageKeepsAWayBack(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		direction pagination.Direction
+		wantQuery string
+		wantPrev  bool
+	}{
+		{
+			name:      "forward",
+			direction: pagination.Forward,
+			wantQuery: listPublishedSeriesIDsByCreatorTitleAscQuery,
+			wantPrev:  true,
+		},
+		{
+			name:      "backward",
+			direction: pagination.Backward,
+			wantQuery: listPublishedSeriesIDsByCreatorTitleDescQuery,
+			wantPrev:  false,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			authorID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC()
+			boundaryID := uuid.Must(uuid.NewV7())
+			token := pagination.Encode(test.direction, "title_asc", "Beta", boundaryID.String())
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+				WithArgs(tenantID, "AUTHOR00001").
+				WillReturnRows(authorListColumns().
+					AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(authorID, tenantID, boundaryID, false, "Beta", int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				PublicId: "AUTHOR00001",
+				Token:    token,
+			}))
+			if err != nil {
+				t.Fatalf("GetPublishedAuthorDetail: %v", err)
+			}
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %+v, want empty", resp.Msg.Series)
+			}
+			if test.wantPrev {
+				if resp.Msg.PreviousToken == "" {
+					t.Fatal("previous_token is empty, want a recovery token back")
+				}
+				if resp.Msg.NextToken != "" {
+					t.Fatalf("next_token = %q, want empty on a forward empty page", resp.Msg.NextToken)
+				}
+			} else {
+				if resp.Msg.NextToken == "" {
+					t.Fatal("next_token is empty, want a recovery token forward")
+				}
+				if resp.Msg.PreviousToken != "" {
+					t.Fatalf("previous_token = %q, want empty on a backward empty page", resp.Msg.PreviousToken)
+				}
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogGetPublishedAuthorDetailEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Forward, "title_asc", "Beta", boundaryID.String(), seriesInclusiveKey)
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+		WithArgs(authorID, tenantID, boundaryID, true, "Beta", int32(21)).
+		WillReturnRows(seriesIDRows())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+		Token:    token,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail: %v", err)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailRejectsBrokenToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+		Token:    "not-a-token",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("error = %q, want token internals hidden", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailRejectsTokenFromAnotherOrder(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Forward, "published_at_desc", time.Now().UTC().Format(time.RFC3339Nano), uuid.Must(uuid.NewV7()).String())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+		Token:    token,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument when the token was built for another order", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedAuthorDetailLimitOutOfRangeUsesDefault(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	authorID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedAuthorByPublicIDQuery)).
+		WithArgs(tenantID, "AUTHOR00001").
+		WillReturnRows(authorListColumns().
+			AddRow(authorID, "AUTHOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByCreatorTitleAscQuery)).
+		WithArgs(authorID, tenantID, nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedAuthorDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedAuthorDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "AUTHOR00001",
+		Limit:    101,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedAuthorDetail: %v", err)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -467,11 +798,12 @@ func TestCatalogGetPublishedAuthorDetailNotFound(t *testing.T) {
 
 func TestListPublishedAuthorQueriesHavePublicationGuards(t *testing.T) {
 	queries := map[string]string{
-		"listPublishedAuthorIDsByNameAsc":         listPublishedAuthorIDsByNameAscQuery,
-		"listPublishedAuthorIDsByNameDesc":        listPublishedAuthorIDsByNameDescQuery,
-		"listPublishedAuthorsByIDs":               listPublishedAuthorsByIDsQuery,
-		"getPublishedAuthorByPublicID":            getPublishedAuthorByPublicIDQuery,
-		"listPublishedSeriesIDsByCreatorTitleAsc": listPublishedSeriesIDsByCreatorTitleAscQuery,
+		"listPublishedAuthorIDsByNameAsc":          listPublishedAuthorIDsByNameAscQuery,
+		"listPublishedAuthorIDsByNameDesc":         listPublishedAuthorIDsByNameDescQuery,
+		"listPublishedAuthorsByIDs":                listPublishedAuthorsByIDsQuery,
+		"getPublishedAuthorByPublicID":             getPublishedAuthorByPublicIDQuery,
+		"listPublishedSeriesIDsByCreatorTitleAsc":  listPublishedSeriesIDsByCreatorTitleAscQuery,
+		"listPublishedSeriesIDsByCreatorTitleDesc": listPublishedSeriesIDsByCreatorTitleDescQuery,
 	}
 	// Compacted so a drifted copy of the published predicate cannot hide
 	// behind different wrapping. This is the same three-way check as

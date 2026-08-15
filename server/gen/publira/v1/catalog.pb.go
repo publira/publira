@@ -828,10 +828,18 @@ func (x *ListPublishedAuthorsResponse) GetNextToken() string {
 	return ""
 }
 
+// Cursor pagination for the author's published series. Field shape and token
+// rules: proto/README.md. Sorted by title, then id. There is no order field:
+// title order is the only series list the author page needs, and a later
+// selectable order would have to carry its name in the token.
 type GetPublishedAuthorDetailRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	PublicId      string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// Max series in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -880,11 +888,29 @@ func (x *GetPublishedAuthorDetailRequest) GetPublicId() string {
 	return ""
 }
 
+func (x *GetPublishedAuthorDetailRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetPublishedAuthorDetailRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type GetPublishedAuthorDetailResponse struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Author *PublishedAuthor       `protobuf:"bytes,1,opt,name=author,proto3" json:"author,omitempty"`
-	// Published series credited to this author, title ascending.
-	Series        []*v1.Series `protobuf:"bytes,2,rep,name=series,proto3" json:"series,omitempty"`
+	// One page of published series credited to this author, title ascending.
+	Series []*v1.Series `protobuf:"bytes,2,rep,name=series,proto3" json:"series,omitempty"`
+	// Token for the previous series page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,3,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next series page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,4,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -931,6 +957,20 @@ func (x *GetPublishedAuthorDetailResponse) GetSeries() []*v1.Series {
 		return x.Series
 	}
 	return nil
+}
+
+func (x *GetPublishedAuthorDetailResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *GetPublishedAuthorDetailResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 var File_publira_v1_catalog_proto protoreflect.FileDescriptor
@@ -985,13 +1025,18 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\aauthors\x18\x01 \x03(\v2\x1b.publira.v1.PublishedAuthorR\aauthors\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"w\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xa3\x01\n" +
 	"\x1fGetPublishedAuthorDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
-	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\"\x89\x01\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\"\xcf\x01\n" +
 	" GetPublishedAuthorDetailResponse\x123\n" +
 	"\x06author\x18\x01 \x01(\v2\x1b.publira.v1.PublishedAuthorR\x06author\x120\n" +
-	"\x06series\x18\x02 \x03(\v2\x18.publira.types.v1.SeriesR\x06series*\xab\x01\n" +
+	"\x06series\x18\x02 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
+	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x04 \x01(\tR\tnextToken*\xab\x01\n" +
 	"\vSeriesOrder\x12\x1c\n" +
 	"\x18SERIES_ORDER_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eSERIES_ORDER_PUBLISHED_AT_DESC\x10\x01\x12!\n" +
