@@ -3,6 +3,16 @@ import { z } from "zod";
 
 import { cursorPageHref, cursorTokenSchema } from "./cursor-token";
 
+/**
+ * Mirrors `pagination.Encode`: query-escape each key, join as
+ * `v1|<dir>|<keys...>`, then unpadded base64url. Used only to pin the
+ * length bound against a token the server would actually issue.
+ */
+const encodeLikeServer = (direction: "f" | "b", ...keys: string[]) => {
+  const payload = ["v1", direction, ...keys.map(encodeURIComponent)].join("|");
+  return Buffer.from(payload, "utf-8").toString("base64url");
+};
+
 describe("cursorTokenSchema", () => {
   it("base64url の token は前後の空白だけ落として通す", () => {
     expect(cursorTokenSchema.parse(" djF8Zg-_ ")).toBe("djF8Zg-_");
@@ -20,7 +30,20 @@ describe("cursorTokenSchema", () => {
     expect(cursorTokenSchema.parse("v1|f|2026")).toBe("");
     expect(cursorTokenSchema.parse("dj F8Zg")).toBe("");
     expect(cursorTokenSchema.parse(["a", "b"])).toBe("");
-    expect(cursorTokenSchema.parse("a".repeat(513))).toBe("");
+    expect(cursorTokenSchema.parse("a".repeat(8196))).toBe("");
+  });
+
+  it("著者名・シリーズタイトル上限から作った正規 token は通す", () => {
+    const name = "あ".repeat(255);
+    const emojiTitle = "😀".repeat(255);
+    const id = "00000000-0000-0000-0000-000000000000";
+    const nameToken = encodeLikeServer("f", name, id, "inclusive");
+    const emojiToken = encodeLikeServer("f", emojiTitle, id, "inclusive");
+
+    expect(nameToken.length).toBeGreaterThan(512);
+    expect(emojiToken.length).toBeGreaterThan(512);
+    expect(cursorTokenSchema.parse(nameToken)).toBe(nameToken);
+    expect(cursorTokenSchema.parse(emojiToken)).toBe(emojiToken);
   });
 
   it("base64url が取り得ない長さの token は捨てる", () => {
