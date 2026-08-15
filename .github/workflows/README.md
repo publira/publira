@@ -129,9 +129,10 @@ Go / TypeScript / DB migration / Mobile / E2E / Bootstrap / Routing は**ジョ�
 
 ### buf 生成物のドリフト検出
 
-`sqlc diff` に相当するサブコマンドが buf には無いので、`Validate / buf Generated Diff` は `buf generate --clean` で作り直してから、コミット済みのツリーと比べる（[#922](https://github.com/publira/publira/issues/922)）。リモートプラグインは `buf.gen.yaml` でピン留めしてあり `buf generate` が再現可能なので（[#919](https://github.com/publira/publira/pull/919)）、差分の有無がそのままドリフトの有無になる。
+`sqlc diff` に相当するサブコマンドが buf には無いので、`Validate / buf Generated Diff` は `buf generate` で作り直してから、コミット済みのツリーと比べる（[#922](https://github.com/publira/publira/issues/922)）。リモートプラグインは `buf.gen.yaml` でピン留めしてあり `buf generate` が再現可能なので（[#919](https://github.com/publira/publira/pull/919)）、差分の有無がそのままドリフトの有無になる。
 
-- 比較対象は `server/gen/**` と `packages/api-client/src/gen/**`。どちらも buf の出力しか置かないディレクトリなので、`--clean` で丸ごと消してから生成できる。これにより、proto を消したのに残っている生成ファイルも差分として出る。
+- 比較対象は `server/gen/**` と `packages/api-client/src/gen/**`。どちらも buf の出力しか置かないディレクトリなので、`buf.gen.yaml` の `clean: true` で丸ごと消してから生成している。これにより、proto を消したのに残っている生成ファイルも差分として出る。
+- `clean` を CI 側の `--clean` フラグではなく `buf.gen.yaml` に置いているのは、`task gen` と CI の `buf generate` を同じ挙動にするため。CI だけが clean すると、案内どおり `task gen` しても直らない失敗が起きる。
 - 比較の前に `git add -A` で stage するのは、`git diff` 単体では未追跡の新規ファイルが見えないため。stage すれば追加・削除・変更が同じ diff に揃う。
 - 落ちたときは手元で `task gen` を実行して結果をコミットする。エラーアノテーションにも同じ案内を出している。
 - path filter は `Check` の既存パターンで足りる。生成先は `server/**` と `packages/**` に、入力は `proto/**` / `buf.yaml` / `buf.gen.yaml` に含まれる。

@@ -312,14 +312,14 @@ jobs:
         run: sqlc diff
 
       # buf has no `diff` subcommand, so regenerate and compare against the
-      # committed tree. `--clean` empties the output directories first, which is
-      # what makes a generated file left behind by a deleted proto visible; both
-      # directories hold nothing but buf output. Staging before the comparison
-      # keeps additions and deletions in the same diff as modifications —
-      # `git diff` alone would miss an untracked new file.
+      # committed tree. This is the same `buf generate` that `task gen` runs —
+      # `clean: true` lives in buf.gen.yaml so the recovery command below really
+      # does reproduce this result. Staging before the comparison keeps additions
+      # and deletions in the same diff as modifications — `git diff` alone would
+      # miss an untracked new file.
       - name: Validate / buf Generated Diff
         run: |
-          buf generate --clean
+          buf generate
           git add -A -- server/gen packages/api-client/src/gen
           if ! git diff --cached --exit-code -- server/gen packages/api-client/src/gen; then
             echo "::error::Generated protobuf code is out of date. Run \`task gen\` and commit the result."
