@@ -216,8 +216,8 @@ func (s *platformServer) CreateTenant(
 
 	txq := dbmodels.New(tx)
 	type pendingTenantAdminInvite struct {
-		email string
-		token string
+		invitation dbmodels.TenantAdminInvitation
+		token      string
 	}
 	pendingInvites := make([]pendingTenantAdminInvite, 0, len(initialAdminEmails))
 
@@ -266,7 +266,7 @@ func (s *platformServer) CreateTenant(
 			if invitationIDErr != nil {
 				return nil, connect.NewError(connect.CodeInternal, invitationIDErr)
 			}
-			_, createInvitationErr := txq.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
+			invitation, createInvitationErr := txq.CreateTenantAdminInvitation(ctx, dbmodels.CreateTenantAdminInvitationParams{
 				ID:        invitationID,
 				TenantID:  tenant.ID,
 				Email:     email,
@@ -276,7 +276,7 @@ func (s *platformServer) CreateTenant(
 			if createInvitationErr != nil {
 				return nil, s.internalDBError("failed to create tenant admin invitation", createInvitationErr, "tenant_id", tenant.ID.String())
 			}
-			pendingInvites = append(pendingInvites, pendingTenantAdminInvite{email: email, token: token})
+			pendingInvites = append(pendingInvites, pendingTenantAdminInvite{invitation: invitation, token: token})
 			continue
 		}
 
@@ -307,7 +307,7 @@ func (s *platformServer) CreateTenant(
 	}
 
 	for _, invite := range pendingInvites {
-		if err := s.sendTenantAdminInvitationEmail(ctx, tenant, invite.email, invite.token); err != nil {
+		if err := s.sendTenantAdminInvitationEmail(ctx, tenant, invite.invitation, invite.token); err != nil {
 			return nil, err
 		}
 		if actor, ok := platformActorFromContext(ctx); ok {
@@ -316,7 +316,7 @@ func (s *platformServer) CreateTenant(
 				ActorRole:           actor.Role,
 				Action:              "tenant_admin_invited",
 				TargetType:          "tenant_admin_invitation",
-				TargetID:            invite.email,
+				TargetID:            invite.invitation.Email,
 				Outcome:             auditlog.OutcomeSuccess,
 				ClientIP:            auditlog.ClientIPFromHeader(req.Header()),
 			})

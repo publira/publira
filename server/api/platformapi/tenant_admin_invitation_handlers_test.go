@@ -3,6 +3,7 @@ package platformapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"regexp"
 	"slices"
 	"testing"
@@ -13,7 +14,11 @@ import (
 	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
+	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailrenderer"
+	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/pagination"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
 const (
@@ -224,5 +229,89 @@ func TestListTenantAdminInvitationsRejectsInvalidToken(t *testing.T) {
 			t.Fatalf("ListTenantAdminInvitations code = %v, want invalid_argument", connect.CodeOf(err))
 		}
 		assertOperatorHandlerExpectations(t, mock)
+	}
+}
+
+type tenantInvitationRendererStub struct {
+	request emailrenderer.Request
+	err     error
+}
+
+func (s *tenantInvitationRendererStub) Render(_ context.Context, request emailrenderer.Request) (emailrenderer.Email, error) {
+	s.request = request
+	if s.err != nil {
+		return emailrenderer.Email{}, s.err
+	}
+	return emailrenderer.Email{Subject: "招待", HTML: "<p>招待</p>", Text: "招待"}, nil
+}
+
+type tenantInvitationMailerStub struct {
+	email internalsmtp.RenderedEmail
+}
+
+func (*tenantInvitationMailerStub) SendEmail(context.Context, emailsettings.SMTPSettings, string, string, string) error {
+	return nil
+}
+
+func (s *tenantInvitationMailerStub) SendRenderedEmail(_ context.Context, _ emailsettings.SMTPSettings, _ string, email internalsmtp.RenderedEmail) error {
+	s.email = email
+	return nil
+}
+
+func TestSendTenantAdminInvitationEmailRendersAndSendsHTML(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	encryptor := newPasswordResetEncryptor(t)
+	encrypted, err := encryptor.EncryptString("smtp-password")
+	if err != nil {
+		t.Fatalf("EncryptString: %v", err)
+	}
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetTenantSMTPConfigByTenantID :one\n")).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"tenant_id", "smtp_override_enabled", "host", "port", "username", "password_encrypted", "encryption", "from_name", "from_address", "reply_to", "created_at", "updated_at"}).
+			AddRow(tenantID, true, "smtp.example.com", 587, "mailer", encrypted, "starttls", "Publira", "no-reply@example.com", nil, now, now))
+	renderer := &tenantInvitationRendererStub{}
+	mailer := &tenantInvitationMailerStub{}
+	server.encryptor = encryptor
+	server.renderer = renderer
+	server.mailer = mailer
+
+	invitation := dbmodels.TenantAdminInvitation{
+		Email:     "admin@example.com",
+		ExpiresAt: now.Add(24 * time.Hour),
+	}
+	tenant := dbmodels.Tenant{ID: tenantID, Name: "Example Press", AdminDomain: sql.NullString{String: "admin.example.com", Valid: true}, Timezone: "America/New_York"}
+	if err := server.sendTenantAdminInvitationEmail(context.Background(), tenant, invitation, "token"); err != nil {
+		t.Fatalf("sendTenantAdminInvitationEmail: %v", err)
+	}
+
+	if renderer.request.Template != "tenant_admin_invitation" || renderer.request.Locale != "ja" || renderer.request.TimeZone != "America/New_York" {
+		t.Fatalf("render request = %+v", renderer.request)
+	}
+	if got := renderer.request.Data["invite_url"]; got != "https://admin.example.com/accept-invite?token=token" {
+		t.Fatalf("invite_url = %q", got)
+	}
+	if got := renderer.request.Data["expires_at"]; got != invitation.ExpiresAt.Format(time.RFC3339Nano) {
+		t.Fatalf("expires_at = %q", got)
+	}
+	if mailer.email != (internalsmtp.RenderedEmail{Subject: "招待", HTML: "<p>招待</p>", Text: "招待"}) {
+		t.Fatalf("sent email = %+v", mailer.email)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+func TestRenderTenantAdminInvitationEmailMakesRendererFailureInternal(t *testing.T) {
+	server := &platformServer{renderer: &tenantInvitationRendererStub{err: errors.New("renderer unavailable")}}
+	_, err := server.renderTenantAdminInvitationEmail(context.Background(), dbmodels.Tenant{
+		Name:        "Example Press",
+		AdminDomain: sql.NullString{String: "admin.example.com", Valid: true},
+		Timezone:    "Asia/Tokyo",
+	}, dbmodels.TenantAdminInvitation{ExpiresAt: time.Now().Add(time.Hour)}, "token")
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	if err.Error() != "internal: failed to render tenant admin invitation email" {
+		t.Fatalf("error = %q", err)
 	}
 }

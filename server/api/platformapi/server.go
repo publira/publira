@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -33,6 +34,7 @@ type platformServer struct {
 	encryptor emailsettings.SecretManager
 	tester    internalsmtp.Tester
 	mailer    internalsmtp.Sender
+	renderer  emailrenderer.Renderer
 	tokens    *auth.TokenManager
 	logger    *slog.Logger
 }
@@ -90,7 +92,7 @@ func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (strin
 
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
 // DB 接続は publira_platform ユーザーで行い、BYPASSRLS 属性により RLS を透過します。
-func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
+func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, renderer emailrenderer.Renderer) http.Handler {
 	var mailer internalsmtp.Sender
 	if sender, ok := tester.(internalsmtp.Sender); ok {
 		mailer = sender
@@ -102,6 +104,7 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		encryptor: encryptor,
 		tester:    tester,
 		mailer:    mailer,
+		renderer:  renderer,
 		tokens:    auth.MustTokenManagerFromEnv(),
 		logger:    logger,
 	}

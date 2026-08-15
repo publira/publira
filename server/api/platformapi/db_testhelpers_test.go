@@ -62,7 +62,7 @@ func newDBIntegrationEnvWithSMTP(
 	if mailer != nil {
 		tester = mailer
 	}
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), encryptor, tester))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), encryptor, tester, nil))
 	t.Cleanup(server.Close)
 	return server, pg
 }
