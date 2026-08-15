@@ -1,11 +1,14 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockGetAnnouncement,
   mockListAnnouncements,
   mockMarkAllAnnouncementsAsRead,
   mockMarkAnnouncementAsRead,
   mockResolveAccessToken,
 } = vi.hoisted(() => ({
+  mockGetAnnouncement: vi.fn(),
   mockListAnnouncements: vi.fn(),
   mockMarkAllAnnouncementsAsRead: vi.fn(),
   mockMarkAnnouncementAsRead: vi.fn(),
@@ -15,6 +18,7 @@ const {
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
+      getAnnouncement: mockGetAnnouncement,
       listAnnouncements: mockListAnnouncements,
       markAllAnnouncementsAsRead: mockMarkAllAnnouncementsAsRead,
       markAnnouncementAsRead: mockMarkAnnouncementAsRead,
@@ -101,22 +105,18 @@ describe("web-host announcements", () => {
     );
   });
 
-  it("getMyAnnouncement: 認可済み一覧から対象行を返す", async () => {
+  it("getMyAnnouncement: 認可済み 1 件を返す", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
 
-    mockListAnnouncements.mockResolvedValueOnce({
-      announcements: [
-        {
-          body: "本文",
-          createdAt: "2026-04-05T10:00:00Z",
-          id: "N001",
-          isRead: false,
-          linkUrl: "/series/S001",
-          title: "お知らせ",
-        },
-      ],
-      nextToken: "",
-      previousToken: "",
+    mockGetAnnouncement.mockResolvedValueOnce({
+      announcement: {
+        body: "本文",
+        createdAt: "2026-04-05T10:00:00Z",
+        id: "N001",
+        isRead: false,
+        linkUrl: "/series/S001",
+        title: "お知らせ",
+      },
     });
 
     await expect(getMyAnnouncement("TENANT001", "N001")).resolves.toEqual({
@@ -127,102 +127,36 @@ describe("web-host announcements", () => {
       linkUrl: "/series/S001",
       title: "お知らせ",
     });
+    expect(mockGetAnnouncement).toHaveBeenCalledWith(
+      { announcementId: "N001", tenant: { tenantId: "TENANT001" } },
+      expect.anything()
+    );
+    expect(mockListAnnouncements).not.toHaveBeenCalled();
   });
 
-  it("getMyAnnouncement: 次ページまで辿って対象行を返す", async () => {
+  it("getMyAnnouncement: session が無ければ null", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
+    mockResolveAccessToken.mockResolvedValueOnce("");
 
-    mockListAnnouncements
-      .mockResolvedValueOnce({
-        announcements: [
-          {
-            body: "他",
-            createdAt: "2026-04-05T10:00:00Z",
-            id: "N000",
-            isRead: true,
-            linkUrl: "",
-            title: "他",
-          },
-        ],
-        nextToken: "djF8Zg",
-        previousToken: "",
-      })
-      .mockResolvedValueOnce({
-        announcements: [
-          {
-            body: "本文",
-            createdAt: "2026-04-05T11:00:00Z",
-            id: "N002",
-            isRead: false,
-            linkUrl: "https://example.com/a",
-            title: "対象",
-          },
-        ],
-        nextToken: "",
-        previousToken: "djF8Zg",
-      });
-
-    await expect(getMyAnnouncement("TENANT001", "N002")).resolves.toEqual({
-      body: "本文",
-      createdAt: "2026-04-05T11:00:00Z",
-      id: "N002",
-      isRead: false,
-      linkUrl: "https://example.com/a",
-      title: "対象",
-    });
-    expect(mockListAnnouncements).toHaveBeenCalledTimes(2);
-    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
-      1,
-      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "" },
-      expect.anything()
-    );
-    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
-      2,
-      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "djF8Zg" },
-      expect.anything()
-    );
+    await expect(getMyAnnouncement("TENANT001", "N001")).resolves.toBeNull();
+    expect(mockGetAnnouncement).not.toHaveBeenCalled();
   });
 
   it("getMyAnnouncement: 見つからない行は null", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
-    mockListAnnouncements.mockResolvedValueOnce({
-      announcements: [],
-      nextToken: "",
-      previousToken: "",
-    });
+    mockGetAnnouncement.mockRejectedValueOnce(
+      new ConnectError("announcement not found", Code.NotFound)
+    );
 
     await expect(getMyAnnouncement("TENANT001", "N999")).resolves.toBeNull();
+    expect(mockListAnnouncements).not.toHaveBeenCalled();
   });
 
-  it("getMyAnnouncement: nextToken が進まなければ打ち切る", async () => {
+  it("getMyAnnouncement: announcement が欠けている場合は null", async () => {
     const { getMyAnnouncement } = await importAnnouncements();
-    mockListAnnouncements.mockResolvedValue({
-      announcements: [
-        {
-          body: "他",
-          createdAt: "2026-04-05T10:00:00Z",
-          id: "N000",
-          isRead: true,
-          linkUrl: "",
-          title: "他",
-        },
-      ],
-      nextToken: "djF8Zg",
-      previousToken: "",
-    });
+    mockGetAnnouncement.mockResolvedValueOnce({});
 
-    await expect(getMyAnnouncement("TENANT001", "N999")).resolves.toBeNull();
-    expect(mockListAnnouncements).toHaveBeenCalledTimes(2);
-    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
-      1,
-      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "" },
-      expect.anything()
-    );
-    expect(mockListAnnouncements).toHaveBeenNthCalledWith(
-      2,
-      { limit: 100, tenant: { tenantId: "TENANT001" }, token: "djF8Zg" },
-      expect.anything()
-    );
+    await expect(getMyAnnouncement("TENANT001", "N001")).resolves.toBeNull();
   });
 
   it("markAnnouncementAsRead: session が無ければ false", async () => {

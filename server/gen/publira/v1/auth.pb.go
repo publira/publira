@@ -1410,6 +1410,104 @@ func (x *AnnouncementItem) GetCreatedAt() string {
 	return ""
 }
 
+// Session-authorized get-by-id. Only a row in the caller's inbox is returned.
+// Missing, other-user, and other-tenant rows are the same not_found.
+type GetAnnouncementRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	AnnouncementId string                 `protobuf:"bytes,2,opt,name=announcement_id,json=announcementId,proto3" json:"announcement_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetAnnouncementRequest) Reset() {
+	*x = GetAnnouncementRequest{}
+	mi := &file_publira_v1_auth_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAnnouncementRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAnnouncementRequest) ProtoMessage() {}
+
+func (x *GetAnnouncementRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAnnouncementRequest.ProtoReflect.Descriptor instead.
+func (*GetAnnouncementRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GetAnnouncementRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetAnnouncementRequest) GetAnnouncementId() string {
+	if x != nil {
+		return x.AnnouncementId
+	}
+	return ""
+}
+
+type GetAnnouncementResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Announcement  *AnnouncementItem      `protobuf:"bytes,1,opt,name=announcement,proto3" json:"announcement,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAnnouncementResponse) Reset() {
+	*x = GetAnnouncementResponse{}
+	mi := &file_publira_v1_auth_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAnnouncementResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAnnouncementResponse) ProtoMessage() {}
+
+func (x *GetAnnouncementResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_auth_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAnnouncementResponse.ProtoReflect.Descriptor instead.
+func (*GetAnnouncementResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *GetAnnouncementResponse) GetAnnouncement() *AnnouncementItem {
+	if x != nil {
+		return x.Announcement
+	}
+	return nil
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListAnnouncementsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -1424,7 +1522,7 @@ type ListAnnouncementsRequest struct {
 
 func (x *ListAnnouncementsRequest) Reset() {
 	*x = ListAnnouncementsRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[27]
+	mi := &file_publira_v1_auth_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1436,7 +1534,7 @@ func (x *ListAnnouncementsRequest) String() string {
 func (*ListAnnouncementsRequest) ProtoMessage() {}
 
 func (x *ListAnnouncementsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[27]
+	mi := &file_publira_v1_auth_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1449,7 +1547,7 @@ func (x *ListAnnouncementsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAnnouncementsRequest.ProtoReflect.Descriptor instead.
 func (*ListAnnouncementsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{27}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListAnnouncementsRequest) GetTenant() *v1.TenantContext {
@@ -1486,7 +1584,7 @@ type ListAnnouncementsResponse struct {
 
 func (x *ListAnnouncementsResponse) Reset() {
 	*x = ListAnnouncementsResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[28]
+	mi := &file_publira_v1_auth_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1498,7 +1596,7 @@ func (x *ListAnnouncementsResponse) String() string {
 func (*ListAnnouncementsResponse) ProtoMessage() {}
 
 func (x *ListAnnouncementsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[28]
+	mi := &file_publira_v1_auth_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1511,7 +1609,7 @@ func (x *ListAnnouncementsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAnnouncementsResponse.ProtoReflect.Descriptor instead.
 func (*ListAnnouncementsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{28}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListAnnouncementsResponse) GetAnnouncements() []*AnnouncementItem {
@@ -1545,7 +1643,7 @@ type MarkAnnouncementAsReadRequest struct {
 
 func (x *MarkAnnouncementAsReadRequest) Reset() {
 	*x = MarkAnnouncementAsReadRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[29]
+	mi := &file_publira_v1_auth_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1557,7 +1655,7 @@ func (x *MarkAnnouncementAsReadRequest) String() string {
 func (*MarkAnnouncementAsReadRequest) ProtoMessage() {}
 
 func (x *MarkAnnouncementAsReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[29]
+	mi := &file_publira_v1_auth_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1570,7 +1668,7 @@ func (x *MarkAnnouncementAsReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkAnnouncementAsReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkAnnouncementAsReadRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{29}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *MarkAnnouncementAsReadRequest) GetTenant() *v1.TenantContext {
@@ -1596,7 +1694,7 @@ type MarkAnnouncementAsReadResponse struct {
 
 func (x *MarkAnnouncementAsReadResponse) Reset() {
 	*x = MarkAnnouncementAsReadResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[30]
+	mi := &file_publira_v1_auth_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1608,7 +1706,7 @@ func (x *MarkAnnouncementAsReadResponse) String() string {
 func (*MarkAnnouncementAsReadResponse) ProtoMessage() {}
 
 func (x *MarkAnnouncementAsReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[30]
+	mi := &file_publira_v1_auth_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1621,7 +1719,7 @@ func (x *MarkAnnouncementAsReadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkAnnouncementAsReadResponse.ProtoReflect.Descriptor instead.
 func (*MarkAnnouncementAsReadResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{30}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *MarkAnnouncementAsReadResponse) GetMarked() bool {
@@ -1640,7 +1738,7 @@ type MarkAllAnnouncementsAsReadRequest struct {
 
 func (x *MarkAllAnnouncementsAsReadRequest) Reset() {
 	*x = MarkAllAnnouncementsAsReadRequest{}
-	mi := &file_publira_v1_auth_proto_msgTypes[31]
+	mi := &file_publira_v1_auth_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1652,7 +1750,7 @@ func (x *MarkAllAnnouncementsAsReadRequest) String() string {
 func (*MarkAllAnnouncementsAsReadRequest) ProtoMessage() {}
 
 func (x *MarkAllAnnouncementsAsReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[31]
+	mi := &file_publira_v1_auth_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1665,7 +1763,7 @@ func (x *MarkAllAnnouncementsAsReadRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use MarkAllAnnouncementsAsReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkAllAnnouncementsAsReadRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{31}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *MarkAllAnnouncementsAsReadRequest) GetTenant() *v1.TenantContext {
@@ -1684,7 +1782,7 @@ type MarkAllAnnouncementsAsReadResponse struct {
 
 func (x *MarkAllAnnouncementsAsReadResponse) Reset() {
 	*x = MarkAllAnnouncementsAsReadResponse{}
-	mi := &file_publira_v1_auth_proto_msgTypes[32]
+	mi := &file_publira_v1_auth_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1696,7 +1794,7 @@ func (x *MarkAllAnnouncementsAsReadResponse) String() string {
 func (*MarkAllAnnouncementsAsReadResponse) ProtoMessage() {}
 
 func (x *MarkAllAnnouncementsAsReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_auth_proto_msgTypes[32]
+	mi := &file_publira_v1_auth_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1709,7 +1807,7 @@ func (x *MarkAllAnnouncementsAsReadResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use MarkAllAnnouncementsAsReadResponse.ProtoReflect.Descriptor instead.
 func (*MarkAllAnnouncementsAsReadResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_auth_proto_rawDescGZIP(), []int{32}
+	return file_publira_v1_auth_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *MarkAllAnnouncementsAsReadResponse) GetMarkedCount() int32 {
@@ -1804,7 +1902,12 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\ais_read\x18\x06 \x01(\bR\x06isRead\x12\x17\n" +
 	"\aread_at\x18\a \x01(\tR\x06readAt\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"\x8d\x01\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"z\n" +
+	"\x16GetAnnouncementRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12'\n" +
+	"\x0fannouncement_id\x18\x02 \x01(\tR\x0eannouncementId\"[\n" +
+	"\x17GetAnnouncementResponse\x12@\n" +
+	"\fannouncement\x18\x01 \x01(\v2\x1c.publira.v1.AnnouncementItemR\fannouncement\"\x8d\x01\n" +
 	"\x18ListAnnouncementsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -1822,7 +1925,7 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"!MarkAllAnnouncementsAsReadRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
 	"\"MarkAllAnnouncementsAsReadResponse\x12!\n" +
-	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount2\x82\f\n" +
+	"\fmarked_count\x18\x01 \x01(\x05R\vmarkedCount2\xe0\f\n" +
 	"\vAuthService\x12>\n" +
 	"\x05Login\x12\x18.publira.v1.LoginRequest\x1a\x19.publira.v1.LoginResponse\"\x00\x12M\n" +
 	"\n" +
@@ -1837,7 +1940,8 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\bUpdateMe\x12\x1b.publira.v1.UpdateMeRequest\x1a\x1c.publira.v1.UpdateMeResponse\"\x00\x12G\n" +
 	"\bDeleteMe\x12\x1b.publira.v1.DeleteMeRequest\x1a\x1c.publira.v1.DeleteMeResponse\"\x00\x12t\n" +
 	"\x17GetNotificationSettings\x12*.publira.v1.GetNotificationSettingsRequest\x1a+.publira.v1.GetNotificationSettingsResponse\"\x00\x12}\n" +
-	"\x1aUpdateNotificationSettings\x12-.publira.v1.UpdateNotificationSettingsRequest\x1a..publira.v1.UpdateNotificationSettingsResponse\"\x00\x12b\n" +
+	"\x1aUpdateNotificationSettings\x12-.publira.v1.UpdateNotificationSettingsRequest\x1a..publira.v1.UpdateNotificationSettingsResponse\"\x00\x12\\\n" +
+	"\x0fGetAnnouncement\x12\".publira.v1.GetAnnouncementRequest\x1a#.publira.v1.GetAnnouncementResponse\"\x00\x12b\n" +
 	"\x11ListAnnouncements\x12$.publira.v1.ListAnnouncementsRequest\x1a%.publira.v1.ListAnnouncementsResponse\"\x00\x12q\n" +
 	"\x16MarkAnnouncementAsRead\x12).publira.v1.MarkAnnouncementAsReadRequest\x1a*.publira.v1.MarkAnnouncementAsReadResponse\"\x00\x12}\n" +
 	"\x1aMarkAllAnnouncementsAsRead\x12-.publira.v1.MarkAllAnnouncementsAsReadRequest\x1a..publira.v1.MarkAllAnnouncementsAsReadResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
@@ -1854,7 +1958,7 @@ func file_publira_v1_auth_proto_rawDescGZIP() []byte {
 	return file_publira_v1_auth_proto_rawDescData
 }
 
-var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_publira_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_publira_v1_auth_proto_goTypes = []any{
 	(*LoginRequest)(nil),                       // 0: publira.v1.LoginRequest
 	(*LoginResponse)(nil),                      // 1: publira.v1.LoginResponse
@@ -1883,77 +1987,83 @@ var file_publira_v1_auth_proto_goTypes = []any{
 	(*UpdateNotificationSettingsRequest)(nil),  // 24: publira.v1.UpdateNotificationSettingsRequest
 	(*UpdateNotificationSettingsResponse)(nil), // 25: publira.v1.UpdateNotificationSettingsResponse
 	(*AnnouncementItem)(nil),                   // 26: publira.v1.AnnouncementItem
-	(*ListAnnouncementsRequest)(nil),           // 27: publira.v1.ListAnnouncementsRequest
-	(*ListAnnouncementsResponse)(nil),          // 28: publira.v1.ListAnnouncementsResponse
-	(*MarkAnnouncementAsReadRequest)(nil),      // 29: publira.v1.MarkAnnouncementAsReadRequest
-	(*MarkAnnouncementAsReadResponse)(nil),     // 30: publira.v1.MarkAnnouncementAsReadResponse
-	(*MarkAllAnnouncementsAsReadRequest)(nil),  // 31: publira.v1.MarkAllAnnouncementsAsReadRequest
-	(*MarkAllAnnouncementsAsReadResponse)(nil), // 32: publira.v1.MarkAllAnnouncementsAsReadResponse
-	(*v1.TenantContext)(nil),                   // 33: publira.types.v1.TenantContext
-	(*v1.User)(nil),                            // 34: publira.types.v1.User
-	(*v1.AccessToken)(nil),                     // 35: publira.types.v1.AccessToken
+	(*GetAnnouncementRequest)(nil),             // 27: publira.v1.GetAnnouncementRequest
+	(*GetAnnouncementResponse)(nil),            // 28: publira.v1.GetAnnouncementResponse
+	(*ListAnnouncementsRequest)(nil),           // 29: publira.v1.ListAnnouncementsRequest
+	(*ListAnnouncementsResponse)(nil),          // 30: publira.v1.ListAnnouncementsResponse
+	(*MarkAnnouncementAsReadRequest)(nil),      // 31: publira.v1.MarkAnnouncementAsReadRequest
+	(*MarkAnnouncementAsReadResponse)(nil),     // 32: publira.v1.MarkAnnouncementAsReadResponse
+	(*MarkAllAnnouncementsAsReadRequest)(nil),  // 33: publira.v1.MarkAllAnnouncementsAsReadRequest
+	(*MarkAllAnnouncementsAsReadResponse)(nil), // 34: publira.v1.MarkAllAnnouncementsAsReadResponse
+	(*v1.TenantContext)(nil),                   // 35: publira.types.v1.TenantContext
+	(*v1.User)(nil),                            // 36: publira.types.v1.User
+	(*v1.AccessToken)(nil),                     // 37: publira.types.v1.AccessToken
 }
 var file_publira_v1_auth_proto_depIdxs = []int32{
-	33, // 0: publira.v1.LoginRequest.tenant:type_name -> publira.types.v1.TenantContext
-	34, // 1: publira.v1.LoginResponse.user:type_name -> publira.types.v1.User
-	35, // 2: publira.v1.LoginResponse.access_token:type_name -> publira.types.v1.AccessToken
-	33, // 3: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
-	34, // 4: publira.v1.CreateUserResponse.user:type_name -> publira.types.v1.User
-	35, // 5: publira.v1.CreateUserResponse.access_token:type_name -> publira.types.v1.AccessToken
-	33, // 6: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 7: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 8: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 9: publira.v1.RequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 10: publira.v1.ConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 11: publira.v1.LogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 12: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	34, // 13: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
-	33, // 14: publira.v1.UpdateMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	34, // 15: publira.v1.UpdateMeResponse.user:type_name -> publira.types.v1.User
-	33, // 16: publira.v1.DeleteMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 17: publira.v1.GetNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 18: publira.v1.UpdateNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 19: publira.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 20: publira.v1.ListAnnouncementsResponse.announcements:type_name -> publira.v1.AnnouncementItem
-	33, // 21: publira.v1.MarkAnnouncementAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	33, // 22: publira.v1.MarkAllAnnouncementsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 23: publira.v1.AuthService.Login:input_type -> publira.v1.LoginRequest
-	2,  // 24: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
-	4,  // 25: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
-	6,  // 26: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
-	8,  // 27: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
-	10, // 28: publira.v1.AuthService.RequestPasswordReset:input_type -> publira.v1.RequestPasswordResetRequest
-	12, // 29: publira.v1.AuthService.ConfirmPasswordReset:input_type -> publira.v1.ConfirmPasswordResetRequest
-	14, // 30: publira.v1.AuthService.Logout:input_type -> publira.v1.LogoutRequest
-	16, // 31: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
-	18, // 32: publira.v1.AuthService.UpdateMe:input_type -> publira.v1.UpdateMeRequest
-	20, // 33: publira.v1.AuthService.DeleteMe:input_type -> publira.v1.DeleteMeRequest
-	22, // 34: publira.v1.AuthService.GetNotificationSettings:input_type -> publira.v1.GetNotificationSettingsRequest
-	24, // 35: publira.v1.AuthService.UpdateNotificationSettings:input_type -> publira.v1.UpdateNotificationSettingsRequest
-	27, // 36: publira.v1.AuthService.ListAnnouncements:input_type -> publira.v1.ListAnnouncementsRequest
-	29, // 37: publira.v1.AuthService.MarkAnnouncementAsRead:input_type -> publira.v1.MarkAnnouncementAsReadRequest
-	31, // 38: publira.v1.AuthService.MarkAllAnnouncementsAsRead:input_type -> publira.v1.MarkAllAnnouncementsAsReadRequest
-	1,  // 39: publira.v1.AuthService.Login:output_type -> publira.v1.LoginResponse
-	3,  // 40: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
-	5,  // 41: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
-	7,  // 42: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
-	9,  // 43: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
-	11, // 44: publira.v1.AuthService.RequestPasswordReset:output_type -> publira.v1.RequestPasswordResetResponse
-	13, // 45: publira.v1.AuthService.ConfirmPasswordReset:output_type -> publira.v1.ConfirmPasswordResetResponse
-	15, // 46: publira.v1.AuthService.Logout:output_type -> publira.v1.LogoutResponse
-	17, // 47: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
-	19, // 48: publira.v1.AuthService.UpdateMe:output_type -> publira.v1.UpdateMeResponse
-	21, // 49: publira.v1.AuthService.DeleteMe:output_type -> publira.v1.DeleteMeResponse
-	23, // 50: publira.v1.AuthService.GetNotificationSettings:output_type -> publira.v1.GetNotificationSettingsResponse
-	25, // 51: publira.v1.AuthService.UpdateNotificationSettings:output_type -> publira.v1.UpdateNotificationSettingsResponse
-	28, // 52: publira.v1.AuthService.ListAnnouncements:output_type -> publira.v1.ListAnnouncementsResponse
-	30, // 53: publira.v1.AuthService.MarkAnnouncementAsRead:output_type -> publira.v1.MarkAnnouncementAsReadResponse
-	32, // 54: publira.v1.AuthService.MarkAllAnnouncementsAsRead:output_type -> publira.v1.MarkAllAnnouncementsAsReadResponse
-	39, // [39:55] is the sub-list for method output_type
-	23, // [23:39] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	35, // 0: publira.v1.LoginRequest.tenant:type_name -> publira.types.v1.TenantContext
+	36, // 1: publira.v1.LoginResponse.user:type_name -> publira.types.v1.User
+	37, // 2: publira.v1.LoginResponse.access_token:type_name -> publira.types.v1.AccessToken
+	35, // 3: publira.v1.CreateUserRequest.tenant:type_name -> publira.types.v1.TenantContext
+	36, // 4: publira.v1.CreateUserResponse.user:type_name -> publira.types.v1.User
+	37, // 5: publira.v1.CreateUserResponse.access_token:type_name -> publira.types.v1.AccessToken
+	35, // 6: publira.v1.VerifyUserEmailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 7: publira.v1.RequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 8: publira.v1.ConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 9: publira.v1.RequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 10: publira.v1.ConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 11: publira.v1.LogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 12: publira.v1.GetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	36, // 13: publira.v1.GetMeResponse.user:type_name -> publira.types.v1.User
+	35, // 14: publira.v1.UpdateMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	36, // 15: publira.v1.UpdateMeResponse.user:type_name -> publira.types.v1.User
+	35, // 16: publira.v1.DeleteMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 17: publira.v1.GetNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 18: publira.v1.UpdateNotificationSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 19: publira.v1.GetAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 20: publira.v1.GetAnnouncementResponse.announcement:type_name -> publira.v1.AnnouncementItem
+	35, // 21: publira.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	26, // 22: publira.v1.ListAnnouncementsResponse.announcements:type_name -> publira.v1.AnnouncementItem
+	35, // 23: publira.v1.MarkAnnouncementAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	35, // 24: publira.v1.MarkAllAnnouncementsAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 25: publira.v1.AuthService.Login:input_type -> publira.v1.LoginRequest
+	2,  // 26: publira.v1.AuthService.CreateUser:input_type -> publira.v1.CreateUserRequest
+	4,  // 27: publira.v1.AuthService.VerifyUserEmail:input_type -> publira.v1.VerifyUserEmailRequest
+	6,  // 28: publira.v1.AuthService.RequestEmailChange:input_type -> publira.v1.RequestEmailChangeRequest
+	8,  // 29: publira.v1.AuthService.ConfirmEmailChange:input_type -> publira.v1.ConfirmEmailChangeRequest
+	10, // 30: publira.v1.AuthService.RequestPasswordReset:input_type -> publira.v1.RequestPasswordResetRequest
+	12, // 31: publira.v1.AuthService.ConfirmPasswordReset:input_type -> publira.v1.ConfirmPasswordResetRequest
+	14, // 32: publira.v1.AuthService.Logout:input_type -> publira.v1.LogoutRequest
+	16, // 33: publira.v1.AuthService.GetMe:input_type -> publira.v1.GetMeRequest
+	18, // 34: publira.v1.AuthService.UpdateMe:input_type -> publira.v1.UpdateMeRequest
+	20, // 35: publira.v1.AuthService.DeleteMe:input_type -> publira.v1.DeleteMeRequest
+	22, // 36: publira.v1.AuthService.GetNotificationSettings:input_type -> publira.v1.GetNotificationSettingsRequest
+	24, // 37: publira.v1.AuthService.UpdateNotificationSettings:input_type -> publira.v1.UpdateNotificationSettingsRequest
+	27, // 38: publira.v1.AuthService.GetAnnouncement:input_type -> publira.v1.GetAnnouncementRequest
+	29, // 39: publira.v1.AuthService.ListAnnouncements:input_type -> publira.v1.ListAnnouncementsRequest
+	31, // 40: publira.v1.AuthService.MarkAnnouncementAsRead:input_type -> publira.v1.MarkAnnouncementAsReadRequest
+	33, // 41: publira.v1.AuthService.MarkAllAnnouncementsAsRead:input_type -> publira.v1.MarkAllAnnouncementsAsReadRequest
+	1,  // 42: publira.v1.AuthService.Login:output_type -> publira.v1.LoginResponse
+	3,  // 43: publira.v1.AuthService.CreateUser:output_type -> publira.v1.CreateUserResponse
+	5,  // 44: publira.v1.AuthService.VerifyUserEmail:output_type -> publira.v1.VerifyUserEmailResponse
+	7,  // 45: publira.v1.AuthService.RequestEmailChange:output_type -> publira.v1.RequestEmailChangeResponse
+	9,  // 46: publira.v1.AuthService.ConfirmEmailChange:output_type -> publira.v1.ConfirmEmailChangeResponse
+	11, // 47: publira.v1.AuthService.RequestPasswordReset:output_type -> publira.v1.RequestPasswordResetResponse
+	13, // 48: publira.v1.AuthService.ConfirmPasswordReset:output_type -> publira.v1.ConfirmPasswordResetResponse
+	15, // 49: publira.v1.AuthService.Logout:output_type -> publira.v1.LogoutResponse
+	17, // 50: publira.v1.AuthService.GetMe:output_type -> publira.v1.GetMeResponse
+	19, // 51: publira.v1.AuthService.UpdateMe:output_type -> publira.v1.UpdateMeResponse
+	21, // 52: publira.v1.AuthService.DeleteMe:output_type -> publira.v1.DeleteMeResponse
+	23, // 53: publira.v1.AuthService.GetNotificationSettings:output_type -> publira.v1.GetNotificationSettingsResponse
+	25, // 54: publira.v1.AuthService.UpdateNotificationSettings:output_type -> publira.v1.UpdateNotificationSettingsResponse
+	28, // 55: publira.v1.AuthService.GetAnnouncement:output_type -> publira.v1.GetAnnouncementResponse
+	30, // 56: publira.v1.AuthService.ListAnnouncements:output_type -> publira.v1.ListAnnouncementsResponse
+	32, // 57: publira.v1.AuthService.MarkAnnouncementAsRead:output_type -> publira.v1.MarkAnnouncementAsReadResponse
+	34, // 58: publira.v1.AuthService.MarkAllAnnouncementsAsRead:output_type -> publira.v1.MarkAllAnnouncementsAsReadResponse
+	42, // [42:59] is the sub-list for method output_type
+	25, // [25:42] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_auth_proto_init() }
@@ -1967,7 +2077,7 @@ func file_publira_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_auth_proto_rawDesc), len(file_publira_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   33,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

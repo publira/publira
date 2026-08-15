@@ -1098,6 +1098,23 @@ func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForUserAscRow) []an
 	return mapped
 }
 
+func toAnnouncementItem(row announcementPageRow) *publirav1.AnnouncementItem {
+	readAt := ""
+	if row.readAt.Valid {
+		readAt = row.readAt.Time.UTC().Format(time.RFC3339)
+	}
+	return &publirav1.AnnouncementItem{
+		Id:               row.id.String(),
+		AnnouncementType: row.announcementType,
+		Title:            row.title,
+		Body:             row.body,
+		LinkUrl:          row.linkURL.String,
+		IsRead:           row.isRead,
+		ReadAt:           readAt,
+		CreatedAt:        row.createdAt.UTC().Format(time.RFC3339),
+	}
+}
+
 func (s *apiServer) announcementPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
@@ -1165,20 +1182,7 @@ func (s *apiServer) ListAnnouncements(
 
 	items := make([]*publirav1.AnnouncementItem, 0, len(rows))
 	for _, row := range rows {
-		readAt := ""
-		if row.readAt.Valid {
-			readAt = row.readAt.Time.UTC().Format(time.RFC3339)
-		}
-		items = append(items, &publirav1.AnnouncementItem{
-			Id:               row.id.String(),
-			AnnouncementType: row.announcementType,
-			Title:            row.title,
-			Body:             row.body,
-			LinkUrl:          row.linkURL.String,
-			IsRead:           row.isRead,
-			ReadAt:           readAt,
-			CreatedAt:        row.createdAt.UTC().Format(time.RFC3339),
-		})
+		items = append(items, toAnnouncementItem(row))
 	}
 
 	res := &publirav1.ListAnnouncementsResponse{Announcements: items}
@@ -1204,6 +1208,46 @@ func (s *apiServer) ListAnnouncements(
 	}
 
 	return connect.NewResponse(res), nil
+}
+
+func (s *apiServer) GetAnnouncement(
+	ctx context.Context,
+	req *connect.Request[publirav1.GetAnnouncementRequest],
+) (*connect.Response[publirav1.GetAnnouncementResponse], error) {
+	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
+	if err != nil {
+		return nil, err
+	}
+
+	announcementID, parseErr := uuid.Parse(strings.TrimSpace(req.Msg.AnnouncementId))
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("announcement_id is invalid"))
+	}
+
+	row, err := s.queriesFor(ctx).GetAnnouncementForUser(ctx, dbmodels.GetAnnouncementForUserParams{
+		ID:       announcementID,
+		TenantID: tenant.ID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("announcement not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&publirav1.GetAnnouncementResponse{
+		Announcement: toAnnouncementItem(announcementPageRow{
+			id:               row.ID,
+			announcementType: row.AnnouncementType,
+			title:            row.Title,
+			body:             row.Body,
+			linkURL:          row.LinkUrl,
+			isRead:           announcementIsRead(row.IsRead),
+			readAt:           row.ReadAt,
+			createdAt:        row.CreatedAt,
+		}),
+	}), nil
 }
 
 func (s *apiServer) MarkAnnouncementAsRead(

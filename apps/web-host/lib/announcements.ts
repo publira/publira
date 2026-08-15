@@ -34,17 +34,26 @@ const mapErrorToMessage = (error: unknown): string =>
     "invalid-argument": "セッションが無効です。再ログインしてください。",
   });
 
+const mapAnnouncementItem = (item: {
+  body: string;
+  createdAt: string;
+  id: string;
+  isRead: boolean;
+  linkUrl: string;
+  title: string;
+}): MemberAnnouncementItem => ({
+  body: item.body,
+  createdAt: item.createdAt,
+  id: item.id,
+  isRead: item.isRead,
+  linkUrl: item.linkUrl,
+  title: item.title,
+});
+
 const mapAnnouncementItems = (
   response: Awaited<ReturnType<typeof apiClient.auth.listAnnouncements>>
 ): MemberAnnouncementItem[] =>
-  (response.announcements ?? []).map((item) => ({
-    body: item.body,
-    createdAt: item.createdAt,
-    id: item.id,
-    isRead: item.isRead,
-    linkUrl: item.linkUrl,
-    title: item.title,
-  }));
+  (response.announcements ?? []).map((item) => mapAnnouncementItem(item));
 
 /**
  * Cursor pagination: `token` is whatever the previous response returned as
@@ -132,52 +141,38 @@ export const listMyAnnouncements = async (
   return fetchAnnouncements(tenantId, sid, options);
 };
 
-const ANNOUNCEMENT_LOOKUP_PAGE_SIZE = 100;
 /**
- * Runaway bound only. AuthService has no GetAnnouncement; the walk follows
- * `nextToken` until the list is exhausted or the cursor stops advancing.
- * 20 × 100 is the max walk so a broken cursor cannot fan out unbounded RPCs.
- */
-const ANNOUNCEMENT_LOOKUP_MAX_PAGES = 20;
-
-/**
- * Walk the session-authorized list until the row is found. There is no
- * GetAnnouncement RPC; a form-supplied `linkUrl` is not a substitute.
+ * Session-authorized get-by-id. A form-supplied `linkUrl` is not a substitute.
  */
 export const getMyAnnouncement = async (
   tenantId: string,
   announcementId: string,
   sessionId?: string
 ): Promise<MemberAnnouncementItem | null> => {
-  let token = "";
+  noStore();
 
-  for (let page = 0; page < ANNOUNCEMENT_LOOKUP_MAX_PAGES; page += 1) {
-    // Sequential pages; each token is only known after the previous RPC.
-    // oxlint-disable-next-line no-await-in-loop
-    const result = await listMyAnnouncements(tenantId, sessionId, {
-      limit: ANNOUNCEMENT_LOOKUP_PAGE_SIZE,
-      token,
-    });
-    if (!result.ok) {
-      return null;
-    }
-
-    const found = result.announcements.find(
-      (item) => item.id === announcementId
-    );
-    if (found) {
-      return found;
-    }
-
-    // Empty nextToken = last page. Same token as sent = cursor did not move.
-    if (result.nextToken.length === 0 || result.nextToken === token) {
-      return null;
-    }
-
-    token = result.nextToken;
+  const sid = await resolveAccessToken(sessionId);
+  if (!sid) {
+    return null;
   }
 
-  return null;
+  try {
+    const response = await apiClient.auth.getAnnouncement(
+      {
+        announcementId,
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(sid)
+    );
+    if (!response.announcement) {
+      return null;
+    }
+
+    return mapAnnouncementItem(response.announcement);
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return null;
+  }
 };
 
 export const markAnnouncementAsRead = async (

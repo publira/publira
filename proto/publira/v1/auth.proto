@@ -137,6 +137,17 @@ message AnnouncementItem {
   string created_at = 8;
 }
 
+// Session-authorized get-by-id. Only a row in the caller's inbox is returned.
+// Missing, other-user, and other-tenant rows are the same not_found.
+message GetAnnouncementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string announcement_id = 2;
+}
+
+message GetAnnouncementResponse {
+  AnnouncementItem announcement = 1;
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 message ListAnnouncementsRequest {
   // Removed with the move to cursor pagination.
@@ -189,6 +200,7 @@ service AuthService {
   rpc DeleteMe(DeleteMeRequest) returns (DeleteMeResponse) {}
   rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse) {}
   rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse) {}
+  rpc GetAnnouncement(GetAnnouncementRequest) returns (GetAnnouncementResponse) {}
   rpc ListAnnouncements(ListAnnouncementsRequest) returns (ListAnnouncementsResponse) {}
   rpc MarkAnnouncementAsRead(MarkAnnouncementAsReadRequest) returns (MarkAnnouncementAsReadResponse) {}
   rpc MarkAllAnnouncementsAsRead(MarkAllAnnouncementsAsReadRequest) returns (MarkAllAnnouncementsAsReadResponse) {}

@@ -66,6 +66,9 @@ const (
 	// AuthServiceUpdateNotificationSettingsProcedure is the fully-qualified name of the AuthService's
 	// UpdateNotificationSettings RPC.
 	AuthServiceUpdateNotificationSettingsProcedure = "/publira.v1.AuthService/UpdateNotificationSettings"
+	// AuthServiceGetAnnouncementProcedure is the fully-qualified name of the AuthService's
+	// GetAnnouncement RPC.
+	AuthServiceGetAnnouncementProcedure = "/publira.v1.AuthService/GetAnnouncement"
 	// AuthServiceListAnnouncementsProcedure is the fully-qualified name of the AuthService's
 	// ListAnnouncements RPC.
 	AuthServiceListAnnouncementsProcedure = "/publira.v1.AuthService/ListAnnouncements"
@@ -92,6 +95,7 @@ type AuthServiceClient interface {
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
+	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
 	MarkAnnouncementAsRead(context.Context, *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error)
 	MarkAllAnnouncementsAsRead(context.Context, *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error)
@@ -186,6 +190,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getAnnouncement: connect.NewClient[v1.GetAnnouncementRequest, v1.GetAnnouncementResponse](
+			httpClient,
+			baseURL+AuthServiceGetAnnouncementProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetAnnouncement")),
+			connect.WithClientOptions(opts...),
+		),
 		listAnnouncements: connect.NewClient[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse](
 			httpClient,
 			baseURL+AuthServiceListAnnouncementsProcedure,
@@ -222,6 +232,7 @@ type authServiceClient struct {
 	deleteMe                   *connect.Client[v1.DeleteMeRequest, v1.DeleteMeResponse]
 	getNotificationSettings    *connect.Client[v1.GetNotificationSettingsRequest, v1.GetNotificationSettingsResponse]
 	updateNotificationSettings *connect.Client[v1.UpdateNotificationSettingsRequest, v1.UpdateNotificationSettingsResponse]
+	getAnnouncement            *connect.Client[v1.GetAnnouncementRequest, v1.GetAnnouncementResponse]
 	listAnnouncements          *connect.Client[v1.ListAnnouncementsRequest, v1.ListAnnouncementsResponse]
 	markAnnouncementAsRead     *connect.Client[v1.MarkAnnouncementAsReadRequest, v1.MarkAnnouncementAsReadResponse]
 	markAllAnnouncementsAsRead *connect.Client[v1.MarkAllAnnouncementsAsReadRequest, v1.MarkAllAnnouncementsAsReadResponse]
@@ -292,6 +303,11 @@ func (c *authServiceClient) UpdateNotificationSettings(ctx context.Context, req 
 	return c.updateNotificationSettings.CallUnary(ctx, req)
 }
 
+// GetAnnouncement calls publira.v1.AuthService.GetAnnouncement.
+func (c *authServiceClient) GetAnnouncement(ctx context.Context, req *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error) {
+	return c.getAnnouncement.CallUnary(ctx, req)
+}
+
 // ListAnnouncements calls publira.v1.AuthService.ListAnnouncements.
 func (c *authServiceClient) ListAnnouncements(ctx context.Context, req *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error) {
 	return c.listAnnouncements.CallUnary(ctx, req)
@@ -322,6 +338,7 @@ type AuthServiceHandler interface {
 	DeleteMe(context.Context, *connect.Request[v1.DeleteMeRequest]) (*connect.Response[v1.DeleteMeResponse], error)
 	GetNotificationSettings(context.Context, *connect.Request[v1.GetNotificationSettingsRequest]) (*connect.Response[v1.GetNotificationSettingsResponse], error)
 	UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error)
+	GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error)
 	ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error)
 	MarkAnnouncementAsRead(context.Context, *connect.Request[v1.MarkAnnouncementAsReadRequest]) (*connect.Response[v1.MarkAnnouncementAsReadResponse], error)
 	MarkAllAnnouncementsAsRead(context.Context, *connect.Request[v1.MarkAllAnnouncementsAsReadRequest]) (*connect.Response[v1.MarkAllAnnouncementsAsReadResponse], error)
@@ -412,6 +429,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("UpdateNotificationSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceGetAnnouncementHandler := connect.NewUnaryHandler(
+		AuthServiceGetAnnouncementProcedure,
+		svc.GetAnnouncement,
+		connect.WithSchema(authServiceMethods.ByName("GetAnnouncement")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceListAnnouncementsHandler := connect.NewUnaryHandler(
 		AuthServiceListAnnouncementsProcedure,
 		svc.ListAnnouncements,
@@ -458,6 +481,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceGetNotificationSettingsHandler.ServeHTTP(w, r)
 		case AuthServiceUpdateNotificationSettingsProcedure:
 			authServiceUpdateNotificationSettingsHandler.ServeHTTP(w, r)
+		case AuthServiceGetAnnouncementProcedure:
+			authServiceGetAnnouncementHandler.ServeHTTP(w, r)
 		case AuthServiceListAnnouncementsProcedure:
 			authServiceListAnnouncementsHandler.ServeHTTP(w, r)
 		case AuthServiceMarkAnnouncementAsReadProcedure:
@@ -523,6 +548,10 @@ func (UnimplementedAuthServiceHandler) GetNotificationSettings(context.Context, 
 
 func (UnimplementedAuthServiceHandler) UpdateNotificationSettings(context.Context, *connect.Request[v1.UpdateNotificationSettingsRequest]) (*connect.Response[v1.UpdateNotificationSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.UpdateNotificationSettings is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetAnnouncement(context.Context, *connect.Request[v1.GetAnnouncementRequest]) (*connect.Response[v1.GetAnnouncementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.AuthService.GetAnnouncement is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) ListAnnouncements(context.Context, *connect.Request[v1.ListAnnouncementsRequest]) (*connect.Response[v1.ListAnnouncementsResponse], error) {

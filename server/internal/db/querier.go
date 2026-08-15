@@ -82,6 +82,9 @@ type Querier interface {
 	GetActiveAccessTicketForUserEpisode(ctx context.Context, arg GetActiveAccessTicketForUserEpisodeParams) (AccessTicket, error)
 	// 候補ホスト名の順序を保ったまま admin_domain、または admin.{domain} フォールバックで一致したテナントを返す
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
+	// お知らせ 1 件を取得（既読状態付き）。inbox に属する行だけを返す。
+	// 他人・他テナントの行は 0 件になり、存在の有無は区別しない。
+	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
 	GetContentDailyStatsByEntity(ctx context.Context, arg GetContentDailyStatsByEntityParams) (ContentDailyStat, error)
 	GetContentEventByID(ctx context.Context, id uuid.UUID) (ContentEvent, error)
 	GetContentRankingSnapshot(ctx context.Context, arg GetContentRankingSnapshotParams) (ContentRankingSnapshot, error)
