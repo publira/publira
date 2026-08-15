@@ -142,6 +142,86 @@ describe("listEpisodes", () => {
   });
 });
 
+describe("listAllEpisodes", () => {
+  it("cursor をたどって101件目以降も含め、サーバーの表示順を保つ", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) =>
+      episode(`EPISODE${String(index + 1).padStart(3, "0")}`, index + 1)
+    );
+    mockListEpisodes
+      .mockResolvedValueOnce({
+        episodes: firstPage,
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        episodes: [episode("EPISODE101", 101)],
+        nextToken: "",
+      });
+
+    const { listAllEpisodes } = await import("./episode");
+    const result = await listAllEpisodes({
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockListEpisodes).toHaveBeenNthCalledWith(
+      1,
+      {
+        limit: 100,
+        seriesPublicId: "SERIES001",
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.episodes).toHaveLength(101);
+    expect(result.episodes.at(0)?.publicId).toBe("EPISODE001");
+    expect(result.episodes.at(-1)?.publicId).toBe("EPISODE101");
+  });
+
+  it("セッションがない場合RPCを呼ばない", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listAllEpisodes } = await import("./episode");
+    const result = await listAllEpisodes({
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(mockListEpisodes).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      episodes: [],
+      ok: false,
+    });
+  });
+
+  it("nextToken が繰り返されたら部分結果を返さない", async () => {
+    mockListEpisodes
+      .mockResolvedValueOnce({
+        episodes: [episode("EPISODE001", 1)],
+        nextToken: "page-2",
+      })
+      .mockResolvedValueOnce({
+        episodes: [episode("EPISODE002", 2)],
+        nextToken: "page-2",
+      });
+
+    const { listAllEpisodes } = await import("./episode");
+    const result = await listAllEpisodes({
+      seriesPublicId: "SERIES001",
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toMatchObject({
+      episodes: [],
+      ok: false,
+    });
+  });
+});
+
 describe("getEpisode", () => {
   it("単体取得 RPC を呼び、エピソードを返す", async () => {
     mockGetEpisode.mockResolvedValue({

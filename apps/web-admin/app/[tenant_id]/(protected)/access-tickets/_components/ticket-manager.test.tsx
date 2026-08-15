@@ -70,6 +70,26 @@ describe("TicketManager", () => {
     expect(screen.queryByRole("link", { name: "次へ" })).toBeNull();
   });
 
+  it("有効チケットの状態とメモを一覧に出す", () => {
+    render(
+      <TicketManager
+        pageSize={20}
+        tickets={[
+          {
+            ...ticket("TICKET001"),
+            note: "レビュー用",
+            status: "active",
+          },
+        ]}
+        timeZone="Asia/Tokyo"
+      />
+    );
+
+    expect(screen.getByText("有効")).toBeDefined();
+    expect(screen.getByText("レビュー用")).toBeDefined();
+    expect(screen.getByText("失効 TICKET001")).toBeDefined();
+  });
+
   it("後続ページでも行ごとの操作とページ送りを描画する", () => {
     render(
       <TicketManager

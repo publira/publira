@@ -11,16 +11,16 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { FlashToast } from "#components/flash-toast";
 import { listAccessTickets } from "#lib/access-ticket";
-import {
-  cursorPageHrefs,
-  DEFAULT_PAGE_SIZE,
-  parseCursorSearchParams,
-} from "#lib/cursor-page";
+import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
+import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { TicketFilterForm } from "./_components/ticket-filter-form";
 import { TicketManager } from "./_components/ticket-manager";
+import { parseAccessTicketFilters } from "./_lib/search-params";
 
 type AccessTicketsPageProps = PageProps<"/[tenant_id]/access-tickets">;
 
@@ -42,24 +42,52 @@ const TicketManagerSkeleton = () => (
   </div>
 );
 
+const accessTicketFilterQuery = (
+  filters: ReturnType<typeof parseAccessTicketFilters>,
+  token?: string
+) =>
+  buildQueryString({
+    active: filters.active ? "1" : undefined,
+    episode: filters.episode,
+    token,
+    user: filters.user,
+  });
+
 const TicketManagerData = async ({
   searchParams,
 }: Pick<AccessTicketsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
-  const { token } = parseCursorSearchParams(sp);
+  const filters = parseAccessTicketFilters(sp);
   const [listResult, timeZone] = await Promise.all([
-    listAccessTickets(tenantId, { token }),
+    listAccessTickets(tenantId, {
+      activeOnly: filters.active,
+      episodePublicId: filters.episode,
+      token: filters.token,
+      userPublicId: filters.user,
+    }),
     getTenantDisplayTimeZone(tenantId),
   ]);
 
   return (
-    <TicketManager
-      {...cursorPageHrefs(listResult)}
-      listErrorMessage={listResult.ok ? undefined : listResult.message}
-      pageSize={DEFAULT_PAGE_SIZE}
-      tickets={listResult.tickets}
-      timeZone={timeZone}
-    />
+    <div className="grid gap-6">
+      <TicketFilterForm filters={filters} />
+      <TicketManager
+        listErrorMessage={listResult.ok ? undefined : listResult.message}
+        nextHref={
+          listResult.nextToken
+            ? accessTicketFilterQuery(filters, listResult.nextToken)
+            : undefined
+        }
+        pageSize={DEFAULT_PAGE_SIZE}
+        previousHref={
+          listResult.previousToken
+            ? accessTicketFilterQuery(filters, listResult.previousToken)
+            : undefined
+        }
+        tickets={listResult.tickets}
+        timeZone={timeZone}
+      />
+    </div>
   );
 };
 
@@ -75,6 +103,7 @@ const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
       </AdminPageHeading>
     </AdminPageHeader>
     <AdminPageContent>
+      <FlashToast title="チケットを発行しました。" />
       <Suspense fallback={<TicketManagerSkeleton />}>
         <TicketManagerData searchParams={searchParams} />
       </Suspense>

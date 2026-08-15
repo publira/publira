@@ -316,6 +316,81 @@ export const listEpisodes = async (
   }
 };
 
+/**
+ * Every episode in a series for combobox pickers (access-ticket form).
+ *
+ * Walks `ListEpisodes` cursor pages so the picker can search beyond a single
+ * RPC page. The series episode list keeps {@link listEpisodes} (one page) so
+ * list paging stays independent of picker loading.
+ *
+ * Rows stay in the server's display order (`order_index`). An incomplete walk
+ * fails with an empty list rather than a partial option set that would hide
+ * later episodes.
+ */
+export const listAllEpisodes = async (input: {
+  seriesPublicId: string;
+  tenantId: string;
+}): Promise<ListEpisodesResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return {
+      ...emptyCursorPageTokens,
+      episodes: [],
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+    };
+  }
+
+  try {
+    const episodes: EpisodeItem[] = [];
+    const walkStop = await forEachPageWithToken(
+      async (token, limit) => {
+        const response = await apiClient.series.listEpisodes(
+          {
+            limit,
+            seriesPublicId: input.seriesPublicId,
+            tenant: { tenantId: input.tenantId },
+            token,
+          },
+          withSessionHeaders(sessionId)
+        );
+        return {
+          items: response.episodes ?? [],
+          nextToken: response.nextToken ?? "",
+        };
+      },
+      (items) => {
+        for (const item of items) {
+          episodes.push(mapEpisode(item));
+        }
+      }
+    );
+
+    if (walkStop !== "completed") {
+      return {
+        ...emptyCursorPageTokens,
+        episodes: [],
+        message: genericListErrorMessage,
+        ok: false,
+      };
+    }
+
+    return {
+      ...emptyCursorPageTokens,
+      episodes,
+      ok: true,
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {
+      ...emptyCursorPageTokens,
+      episodes: [],
+      message: mapErrorToMessage(error, genericListErrorMessage),
+      ok: false,
+    };
+  }
+};
+
 export const getEpisode = async (input: {
   tenantId: string;
   seriesPublicId: string;

@@ -113,3 +113,98 @@ describe("listSeries", () => {
     });
   });
 });
+
+describe("listAllSeries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("cursor をたどって101件目以降も含め、タイトル順に返す", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      creators: [],
+      publicId: `SERIES${String(index + 1).padStart(3, "0")}`,
+      synopsis: "",
+      title: `Series ${String(index + 1).padStart(3, "0")}`,
+    }));
+    mockListSeries
+      .mockResolvedValueOnce({
+        nextToken: "page-2",
+        series: firstPage,
+      })
+      .mockResolvedValueOnce({
+        nextToken: "",
+        series: [
+          { creators: [], publicId: "SERIES101", synopsis: "", title: "ぬ" },
+          { creators: [], publicId: "SERIES102", synopsis: "", title: "あ" },
+        ],
+      });
+
+    const { listAllSeries } = await import("./series");
+    const result = await listAllSeries("TENANT001");
+
+    expect(mockListSeries).toHaveBeenNthCalledWith(
+      1,
+      {
+        limit: 100,
+        tenant: { tenantId: "TENANT001" },
+        token: "",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.series).toHaveLength(102);
+    expect(result.series.some((item) => item.publicId === "SERIES101")).toBe(
+      true
+    );
+    const aIndex = result.series.findIndex(
+      (item) => item.publicId === "SERIES102"
+    );
+    const nuIndex = result.series.findIndex(
+      (item) => item.publicId === "SERIES101"
+    );
+    expect(aIndex).toBeGreaterThanOrEqual(0);
+    expect(nuIndex).toBeGreaterThan(aIndex);
+  });
+
+  it("セッションがない場合RPCを呼ばない", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listAllSeries } = await import("./series");
+    const result = await listAllSeries("TENANT001");
+
+    expect(mockListSeries).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      series: [],
+    });
+  });
+
+  it("nextToken が繰り返されたら部分結果を返さない", async () => {
+    mockListSeries
+      .mockResolvedValueOnce({
+        nextToken: "page-2",
+        series: [
+          { creators: [], publicId: "SERIES001", synopsis: "", title: "A" },
+        ],
+      })
+      .mockResolvedValueOnce({
+        nextToken: "page-2",
+        series: [
+          { creators: [], publicId: "SERIES002", synopsis: "", title: "B" },
+        ],
+      });
+
+    const { listAllSeries } = await import("./series");
+    const result = await listAllSeries("TENANT001");
+
+    expect(result).toMatchObject({
+      ok: false,
+      series: [],
+    });
+  });
+});

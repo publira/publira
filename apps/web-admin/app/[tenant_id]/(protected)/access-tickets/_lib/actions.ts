@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { issueAccessTicket, revokeAccessTicket } from "#lib/access-ticket";
+import { listAllEpisodes } from "#lib/episode";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -15,6 +16,7 @@ import {
 
 import type {
   IssueAccessTicketActionState,
+  ListTicketEpisodeOptionsResult,
   RevokeAccessTicketActionState,
 } from "../ticket-types";
 
@@ -56,6 +58,19 @@ const revokeTicketSchema = z.object({
   tenantId: requiredTrimmedString("失効対象が不正です。"),
 });
 
+const listEpisodeOptionsSchema = z.object({
+  seriesPublicId: requiredTrimmedString("シリーズを選択してください。"),
+  tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+});
+
+const existingNonActiveTicketMessage = (publicId: string, status: string) => {
+  if (status === "expired") {
+    return `同じユーザー・エピソードの期限切れチケット（${publicId}）が未失効のまま残っています。期限を付け直すには、先に一覧から失効してください。`;
+  }
+
+  return `同じユーザー・エピソードのチケット（${publicId}）を発行できません。一覧を確認してください。`;
+};
+
 export const issueAccessTicketAction = async (
   _prevState: IssueAccessTicketActionState,
   formData: FormData
@@ -91,8 +106,57 @@ export const issueAccessTicketAction = async (
     };
   }
 
+  // Issue is idempotent for a non-revoked pair. An expired row still occupies
+  // the unique slot, so treat that as a form error instead of a new grant.
+  if (result.ticket.status !== "active") {
+    return {
+      message: existingNonActiveTicketMessage(
+        result.ticket.publicId,
+        result.ticket.status
+      ),
+      ok: false,
+    };
+  }
+
   updateTag(`access-tickets-${parsed.data.tenantId}`);
-  redirect("/access-tickets");
+  redirect("/access-tickets?created=1");
+};
+
+export const listEpisodeOptionsAction = async (
+  tenantId: string,
+  seriesPublicId: string
+): Promise<ListTicketEpisodeOptionsResult> => {
+  const parsed = listEpisodeOptionsSchema.safeParse({
+    seriesPublicId,
+    tenantId,
+  });
+  if (!parsed.success) {
+    return {
+      episodes: [],
+      message: toFormErrorMessage(parsed.error),
+      ok: false,
+    };
+  }
+
+  const result = await listAllEpisodes({
+    seriesPublicId: parsed.data.seriesPublicId,
+    tenantId: parsed.data.tenantId,
+  });
+  if (!result.ok) {
+    return {
+      episodes: [],
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  return {
+    episodes: result.episodes.map((episode) => ({
+      publicId: episode.publicId,
+      title: episode.title,
+    })),
+    ok: true,
+  };
 };
 
 export const revokeAccessTicketAction = async (

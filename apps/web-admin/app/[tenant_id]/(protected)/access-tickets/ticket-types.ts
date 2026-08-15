@@ -1,3 +1,17 @@
+export interface TicketSeriesOption {
+  publicId: string;
+  title: string;
+}
+
+export interface TicketEpisodeOption {
+  publicId: string;
+  title: string;
+}
+
+export type ListTicketEpisodeOptionsResult =
+  | { episodes: TicketEpisodeOption[]; ok: true }
+  | { episodes: TicketEpisodeOption[]; message: string; ok: false };
+
 export interface AccessTicketItem {
   createdAt: string;
   episodePublicId: string;
