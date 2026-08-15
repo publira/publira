@@ -27,6 +27,15 @@ message ListCreatorsResponse {
   string next_token = 3;
 }
 
+message GetCreatorRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+}
+
+message GetCreatorResponse {
+  publira.types.v1.Creator creator = 1;
+}
+
 message CreateCreatorRequest {
   publira.types.v1.TenantContext tenant = 1;
   string name = 2;
@@ -55,6 +64,7 @@ message UpdateCreatorResponse {
 
 service AdminCreatorService {
   rpc ListCreators(ListCreatorsRequest) returns (ListCreatorsResponse) {}
+  rpc GetCreator(GetCreatorRequest) returns (GetCreatorResponse) {}
   rpc CreateCreator(CreateCreatorRequest) returns (CreateCreatorResponse) {}
   rpc UpdateCreator(UpdateCreatorRequest) returns (UpdateCreatorResponse) {}
 }

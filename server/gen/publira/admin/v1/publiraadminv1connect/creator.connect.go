@@ -36,6 +36,9 @@ const (
 	// AdminCreatorServiceListCreatorsProcedure is the fully-qualified name of the AdminCreatorService's
 	// ListCreators RPC.
 	AdminCreatorServiceListCreatorsProcedure = "/publira.admin.v1.AdminCreatorService/ListCreators"
+	// AdminCreatorServiceGetCreatorProcedure is the fully-qualified name of the AdminCreatorService's
+	// GetCreator RPC.
+	AdminCreatorServiceGetCreatorProcedure = "/publira.admin.v1.AdminCreatorService/GetCreator"
 	// AdminCreatorServiceCreateCreatorProcedure is the fully-qualified name of the
 	// AdminCreatorService's CreateCreator RPC.
 	AdminCreatorServiceCreateCreatorProcedure = "/publira.admin.v1.AdminCreatorService/CreateCreator"
@@ -47,6 +50,7 @@ const (
 // AdminCreatorServiceClient is a client for the publira.admin.v1.AdminCreatorService service.
 type AdminCreatorServiceClient interface {
 	ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error)
+	GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error)
 	CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error)
 	UpdateCreator(context.Context, *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error)
 }
@@ -68,6 +72,12 @@ func NewAdminCreatorServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adminCreatorServiceMethods.ByName("ListCreators")),
 			connect.WithClientOptions(opts...),
 		),
+		getCreator: connect.NewClient[v1.GetCreatorRequest, v1.GetCreatorResponse](
+			httpClient,
+			baseURL+AdminCreatorServiceGetCreatorProcedure,
+			connect.WithSchema(adminCreatorServiceMethods.ByName("GetCreator")),
+			connect.WithClientOptions(opts...),
+		),
 		createCreator: connect.NewClient[v1.CreateCreatorRequest, v1.CreateCreatorResponse](
 			httpClient,
 			baseURL+AdminCreatorServiceCreateCreatorProcedure,
@@ -86,6 +96,7 @@ func NewAdminCreatorServiceClient(httpClient connect.HTTPClient, baseURL string,
 // adminCreatorServiceClient implements AdminCreatorServiceClient.
 type adminCreatorServiceClient struct {
 	listCreators  *connect.Client[v1.ListCreatorsRequest, v1.ListCreatorsResponse]
+	getCreator    *connect.Client[v1.GetCreatorRequest, v1.GetCreatorResponse]
 	createCreator *connect.Client[v1.CreateCreatorRequest, v1.CreateCreatorResponse]
 	updateCreator *connect.Client[v1.UpdateCreatorRequest, v1.UpdateCreatorResponse]
 }
@@ -93,6 +104,11 @@ type adminCreatorServiceClient struct {
 // ListCreators calls publira.admin.v1.AdminCreatorService.ListCreators.
 func (c *adminCreatorServiceClient) ListCreators(ctx context.Context, req *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error) {
 	return c.listCreators.CallUnary(ctx, req)
+}
+
+// GetCreator calls publira.admin.v1.AdminCreatorService.GetCreator.
+func (c *adminCreatorServiceClient) GetCreator(ctx context.Context, req *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error) {
+	return c.getCreator.CallUnary(ctx, req)
 }
 
 // CreateCreator calls publira.admin.v1.AdminCreatorService.CreateCreator.
@@ -109,6 +125,7 @@ func (c *adminCreatorServiceClient) UpdateCreator(ctx context.Context, req *conn
 // service.
 type AdminCreatorServiceHandler interface {
 	ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error)
+	GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error)
 	CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error)
 	UpdateCreator(context.Context, *connect.Request[v1.UpdateCreatorRequest]) (*connect.Response[v1.UpdateCreatorResponse], error)
 }
@@ -124,6 +141,12 @@ func NewAdminCreatorServiceHandler(svc AdminCreatorServiceHandler, opts ...conne
 		AdminCreatorServiceListCreatorsProcedure,
 		svc.ListCreators,
 		connect.WithSchema(adminCreatorServiceMethods.ByName("ListCreators")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminCreatorServiceGetCreatorHandler := connect.NewUnaryHandler(
+		AdminCreatorServiceGetCreatorProcedure,
+		svc.GetCreator,
+		connect.WithSchema(adminCreatorServiceMethods.ByName("GetCreator")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminCreatorServiceCreateCreatorHandler := connect.NewUnaryHandler(
@@ -142,6 +165,8 @@ func NewAdminCreatorServiceHandler(svc AdminCreatorServiceHandler, opts ...conne
 		switch r.URL.Path {
 		case AdminCreatorServiceListCreatorsProcedure:
 			adminCreatorServiceListCreatorsHandler.ServeHTTP(w, r)
+		case AdminCreatorServiceGetCreatorProcedure:
+			adminCreatorServiceGetCreatorHandler.ServeHTTP(w, r)
 		case AdminCreatorServiceCreateCreatorProcedure:
 			adminCreatorServiceCreateCreatorHandler.ServeHTTP(w, r)
 		case AdminCreatorServiceUpdateCreatorProcedure:
@@ -157,6 +182,10 @@ type UnimplementedAdminCreatorServiceHandler struct{}
 
 func (UnimplementedAdminCreatorServiceHandler) ListCreators(context.Context, *connect.Request[v1.ListCreatorsRequest]) (*connect.Response[v1.ListCreatorsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.ListCreators is not implemented"))
+}
+
+func (UnimplementedAdminCreatorServiceHandler) GetCreator(context.Context, *connect.Request[v1.GetCreatorRequest]) (*connect.Response[v1.GetCreatorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.AdminCreatorService.GetCreator is not implemented"))
 }
 
 func (UnimplementedAdminCreatorServiceHandler) CreateCreator(context.Context, *connect.Request[v1.CreateCreatorRequest]) (*connect.Response[v1.CreateCreatorResponse], error) {
