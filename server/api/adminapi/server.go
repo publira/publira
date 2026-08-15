@@ -93,6 +93,28 @@ func (s *adminServer) queriesFor(ctx context.Context) Querier {
 	return s.queries
 }
 
+// beginTenantTx starts a transaction on the request's tenant-scoped
+// connection. Falling back to s.db.BeginTx would leave RLS: that path
+// borrows a different pool connection that has never set
+// app.current_tenant_id. sqlmock tests skip the interceptor, so they
+// are the only callers allowed to begin on the pool.
+func (s *adminServer) beginTenantTx(ctx context.Context) (*sql.Tx, error) {
+	if conn, ok := rpcmiddleware.TenantConnFromContext(ctx); ok {
+		return conn.BeginTx(ctx, nil)
+	}
+	if isSQLMockDB(s.db) {
+		return s.db.BeginTx(ctx, nil)
+	}
+	return nil, errors.New("tenant-scoped connection is required to begin a transaction")
+}
+
+func isSQLMockDB(db *sql.DB) bool {
+	if db == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(fmt.Sprintf("%T", db.Driver())), "sqlmock")
+}
+
 // recorderFor returns an audit recorder bound to the tenant-scoped connection of
 // the current request. audit_logs is under RLS and the admin API connects as
 // publira_admin, so an entry written through the pool-level querier — which
@@ -329,7 +351,7 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			if s.db == nil {
 				return next(ctx, req)
 			}
-			if strings.Contains(strings.ToLower(fmt.Sprintf("%T", s.db.Driver())), "sqlmock") {
+			if isSQLMockDB(s.db) {
 				return next(ctx, req)
 			}
 
@@ -358,6 +380,7 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			defer release()
 
 			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
+			ctx = rpcmiddleware.WithTenantConn(ctx, conn)
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
 			return next(ctx, req)
 		}

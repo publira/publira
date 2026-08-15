@@ -6852,6 +6852,30 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 	return items, nil
 }
 
+const lockSeriesByPublicIDForTenant = `-- name: LockSeriesByPublicIDForTenant :one
+SELECT id
+FROM series
+WHERE tenant_id = $1
+    AND public_id = $2
+FOR UPDATE
+`
+
+type LockSeriesByPublicIDForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+// Lock the series row so concurrent CreateEpisode calls serialize. The
+// following MAX(order_index) must be a separate statement: READ COMMITTED
+// freezes its snapshot at statement start, so waiting for the lock in the
+// same statement would still see the pre-wait aggregate.
+func (q *Queries) LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, lockSeriesByPublicIDForTenant, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const markAllAnnouncementsAsRead = `-- name: MarkAllAnnouncementsAsRead :execrows
 INSERT INTO announcement_reads (announcement_id, user_id, read_at)
 SELECT n.id, $2, NOW()

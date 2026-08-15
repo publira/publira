@@ -294,6 +294,11 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams) ([]Tenant, error)
+	// Lock the series row so concurrent CreateEpisode calls serialize. The
+	// following MAX(order_index) must be a separate statement: READ COMMITTED
+	// freezes its snapshot at statement start, so waiting for the lock in the
+	// same statement would still see the pre-wait aggregate.
+	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
 	// 指定ユーザーの未読お知らせを一括既読化
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
 	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)

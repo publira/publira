@@ -412,24 +412,38 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, err
 	}
-	series, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.SeriesPublicId})
+
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError("failed to begin create episode transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	q := dbmodels.New(tx)
+	seriesID, err := q.LockSeriesByPublicIDForTenant(ctx, dbmodels.LockSeriesByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: req.Msg.SeriesPublicId,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to lock series for create episode", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
 	}
+
 	// An unset order_index means "append". Resolving it here keeps the client
 	// from having to read the whole series to find the end, which a paged
-	// ListEpisodes can no longer hand it in one call.
+	// ListEpisodes can no longer hand it in one call. The MAX is a separate
+	// statement from the lock so READ COMMITTED sees rows committed while
+	// this transaction waited.
 	orderIndex := req.Msg.OrderIndex
 	if orderIndex == 0 {
-		maxOrderIndex, maxErr := s.queriesFor(ctx).GetMaxEpisodeOrderIndexBySeriesForTenant(ctx, dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenantParams{
+		maxOrderIndex, maxErr := q.GetMaxEpisodeOrderIndexBySeriesForTenant(ctx, dbmodels.GetMaxEpisodeOrderIndexBySeriesForTenantParams{
 			TenantID: tenant.ID,
 			PublicID: req.Msg.SeriesPublicId,
 		})
 		if maxErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, maxErr)
+			return nil, s.internalDBError("failed to resolve episode order_index", maxErr, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
 		}
 		orderIndex = maxOrderIndex + 1
 	}
@@ -437,24 +451,24 @@ func (s *adminServer) CreateEpisode(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	base, err := publicid.Insert(func(publicID string) (dbmodels.Episode, error) {
-		return s.queriesFor(ctx).CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{
+	base, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Episode, error) {
+		return q.CreateEpisodeBase(ctx, dbmodels.CreateEpisodeBaseParams{
 			ID:         episodeID,
 			OrderIndex: orderIndex,
 			PublicID:   publicID,
-			SeriesID:   series.ID,
+			SeriesID:   seriesID,
 			TenantID:   tenant.ID,
 			Title:      req.Msg.Title,
 		})
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to create episode", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.SeriesPublicId)
 	}
 	status := "draft"
 	if scheduledAt.Valid {
 		status = "scheduled"
 	}
-	listing, err := s.queriesFor(ctx).UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
+	listing, err := q.UpsertEpisodeListing(ctx, dbmodels.UpsertEpisodeListingParams{
 		EpisodeID:          base.ID,
 		Price:              req.Msg.Price,
 		PublishedAt:        sql.NullTime{},
@@ -464,7 +478,10 @@ func (s *adminServer) CreateEpisode(
 		TenantID:           tenant.ID,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, s.internalDBError("failed to upsert episode listing", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError("failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
 	episode := &publirattypesv1.Episode{PublicId: base.PublicID, Title: base.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
 	if listing.ReadingPeriodHours.Valid {
