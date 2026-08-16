@@ -997,7 +997,10 @@ func (s *apiServer) DeleteMe(
 	}
 	if !auth.VerifyPassword(password, user.PasswordHash) {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_password")
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid password"))
+		// Not Unauthenticated: the session is fine, the confirmation field is
+		// wrong. Clients treat Unauthenticated as "re-authenticate", which would
+		// log the reader out for a typo (#679).
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid password"), "password")
 	}
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, user.ID); err != nil {
 		auth.AuditEvent(req.Header(), "delete_me", "failure", tenant.PublicID, user.PublicID, "credentials_version_bump_failed")

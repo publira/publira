@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -178,6 +179,54 @@ func TestDBAccessTokenStopsWorkingWhenAccountIsSuspended(t *testing.T) {
 	))
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMe while suspended code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// The confirmation password on account deletion is form input, not credentials.
+// Getting it wrong must not read as "your session ended" — clients turn
+// Unauthenticated into a forced re-login, which would log a reader out over a
+// typo (#679).
+func TestDBDeleteMeRejectsWrongPasswordAsInvalidArgument(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	token := tokenFor(t, tenant, user)
+	client := env.authClient()
+
+	_, err := client.DeleteMe(context.Background(), newBearerRequest(
+		&publirav1.DeleteMeRequest{Tenant: tenantContext(tenant), Password: "not-the-password"},
+		token,
+	))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("DeleteMe with a wrong password code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertPublicBadRequestField(t, err, "password")
+
+	// The session is untouched, so the reader can correct the field and retry.
+	if _, err := client.GetMe(context.Background(), newBearerRequest(
+		&publirav1.GetMeRequest{Tenant: tenantContext(tenant)},
+		token,
+	)); err != nil {
+		t.Fatalf("GetMe after a rejected DeleteMe: %v", err)
+	}
+}
+
+func assertPublicBadRequestField(t *testing.T, err error, wantField string) {
+	t.Helper()
+	rpcError, ok := err.(*connect.Error)
+	if !ok {
+		t.Fatalf("error type = %T, want *connect.Error", err)
+	}
+	if len(rpcError.Details()) != 1 {
+		t.Fatalf("detail count = %d, want 1", len(rpcError.Details()))
+	}
+	detail, detailErr := rpcError.Details()[0].Value()
+	if detailErr != nil {
+		t.Fatalf("detail = %v", detailErr)
+	}
+	badRequest, ok := detail.(*errdetails.BadRequest)
+	if !ok || len(badRequest.FieldViolations) != 1 || badRequest.FieldViolations[0].Field != wantField {
+		t.Fatalf("field violations = %#v, want %q", badRequest, wantField)
 	}
 }
 
