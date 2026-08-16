@@ -2,6 +2,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   Code,
   isRpcError,
+  isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
@@ -247,6 +248,9 @@ export const markNotificationAsRead = async (input: {
     );
     return { ok: true };
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, markReadErrorMessage),
@@ -278,6 +282,9 @@ export const markAllNotificationsAsRead = async (
       ok: true,
     };
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, markAllReadErrorMessage),

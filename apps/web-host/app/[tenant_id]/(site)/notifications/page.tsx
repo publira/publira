@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLogin } from "#lib/auth-session";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -45,9 +45,7 @@ const NotificationListData = async ({
   ]);
 
   if (!listResult.ok && listResult.requiresSignIn) {
-    redirect(
-      `/login?returnTo=${encodeURIComponent(notificationsListHref(token))}`
-    );
+    redirectToLogin(notificationsListHref(token));
   }
 
   return (

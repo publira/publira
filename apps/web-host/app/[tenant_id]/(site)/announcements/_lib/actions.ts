@@ -12,6 +12,12 @@ import {
   markAnnouncementAsRead,
 } from "#lib/announcements";
 import { tenantIdFormSchema } from "#lib/auth-input";
+import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
+
+const ANNOUNCEMENTS_RETURN_TO = "/announcements";
 
 const announcementIdFormSchema = z.string().trim().min(1).max(64);
 
@@ -68,7 +74,10 @@ export const markAnnouncementAsReadAction = async (
   }
 
   const { announcementId, tenantId } = parsed.data;
-  await markAnnouncementAsRead(tenantId, announcementId);
+  const accessToken = await requirePublicSession(ANNOUNCEMENTS_RETURN_TO);
+  await withPublicSessionReauth(ANNOUNCEMENTS_RETURN_TO, () =>
+    markAnnouncementAsRead(tenantId, announcementId, accessToken)
+  );
   updateTag(announcementsCacheTag(tenantId));
 };
 
@@ -83,7 +92,10 @@ export const markAllAnnouncementsAsReadAction = async (
   }
 
   const { tenantId } = parsed.data;
-  await markAllAnnouncementsAsRead(tenantId);
+  const accessToken = await requirePublicSession(ANNOUNCEMENTS_RETURN_TO);
+  await withPublicSessionReauth(ANNOUNCEMENTS_RETURN_TO, () =>
+    markAllAnnouncementsAsRead(tenantId, accessToken)
+  );
   updateTag(announcementsCacheTag(tenantId));
 };
 
@@ -101,12 +113,18 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   }
 
   const { announcementId, tenantId } = parsed.data;
-  const announcement = await getMyAnnouncement(tenantId, announcementId);
+  const accessToken = await requirePublicSession(ANNOUNCEMENTS_RETURN_TO);
+  const announcement = await withPublicSessionReauth(
+    ANNOUNCEMENTS_RETURN_TO,
+    () => getMyAnnouncement(tenantId, announcementId, accessToken)
+  );
   if (!announcement) {
     return;
   }
 
-  await markAnnouncementAsRead(tenantId, announcementId);
+  await withPublicSessionReauth(ANNOUNCEMENTS_RETURN_TO, () =>
+    markAnnouncementAsRead(tenantId, announcementId, accessToken)
+  );
   updateTag(announcementsCacheTag(tenantId));
 
   const linkUrl = toSafeAnnouncementLinkUrl(announcement.linkUrl);

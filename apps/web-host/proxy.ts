@@ -4,7 +4,12 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { apiClient } from "./lib/api-client";
-import { buildLoginUrl, PUBLIC_SESSION_COOKIE_NAME } from "./lib/auth-shared";
+import {
+  buildLoginUrl,
+  hasActivePublicSessionCookie,
+  isSessionRevokedRedirect,
+  PUBLIC_SESSION_COOKIE_NAME,
+} from "./lib/auth-shared";
 import { buildTenantRewritePathname } from "./lib/published-page-path";
 import { createTenantIdResolver } from "./lib/tenant-resolution";
 
@@ -25,8 +30,13 @@ const isMemberPath = (pathname: string): boolean =>
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 
-const redirectToLogin = (request: NextRequest) =>
-  NextResponse.redirect(buildLoginUrl(request.nextUrl));
+const redirectToLogin = (request: NextRequest, clearSession = false) => {
+  const response = NextResponse.redirect(buildLoginUrl(request.nextUrl));
+  if (clearSession) {
+    response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
+  }
+  return response;
+};
 
 const serviceUnavailableResponse = () =>
   new NextResponse("Service Unavailable", {
@@ -42,17 +52,26 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
     return NextResponse.next();
   }
 
-  const hasSessionCookie = Boolean(
-    request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value?.trim()
-  );
+  const sessionCookie = request.cookies.get(PUBLIC_SESSION_COOKIE_NAME)?.value;
+  const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
+  const hasSessionCookie = await hasActivePublicSessionCookie(sessionCookie);
+  const isGuestOnlyPath = GUEST_ONLY_PATHS.has(pathname);
 
-  if (hasSessionCookie && GUEST_ONLY_PATHS.has(pathname)) {
+  // The API rejected this session while a page was rendering, where the cookie
+  // cannot be touched. Clearing it here is what stops the guest-only rule below
+  // from bouncing the reader back to the route that just rejected them.
+  const isRejectedSession =
+    isGuestOnlyPath && isSessionRevokedRedirect(request.nextUrl);
+
+  if (hasSessionCookie && isGuestOnlyPath && !isRejectedSession) {
     return NextResponse.redirect(new URL("/my", request.url));
   }
 
   if (!hasSessionCookie && isMemberPath(pathname)) {
-    return redirectToLogin(request);
+    return redirectToLogin(request, hasStoredSessionCookie);
   }
+
+  const clearSession = isRejectedSession && hasStoredSessionCookie;
 
   let tenantId: string | null;
   try {
@@ -70,7 +89,11 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const url = request.nextUrl.clone();
   // Single-segment published pages (admin slugs) rewrite to /page/[slug].
   url.pathname = buildTenantRewritePathname(tenantId, pathname);
-  return NextResponse.rewrite(url);
+  const response = NextResponse.rewrite(url);
+  if (clearSession) {
+    response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
+  }
+  return response;
 };
 
 export const config = {

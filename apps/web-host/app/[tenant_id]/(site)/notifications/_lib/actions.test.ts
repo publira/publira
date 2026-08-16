@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockMarkAllNotificationsAsRead,
   mockMarkNotificationAsRead,
+  mockRequirePublicSession,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockMarkAllNotificationsAsRead: vi.fn(),
   mockMarkNotificationAsRead: vi.fn(),
+  mockRequirePublicSession: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
 
@@ -19,6 +21,12 @@ vi.mock("#lib/notification", () => ({
   markNotificationAsRead: mockMarkNotificationAsRead,
   notificationsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:notifications`,
+}));
+
+vi.mock("#lib/auth-session", () => ({
+  requirePublicSession: mockRequirePublicSession,
+  withPublicSessionReauth: (_returnTo: string, run: () => Promise<unknown>) =>
+    run(),
 }));
 
 const formData = (values: Record<string, string>): FormData => {
@@ -36,6 +44,7 @@ describe("notification actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockRequirePublicSession.mockResolvedValue("session-token");
   });
 
   it("単件既読に成功したらキャッシュタグを更新する", async () => {
@@ -55,6 +64,7 @@ describe("notification actions", () => {
       notificationId,
       tenantId,
     });
+    expect(mockRequirePublicSession).toHaveBeenCalledWith("/notifications");
     expect(mockUpdateTag).toHaveBeenCalledWith(
       `tenant:${tenantId}:notifications`
     );
@@ -95,6 +105,7 @@ describe("notification actions", () => {
       ok: true,
     });
     expect(mockMarkAllNotificationsAsRead).toHaveBeenCalledWith(tenantId);
+    expect(mockRequirePublicSession).toHaveBeenCalledWith("/notifications");
     expect(mockUpdateTag).toHaveBeenCalledWith(
       `tenant:${tenantId}:notifications`
     );

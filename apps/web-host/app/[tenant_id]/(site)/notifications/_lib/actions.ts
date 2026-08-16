@@ -7,12 +7,18 @@ import { z } from "zod";
 
 import { tenantIdFormSchema } from "#lib/auth-input";
 import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
+import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
   notificationsCacheTag,
 } from "#lib/notification";
 
 import type { MarkNotificationActionState } from "../notification-types";
+
+const NOTIFICATIONS_RETURN_TO = "/notifications";
 
 const markOneSchema = z.object({
   notificationId: z.string().trim().pipe(z.uuid()),
@@ -40,7 +46,10 @@ export const markNotificationAsReadAction = async (
     };
   }
 
-  const result = await markNotificationAsRead(parsed.data);
+  await requirePublicSession(NOTIFICATIONS_RETURN_TO);
+  const result = await withPublicSessionReauth(NOTIFICATIONS_RETURN_TO, () =>
+    markNotificationAsRead(parsed.data)
+  );
   if (!result.ok) {
     return {
       message: result.message,
@@ -71,7 +80,10 @@ export const markAllNotificationsAsReadAction = async (
     };
   }
 
-  const result = await markAllNotificationsAsRead(parsed.data.tenantId);
+  await requirePublicSession(NOTIFICATIONS_RETURN_TO);
+  const result = await withPublicSessionReauth(NOTIFICATIONS_RETURN_TO, () =>
+    markAllNotificationsAsRead(parsed.data.tenantId)
+  );
   if (!result.ok) {
     return {
       message: result.message,

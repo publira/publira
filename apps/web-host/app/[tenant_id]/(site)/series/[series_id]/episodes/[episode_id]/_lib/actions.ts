@@ -9,14 +9,10 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import {
-  apiClient,
-  buildSessionHeaders,
-  resolveAccessToken,
-} from "#lib/api-client";
+import { apiClient, buildSessionHeaders } from "#lib/api-client";
 import { tenantIdFormSchema } from "#lib/auth-input";
-
-import { episodeLoginHref } from "./access-gate";
+import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
+import { isUnauthenticatedError } from "#lib/auth-shared";
 
 const publicIDFormSchema = z.string().trim().min(1).max(64);
 
@@ -49,10 +45,11 @@ export const startEpisodeCheckoutAction = async (
   }
 
   const { episodePublicId, seriesPublicId, tenantId } = parsed.data;
-  const sessionId = await resolveAccessToken();
-  if (!sessionId) {
-    redirect(episodeLoginHref(seriesPublicId, episodePublicId));
-  }
+  // `returnTo` is the episode itself. Handing `episodeLoginHref()` to these
+  // helpers would give them a `/login?...` URL, which `sanitizeRedirectPath`
+  // rejects — the reader would come back to the tenant home instead.
+  const returnTo = episodePath(seriesPublicId, episodePublicId);
+  const sessionId = await requirePublicSession(returnTo);
 
   let checkoutURL = "";
   try {
@@ -65,8 +62,8 @@ export const startEpisodeCheckoutAction = async (
     );
     checkoutURL = response.checkoutUrl.trim();
   } catch (error) {
-    if (isRpcError(error, Code.Unauthenticated)) {
-      redirect(episodeLoginHref(seriesPublicId, episodePublicId));
+    if (isUnauthenticatedError(error)) {
+      redirectToLogin(returnTo);
     }
     if (isRpcError(error, Code.AlreadyExists)) {
       redirect(episodePath(seriesPublicId, episodePublicId));

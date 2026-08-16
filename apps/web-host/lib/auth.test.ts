@@ -122,22 +122,16 @@ describe("web-host auth", () => {
     ).resolves.toBe(false);
   });
 
-  it("getMe: expected error 後の2回目成功でユーザーを返す", async () => {
+  it("getMe: 未認証は再試行せず呼び出し元へ伝播する", async () => {
     const { getMe } = await importAuth();
-    mockGetMe
-      .mockRejectedValueOnce(
-        new ConnectError("invalid credentials", Code.Unauthenticated)
-      )
-      .mockResolvedValueOnce({
-        user: { name: "Alice", publicId: "U001", role: "reader" },
-      });
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("invalid credentials", Code.Unauthenticated)
+    );
 
-    await expect(getMe("TENANT001")).resolves.toEqual({
-      name: "Alice",
-      publicId: "U001",
-      role: "reader",
+    await expect(getMe("TENANT001")).rejects.toMatchObject({
+      code: Code.Unauthenticated,
     });
-    expect(mockGetMe).toHaveBeenCalledTimes(2);
+    expect(mockGetMe).toHaveBeenCalledOnce();
   });
 
   it("getMe: expected error が続く場合は null", async () => {
@@ -162,13 +156,15 @@ describe("web-host auth", () => {
     await expect(updateMe("TENANT001", "NewName")).resolves.toBeNull();
   });
 
-  it("deleteMe: パスワード誤りは false", async () => {
+  it("deleteMe: 未認証は再ログインへ誘導できるよう伝播する", async () => {
     const { deleteMe } = await importAuth();
     mockDeleteMe.mockRejectedValueOnce(
       new ConnectError("invalid credentials", Code.Unauthenticated)
     );
 
-    await expect(deleteMe("TENANT001", "pw")).resolves.toBe(false);
+    await expect(deleteMe("TENANT001", "pw")).rejects.toMatchObject({
+      code: Code.Unauthenticated,
+    });
   });
 
   it("deleteMe: 分類できないエラーは伝播する", async () => {

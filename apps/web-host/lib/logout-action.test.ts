@@ -33,11 +33,11 @@ vi.mock("./api-client", () => ({
 }));
 
 vi.mock("./auth", () => ({
-  PUBLIC_SESSION_COOKIE_NAME: "publira_web_host_auth",
   logoutPublic: mockLogoutPublic,
 }));
 
 vi.mock("./auth-shared", () => ({
+  PUBLIC_SESSION_COOKIE_NAME: "publira_web_host_auth",
   getPublicSessionCacheTag: (cookieName: string) =>
     `public-session-cookie-${cookieName}`,
 }));

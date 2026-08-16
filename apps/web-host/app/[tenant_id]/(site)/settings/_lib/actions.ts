@@ -7,8 +7,14 @@ import { z } from "zod";
 
 import { updateMe } from "#lib/auth";
 import { tenantIdFormSchema } from "#lib/auth-input";
+import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
 
 import { buildSettingsPath } from "./settings-form";
+
+const SETTINGS_RETURN_TO = "/settings";
 
 const updateProfileFormSchema = z.object({
   name: z
@@ -33,7 +39,10 @@ export const updateProfileAction = async (
   }
 
   const { name, tenantId } = parsed.data;
-  const updated = await updateMe(tenantId, name);
+  const accessToken = await requirePublicSession(SETTINGS_RETURN_TO);
+  const updated = await withPublicSessionReauth(SETTINGS_RETURN_TO, () =>
+    updateMe(tenantId, name, accessToken)
+  );
   if (!updated) {
     redirect(
       buildSettingsPath(

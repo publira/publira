@@ -2,6 +2,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   Code,
   isRpcError,
+  isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -251,6 +252,9 @@ export const markAnnouncementAsRead = async (
 
     return Boolean(response.marked);
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -275,6 +279,9 @@ export const markAllAnnouncementsAsRead = async (
 
     return response.markedCount;
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     rethrowUnclassifiedRpcError(error);
     return 0;
   }

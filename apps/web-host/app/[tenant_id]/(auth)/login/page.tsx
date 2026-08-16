@@ -21,10 +21,12 @@ const LoginForm = async ({
   errorMessage,
   resetDone,
   returnToPath,
+  sessionRevoked,
 }: {
   errorMessage?: string;
   resetDone?: boolean;
   returnToPath: string;
+  sessionRevoked?: boolean;
 }) => {
   const tenantId = await getTenantId();
   return (
@@ -65,6 +67,12 @@ const LoginForm = async ({
               />
             </FieldContent>
           </Field>
+
+          {sessionRevoked ? (
+            <FormMessage variant="destructive">
+              セッションの有効期限が切れました。もう一度ログインしてください。
+            </FormMessage>
+          ) : null}
 
           {errorMessage ? (
             <FormMessage variant="destructive">{errorMessage}</FormMessage>
@@ -111,15 +119,15 @@ const LoginFormContent = async ({
 }: {
   searchParams: PageProps<"/[tenant_id]/login">["searchParams"];
 }) => {
-  const { errorMessage, resetDone, returnToPath } = parseLoginSearchParams(
-    await searchParams
-  );
+  const { errorMessage, resetDone, returnToPath, sessionRevoked } =
+    parseLoginSearchParams(await searchParams);
 
   return (
     <LoginForm
       errorMessage={errorMessage}
       resetDone={resetDone}
       returnToPath={returnToPath}
+      sessionRevoked={sessionRevoked}
     />
   );
 };

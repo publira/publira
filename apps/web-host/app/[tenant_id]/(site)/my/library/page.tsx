@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLogin } from "#lib/auth-session";
 import { listMyPurchases } from "#lib/purchases";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
@@ -39,7 +39,7 @@ const PurchaseLibraryData = async ({
   ]);
 
   if (!result.ok && result.requiresSignIn) {
-    redirect(`/login?returnTo=${encodeURIComponent(purchasesListHref(token))}`);
+    redirectToLogin(purchasesListHref(token));
   }
 
   return (

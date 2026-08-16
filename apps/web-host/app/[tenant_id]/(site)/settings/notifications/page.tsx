@@ -1,13 +1,23 @@
 import { Suspense } from "react";
 
 import { getNotificationSettings } from "#lib/auth";
+import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
 import { getTenantId } from "#lib/tenant-id";
 
 import { updateNotificationSettingsAction } from "./_lib/actions";
 
+const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
+
 const NotificationsSection = async () => {
+  await requirePublicSession(NOTIFICATION_SETTINGS_RETURN_TO);
   const tenantId = await getTenantId();
-  const notificationSettings = await getNotificationSettings(tenantId);
+  const notificationSettings = await withPublicSessionReauth(
+    NOTIFICATION_SETTINGS_RETURN_TO,
+    () => getNotificationSettings(tenantId)
+  );
   const emailNotificationsEnabled =
     notificationSettings?.emailNotificationsEnabled ?? true;
 
