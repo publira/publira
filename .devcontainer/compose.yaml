@@ -25,6 +25,8 @@ services:
       - claude-data:/home/vscode/.claude
       # Keep Codex login, configuration, rules, and local state across rebuilds.
       - codex-data:/home/vscode/.codex
+      # Keep Antigravity CLI login, configuration, and local state across rebuilds.
+      - gemini-data:/home/vscode/.gemini
       - gh-config:/home/vscode/.config/gh
       - grok-config:/home/vscode/.grok
       # Reuse downloaded pnpm packages after rebuilding the container.
@@ -120,6 +122,7 @@ services:
 volumes:
   claude-data:
   codex-data:
+  gemini-data:
   gh-config:
   grok-config:
   pnpm-store:
