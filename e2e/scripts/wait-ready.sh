@@ -50,6 +50,13 @@ check_redis_ping() {
   docker exec "${id}" redis-cli ping 2>/dev/null | grep -qx PONG
 }
 
+check_rustfs_health() {
+  local code
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 \
+    "http://127.0.0.1:${E2E_RUSTFS_PORT}/health" 2>/dev/null || true)"
+  [[ "${code}" == "200" ]]
+}
+
 check_http_body() {
   local url="$1"
   local expect="$2"
@@ -76,6 +83,9 @@ e2e_log "waiting for readiness (timeout ${TIMEOUT_SEC}s)"
 
 wait_until "postgres" check_pg_isready
 wait_until "redis" check_redis_ping
+# Checked from the host (not `docker exec`): the API servers reach RustFS
+# through the published port, so a container-only probe would miss it.
+wait_until "rustfs" check_rustfs_health
 
 wait_until "public-api/readyz" check_http_json_ok \
   "http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}/readyz"

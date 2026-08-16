@@ -39,6 +39,12 @@ start_admin_api_server() {
       ADMIN_API_GRPC_ADDR=":${E2E_ADMIN_API_GRPC_PORT}" \
       STORAGE_BACKEND="${STORAGE_BACKEND}" \
       LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR}" \
+      S3_BUCKET="${S3_BUCKET:-}" \
+      S3_ENDPOINT="${S3_ENDPOINT:-}" \
+      S3_FORCE_PATH_STYLE="${S3_FORCE_PATH_STYLE:-}" \
+      AWS_REGION="${AWS_REGION:-}" \
+      AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}" \
+      AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}" \
       "${api_bin}"
   ) >>"${LOG_DIR}/admin-api-server.log" 2>&1 &
   write_pid "admin-api-server" $!

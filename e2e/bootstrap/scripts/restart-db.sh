@@ -14,11 +14,11 @@ before_migration="$(migration_state)"
 before_snapshot="$(seed_snapshot)"
 before_data_directory="$(psql_value 'SHOW data_directory')"
 
-bootstrap_log "stopping db"
-compose stop db
+bootstrap_log "stopping db and rustfs"
+compose stop db rustfs
 
-bootstrap_log "starting db"
-compose up -d --wait db
+bootstrap_log "starting db and rustfs"
+compose up -d --wait db rustfs
 
 assert_equals "data_directory after restart" "${before_data_directory}" \
   "$(psql_value 'SHOW data_directory')"
@@ -34,8 +34,8 @@ bootstrap_log "ok: every seeded row count survived the restart"
 
 # Re-running setup on an already-migrated database must stay a no-op, not a
 # dirty migration.
-bootstrap_log "re-running task db:setup on the restarted database"
-(cd "${REPO_ROOT}" && task db:setup)
+bootstrap_log "re-running task db:setup and task server:storage-init on the restarted services"
+(cd "${REPO_ROOT}" && task db:setup && task server:storage-init)
 assert_equals "schema_migrations after re-setup" "${before_migration}" "$(migration_state)"
 
 bootstrap_log "phase 3 passed"

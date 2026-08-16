@@ -4,6 +4,7 @@
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
+    "ghcr.io/devcontainers/features/aws-cli:1.1.4": {},
     "ghcr.io/devcontainers/features/docker-in-docker:4.0.0": {
       "version": "29.3.1"
     },
@@ -37,7 +38,12 @@
   "hostRequirements": {
     "cpus": 4
   },
-  "forwardPorts": ["traefik:3080", "mailpit:8025", "traefik:8080"],
+  "forwardPorts": [
+    "traefik:3080",
+    "mailpit:8025",
+    "traefik:8080",
+    "rustfs:9001"
+  ],
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
   },

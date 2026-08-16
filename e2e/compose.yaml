@@ -2,10 +2,12 @@
 # Apps (api-server, web-host) run on the host; only data stores are containerized.
 #
 # Host ports avoid colliding with Dev Container defaults (db hostname-only,
-# redis :6379). Override with E2E_POSTGRES_PORT / E2E_REDIS_PORT (and a distinct
-# COMPOSE_PROJECT_NAME) so a second stack can run from the same checkout:
+# redis :6379, rustfs :9000). Override with E2E_POSTGRES_PORT / E2E_REDIS_PORT /
+# E2E_RUSTFS_PORT (and a distinct COMPOSE_PROJECT_NAME) so a second stack can
+# run from the same checkout:
 #   postgres → localhost:${E2E_POSTGRES_PORT:-5433}
 #   redis    → localhost:${E2E_REDIS_PORT:-6380}
+#   rustfs   → localhost:${E2E_RUSTFS_PORT:-9003}
 
 name: publira-e2e
 
@@ -40,5 +42,22 @@ services:
       retries: 20
       start_period: 2s
 
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
+    environment:
+      RUSTFS_ACCESS_KEY: publira
+      RUSTFS_SECRET_KEY: publirapass
+    ports:
+      - "127.0.0.1:${E2E_RUSTFS_PORT:-9003}:9000"
+    volumes:
+      - e2e-rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
+
 volumes:
   e2e-postgres-data:
+  e2e-rustfs-data:

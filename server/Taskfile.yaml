@@ -30,12 +30,9 @@ tasks:
 
   dev:
     desc: Run all server development APIs together
-    deps:
-      - task: dev-api
-      - task: dev-admin-api
-      - task: dev-admin-image-server
-      - task: dev-image-server
-      - task: dev-platform-api
+    cmds:
+      - task: storage-init
+      - task: dev-servers
 
   dev-admin-api:
     desc: Run the admin API server in development mode
@@ -73,6 +70,12 @@ tasks:
     desc: Prepare server dependency setup
     cmds:
       - task: deps
+      - task: storage-init
+
+  storage-init:
+    desc: Initialize storage backend (create S3 bucket or local directory)
+    cmds:
+      - bash scripts/storage-init.sh
 
   test:
     desc: Run all Go tests in the server module (includes Testcontainers DB integration tests; requires Docker)
@@ -88,3 +91,13 @@ tasks:
     desc: Sync and clean up Go module dependencies
     cmds:
       - go mod tidy
+
+  dev-servers:
+    desc: Run server development APIs concurrently
+    internal: true
+    deps:
+      - task: dev-api
+      - task: dev-admin-api
+      - task: dev-admin-image-server
+      - task: dev-image-server
+      - task: dev-platform-api

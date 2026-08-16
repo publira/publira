@@ -23,10 +23,12 @@ BOOTSTRAP_COMPOSE_FILE="${BOOTSTRAP_DIR}/compose.override.yaml"
 # actually lives inside it.
 EXPECTED_PGDATA_MOUNT="/var/lib/postgresql"
 EXPECTED_POSTGRES_VOLUME="${COMPOSE_PROJECT_NAME}_postgres-data"
+EXPECTED_RUSTFS_VOLUME="${COMPOSE_PROJECT_NAME}_rustfs-data"
 
 # Host ports published by compose.override.yaml.
 export BOOTSTRAP_POSTGRES_PORT="${BOOTSTRAP_POSTGRES_PORT:-5434}"
 export BOOTSTRAP_REDIS_PORT="${BOOTSTRAP_REDIS_PORT:-6381}"
+export BOOTSTRAP_RUSTFS_PORT="${BOOTSTRAP_RUSTFS_PORT:-9002}"
 
 RUN_DIR="${BOOTSTRAP_DIR}/.run"
 LOG_DIR="${RUN_DIR}/logs"
@@ -41,7 +43,13 @@ export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:${B
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export REDIS_URL="redis://127.0.0.1:${BOOTSTRAP_REDIS_PORT}"
-export STORAGE_BACKEND="${STORAGE_BACKEND:-local}"
+export STORAGE_BACKEND="${STORAGE_BACKEND:-s3}"
+export S3_BUCKET="${S3_BUCKET:-publira}"
+export S3_ENDPOINT="http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}"
+export S3_FORCE_PATH_STYLE="true"
+export AWS_REGION="${AWS_REGION:-us-east-1}"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 # Not overridable: down.sh deletes this path, so it must never point at a
 # directory the developer cares about.
 export LOCAL_STORAGE_DIR="${RUN_DIR}/storage"
