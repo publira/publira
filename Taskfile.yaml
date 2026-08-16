@@ -54,6 +54,7 @@ tasks:
       - task: deps
       - task: mobile:deps
       - task: db:setup
+      - task: server:storage-init
 
   test:
     desc: Run monorepo tests and server Go tests

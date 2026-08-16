@@ -17,6 +17,7 @@ export COMPOSE_FILE="${COMPOSE_FILE:-${E2E_DIR}/compose.yaml}"
 # Host ports published by e2e/compose.yaml
 export E2E_POSTGRES_PORT="${E2E_POSTGRES_PORT:-5433}"
 export E2E_REDIS_PORT="${E2E_REDIS_PORT:-6380}"
+export E2E_RUSTFS_PORT="${E2E_RUSTFS_PORT:-9003}"
 
 export E2E_WEB_HOST_PORT="${E2E_WEB_HOST_PORT:-3000}"
 export E2E_WEB_ADMIN_PORT="${E2E_WEB_ADMIN_PORT:-4000}"
@@ -36,6 +37,16 @@ export PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL:-postgres://publira_pl
 # devcontainer / `task dev` value is redis://redis:6379 and would serve
 # another build's cached HTML (login then hangs waiting to hydrate).
 export REDIS_URL="redis://127.0.0.1:${E2E_REDIS_PORT}"
+export STORAGE_BACKEND="${STORAGE_BACKEND:-s3}"
+export S3_BUCKET="${S3_BUCKET:-publira}"
+# Same reasoning as REDIS_URL: the devcontainer exports
+# S3_ENDPOINT=http://rustfs:9000, so an inherited value would store E2E
+# uploads in the dev stack's RustFS (and is unreachable once it is down).
+export S3_ENDPOINT="http://127.0.0.1:${E2E_RUSTFS_PORT}"
+export S3_FORCE_PATH_STYLE="true"
+export AWS_REGION="${AWS_REGION:-us-east-1}"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 export PUBLIRA_PUBLIC_GRPC_URL="${PUBLIRA_PUBLIC_GRPC_URL:-http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}}"
 export PUBLIRA_ADMIN_GRPC_URL="${PUBLIRA_ADMIN_GRPC_URL:-http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}}"
 export PUBLIRA_PLATFORM_GRPC_URL="${PUBLIRA_PLATFORM_GRPC_URL:-http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}}"
@@ -51,7 +62,6 @@ export E2E_PLATFORM_API_BASE_URL="${E2E_PLATFORM_API_BASE_URL:-http://127.0.0.1:
 export E2E_PUBLISH_EPISODES_INTERVAL_SEC="${E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
 
 export NEXT_CACHE_APP="${NEXT_CACHE_APP:-web-host}"
-export STORAGE_BACKEND="${STORAGE_BACKEND:-local}"
 
 # PID files, logs, and local storage for one stack run.
 #
@@ -68,6 +78,7 @@ else
   if [[ "${COMPOSE_PROJECT_NAME}" != "publira-e2e" ]] ||
     [[ "${E2E_POSTGRES_PORT}" != "5433" ]] ||
     [[ "${E2E_REDIS_PORT}" != "6380" ]] ||
+    [[ "${E2E_RUSTFS_PORT}" != "9003" ]] ||
     [[ "${E2E_WEB_HOST_PORT}" != "3000" ]] ||
     [[ "${E2E_WEB_ADMIN_PORT}" != "4000" ]] ||
     [[ "${E2E_WEB_PLATFORM_PORT}" != "4100" ]] ||
@@ -84,7 +95,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}"
+    export E2E_RUN_DIR="${E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${E2E_POSTGRES_PORT}-rd${E2E_REDIS_PORT}-s3${E2E_RUSTFS_PORT}-h${E2E_WEB_HOST_PORT}-a${E2E_WEB_ADMIN_PORT}-p${E2E_WEB_PLATFORM_PORT}-api${E2E_PUBLIC_API_PORT}-${E2E_PUBLIC_API_GRPC_PORT}-adm${E2E_ADMIN_API_PORT}-${E2E_ADMIN_API_GRPC_PORT}-plt${E2E_PLATFORM_API_PORT}-${E2E_PLATFORM_API_GRPC_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

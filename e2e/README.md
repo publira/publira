@@ -35,9 +35,10 @@ Dev Container Traefik のホストベースルーティングは、同じく Pla
 | platform API (gRPC 口 / web-platform が向ける先)       | `8102` |
 | E2E Postgres（compose 公開）                           | `5433` |
 | E2E Redis（compose 公開）                              | `6380` |
+| E2E RustFS / S3（compose 公開）                        | `9003` |
 
 PID / ログ / ローカル storage は既定で `e2e/.run/` に置く。  
-`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。同じポートでの並行起動はポート競合で失敗する想定。`REDIS_URL` は常に `E2E_REDIS_PORT` から組み立てる（devcontainer の `redis://redis:6379` を引き継がない）。
+`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。同じポートでの並行起動はポート競合で失敗する想定。`REDIS_URL` は常に `E2E_REDIS_PORT` から組み立てる（devcontainer の `redis://redis:6379` を引き継がない）。`S3_ENDPOINT` も同様に常に `E2E_RUSTFS_PORT` から組み立てる（devcontainer の `http://rustfs:9000` を引き継ぐと、E2E のアップロードが開発用スタックの RustFS に入ってしまう）。
 
 ## 1 コマンド実行
 
@@ -53,8 +54,8 @@ task e2e
 | コマンド | 内容 |
 | --- | --- |
 | `task e2e:prepare` | server 全バイナリ / `web-host` / `web-admin` / `web-platform` ビルド + Playwright Chromium インストール |
-| `task e2e:up` | Postgres + Redis のみ起動 |
-| `task e2e:db` | migrate + dev seed |
+| `task e2e:up` | Postgres + Redis + RustFS のみ起動 |
+| `task e2e:db` | migrate + dev seed + S3 バケット作成（`task server:storage-init`） |
 | `task e2e:start-apps` | api-server / admin-api-server / platform-api-server / publish-episodes / web-host / web-admin / web-platform をバックグラウンド起動 |
 | `bash e2e/scripts/api-server.sh <start\|start-wait\|stop>` | api-server だけを操作（障害シナリオが使用） |
 | `bash e2e/scripts/admin-api-server.sh <start\|start-wait\|stop>` | admin-api-server だけを操作 |
@@ -80,6 +81,7 @@ task e2e:down
 COMPOSE_PROJECT_NAME=publira-e2e-alt \
   E2E_POSTGRES_PORT=5434 \
   E2E_REDIS_PORT=6381 \
+  E2E_RUSTFS_PORT=9004 \
   E2E_WEB_HOST_PORT=3010 \
   E2E_WEB_ADMIN_PORT=4010 \
   E2E_WEB_PLATFORM_PORT=4110 \
@@ -102,7 +104,7 @@ COMPOSE_PROJECT_NAME=publira-e2e-alt \
 e2e/
 ├── bootstrap/             # 開発環境 bootstrap チェック（Playwright を使わない別ライフサイクル）
 ├── routing/               # Dev Container Traefik 疎通（Playwright を使わない別ライフサイクル）
-├── compose.yaml           # postgres + redis（project: publira-e2e）
+├── compose.yaml           # postgres + redis + rustfs（project: publira-e2e）
 ├── playwright.config.ts
 ├── scripts/               # up / db / start / api-server / admin-api / platform-api / publish-episodes / wait-ready / stop-apps / test / lib_test / run / down
 ├── src/
@@ -126,7 +128,7 @@ e2e/
     └── smoke.web-host-home.spec.ts
 ```
 
-- **依存 (Compose):** Postgres 18・Valkey（Redis 互換）
+- **依存 (Compose):** Postgres 18・Valkey（Redis 互換）・RustFS（S3 互換。`STORAGE_BACKEND=s3` / path-style / バケット `publira`）
 - **アプリ (ホストプロセス):**
   - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/platform-api-server` + `server/bin/publish-episodes`
   - `apps/web-host` / `apps/web-admin` / `apps/web-platform`（standalone の `node server.js`）
@@ -175,7 +177,7 @@ Node 側の `request` fixture は OS の名前解決を使うので、`localhost
 
 `wait-ready` のチェック順:
 
-1. compose postgres / redis healthy
+1. compose postgres / redis healthy、`GET :9003/health` → 200（RustFS。ホストから叩いて公開ポートごと確認する）
 2. `GET :8100/readyz` → `status=ok`（public API）
 3. `GET :8101/readyz` → `status=ok`（admin API）
 4. `GET :8102/readyz` → `status=ok`（platform API）

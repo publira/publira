@@ -30,3 +30,7 @@ services:
     # Container stack.
     ports: !override
       - "127.0.0.1:${BOOTSTRAP_REDIS_PORT:-6381}:6379"
+
+  rustfs:
+    ports: !override
+      - "127.0.0.1:${BOOTSTRAP_RUSTFS_PORT:-9002}:9000"

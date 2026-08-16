@@ -29,7 +29,7 @@ tasks:
       - bash "{{.BOOTSTRAP_DIR}}/scripts/setup.sh"
 
   restart-db:
-    desc: "Phase 3: restart db and assert migrations and seed data persist"
+    desc: "Phase 3: restart db and rustfs and assert migrations, seed data, and stored objects persist"
     cmds:
       - bash "{{.BOOTSTRAP_DIR}}/scripts/restart-db.sh"
 

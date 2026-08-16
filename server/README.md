@@ -97,9 +97,25 @@ stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
   - `S3_BUCKET` (必須)
   - `AWS_REGION` (推奨)
   - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (必要に応じて)
-  - `S3_ENDPOINT` (任意, MinIO 等)
+  - `S3_ENDPOINT` (任意, RustFS / MinIO 等)
   - `S3_FORCE_PATH_STYLE` (任意, `true`/`false`)
   - `S3_PUBLIC_BASE_URL` (任意)
+
+### バケットの初期化
+
+バケット作成はアプリの責務ではありません（通常リクエストで作成しません）。開発環境では次のタスクが冪等に用意します。
+
+```bash
+task server:storage-init
+```
+
+`STORAGE_BACKEND=local` なら `LOCAL_STORAGE_DIR` を、`s3` なら aws CLI で `S3_BUCKET` を作成します（既存ならそのまま成功）。`task setup` と `task dev` の先頭、および E2E / bootstrap の準備でも実行されます。本番バケットは対象外で、IAM やライフサイクルと合わせて別途プロビジョニングします。
+
+### 開発環境 (RustFS)
+
+Dev Container では S3 互換の RustFS が起動し、既定で `STORAGE_BACKEND=s3` + path-style を使います（エンドポイント `http://rustfs:9000`、バケット `publira`、資格情報はローカル専用の `publira` / `publirapass`）。値の一覧とコンソール URL は [../README.md](../README.md#開発用オブジェクトストレージ-rustfs) を参照してください。
+
+RustFS に対する Go の統合テストは `internal/testutil` の Testcontainers ヘルパー (`StartRustFS`) を使い、`internal/storage/s3` のアップロードと `internal/imageserver` の取得を検証します（`-short` や Docker 不在ではスキップ）。
 
 ## Platform Console URL
 

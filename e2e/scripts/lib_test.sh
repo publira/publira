@@ -27,6 +27,8 @@ stack_env() {
     -u COMPOSE_PROJECT_NAME \
     -u E2E_POSTGRES_PORT \
     -u E2E_REDIS_PORT \
+    -u E2E_RUSTFS_PORT \
+    -u S3_ENDPOINT \
     -u E2E_WEB_HOST_PORT \
     -u E2E_WEB_ADMIN_PORT \
     -u E2E_WEB_PLATFORM_PORT \
@@ -105,6 +107,24 @@ if [[ "${port_redis}" == "redis://127.0.0.1:6381" ]]; then
   pass "E2E_REDIS_PORT drives REDIS_URL"
 else
   fail "E2E_REDIS_PORT=6381 produced REDIS_URL=${port_redis}"
+fi
+
+compute_s3_endpoint() {
+  stack_env "$@" bash -c 'source "$1"; printf %s "$S3_ENDPOINT"' bash "${LIB}"
+}
+
+default_s3_endpoint="$(compute_s3_endpoint S3_ENDPOINT=http://rustfs:9000)"
+if [[ "${default_s3_endpoint}" == "http://127.0.0.1:9003" ]]; then
+  pass "ambient S3_ENDPOINT does not override E2E RustFS"
+else
+  fail "ambient S3_ENDPOINT leaked through as ${default_s3_endpoint}"
+fi
+
+port_s3_endpoint="$(compute_s3_endpoint E2E_RUSTFS_PORT=9004 S3_ENDPOINT=http://rustfs:9000)"
+if [[ "${port_s3_endpoint}" == "http://127.0.0.1:9004" ]]; then
+  pass "E2E_RUSTFS_PORT drives S3_ENDPOINT"
+else
+  fail "E2E_RUSTFS_PORT=9004 produced S3_ENDPOINT=${port_s3_endpoint}"
 fi
 
 # Two stacks, two sleep stand-ins. Dedicated temp RUN_DIRs so this never

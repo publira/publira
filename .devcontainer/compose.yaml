@@ -36,6 +36,7 @@ services:
       - db
       - mailpit
       - redis
+      - rustfs
     environment:
       # .claude.json (OAuth account, project trust) lives outside ~/.claude by
       # default; point it at the persisted volume so rebuilds don't force
@@ -43,6 +44,14 @@ services:
       CLAUDE_CONFIG_DIR: /home/vscode/.claude
       # Shared Next.js server cache (cacheHandler / cacheHandlers)
       REDIS_URL: redis://redis:6379
+      # S3 / RustFS local object storage
+      STORAGE_BACKEND: s3
+      S3_BUCKET: publira
+      S3_ENDPOINT: http://rustfs:9000
+      S3_FORCE_PATH_STYLE: "true"
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: publira
+      AWS_SECRET_ACCESS_KEY: publirapass
     labels:
       # web-host: テナント公開サイト (port 3000)
       - "traefik.enable=true"
@@ -119,6 +128,21 @@ services:
       timeout: 3s
       retries: 5
 
+  # S3-compatible local object storage (RustFS).
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.2@sha256:7d6d361c49c08d427250fb59aae5d78df83d644c3405d9ccf4b21cda0b0692d0
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: publira
+      RUSTFS_SECRET_KEY: publirapass
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   claude-data:
   codex-data:
@@ -127,3 +151,4 @@ volumes:
   grok-config:
   pnpm-store:
   postgres-data:
+  rustfs-data:

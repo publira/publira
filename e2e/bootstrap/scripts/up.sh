@@ -16,15 +16,18 @@ compose down -v --remove-orphans >/dev/null 2>&1 || true
 if docker volume inspect "${EXPECTED_POSTGRES_VOLUME}" >/dev/null 2>&1; then
   bootstrap_fail "volume ${EXPECTED_POSTGRES_VOLUME} still exists after teardown; remove it and retry"
 fi
+if docker volume inspect "${EXPECTED_RUSTFS_VOLUME}" >/dev/null 2>&1; then
+  bootstrap_fail "volume ${EXPECTED_RUSTFS_VOLUME} still exists after teardown; remove it and retry"
+fi
 
-for port in "${BOOTSTRAP_POSTGRES_PORT}" "${BOOTSTRAP_REDIS_PORT}"; do
+for port in "${BOOTSTRAP_POSTGRES_PORT}" "${BOOTSTRAP_REDIS_PORT}" "${BOOTSTRAP_RUSTFS_PORT}"; do
   if port_in_use "${port}"; then
-    bootstrap_fail "port ${port} is already in use; free it or override BOOTSTRAP_POSTGRES_PORT / BOOTSTRAP_REDIS_PORT"
+    bootstrap_fail "port ${port} is already in use; free it or override BOOTSTRAP_POSTGRES_PORT / BOOTSTRAP_REDIS_PORT / BOOTSTRAP_RUSTFS_PORT"
   fi
 done
 
-bootstrap_log "starting db + redis from .devcontainer/compose.yaml"
-compose up -d --wait db redis
+bootstrap_log "starting db + redis + rustfs from .devcontainer/compose.yaml"
+compose up -d --wait db redis rustfs
 
 container_id="$(db_container_id)"
 if [[ -z "${container_id}" ]]; then

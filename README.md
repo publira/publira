@@ -110,3 +110,27 @@ self-host / multi-instance 向けに、Next.js のサーバー側キャッシュ
 - ホストから直に触る場合の既定は `redis://localhost:6379`
 - キー空間は `NEXT_CACHE_APP`（例: `web-host`）でアプリ別に分離
 - 詳細: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
+
+## 開発用オブジェクトストレージ (RustFS)
+
+Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、アプリは本番と同じ `STORAGE_BACKEND=s3` の経路で動きます（エピソード画像のアップロードと image-server の配信）。
+
+- コンソール UI: `http://localhost:9001/rustfs/console/`
+- S3 エンドポイント（コンテナ内から）: `http://rustfs:9000`（path-style。ホストには公開しません）
+- バケット: `publira`。`task setup` / `task dev` が `task server:storage-init` で冪等に作成します
+- データは `rustfs-data` volume に永続します
+
+app コンテナに渡す既定値は `.devcontainer/compose.yaml` にあります。
+
+| 変数                                          | 既定値                    |
+| --------------------------------------------- | ------------------------- |
+| `STORAGE_BACKEND`                             | `s3`                      |
+| `S3_BUCKET`                                   | `publira`                 |
+| `S3_ENDPOINT`                                 | `http://rustfs:9000`      |
+| `S3_FORCE_PATH_STYLE`                         | `true`                    |
+| `AWS_REGION`                                  | `us-east-1`               |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `publira` / `publirapass` |
+
+このアクセスキーは **ローカル開発専用**です（RustFS コンテナにしか通用しません）。本番の S3 は IAM ロールや別途払い出した資格情報を使い、この値を持ち込まないでください。バケット作成には aws CLI を使うため、Dev Container では `aws-cli` feature を同梱しています。
+
+サーバー側の環境変数一覧は [server/README.md](server/README.md) を参照してください。
