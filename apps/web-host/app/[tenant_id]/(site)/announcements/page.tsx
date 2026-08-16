@@ -1,11 +1,11 @@
 import { SectionError } from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listMyAnnouncements } from "#lib/announcements";
+import { redirectToLogin } from "#lib/auth-session";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -123,9 +123,7 @@ const AnnouncementsSection = async ({
   ]);
   if (!result.ok && result.requiresSignIn) {
     // Come back to the page the reader was actually on, not just the first one.
-    redirect(
-      `/login?returnTo=${encodeURIComponent(announcementsListHref(token))}`
-    );
+    redirectToLogin(announcementsListHref(token));
   }
 
   const { nextToken, previousToken } = result;

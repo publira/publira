@@ -14,6 +14,12 @@ import {
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
+import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
+
+const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
 
 const buildSettingsPath = (status: "success" | "error", message: string) => {
   const params = new URLSearchParams({ message, status });
@@ -50,11 +56,19 @@ export const requestEmailChangeAction = async (
   }
 
   const { currentEmail, currentPassword, newEmail, tenantId } = parsed.data;
-  const requested = await requestPublicEmailChange(
-    tenantId,
-    currentEmail,
-    newEmail,
-    currentPassword
+  const accessToken = await requirePublicSession(SECURITY_SETTINGS_RETURN_TO);
+  // A wrong `currentPassword` is `invalid_argument` with a field violation, not
+  // `unauthenticated`, so it stays a form error instead of ending the session.
+  const requested = await withPublicSessionReauth(
+    SECURITY_SETTINGS_RETURN_TO,
+    () =>
+      requestPublicEmailChange(
+        tenantId,
+        currentEmail,
+        newEmail,
+        currentPassword,
+        accessToken
+      )
   );
   if (!requested) {
     redirect(

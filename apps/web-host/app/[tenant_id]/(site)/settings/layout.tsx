@@ -73,6 +73,9 @@ const SettingsLayout = ({
     | undefined
   >;
 }) => (
+  // No session check here: `/settings` is a member path the proxy already
+  // gates, and awaiting one in a layout body would keep the segment out of its
+  // static shell. Each section re-authenticates its own read instead.
   <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-10">
     <header className="space-y-4 border-b border-border/50 pb-6">
       <div className="space-y-2">

@@ -1,6 +1,7 @@
 import {
   isExpectedNullableRpcError,
   isRejectedRequestRpcError,
+  isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 
@@ -208,6 +209,9 @@ export const getPublicCurrentUser = async (
       publicId: user.publicId,
     };
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     if (isExpectedNullableRpcError(error)) {
       return null;
     }
@@ -240,6 +244,9 @@ export const requestPublicEmailChange = async (
 
     return Boolean(response.requested);
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -276,6 +283,9 @@ export const getMe = async (
         role: response.user.role,
       };
     } catch (error) {
+      if (isUnauthenticatedRpcError(error)) {
+        throw error;
+      }
       if (!isExpectedNullableRpcError(error)) {
         throw error;
       }
@@ -317,6 +327,9 @@ export const updateMe = async (
       role: response.user.role,
     };
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     if (isRejectedRequestRpcError(error)) {
       return null;
     }
@@ -345,6 +358,9 @@ export const deleteMe = async (
 
     return true;
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -371,6 +387,9 @@ export const getNotificationSettings = async (
       emailNotificationsEnabled: response.emailNotificationsEnabled,
     };
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     if (isExpectedNullableRpcError(error)) {
       return null;
     }
@@ -401,6 +420,9 @@ export const updateNotificationSettings = async (
       emailNotificationsEnabled: response.emailNotificationsEnabled,
     };
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
     if (isRejectedRequestRpcError(error)) {
       return null;
     }

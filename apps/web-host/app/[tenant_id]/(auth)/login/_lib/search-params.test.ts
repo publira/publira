@@ -14,6 +14,7 @@ describe("parseLoginSearchParams", () => {
       errorMessage: "失敗しました",
       resetDone: true,
       returnToPath: "/my",
+      sessionRevoked: false,
     });
   });
 
@@ -21,6 +22,7 @@ describe("parseLoginSearchParams", () => {
     expect(
       parseLoginSearchParams({
         error: ["a", "b"],
+        reason: "nope",
         reset: "nope",
         returnTo: "https://evil.example",
       })
@@ -28,6 +30,7 @@ describe("parseLoginSearchParams", () => {
       errorMessage: undefined,
       resetDone: false,
       returnToPath: "/",
+      sessionRevoked: false,
     });
   });
 
@@ -36,6 +39,18 @@ describe("parseLoginSearchParams", () => {
       errorMessage: undefined,
       resetDone: false,
       returnToPath: "/",
+      sessionRevoked: false,
+    });
+  });
+
+  it("失効由来の /login だけ再ログイン案内を立てる", () => {
+    expect(
+      parseLoginSearchParams({ reason: "session_revoked", returnTo: "/my" })
+    ).toEqual({
+      errorMessage: undefined,
+      resetDone: false,
+      returnToPath: "/my",
+      sessionRevoked: true,
     });
   });
 });

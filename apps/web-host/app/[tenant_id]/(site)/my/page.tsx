@@ -3,7 +3,13 @@ import { Suspense } from "react";
 
 import type { MeInfo } from "#lib/auth";
 import { getMe, getNotificationSettings } from "#lib/auth";
+import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
 import { getTenantId } from "#lib/tenant-id";
+
+const MY_RETURN_TO = "/my";
 
 const EmptyState = ({
   description,
@@ -51,7 +57,9 @@ const ProfileSectionFallback = () => (
 
 const SubscriptionSection = async () => {
   const tenantId = await getTenantId();
-  const notificationSettings = await getNotificationSettings(tenantId);
+  const notificationSettings = await withPublicSessionReauth(MY_RETURN_TO, () =>
+    getNotificationSettings(tenantId)
+  );
   let notificationStatusText = "購読中";
   if (notificationSettings === null) {
     notificationStatusText = "確認できません";
@@ -84,8 +92,9 @@ const SubscriptionSectionFallback = () => (
 );
 
 const MyContent = async () => {
+  await requirePublicSession(MY_RETURN_TO);
   const tenantId = await getTenantId();
-  const me = await getMe(tenantId);
+  const me = await withPublicSessionReauth(MY_RETURN_TO, () => getMe(tenantId));
 
   return (
     <>

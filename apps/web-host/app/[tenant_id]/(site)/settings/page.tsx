@@ -1,14 +1,13 @@
 import { toFormErrorMessage } from "@publira/utils/field-errors";
-import { updateTag } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { deleteMe, getMe } from "#lib/auth";
 import {
-  getPublicSessionCacheTag,
-  PUBLIC_SESSION_COOKIE_NAME,
-} from "#lib/auth-shared";
+  clearPublicSessionCookie,
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
 import { getTenantId } from "#lib/tenant-id";
 
 import { updateProfileAction } from "./_lib/actions";
@@ -17,6 +16,8 @@ import {
   parseDeleteAccountForm,
 } from "./_lib/settings-form";
 import { DeleteAccountModal } from "./delete-account-modal";
+
+const SETTINGS_RETURN_TO = "/settings";
 
 const deleteAccountAction = async (formData: FormData): Promise<void> => {
   "use server";
@@ -27,7 +28,12 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   }
 
   const { password, tenantId } = parsed.data;
-  const deleted = await deleteMe(tenantId, password);
+  const accessToken = await requirePublicSession(SETTINGS_RETURN_TO);
+  // A wrong `password` is `invalid_argument` with a field violation, not
+  // `unauthenticated`, so it stays a form error instead of ending the session.
+  const deleted = await withPublicSessionReauth(SETTINGS_RETURN_TO, () =>
+    deleteMe(tenantId, password, accessToken)
+  );
   if (!deleted) {
     redirect(
       buildSettingsPath(
@@ -37,9 +43,7 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
     );
   }
 
-  const cookieStore = await cookies();
-  cookieStore.delete(PUBLIC_SESSION_COOKIE_NAME);
-  updateTag(getPublicSessionCacheTag(PUBLIC_SESSION_COOKIE_NAME));
+  await clearPublicSessionCookie();
   redirect(
     "/login?message=アカウントを削除しました。ご利用ありがとうございました。&status=success"
   );
@@ -47,7 +51,9 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
 
 const ProfileSection = async () => {
   const tenantId = await getTenantId();
-  const me = await getMe(tenantId);
+  const me = await withPublicSessionReauth(SETTINGS_RETURN_TO, () =>
+    getMe(tenantId)
+  );
   const displayName = me?.name?.trim() ?? "";
 
   return (

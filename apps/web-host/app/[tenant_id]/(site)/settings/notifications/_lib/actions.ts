@@ -7,6 +7,12 @@ import { z } from "zod";
 
 import { updateNotificationSettings } from "#lib/auth";
 import { tenantIdFormSchema } from "#lib/auth-input";
+import {
+  requirePublicSession,
+  withPublicSessionReauth,
+} from "#lib/auth-session";
+
+const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
 
 const buildSettingsPath = (status: "success" | "error", message: string) => {
   const params = new URLSearchParams({ message, status });
@@ -35,9 +41,17 @@ export const updateNotificationSettingsAction = async (
   }
 
   const { emailNotificationsEnabled, tenantId } = parsed.data;
-  const updated = await updateNotificationSettings(
-    tenantId,
-    emailNotificationsEnabled
+  const accessToken = await requirePublicSession(
+    NOTIFICATION_SETTINGS_RETURN_TO
+  );
+  const updated = await withPublicSessionReauth(
+    NOTIFICATION_SETTINGS_RETURN_TO,
+    () =>
+      updateNotificationSettings(
+        tenantId,
+        emailNotificationsEnabled,
+        accessToken
+      )
   );
   if (!updated) {
     redirect(
