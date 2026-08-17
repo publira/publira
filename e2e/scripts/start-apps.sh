@@ -52,8 +52,8 @@ start_web_app() {
       env \
         PORT="${app_port}" \
         HOSTNAME="${bind_host}" \
-        REDIS_URL="${REDIS_URL}" \
-        NEXT_CACHE_APP="${cache_app}" \
+        PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
+        PUBLIRA_CACHE_APP="${cache_app}" \
         "${grpc_url_env_name}=${grpc_url_value}" \
         pnpm exec next dev --port "${app_port}" --hostname "${bind_host}"
     ) >"${LOG_DIR}/${app_name}.log" 2>&1 &
@@ -63,8 +63,8 @@ start_web_app() {
       env \
         PORT="${app_port}" \
         HOSTNAME="${bind_host}" \
-        REDIS_URL="${REDIS_URL}" \
-        NEXT_CACHE_APP="${cache_app}" \
+        PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
+        PUBLIRA_CACHE_APP="${cache_app}" \
         "${grpc_url_env_name}=${grpc_url_value}" \
         node server.js
     ) >"${LOG_DIR}/${app_name}.log" 2>&1 &

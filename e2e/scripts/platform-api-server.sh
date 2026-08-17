@@ -35,8 +35,8 @@ start_platform_api_server() {
     cd "${REPO_ROOT}/server"
     exec env \
       PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
-      PLATFORM_API_ADDR=":${E2E_PLATFORM_API_PORT}" \
-      PLATFORM_API_GRPC_ADDR=":${E2E_PLATFORM_API_GRPC_PORT}" \
+      PUBLIRA_PLATFORM_API_ADDR=":${E2E_PLATFORM_API_PORT}" \
+      PUBLIRA_PLATFORM_API_GRPC_ADDR=":${E2E_PLATFORM_API_GRPC_PORT}" \
       "${api_bin}"
   ) >>"${LOG_DIR}/platform-api-server.log" 2>&1 &
   write_pid "platform-api-server" $!

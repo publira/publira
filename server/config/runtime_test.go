@@ -49,7 +49,7 @@ func TestNew_CustomDBURL(t *testing.T) {
 	}
 }
 func TestNew_DefaultLocalStorage(t *testing.T) {
-	setenv(t, "STORAGE_BACKEND", "")
+	setenv(t, "PUBLIRA_STORAGE_BACKEND", "")
 	cfg, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -63,10 +63,10 @@ func TestNew_DefaultLocalStorage(t *testing.T) {
 }
 
 func TestNew_S3Storage(t *testing.T) {
-	setenv(t, "STORAGE_BACKEND", "s3")
-	setenv(t, "S3_BUCKET", "my-bucket")
+	setenv(t, "PUBLIRA_STORAGE_BACKEND", "s3")
+	setenv(t, "PUBLIRA_S3_BUCKET", "my-bucket")
 	setenv(t, "AWS_REGION", "ap-northeast-1")
-	setenv(t, "S3_FORCE_PATH_STYLE", "true")
+	setenv(t, "PUBLIRA_S3_FORCE_PATH_STYLE", "true")
 	cfg, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -86,9 +86,9 @@ func TestNew_S3Storage(t *testing.T) {
 }
 
 func TestNew_InvalidForcePathStyle(t *testing.T) {
-	setenv(t, "STORAGE_BACKEND", "s3")
-	setenv(t, "S3_BUCKET", "bucket")
-	setenv(t, "S3_FORCE_PATH_STYLE", "not-bool")
+	setenv(t, "PUBLIRA_STORAGE_BACKEND", "s3")
+	setenv(t, "PUBLIRA_S3_BUCKET", "bucket")
+	setenv(t, "PUBLIRA_S3_FORCE_PATH_STYLE", "not-bool")
 	_, err := New()
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -96,38 +96,38 @@ func TestNew_InvalidForcePathStyle(t *testing.T) {
 }
 
 func TestNew_MissingEncryptionKeys(t *testing.T) {
-	setenv(t, "SECRET_ENCRYPTION_KEYS", "")
-	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_KEYS", "")
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
 
 	_, err := New()
-	if err == nil || !strings.Contains(err.Error(), "SECRET_ENCRYPTION_KEYS") {
-		t.Fatalf("err = %v, want SECRET_ENCRYPTION_KEYS error", err)
+	if err == nil || !strings.Contains(err.Error(), "PUBLIRA_SECRET_ENCRYPTION_KEYS") {
+		t.Fatalf("err = %v, want PUBLIRA_SECRET_ENCRYPTION_KEYS error", err)
 	}
 }
 
 func TestNew_MissingPrimaryEncryptionKeyID(t *testing.T) {
-	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
-	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "")
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "")
 
 	_, err := New()
-	if err == nil || !strings.Contains(err.Error(), "SECRET_ENCRYPTION_PRIMARY_KEY_ID") {
-		t.Fatalf("err = %v, want SECRET_ENCRYPTION_PRIMARY_KEY_ID error", err)
+	if err == nil || !strings.Contains(err.Error(), "PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID") {
+		t.Fatalf("err = %v, want PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID error", err)
 	}
 }
 
 func TestNew_InvalidPrimaryEncryptionKeyID(t *testing.T) {
-	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
-	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k2")
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_KEYS", "k1:"+testEncryptionKey)
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k2")
 
 	_, err := New()
-	if err == nil || !strings.Contains(err.Error(), "SECRET_ENCRYPTION_PRIMARY_KEY_ID") {
-		t.Fatalf("err = %v, want SECRET_ENCRYPTION_PRIMARY_KEY_ID error", err)
+	if err == nil || !strings.Contains(err.Error(), "PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID") {
+		t.Fatalf("err = %v, want PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID error", err)
 	}
 }
 
 func TestNew_InvalidEncryptionKeyLength(t *testing.T) {
-	setenv(t, "SECRET_ENCRYPTION_KEYS", "k1:Zm9v")
-	setenv(t, "SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_KEYS", "k1:Zm9v")
+	setenv(t, "PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID", "k1")
 
 	_, err := New()
 	if err == nil || !strings.Contains(err.Error(), "invalid key length") {

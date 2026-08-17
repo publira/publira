@@ -51,10 +51,10 @@ func main() {
 	interval := resolveInterval()
 	maxRetries := resolveMaxRetries()
 
-	revalidateToken := strings.TrimSpace(os.Getenv("NEXT_REVALIDATE_TOKEN"))
+	revalidateToken := strings.TrimSpace(os.Getenv("PUBLIRA_REVALIDATE_TOKEN"))
 	reval := revalidate.NewClient(revalidateToken, logger)
 	if reval == nil {
-		logger.Info("next revalidate is disabled", "reason", "NEXT_REVALIDATE_TOKEN is empty")
+		logger.Info("next revalidate is disabled", "reason", "PUBLIRA_REVALIDATE_TOKEN is empty")
 	}
 
 	runner := publishepisodes.New(db, dbmodels.New(db), reval, logger, maxRetries)
@@ -94,7 +94,7 @@ func openDB(url string) (*sql.DB, error) {
 }
 
 func resolveInterval() time.Duration {
-	raw := strings.TrimSpace(os.Getenv("PUBLISH_INTERVAL_SECONDS"))
+	raw := strings.TrimSpace(os.Getenv("PUBLIRA_PUBLISH_INTERVAL_SECONDS"))
 	if raw == "" {
 		return defaultIntervalSeconds * time.Second
 	}
@@ -106,7 +106,7 @@ func resolveInterval() time.Duration {
 }
 
 func resolveMaxRetries() int {
-	raw := strings.TrimSpace(os.Getenv("PUBLISH_MAX_RETRIES"))
+	raw := strings.TrimSpace(os.Getenv("PUBLIRA_PUBLISH_MAX_RETRIES"))
 	if raw == "" {
 		return defaultMaxRetries
 	}

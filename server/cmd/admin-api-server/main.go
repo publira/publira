@@ -59,12 +59,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr := strings.TrimSpace(os.Getenv("ADMIN_API_ADDR"))
+	addr := strings.TrimSpace(os.Getenv("PUBLIRA_ADMIN_API_ADDR"))
 	if addr == "" {
 		addr = defaultAdminServerURL
 	}
 
-	grpcAddr := strings.TrimSpace(os.Getenv("ADMIN_API_GRPC_ADDR"))
+	grpcAddr := strings.TrimSpace(os.Getenv("PUBLIRA_ADMIN_API_GRPC_ADDR"))
 	if grpcAddr == "" {
 		grpcAddr = defaultAdminGrpcServerURL
 	}
@@ -135,7 +135,7 @@ func newStorageProvider(ctx context.Context, cfg config.Storage) (storage.Provid
 		return localstorage.New(cfg.LocalDir, cfg.LocalBaseURL)
 	case "s3":
 		if cfg.S3Bucket == "" {
-			return nil, errors.New("S3_BUCKET is required when STORAGE_BACKEND=s3")
+			return nil, errors.New("PUBLIRA_S3_BUCKET is required when PUBLIRA_STORAGE_BACKEND=s3")
 		}
 		return s3storage.New(ctx, s3storage.Config{
 			Bucket:         cfg.S3Bucket,
@@ -145,6 +145,6 @@ func newStorageProvider(ctx context.Context, cfg config.Storage) (storage.Provid
 			ForcePathStyle: cfg.S3ForcePathStyle,
 		})
 	default:
-		return nil, fmt.Errorf("unsupported STORAGE_BACKEND: %s", cfg.Backend)
+		return nil, fmt.Errorf("unsupported PUBLIRA_STORAGE_BACKEND: %s", cfg.Backend)
 	}
 }

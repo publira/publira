@@ -15,8 +15,8 @@
   },
   "scripts": {
     "build": "next build",
-    "dev": "NEXT_CACHE_APP=web-admin next dev --port 4000",
-    "start": "NEXT_CACHE_APP=web-admin next start",
+    "dev": "PUBLIRA_CACHE_APP=web-admin next dev --port 4000",
+    "start": "PUBLIRA_CACHE_APP=web-admin next start",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit",
     "typegen": "next typegen"

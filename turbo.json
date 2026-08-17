@@ -23,11 +23,14 @@
       "dependsOn": ["^build"],
       "cache": false,
       // Turbo defaults to strict env mode, which hides every variable the task
-      // did not declare. Without these the dev servers never see the Dev
-      // Container's REDIS_URL and silently fall back to redis://localhost:6379
-      // (and to the default API origins), so the shared cache handler talks to
-      // the wrong Redis — or to none at all.
-      "passThroughEnv": ["PUBLIRA_*", "REDIS_URL"],
+      // did not declare. Without this the dev servers never see the Dev
+      // Container's PUBLIRA_REDIS_URL and silently fall back to
+      // redis://localhost:6379 (and to the default API origins), so the shared
+      // cache handler talks to the wrong Redis — or to none at all. Every
+      // variable this repository's own code reads is PUBLIRA_*-prefixed (see
+      // the env var naming section of AGENTS.md), so the one pattern covers
+      // them all and a new variable needs no entry here.
+      "passThroughEnv": ["PUBLIRA_*"],
       "persistent": true
     },
     "generate:api": {

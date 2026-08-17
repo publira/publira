@@ -30,16 +30,16 @@ const isRedisDisabled = (value: string): boolean =>
 /**
  * Resolve runtime config from environment variables.
  *
- * - `REDIS_URL` — Redis connection string (default `redis://localhost:6379`).
+ * - `PUBLIRA_REDIS_URL` — Redis connection string (default `redis://localhost:6379`).
  *   Set to empty / `disabled` / `off` / `false` to skip Redis (cache always misses).
- * - `NEXT_CACHE_KEY_PREFIX` — full key prefix override
- * - `NEXT_CACHE_APP` — app segment in the default prefix (`publira:{app}:`)
- * - `REDIS_CACHE_TIMEOUT_MS` — command timeout (default 1000)
+ * - `PUBLIRA_CACHE_KEY_PREFIX` — full key prefix override
+ * - `PUBLIRA_CACHE_APP` — app segment in the default prefix (`publira:{app}:`)
+ * - `PUBLIRA_REDIS_CACHE_TIMEOUT_MS` — command timeout (default 1000)
  */
 export const resolveCacheHandlerConfig = (
   overrides: Partial<CacheHandlerConfig> = {}
 ): CacheHandlerConfig => {
-  const rawUrl = process.env.REDIS_URL;
+  const rawUrl = process.env.PUBLIRA_REDIS_URL;
   let redisUrl = DEFAULT_REDIS_URL;
   if (rawUrl !== undefined) {
     const trimmed = rawUrl.trim();
@@ -51,13 +51,13 @@ export const resolveCacheHandlerConfig = (
     redisUrl = "";
   }
 
-  const explicitPrefix = process.env.NEXT_CACHE_KEY_PREFIX?.trim();
-  const app = process.env.NEXT_CACHE_APP?.trim() || "next";
+  const explicitPrefix = process.env.PUBLIRA_CACHE_KEY_PREFIX?.trim();
+  const app = process.env.PUBLIRA_CACHE_APP?.trim() || "next";
   const keyPrefix = explicitPrefix
     ? `${trimTrailingColon(explicitPrefix)}:`
     : `publira:${app}:`;
 
-  const timeoutRaw = process.env.REDIS_CACHE_TIMEOUT_MS?.trim();
+  const timeoutRaw = process.env.PUBLIRA_REDIS_CACHE_TIMEOUT_MS?.trim();
   const timeoutParsed = timeoutRaw ? Number(timeoutRaw) : Number.NaN;
   const timeoutMs =
     Number.isFinite(timeoutParsed) && timeoutParsed > 0

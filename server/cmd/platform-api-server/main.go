@@ -51,12 +51,12 @@ func main() {
 		}
 	}
 
-	addr := strings.TrimSpace(os.Getenv("PLATFORM_API_ADDR"))
+	addr := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_API_ADDR"))
 	if addr == "" {
 		addr = defaultPlatformServerURL
 	}
 
-	grpcAddr := strings.TrimSpace(os.Getenv("PLATFORM_API_GRPC_ADDR"))
+	grpcAddr := strings.TrimSpace(os.Getenv("PUBLIRA_PLATFORM_API_GRPC_ADDR"))
 	if grpcAddr == "" {
 		grpcAddr = defaultPlatformGrpcServerURL
 	}
@@ -122,7 +122,7 @@ func resolvePlatformDBURL() string {
 }
 
 func resolveEmailRendererURL() string {
-	if url := strings.TrimSpace(os.Getenv("EMAIL_RENDERER_URL")); url != "" {
+	if url := strings.TrimSpace(os.Getenv("PUBLIRA_EMAIL_RENDERER_URL")); url != "" {
 		return url
 	}
 	return emailrenderer.DefaultURL

@@ -85,7 +85,7 @@ All apps wire shared Redis cache via `@publira/next-cache-handlers` in `next.con
 - **`cacheHandler` (singular)**: ISR / Route Handler / `fetch` / `unstable_cache` / optimized images
 - **`cacheHandlers` (plural)**: `"use cache"` / `"use cache: remote"`
 
-Keep **both** enabled. Details and env (`REDIS_URL`, `NEXT_CACHE_APP`): root [AGENTS.md](../AGENTS.md) and `packages/next-cache-handlers/README.md`.
+Keep **both** enabled. Details and env (`PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`): root [AGENTS.md](../AGENTS.md) and `packages/next-cache-handlers/README.md`.
 
 ## RPC errors: classify by `Code`, never by message text
 

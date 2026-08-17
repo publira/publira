@@ -15,7 +15,7 @@ const textDecoder = new TextDecoder();
 const toAesGcmKeyBytes = (secret: string): Uint8Array => {
   const raw = textEncoder.encode(secret);
   if (raw.length < 32) {
-    throw new Error("AUTH_SECRET must be at least 32 bytes");
+    throw new Error("PUBLIRA_AUTH_SECRET must be at least 32 bytes");
   }
   // A256GCM requires exactly 32 bytes
   return raw.slice(0, 32);
@@ -62,7 +62,7 @@ export const isSessionExpired = (
 };
 
 export const resolveAuthSecret = (): string => {
-  const secret = process.env.AUTH_SECRET?.trim() ?? "";
+  const secret = process.env.PUBLIRA_AUTH_SECRET?.trim() ?? "";
   if (secret.length >= 32) {
     return secret;
   }

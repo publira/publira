@@ -88,18 +88,18 @@ stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
 
 ## 画像ストレージ設定
 
-`UploadEpisodeImages` は `STORAGE_BACKEND` で保存先を切り替えます。
+`UploadEpisodeImages` は `PUBLIRA_STORAGE_BACKEND` で保存先を切り替えます。
 
-- `STORAGE_BACKEND=local` (デフォルト)
-  - `LOCAL_STORAGE_DIR` (省略時: `/tmp/publira-storage`)
-  - `LOCAL_STORAGE_BASE_URL` (任意)
-- `STORAGE_BACKEND=s3`
-  - `S3_BUCKET` (必須)
+- `PUBLIRA_STORAGE_BACKEND=local` (デフォルト)
+  - `PUBLIRA_LOCAL_STORAGE_DIR` (省略時: `/tmp/publira-storage`)
+  - `PUBLIRA_LOCAL_STORAGE_BASE_URL` (任意)
+- `PUBLIRA_STORAGE_BACKEND=s3`
+  - `PUBLIRA_S3_BUCKET` (必須)
   - `AWS_REGION` (推奨)
   - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (必要に応じて)
-  - `S3_ENDPOINT` (任意, RustFS / MinIO 等)
-  - `S3_FORCE_PATH_STYLE` (任意, `true`/`false`)
-  - `S3_PUBLIC_BASE_URL` (任意)
+  - `PUBLIRA_S3_ENDPOINT` (任意, RustFS / MinIO 等)
+  - `PUBLIRA_S3_FORCE_PATH_STYLE` (任意, `true`/`false`)
+  - `PUBLIRA_S3_PUBLIC_BASE_URL` (任意)
 
 ### バケットの初期化
 
@@ -109,11 +109,11 @@ stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
 task server:storage-init
 ```
 
-`STORAGE_BACKEND=local` なら `LOCAL_STORAGE_DIR` を、`s3` なら aws CLI で `S3_BUCKET` を作成します（既存ならそのまま成功）。`task setup` と `task dev` の先頭、および E2E / bootstrap の準備でも実行されます。本番バケットは対象外で、IAM やライフサイクルと合わせて別途プロビジョニングします。
+`PUBLIRA_STORAGE_BACKEND=local` なら `PUBLIRA_LOCAL_STORAGE_DIR` を、`s3` なら aws CLI で `PUBLIRA_S3_BUCKET` を作成します（既存ならそのまま成功）。`task setup` と `task dev` の先頭、および E2E / bootstrap の準備でも実行されます。本番バケットは対象外で、IAM やライフサイクルと合わせて別途プロビジョニングします。
 
 ### 開発環境 (RustFS)
 
-Dev Container では S3 互換の RustFS が起動し、既定で `STORAGE_BACKEND=s3` + path-style を使います（エンドポイント `http://rustfs:9000`、バケット `publira`、資格情報はローカル専用の `publira` / `publirapass`）。値の一覧とコンソール URL は [../README.md](../README.md#開発用オブジェクトストレージ-rustfs) を参照してください。
+Dev Container では S3 互換の RustFS が起動し、既定で `PUBLIRA_STORAGE_BACKEND=s3` + path-style を使います（エンドポイント `http://rustfs:9000`、バケット `publira`、資格情報はローカル専用の `publira` / `publirapass`）。値の一覧とコンソール URL は [../README.md](../README.md#開発用オブジェクトストレージ-rustfs) を参照してください。
 
 RustFS に対する Go の統合テストは `internal/testutil` の Testcontainers ヘルパー (`StartRustFS`) を使い、`internal/storage/s3` のアップロードと `internal/imageserver` の取得を検証します（`-short` や Docker 不在ではスキップ）。
 
@@ -126,7 +126,7 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 ## Email renderer
 
-- `EMAIL_RENDERER_URL`
+- `PUBLIRA_EMAIL_RENDERER_URL`
   - platform API がテナント管理者招待メールを HTML / プレーンテキストへ描画する ConnectRPC サービスの URL
   - 例: `http://email-renderer:8080`（コンテナ間通信）
   - 未設定時はローカル開発向けに `http://localhost:8080` を使用する
@@ -135,17 +135,17 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 機密情報を保存時に AES-GCM で暗号化するための基盤を用意しています。現時点では機密項目の保存経路に適用したときに、以下の環境変数を設定してください。
 
-- `SECRET_ENCRYPTION_KEYS`
+- `PUBLIRA_SECRET_ENCRYPTION_KEYS`
   - 形式: `key-id-1:base64key,key-id-2:base64key`
   - `base64key` は 16/24/32 byte の AES 鍵を Base64 (標準 or URL-safe) でエンコードした値
-- `SECRET_ENCRYPTION_PRIMARY_KEY_ID`
-  - `SECRET_ENCRYPTION_KEYS` に含まれる key-id を指定
+- `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`
+  - `PUBLIRA_SECRET_ENCRYPTION_KEYS` に含まれる key-id を指定
   - 新規暗号化時はこの key-id を使用
 
 鍵ローテーション方針:
 
-1. 新鍵を `SECRET_ENCRYPTION_KEYS` に追加する
-2. `SECRET_ENCRYPTION_PRIMARY_KEY_ID` を新鍵 ID に切り替える
+1. 新鍵を `PUBLIRA_SECRET_ENCRYPTION_KEYS` に追加する
+2. `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` を新鍵 ID に切り替える
 3. 既存データを再保存/再暗号化して旧鍵暗号文を徐々に置換する
 4. 旧鍵で復号されるデータがなくなったことを確認してから旧鍵を削除する
 
@@ -161,11 +161,11 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 
 | 項目 | 値 |
 | --- | --- |
-| 環境変数 | `AUTH_JWT_SECRET`（32 文字以上。未設定時は開発用フォールバック） |
+| 環境変数 | `PUBLIRA_AUTH_JWT_SECRET`（32 文字以上。未設定時は開発用フォールバック） |
 | TTL | 24h |
 | Audience | `public` / `admin` / `platform` |
 | 失効 | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |
-| Next Cookie | `AUTH_SECRET`（JWE 用、API の JWT secret とは別） / Cookie 名: `publira_web_host_auth` 等 |
+| Next Cookie | `PUBLIRA_AUTH_SECRET`（JWE 用、API の JWT secret とは別） / Cookie 名: `publira_web_host_auth` 等 |
 
 ## API サーバ分離
 
@@ -174,8 +174,8 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
   - 既定ポート: `:8000`
 - 管理 API サーバー: `server/cmd/admin-api-server`
   - 管理サービス: `AdminSeriesService`, `AdminAuthService`
-  - 既定ポート: `:8001` (`ADMIN_API_ADDR` で変更可能)
-  - 公開状態変更時の Next.js 再検証: `NEXT_REVALIDATE_TOKEN` を設定
+  - 既定ポート: `:8001` (`PUBLIRA_ADMIN_API_ADDR` で変更可能)
+  - 公開状態変更時の Next.js 再検証: `PUBLIRA_REVALIDATE_TOKEN` を設定
   - 送信先は内部 Traefik 経由（`Host` は tenant domain を使用）
 
 これにより、公開系と管理系を別プロセス・別経路で運用できます。
@@ -217,7 +217,7 @@ ALTER ROLE publira_public   PASSWORD '<secure_password>';
   - `GET /livez` — プロセス生存確認（liveness）。常に `200` + plain `ok`。K8s livenessProbe 向け。
   - `GET /readyz` — 依存の readiness。正常時 `200`、異常時 `503`。K8s readinessProbe / ロードバランサ向け。
   - API / image-server: 最低限 DB `Ping`
-  - Web (`web-admin` / `web-host` / `web-platform`): 上流 API `/readyz` + Redis（`REDIS_URL` 無効時は Redis チェックをスキップ）
+  - Web (`web-admin` / `web-host` / `web-platform`): 上流 API `/readyz` + Redis（`PUBLIRA_REDIS_URL` 無効時は Redis チェックをスキップ）
   - `/readyz` 応答例（JSON）:
     - 正常: `{"status":"ok","checks":{"db":{"status":"ok"}}}`
     - 依存障害: `{"status":"unavailable","checks":{"db":{"status":"error","error":"..."}}}`（HTTP 503）

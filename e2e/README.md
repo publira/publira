@@ -38,7 +38,7 @@ Dev Container Traefik のホストベースルーティングは、同じく Pla
 | E2E RustFS / S3（compose 公開）                        | `9003` |
 
 PID / ログ / ローカル storage は既定で `e2e/.run/` に置く。  
-`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。同じポートでの並行起動はポート競合で失敗する想定。`REDIS_URL` は常に `E2E_REDIS_PORT` から組み立てる（devcontainer の `redis://redis:6379` を引き継がない）。`S3_ENDPOINT` も同様に常に `E2E_RUSTFS_PORT` から組み立てる（devcontainer の `http://rustfs:9000` を引き継ぐと、E2E のアップロードが開発用スタックの RustFS に入ってしまう）。
+`E2E_*_PORT` や `COMPOSE_PROJECT_NAME` を既定から変えた場合、`lib.sh` はポート番号と project 名を組み合わせたサブディレクトリ（例: `e2e/.run/publira-e2e-pg5434-…/`）に state を分ける。明示的な `E2E_RUN_DIR` があればそちらを優先する。同じ compose project は `up` が残す lock-holder が lease を保持し、別の `E2E_RUN_DIR` からの `down` / `start-apps` は stack が残っている間拒否する。分解コマンドで同じ `E2E_RUN_DIR` を続ける leftover stack は `start` / `test` / `down` できる。同じポートでの並行起動はポート競合で失敗する想定。`PUBLIRA_REDIS_URL` は常に `E2E_REDIS_PORT` から組み立てる（devcontainer の `redis://redis:6379` を引き継がない）。`PUBLIRA_S3_ENDPOINT` も同様に常に `E2E_RUSTFS_PORT` から組み立てる（devcontainer の `http://rustfs:9000` を引き継ぐと、E2E のアップロードが開発用スタックの RustFS に入ってしまう）。
 
 ## 1 コマンド実行
 
@@ -128,7 +128,7 @@ e2e/
     └── smoke.web-host-home.spec.ts
 ```
 
-- **依存 (Compose):** Postgres 18・Valkey（Redis 互換）・RustFS（S3 互換。`STORAGE_BACKEND=s3` / path-style / バケット `publira`）
+- **依存 (Compose):** Postgres 18・Valkey（Redis 互換）・RustFS（S3 互換。`PUBLIRA_STORAGE_BACKEND=s3` / path-style / バケット `publira`）
 - **アプリ (ホストプロセス):**
   - `server/bin/api-server` + `server/bin/admin-api-server` + `server/bin/platform-api-server` + `server/bin/publish-episodes`
   - `apps/web-host` / `apps/web-admin` / `apps/web-platform`（standalone の `node server.js`）

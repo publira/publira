@@ -104,7 +104,7 @@ tasks:
         docker run -d \
           --name "{{.CONTAINER_NAME}}" \
           -p "127.0.0.1::{{.PORT}}" \
-          -e REDIS_URL=disabled \
+          -e PUBLIRA_REDIS_URL=disabled \
           "publira/{{.APP_NAME}}:local"
         cleanup() { docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true; }
         trap cleanup EXIT

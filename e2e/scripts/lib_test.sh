@@ -23,12 +23,12 @@ pass() {
 stack_env() {
   env \
     -u E2E_RUN_DIR \
-    -u LOCAL_STORAGE_DIR \
+    -u PUBLIRA_LOCAL_STORAGE_DIR \
     -u COMPOSE_PROJECT_NAME \
     -u E2E_POSTGRES_PORT \
     -u E2E_REDIS_PORT \
     -u E2E_RUSTFS_PORT \
-    -u S3_ENDPOINT \
+    -u PUBLIRA_S3_ENDPOINT \
     -u E2E_WEB_HOST_PORT \
     -u E2E_WEB_ADMIN_PORT \
     -u E2E_WEB_PLATFORM_PORT \
@@ -92,39 +92,39 @@ else
 fi
 
 compute_redis_url() {
-  stack_env "$@" bash -c 'source "$1"; printf %s "$REDIS_URL"' bash "${LIB}"
+  stack_env "$@" bash -c 'source "$1"; printf %s "$PUBLIRA_REDIS_URL"' bash "${LIB}"
 }
 
-default_redis="$(compute_redis_url REDIS_URL=redis://redis:6379)"
+default_redis="$(compute_redis_url PUBLIRA_REDIS_URL=redis://redis:6379)"
 if [[ "${default_redis}" == "redis://127.0.0.1:6380" ]]; then
-  pass "ambient REDIS_URL does not override E2E Redis"
+  pass "ambient PUBLIRA_REDIS_URL does not override E2E Redis"
 else
-  fail "ambient REDIS_URL leaked through as ${default_redis}"
+  fail "ambient PUBLIRA_REDIS_URL leaked through as ${default_redis}"
 fi
 
-port_redis="$(compute_redis_url E2E_REDIS_PORT=6381 REDIS_URL=redis://redis:6379)"
+port_redis="$(compute_redis_url E2E_REDIS_PORT=6381 PUBLIRA_REDIS_URL=redis://redis:6379)"
 if [[ "${port_redis}" == "redis://127.0.0.1:6381" ]]; then
-  pass "E2E_REDIS_PORT drives REDIS_URL"
+  pass "E2E_REDIS_PORT drives PUBLIRA_REDIS_URL"
 else
-  fail "E2E_REDIS_PORT=6381 produced REDIS_URL=${port_redis}"
+  fail "E2E_REDIS_PORT=6381 produced PUBLIRA_REDIS_URL=${port_redis}"
 fi
 
 compute_s3_endpoint() {
-  stack_env "$@" bash -c 'source "$1"; printf %s "$S3_ENDPOINT"' bash "${LIB}"
+  stack_env "$@" bash -c 'source "$1"; printf %s "$PUBLIRA_S3_ENDPOINT"' bash "${LIB}"
 }
 
-default_s3_endpoint="$(compute_s3_endpoint S3_ENDPOINT=http://rustfs:9000)"
+default_s3_endpoint="$(compute_s3_endpoint PUBLIRA_S3_ENDPOINT=http://rustfs:9000)"
 if [[ "${default_s3_endpoint}" == "http://127.0.0.1:9003" ]]; then
-  pass "ambient S3_ENDPOINT does not override E2E RustFS"
+  pass "ambient PUBLIRA_S3_ENDPOINT does not override E2E RustFS"
 else
-  fail "ambient S3_ENDPOINT leaked through as ${default_s3_endpoint}"
+  fail "ambient PUBLIRA_S3_ENDPOINT leaked through as ${default_s3_endpoint}"
 fi
 
-port_s3_endpoint="$(compute_s3_endpoint E2E_RUSTFS_PORT=9004 S3_ENDPOINT=http://rustfs:9000)"
+port_s3_endpoint="$(compute_s3_endpoint E2E_RUSTFS_PORT=9004 PUBLIRA_S3_ENDPOINT=http://rustfs:9000)"
 if [[ "${port_s3_endpoint}" == "http://127.0.0.1:9004" ]]; then
-  pass "E2E_RUSTFS_PORT drives S3_ENDPOINT"
+  pass "E2E_RUSTFS_PORT drives PUBLIRA_S3_ENDPOINT"
 else
-  fail "E2E_RUSTFS_PORT=9004 produced S3_ENDPOINT=${port_s3_endpoint}"
+  fail "E2E_RUSTFS_PORT=9004 produced PUBLIRA_S3_ENDPOINT=${port_s3_endpoint}"
 fi
 
 # Two stacks, two sleep stand-ins. Dedicated temp RUN_DIRs so this never

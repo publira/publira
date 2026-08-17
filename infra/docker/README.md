@@ -134,8 +134,8 @@ Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools
 
 ### 実行時に渡す主な環境変数（参考）
 
-- Web: `PORT`, `HOSTNAME`（イメージ内既定あり）, `REDIS_URL`, `NEXT_CACHE_APP`（ビルド時に `APP_NAME` を既定セット）
-- API: アプリ固有（`DB_URL` 等）。待受はバイナリ側の設定。`PORT` は `EXPOSE` / ドキュメント用メタデータ
+- Web: `PORT`, `HOSTNAME`（イメージ内既定あり）, `PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`（ビルド時に `APP_NAME` を既定セット）
+- API: アプリ固有（`PUBLIRA_*_DB_URL` 等）。待受はバイナリ側の設定。`PORT` は `EXPOSE` / ドキュメント用メタデータ
 
 詳細は各サービスの README と Dockerfile コメントを参照。
 

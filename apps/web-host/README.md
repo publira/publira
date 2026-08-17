@@ -20,8 +20,8 @@ pnpm dev
 
 環境変数:
 
-- `REDIS_URL`（Dev Container では `redis://redis:6379`）
-- `NEXT_CACHE_APP=web-host`（推奨。キー空間分離）
+- `PUBLIRA_REDIS_URL`（Dev Container では `redis://redis:6379`）
+- `PUBLIRA_CACHE_APP=web-host`（推奨。キー空間分離）
 
 公開時の `revalidateTag`（`/api/revalidate`）は Redis 上のタグ時刻と整合します。
 
