@@ -102,8 +102,8 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
       ultracite:
-        specifier: 7.10.3
-        version: 7.10.3(oxfmt@0.63.0)(oxlint@1.78.0)
+        specifier: 7.10.4
+        version: 7.10.4(oxfmt@0.63.0)(oxlint@1.78.0)
 
   apps/email-renderer:
     dependencies:
@@ -4753,8 +4753,8 @@ packages:
     resolution: {integrity: sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==}
     engines: {node: '>=18'}
 
-  ultracite@7.10.3:
-    resolution: {integrity: sha512-0T27Sdpsk9XBdpAzEhJeRzMxAncowkfxW33M3l5i9iIPhptxRumXuOTzCCb+gkOckzKLA0SkTTZhbePMrUxUCw==}
+  ultracite@7.10.4:
+    resolution: {integrity: sha512-uysIdFN5kmM/DI8Nz6RWbIuQv3tewooglCuXe6gfciPoFzfuy5w0Qf+1xyd1HgQsUzBoaE1lXSpURdSL/ThqyA==}
     hasBin: true
     peerDependencies:
       oxfmt: '>=0.1.0'
@@ -8973,7 +8973,7 @@ snapshots:
 
   uint8array-extras@1.5.0: {}
 
-  ultracite@7.10.3(oxfmt@0.63.0)(oxlint@1.78.0):
+  ultracite@7.10.4(oxfmt@0.63.0)(oxlint@1.78.0):
     dependencies:
       '@clack/prompts': 1.7.0
       cli-truncate: 6.1.1
