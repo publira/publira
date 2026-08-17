@@ -106,8 +106,9 @@ self-host / multi-instance 向けに、Next.js のサーバー側キャッシュ
 | `cacheHandlers`（複数形） | `"use cache"` / `"use cache: remote"` |
 | `cacheHandler`（単数） | ISR・Route Handler・`fetch`、および `next/image` 最適化結果（`images.customCacheHandler: true`） |
 
-- Dev Container では `redis` サービスが起動し、app コンテナに `REDIS_URL=redis://redis:6379` が渡ります
-- ホストから直に触る場合の既定は `redis://localhost:6379`
+- Dev Container では `redis` サービスが起動し、app コンテナに `REDIS_URL=redis://redis:6379` が渡ります（認証を設定していないため、ホストには公開しません）
+- 中身を直接見たいときは `docker compose -f .devcontainer/compose.yaml exec redis redis-cli`
+- `redis://localhost:6379` は `@publira/next-cache-handlers` が `REDIS_URL` 未設定時に使うライブラリ側の既定値です
 - キー空間は `NEXT_CACHE_APP`（例: `web-host`）でアプリ別に分離
 - 詳細: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
 
