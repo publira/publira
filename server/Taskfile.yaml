@@ -2,10 +2,6 @@ version: "3"
 
 vars:
   BIN_DIR: bin
-  GO_SOURCES:
-    - ./**/*.go
-    - ./go.mod
-    - ./go.sum
 
 tasks:
   # Public tasks are alphabetized; internal tasks are at the bottom.
@@ -14,7 +10,9 @@ tasks:
     cmds:
       - go build -o {{.BIN_DIR}}/ ./cmd/...
     sources:
-      - "{{.GO_SOURCES}}"
+      - ./**/*.go
+      - ./go.mod
+      - ./go.sum
     generates:
       - "{{.BIN_DIR}}/*"
 
