@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,7 +19,6 @@ import (
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
-	localstorage "github.com/publira/publira/server/internal/storage/local"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
 )
 
@@ -129,21 +127,14 @@ func resolvePublicDBURL() string {
 }
 
 func newStorageProvider(ctx context.Context, cfg config.Storage) (storage.Provider, error) {
-	switch cfg.Backend {
-	case "local":
-		return localstorage.New(cfg.LocalDir, cfg.LocalBaseURL)
-	case "s3":
-		if cfg.S3Bucket == "" {
-			return nil, errors.New("PUBLIRA_S3_BUCKET is required when PUBLIRA_STORAGE_BACKEND=s3")
-		}
-		return s3storage.New(ctx, s3storage.Config{
-			Bucket:         cfg.S3Bucket,
-			Region:         cfg.S3Region,
-			Endpoint:       cfg.S3Endpoint,
-			PublicBaseURL:  cfg.S3PublicBaseURL,
-			ForcePathStyle: cfg.S3ForcePathStyle,
-		})
-	default:
-		return nil, fmt.Errorf("unsupported PUBLIRA_STORAGE_BACKEND: %s", cfg.Backend)
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
+	return s3storage.New(ctx, s3storage.Config{
+		Bucket:         cfg.S3Bucket,
+		Region:         cfg.S3Region,
+		Endpoint:       cfg.S3Endpoint,
+		PublicBaseURL:  cfg.S3PublicBaseURL,
+		ForcePathStyle: cfg.S3ForcePathStyle,
+	})
 }

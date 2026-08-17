@@ -23,7 +23,6 @@ pass() {
 stack_env() {
   env \
     -u E2E_RUN_DIR \
-    -u PUBLIRA_LOCAL_STORAGE_DIR \
     -u COMPOSE_PROJECT_NAME \
     -u E2E_POSTGRES_PORT \
     -u E2E_REDIS_PORT \

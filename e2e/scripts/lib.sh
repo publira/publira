@@ -37,7 +37,6 @@ export PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL:-postgres://publira_pl
 # devcontainer / `task dev` value is redis://redis:6379 and would serve
 # another build's cached HTML (login then hangs waiting to hydrate).
 export PUBLIRA_REDIS_URL="redis://127.0.0.1:${E2E_REDIS_PORT}"
-export PUBLIRA_STORAGE_BACKEND="${PUBLIRA_STORAGE_BACKEND:-s3}"
 export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
 # Same reasoning as PUBLIRA_REDIS_URL: the devcontainer exports
 # PUBLIRA_S3_ENDPOINT=http://rustfs:9000, so an inherited value would store
@@ -100,7 +99,6 @@ else
   unset _e2e_uses_default_stack
 fi
 unset _E2E_RUN_DIR_FROM_ENV
-export PUBLIRA_LOCAL_STORAGE_DIR="${PUBLIRA_LOCAL_STORAGE_DIR:-${E2E_RUN_DIR}/storage}"
 
 RUN_DIR="${E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
@@ -126,7 +124,7 @@ compose() {
 }
 
 ensure_run_dirs() {
-  mkdir -p "${LOG_DIR}" "${PID_DIR}" "${PUBLIRA_LOCAL_STORAGE_DIR}"
+  mkdir -p "${LOG_DIR}" "${PID_DIR}"
 }
 
 is_pid_running() {

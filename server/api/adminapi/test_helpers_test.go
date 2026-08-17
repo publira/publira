@@ -68,9 +68,9 @@ type testStorageProvider struct{}
 
 func (p *testStorageProvider) Upload(_ context.Context, req storage.UploadRequest) (storage.UploadResult, error) {
 	return storage.UploadResult{
-		Provider:  "local",
+		Provider:  "s3",
 		ObjectKey: req.ObjectKey,
-		URL:       "local://" + req.ObjectKey,
+		URL:       "s3://" + req.ObjectKey,
 		SizeBytes: int64(len(req.Data)),
 	}, nil
 }
