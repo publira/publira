@@ -156,27 +156,146 @@ e2e_refuse_foreign_lease() {
   exit 1
 }
 
+# True while nothing holds the compose-project lock.
+e2e_lock_is_free() {
+  if ! command -v flock >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ ! -e "${E2E_LOCK_FILE}" ]]; then
+    return 0
+  fi
+  flock -n "${E2E_LOCK_FILE}" true 2>/dev/null
+}
+
+# E2E_LOCK_FILE keeps whatever path the caller reached the repository through,
+# symlinks included, while /proc reports the physical one. Resolve the directory
+# with `pwd -P` so the two can be compared (`readlink -f` is GNU-only).
+e2e_lock_file_physical() {
+  local dir
+  dir="$(cd "$(dirname "${E2E_LOCK_FILE}")" 2>/dev/null && pwd -P)" || return 1
+  printf '%s/%s\n' "${dir}" "$(basename "${E2E_LOCK_FILE}")"
+}
+
+# PIDs with the lock file open, newline separated. The lease file normally
+# records the holder; this is the fallback for when it is gone and the pid has
+# to be recovered from the kernel instead. Linux only — elsewhere the caller
+# falls back to printing a recovery hint.
+e2e_lock_holder_pids() {
+  local fd pid target physical
+  if [[ ! -d /proc || ! -e "${E2E_LOCK_FILE}" ]]; then
+    return 0
+  fi
+  physical="$(e2e_lock_file_physical || true)"
+  physical="${physical:-${E2E_LOCK_FILE}}"
+  for fd in /proc/[0-9]*/fd/*; do
+    target="$(readlink "${fd}" 2>/dev/null || true)"
+    if [[ "${target}" != "${E2E_LOCK_FILE}" && "${target}" != "${physical}" ]]; then
+      continue
+    fi
+    pid="${fd#/proc/}"
+    pid="${pid%%/*}"
+    if [[ "${pid}" == "$$" || "${pid}" == "${BASHPID}" ]]; then
+      continue
+    fi
+    printf '%s\n' "${pid}"
+  done | sort -un
+}
+
+e2e_lock_holder_hint() {
+  printf "identify it with 'fuser %s' or 'lsof %s', then kill it" "${E2E_LOCK_FILE}" "${E2E_LOCK_FILE}"
+}
+
+# SIGTERM, then SIGKILL. Best effort: callers verify by the lock, not the pid,
+# because a reaped-late zombie still answers `kill -0`.
+e2e_terminate_pid() {
+  local pid="$1" _
+  if [[ -z "${pid}" ]]; then
+    return 0
+  fi
+  kill "${pid}" 2>/dev/null || true
+  for _ in $(seq 1 30); do
+    if ! is_pid_running "${pid}"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  kill -9 "${pid}" 2>/dev/null || true
+}
+
+# Teardown removes the lease file, so a holder that outlives it can never be
+# named again and every later acquire fails with no way back (#982). Find it
+# through /proc and take the lock back.
+e2e_reclaim_orphan_lock() {
+  local pid pids _
+  # A just-killed holder releases the descriptor asynchronously, so give the
+  # lock a moment before concluding someone else still owns it. Without the
+  # wait, a platform with no /proc to search would fail teardown outright.
+  for _ in $(seq 1 30); do
+    if e2e_lock_is_free; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  pids="$(e2e_lock_holder_pids)"
+  if [[ -z "${pids}" ]]; then
+    e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${E2E_LOCK_FILE} is held by an unidentified process; $(e2e_lock_holder_hint)"
+    return 1
+  fi
+  while read -r pid; do
+    if [[ -z "${pid}" ]]; then
+      continue
+    fi
+    e2e_log "reclaiming ${COMPOSE_PROJECT_NAME} lock from orphaned holder (pid ${pid})"
+    e2e_terminate_pid "${pid}"
+  done <<<"${pids}"
+  for _ in $(seq 1 30); do
+    if e2e_lock_is_free; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${E2E_LOCK_FILE} is still held after killing $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//'); $(e2e_lock_holder_hint)"
+  return 1
+}
+
+# The lock is taken but no lease names the owner: without the pid the reader
+# cannot act, so print it.
+e2e_report_lock_holders() {
+  local pids
+  pids="$(e2e_lock_holder_pids)"
+  if [[ -z "${pids}" ]]; then
+    e2e_err "lock ${E2E_LOCK_FILE} is held but no lease file names the owner; $(e2e_lock_holder_hint)"
+    return 0
+  fi
+  e2e_err "lock ${E2E_LOCK_FILE} is held by pid(s) $(tr '\n' ' ' <<<"${pids}" | sed 's/ $//') with no lease file; run 'task e2e:down' to reclaim it"
+}
+
 # Detached holder so the lease outlives up.sh / start-apps.sh. Leftover-stack
 # commands with the same E2E_RUN_DIR join; a different RUN_DIR is refused.
 e2e_spawn_lease_holder() {
   mkdir -p "$(dirname "${E2E_LOCK_FILE}")"
   local ready pid waited
   ready="$(mktemp)"
+  # Detached from the caller's stdio: the holder outlives up.sh, and keeping the
+  # inherited pipe open blocks whoever reads its output until teardown.
   (
     if command -v flock >/dev/null 2>&1; then
       exec 9>"${E2E_LOCK_FILE}"
       flock -n 9 || exit 1
     fi
     printf '%s\n' "${BASHPID}" >"${ready}"
-    while :; do
-      sleep 3600
-    done
-  ) &
+    # exec so the recorded pid *is* the process holding fd 9. A `sleep` child
+    # would inherit the descriptor and keep the flock alive after the holder is
+    # killed, stranding the project with no lease file to recover from (#982).
+    # The delay is ~68 years; `sleep infinity` is GNU-only.
+    exec sleep 2147483647
+  ) </dev/null >/dev/null 2>&1 &
   waited=0
   while [[ ! -s "${ready}" ]]; do
     if ! kill -0 $! 2>/dev/null && [[ ! -s "${ready}" ]]; then
       rm -f "${ready}"
       e2e_err "compose project ${COMPOSE_PROJECT_NAME} is already in use; wait or set COMPOSE_PROJECT_NAME and E2E_*_PORT"
+      e2e_report_lock_holders
       exit 1
     fi
     if ((waited > 50)); then
@@ -233,26 +352,18 @@ require_e2e_owner_or_free() {
 # Owner-only. A leftover `task e2e:down` matches the lease RUN_DIR and succeeds;
 # a second stack with another E2E_RUN_DIR cannot tear the first down.
 release_e2e_lease() {
-  local pid _
-  if ! e2e_lease_holder_alive; then
-    rm -f "${E2E_LEASE_FILE}"
-    return 0
-  fi
-  if [[ "$(e2e_lease_run_dir)" != "${E2E_RUN_DIR}" ]]; then
-    e2e_refuse_foreign_lease
-  fi
-  pid="$(sed -n '2p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
-  kill "${pid}" 2>/dev/null || true
-  for _ in $(seq 1 30); do
-    if ! is_pid_running "${pid}"; then
-      break
+  local pid
+  if e2e_lease_holder_alive; then
+    if [[ "$(e2e_lease_run_dir)" != "${E2E_RUN_DIR}" ]]; then
+      e2e_refuse_foreign_lease
     fi
-    sleep 0.1
-  done
-  if is_pid_running "${pid}"; then
-    kill -9 "${pid}" 2>/dev/null || true
+    pid="$(sed -n '2p' "${E2E_LEASE_FILE}" 2>/dev/null || true)"
+    e2e_terminate_pid "${pid}"
   fi
   rm -f "${E2E_LEASE_FILE}"
+  # Nothing owns the lock now, so anything still holding it is an orphan from a
+  # crashed or hard-killed run: teardown is the place that can free it.
+  e2e_reclaim_orphan_lock
 }
 
 read_pid() {
