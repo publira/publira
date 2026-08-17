@@ -109,10 +109,10 @@ importers:
     dependencies:
       '@connectrpc/connect':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.13.0)
+        version: 2.1.2(@bufbuild/protobuf@2.14.0)
       '@connectrpc/connect-node':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))
+        version: 2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))
       '@publira/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -347,7 +347,7 @@ importers:
     devDependencies:
       '@buf/googleapis_googleapis.bufbuild_es':
         specifier: 'catalog:'
-        version: 2.13.0-20260414192239-c17df5b2beca.1(@bufbuild/protobuf@2.13.0)
+        version: 2.13.0-20260414192239-c17df5b2beca.1(@bufbuild/protobuf@2.14.0)
       '@publira/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -401,19 +401,19 @@ importers:
     dependencies:
       '@buf/googleapis_googleapis.bufbuild_es':
         specifier: 'catalog:'
-        version: 2.13.0-20260414192239-c17df5b2beca.1(@bufbuild/protobuf@2.13.0)
+        version: 2.13.0-20260414192239-c17df5b2beca.1(@bufbuild/protobuf@2.14.0)
       '@bufbuild/protobuf':
-        specifier: 2.13.0
-        version: 2.13.0
+        specifier: 2.14.0
+        version: 2.14.0
       '@connectrpc/connect':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.13.0)
+        version: 2.1.2(@bufbuild/protobuf@2.14.0)
       '@connectrpc/connect-node':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))
+        version: 2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))
       '@connectrpc/connect-web':
         specifier: 2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))
+        version: 2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -793,8 +793,8 @@ packages:
     peerDependencies:
       '@bufbuild/protobuf': ^2.13.0
 
-  '@bufbuild/protobuf@2.13.0':
-    resolution: {integrity: sha512-acq7c49vxfm1ggJ95P70TX7ABDM0vxr1SYD3BB0o0jnBLB4OAqeHyKuN+cD3w80gXEDQ2zxHpR6CUeA+O/aU9g==}
+  '@bufbuild/protobuf@2.14.0':
+    resolution: {integrity: sha512-C3UGsiCwSprE2NKIIFA3hCDlpXTMCAXRZuEVp88L1GY36Y41+rYL5fryE+nOFhp4p4JPQvdV8PQ4DWgHgeTE+w==}
 
   '@clack/core@1.4.3':
     resolution: {integrity: sha512-/kr3UWNtdJfxZtPgDqUOmG2pvwlmcLGheex5yiZKdwbzZJxhV+HMNR9QNmyY5cGwTNV6LrR7Jtp+KjhUAP1qBQ==}
@@ -5013,11 +5013,11 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@buf/googleapis_googleapis.bufbuild_es@2.13.0-20260414192239-c17df5b2beca.1(@bufbuild/protobuf@2.13.0)':
+  '@buf/googleapis_googleapis.bufbuild_es@2.13.0-20260414192239-c17df5b2beca.1(@bufbuild/protobuf@2.14.0)':
     dependencies:
-      '@bufbuild/protobuf': 2.13.0
+      '@bufbuild/protobuf': 2.14.0
 
-  '@bufbuild/protobuf@2.13.0': {}
+  '@bufbuild/protobuf@2.14.0': {}
 
   '@clack/core@1.4.3':
     dependencies:
@@ -5031,19 +5031,19 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
-  '@connectrpc/connect-node@2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))':
+  '@connectrpc/connect-node@2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))':
     dependencies:
-      '@bufbuild/protobuf': 2.13.0
-      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.13.0)
+      '@bufbuild/protobuf': 2.14.0
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.14.0)
 
-  '@connectrpc/connect-web@2.1.2(@bufbuild/protobuf@2.13.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0))':
+  '@connectrpc/connect-web@2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))':
     dependencies:
-      '@bufbuild/protobuf': 2.13.0
-      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.13.0)
+      '@bufbuild/protobuf': 2.14.0
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.14.0)
 
-  '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.13.0)':
+  '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0)':
     dependencies:
-      '@bufbuild/protobuf': 2.13.0
+      '@bufbuild/protobuf': 2.14.0
 
   '@csstools/color-helpers@6.1.1': {}
 
