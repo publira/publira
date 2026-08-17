@@ -10,9 +10,9 @@ afterEach(() => {
 
 describe("resolveCacheHandlerConfig", () => {
   it("defaults redis url and key prefix", () => {
-    delete process.env.REDIS_URL;
-    delete process.env.NEXT_CACHE_KEY_PREFIX;
-    delete process.env.NEXT_CACHE_APP;
+    delete process.env.PUBLIRA_REDIS_URL;
+    delete process.env.PUBLIRA_CACHE_KEY_PREFIX;
+    delete process.env.PUBLIRA_CACHE_APP;
     delete process.env.NEXT_PHASE;
 
     const config = resolveCacheHandlerConfig();
@@ -21,28 +21,28 @@ describe("resolveCacheHandlerConfig", () => {
   });
 
   it("disables redis for explicit off values", () => {
-    process.env.REDIS_URL = "disabled";
+    process.env.PUBLIRA_REDIS_URL = "disabled";
     expect(resolveCacheHandlerConfig().redisUrl).toBe("");
 
-    process.env.REDIS_URL = "off";
+    process.env.PUBLIRA_REDIS_URL = "off";
     expect(resolveCacheHandlerConfig().redisUrl).toBe("");
 
-    process.env.REDIS_URL = "";
+    process.env.PUBLIRA_REDIS_URL = "";
     expect(resolveCacheHandlerConfig().redisUrl).toBe("");
   });
 
   it("disables redis during production build phase", () => {
-    process.env.REDIS_URL = "redis://example:6379";
+    process.env.PUBLIRA_REDIS_URL = "redis://example:6379";
     process.env.NEXT_PHASE = "phase-production-build";
     expect(resolveCacheHandlerConfig().redisUrl).toBe("");
   });
 
-  it("uses NEXT_CACHE_APP and NEXT_CACHE_KEY_PREFIX", () => {
+  it("uses PUBLIRA_CACHE_APP and PUBLIRA_CACHE_KEY_PREFIX", () => {
     delete process.env.NEXT_PHASE;
-    process.env.NEXT_CACHE_APP = "web-host";
+    process.env.PUBLIRA_CACHE_APP = "web-host";
     expect(resolveCacheHandlerConfig().keyPrefix).toBe("publira:web-host:");
 
-    process.env.NEXT_CACHE_KEY_PREFIX = "custom-prefix";
+    process.env.PUBLIRA_CACHE_KEY_PREFIX = "custom-prefix";
     expect(resolveCacheHandlerConfig().keyPrefix).toBe("custom-prefix:");
   });
 });

@@ -13,10 +13,10 @@ Redis 上に Next.js の **2 系統**のサーバーキャッシュを載せる�
 
 | 変数 | 説明 |
 | --- | --- |
-| `REDIS_URL` | Redis 接続 URL（既定 `redis://localhost:6379`）。`disabled` / `off` / `false` / 空文字で無効化（常に miss） |
-| `NEXT_CACHE_APP` | キープレフィックスの app 名（既定 `next` → `publira:{app}:`） |
-| `NEXT_CACHE_KEY_PREFIX` | プレフィックス全体を上書き |
-| `REDIS_CACHE_TIMEOUT_MS` | コマンドタイムアウト ms（既定 `1000`） |
+| `PUBLIRA_REDIS_URL` | Redis 接続 URL（既定 `redis://localhost:6379`）。`disabled` / `off` / `false` / 空文字で無効化（常に miss） |
+| `PUBLIRA_CACHE_APP` | キープレフィックスの app 名（既定 `next` → `publira:{app}:`） |
+| `PUBLIRA_CACHE_KEY_PREFIX` | プレフィックス全体を上書き |
+| `PUBLIRA_REDIS_CACHE_TIMEOUT_MS` | コマンドタイムアウト ms（既定 `1000`） |
 
 `next build` 中（`NEXT_PHASE=phase-production-build`）は Redis に接続しません。
 
@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-アプリごとに `NEXT_CACHE_APP=web-host`（など）を付け、キー空間を分離してください。
+アプリごとに `PUBLIRA_CACHE_APP=web-host`（など）を付け、キー空間を分離してください。
 
 ## 障害時の挙動
 

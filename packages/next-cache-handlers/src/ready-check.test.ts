@@ -20,13 +20,13 @@ afterEach(() => {
 
 describe("checkRedisReady", () => {
   it("no-ops when Redis is disabled", async () => {
-    vi.stubEnv("REDIS_URL", "disabled");
+    vi.stubEnv("PUBLIRA_REDIS_URL", "disabled");
     await expect(checkRedisReady()).resolves.toBeUndefined();
     expect(mockGetRedisClient).not.toHaveBeenCalled();
   });
 
   it("succeeds when ping returns PONG", async () => {
-    vi.stubEnv("REDIS_URL", "redis://localhost:6379");
+    vi.stubEnv("PUBLIRA_REDIS_URL", "redis://localhost:6379");
     mockGetRedisClient.mockResolvedValue({ isReady: true });
     mockWithRedis.mockImplementation((_config, _fallback, run) =>
       run({ ping: () => Promise.resolve("PONG") })
@@ -35,13 +35,13 @@ describe("checkRedisReady", () => {
   });
 
   it("fails when client is not ready", async () => {
-    vi.stubEnv("REDIS_URL", "redis://localhost:6379");
+    vi.stubEnv("PUBLIRA_REDIS_URL", "redis://localhost:6379");
     mockGetRedisClient.mockResolvedValue(null);
     await expect(checkRedisReady()).rejects.toThrow(/unavailable/u);
   });
 
   it("fails when ping fails", async () => {
-    vi.stubEnv("REDIS_URL", "redis://localhost:6379");
+    vi.stubEnv("PUBLIRA_REDIS_URL", "redis://localhost:6379");
     mockGetRedisClient.mockResolvedValue({ isReady: true });
     mockWithRedis.mockResolvedValue(false);
     await expect(checkRedisReady()).rejects.toThrow(/ping failed/u);

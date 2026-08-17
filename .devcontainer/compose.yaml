@@ -38,20 +38,21 @@ services:
       - redis
       - rustfs
     environment:
+      # Credentials the AWS SDK / aws CLI read for the RustFS endpoint below
+      AWS_ACCESS_KEY_ID: publira
+      AWS_REGION: us-east-1
+      AWS_SECRET_ACCESS_KEY: publirapass
       # .claude.json (OAuth account, project trust) lives outside ~/.claude by
       # default; point it at the persisted volume so rebuilds don't force
       # re-auth. https://code.claude.com/docs/en/devcontainer
       CLAUDE_CONFIG_DIR: /home/vscode/.claude
       # Shared Next.js server cache (cacheHandler / cacheHandlers)
-      REDIS_URL: redis://redis:6379
+      PUBLIRA_REDIS_URL: redis://redis:6379
       # S3 / RustFS local object storage
-      STORAGE_BACKEND: s3
-      S3_BUCKET: publira
-      S3_ENDPOINT: http://rustfs:9000
-      S3_FORCE_PATH_STYLE: "true"
-      AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: publira
-      AWS_SECRET_ACCESS_KEY: publirapass
+      PUBLIRA_S3_BUCKET: publira
+      PUBLIRA_S3_ENDPOINT: http://rustfs:9000
+      PUBLIRA_S3_FORCE_PATH_STYLE: "true"
+      PUBLIRA_STORAGE_BACKEND: s3
     labels:
       # web-host: テナント公開サイト (port 3000)
       - "traefik.enable=true"
@@ -104,9 +105,9 @@ services:
     image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
       POSTGRES_DB: publira
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
     volumes:
       - postgres-data:/var/lib/postgresql
 
@@ -115,7 +116,7 @@ services:
     restart: unless-stopped
 
   # Shared backend for Next.js cacheHandler / cacheHandlers (multi-instance).
-  # Valkey is Redis-protocol compatible; keep service name / REDIS_URL as redis://...
+  # Valkey is Redis-protocol compatible; keep service name / PUBLIRA_REDIS_URL as redis://...
   redis:
     image: valkey/valkey:9.1.1-alpine@sha256:ee91f7a174ac4d6a6b0685b3a60e321f0a9dbbb691f9b0e285be2ba1d1be8328
     restart: unless-stopped

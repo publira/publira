@@ -12,17 +12,17 @@ import {
   sanitizeRedirectPath,
 } from "./auth-shared";
 
-const AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
+const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
 
 const sealedCookie = (expiresAt: string): Promise<string> =>
   encryptSessionPayload(
     { accessToken: "header.payload.signature", expiresAt },
-    AUTH_SECRET
+    PUBLIRA_AUTH_SECRET
   );
 
 describe("web-host auth-shared", () => {
   beforeAll(() => {
-    process.env.AUTH_SECRET = AUTH_SECRET;
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
   });
 
   it("cookie 名は公開セッション用を使う", () => {

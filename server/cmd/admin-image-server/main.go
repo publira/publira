@@ -59,7 +59,7 @@ func main() {
 		db,
 	)
 
-	addr := strings.TrimSpace(os.Getenv("ADMIN_IMAGE_SERVER_ADDR"))
+	addr := strings.TrimSpace(os.Getenv("PUBLIRA_ADMIN_IMAGE_SERVER_ADDR"))
 	if addr == "" {
 		addr = defaultAdminImageServerAddr
 	}
@@ -100,7 +100,7 @@ func newObjectStore(ctx context.Context, cfg config.Storage) (imageserver.Object
 		return imageserver.NewLocalStore(cfg.LocalDir)
 	case "s3":
 		if strings.TrimSpace(cfg.S3Bucket) == "" {
-			return nil, errors.New("S3_BUCKET is required when STORAGE_BACKEND=s3")
+			return nil, errors.New("PUBLIRA_S3_BUCKET is required when PUBLIRA_STORAGE_BACKEND=s3")
 		}
 
 		loadOptions := make([]func(*awsconfig.LoadOptions) error, 0, 1)
@@ -121,6 +121,6 @@ func newObjectStore(ctx context.Context, cfg config.Storage) (imageserver.Object
 
 		return imageserver.NewS3Store(client, cfg.S3Bucket), nil
 	default:
-		return nil, fmt.Errorf("unsupported STORAGE_BACKEND: %s", cfg.Backend)
+		return nil, fmt.Errorf("unsupported PUBLIRA_STORAGE_BACKEND: %s", cfg.Backend)
 	}
 }

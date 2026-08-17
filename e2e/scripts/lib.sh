@@ -33,17 +33,17 @@ export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_ADMIN_DB_URL="${PUBLIRA_ADMIN_DB_URL:-postgres://publira_admin:adminpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL:-postgres://publira_platform:platformpass@127.0.0.1:${E2E_POSTGRES_PORT}/publira?sslmode=disable}"
-# Always the E2E compose Redis. Do not inherit ambient REDIS_URL — the
+# Always the E2E compose Redis. Do not inherit ambient PUBLIRA_REDIS_URL — the
 # devcontainer / `task dev` value is redis://redis:6379 and would serve
 # another build's cached HTML (login then hangs waiting to hydrate).
-export REDIS_URL="redis://127.0.0.1:${E2E_REDIS_PORT}"
-export STORAGE_BACKEND="${STORAGE_BACKEND:-s3}"
-export S3_BUCKET="${S3_BUCKET:-publira}"
-# Same reasoning as REDIS_URL: the devcontainer exports
-# S3_ENDPOINT=http://rustfs:9000, so an inherited value would store E2E
-# uploads in the dev stack's RustFS (and is unreachable once it is down).
-export S3_ENDPOINT="http://127.0.0.1:${E2E_RUSTFS_PORT}"
-export S3_FORCE_PATH_STYLE="true"
+export PUBLIRA_REDIS_URL="redis://127.0.0.1:${E2E_REDIS_PORT}"
+export PUBLIRA_STORAGE_BACKEND="${PUBLIRA_STORAGE_BACKEND:-s3}"
+export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
+# Same reasoning as PUBLIRA_REDIS_URL: the devcontainer exports
+# PUBLIRA_S3_ENDPOINT=http://rustfs:9000, so an inherited value would store
+# E2E uploads in the dev stack's RustFS (and is unreachable once it is down).
+export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${E2E_RUSTFS_PORT}"
+export PUBLIRA_S3_FORCE_PATH_STYLE="true"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
@@ -61,7 +61,7 @@ export E2E_PLATFORM_API_BASE_URL="${E2E_PLATFORM_API_BASE_URL:-http://127.0.0.1:
 # the same Playwright run without multi-minute waits.
 export E2E_PUBLISH_EPISODES_INTERVAL_SEC="${E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
 
-export NEXT_CACHE_APP="${NEXT_CACHE_APP:-web-host}"
+export PUBLIRA_CACHE_APP="${PUBLIRA_CACHE_APP:-web-host}"
 
 # PID files, logs, and local storage for one stack run.
 #
@@ -100,7 +100,7 @@ else
   unset _e2e_uses_default_stack
 fi
 unset _E2E_RUN_DIR_FROM_ENV
-export LOCAL_STORAGE_DIR="${LOCAL_STORAGE_DIR:-${E2E_RUN_DIR}/storage}"
+export PUBLIRA_LOCAL_STORAGE_DIR="${PUBLIRA_LOCAL_STORAGE_DIR:-${E2E_RUN_DIR}/storage}"
 
 RUN_DIR="${E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
@@ -126,7 +126,7 @@ compose() {
 }
 
 ensure_run_dirs() {
-  mkdir -p "${LOG_DIR}" "${PID_DIR}" "${LOCAL_STORAGE_DIR}"
+  mkdir -p "${LOG_DIR}" "${PID_DIR}" "${PUBLIRA_LOCAL_STORAGE_DIR}"
 }
 
 is_pid_running() {

@@ -27,10 +27,10 @@ export const POST = async (
   request: NextRequest,
   { params }: RouteContext<"/[tenant_id]/api/revalidate">
 ) => {
-  const token = process.env.NEXT_REVALIDATE_TOKEN?.trim();
+  const token = process.env.PUBLIRA_REVALIDATE_TOKEN?.trim();
   if (!token) {
     return NextResponse.json(
-      { error: "NEXT_REVALIDATE_TOKEN is not configured" },
+      { error: "PUBLIRA_REVALIDATE_TOKEN is not configured" },
       { status: 500 }
     );
   }

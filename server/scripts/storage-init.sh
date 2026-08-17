@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
 # storage-init.sh — Idempotently initializes the storage backend.
 #
-# STORAGE_BACKEND=local → creates LOCAL_STORAGE_DIR.
-# STORAGE_BACKEND=s3    → creates S3_BUCKET via aws-cli.
+# PUBLIRA_STORAGE_BACKEND=local → creates PUBLIRA_LOCAL_STORAGE_DIR.
+# PUBLIRA_STORAGE_BACKEND=s3    → creates PUBLIRA_S3_BUCKET via aws-cli.
 #
 # The script is designed to be called from `task server:storage-init` and
 # is safe to run repeatedly (idempotent).
 set -euo pipefail
 
-backend="${STORAGE_BACKEND:-local}"
+backend="${PUBLIRA_STORAGE_BACKEND:-local}"
 
 case "${backend}" in
   local)
-    dir="${LOCAL_STORAGE_DIR:?LOCAL_STORAGE_DIR is required when STORAGE_BACKEND=local}"
+    dir="${PUBLIRA_LOCAL_STORAGE_DIR:?PUBLIRA_LOCAL_STORAGE_DIR is required when PUBLIRA_STORAGE_BACKEND=local}"
     mkdir -p "${dir}"
     echo "storage initialized successfully (backend=local, dir=${dir})"
     ;;
   s3)
     if ! command -v aws >/dev/null 2>&1; then
-      echo "aws CLI is required when STORAGE_BACKEND=s3 (Dev Container: devcontainer feature aws-cli)" >&2
+      echo "aws CLI is required when PUBLIRA_STORAGE_BACKEND=s3 (Dev Container: devcontainer feature aws-cli)" >&2
       exit 1
     fi
 
-    bucket="${S3_BUCKET:?S3_BUCKET is required when STORAGE_BACKEND=s3}"
-    endpoint="${S3_ENDPOINT:-}"
+    bucket="${PUBLIRA_S3_BUCKET:?PUBLIRA_S3_BUCKET is required when PUBLIRA_STORAGE_BACKEND=s3}"
+    endpoint="${PUBLIRA_S3_ENDPOINT:-}"
     endpoint_args=()
     if [[ -n "${endpoint}" ]]; then
       endpoint_args=(--endpoint-url "${endpoint}")
@@ -50,7 +50,7 @@ case "${backend}" in
     echo "storage initialized successfully (backend=s3, bucket=${bucket} created)"
     ;;
   *)
-    echo "unsupported STORAGE_BACKEND: ${backend}" >&2
+    echo "unsupported PUBLIRA_STORAGE_BACKEND: ${backend}" >&2
     exit 1
     ;;
 esac

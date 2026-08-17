@@ -99,7 +99,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=${PORT}
 # Redis cache key namespace (see packages/next-cache-handlers)
-ENV NEXT_CACHE_APP=${APP_NAME}
+ENV PUBLIRA_CACHE_APP=${APP_NAME}
 
 COPY --from=pack --chown=65532:65532 /pack ./
 

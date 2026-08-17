@@ -28,7 +28,7 @@ start_publish_episodes() {
     cd "${REPO_ROOT}/server"
     exec env \
       PUBLIRA_DB_URL="${PUBLIRA_DB_URL}" \
-      PUBLISH_INTERVAL_SECONDS="${E2E_PUBLISH_EPISODES_INTERVAL_SEC}" \
+      PUBLIRA_PUBLISH_INTERVAL_SECONDS="${E2E_PUBLISH_EPISODES_INTERVAL_SEC}" \
       "${bin}"
   ) >>"${LOG_DIR}/publish-episodes.log" 2>&1 &
   write_pid "publish-episodes" $!

@@ -5,12 +5,13 @@ import { getRedisClient, resetRedisClientsForTests } from "./redis-client";
 import { streamToBuffer } from "./serialize";
 import { createUseCacheHandler } from "./use-cache-handler";
 
-const redisUrl = process.env.REDIS_URL?.trim() || "redis://localhost:6379";
+const redisUrl =
+  process.env.PUBLIRA_REDIS_URL?.trim() || "redis://localhost:6379";
 const keyPrefix = `publira:test-${process.pid}:`;
 
 const canConnect = async (): Promise<boolean> => {
   resetRedisClientsForTests();
-  process.env.REDIS_URL = redisUrl;
+  process.env.PUBLIRA_REDIS_URL = redisUrl;
   delete process.env.NEXT_PHASE;
   const client = await getRedisClient({
     defaultTtlSeconds: 60,

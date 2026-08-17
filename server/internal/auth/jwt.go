@@ -35,15 +35,15 @@ type TokenManager struct {
 	secret []byte
 }
 
-// NewTokenManagerFromEnv loads AUTH_JWT_SECRET (required in production paths).
+// NewTokenManagerFromEnv loads PUBLIRA_AUTH_JWT_SECRET (required in production paths).
 // When empty, returns an error unless allowEmpty is used via NewTokenManager.
 func NewTokenManagerFromEnv() (*TokenManager, error) {
-	secret := strings.TrimSpace(os.Getenv("AUTH_JWT_SECRET"))
+	secret := strings.TrimSpace(os.Getenv("PUBLIRA_AUTH_JWT_SECRET"))
 	if secret == "" {
-		return nil, errors.New("AUTH_JWT_SECRET is required")
+		return nil, errors.New("PUBLIRA_AUTH_JWT_SECRET is required")
 	}
 	if len(secret) < 32 {
-		return nil, errors.New("AUTH_JWT_SECRET must be at least 32 characters")
+		return nil, errors.New("PUBLIRA_AUTH_JWT_SECRET must be at least 32 characters")
 	}
 	return NewTokenManager([]byte(secret)), nil
 }

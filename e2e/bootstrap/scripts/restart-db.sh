@@ -23,9 +23,9 @@ sentinel_key="bootstrap/restart-sentinel.txt"
 sentinel_value="restart-sentinel-$(date +%s)-$$"
 sentinel_file="${STATE_DIR}/rustfs-sentinel.txt"
 printf '%s\n' "${sentinel_value}" >"${sentinel_file}"
-bootstrap_log "storing rustfs sentinel object s3://${S3_BUCKET}/${sentinel_key}"
-aws s3 cp "${sentinel_file}" "s3://${S3_BUCKET}/${sentinel_key}" \
-  --endpoint-url "${S3_ENDPOINT}" >/dev/null
+bootstrap_log "storing rustfs sentinel object s3://${PUBLIRA_S3_BUCKET}/${sentinel_key}"
+aws s3 cp "${sentinel_file}" "s3://${PUBLIRA_S3_BUCKET}/${sentinel_key}" \
+  --endpoint-url "${PUBLIRA_S3_ENDPOINT}" >/dev/null
 
 bootstrap_log "stopping db and rustfs"
 compose stop db rustfs
@@ -45,12 +45,12 @@ if [[ "${before_snapshot}" != "${after_snapshot}" ]]; then
 fi
 bootstrap_log "ok: every seeded row count survived the restart"
 
-if ! aws s3api head-bucket --bucket "${S3_BUCKET}" --endpoint-url "${S3_ENDPOINT}" 2>/dev/null; then
-  bootstrap_fail "bucket ${S3_BUCKET} did not survive the rustfs restart"
+if ! aws s3api head-bucket --bucket "${PUBLIRA_S3_BUCKET}" --endpoint-url "${PUBLIRA_S3_ENDPOINT}" 2>/dev/null; then
+  bootstrap_fail "bucket ${PUBLIRA_S3_BUCKET} did not survive the rustfs restart"
 fi
 restored_file="${STATE_DIR}/rustfs-sentinel-restored.txt"
-if ! aws s3 cp "s3://${S3_BUCKET}/${sentinel_key}" "${restored_file}" \
-  --endpoint-url "${S3_ENDPOINT}" >/dev/null 2>&1; then
+if ! aws s3 cp "s3://${PUBLIRA_S3_BUCKET}/${sentinel_key}" "${restored_file}" \
+  --endpoint-url "${PUBLIRA_S3_ENDPOINT}" >/dev/null 2>&1; then
   bootstrap_fail "sentinel object ${sentinel_key} did not survive the rustfs restart"
 fi
 assert_equals "rustfs sentinel object after restart" "${sentinel_value}" \

@@ -106,15 +106,15 @@ self-host / multi-instance 向けに、Next.js のサーバー側キャッシュ
 | `cacheHandlers`（複数形） | `"use cache"` / `"use cache: remote"` |
 | `cacheHandler`（単数） | ISR・Route Handler・`fetch`、および `next/image` 最適化結果（`images.customCacheHandler: true`） |
 
-- Dev Container では `redis` サービスが起動し、app コンテナに `REDIS_URL=redis://redis:6379` が渡ります（認証を設定していないため、ホストには公開しません）
+- Dev Container では `redis` サービスが起動し、app コンテナに `PUBLIRA_REDIS_URL=redis://redis:6379` が渡ります（認証を設定していないため、ホストには公開しません）
 - 中身を直接見たいときは `docker compose -f .devcontainer/compose.yaml exec redis redis-cli`
-- `redis://localhost:6379` は `@publira/next-cache-handlers` が `REDIS_URL` 未設定時に使うライブラリ側の既定値です
-- キー空間は `NEXT_CACHE_APP`（例: `web-host`）でアプリ別に分離
+- `redis://localhost:6379` は `@publira/next-cache-handlers` が `PUBLIRA_REDIS_URL` 未設定時に使うライブラリ側の既定値です
+- キー空間は `PUBLIRA_CACHE_APP`（例: `web-host`）でアプリ別に分離
 - 詳細: [packages/next-cache-handlers/README.md](packages/next-cache-handlers/README.md)
 
 ## 開発用オブジェクトストレージ (RustFS)
 
-Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、アプリは本番と同じ `STORAGE_BACKEND=s3` の経路で動きます（エピソード画像のアップロードと image-server の配信）。
+Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、アプリは本番と同じ `PUBLIRA_STORAGE_BACKEND=s3` の経路で動きます（エピソード画像のアップロードと image-server の配信）。
 
 - コンソール UI: `http://localhost:9001/rustfs/console/`
 - S3 エンドポイント（コンテナ内から）: `http://rustfs:9000`（path-style。ホストには公開しません）
@@ -125,10 +125,10 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 
 | 変数                                          | 既定値                    |
 | --------------------------------------------- | ------------------------- |
-| `STORAGE_BACKEND`                             | `s3`                      |
-| `S3_BUCKET`                                   | `publira`                 |
-| `S3_ENDPOINT`                                 | `http://rustfs:9000`      |
-| `S3_FORCE_PATH_STYLE`                         | `true`                    |
+| `PUBLIRA_STORAGE_BACKEND`                     | `s3`                      |
+| `PUBLIRA_S3_BUCKET`                           | `publira`                 |
+| `PUBLIRA_S3_ENDPOINT`                         | `http://rustfs:9000`      |
+| `PUBLIRA_S3_FORCE_PATH_STYLE`                 | `true`                    |
 | `AWS_REGION`                                  | `us-east-1`               |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `publira` / `publirapass` |
 

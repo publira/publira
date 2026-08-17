@@ -14,14 +14,14 @@ vi.mock("./lib/tenant-resolution", () => ({
   createTenantIdResolver: () => mockResolveTenantId,
 }));
 
-const AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
+const PUBLIRA_AUTH_SECRET = "test-secret-value-that-is-long-enough-000000";
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const COOKIE_NAME = "publira_web_host_auth";
 
 const sealedCookie = (expiresAt: string): Promise<string> =>
   encryptSessionPayload(
     { accessToken: "header.payload.signature", expiresAt },
-    AUTH_SECRET
+    PUBLIRA_AUTH_SECRET
   );
 
 /**
@@ -53,7 +53,7 @@ const deletedCookieNames = (response: { headers: Headers }): string[] =>
 
 describe("web-host proxy session handling", () => {
   beforeAll(() => {
-    process.env.AUTH_SECRET = AUTH_SECRET;
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
   });
 
   beforeEach(() => {

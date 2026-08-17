@@ -62,29 +62,29 @@ func parseDB() DB {
 }
 
 func parseStorage() (Storage, error) {
-	backend := strings.ToLower(strings.TrimSpace(os.Getenv("STORAGE_BACKEND")))
+	backend := strings.ToLower(strings.TrimSpace(os.Getenv("PUBLIRA_STORAGE_BACKEND")))
 	if backend == "" {
 		backend = "local"
 	}
 
 	cfg := Storage{
 		Backend:         backend,
-		LocalDir:        strings.TrimSpace(os.Getenv("LOCAL_STORAGE_DIR")),
-		LocalBaseURL:    strings.TrimSpace(os.Getenv("LOCAL_STORAGE_BASE_URL")),
-		S3Bucket:        strings.TrimSpace(os.Getenv("S3_BUCKET")),
+		LocalDir:        strings.TrimSpace(os.Getenv("PUBLIRA_LOCAL_STORAGE_DIR")),
+		LocalBaseURL:    strings.TrimSpace(os.Getenv("PUBLIRA_LOCAL_STORAGE_BASE_URL")),
+		S3Bucket:        strings.TrimSpace(os.Getenv("PUBLIRA_S3_BUCKET")),
 		S3Region:        strings.TrimSpace(os.Getenv("AWS_REGION")),
-		S3Endpoint:      strings.TrimSpace(os.Getenv("S3_ENDPOINT")),
-		S3PublicBaseURL: strings.TrimSpace(os.Getenv("S3_PUBLIC_BASE_URL")),
+		S3Endpoint:      strings.TrimSpace(os.Getenv("PUBLIRA_S3_ENDPOINT")),
+		S3PublicBaseURL: strings.TrimSpace(os.Getenv("PUBLIRA_S3_PUBLIC_BASE_URL")),
 	}
 
 	if cfg.LocalDir == "" {
 		cfg.LocalDir = "/tmp/publira-storage"
 	}
 
-	if raw := strings.TrimSpace(os.Getenv("S3_FORCE_PATH_STYLE")); raw != "" {
+	if raw := strings.TrimSpace(os.Getenv("PUBLIRA_S3_FORCE_PATH_STYLE")); raw != "" {
 		parsed, err := strconv.ParseBool(raw)
 		if err != nil {
-			return Storage{}, fmt.Errorf("invalid S3_FORCE_PATH_STYLE: %w", err)
+			return Storage{}, fmt.Errorf("invalid PUBLIRA_S3_FORCE_PATH_STYLE: %w", err)
 		}
 		cfg.S3ForcePathStyle = parsed
 	}
@@ -93,17 +93,17 @@ func parseStorage() (Storage, error) {
 }
 
 func parseEncryption() (Encryption, error) {
-	rawKeys := strings.TrimSpace(os.Getenv("SECRET_ENCRYPTION_KEYS"))
-	primaryKeyID := strings.TrimSpace(os.Getenv("SECRET_ENCRYPTION_PRIMARY_KEY_ID"))
+	rawKeys := strings.TrimSpace(os.Getenv("PUBLIRA_SECRET_ENCRYPTION_KEYS"))
+	primaryKeyID := strings.TrimSpace(os.Getenv("PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID"))
 
 	if rawKeys == "" && primaryKeyID == "" {
 		return Encryption{}, nil
 	}
 	if rawKeys == "" {
-		return Encryption{}, fmt.Errorf("SECRET_ENCRYPTION_KEYS is required when SECRET_ENCRYPTION_PRIMARY_KEY_ID is set")
+		return Encryption{}, fmt.Errorf("PUBLIRA_SECRET_ENCRYPTION_KEYS is required when PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID is set")
 	}
 	if primaryKeyID == "" {
-		return Encryption{}, fmt.Errorf("SECRET_ENCRYPTION_PRIMARY_KEY_ID is required when SECRET_ENCRYPTION_KEYS is set")
+		return Encryption{}, fmt.Errorf("PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID is required when PUBLIRA_SECRET_ENCRYPTION_KEYS is set")
 	}
 
 	keys := make(map[string][]byte)
@@ -116,13 +116,13 @@ func parseEncryption() (Encryption, error) {
 
 		parts := strings.SplitN(entry, ":", 2)
 		if len(parts) != 2 {
-			return Encryption{}, fmt.Errorf("invalid SECRET_ENCRYPTION_KEYS entry: %q", entry)
+			return Encryption{}, fmt.Errorf("invalid PUBLIRA_SECRET_ENCRYPTION_KEYS entry: %q", entry)
 		}
 
 		keyID := strings.TrimSpace(parts[0])
 		encodedKey := strings.TrimSpace(parts[1])
 		if keyID == "" || encodedKey == "" {
-			return Encryption{}, fmt.Errorf("invalid SECRET_ENCRYPTION_KEYS entry: %q", entry)
+			return Encryption{}, fmt.Errorf("invalid PUBLIRA_SECRET_ENCRYPTION_KEYS entry: %q", entry)
 		}
 
 		decodedKey, err := base64.RawURLEncoding.DecodeString(encodedKey)
@@ -141,10 +141,10 @@ func parseEncryption() (Encryption, error) {
 	}
 
 	if len(keys) == 0 {
-		return Encryption{}, fmt.Errorf("SECRET_ENCRYPTION_KEYS is required")
+		return Encryption{}, fmt.Errorf("PUBLIRA_SECRET_ENCRYPTION_KEYS is required")
 	}
 	if _, ok := keys[primaryKeyID]; !ok {
-		return Encryption{}, fmt.Errorf("SECRET_ENCRYPTION_PRIMARY_KEY_ID %q is not present in SECRET_ENCRYPTION_KEYS", primaryKeyID)
+		return Encryption{}, fmt.Errorf("PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID %q is not present in PUBLIRA_SECRET_ENCRYPTION_KEYS", primaryKeyID)
 	}
 
 	return Encryption{

@@ -12,6 +12,6 @@ bootstrap_log "removing compose project ${COMPOSE_PROJECT_NAME} (containers + vo
 compose down -v --remove-orphans || true
 
 # Logs stay for CI artifact upload; the storage scratch dir does not.
-rm -rf "${LOCAL_STORAGE_DIR}"
+rm -rf "${PUBLIRA_LOCAL_STORAGE_DIR}"
 
 bootstrap_log "teardown complete"

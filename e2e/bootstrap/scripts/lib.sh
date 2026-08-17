@@ -42,17 +42,17 @@ export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:${BOOTSTRAP_POSTGR
 export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
 export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:${BOOTSTRAP_POSTGRES_PORT}/publira?sslmode=disable"
-export REDIS_URL="redis://127.0.0.1:${BOOTSTRAP_REDIS_PORT}"
-export STORAGE_BACKEND="${STORAGE_BACKEND:-s3}"
-export S3_BUCKET="${S3_BUCKET:-publira}"
-export S3_ENDPOINT="http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}"
-export S3_FORCE_PATH_STYLE="true"
+export PUBLIRA_REDIS_URL="redis://127.0.0.1:${BOOTSTRAP_REDIS_PORT}"
+export PUBLIRA_STORAGE_BACKEND="${PUBLIRA_STORAGE_BACKEND:-s3}"
+export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
+export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}"
+export PUBLIRA_S3_FORCE_PATH_STYLE="true"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
 # Not overridable: down.sh deletes this path, so it must never point at a
 # directory the developer cares about.
-export LOCAL_STORAGE_DIR="${RUN_DIR}/storage"
+export PUBLIRA_LOCAL_STORAGE_DIR="${RUN_DIR}/storage"
 
 # Readiness budget for `task dev` (Turbopack cold start + `go run` of five cmds).
 BOOTSTRAP_DEV_TIMEOUT_SEC="${BOOTSTRAP_DEV_TIMEOUT_SEC:-600}"
@@ -85,7 +85,7 @@ compose() {
 }
 
 ensure_run_dirs() {
-  mkdir -p "${LOG_DIR}" "${STATE_DIR}" "${LOCAL_STORAGE_DIR}"
+  mkdir -p "${LOG_DIR}" "${STATE_DIR}" "${PUBLIRA_LOCAL_STORAGE_DIR}"
 }
 
 db_container_id() {
