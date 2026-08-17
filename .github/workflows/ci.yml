@@ -161,6 +161,7 @@ jobs:
               - 'e2e/scripts/lib.sh'
               - 'e2e/scripts/stop-apps.sh'
               - 'e2e/scripts/up.sh'
+              - 'scripts/storage-init.sh'
               - 'proto/publira/v1/catalog.proto'
               - 'proto/publira/v1/domain.proto'
               - 'server/**'
@@ -186,6 +187,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - 'Taskfile.yaml'
+              - 'scripts/storage-init.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_bootstrap:
@@ -204,6 +206,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
+              - 'scripts/storage-init.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
             test_routing:

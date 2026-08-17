@@ -118,7 +118,7 @@ Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、�
 
 - コンソール UI: `http://localhost:9001/rustfs/console/`
 - S3 エンドポイント（コンテナ内から）: `http://rustfs:9000`（path-style。ホストには公開しません）
-- バケット: `publira`。`task setup` / `task dev` が `task server:storage-init` で冪等に作成します
+- バケット: `publira`。`task setup` / `task dev` が `task storage:init` で冪等に作成します
 - データは `rustfs-data` volume に永続します
 
 app コンテナに渡す既定値は `.devcontainer/compose.yaml` にあります。

@@ -13,7 +13,7 @@ acquire_e2e_lock
 e2e_log "running task db:setup against ${PUBLIRA_DB_URL}"
 (cd "${REPO_ROOT}" && task db:setup)
 
-e2e_log "running task server:storage-init"
-(cd "${REPO_ROOT}" && task server:storage-init)
+e2e_log "running task storage:init"
+(cd "${REPO_ROOT}" && task storage:init)
 
 e2e_log "database and storage ready"

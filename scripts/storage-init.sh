@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # storage-init.sh — Idempotently creates PUBLIRA_S3_BUCKET via aws-cli.
 #
-# The script is designed to be called from `task server:storage-init` and
+# The script is designed to be called from `task storage:init` and
 # is safe to run repeatedly (idempotent).
 set -euo pipefail
 
