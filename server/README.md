@@ -161,7 +161,7 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | TTL | 24h |
 | Audience | `public` / `admin` / `platform` |
 | 失効 | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |
-| Next Cookie | `PUBLIRA_AUTH_SECRET`（JWE 用、API の JWT secret とは別） / Cookie 名: `publira_web_host_auth` 等 |
+| Next Cookie | `PUBLIRA_AUTH_SECRET`（**必須**。32 バイト以上。JWE 用で API の JWT secret とは別。フォールバックは無く、未設定・短すぎる場合は例外） / Cookie 名: `publira_web_host_auth` 等 |
 
 ## API サーバ分離
 

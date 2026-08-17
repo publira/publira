@@ -14,3 +14,9 @@
 cd apps/web-admin
 pnpm dev
 ```
+
+### セッション Cookie (JWE)
+
+必須の環境変数:
+
+- `PUBLIRA_AUTH_SECRET`（32 バイト以上）— 管理画面のセッション Cookie を封じる鍵。フォールバックは無く、未設定・短すぎる場合は例外になります。詳細と払い出し方は [リポジトリ README](../../README.md#セッション-cookie-の暗号鍵-publira_auth_secret) を参照してください

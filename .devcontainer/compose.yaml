@@ -46,6 +46,10 @@ services:
       # default; point it at the persisted volume so rebuilds don't force
       # re-auth. https://code.claude.com/docs/en/devcontainer
       CLAUDE_CONFIG_DIR: /home/vscode/.claude
+      # Key the Next.js apps seal their session cookie (JWE) with. Required —
+      # `resolveAuthSecret()` has no fallback. Local development only: it is
+      # published in this repository, so never reuse it outside a dev stack.
+      PUBLIRA_AUTH_SECRET: publira-dev-only-insecure-web-session-secret
       # Shared Next.js server cache (cacheHandler / cacheHandlers)
       PUBLIRA_REDIS_URL: redis://redis:6379
       # S3 / RustFS local object storage
