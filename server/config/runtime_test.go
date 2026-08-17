@@ -48,31 +48,14 @@ func TestNew_CustomDBURL(t *testing.T) {
 		t.Fatalf("DB.URL = %q, want %q", cfg.DB.URL, "postgres://example/db")
 	}
 }
-func TestNew_DefaultLocalStorage(t *testing.T) {
-	setenv(t, "PUBLIRA_STORAGE_BACKEND", "")
-	cfg, err := New()
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	if cfg.Storage.Backend != "local" {
-		t.Fatalf("Storage.Backend = %q, want local", cfg.Storage.Backend)
-	}
-	if cfg.Storage.LocalDir != "/tmp/publira-storage" {
-		t.Fatalf("Storage.LocalDir = %q, want /tmp/publira-storage", cfg.Storage.LocalDir)
-	}
-}
 
 func TestNew_S3Storage(t *testing.T) {
-	setenv(t, "PUBLIRA_STORAGE_BACKEND", "s3")
 	setenv(t, "PUBLIRA_S3_BUCKET", "my-bucket")
 	setenv(t, "AWS_REGION", "ap-northeast-1")
 	setenv(t, "PUBLIRA_S3_FORCE_PATH_STYLE", "true")
 	cfg, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
-	}
-	if cfg.Storage.Backend != "s3" {
-		t.Fatalf("Storage.Backend = %q, want s3", cfg.Storage.Backend)
 	}
 	if cfg.Storage.S3Bucket != "my-bucket" {
 		t.Fatalf("Storage.S3Bucket = %q, want my-bucket", cfg.Storage.S3Bucket)
@@ -86,12 +69,24 @@ func TestNew_S3Storage(t *testing.T) {
 }
 
 func TestNew_InvalidForcePathStyle(t *testing.T) {
-	setenv(t, "PUBLIRA_STORAGE_BACKEND", "s3")
 	setenv(t, "PUBLIRA_S3_BUCKET", "bucket")
 	setenv(t, "PUBLIRA_S3_FORCE_PATH_STYLE", "not-bool")
 	_, err := New()
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestStorageValidate_MissingBucket(t *testing.T) {
+	err := Storage{}.Validate()
+	if err == nil || !strings.Contains(err.Error(), "PUBLIRA_S3_BUCKET") {
+		t.Fatalf("err = %v, want PUBLIRA_S3_BUCKET error", err)
+	}
+}
+
+func TestStorageValidate_Bucket(t *testing.T) {
+	if err := (Storage{S3Bucket: "my-bucket"}).Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
 	}
 }
 

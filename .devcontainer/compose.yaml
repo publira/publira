@@ -52,7 +52,6 @@ services:
       PUBLIRA_S3_BUCKET: publira
       PUBLIRA_S3_ENDPOINT: http://rustfs:9000
       PUBLIRA_S3_FORCE_PATH_STYLE: "true"
-      PUBLIRA_STORAGE_BACKEND: s3
     labels:
       # web-host: テナント公開サイト (port 3000)
       - "traefik.enable=true"

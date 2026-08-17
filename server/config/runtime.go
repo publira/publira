@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -22,14 +23,20 @@ type DB struct {
 }
 
 type Storage struct {
-	Backend          string
-	LocalDir         string
-	LocalBaseURL     string
 	S3Bucket         string
 	S3Region         string
 	S3Endpoint       string
 	S3PublicBaseURL  string
 	S3ForcePathStyle bool
+}
+
+// Validate is run at startup by the servers that touch object storage, so a
+// missing bucket stops the process instead of surfacing on the first upload.
+func (s Storage) Validate() error {
+	if s.S3Bucket == "" {
+		return errors.New("PUBLIRA_S3_BUCKET is required")
+	}
+	return nil
 }
 
 type Encryption struct {
@@ -62,23 +69,11 @@ func parseDB() DB {
 }
 
 func parseStorage() (Storage, error) {
-	backend := strings.ToLower(strings.TrimSpace(os.Getenv("PUBLIRA_STORAGE_BACKEND")))
-	if backend == "" {
-		backend = "local"
-	}
-
 	cfg := Storage{
-		Backend:         backend,
-		LocalDir:        strings.TrimSpace(os.Getenv("PUBLIRA_LOCAL_STORAGE_DIR")),
-		LocalBaseURL:    strings.TrimSpace(os.Getenv("PUBLIRA_LOCAL_STORAGE_BASE_URL")),
 		S3Bucket:        strings.TrimSpace(os.Getenv("PUBLIRA_S3_BUCKET")),
 		S3Region:        strings.TrimSpace(os.Getenv("AWS_REGION")),
 		S3Endpoint:      strings.TrimSpace(os.Getenv("PUBLIRA_S3_ENDPOINT")),
 		S3PublicBaseURL: strings.TrimSpace(os.Getenv("PUBLIRA_S3_PUBLIC_BASE_URL")),
-	}
-
-	if cfg.LocalDir == "" {
-		cfg.LocalDir = "/tmp/publira-storage"
 	}
 
 	if raw := strings.TrimSpace(os.Getenv("PUBLIRA_S3_FORCE_PATH_STYLE")); raw != "" {

@@ -114,7 +114,7 @@ self-host / multi-instance 向けに、Next.js のサーバー側キャッシュ
 
 ## 開発用オブジェクトストレージ (RustFS)
 
-Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、アプリは本番と同じ `PUBLIRA_STORAGE_BACKEND=s3` の経路で動きます（エピソード画像のアップロードと image-server の配信）。
+Dev Container 起動時に S3 互換の **RustFS** コンテナも起動し、アプリは本番と同じ経路で動きます（エピソード画像のアップロードと image-server の配信）。
 
 - コンソール UI: `http://localhost:9001/rustfs/console/`
 - S3 エンドポイント（コンテナ内から）: `http://rustfs:9000`（path-style。ホストには公開しません）
@@ -125,7 +125,6 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 
 | 変数                                          | 既定値                    |
 | --------------------------------------------- | ------------------------- |
-| `PUBLIRA_STORAGE_BACKEND`                     | `s3`                      |
 | `PUBLIRA_S3_BUCKET`                           | `publira`                 |
 | `PUBLIRA_S3_ENDPOINT`                         | `http://rustfs:9000`      |
 | `PUBLIRA_S3_FORCE_PATH_STYLE`                 | `true`                    |

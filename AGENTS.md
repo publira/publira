@@ -59,14 +59,14 @@ That test — who performs the lookup — is the whole rule. It is not about whe
 
 | Category | Naming | Examples |
 | --- | --- | --- |
-| Only this repository's code reads it | `PUBLIRA_*` | `PUBLIRA_DB_URL`, `PUBLIRA_PUBLIC_API_ADDR`, `PUBLIRA_STORAGE_BACKEND`, `PUBLIRA_S3_BUCKET`, `PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP` |
+| Only this repository's code reads it | `PUBLIRA_*` | `PUBLIRA_DB_URL`, `PUBLIRA_PUBLIC_API_ADDR`, `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP` |
 | An external SDK / framework / runtime reads it out of the environment itself | keep the name that software documents | `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (AWS SDK, `aws` CLI), `NODE_ENV`, `PORT`, `HOST` / `HOSTNAME`, `CI`, `NEXT_PHASE`, `NEXT_PRIVATE_*`, `__NEXT_*` |
 | A vendor's own documented variable name, even though our code does the lookup | keep the vendor name | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | Test-harness knobs rather than application config | out of scope for this rule | `E2E_*`, `BOOTSTRAP_*`, `ROUTING_*` |
 
 ### Names that look like exceptions and are not
 
-- **`S3_*` / `STORAGE_BACKEND` / `LOCAL_STORAGE_*`** were never AWS SDK variables — `server/config/runtime.go` reads them — so they are `PUBLIRA_S3_BUCKET`, `PUBLIRA_STORAGE_BACKEND`, `PUBLIRA_LOCAL_STORAGE_DIR`, and so on. Only the `AWS_*` credentials and region in the table above are looked up by the SDK and the `aws` CLI.
+- **`S3_*`** were never AWS SDK variables — `server/config/runtime.go` reads them — so they are `PUBLIRA_S3_BUCKET`, `PUBLIRA_S3_ENDPOINT`, `PUBLIRA_S3_FORCE_PATH_STYLE`, and so on. Only the `AWS_*` credentials and region in the table above are looked up by the SDK and the `aws` CLI.
 - **`AUTH_SECRET` is not an Auth.js variable.** This repository does not use Auth.js / NextAuth; the only reader is `resolveAuthSecret()` in `packages/web-session`, which encrypts the session JWE with `jose`. Hence `PUBLIRA_AUTH_SECRET`.
 - **`NEXT_*` is not a blanket exception.** Next.js itself reads `NEXT_PHASE`, `NEXT_PRIVATE_DEBUG_CACHE`, and `__NEXT_DEV_SERVER`. The cache and revalidation variables belong to our own implementation (`@publira/next-cache-handlers`, the `/api/revalidate` Route Handler), where the `NEXT_` prefix only made them look like framework settings — hence `PUBLIRA_CACHE_APP`, `PUBLIRA_CACHE_KEY_PREFIX`, and `PUBLIRA_REVALIDATE_TOKEN`.
 - **A de-facto generic name is not a vendor name.** Nothing but `@publira/next-cache-handlers` reads `REDIS_URL` and `REDIS_CACHE_TIMEOUT_MS`; the `redis` client is handed the connection string and the timeout explicitly. They are therefore `PUBLIRA_REDIS_URL` and `PUBLIRA_REDIS_CACHE_TIMEOUT_MS`, the same category as `PUBLIRA_DB_URL`. `STRIPE_*` stays because Stripe documents those exact names for its own key material — not merely because the value is third-party.

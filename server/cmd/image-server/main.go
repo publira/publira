@@ -95,32 +95,25 @@ func resolveImageDBURL() string {
 }
 
 func newObjectStore(ctx context.Context, cfg config.Storage) (imageserver.ObjectStore, error) {
-	switch strings.ToLower(strings.TrimSpace(cfg.Backend)) {
-	case "local":
-		return imageserver.NewLocalStore(cfg.LocalDir)
-	case "s3":
-		if strings.TrimSpace(cfg.S3Bucket) == "" {
-			return nil, errors.New("PUBLIRA_S3_BUCKET is required when PUBLIRA_STORAGE_BACKEND=s3")
-		}
-
-		loadOptions := make([]func(*awsconfig.LoadOptions) error, 0, 1)
-		if strings.TrimSpace(cfg.S3Region) != "" {
-			loadOptions = append(loadOptions, awsconfig.WithRegion(cfg.S3Region))
-		}
-		awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOptions...)
-		if err != nil {
-			return nil, fmt.Errorf("load aws config: %w", err)
-		}
-
-		client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-			o.UsePathStyle = cfg.S3ForcePathStyle
-			if strings.TrimSpace(cfg.S3Endpoint) != "" {
-				o.BaseEndpoint = aws.String(strings.TrimSpace(cfg.S3Endpoint))
-			}
-		})
-
-		return imageserver.NewS3Store(client, cfg.S3Bucket), nil
-	default:
-		return nil, fmt.Errorf("unsupported PUBLIRA_STORAGE_BACKEND: %s", cfg.Backend)
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
+
+	loadOptions := make([]func(*awsconfig.LoadOptions) error, 0, 1)
+	if cfg.S3Region != "" {
+		loadOptions = append(loadOptions, awsconfig.WithRegion(cfg.S3Region))
+	}
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("load aws config: %w", err)
+	}
+
+	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.UsePathStyle = cfg.S3ForcePathStyle
+		if cfg.S3Endpoint != "" {
+			o.BaseEndpoint = aws.String(cfg.S3Endpoint)
+		}
+	})
+
+	return imageserver.NewS3Store(client, cfg.S3Bucket), nil
 }
