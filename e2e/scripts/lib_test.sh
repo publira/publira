@@ -271,6 +271,101 @@ else
   fail "E2E_LOCK_HELD=1 still tried to take the lease"
 fi
 
+# Teardown deletes the lease file, so a holder that outlives it can no longer be
+# named and every later run is refused with nothing to act on (#982).
+lock_file="${E2E_DIR}/.run/locks/${lock_project}.lock"
+lease_file="${E2E_DIR}/.run/locks/${lock_project}.lease"
+
+# Reports its own failure so a stuck lock ends the check instead of the script.
+take_lease() {
+  if stack_env E2E_RUN_DIR="$1" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+    source "$1"
+    acquire_e2e_lock
+  ' bash "${LIB}" >"${lock_err}" 2>&1; then
+    return 0
+  fi
+  fail "could not take the ${lock_project} lease for $1: $(cat "${lock_err}")"
+  return 1
+}
+
+lock_is_free() {
+  flock -n "${lock_file}" true 2>/dev/null
+}
+
+wait_lock_free() {
+  local _
+  for _ in $(seq 1 30); do
+    if lock_is_free; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
+if ! command -v flock >/dev/null 2>&1; then
+  printf '[e2e] lib_test skip: flock unavailable, lock reclaim checks not run\n'
+else
+  # The recorded pid must be the only process with the lock open. A `sleep`
+  # child would inherit fd 9 and keep the flock after teardown kills the holder.
+  if take_lease "${lease_a}"; then
+    holder_pid="$(sed -n '2p' "${lease_file}")"
+    kill -9 "${holder_pid}" 2>/dev/null || true
+    if wait_lock_free; then
+      pass "killing the lease holder frees the compose-project lock"
+    else
+      fail "lock still held after killing holder ${holder_pid} (a child inherited fd 9)"
+    fi
+    rm -f "${lease_file}"
+  fi
+
+  # `task e2e:down` run after the lease file is already gone.
+  if take_lease "${lease_a}"; then
+    orphan_pid="$(sed -n '2p' "${lease_file}")"
+    rm -f "${lease_file}"
+    if stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+      source "$1"
+      require_e2e_owner_or_free
+      release_e2e_lease
+    ' bash "${LIB}" >"${lock_err}" 2>&1 && lock_is_free; then
+      pass "down reclaims a lock holder orphaned by a missing lease file"
+    else
+      fail "orphaned holder ${orphan_pid} survived down: $(cat "${lock_err}")"
+    fi
+
+    if stack_env E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+      source "$1"
+      acquire_e2e_lock
+      release_e2e_lease
+    ' bash "${LIB}"; then
+      pass "the next run acquires the lock after down reclaimed the orphan"
+    else
+      fail "acquire still refused after down reclaimed the orphan"
+    fi
+  fi
+
+  # Acquire never reclaims — a holder may be mid-startup with its lease file not
+  # yet written — so the refusal has to hand over the pid and the way out.
+  if take_lease "${lease_a}"; then
+    stuck_pid="$(sed -n '2p' "${lease_file}")"
+    rm -f "${lease_file}"
+    if stack_env E2E_RUN_DIR="${lease_b}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+      source "$1"
+      acquire_e2e_lock
+    ' bash "${LIB}" >"${lock_err}" 2>&1; then
+      fail "acquire succeeded while an orphaned holder still held the lock"
+    elif grep -q "held by pid(s) .*${stuck_pid}" "${lock_err}" && grep -q "task e2e:down" "${lock_err}"; then
+      pass "acquire refusal names the orphaned holder and the recovery command"
+    else
+      fail "acquire refusal does not identify the holder: $(cat "${lock_err}")"
+    fi
+    stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${lock_project}" bash -c '
+      source "$1"
+      release_e2e_lease
+    ' bash "${LIB}" >/dev/null 2>&1 || true
+  fi
+fi
+
 trap - EXIT
 cleanup_lease
 
