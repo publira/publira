@@ -25,7 +25,7 @@ cd server && make build
 
 ## 主な環境変数
 
-- `DB_URL` (任意, 未指定時は開発用デフォルト)
+- `PUBLIRA_PUBLIC_DB_URL` (任意, 未指定時は開発用デフォルト)
 - `PUBLIRA_STORAGE_BACKEND` (`local` または `s3`, 未指定時は `local`)
 - `PUBLIRA_LOCAL_STORAGE_DIR` (`PUBLIRA_STORAGE_BACKEND=local` 時, 未指定時 `/tmp/publira-storage`)
 - `PUBLIRA_LOCAL_STORAGE_BASE_URL` (`PUBLIRA_STORAGE_BACKEND=local` 時, 任意)

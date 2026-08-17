@@ -26,7 +26,7 @@ cd server && make build
 ## 主な環境変数
 
 - `PUBLIRA_PLATFORM_API_ADDR` (任意, 未指定時 `:8002`)
-- `DB_URL` (任意, 未指定時は開発用デフォルト)
+- `PUBLIRA_PLATFORM_DB_URL` (任意, 未指定時は開発用デフォルト)
 
 ## ロール権限
 
