@@ -364,6 +364,28 @@ else
       release_e2e_lease
     ' bash "${LIB}" >/dev/null 2>&1 || true
   fi
+
+  # Reached through a symlinked repository path, E2E_LOCK_FILE keeps the logical
+  # path while /proc reports the physical one. The holder must still be found.
+  link_project="${lock_project}-link"
+  link_root="$(mktemp -d "${TMPDIR:-/tmp}/publira-e2e-libtest-link.XXXXXX")"
+  ln -s "${E2E_DIR}" "${link_root}/e2e"
+  if stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${link_project}" bash -c '
+    source "$1"
+    acquire_e2e_lock
+    rm -f "${E2E_LEASE_FILE}"
+    release_e2e_lease
+  ' bash "${link_root}/e2e/scripts/lib.sh" >"${lock_err}" 2>&1; then
+    pass "orphan reclaim works through a symlinked repository path"
+  else
+    fail "symlinked repository path could not reclaim: $(cat "${lock_err}")"
+    stack_env E2E_RUN_DIR="${lease_a}" COMPOSE_PROJECT_NAME="${link_project}" bash -c '
+      source "$1"
+      release_e2e_lease
+    ' bash "${LIB}" >/dev/null 2>&1 || true
+  fi
+  rm -rf "${link_root}"
+  rm -f "${E2E_DIR}/.run/locks/${link_project}.lock" "${E2E_DIR}/.run/locks/${link_project}.lease"
 fi
 
 trap - EXIT

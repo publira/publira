@@ -167,18 +167,29 @@ e2e_lock_is_free() {
   flock -n "${E2E_LOCK_FILE}" true 2>/dev/null
 }
 
+# E2E_LOCK_FILE keeps whatever path the caller reached the repository through,
+# symlinks included, while /proc reports the physical one. Resolve the directory
+# with `pwd -P` so the two can be compared (`readlink -f` is GNU-only).
+e2e_lock_file_physical() {
+  local dir
+  dir="$(cd "$(dirname "${E2E_LOCK_FILE}")" 2>/dev/null && pwd -P)" || return 1
+  printf '%s/%s\n' "${dir}" "$(basename "${E2E_LOCK_FILE}")"
+}
+
 # PIDs with the lock file open, newline separated. The lease file normally
 # records the holder; this is the fallback for when it is gone and the pid has
 # to be recovered from the kernel instead. Linux only — elsewhere the caller
 # falls back to printing a recovery hint.
 e2e_lock_holder_pids() {
-  local fd pid target
+  local fd pid target physical
   if [[ ! -d /proc || ! -e "${E2E_LOCK_FILE}" ]]; then
     return 0
   fi
+  physical="$(e2e_lock_file_physical || true)"
+  physical="${physical:-${E2E_LOCK_FILE}}"
   for fd in /proc/[0-9]*/fd/*; do
     target="$(readlink "${fd}" 2>/dev/null || true)"
-    if [[ "${target}" != "${E2E_LOCK_FILE}" ]]; then
+    if [[ "${target}" != "${E2E_LOCK_FILE}" && "${target}" != "${physical}" ]]; then
       continue
     fi
     pid="${fd#/proc/}"
@@ -216,9 +227,15 @@ e2e_terminate_pid() {
 # through /proc and take the lock back.
 e2e_reclaim_orphan_lock() {
   local pid pids _
-  if e2e_lock_is_free; then
-    return 0
-  fi
+  # A just-killed holder releases the descriptor asynchronously, so give the
+  # lock a moment before concluding someone else still owns it. Without the
+  # wait, a platform with no /proc to search would fail teardown outright.
+  for _ in $(seq 1 30); do
+    if e2e_lock_is_free; then
+      return 0
+    fi
+    sleep 0.1
+  done
   pids="$(e2e_lock_holder_pids)"
   if [[ -z "${pids}" ]]; then
     e2e_err "compose project ${COMPOSE_PROJECT_NAME} lock ${E2E_LOCK_FILE} is held by an unidentified process; $(e2e_lock_holder_hint)"
