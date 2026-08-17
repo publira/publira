@@ -17,7 +17,7 @@
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
-      "computedHash": "925bfb94017293b94586bc8deb92fd18de8664352c56ab0bee8c5b2e9135fc74"
+      "computedHash": "bb56d029b57617215a64283adff4a020b2484162234595a9e4cb3703dd9084bf"
     },
     "next-dev-loop": {
       "source": "vercel/next.js",
@@ -29,7 +29,7 @@
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
-      "computedHash": "4ed43c1f766872e8322821b5103176cf08d8cd26409ddd80c95af689d59ae74e"
+      "computedHash": "d3d665fb981213406206138afd054261169b2ef511039c6a7dd0406af02dc500"
     },
     "ultracite": {
       "source": "haydenbleasel/ultracite",
