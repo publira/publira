@@ -1,8 +1,8 @@
 # Ephemeral dependency stack for E2E (project name: publira-e2e).
 # Apps (api-server, web-host) run on the host; only data stores are containerized.
 #
-# Host ports avoid colliding with Dev Container defaults (db hostname-only,
-# redis :6379, rustfs :9000). Override with E2E_POSTGRES_PORT / E2E_REDIS_PORT /
+# Host ports are offset from each service's default (5432 / 6379 / 9000) so
+# they clear other local stacks. Override with E2E_POSTGRES_PORT / E2E_REDIS_PORT /
 # E2E_RUSTFS_PORT (and a distinct COMPOSE_PROJECT_NAME) so a second stack can
 # run from the same checkout:
 #   postgres → localhost:${E2E_POSTGRES_PORT:-5433}

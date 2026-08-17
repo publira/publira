@@ -6,8 +6,8 @@
 # stay down and `task dev` runs on the host.
 #
 # This file adds the two things a host-side check needs:
-#   - published ports, offset from both Dev Container (5432 / 6379) and
-#     e2e/compose.yaml (5433 / 6380) so a bootstrap run never collides
+#   - published ports, offset from e2e/compose.yaml (5433 / 6380 / 9003) so a
+#     bootstrap run never collides with a Playwright E2E stack
 #   - a `db` healthcheck, so `compose up --wait` actually waits for Postgres
 #
 # Relative paths in the base file resolve against `.devcontainer/` (the first
@@ -25,12 +25,9 @@ services:
       start_period: 5s
 
   redis:
-    # `!override` replaces the base list instead of appending to it; merging
-    # would keep the base `6379:6379` binding and collide with a running Dev
-    # Container stack.
-    ports: !override
+    ports:
       - "127.0.0.1:${BOOTSTRAP_REDIS_PORT:-6381}:6379"
 
   rustfs:
-    ports: !override
+    ports:
       - "127.0.0.1:${BOOTSTRAP_RUSTFS_PORT:-9002}:9000"
