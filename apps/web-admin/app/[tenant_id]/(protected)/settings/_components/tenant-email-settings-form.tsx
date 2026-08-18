@@ -269,6 +269,7 @@ export const TenantEmailSettingsForm = ({
 }: TenantEmailSettingsFormProps) => {
   const tenantId = useTenantId();
   const formId = useId();
+  const smtpOverrideId = useId();
   const [saveState, saveFormAction, isSaving] = useActionState(
     saveAction,
     null
@@ -351,12 +352,15 @@ export const TenantEmailSettingsForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel>テナントSMTP上書きを有効にする</FieldLabel>
+            <FieldLabel htmlFor={smtpOverrideId}>
+              テナントSMTP上書きを有効にする
+            </FieldLabel>
             <FieldContent>
               <label className="inline-flex items-center gap-2 text-sm text-foreground">
                 <input
                   checked={smtpOverrideEnabled}
                   disabled={!canEdit}
+                  id={smtpOverrideId}
                   name="smtp_override_enabled"
                   onChange={handleOverrideChange}
                   type="checkbox"

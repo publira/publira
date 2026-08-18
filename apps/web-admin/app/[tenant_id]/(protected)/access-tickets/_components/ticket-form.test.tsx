@@ -21,35 +21,36 @@ vi.mock("../_lib/actions", () => ({
   listEpisodeOptionsAction: vi.fn(),
 }));
 
-vi.mock("@publira/ui-components/combobox", () => ({
-  Combobox: ({
-    disabled,
-    id,
-    items,
-    onValueChange,
-    value,
-  }: {
-    disabled?: boolean;
-    id?: string;
-    items: { label: string; value: string }[];
-    onValueChange: (next: string) => void;
-    value: string;
-  }) => (
-    <select
-      disabled={disabled}
-      id={id}
-      onChange={(event) => onValueChange(event.target.value)}
-      value={value}
-    >
-      <option value="">未選択</option>
-      {items.map((item) => (
-        <option key={item.value} value={item.value}>
-          {item.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
+vi.mock("@publira/ui-components/combobox", async () => {
+  const { Input } = await import("@publira/ui-components/input");
+
+  return {
+    Combobox: ({
+      disabled,
+      items,
+      onValueChange,
+      value,
+    }: {
+      disabled?: boolean;
+      items: { label: string; value: string }[];
+      onValueChange: (next: string) => void;
+      value: string;
+    }) => (
+      <>
+        <Input
+          disabled={disabled}
+          onChange={(event) => onValueChange(event.target.value)}
+          value={value}
+        />
+        {items.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </>
+    ),
+  };
+});
 
 const mockListEpisodeOptionsAction = vi.mocked(listEpisodeOptionsAction);
 
@@ -58,12 +59,12 @@ const action = () => Promise.resolve({ message: "", ok: false });
 const seriesA = { publicId: "SERIES001", title: "シリーズA" };
 const seriesB = { publicId: "SERIES002", title: "シリーズB" };
 
-const seriesCombobox = () => screen.getAllByRole("combobox")[0];
-const episodeCombobox = () => screen.getAllByRole("combobox")[1];
+const seriesCombobox = () => screen.getByLabelText(/シリーズ/u);
+const episodeCombobox = () => screen.getByLabelText(/^エピソード/u);
 
-const selectSeries = (publicId: string) => {
+const selectSeries = (item: { publicId: string; title: string }) => {
   fireEvent.change(seriesCombobox(), {
-    target: { value: publicId },
+    target: { value: item.publicId },
   });
 };
 
@@ -129,7 +130,7 @@ describe("TicketForm", () => {
       <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
     );
 
-    selectSeries("SERIES001");
+    selectSeries(seriesA);
 
     await waitFor(() => {
       expect(mockListEpisodeOptionsAction).toHaveBeenCalledWith(
@@ -137,6 +138,7 @@ describe("TicketForm", () => {
         "SERIES001"
       );
     });
+
     expect(
       await screen.findByRole("option", { name: "第1話 (EPISODE001)" })
     ).toBeDefined();
@@ -169,7 +171,7 @@ describe("TicketForm", () => {
       <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
     );
 
-    selectSeries("SERIES001");
+    selectSeries(seriesA);
 
     expect(
       await screen.findByText("エピソード一覧の取得に失敗しました。")
@@ -206,8 +208,8 @@ describe("TicketForm", () => {
       />
     );
 
-    selectSeries("SERIES001");
-    selectSeries("SERIES002");
+    selectSeries(seriesA);
+    selectSeries(seriesB);
 
     firstLoad.resolve({
       episodes: [{ publicId: "EPISODE-A", title: "先に返った話" }],
