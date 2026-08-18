@@ -11,6 +11,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
@@ -47,6 +48,8 @@ const NotificationManagerData = async ({
     countUnreadNotifications(),
     getPlatformDisplayTimeZone(),
   ]);
+
+  await redirectToLoginIfSessionRejected(listResult, unreadResult);
 
   return (
     <NotificationManager

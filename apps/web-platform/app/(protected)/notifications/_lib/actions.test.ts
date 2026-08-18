@@ -3,15 +3,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockMarkAllNotificationsAsRead,
   mockMarkNotificationAsRead,
+  mockResolveAccessToken,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockMarkAllNotificationsAsRead: vi.fn(),
   mockMarkNotificationAsRead: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
   updateTag: mockUpdateTag,
+}));
+
+vi.mock("#lib/api-client", () => ({
+  resolveAccessToken: mockResolveAccessToken,
 }));
 
 vi.mock("#lib/notification", () => ({
@@ -34,6 +40,9 @@ describe("notification actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    // `withPlatformSessionReauth` resolves the session before the mutation
+    // runs; without a token every Action under test would redirect to /login.
+    mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
   it("単件既読に成功したらキャッシュタグを更新する", async () => {

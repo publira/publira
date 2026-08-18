@@ -3,12 +3,17 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 
 export interface PlatformEndUserSummary {
   createdAt: string;
@@ -38,7 +43,12 @@ export interface ListPlatformEndUsersInput {
 
 export type ListPlatformEndUsersResult =
   | { ok: true; users: PlatformEndUserSummary[] }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 const genericErrorMessage =
   "処理に失敗しました。時間をおいて再試行してください。";
@@ -126,9 +136,11 @@ export const listPlatformEndUsers = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -152,9 +164,14 @@ export const listPlatformEndUsers = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(error, listErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -169,6 +186,8 @@ export type SearchPlatformTenantFilterOptionsResult =
       hasMore: false;
       message: string;
       ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
       tenants: [];
     };
 
@@ -184,10 +203,12 @@ export const searchPlatformTenantFilterOptions = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       hasMore: false,
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
       tenants: [],
     };
   }
@@ -237,10 +258,15 @@ export const searchPlatformTenantFilterOptions = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       hasMore: false,
       message: rpcErrorMessage(error, tenantFilterSearchErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       tenants: [],
     };
   }
@@ -248,7 +274,12 @@ export const searchPlatformTenantFilterOptions = async (
 
 export type GetPlatformEndUserResult =
   | { ok: true; user: PlatformEndUserSummary | null }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 export const getPlatformEndUser = async (
   publicId: string
@@ -262,9 +293,11 @@ export const getPlatformEndUser = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -279,12 +312,17 @@ export const getPlatformEndUser = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,
         "ユーザー情報の取得に失敗しました。時間をおいて再試行してください。"
       ),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -309,6 +347,7 @@ export const suspendPlatformEndUser = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -334,6 +373,7 @@ export const unsuspendPlatformEndUser = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -362,6 +402,7 @@ export const deletePlatformEndUser = async (
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: genericErrorMessage, ok: false };
   }

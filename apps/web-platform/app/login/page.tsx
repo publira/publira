@@ -14,11 +14,16 @@ const LoginFormWrapper = async ({
 }: {
   searchParams: PageProps<"/login">["searchParams"];
 }) => {
-  const { nextPath, passwordResetDone } = parseLoginSearchParams(
-    await searchParams
-  );
+  const { nextPath, passwordResetDone, sessionRevoked } =
+    parseLoginSearchParams(await searchParams);
 
-  return <LoginForm nextPath={nextPath} resetDone={passwordResetDone} />;
+  return (
+    <LoginForm
+      nextPath={nextPath}
+      resetDone={passwordResetDone}
+      sessionRevoked={sessionRevoked}
+    />
+  );
 };
 
 const LoginFormSkeleton = () => (

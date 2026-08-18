@@ -1,5 +1,6 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { z } from "zod";
 
 import {
@@ -7,6 +8,10 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 import { normalizePlatformRole } from "./roles";
 
 const getPlatformOperatorInputSchema = z.object({
@@ -53,6 +58,8 @@ export type ListPlatformOperatorsResult =
       ok: false;
       operators: PlatformOperatorSummary[];
       previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
     };
 
 const mapOperator = (operator: {
@@ -78,12 +85,14 @@ export const listPlatformOperators = async (
 
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
       ok: false,
       operators: [],
       previousToken: "",
+      requiresSignIn: true,
     };
   }
 
@@ -103,6 +112,10 @@ export const listPlatformOperators = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,
@@ -112,6 +125,7 @@ export const listPlatformOperators = async (
       ok: false,
       operators: [],
       previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -134,6 +148,7 @@ export const createPlatformOperator = async (
     );
     return { ok: true, publicId: response.operator?.publicId };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(error, genericErrorMessage, {
@@ -161,6 +176,7 @@ export const suspendPlatformOperator = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -183,6 +199,7 @@ export const unsuspendPlatformOperator = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -246,6 +263,7 @@ export const updatePlatformOperatorRole = async (
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: rpcErrorMessage(error, genericErrorMessage), ok: false };
   }
@@ -265,6 +283,7 @@ export const deactivatePlatformOperator = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }

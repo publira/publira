@@ -5,10 +5,13 @@ import {
   isSessionExpired,
   resolveAuthSecret,
 } from "@publira/web-session";
-import { io } from "next/cache";
+import { cacheTag, io } from "next/cache";
 import { cookies } from "next/headers";
 
-import { PLATFORM_SESSION_COOKIE_NAME } from "./auth-shared";
+import {
+  PLATFORM_SESSION_CACHE_TAG,
+  PLATFORM_SESSION_COOKIE_NAME,
+} from "./auth-shared";
 
 // gRPC transport is used for internal Next.js → Go API communication
 const grpcBaseUrl =
@@ -26,6 +29,7 @@ const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 
 const getAccessTokenFromCookie = async (): Promise<string> => {
   "use cache: private";
+  cacheTag(PLATFORM_SESSION_CACHE_TAG);
 
   const cookieStore = await cookies();
   const raw =

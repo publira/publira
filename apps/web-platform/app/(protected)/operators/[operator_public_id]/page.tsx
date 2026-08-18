@@ -25,6 +25,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   getOperatorRoleCardDescription,
   getOperatorRoleLabel,
@@ -86,16 +87,23 @@ const OperatorDetailContent = async ({
 }: Pick<OperatorDetailPageProps, "params">) => {
   const { operator_public_id: operatorPublicId } = await params;
 
-  const [operator, currentOperator, timeZone] = await Promise.all([
+  const [operator, currentOperatorResult, timeZone] = await Promise.all([
     getPlatformOperator(operatorPublicId),
     getPlatformCurrentOperator(),
     getPlatformDisplayTimeZone(),
   ]);
 
+  // Before `notFound()`: a rejected session reads every record as missing, and
+  // a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(currentOperatorResult);
+
   if (!operator) {
     notFound();
   }
 
+  const currentOperator = currentOperatorResult.ok
+    ? currentOperatorResult.operator
+    : null;
   const isSelf = currentOperator?.publicId === operator.publicId;
   const isSuperAdmin = isPlatformSuperAdmin(currentOperator?.role);
   const isDeactivated = operator.status === "inactive";

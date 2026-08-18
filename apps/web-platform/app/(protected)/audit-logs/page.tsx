@@ -41,6 +41,7 @@ import type {
   ListPlatformAuditLogsResult,
   PlatformAuditLogSummary,
 } from "#lib/audit-logs";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { DEFAULT_LIST_PAGE_SIZE, MAX_LIST_OFFSET } from "#lib/list-pagination";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -397,6 +398,8 @@ const AuditLogsContent = async ({
     }),
     getPlatformDisplayTimeZone(),
   ]);
+
+  await redirectToLoginIfSessionRejected(result);
 
   const hasPrev = offset > 0;
   const prevOffset = Math.max(0, offset - pageSize);

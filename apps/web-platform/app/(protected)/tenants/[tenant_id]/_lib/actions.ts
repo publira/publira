@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { emailFormSchema } from "#lib/auth-input";
+import { withPlatformSessionReauth } from "#lib/auth-session";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -93,7 +94,9 @@ export const suspendTenantAction = async (
     return;
   }
 
-  await suspendPlatformTenant(parsed.data.tenantId);
+  await withPlatformSessionReauth(() =>
+    suspendPlatformTenant(parsed.data.tenantId)
+  );
   revalidatePath(`/tenants/${parsed.data.tenantId}`);
   revalidatePath("/tenants");
 };
@@ -108,7 +111,9 @@ export const resumeTenantAction = async (formData: FormData): Promise<void> => {
     return;
   }
 
-  await resumePlatformTenant(parsed.data.tenantId);
+  await withPlatformSessionReauth(() =>
+    resumePlatformTenant(parsed.data.tenantId)
+  );
   revalidatePath(`/tenants/${parsed.data.tenantId}`);
   revalidatePath("/tenants");
 };
@@ -128,10 +133,12 @@ export const updateTenantNameAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await updatePlatformTenant(
-    parsed.data.tenantId,
-    parsed.data.name,
-    parsed.data.currentDomain
+  const result = await withPlatformSessionReauth(() =>
+    updatePlatformTenant(
+      parsed.data.tenantId,
+      parsed.data.name,
+      parsed.data.currentDomain
+    )
   );
   revalidatePath(`/tenants/${parsed.data.tenantId}`);
   if (!result.ok) {
@@ -156,11 +163,13 @@ export const updateTenantDomainAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await updatePlatformTenant(
-    parsed.data.tenantId,
-    parsed.data.currentName,
-    parsed.data.domain,
-    parsed.data.adminDomain
+  const result = await withPlatformSessionReauth(() =>
+    updatePlatformTenant(
+      parsed.data.tenantId,
+      parsed.data.currentName,
+      parsed.data.domain,
+      parsed.data.adminDomain
+    )
   );
   revalidatePath(`/tenants/${parsed.data.tenantId}`);
   if (!result.ok) {
@@ -184,7 +193,9 @@ export const addTenantMemberAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await addPlatformTenantMember(parsed.data);
+  const result = await withPlatformSessionReauth(() =>
+    addPlatformTenantMember(parsed.data)
+  );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
 
@@ -210,10 +221,12 @@ export const updateTenantMemberRoleAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await updatePlatformTenantMemberRole(
-    parsed.data.tenantId,
-    parsed.data.userPublicId,
-    parsed.data.role
+  const result = await withPlatformSessionReauth(() =>
+    updatePlatformTenantMemberRole(
+      parsed.data.tenantId,
+      parsed.data.userPublicId,
+      parsed.data.role
+    )
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
@@ -239,9 +252,8 @@ export const removeTenantMemberAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await removePlatformTenantMember(
-    parsed.data.tenantId,
-    parsed.data.userPublicId
+  const result = await withPlatformSessionReauth(() =>
+    removePlatformTenantMember(parsed.data.tenantId, parsed.data.userPublicId)
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
@@ -267,9 +279,8 @@ export const createTenantAdminInvitationAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await createPlatformTenantAdminInvitation(
-    parsed.data.tenantId,
-    parsed.data.email
+  const result = await withPlatformSessionReauth(() =>
+    createPlatformTenantAdminInvitation(parsed.data.tenantId, parsed.data.email)
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
@@ -302,9 +313,11 @@ export const resendTenantAdminInvitationAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await resendPlatformTenantAdminInvitation(
-    parsed.data.tenantId,
-    parsed.data.invitationId
+  const result = await withPlatformSessionReauth(() =>
+    resendPlatformTenantAdminInvitation(
+      parsed.data.tenantId,
+      parsed.data.invitationId
+    )
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);
@@ -330,9 +343,11 @@ export const cancelTenantAdminInvitationAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await cancelPlatformTenantAdminInvitation(
-    parsed.data.tenantId,
-    parsed.data.invitationId
+  const result = await withPlatformSessionReauth(() =>
+    cancelPlatformTenantAdminInvitation(
+      parsed.data.tenantId,
+      parsed.data.invitationId
+    )
   );
 
   revalidateTenantMemberPaths(parsed.data.tenantId);

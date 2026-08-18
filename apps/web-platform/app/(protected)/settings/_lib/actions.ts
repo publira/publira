@@ -7,6 +7,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 
 import { emailFormSchema, passwordFormSchema } from "#lib/auth-input";
+import { withPlatformSessionReauth } from "#lib/auth-session";
 import { requestPlatformEmailChange } from "#lib/email-change";
 import {
   sendPlatformSmtpTestEmail,
@@ -129,16 +130,18 @@ export const updatePlatformEmailSettingsAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await updatePlatformEmailSettings({
-    encryption: parsed.data.encryption,
-    fromAddress: parsed.data.fromAddress,
-    host: parsed.data.host,
-    password: parsed.data.password,
-    passwordUpdateMode: parsed.data.passwordUpdateMode,
-    port: parsed.data.port,
-    replyTo: parsed.data.replyTo,
-    username: parsed.data.username,
-  });
+  const result = await withPlatformSessionReauth(() =>
+    updatePlatformEmailSettings({
+      encryption: parsed.data.encryption,
+      fromAddress: parsed.data.fromAddress,
+      host: parsed.data.host,
+      password: parsed.data.password,
+      passwordUpdateMode: parsed.data.passwordUpdateMode,
+      port: parsed.data.port,
+      replyTo: parsed.data.replyTo,
+      username: parsed.data.username,
+    })
+  );
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -166,8 +169,8 @@ export const updatePlatformDefaultTimezoneAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await updatePlatformDefaultTimezone(
-    parsed.data.defaultTimezone
+  const result = await withPlatformSessionReauth(() =>
+    updatePlatformDefaultTimezone(parsed.data.defaultTimezone)
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -196,18 +199,20 @@ export const sendPlatformSmtpTestEmailAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await sendPlatformSmtpTestEmail({
-    encryption: parsed.data.encryption,
-    fromAddress: parsed.data.fromAddress,
-    host: parsed.data.host,
-    password: parsed.data.password,
-    passwordUpdateMode: parsed.data.passwordUpdateMode,
-    port: parsed.data.port,
-    recipientEmail: parsed.data.recipientEmail,
-    recipientType: parsed.data.recipientType,
-    replyTo: parsed.data.replyTo,
-    username: parsed.data.username,
-  });
+  const result = await withPlatformSessionReauth(() =>
+    sendPlatformSmtpTestEmail({
+      encryption: parsed.data.encryption,
+      fromAddress: parsed.data.fromAddress,
+      host: parsed.data.host,
+      password: parsed.data.password,
+      passwordUpdateMode: parsed.data.passwordUpdateMode,
+      port: parsed.data.port,
+      recipientEmail: parsed.data.recipientEmail,
+      recipientType: parsed.data.recipientType,
+      replyTo: parsed.data.replyTo,
+      username: parsed.data.username,
+    })
+  );
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -235,10 +240,12 @@ export const requestPlatformEmailChangeAction = async (
     return { message: toFormErrorMessage(parsed.error), ok: false };
   }
 
-  const result = await requestPlatformEmailChange(
-    parsed.data.currentEmail,
-    parsed.data.newEmail,
-    parsed.data.currentPassword
+  const result = await withPlatformSessionReauth(() =>
+    requestPlatformEmailChange(
+      parsed.data.currentEmail,
+      parsed.data.newEmail,
+      parsed.data.currentPassword
+    )
   );
 
   if (!result.ok) {

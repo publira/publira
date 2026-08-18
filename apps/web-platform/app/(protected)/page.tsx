@@ -33,6 +33,7 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAuditActionLabel } from "#lib/audit-log-labels";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type {
   PlatformDashboardRecentEvent,
@@ -199,6 +200,9 @@ const DashboardContent = async () => {
     getPlatformDashboardSummary({ recentEventsLimit }),
     getPlatformDisplayTimeZone(),
   ]);
+
+  await redirectToLoginIfSessionRejected(result);
+
   const summary = result.ok ? result.summary : null;
   const stats = getStatCards(summary);
 

@@ -1,11 +1,13 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { isUnauthenticatedError } from "./auth-shared";
 
 export interface PlatformAuditLogSummary {
   action: string;
@@ -33,7 +35,12 @@ export interface ListPlatformAuditLogsInput {
 
 export type ListPlatformAuditLogsResult =
   | { ok: true; auditLogs: PlatformAuditLogSummary[] }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 export const listPlatformAuditLogs = async (
   input: ListPlatformAuditLogsInput
@@ -42,9 +49,11 @@ export const listPlatformAuditLogs = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -89,12 +98,17 @@ export const listPlatformAuditLogs = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,
         "監査ログの取得に失敗しました。時間をおいて再試行してください。"
       ),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

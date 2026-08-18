@@ -20,10 +20,9 @@
 
 - `proxy.ts` で `PUBLIC_PATHS`（`/login`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`）に含まれないパスを保護対象にする
 - `/logout` は廃止済み。GET / POST とも 404 を返し、セッション Cookie は変更しない。ログアウトはヘッダーの Server Action のみ
-- セッション Cookie: `publira_platform_session`
+- セッション Cookie: `publira_web_platform_auth`
 - 初期ロール定義: `platform_owner`, `platform_operator`, `platform_auditor`
 - 画面ガードは `(protected)/layout.tsx` で行う
-- 認証 API 連携は後続 Issue で実装し、現状は骨格定義を優先する
 
 ### 共通レイアウト (アプリシェル)
 

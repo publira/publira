@@ -9,6 +9,7 @@ describe("parseLoginSearchParams", () => {
     ).toEqual({
       nextPath: "/operators",
       passwordResetDone: true,
+      sessionRevoked: false,
     });
   });
 
@@ -21,6 +22,25 @@ describe("parseLoginSearchParams", () => {
     ).toEqual({
       nextPath: "/",
       passwordResetDone: false,
+      sessionRevoked: false,
+    });
+  });
+
+  it("失効由来の /login では再ログイン理由を立てる", () => {
+    expect(
+      parseLoginSearchParams({ next: "/tenants", reason: "session_revoked" })
+    ).toEqual({
+      nextPath: "/tenants",
+      passwordResetDone: false,
+      sessionRevoked: true,
+    });
+  });
+
+  it("知らない reason は無視する", () => {
+    expect(parseLoginSearchParams({ reason: "whatever" })).toEqual({
+      nextPath: "/",
+      passwordResetDone: false,
+      sessionRevoked: false,
     });
   });
 });

@@ -200,6 +200,7 @@ describe("listPlatformTenants", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
       tenants: [],
     });
 
@@ -217,6 +218,7 @@ describe("listPlatformTenants", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: false,
       tenants: [],
     });
   });
@@ -394,18 +396,58 @@ describe("createPlatformTenant", () => {
     });
 
     await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
-      adminDomain: "admin.example.com",
-      createdAt: "2026-03-01T10:00:00Z",
-      domain: "example.com",
-      name: "青楓出版",
-      publicId: "tenant_seifuu",
-      status: "active",
+      ok: true,
+      tenant: {
+        adminDomain: "admin.example.com",
+        createdAt: "2026-03-01T10:00:00Z",
+        domain: "example.com",
+        name: "青楓出版",
+        publicId: "tenant_seifuu",
+        status: "active",
+      },
     });
 
     expect(mockGetTenant).toHaveBeenCalledWith(
       { publicId: "tenant_seifuu" },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
+  });
+
+  it("見つからないテナントは失敗ではなく tenant: null で返す", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("tenant not found", Code.NotFound)
+    );
+
+    await expect(getPlatformTenant("tenant_missing")).resolves.toEqual({
+      ok: true,
+      tenant: null,
+    });
+  });
+
+  it("取得失敗は tenant: null と区別する", async () => {
+    // The page turns `tenant: null` into notFound(); an outage must not take
+    // that branch, or an existing tenant reads as deleted.
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+      requiresSignIn: false,
+    });
+  });
+
+  it("失効セッションの取得失敗は再ログインを求める", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("invalid token", Code.Unauthenticated)
+    );
+
+    await expect(getPlatformTenant("tenant_seifuu")).resolves.toMatchObject({
+      ok: false,
+      requiresSignIn: true,
+    });
   });
 
   it("テナントメンバー一覧を取得する", async () => {
@@ -604,6 +646,7 @@ describe("tenant admin invitations", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
     });
 
     expect(mockListTenantAdminInvitations).not.toHaveBeenCalled();
@@ -623,6 +666,7 @@ describe("tenant admin invitations", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: false,
     });
   });
 

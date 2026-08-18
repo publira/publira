@@ -9,6 +9,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { rethrowUnauthenticatedRpcError } from "./auth-shared";
 
 const genericErrorMessage =
   "メールアドレスの変更リクエストに失敗しました。しばらくしてからもう一度お試しください。";
@@ -49,6 +50,7 @@ export const requestPlatformEmailChange = async (
 
     return { ok: true, requested: response.requested };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(error, genericErrorMessage, {

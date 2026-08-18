@@ -2,7 +2,14 @@ import { isHealthProbePath } from "@publira/utils/health";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { PLATFORM_SESSION_COOKIE_NAME, buildLoginUrl } from "./lib/auth-shared";
+import {
+  buildLoginUrl,
+  buildReturnToPath,
+  hasActivePlatformSessionCookie,
+  isSessionRevokedRedirect,
+  PLATFORM_SESSION_COOKIE_NAME,
+  RETURN_TO_HEADER_NAME,
+} from "./lib/auth-shared";
 import { isSetupCompleted } from "./lib/setup";
 
 const PUBLIC_PATHS = new Set([
@@ -39,22 +46,43 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.redirect(new URL("/setup", request.url));
   }
 
+  const sessionCookie = request.cookies.get(
+    PLATFORM_SESSION_COOKIE_NAME
+  )?.value;
+  const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
+
   if (PUBLIC_PATHS.has(pathname)) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    // The API rejected this session while a page was rendering, where the
+    // cookie cannot be touched. Clearing it here is what keeps the console from
+    // waving the operator back in with the same dead credentials.
+    if (hasStoredSessionCookie && isSessionRevokedRedirect(request.nextUrl)) {
+      response.cookies.delete(PLATFORM_SESSION_COOKIE_NAME);
+    }
+    return response;
   }
 
-  const sessionId = request.cookies
-    .get(PLATFORM_SESSION_COOKIE_NAME)
-    ?.value?.trim();
-  if (sessionId) {
-    return NextResponse.next();
+  if (await hasActivePlatformSessionCookie(sessionCookie)) {
+    // The console cannot read the URL it is serving, so the path travels with
+    // the request: a layout, a page, or a Server Action whose RPC comes back
+    // `unauthenticated` sends the operator to `/login?next=` here.
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(
+      RETURN_TO_HEADER_NAME,
+      buildReturnToPath(request.nextUrl)
+    );
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  if (!setupCompleted) {
-    return NextResponse.redirect(new URL("/setup", request.url));
+  const response = setupCompleted
+    ? NextResponse.redirect(buildLoginUrl(request.nextUrl))
+    : NextResponse.redirect(new URL("/setup", request.url));
+  // A cookie that no longer decrypts or has run out is not worth carrying to
+  // the login page, where it would only be rejected again.
+  if (hasStoredSessionCookie) {
+    response.cookies.delete(PLATFORM_SESSION_COOKIE_NAME);
   }
-
-  return NextResponse.redirect(buildLoginUrl(request.nextUrl));
+  return response;
 };
 
 export const config = {

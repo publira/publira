@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
+import { SectionError } from "@publira/ui-components/section-error";
 import { formatDate } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -25,6 +26,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { getPlatformCurrentOperator } from "#lib/auth";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { canManageEndUsers } from "#lib/roles";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
@@ -75,23 +77,49 @@ const UserDetailSkeleton = () => (
   </PlatformPageContent>
 );
 
+/**
+ * A read that failed is not a user that is missing. Collapsing the two into
+ * `notFound()` would tell the operator to stop looking for an account that is
+ * still there, so an outage keeps the console's own wording and a way back.
+ */
+const UserLoadError = ({ message }: { message: string }) => (
+  <SectionError
+    actions={
+      <LinkButton render={<Link href="/users" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description={message}
+    title="ユーザーを表示できませんでした"
+  />
+);
+
 const UserDetailContent = async ({
   params,
 }: Pick<UserDetailPageProps, "params">) => {
   const { user_public_id: userPublicId } = await params;
 
-  const [userResult, currentOperator, timeZone] = await Promise.all([
+  const [userResult, currentOperatorResult, timeZone] = await Promise.all([
     getPlatformEndUser(userPublicId),
     getPlatformCurrentOperator(),
     getPlatformDisplayTimeZone(),
   ]);
 
-  if (!userResult.ok || !userResult.user) {
-    notFound();
+  // Before both branches below: a rejected session reads every record as
+  // missing, and a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(userResult, currentOperatorResult);
+
+  if (!userResult.ok) {
+    return <UserLoadError message={userResult.message} />;
   }
 
   const { user } = userResult;
-  const canManage = canManageEndUsers(currentOperator?.role);
+  if (!user) {
+    notFound();
+  }
+  const canManage = canManageEndUsers(
+    currentOperatorResult.ok ? currentOperatorResult.operator.role : undefined
+  );
   const canSuspend = canManage && user.status === "active";
   const canUnsuspend = canManage && user.status === "suspended";
   const canDelete = canManage;

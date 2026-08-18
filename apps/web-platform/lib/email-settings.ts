@@ -3,12 +3,17 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
 
 export {
@@ -45,7 +50,16 @@ export interface SendPlatformSmtpTestInput {
 
 export type PlatformSmtpSettingsResult =
   | { ok: true; settings: PlatformSmtpSettings }
-  | { message: string; ok: false };
+  | {
+      message: string;
+      ok: false;
+      /**
+       * The API rejected the session while reading the settings — the page
+       * raises the login redirect. The update path throws instead, so only
+       * {@link getPlatformEmailSettings} ever sets it.
+       */
+      requiresSignIn?: boolean;
+    };
 
 export type PlatformSmtpTestResult =
   | { ok: true; recipientEmail: string }
@@ -96,7 +110,8 @@ export const getPlatformEmailSettings =
 
     const sessionId = await resolveAccessToken();
     if (!sessionId) {
-      return { message: sessionErrorMessage, ok: false };
+      dropFailedCacheEntry();
+      return { message: sessionErrorMessage, ok: false, requiresSignIn: true };
     }
 
     try {
@@ -107,7 +122,15 @@ export const getPlatformEmailSettings =
       return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
     } catch (error) {
       rethrowUnclassifiedRpcError(error);
-      return { message: parseErrorMessage(error), ok: false };
+      // A failed read must not be cached: the client router would replay it after
+      // the API recovers, and a cached `requiresSignIn` would bounce the operator
+      // back to /login even once they have signed in again.
+      dropFailedCacheEntry();
+      return {
+        message: parseErrorMessage(error),
+        ok: false,
+        requiresSignIn: isUnauthenticatedError(error),
+      };
     }
   };
 
@@ -136,6 +159,7 @@ export const updatePlatformEmailSettings = async (
 
     return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }
@@ -168,6 +192,7 @@ export const sendPlatformSmtpTestEmail = async (
 
     return { ok: true, recipientEmail: response.recipientEmail };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }

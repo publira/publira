@@ -4,12 +4,17 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 
 export interface PlatformTenantSummary {
   adminDomain: string;
@@ -35,6 +40,19 @@ export interface PlatformTenantDetail {
   publicId: string;
   status: string;
 }
+
+/**
+ * The tenant, or why it could not be read.
+ *
+ * `tenant: null` is the missing / invisible record the caller turns into
+ * `notFound()`; `ok: false` is a read that failed, which a 404 would misreport.
+ * A rejected session used to leave here as a throw, and a `"use cache"` fill
+ * that throws fails the whole request (`apps/AGENTS.md`), so it now travels as
+ * `requiresSignIn` and the page raises the redirect outside the cache scope.
+ */
+export type GetPlatformTenantResult =
+  | { ok: true; tenant: PlatformTenantDetail | null }
+  | { message: string; ok: false; requiresSignIn: boolean };
 
 export interface PlatformTenantMemberSummary {
   createdAt: string;
@@ -74,6 +92,8 @@ export type ListPlatformTenantAdminInvitationsResult =
       nextToken: string;
       ok: false;
       previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
     };
 
 export interface CreatePlatformTenantInput {
@@ -102,6 +122,8 @@ export type ListPlatformTenantsResult =
       nextToken: string;
       ok: false;
       previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
       tenants: PlatformTenantSummary[];
     };
 
@@ -112,11 +134,13 @@ export const listPlatformTenants = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
       tenants: [],
     };
   }
@@ -147,6 +171,10 @@ export const listPlatformTenants = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,
@@ -155,6 +183,7 @@ export const listPlatformTenants = async (
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
       tenants: [],
     };
   }
@@ -184,12 +213,19 @@ const mapTenant = (tenant?: {
 
 export const getPlatformTenant = async (
   publicId: string
-): Promise<PlatformTenantDetail | null> => {
+): Promise<GetPlatformTenantResult> => {
   "use cache: private";
 
   const sid = await resolveAccessToken();
-  if (!publicId.trim() || !sid) {
-    return null;
+  if (!sid) {
+    return {
+      message: "セッションが無効です。再ログインしてください。",
+      ok: false,
+      requiresSignIn: true,
+    };
+  }
+  if (!publicId.trim()) {
+    return { ok: true, tenant: null };
   }
 
   try {
@@ -197,15 +233,27 @@ export const getPlatformTenant = async (
       { publicId } as never,
       buildSessionHeaders(sid)
     );
-    return mapTenant(response.tenant);
+    return { ok: true, tenant: mapTenant(response.tenant) };
   } catch (error) {
-    // The caller turns `null` into `notFound()`. A rejected session is not a
-    // missing tenant, so it stays an error and can reach a re-authentication
-    // path instead of showing a 404.
+    // The caller turns `tenant: null` into `notFound()`. A rejected session is
+    // not a missing tenant, so it stays a failure and reaches the
+    // re-authentication path instead of showing a 404.
     if (isMissingResourceRpcError(error)) {
-      return null;
+      return { ok: true, tenant: null };
     }
-    throw error;
+    rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
+    return {
+      message: rpcErrorMessage(
+        error,
+        "テナントの取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
   }
 };
 
@@ -253,6 +301,7 @@ export const suspendPlatformTenant = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -273,6 +322,7 @@ export const resumePlatformTenant = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -330,6 +380,7 @@ export const createPlatformTenant = async (
       publicId: response.tenant?.publicId,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(error, genericErrorMessage, {
@@ -400,12 +451,14 @@ export const listPlatformTenantAdminInvitations = async (
   const tenantId = input.tenantId.trim();
   const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
+    dropFailedCacheEntry();
     return {
       invitations: [],
       message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: !sid,
     };
   }
 
@@ -428,6 +481,10 @@ export const listPlatformTenantAdminInvitations = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       invitations: [],
       message: rpcErrorMessage(
@@ -437,6 +494,7 @@ export const listPlatformTenantAdminInvitations = async (
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -472,6 +530,7 @@ export const createPlatformTenantAdminInvitation = async (
       roleGrantedImmediately: response.roleGrantedImmediately,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(
@@ -517,6 +576,7 @@ export const resendPlatformTenantAdminInvitation = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(
@@ -562,6 +622,7 @@ export const cancelPlatformTenantAdminInvitation = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(
@@ -612,6 +673,7 @@ export const updatePlatformTenant = async (
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(
@@ -657,6 +719,7 @@ export const addPlatformTenantMember = async (
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(
@@ -701,6 +764,7 @@ export const updatePlatformTenantMemberRole = async (
 
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(
@@ -742,6 +806,7 @@ export const removePlatformTenantMember = async (
 
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(

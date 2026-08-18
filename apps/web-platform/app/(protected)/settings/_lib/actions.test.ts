@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUpdatePlatformDefaultTimezone, mockUpdateTag } = vi.hoisted(() => ({
+const {
+  mockResolveAccessToken,
+  mockUpdatePlatformDefaultTimezone,
+  mockUpdateTag,
+} = vi.hoisted(() => ({
+  mockResolveAccessToken: vi.fn(),
   mockUpdatePlatformDefaultTimezone: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
@@ -8,6 +13,10 @@ const { mockUpdatePlatformDefaultTimezone, mockUpdateTag } = vi.hoisted(() => ({
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   updateTag: mockUpdateTag,
+}));
+
+vi.mock("#lib/api-client", () => ({
+  resolveAccessToken: mockResolveAccessToken,
 }));
 
 vi.mock("#lib/email-change", () => ({
@@ -34,6 +43,9 @@ describe("updatePlatformDefaultTimezoneAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    // `withPlatformSessionReauth` resolves the session before the mutation
+    // runs; without a token every Action under test would redirect to /login.
+    mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
   it("有効な IANA 名を保存し、キャッシュタグを更新する", async () => {

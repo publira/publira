@@ -9,6 +9,7 @@ import {
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import { SectionError } from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -27,6 +28,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
@@ -82,20 +84,45 @@ const TenantDetailSkeleton = () => (
   </PlatformPageContent>
 );
 
+/**
+ * A read that failed is not a tenant that is missing. Collapsing the two into
+ * `notFound()` would tell the operator to stop looking for a tenant that is
+ * still there, so an outage keeps the console's own wording and a way back.
+ */
+const TenantLoadError = ({ message }: { message: string }) => (
+  <SectionError
+    actions={
+      <LinkButton render={<Link href="/tenants" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description={message}
+    title="テナントを表示できませんでした"
+  />
+);
+
 const TenantDetailContent = async ({
   params,
 }: Pick<TenantDetailPageProps, "params">) => {
   const { tenant_id: tenantId } = await params;
 
-  const [tenant, timeZone] = await Promise.all([
+  const [tenantResult, timeZone] = await Promise.all([
     getPlatformTenant(tenantId),
     getPlatformDisplayTimeZone(),
   ]);
 
+  // Before both branches below: a rejected session reads every record as
+  // missing, and a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(tenantResult);
+
+  if (!tenantResult.ok) {
+    return <TenantLoadError message={tenantResult.message} />;
+  }
+
+  const { tenant } = tenantResult;
   if (!tenant) {
     notFound();
   }
-
   const tenantStatusLabel = getTenantStatusLabel(tenant.status);
   const tenantStatusTone = getTenantStatusTone(tenant.status);
 
