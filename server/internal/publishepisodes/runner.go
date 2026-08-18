@@ -69,6 +69,11 @@ func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Client, logger
 	if queries == nil {
 		queries = dbmodels.New(db)
 	}
+	if maxRetries < 0 {
+		// WithMaxTries takes a uint, where 0 means "keep retrying forever".
+		// Clamp here so a negative budget stays a single attempt.
+		maxRetries = 0
+	}
 	return &Runner{
 		db:         db,
 		queries:    queries,
