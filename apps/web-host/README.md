@@ -22,7 +22,7 @@ pnpm dev
 `next.config.ts` で `@publira/next-cache-handlers` を配線しています。
 
 - `cacheHandlers`（複数形）: `"use cache"` / `"use cache: remote"`
-- `cacheHandler`（単数）: ISR / Route Handler / `next/image`（`images.customCacheHandler: true`）
+- `cacheHandler`（単数）: ISR / Route Handler / `fetch` / `unstable_cache`
 
 環境変数:
 
@@ -30,6 +30,10 @@ pnpm dev
 - `PUBLIRA_CACHE_APP=web-host`（推奨。キー空間分離）
 
 公開時の `revalidateTag`（`/api/revalidate`）は Redis 上のタグ時刻と整合します。
+
+### 画像配信 (`next/image`)
+
+`next.config.ts` の `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` で、`next/image` が image-server の Manael 変換を直接使います。`/images/...` を読むときだけ要求幅を `w` として渡し、WebP / AVIF はブラウザの `Accept` で決まります。`blob:` の一時プレビューなど image-server を経由しない `<Image>` は `unoptimized` のままにしてください。ローダーの実装と仕様は [`packages/utils/README.md`](../../packages/utils/README.md) にあります。
 
 ### エピソード購入
 

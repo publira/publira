@@ -148,8 +148,10 @@ export const EpisodeImagesSortableGrid = ({
             alt={`ページ ${index + 1}`}
             className="h-36 w-full rounded object-cover"
             height={Math.max(image.height, 144)}
+            // The cell is one grid column wide, not the manuscript page's own
+            // width, so the loader is asked for the column instead of the original.
+            sizes="(max-width: 768px) 50vw, 33vw"
             src={image.imageUrl}
-            unoptimized
             width={Math.max(image.width, 240)}
           />
           <figcaption className="text-xs text-muted-foreground">

@@ -5,9 +5,9 @@ Redis 上に Next.js の **2 系統**のサーバーキャッシュを載せる�
 | 設定 | 用途 | export |
 | --- | --- | --- |
 | **`cacheHandlers`（複数形）** | `"use cache"` / `"use cache: remote"` | `@publira/next-cache-handlers/use-cache` |
-| **`cacheHandler`（単数）** | ISR・Route Handler・`fetch` / `unstable_cache`・**`next/image` 最適化結果** | `@publira/next-cache-handlers/incremental` |
+| **`cacheHandler`（単数）** | ISR・Route Handler・`fetch` / `unstable_cache`・**組み込み最適化を使う `next/image`** | `@publira/next-cache-handlers/incremental` |
 
-> **混同注意:** `cacheHandlers` だけだと `next/image` や ISR 系はローカルのままです。両方と `images.customCacheHandler: true` を配線してください。
+> **混同注意:** `cacheHandlers` だけだと ISR 系はローカルのままです。両方を配線してください。`images.customCacheHandler: true` が効くのは組み込みの `/_next/image` を使うアプリだけで、`images.loader: "custom"` を設定した `web-host` / `web-admin` では `/_next/image` 自体が 404 になります。
 
 ## 環境変数
 
@@ -33,6 +33,7 @@ const nextConfig: NextConfig = {
     remote: import.meta.resolve("@publira/next-cache-handlers/use-cache"),
   },
   cacheMaxMemorySize: 0,
+  // 組み込みの `/_next/image` を使うアプリのみ。
   images: {
     customCacheHandler: true,
   },

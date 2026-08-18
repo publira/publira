@@ -159,7 +159,6 @@ const AuthorsListData = async ({
                   decoding="async"
                   height={48}
                   src={author.iconImageUrl}
-                  unoptimized
                   width={48}
                 />
               </div>

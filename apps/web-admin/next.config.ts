@@ -17,17 +17,11 @@ const nextConfig: NextConfig = {
     turbopackRustReactCompiler: true,
   },
   images: {
-    customCacheHandler: true,
-    remotePatterns: [
-      {
-        hostname: "**",
-        protocol: "http",
-      },
-      {
-        hostname: "**",
-        protocol: "https",
-      },
-    ],
+    // admin-image-server converts and resizes through Manael, so `next/image`
+    // asks it for the width it needs instead of re-encoding through
+    // `/_next/image`.
+    loader: "custom",
+    loaderFile: "./lib/image-loader.ts",
   },
   logging: {
     fetches: {
