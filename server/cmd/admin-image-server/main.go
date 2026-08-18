@@ -16,6 +16,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/publira/publira/server/config"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
@@ -32,6 +33,12 @@ func main() {
 	cfg, err := config.New()
 	if err != nil {
 		logger.Error("failed to load config", "error", err)
+		os.Exit(1)
+	}
+
+	tokens, err := auth.NewTokenManagerFromEnv()
+	if err != nil {
+		logger.Error("failed to initialize access token manager", "error", err)
 		os.Exit(1)
 	}
 
@@ -57,6 +64,7 @@ func main() {
 		objectStore,
 		logger,
 		db,
+		tokens,
 	)
 
 	addr := strings.TrimSpace(os.Getenv("PUBLIRA_ADMIN_IMAGE_SERVER_ADDR"))

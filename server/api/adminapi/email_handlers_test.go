@@ -20,6 +20,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 type adminSMTPTesterStub struct {
@@ -130,7 +131,7 @@ func TestSendTenantSmtpTestEmailUsesPlatformFallbackWhenOverrideDisabled(t *test
 	t.Cleanup(func() { _ = db.Close() })
 	encryptor := newAdminTestEncryptor(t)
 	tester := &adminSMTPTesterStub{}
-	ts := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester))
+	ts := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), encryptor, tester, testutil.TokenManager()))
 	t.Cleanup(ts.Close)
 
 	now := time.Now()

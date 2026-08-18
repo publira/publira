@@ -35,15 +35,23 @@ type TokenManager struct {
 	secret []byte
 }
 
-// NewTokenManagerFromEnv loads PUBLIRA_AUTH_JWT_SECRET (required in production paths).
-// When empty, returns an error unless allowEmpty is used via NewTokenManager.
+// MinJWTSecretBytes is the shortest secret accepted for HS256. A key shorter
+// than the digest it feeds contributes less entropy than the algorithm can
+// carry, which RFC 7518 section 3.2 rules out for HS256.
+const MinJWTSecretBytes = 32
+
+// NewTokenManagerFromEnv builds the manager from PUBLIRA_AUTH_JWT_SECRET. Every
+// server that verifies or issues access tokens calls this at startup, so a
+// missing or too-short secret stops the process instead of surfacing on the
+// first request.
 func NewTokenManagerFromEnv() (*TokenManager, error) {
 	secret := strings.TrimSpace(os.Getenv("PUBLIRA_AUTH_JWT_SECRET"))
 	if secret == "" {
 		return nil, errors.New("PUBLIRA_AUTH_JWT_SECRET is required")
 	}
-	if len(secret) < 32 {
-		return nil, errors.New("PUBLIRA_AUTH_JWT_SECRET must be at least 32 characters")
+	// len() on a string counts UTF-8 bytes, which is what the HMAC key is.
+	if len(secret) < MinJWTSecretBytes {
+		return nil, fmt.Errorf("PUBLIRA_AUTH_JWT_SECRET must be at least %d bytes", MinJWTSecretBytes)
 	}
 	return NewTokenManager([]byte(secret)), nil
 }

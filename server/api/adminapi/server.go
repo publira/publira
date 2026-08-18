@@ -181,7 +181,7 @@ func (s *adminServer) authenticateSession(
 
 // NewHandler は管理 API 専用の HTTP ハンドラを返します。
 // AdminSeriesService と AdminAuthService のみ公開し、公開 API (CatalogService, AuthService) は含みません。
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester) http.Handler {
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, tokens *auth.TokenManager) http.Handler {
 	mailer, _ := tester.(internalsmtp.Sender)
 	if logger == nil {
 		logger = slog.Default()
@@ -201,7 +201,7 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		mailer:    mailer,
 		logger:    logger,
 		reval:     revalidator,
-		tokens:    auth.MustTokenManagerFromEnv(),
+		tokens:    tokens,
 	}
 	mux := http.NewServeMux()
 	health.Register(mux, health.WithDB(db))

@@ -26,6 +26,7 @@ cd server && make build
 ## 主な環境変数
 
 - `PUBLIRA_PUBLIC_DB_URL` (任意, 未指定時は開発用デフォルト)
+- `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上。アクセストークンの HS256 署名鍵。未設定なら起動に失敗する。詳細は [リポジトリ README](../../../README.md#api-アクセストークンの署名鍵-publira_auth_jwt_secret))
 - `PUBLIRA_S3_BUCKET` (必須)
 - `AWS_REGION` (任意)
 - `PUBLIRA_S3_ENDPOINT` (任意)

@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // TestPublicHandlerExposesOnlyPublicRoutes は、NewHandler が公開 API (CatalogService, AuthService) だけ
@@ -38,7 +40,7 @@ func TestPublicHandlerExposesOnlyPublicRoutes(t *testing.T) {
 
 func newPublicRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(NewHandler(nil, nil, nil, nil, nil))
+	return httptest.NewServer(NewHandler(nil, nil, nil, nil, nil, testutil.TokenManager()))
 }
 
 type captureHandler struct {

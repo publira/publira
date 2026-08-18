@@ -92,7 +92,7 @@ func resolveTenantPublicID(reqTenantPublicID string, headers http.Header) (strin
 
 // NewHandler はプラットフォーム API 用の HTTP ハンドラを返します。
 // DB 接続は publira_platform ユーザーで行い、BYPASSRLS 属性により RLS を透過します。
-func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, renderer emailrenderer.Renderer) http.Handler {
+func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailsettings.SecretManager, tester internalsmtp.Tester, renderer emailrenderer.Renderer, tokens *auth.TokenManager) http.Handler {
 	var mailer internalsmtp.Sender
 	if sender, ok := tester.(internalsmtp.Sender); ok {
 		mailer = sender
@@ -105,7 +105,7 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		tester:    tester,
 		mailer:    mailer,
 		renderer:  renderer,
-		tokens:    auth.MustTokenManagerFromEnv(),
+		tokens:    tokens,
 		logger:    logger,
 	}
 	authInterceptor := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {

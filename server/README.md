@@ -157,7 +157,7 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 
 | 項目 | 値 |
 | --- | --- |
-| 環境変数 | `PUBLIRA_AUTH_JWT_SECRET`（32 文字以上。未設定時は開発用フォールバック） |
+| 環境変数 | `PUBLIRA_AUTH_JWT_SECRET`（**必須**。32 バイト以上。フォールバックは無く、未設定・短すぎる場合は API サーバーと画像サーバーが起動に失敗） |
 | TTL | 24h |
 | Audience | `public` / `admin` / `platform` |
 | 失効 | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |

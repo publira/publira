@@ -67,6 +67,11 @@ export PUBLIRA_CACHE_APP="${PUBLIRA_CACHE_APP:-web-host}"
 # because nothing here depends on which key it is, only that one is set.
 export PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET:-publira-e2e-only-insecure-web-session-secret}"
 
+# Access token (HS256) signing key for the Go API servers. Required — they exit
+# at startup without it. Same reasoning as PUBLIRA_AUTH_SECRET above: any value
+# works as long as every process in the stack shares it.
+export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-e2e-only-insecure-access-token-secret}"
+
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share

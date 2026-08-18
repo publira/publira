@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -84,7 +85,7 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 		queries:  queries,
 		db:       db,
 		recorder: auditlog.New(queries, slog.Default()),
-		tokens:   auth.MustTokenManagerFromEnv(),
+		tokens:   testutil.TokenManager(),
 		logger:   slog.Default(),
 	}, mock
 }
@@ -94,7 +95,7 @@ func operatorTestUserColumns() []string {
 }
 
 func issueTestPlatformToken(userPublicID, role string) string {
-	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+	token, _, err := testutil.TokenManager().Issue(
 		userPublicID,
 		auth.AudiencePlatform,
 		"",
@@ -185,7 +186,7 @@ func newIntegrationTestServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) 
 		t.Fatalf("sqlmock.New: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil, nil))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), nil, nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, mock
 }
