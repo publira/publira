@@ -178,6 +178,27 @@ func TestPublishSuccessDoesNotNotifyOperators(t *testing.T) {
 	assertNotificationCounts(t, pg, notificationCounts{tenant: 2})
 }
 
+func TestPublishNegativeMaxRetriesRunsOneAttempt(t *testing.T) {
+	pg, env := newPublishTestEnv(t)
+	r := New(pg.DB, dbmodels.New(pg.DB), nil, slog.New(slog.NewTextHandler(io.Discard, nil)), -1)
+	attempts := 0
+	r.publish = func(context.Context, dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {
+		attempts++
+		return errors.New("publish boom")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r.RunOnce(ctx)
+
+	if attempts != 1 {
+		t.Fatalf("publish attempts = %d, want 1", attempts)
+	}
+	if got := listingStatus(t, pg, env.episode.ID); got != testutil.EpisodeStatusScheduled {
+		t.Fatalf("listing status = %q, want still %s", got, testutil.EpisodeStatusScheduled)
+	}
+}
+
 func TestPublishFinalFailureNotifiesEachOperatorOnce(t *testing.T) {
 	pg, env := newPublishTestEnv(t)
 	r := env.runner()
