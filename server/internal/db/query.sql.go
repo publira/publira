@@ -2564,6 +2564,58 @@ func (q *Queries) GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, ar
 	return i, err
 }
 
+const getPublishedLabelByPublicID = `-- name: GetPublishedLabelByPublicID :one
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    ) AS published_series_count
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = $1
+    AND l.public_id = $2
+LIMIT 1
+`
+
+type GetPublishedLabelByPublicIDParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+type GetPublishedLabelByPublicIDRow struct {
+	ID                     uuid.UUID     `json:"id"`
+	PublicID               string        `json:"public_id"`
+	Name                   string        `json:"name"`
+	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
+	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
+	PublishedSeriesCount   int32         `json:"published_series_count"`
+}
+
+// テナントに属するレーベルを返す。公開中シリーズが 0 件でも行は返す
+// （レーベル自体に非公開状態は無い）。不在・他テナントは 0 行。
+func (q *Queries) GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedLabelByPublicID, arg.TenantID, arg.PublicID)
+	var i GetPublishedLabelByPublicIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Name,
+		&i.EyeCatchImageID,
+		&i.EyeCatchImageUpdatedAt,
+		&i.PublishedSeriesCount,
+	)
+	return i, err
+}
+
 const getPurchasableEpisodeByPublicIDForTenant = `-- name: GetPurchasableEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
@@ -6585,6 +6637,306 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, 
 	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByCreatorTitleDesc,
 		arg.CreatorID,
 		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedSeriesIDsByLabelTitleAsc = `-- name: ListPublishedSeriesIDsByLabelTitleAsc :many
+SELECT s.id
+FROM series s
+WHERE s.label_id = $1::uuid
+    AND s.tenant_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (s.title, s.id) >= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (s.title, s.id) > (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY s.title ASC,
+    s.id ASC
+LIMIT $6
+`
+
+type ListPublishedSeriesIDsByLabelTitleAscParams struct {
+	LabelID         uuid.UUID      `json:"label_id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
+}
+
+// レーベル詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
+// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+// ListActiveSeriesIDsByTitleAsc と同じ形で、label_id で絞る。
+// 前ページ方向は ListPublishedSeriesIDsByLabelTitleDesc を呼んで
+// 呼び出し側で並べ直す。
+// 索引: idx_series_tenant_label_title
+func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleAsc,
+		arg.LabelID,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedSeriesIDsByLabelTitleDesc = `-- name: ListPublishedSeriesIDsByLabelTitleDesc :many
+SELECT s.id
+FROM series s
+WHERE s.label_id = $1::uuid
+    AND s.tenant_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (s.title, s.id) <= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (s.title, s.id) < (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT $6
+`
+
+type ListPublishedSeriesIDsByLabelTitleDescParams struct {
+	LabelID         uuid.UUID      `json:"label_id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
+}
+
+// ListPublishedSeriesIDsByLabelTitleAsc の前ページ方向。
+func (q *Queries) ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsByLabelTitleDesc,
+		arg.LabelID,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedSeriesIDsBySearchTitleAsc = `-- name: ListPublishedSeriesIDsBySearchTitleAsc :many
+SELECT s.id
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        s.title ILIKE $2::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE $2::text ESCAPE '!'
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (s.title, s.id) >= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (s.title, s.id) > (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY s.title ASC,
+    s.id ASC
+LIMIT $6
+`
+
+type ListPublishedSeriesIDsBySearchTitleAscParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
+}
+
+// SearchPublishedSeries。タイトルまたはあらすじが query_pattern に
+// ILIKE マッチする公開シリーズをタイトル + id のキーセットで取る。
+// query_pattern は呼び出し側が '%q%' に組み立て、ILIKE の %/_ は
+// ESCAPE '!' でリテラルにする。
+// 索引方針: idx_series_tenant_title がキーセット半を担う。ILIKE '%q%' は
+// btree に乗らないので、テナント + is_published で絞ったうえで LIMIT が
+// 効くうちはシーケンシャルで足りる。件数が増えて遅延が見えたら title と
+// series_listings.synopsis に pg_trgm GIN を足す。
+func (q *Queries) ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleAsc,
+		arg.TenantID,
+		arg.QueryPattern,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorTitle,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedSeriesIDsBySearchTitleDesc = `-- name: ListPublishedSeriesIDsBySearchTitleDesc :many
+SELECT s.id
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = $1
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        s.title ILIKE $2::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE $2::text ESCAPE '!'
+    )
+    AND (
+        $3::uuid IS NULL
+        OR (
+            $4::boolean
+            AND (s.title, s.id) <= (
+                $5::text,
+                $3::uuid
+            )
+        )
+        OR (
+            NOT $4::boolean
+            AND (s.title, s.id) < (
+                $5::text,
+                $3::uuid
+            )
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT $6
+`
+
+type ListPublishedSeriesIDsBySearchTitleDescParams struct {
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	QueryPattern    string         `json:"query_pattern"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorTitle     sql.NullString `json:"cursor_title"`
+	Limit           int32          `json:"limit"`
+}
+
+// ListPublishedSeriesIDsBySearchTitleAsc の前ページ方向。
+func (q *Queries) ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesIDsBySearchTitleDesc,
+		arg.TenantID,
+		arg.QueryPattern,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorTitle,

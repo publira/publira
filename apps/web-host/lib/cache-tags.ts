@@ -14,6 +14,9 @@ export const tenantSeriesTag = (tenantId: string, seriesPublicId: string) =>
 export const tenantAuthorsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:authors`;
 
+export const tenantLabelsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:labels`;
+
 export const tenantSiteTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:site`;
 

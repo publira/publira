@@ -102,11 +102,19 @@ const SeriesDetailContent = async (
                 {series.creatorNames.join("、")}
               </p>
             )}
-            {series.labelName && (
-              <span className="inline-block rounded-full bg-accent/15 px-3 py-0.5 text-xs font-medium text-accent">
-                {series.labelName}
-              </span>
-            )}
+            {series.labelName &&
+              (series.labelPublicId ? (
+                <Link
+                  href={`/labels/${series.labelPublicId}`}
+                  className="inline-block rounded-full bg-accent/15 px-3 py-0.5 text-xs font-medium text-accent transition hover:bg-accent/25"
+                >
+                  {series.labelName}
+                </Link>
+              ) : (
+                <span className="inline-block rounded-full bg-accent/15 px-3 py-0.5 text-xs font-medium text-accent">
+                  {series.labelName}
+                </span>
+              ))}
           </div>
 
           {series.synopsis && (

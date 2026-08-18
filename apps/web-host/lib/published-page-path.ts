@@ -16,6 +16,7 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "notifications",
   "page",
   "reset-password",
+  "search",
   "series",
   "settings",
   "signup",

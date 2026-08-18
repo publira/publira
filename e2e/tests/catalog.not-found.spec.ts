@@ -66,6 +66,15 @@ test.describe("web-host catalog not found", () => {
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
   });
 
+  test("存在しないレーベルは見つからない案内を表示する", async ({ page }) => {
+    const response = await page.goto(`/labels/${MISSING_PUBLIC_ID}`);
+
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+    ).toBeVisible();
+  });
+
   test("存在しない著者は見つからない案内を表示する", async ({ page }) => {
     const response = await page.goto(`/authors/${MISSING_PUBLIC_ID}`);
 

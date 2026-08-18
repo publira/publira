@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Episode, EpisodeImage, Label, Series, TenantContext } from "../types/v1/types_pb";
+import type { Episode, EpisodeImage, Label, Series, SeriesEyeCatchVariant, TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/catalog.proto.
  */
 export const file_publira_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEieQoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQicgobTGlzdFB1Ymxpc2hlZExhYmVsc1Jlc3BvbnNlEicKBmxhYmVscxgBIAMoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSKhAQoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJEiYKBW9yZGVyGAUgASgOMhcucHVibGlyYS52MS5TZXJpZXNPcmRlckoECAMQBFIGb2Zmc2V0InMKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlwKFkdldFNlcmllc0RldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJwChdHZXRTZXJpZXNEZXRhaWxSZXNwb25zZRIoCgZzZXJpZXMYASABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIrCghlcGlzb2RlcxgCIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZSJdChdHZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIssBChhHZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2USKgoHZXBpc29kZRgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZRIoCgZzZXJpZXMYAiABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIuCgZpbWFnZXMYAyADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZRIpCgZhY2Nlc3MYBCABKA4yGS5wdWJsaXJhLnYxLkVwaXNvZGVBY2Nlc3MiwwEKD1B1Ymxpc2hlZEF1dGhvchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFgoOaWNvbl9pbWFnZV91cmwYBCABKAkSIgoaaWNvbl9pbWFnZV9maWxlX3NpemVfYnl0ZXMYBSABKAMSHQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAYgASgJEh4KFnB1Ymxpc2hlZF9zZXJpZXNfY291bnQYByABKAUibAobTGlzdFB1Ymxpc2hlZEF1dGhvcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJ4ChxMaXN0UHVibGlzaGVkQXV0aG9yc1Jlc3BvbnNlEiwKB2F1dGhvcnMYASADKAsyGy5wdWJsaXJhLnYxLlB1Ymxpc2hlZEF1dGhvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIoMBCh9HZXRQdWJsaXNoZWRBdXRob3JEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkipQEKIEdldFB1Ymxpc2hlZEF1dGhvckRldGFpbFJlc3BvbnNlEisKBmF1dGhvchgBIAEoCzIbLnB1YmxpcmEudjEuUHVibGlzaGVkQXV0aG9yEigKBnNlcmllcxgCIAMoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEhYKDnByZXZpb3VzX3Rva2VuGAMgASgJEhIKCm5leHRfdG9rZW4YBCABKAkiaQobU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCSI0ChxTdGFydEVwaXNvZGVDaGVja291dFJlc3BvbnNlEhQKDGNoZWNrb3V0X3VybBgBIAEoCSLGAQoKTXlQdXJjaGFzZRIKCgJpZBgBIAEoCRIqCgdlcGlzb2RlGAIgASgLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlEigKBnNlcmllcxgDIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEhkKEXByaWNlX2F0X3B1cmNoYXNlGAQgASgFEhQKDHB1cmNoYXNlZF9hdBgFIAEoCRISCgpleHBpcmVzX2F0GAYgASgJEhEKCWlzX2FjdGl2ZRgHIAEoCCJnChZMaXN0TXlQdXJjaGFzZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJwChdMaXN0TXlQdXJjaGFzZXNSZXNwb25zZRIpCglwdXJjaGFzZXMYASADKAsyFi5wdWJsaXJhLnYxLk15UHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ5ChtQcm9jZXNzU3RyaXBlV2ViaG9va1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BheWxvYWQYAiABKAwSGAoQc3RyaXBlX3NpZ25hdHVyZRgDIAEoCSIeChxQcm9jZXNzU3RyaXBlV2ViaG9va1Jlc3BvbnNlKqsBCgtTZXJpZXNPcmRlchIcChhTRVJJRVNfT1JERVJfVU5TUEVDSUZJRUQQABIiCh5TRVJJRVNfT1JERVJfUFVCTElTSEVEX0FUX0RFU0MQARIhCh1TRVJJRVNfT1JERVJfUFVCTElTSEVEX0FUX0FTQxACEhoKFlNFUklFU19PUkRFUl9USVRMRV9BU0MQAxIbChdTRVJJRVNfT1JERVJfVElUTEVfREVTQxAEKoABCg1FcGlzb2RlQWNjZXNzEh4KGkVQSVNPREVfQUNDRVNTX1VOU1BFQ0lGSUVEEAASFwoTRVBJU09ERV9BQ0NFU1NfRlJFRRABEhkKFUVQSVNPREVfQUNDRVNTX0xPQ0tFRBACEhsKF0VQSVNPREVfQUNDRVNTX0VOVElUTEVEEAMyiQUKDkNhdGFsb2dTZXJ2aWNlEmgKE0xpc3RQdWJsaXNoZWRMYWJlbHMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRMYWJlbHNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2UiABJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiABJrChRMaXN0UHVibGlzaGVkQXV0aG9ycxInLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZEF1dGhvcnNSZXF1ZXN0GigucHVibGlyYS52MS5MaXN0UHVibGlzaGVkQXV0aG9yc1Jlc3BvbnNlIgASdwoYR2V0UHVibGlzaGVkQXV0aG9yRGV0YWlsEisucHVibGlyYS52MS5HZXRQdWJsaXNoZWRBdXRob3JEZXRhaWxSZXF1ZXN0GiwucHVibGlyYS52MS5HZXRQdWJsaXNoZWRBdXRob3JEZXRhaWxSZXNwb25zZSIAMskCCg9QdXJjaGFzZVNlcnZpY2USawoUU3RhcnRFcGlzb2RlQ2hlY2tvdXQSJy5wdWJsaXJhLnYxLlN0YXJ0RXBpc29kZUNoZWNrb3V0UmVxdWVzdBooLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZXNwb25zZSIAElwKD0xpc3RNeVB1cmNoYXNlcxIiLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2VzUmVxdWVzdBojLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2VzUmVzcG9uc2UiABJrChRQcm9jZXNzU3RyaXBlV2ViaG9vaxInLnB1YmxpcmEudjEuUHJvY2Vzc1N0cmlwZVdlYmhvb2tSZXF1ZXN0GigucHVibGlyYS52MS5Qcm9jZXNzU3RyaXBlV2ViaG9va1Jlc3BvbnNlIgBCPFo6Z2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3YxO3B1YmxpcmF2MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChhwdWJsaXJhL3YxL2NhdGFsb2cucHJvdG8SCnB1YmxpcmEudjEieQoaTGlzdFB1Ymxpc2hlZExhYmVsc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQicgobTGlzdFB1Ymxpc2hlZExhYmVsc1Jlc3BvbnNlEicKBmxhYmVscxgBIAMoCzIXLnB1YmxpcmEudHlwZXMudjEuTGFiZWwSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSKhAQoaTGlzdFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJEiYKBW9yZGVyGAUgASgOMhcucHVibGlyYS52MS5TZXJpZXNPcmRlckoECAMQBFIGb2Zmc2V0InMKG0xpc3RQdWJsaXNoZWRTZXJpZXNSZXNwb25zZRIoCgZzZXJpZXMYASADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlwKFkdldFNlcmllc0RldGFpbFJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJwChdHZXRTZXJpZXNEZXRhaWxSZXNwb25zZRIoCgZzZXJpZXMYASABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIrCghlcGlzb2RlcxgCIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZSJdChdHZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIssBChhHZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2USKgoHZXBpc29kZRgBIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZRIoCgZzZXJpZXMYAiABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIuCgZpbWFnZXMYAyADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZRIpCgZhY2Nlc3MYBCABKA4yGS5wdWJsaXJhLnYxLkVwaXNvZGVBY2Nlc3MiwwEKD1B1Ymxpc2hlZEF1dGhvchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIUCgxwcm9maWxlX3RleHQYAyABKAkSFgoOaWNvbl9pbWFnZV91cmwYBCABKAkSIgoaaWNvbl9pbWFnZV9maWxlX3NpemVfYnl0ZXMYBSABKAMSHQoVaWNvbl9pbWFnZV91cGRhdGVkX2F0GAYgASgJEh4KFnB1Ymxpc2hlZF9zZXJpZXNfY291bnQYByABKAUibAobTGlzdFB1Ymxpc2hlZEF1dGhvcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJ4ChxMaXN0UHVibGlzaGVkQXV0aG9yc1Jlc3BvbnNlEiwKB2F1dGhvcnMYASADKAsyGy5wdWJsaXJhLnYxLlB1Ymxpc2hlZEF1dGhvchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIoMBCh9HZXRQdWJsaXNoZWRBdXRob3JEZXRhaWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglwdWJsaWNfaWQYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkipQEKIEdldFB1Ymxpc2hlZEF1dGhvckRldGFpbFJlc3BvbnNlEisKBmF1dGhvchgBIAEoCzIbLnB1YmxpcmEudjEuUHVibGlzaGVkQXV0aG9yEigKBnNlcmllcxgCIAMoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEhYKDnByZXZpb3VzX3Rva2VuGAMgASgJEhIKCm5leHRfdG9rZW4YBCABKAkiwAEKDlB1Ymxpc2hlZExhYmVsEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEiIKGmV5ZV9jYXRjaF9pbWFnZV91cGRhdGVkX2F0GAMgASgJEkkKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50cxgEIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50Eh4KFnB1Ymxpc2hlZF9zZXJpZXNfY291bnQYBSABKAUiggEKHkdldFB1Ymxpc2hlZExhYmVsRGV0YWlsUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIqIBCh9HZXRQdWJsaXNoZWRMYWJlbERldGFpbFJlc3BvbnNlEikKBWxhYmVsGAEgASgLMhoucHVibGlyYS52MS5QdWJsaXNoZWRMYWJlbBIoCgZzZXJpZXMYAiADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIWCg5wcmV2aW91c190b2tlbhgDIAEoCRISCgpuZXh0X3Rva2VuGAQgASgJInwKHFNlYXJjaFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXF1ZXJ5GAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJInUKHVNlYXJjaFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlEigKBnNlcmllcxgBIAMoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiaQobU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCSI0ChxTdGFydEVwaXNvZGVDaGVja291dFJlc3BvbnNlEhQKDGNoZWNrb3V0X3VybBgBIAEoCSLGAQoKTXlQdXJjaGFzZRIKCgJpZBgBIAEoCRIqCgdlcGlzb2RlGAIgASgLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlEigKBnNlcmllcxgDIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzEhkKEXByaWNlX2F0X3B1cmNoYXNlGAQgASgFEhQKDHB1cmNoYXNlZF9hdBgFIAEoCRISCgpleHBpcmVzX2F0GAYgASgJEhEKCWlzX2FjdGl2ZRgHIAEoCCJnChZMaXN0TXlQdXJjaGFzZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJwChdMaXN0TXlQdXJjaGFzZXNSZXNwb25zZRIpCglwdXJjaGFzZXMYASADKAsyFi5wdWJsaXJhLnYxLk15UHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ5ChtQcm9jZXNzU3RyaXBlV2ViaG9va1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg8KB3BheWxvYWQYAiABKAwSGAoQc3RyaXBlX3NpZ25hdHVyZRgDIAEoCSIeChxQcm9jZXNzU3RyaXBlV2ViaG9va1Jlc3BvbnNlKqsBCgtTZXJpZXNPcmRlchIcChhTRVJJRVNfT1JERVJfVU5TUEVDSUZJRUQQABIiCh5TRVJJRVNfT1JERVJfUFVCTElTSEVEX0FUX0RFU0MQARIhCh1TRVJJRVNfT1JERVJfUFVCTElTSEVEX0FUX0FTQxACEhoKFlNFUklFU19PUkRFUl9USVRMRV9BU0MQAxIbChdTRVJJRVNfT1JERVJfVElUTEVfREVTQxAEKoABCg1FcGlzb2RlQWNjZXNzEh4KGkVQSVNPREVfQUNDRVNTX1VOU1BFQ0lGSUVEEAASFwoTRVBJU09ERV9BQ0NFU1NfRlJFRRABEhkKFUVQSVNPREVfQUNDRVNTX0xPQ0tFRBACEhsKF0VQSVNPREVfQUNDRVNTX0VOVElUTEVEEAMy7wYKDkNhdGFsb2dTZXJ2aWNlEmgKE0xpc3RQdWJsaXNoZWRMYWJlbHMSJi5wdWJsaXJhLnYxLkxpc3RQdWJsaXNoZWRMYWJlbHNSZXF1ZXN0GicucHVibGlyYS52MS5MaXN0UHVibGlzaGVkTGFiZWxzUmVzcG9uc2UiABJoChNMaXN0UHVibGlzaGVkU2VyaWVzEiYucHVibGlyYS52MS5MaXN0UHVibGlzaGVkU2VyaWVzUmVxdWVzdBonLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgASXAoPR2V0U2VyaWVzRGV0YWlsEiIucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRTZXJpZXNEZXRhaWxSZXNwb25zZSIAEl8KEEdldEVwaXNvZGVEZXRhaWwSIy5wdWJsaXJhLnYxLkdldEVwaXNvZGVEZXRhaWxSZXF1ZXN0GiQucHVibGlyYS52MS5HZXRFcGlzb2RlRGV0YWlsUmVzcG9uc2UiABJrChRMaXN0UHVibGlzaGVkQXV0aG9ycxInLnB1YmxpcmEudjEuTGlzdFB1Ymxpc2hlZEF1dGhvcnNSZXF1ZXN0GigucHVibGlyYS52MS5MaXN0UHVibGlzaGVkQXV0aG9yc1Jlc3BvbnNlIgASdwoYR2V0UHVibGlzaGVkQXV0aG9yRGV0YWlsEisucHVibGlyYS52MS5HZXRQdWJsaXNoZWRBdXRob3JEZXRhaWxSZXF1ZXN0GiwucHVibGlyYS52MS5HZXRQdWJsaXNoZWRBdXRob3JEZXRhaWxSZXNwb25zZSIAEnQKF0dldFB1Ymxpc2hlZExhYmVsRGV0YWlsEioucHVibGlyYS52MS5HZXRQdWJsaXNoZWRMYWJlbERldGFpbFJlcXVlc3QaKy5wdWJsaXJhLnYxLkdldFB1Ymxpc2hlZExhYmVsRGV0YWlsUmVzcG9uc2UiABJuChVTZWFyY2hQdWJsaXNoZWRTZXJpZXMSKC5wdWJsaXJhLnYxLlNlYXJjaFB1Ymxpc2hlZFNlcmllc1JlcXVlc3QaKS5wdWJsaXJhLnYxLlNlYXJjaFB1Ymxpc2hlZFNlcmllc1Jlc3BvbnNlIgAyyQIKD1B1cmNoYXNlU2VydmljZRJrChRTdGFydEVwaXNvZGVDaGVja291dBInLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZXF1ZXN0GigucHVibGlyYS52MS5TdGFydEVwaXNvZGVDaGVja291dFJlc3BvbnNlIgASXAoPTGlzdE15UHVyY2hhc2VzEiIucHVibGlyYS52MS5MaXN0TXlQdXJjaGFzZXNSZXF1ZXN0GiMucHVibGlyYS52MS5MaXN0TXlQdXJjaGFzZXNSZXNwb25zZSIAEmsKFFByb2Nlc3NTdHJpcGVXZWJob29rEicucHVibGlyYS52MS5Qcm9jZXNzU3RyaXBlV2ViaG9va1JlcXVlc3QaKC5wdWJsaXJhLnYxLlByb2Nlc3NTdHJpcGVXZWJob29rUmVzcG9uc2UiAEI8WjpnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -452,6 +452,206 @@ export const GetPublishedAuthorDetailResponseSchema: GenMessage<GetPublishedAuth
   messageDesc(file_publira_v1_catalog, 12);
 
 /**
+ * A label that belongs to the requested tenant, plus how many of its series
+ * are currently published. Labels have no unpublished state of their own; a
+ * label with zero published series is still returned so a shareable detail
+ * URL stays valid after its last series is taken down.
+ *
+ * @generated from message publira.v1.PublishedLabel
+ */
+export type PublishedLabel = Message<"publira.v1.PublishedLabel"> & {
+  /**
+   * @generated from field: string public_id = 1;
+   */
+  publicId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string eye_catch_image_updated_at = 3;
+   */
+  eyeCatchImageUpdatedAt: string;
+
+  /**
+   * @generated from field: repeated publira.types.v1.SeriesEyeCatchVariant eye_catch_image_variants = 4;
+   */
+  eyeCatchImageVariants: SeriesEyeCatchVariant[];
+
+  /**
+   * @generated from field: int32 published_series_count = 5;
+   */
+  publishedSeriesCount: number;
+};
+
+/**
+ * Describes the message publira.v1.PublishedLabel.
+ * Use `create(PublishedLabelSchema)` to create a new message.
+ */
+export const PublishedLabelSchema: GenMessage<PublishedLabel> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 13);
+
+/**
+ * Cursor pagination for the label's published series. Field shape and token
+ * rules: proto/README.md. Sorted by title, then id. There is no order field:
+ * title order is the only series list the label page needs, and a later
+ * selectable order would have to carry its name in the token.
+ *
+ * @generated from message publira.v1.GetPublishedLabelDetailRequest
+ */
+export type GetPublishedLabelDetailRequest = Message<"publira.v1.GetPublishedLabelDetailRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string public_id = 2;
+   */
+  publicId: string;
+
+  /**
+   * Max series in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 3;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 4;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.v1.GetPublishedLabelDetailRequest.
+ * Use `create(GetPublishedLabelDetailRequestSchema)` to create a new message.
+ */
+export const GetPublishedLabelDetailRequestSchema: GenMessage<GetPublishedLabelDetailRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 14);
+
+/**
+ * @generated from message publira.v1.GetPublishedLabelDetailResponse
+ */
+export type GetPublishedLabelDetailResponse = Message<"publira.v1.GetPublishedLabelDetailResponse"> & {
+  /**
+   * @generated from field: publira.v1.PublishedLabel label = 1;
+   */
+  label?: PublishedLabel | undefined;
+
+  /**
+   * One page of published series on this label, title ascending.
+   *
+   * @generated from field: repeated publira.types.v1.Series series = 2;
+   */
+  series: Series[];
+
+  /**
+   * Token for the previous series page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 3;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next series page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 4;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.v1.GetPublishedLabelDetailResponse.
+ * Use `create(GetPublishedLabelDetailResponseSchema)` to create a new message.
+ */
+export const GetPublishedLabelDetailResponseSchema: GenMessage<GetPublishedLabelDetailResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 15);
+
+/**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ * Matches published series whose title or synopsis contains `query`
+ * (case-insensitive substring). Sorted by title, then id. There is no order
+ * field: title order is the only search result list the storefront needs.
+ * The token carries the Unicode-lowercased query it was built for; that same
+ * string is the ILIKE pattern. Sending the token with a query that lowers to
+ * a different string is invalid_argument. ASCII case changes of the same
+ * query are the same search. Changing to a different query restarts at page 1.
+ *
+ * @generated from message publira.v1.SearchPublishedSeriesRequest
+ */
+export type SearchPublishedSeriesRequest = Message<"publira.v1.SearchPublishedSeriesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
+   * Not restricted to ASCII; Japanese titles are the expected input.
+   *
+   * @generated from field: string query = 2;
+   */
+  query: string;
+
+  /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 3;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 4;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.v1.SearchPublishedSeriesRequest.
+ * Use `create(SearchPublishedSeriesRequestSchema)` to create a new message.
+ */
+export const SearchPublishedSeriesRequestSchema: GenMessage<SearchPublishedSeriesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 16);
+
+/**
+ * @generated from message publira.v1.SearchPublishedSeriesResponse
+ */
+export type SearchPublishedSeriesResponse = Message<"publira.v1.SearchPublishedSeriesResponse"> & {
+  /**
+   * @generated from field: repeated publira.types.v1.Series series = 1;
+   */
+  series: Series[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.v1.SearchPublishedSeriesResponse.
+ * Use `create(SearchPublishedSeriesResponseSchema)` to create a new message.
+ */
+export const SearchPublishedSeriesResponseSchema: GenMessage<SearchPublishedSeriesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_catalog, 17);
+
+/**
  * A one-time paid-episode checkout. Purchases are created only by the Stripe
  * webhook after a successful payment, never by the browser's return URL.
  *
@@ -474,7 +674,7 @@ export type StartEpisodeCheckoutRequest = Message<"publira.v1.StartEpisodeChecko
  * Use `create(StartEpisodeCheckoutRequestSchema)` to create a new message.
  */
 export const StartEpisodeCheckoutRequestSchema: GenMessage<StartEpisodeCheckoutRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 13);
+  messageDesc(file_publira_v1_catalog, 18);
 
 /**
  * @generated from message publira.v1.StartEpisodeCheckoutResponse
@@ -491,7 +691,7 @@ export type StartEpisodeCheckoutResponse = Message<"publira.v1.StartEpisodeCheck
  * Use `create(StartEpisodeCheckoutResponseSchema)` to create a new message.
  */
 export const StartEpisodeCheckoutResponseSchema: GenMessage<StartEpisodeCheckoutResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 14);
+  messageDesc(file_publira_v1_catalog, 19);
 
 /**
  * One purchase belonging to the signed-in reader. `is_active` is evaluated by
@@ -543,7 +743,7 @@ export type MyPurchase = Message<"publira.v1.MyPurchase"> & {
  * Use `create(MyPurchaseSchema)` to create a new message.
  */
 export const MyPurchaseSchema: GenMessage<MyPurchase> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 15);
+  messageDesc(file_publira_v1_catalog, 20);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -576,7 +776,7 @@ export type ListMyPurchasesRequest = Message<"publira.v1.ListMyPurchasesRequest"
  * Use `create(ListMyPurchasesRequestSchema)` to create a new message.
  */
 export const ListMyPurchasesRequestSchema: GenMessage<ListMyPurchasesRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 16);
+  messageDesc(file_publira_v1_catalog, 21);
 
 /**
  * @generated from message publira.v1.ListMyPurchasesResponse
@@ -607,7 +807,7 @@ export type ListMyPurchasesResponse = Message<"publira.v1.ListMyPurchasesRespons
  * Use `create(ListMyPurchasesResponseSchema)` to create a new message.
  */
 export const ListMyPurchasesResponseSchema: GenMessage<ListMyPurchasesResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 17);
+  messageDesc(file_publira_v1_catalog, 22);
 
 /**
  * `web-host` forwards Stripe's raw request body and signature to this RPC.
@@ -637,7 +837,7 @@ export type ProcessStripeWebhookRequest = Message<"publira.v1.ProcessStripeWebho
  * Use `create(ProcessStripeWebhookRequestSchema)` to create a new message.
  */
 export const ProcessStripeWebhookRequestSchema: GenMessage<ProcessStripeWebhookRequest> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 18);
+  messageDesc(file_publira_v1_catalog, 23);
 
 /**
  * @generated from message publira.v1.ProcessStripeWebhookResponse
@@ -650,7 +850,7 @@ export type ProcessStripeWebhookResponse = Message<"publira.v1.ProcessStripeWebh
  * Use `create(ProcessStripeWebhookResponseSchema)` to create a new message.
  */
 export const ProcessStripeWebhookResponseSchema: GenMessage<ProcessStripeWebhookResponse> = /*@__PURE__*/
-  messageDesc(file_publira_v1_catalog, 19);
+  messageDesc(file_publira_v1_catalog, 24);
 
 /**
  * Sort order of a published series list.
@@ -799,6 +999,31 @@ export const CatalogService: GenService<{
     methodKind: "unary";
     input: typeof GetPublishedAuthorDetailRequestSchema;
     output: typeof GetPublishedAuthorDetailResponseSchema;
+  },
+  /**
+   * Returns a label that belongs to the requested tenant. Cross-tenant and
+   * missing labels are surfaced as NotFound so a foreign label cannot be
+   * distinguished from one that does not exist.
+   *
+   * @generated from rpc publira.v1.CatalogService.GetPublishedLabelDetail
+   */
+  getPublishedLabelDetail: {
+    methodKind: "unary";
+    input: typeof GetPublishedLabelDetailRequestSchema;
+    output: typeof GetPublishedLabelDetailResponseSchema;
+  },
+  /**
+   * Keyword search over published series titles and synopses. An empty query
+   * is invalid_argument. A token carries the Unicode-lowercased query it was
+   * built for; sending it with a query that lowers to a different string is
+   * invalid_argument.
+   *
+   * @generated from rpc publira.v1.CatalogService.SearchPublishedSeries
+   */
+  searchPublishedSeries: {
+    methodKind: "unary";
+    input: typeof SearchPublishedSeriesRequestSchema;
+    output: typeof SearchPublishedSeriesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_catalog, 0);

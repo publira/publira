@@ -1189,6 +1189,164 @@ WHERE sc.creator_id = sqlc.arg('creator_id')
 ORDER BY s.title DESC,
     s.id DESC
 LIMIT sqlc.arg('limit');
+-- name: GetPublishedLabelByPublicID :one
+-- テナントに属するレーベルを返す。公開中シリーズが 0 件でも行は返す
+-- （レーベル自体に非公開状態は無い）。不在・他テナントは 0 行。
+SELECT l.id,
+    l.public_id,
+    l.name,
+    l.eye_catch_image_id,
+    li.updated_at AS eye_catch_image_updated_at,
+    (
+        SELECT COUNT(*)::int4
+        FROM series s
+        WHERE s.label_id = l.id
+            AND s.tenant_id = l.tenant_id
+            AND s.is_published = true
+            AND s.published_at IS NOT NULL
+            AND s.published_at <= NOW()
+    ) AS published_series_count
+FROM labels l
+    LEFT JOIN label_images li ON li.id = l.eye_catch_image_id
+WHERE l.tenant_id = sqlc.arg('tenant_id')
+    AND l.public_id = sqlc.arg('public_id')
+LIMIT 1;
+-- name: ListPublishedSeriesIDsByLabelTitleAsc :many
+-- レーベル詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
+-- ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+-- ListActiveSeriesIDsByTitleAsc と同じ形で、label_id で絞る。
+-- 前ページ方向は ListPublishedSeriesIDsByLabelTitleDesc を呼んで
+-- 呼び出し側で並べ直す。
+-- 索引: idx_series_tenant_label_title
+SELECT s.id
+FROM series s
+WHERE s.label_id = sqlc.arg('label_id')::uuid
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) >= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) > (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY s.title ASC,
+    s.id ASC
+LIMIT sqlc.arg('limit');
+-- name: ListPublishedSeriesIDsByLabelTitleDesc :many
+-- ListPublishedSeriesIDsByLabelTitleAsc の前ページ方向。
+SELECT s.id
+FROM series s
+WHERE s.label_id = sqlc.arg('label_id')::uuid
+    AND s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) <= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) < (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT sqlc.arg('limit');
+-- name: ListPublishedSeriesIDsBySearchTitleAsc :many
+-- SearchPublishedSeries。タイトルまたはあらすじが query_pattern に
+-- ILIKE マッチする公開シリーズをタイトル + id のキーセットで取る。
+-- query_pattern は呼び出し側が '%q%' に組み立て、ILIKE の %/_ は
+-- ESCAPE '!' でリテラルにする。
+-- 索引方針: idx_series_tenant_title がキーセット半を担う。ILIKE '%q%' は
+-- btree に乗らないので、テナント + is_published で絞ったうえで LIMIT が
+-- 効くうちはシーケンシャルで足りる。件数が増えて遅延が見えたら title と
+-- series_listings.synopsis に pg_trgm GIN を足す。
+SELECT s.id
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) >= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) > (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY s.title ASC,
+    s.id ASC
+LIMIT sqlc.arg('limit');
+-- name: ListPublishedSeriesIDsBySearchTitleDesc :many
+-- ListPublishedSeriesIDsBySearchTitleAsc の前ページ方向。
+SELECT s.id
+FROM series s
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+    AND (
+        s.title ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+        OR COALESCE(sl.synopsis, '') ILIKE sqlc.arg('query_pattern')::text ESCAPE '!'
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) <= (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (s.title, s.id) < (
+                sqlc.narg('cursor_title')::text,
+                sqlc.narg('cursor_id')::uuid
+            )
+        )
+    )
+ORDER BY s.title DESC,
+    s.id DESC
+LIMIT sqlc.arg('limit');
 -- name: CreateEpisodeBase :one
 -- エピソードのBaseレコードを作成する
 INSERT INTO episodes (

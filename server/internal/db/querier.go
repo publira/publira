@@ -126,6 +126,9 @@ type Querier interface {
 	// で not_found にするので、非公開の著者の存在は漏れない。
 	GetPublishedAuthorByPublicID(ctx context.Context, arg GetPublishedAuthorByPublicIDParams) (GetPublishedAuthorByPublicIDRow, error)
 	GetPublishedEpisodeByPublicIDForTenant(ctx context.Context, arg GetPublishedEpisodeByPublicIDForTenantParams) (GetPublishedEpisodeByPublicIDForTenantRow, error)
+	// テナントに属するレーベルを返す。公開中シリーズが 0 件でも行は返す
+	// （レーベル自体に非公開状態は無い）。不在・他テナントは 0 行。
+	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
 	// テナントの公開中ページをslugで取得する
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
 	GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error)
@@ -345,6 +348,26 @@ type Querier interface {
 	ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error)
 	// ListPublishedSeriesIDsByCreatorTitleAsc の前ページ方向。
 	ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleDescParams) ([]uuid.UUID, error)
+	// レーベル詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
+	// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
+	// ListActiveSeriesIDsByTitleAsc と同じ形で、label_id で絞る。
+	// 前ページ方向は ListPublishedSeriesIDsByLabelTitleDesc を呼んで
+	// 呼び出し側で並べ直す。
+	// 索引: idx_series_tenant_label_title
+	ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error)
+	// ListPublishedSeriesIDsByLabelTitleAsc の前ページ方向。
+	ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error)
+	// SearchPublishedSeries。タイトルまたはあらすじが query_pattern に
+	// ILIKE マッチする公開シリーズをタイトル + id のキーセットで取る。
+	// query_pattern は呼び出し側が '%q%' に組み立て、ILIKE の %/_ は
+	// ESCAPE '!' でリテラルにする。
+	// 索引方針: idx_series_tenant_title がキーセット半を担う。ILIKE '%q%' は
+	// btree に乗らないので、テナント + is_published で絞ったうえで LIMIT が
+	// 効くうちはシーケンシャルで足りる。件数が増えて遅延が見えたら title と
+	// series_listings.synopsis に pg_trgm GIN を足す。
+	ListPublishedSeriesIDsBySearchTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleAscParams) ([]uuid.UUID, error)
+	// ListPublishedSeriesIDsBySearchTitleAsc の前ページ方向。
+	ListPublishedSeriesIDsBySearchTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsBySearchTitleDescParams) ([]uuid.UUID, error)
 	// ダッシュボードの公開キュー用：直近の下書き・予約済みエピソードを取得する
 	ListRecentEpisodesForDashboard(ctx context.Context, arg ListRecentEpisodesForDashboardParams) ([]ListRecentEpisodesForDashboardRow, error)
 	ListRecentPlatformEvents(ctx context.Context, limit int32) ([]ListRecentPlatformEventsRow, error)

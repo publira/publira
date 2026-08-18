@@ -147,9 +147,10 @@ const LabelsListData = async ({
     <>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {labels.map((label) => (
-          <article
+          <Link
             key={label.publicId}
-            className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
+            href={`/labels/${label.publicId}`}
+            className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
           >
             {label.eyeCatchImageVariants &&
             label.eyeCatchImageVariants.length > 0 ? (
@@ -168,7 +169,7 @@ const LabelsListData = async ({
             <div className="p-4">
               <h2 className="font-serif text-lg font-semibold">{label.name}</h2>
             </div>
-          </article>
+          </Link>
         ))}
       </div>
 

@@ -181,6 +181,44 @@ test.describe("web-host tenant boundary", () => {
     await expect(page.getByText(SEED_TENANT.authorName)).toHaveCount(0);
   });
 
+  test("他テナントのレーベル詳細は見つからない", async ({ page }) => {
+    const response = await page.goto(
+      otherTenantUrl(`/labels/${SEED_TENANT.labelId}`)
+    );
+
+    expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+    ).toBeVisible();
+    await expect(page.getByText(SEED_TENANT.labelName)).toHaveCount(0);
+  });
+
+  test("検索結果に他テナントのシリーズが混ざらない", async ({ page }) => {
+    const foreign = await page.goto(otherTenantUrl("/search?q=Seed"));
+    expect(foreign?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "検索" })
+    ).toBeVisible();
+
+    await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
+
+    const own = await page.goto(
+      otherTenantUrl(
+        `/search?q=${encodeURIComponent(OTHER_TENANT.publishedSeries.title)}`
+      )
+    );
+    expect(own?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "検索" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: OTHER_TENANT.publishedSeries.title,
+      })
+    ).toBeVisible();
+  });
+
   test("テナントに紐づかない Host は 404", async ({ page }) => {
     const response = await page.goto(`${WEB_HOST_UNKNOWN_TENANT_BASE_URL}/`);
 
