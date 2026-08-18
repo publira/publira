@@ -119,26 +119,38 @@ describe("Field とフォームパーツの for/id 関連付け", () => {
     }
   );
 
-  it("同じフォームを 2 つ同時にマウントしても id が重複しない", () => {
-    const { container } = render(
-      <>
-        <Field>
-          <FieldLabel>一つ目</FieldLabel>
-          <StatefulCombobox />
-        </Field>
-        <Field>
-          <FieldLabel>二つ目</FieldLabel>
-          <StatefulCombobox />
-        </Field>
-      </>
-    );
+  it.each([
+    {
+      name: "Combobox",
+      renderControl: () => <StatefulCombobox />,
+    },
+    {
+      name: "MultiCombobox",
+      renderControl: () => <StatefulMultiCombobox />,
+    },
+  ])(
+    "同じ $name を 2 つ同時にマウントしても id が重複しない",
+    ({ renderControl }) => {
+      const { container } = render(
+        <>
+          <Field>
+            <FieldLabel>一つ目</FieldLabel>
+            {renderControl()}
+          </Field>
+          <Field>
+            <FieldLabel>二つ目</FieldLabel>
+            {renderControl()}
+          </Field>
+        </>
+      );
 
-    const first = getAssociation(container, "一つ目");
-    const second = getAssociation(container, "二つ目");
+      const first = getAssociation(container, "一つ目");
+      const second = getAssociation(container, "二つ目");
 
-    expect(first.htmlFor).not.toBe(second.htmlFor);
-    expect(first.control.id).not.toBe(second.control.id);
-  });
+      expect(first.htmlFor).not.toBe(second.htmlFor);
+      expect(first.control.id).not.toBe(second.control.id);
+    }
+  );
 
   it.each([
     {
