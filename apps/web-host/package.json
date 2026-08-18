@@ -32,6 +32,7 @@
     "@publira/web-session": "workspace:*",
     "lru-cache": "catalog:",
     "next": "catalog:",
+    "p-retry": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-markdown": "catalog:",
