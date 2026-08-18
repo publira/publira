@@ -52,6 +52,7 @@ export const Combobox = ({
   return (
     <BaseCombobox.Root
       disabled={disabled}
+      id={id}
       items={items}
       itemToStringLabel={itemToStringLabel}
       onValueChange={handleValueChange}

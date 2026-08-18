@@ -25,6 +25,7 @@ web-admin / web-host などで共有利用する UI コンポーネント群で�
 - [Input](./src/input) - テキスト入力フィールド
 - [Textarea](./src/textarea) - 複数行テキスト入力フィールド
 - [Select](./src/select) - セレクトボックス
+- [Combobox / MultiCombobox](./src/combobox) - 検索可能な単一選択・複数選択
 - [Checkbox](./src/checkbox) - チェックボックス
 - [RadioGroup](./src/radio-group) - ラジオボタングループ
 - [Switch](./src/switch) - スイッチ（トグル）

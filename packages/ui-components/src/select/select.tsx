@@ -22,6 +22,7 @@ export type SelectProps = Omit<
 
 export const Select = ({
   className,
+  id,
   items,
   placeholder = "選択してください",
   ...props
@@ -29,12 +30,13 @@ export const Select = ({
   const safeItems = items ?? [];
 
   return (
-    <BaseSelect.Root {...props} items={safeItems}>
+    <BaseSelect.Root {...props} id={id} items={safeItems}>
       <BaseSelect.Trigger
         className={cn(
           "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
           className
         )}
+        id={id}
       >
         <BaseSelect.Value placeholder={placeholder} />
         <BaseSelect.Icon className="text-muted-foreground">
