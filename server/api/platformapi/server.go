@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 // Querier は platformapi が必要とする DB 操作インターフェースです。
@@ -43,14 +44,14 @@ type platformServer struct {
 // Connect can map them to CodeCanceled / CodeDeadlineExceeded. Other DB
 // failures are logged and replaced with a generic client-facing message so
 // driver details never leave the server.
-func (s *platformServer) internalDBError(msg string, err error, keyvals ...any) error {
+func (s *platformServer) internalDBError(ctx context.Context, msg string, err error, keyvals ...any) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
 	args := make([]any, 0, len(keyvals)+2)
 	args = append(args, keyvals...)
 	args = append(args, "error", err)
-	s.logger.Error(msg, args...)
+	s.logger.ErrorContext(ctx, msg, args...)
 	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 }
 
@@ -124,47 +125,55 @@ func NewHandler(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emai
 		}
 	})
 
+	traced := tracing.ConnectHandlerOption()
+
 	mux := http.NewServeMux()
 	health.Register(mux, health.WithDB(db))
 	tenantPath, tenantHandler := publirasplatformv1connect.NewPlatformTenantServiceHandler(
 		server,
+		traced,
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(tenantPath, tenantHandler)
 	emailPath, emailHandler := publirasplatformv1connect.NewPlatformEmailSettingsServiceHandler(
 		server,
+		traced,
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(emailPath, emailHandler)
 	settingsPath, settingsHandler := publirasplatformv1connect.NewPlatformSettingsServiceHandler(
 		server,
+		traced,
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(settingsPath, settingsHandler)
 	operatorPath, operatorHandler := publirasplatformv1connect.NewPlatformOperatorServiceHandler(
 		server,
+		traced,
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(operatorPath, operatorHandler)
 	notificationPath, notificationHandler := publirasplatformv1connect.NewPlatformNotificationServiceHandler(
 		server,
+		traced,
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(notificationPath, notificationHandler)
-	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server)
+	authPath, authHandler := publirasplatformv1connect.NewPlatformAuthServiceHandler(server, traced)
 	mux.Handle(authPath, authHandler)
 	// セットアップサービスは認証不要で公開する
-	setupPath, setupHandler := publirasplatformv1connect.NewPlatformSetupServiceHandler(server)
+	setupPath, setupHandler := publirasplatformv1connect.NewPlatformSetupServiceHandler(server, traced)
 	mux.Handle(setupPath, setupHandler)
 	// エンドユーザー管理サービス
 	userPath, userHandler := publirasplatformv1connect.NewPlatformUserServiceHandler(
 		server,
+		traced,
 		connect.WithInterceptors(authInterceptor),
 	)
 	mux.Handle(userPath, userHandler)
-	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(server)
+	dashboardPath, dashboardHandler := publirasplatformv1connect.NewPlatformDashboardServiceHandler(server, traced)
 	mux.Handle(dashboardPath, dashboardHandler)
-	auditPath, auditHandler := publirasplatformv1connect.NewPlatformAuditLogServiceHandler(server)
+	auditPath, auditHandler := publirasplatformv1connect.NewPlatformAuditLogServiceHandler(server, traced)
 	mux.Handle(auditPath, auditHandler)
 	return mux
 }

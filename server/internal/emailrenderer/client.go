@@ -12,6 +12,7 @@ import (
 
 	publiraemailv1 "github.com/publira/publira/server/gen/publira/email/v1"
 	publiraemailv1connect "github.com/publira/publira/server/gen/publira/email/v1/publiraemailv1connect"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const DefaultURL = "http://localhost:8080"
@@ -39,7 +40,12 @@ type Client struct {
 }
 
 func NewClient(baseURL string) *Client {
-	return NewClientWithHTTPClient(&http.Client{Timeout: 10 * time.Second}, baseURL)
+	return NewClientWithHTTPClient(&http.Client{
+		Timeout: 10 * time.Second,
+		// Carries the trace context of the request that needed the email
+		// into the renderer service.
+		Transport: tracing.Transport(http.DefaultTransport),
+	}, baseURL)
 }
 
 func NewClientWithHTTPClient(httpClient connect.HTTPClient, baseURL string) *Client {

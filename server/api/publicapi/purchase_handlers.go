@@ -81,7 +81,7 @@ func (s *apiServer) StartEpisodeCheckout(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError("failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get purchasable episode", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
 	}
 	if episode.Price <= 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("free episodes do not require checkout"))
@@ -93,7 +93,7 @@ func (s *apiServer) StartEpisodeCheckout(
 		EpisodeID: episode.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
 	}
 	if hasPurchase {
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("episode is already purchased"))
@@ -248,7 +248,7 @@ func (s *apiServer) ListMyPurchases(
 
 	rows, err := s.purchasePage(ctx, tenant.ID, user.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list purchases", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list purchases", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 	now := time.Now()
@@ -372,7 +372,7 @@ func (s *apiServer) ProcessStripeWebhook(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("stripe Checkout tenant does not match webhook path"))
 	}
 	if err := s.createPurchaseFromStripeSession(ctx, s.queriesFor(ctx), tenant.ID, &session); err != nil {
-		return nil, s.internalDBError("failed to create purchase from Stripe Checkout", err, "event_id", event.ID, "checkout_session_id", session.ID)
+		return nil, s.internalDBError(ctx, "failed to create purchase from Stripe Checkout", err, "event_id", event.ID, "checkout_session_id", session.ID)
 	}
 	return connect.NewResponse(&publirav1.ProcessStripeWebhookResponse{}), nil
 }

@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -25,6 +27,8 @@ const (
 	notificationTypeEpisodePublished     = "episode_published"
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
 )
+
+var tracer = otel.Tracer("github.com/publira/publira/server/internal/publishepisodes")
 
 // Runner lists due scheduled episodes and publishes them with retries.
 type Runner struct {
@@ -74,17 +78,24 @@ func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Client, logger
 }
 
 // RunOnce publishes every episode that is due now.
+//
+// The cycle runs under one span so the queries it issues hang off a
+// single trace instead of arriving as one root span per statement.
 func (r *Runner) RunOnce(ctx context.Context) {
+	ctx, span := tracer.Start(ctx, "publishepisodes.RunOnce")
+	defer span.End()
+
 	rows, err := r.queries.ListEpisodesReadyToPublishWithTenantInfo(ctx)
 	if err != nil {
-		r.logger.Error("failed to list episodes ready to publish", "error", err)
+		r.logger.ErrorContext(ctx, "failed to list episodes ready to publish", "error", err)
 		return
 	}
 	if len(rows) == 0 {
 		return
 	}
 
-	r.logger.Info("found episodes ready to publish", "count", len(rows))
+	span.SetAttributes(attribute.Int("publira.episodes.due", len(rows)))
+	r.logger.InfoContext(ctx, "found episodes ready to publish", "count", len(rows))
 
 	for _, row := range rows {
 		if ctx.Err() != nil {

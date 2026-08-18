@@ -223,7 +223,7 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 		CreatorID: creatorID,
 	})
 	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError("failed to create creator image", err, "tenant_id", tenant.ID.String(), "creator_id", creatorID.String())
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create creator image", err, "tenant_id", tenant.ID.String(), "creator_id", creatorID.String())
 	}
 
 	objectKey := fmt.Sprintf("tenants/%s/creators/%s/%s-original%s", tenant.PublicID, creatorPublicID, createdImage.ID.String(), extensionFromContentType(image.ContentType))
@@ -254,7 +254,7 @@ func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodel
 		Height:          image.Height,
 	})
 	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError("failed to create creator image variant", err, "tenant_id", tenant.ID.String(), "creator_image_id", createdImage.ID.String())
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create creator image variant", err, "tenant_id", tenant.ID.String(), "creator_image_id", createdImage.ID.String())
 	}
 
 	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
@@ -283,7 +283,7 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 		LabelID:  labelID,
 	})
 	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError("failed to create label image", err, "tenant_id", tenant.ID.String(), "label_id", labelID.String())
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create label image", err, "tenant_id", tenant.ID.String(), "label_id", labelID.String())
 	}
 
 	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
@@ -328,7 +328,7 @@ func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmod
 			Height:          int32(variant.Height),
 		})
 		if createVariantErr != nil {
-			return uuid.NullUUID{}, s.internalDBError("failed to create label image variant", createVariantErr, "tenant_id", tenant.ID.String(), "label_image_id", createdImage.ID.String())
+			return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create label image variant", createVariantErr, "tenant_id", tenant.ID.String(), "label_image_id", createdImage.ID.String())
 		}
 	}
 
@@ -361,7 +361,7 @@ func (s *adminServer) labelEyeCatchVariantsByImageIDs(
 
 	rows, err := s.queriesFor(ctx).ListLabelImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, s.internalDBError("failed to list label image variants", err)
+		return nil, s.internalDBError(ctx, "failed to list label image variants", err)
 	}
 
 	byImageID := make(map[uuid.UUID][]dbmodels.ListLabelImageVariantsByImageIDsRow, len(imageIDs))
@@ -470,7 +470,7 @@ func (s *adminServer) ListCreators(
 
 	rows, err := s.creatorPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list creators", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list creators", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -522,7 +522,7 @@ func (s *adminServer) GetCreator(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
 		}
-		return nil, s.internalDBError("failed to get creator", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get creator", err, "tenant_id", tenant.ID.String())
 	}
 	return connect.NewResponse(&publiraadminv1.GetCreatorResponse{Creator: protomapper.CreatorFromRow(
 		row.PublicID,
@@ -557,7 +557,7 @@ func (s *adminServer) ListLabels(
 
 	rows, err := s.labelPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list labels", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list labels", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -623,7 +623,7 @@ func (s *adminServer) GetLabel(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
-		return nil, s.internalDBError("failed to get label", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get label", err, "tenant_id", tenant.ID.String())
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if row.EyeCatchImageID.Valid {
@@ -668,7 +668,7 @@ func (s *adminServer) CreateCreator(
 		})
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to create creator", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create creator", err, "tenant_id", tenant.ID.String())
 	}
 
 	iconImageID, err := s.createCreatorIconImage(ctx, tenant, createdBase.ID, createdBase.PublicID, iconImage)
@@ -682,12 +682,12 @@ func (s *adminServer) CreateCreator(
 			ProfileText: createdBase.ProfileText,
 			IconImageID: iconImageID,
 		}); err != nil {
-			return nil, s.internalDBError("failed to update creator icon", err, "tenant_id", tenant.ID.String(), "creator_id", createdBase.ID.String())
+			return nil, s.internalDBError(ctx, "failed to update creator icon", err, "tenant_id", tenant.ID.String(), "creator_id", createdBase.ID.String())
 		}
 	}
 	created, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: createdBase.PublicID})
 	if err != nil {
-		return nil, s.internalDBError("failed to get created creator", err, "tenant_id", tenant.ID.String(), "creator_public_id", createdBase.PublicID)
+		return nil, s.internalDBError(ctx, "failed to get created creator", err, "tenant_id", tenant.ID.String(), "creator_public_id", createdBase.PublicID)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -735,7 +735,7 @@ func (s *adminServer) UpdateCreator(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
 		}
-		return nil, s.internalDBError("failed to get creator for update", err, "tenant_id", tenant.ID.String(), "creator_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get creator for update", err, "tenant_id", tenant.ID.String(), "creator_public_id", req.Msg.PublicId)
 	}
 	iconImageID := current.IconImageID
 	if req.Msg.ClearIconImage {
@@ -755,14 +755,14 @@ func (s *adminServer) UpdateCreator(
 		IconImageID: iconImageID,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to update creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update creator", err, "tenant_id", tenant.ID.String(), "creator_id", current.ID.String())
 	}
 	updated, err := s.queriesFor(ctx).GetCreatorByPublicIDForTenant(ctx, dbmodels.GetCreatorByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("creator not found"))
 		}
-		return nil, s.internalDBError("failed to get updated creator", err, "tenant_id", tenant.ID.String(), "creator_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get updated creator", err, "tenant_id", tenant.ID.String(), "creator_public_id", req.Msg.PublicId)
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -815,7 +815,7 @@ func (s *adminServer) CreateLabel(
 		})
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to create label", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create label", err, "tenant_id", tenant.ID.String())
 	}
 	eyeCatchImageID, err := s.createLabelEyeCatchImage(ctx, tenant, createdBase.ID, createdBase.PublicID, eyeCatchImage)
 	if err != nil {
@@ -827,12 +827,12 @@ func (s *adminServer) CreateLabel(
 			Name:            createdBase.Name,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
-			return nil, s.internalDBError("failed to update label eye catch image", err, "tenant_id", tenant.ID.String(), "label_id", createdBase.ID.String())
+			return nil, s.internalDBError(ctx, "failed to update label eye catch image", err, "tenant_id", tenant.ID.String(), "label_id", createdBase.ID.String())
 		}
 	}
 	created, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: createdBase.PublicID})
 	if err != nil {
-		return nil, s.internalDBError("failed to get created label", err, "tenant_id", tenant.ID.String(), "label_public_id", createdBase.PublicID)
+		return nil, s.internalDBError(ctx, "failed to get created label", err, "tenant_id", tenant.ID.String(), "label_public_id", createdBase.PublicID)
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if created.EyeCatchImageID.Valid {
@@ -880,7 +880,7 @@ func (s *adminServer) UpdateLabel(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
-		return nil, s.internalDBError("failed to get label for update", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get label for update", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
 	}
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.Msg.ClearEyeCatchImage {
@@ -894,14 +894,14 @@ func (s *adminServer) UpdateLabel(
 	}
 	err = s.queriesFor(ctx).UpdateLabel(ctx, dbmodels.UpdateLabelParams{ID: current.ID, Name: req.Msg.Name, EyeCatchImageID: eyeCatchImageID})
 	if err != nil {
-		return nil, s.internalDBError("failed to update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update label", err, "tenant_id", tenant.ID.String(), "label_id", current.ID.String())
 	}
 	updated, err := s.queriesFor(ctx).GetLabelByPublicIDForTenant(ctx, dbmodels.GetLabelByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
-		return nil, s.internalDBError("failed to get updated label", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get updated label", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.PublicId)
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if updated.EyeCatchImageID.Valid {

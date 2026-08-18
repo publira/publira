@@ -48,7 +48,7 @@ func Acquire(ctx context.Context, db *sql.DB, tenantID uuid.UUID, logger *slog.L
 	}
 
 	if _, err := conn.ExecContext(ctx, setTenantSQL, tenantID.String()); err != nil {
-		logger.Error("failed to set app.current_tenant_id; discarding connection", "error", err)
+		logger.ErrorContext(ctx, "failed to set app.current_tenant_id; discarding connection", "error", err)
 		discard(conn, logger)
 		return nil, func() {}, err
 	}

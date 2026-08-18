@@ -24,6 +24,7 @@ import (
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/tenantconn"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 type Querier interface {
@@ -50,14 +51,14 @@ func invalidSessionError() error {
 // Connect can map them to CodeCanceled / CodeDeadlineExceeded. Other DB
 // failures are logged and replaced with a generic client-facing message so
 // driver details never leave the server.
-func (s *apiServer) internalDBError(msg string, err error, keyvals ...any) error {
+func (s *apiServer) internalDBError(ctx context.Context, msg string, err error, keyvals ...any) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
 	args := make([]any, 0, len(keyvals)+2)
 	args = append(args, keyvals...)
 	args = append(args, "error", err)
-	s.logger.Error(msg, args...)
+	s.logger.ErrorContext(ctx, msg, args...)
 	return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
 }
 
@@ -75,7 +76,7 @@ func (s *apiServer) tenantByContext(ctx context.Context, tenantCtx *publirattype
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.Tenant{}, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return dbmodels.Tenant{}, s.internalDBError("failed to get tenant", err, "tenant_id", tenantID.String())
+		return dbmodels.Tenant{}, s.internalDBError(ctx, "failed to get tenant", err, "tenant_id", tenantID.String())
 	}
 	return tenant, nil
 }
@@ -113,22 +114,23 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, e
 
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	tenantScoped := server.tenantScopedQuerierInterceptor()
+	traced := tracing.ConnectHandlerOption()
 
-	path, handler := publirav1connect.NewCatalogServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	path, handler := publirav1connect.NewCatalogServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(path, handler)
-	purchasePath, purchaseHandler := publirav1connect.NewPurchaseServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	purchasePath, purchaseHandler := publirav1connect.NewPurchaseServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(purchasePath, purchaseHandler)
-	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	pagesPath, pagesHandler := publirav1connect.NewPublicPagesServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(pagesPath, pagesHandler)
-	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	authPath, authHandler := publirav1connect.NewAuthServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(authPath, authHandler)
-	notificationPath, notificationHandler := publirav1connect.NewNotificationServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	notificationPath, notificationHandler := publirav1connect.NewNotificationServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(notificationPath, notificationHandler)
-	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server, connect.WithInterceptors(tenantScoped))
+	tenantPath, tenantHandler := publirav1connect.NewTenantServiceHandler(server, traced, connect.WithInterceptors(tenantScoped))
 	mux.Handle(tenantPath, tenantHandler)
 	// DomainService is used before tenant context is known (e.g. proxy domain resolution),
 	// so it must not require tenant-scoped interception.
-	domainPath, domainHandler := publirav1connect.NewDomainServiceHandler(server)
+	domainPath, domainHandler := publirav1connect.NewDomainServiceHandler(server, traced)
 	mux.Handle(domainPath, domainHandler)
 }
 
@@ -157,12 +159,12 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 				}
-				return nil, s.internalDBError("failed to get tenant", err, "tenant_id", tenantID.String())
+				return nil, s.internalDBError(ctx, "failed to get tenant", err, "tenant_id", tenantID.String())
 			}
 
 			conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
 			if err != nil {
-				return nil, s.internalDBError("failed to acquire tenant connection", err, "tenant_id", tenant.ID.String())
+				return nil, s.internalDBError(ctx, "failed to acquire tenant connection", err, "tenant_id", tenant.ID.String())
 			}
 			defer release()
 

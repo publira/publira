@@ -32,6 +32,7 @@ cd server && make build
 - `PUBLIRA_S3_ENDPOINT` (任意)
 - `PUBLIRA_S3_FORCE_PATH_STYLE` (任意)
 - `PUBLIRA_S3_PUBLIC_BASE_URL` (任意)
+- `PUBLIRA_TRACING_ENABLED` (任意, 既定は無効。OpenTelemetry トレースの有効化。送信先などの `OTEL_*` と併せて [server/README.md](../../README.md#分散トレーシング-opentelemetry))
 
 ## 備考
 

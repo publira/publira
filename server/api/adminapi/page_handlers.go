@@ -192,7 +192,7 @@ func (s *adminServer) CreatePage(
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a page with this slug already exists"))
 		}
-		return nil, s.internalDBError("failed to create page", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create page", err, "tenant_id", tenant.ID.String())
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -244,7 +244,7 @@ func (s *adminServer) UpdatePage(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, s.internalDBError("failed to update page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to update page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -299,7 +299,7 @@ func (s *adminServer) ListPages(
 
 	rows, err := s.pagePage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list pages", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list pages", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -352,7 +352,7 @@ func (s *adminServer) GetPage(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, s.internalDBError("failed to get page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to get page", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	return connect.NewResponse(&publiraadminv1.GetPageResponse{
 		Page: pageFromModel(page),
@@ -383,11 +383,11 @@ func (s *adminServer) CreateVersion(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, s.internalDBError("failed to get page for create version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to get page for create version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	maxVersion, err := s.queriesFor(ctx).GetMaxPageVersionNumberByPageID(ctx, pageID)
 	if err != nil {
-		return nil, s.internalDBError("failed to get max page version number", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to get max page version number", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	versionID, err := uuid.NewV7()
 	if err != nil {
@@ -403,7 +403,7 @@ func (s *adminServer) CreateVersion(
 	params.TenantID = tenant.ID
 	version, err := s.queriesFor(ctx).CreatePageVersion(ctx, params)
 	if err != nil {
-		return nil, s.internalDBError("failed to create page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to create page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -443,11 +443,11 @@ func (s *adminServer) ListVersions(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, s.internalDBError("failed to get page for list versions", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get page for list versions", err, "tenant_id", tenant.ID.String())
 	}
 	rows, err := s.queriesFor(ctx).ListPageVersionsByPageID(ctx, pageID)
 	if err != nil {
-		return nil, s.internalDBError("failed to list page versions", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list page versions", err, "tenant_id", tenant.ID.String())
 	}
 	versions := make([]*publirattypesv1.PageVersion, 0, len(rows))
 	for _, v := range rows {
@@ -486,7 +486,7 @@ func (s *adminServer) PublishVersion(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, s.internalDBError("failed to get page for publish version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to get page for publish version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	version, err := s.queriesFor(ctx).PublishPageVersion(ctx, dbmodels.PublishPageVersionParams{
 		ID:     versionID,
@@ -496,7 +496,7 @@ func (s *adminServer) PublishVersion(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page version not found"))
 		}
-		return nil, s.internalDBError("failed to publish page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
+		return nil, s.internalDBError(ctx, "failed to publish page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
 	}
 	// Update the page's published_version_id
 	if _, err := s.queriesFor(ctx).SetPagePublishedVersion(ctx, dbmodels.SetPagePublishedVersionParams{
@@ -504,7 +504,7 @@ func (s *adminServer) PublishVersion(
 		TenantID:           tenant.ID,
 		PublishedVersionID: uuid.NullUUID{UUID: version.ID, Valid: true},
 	}); err != nil {
-		return nil, s.internalDBError("failed to set published page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", version.ID.String())
+		return nil, s.internalDBError(ctx, "failed to set published page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", version.ID.String())
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
@@ -561,7 +561,7 @@ func (s *adminServer) RollbackToVersion(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, s.internalDBError("failed to get page for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to get page for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	// Fetch the target version to copy its content
 	target, err := s.queriesFor(ctx).GetPageVersionByIDForPage(ctx, dbmodels.GetPageVersionByIDForPageParams{
@@ -572,11 +572,11 @@ func (s *adminServer) RollbackToVersion(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page version not found"))
 		}
-		return nil, s.internalDBError("failed to get page version for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
+		return nil, s.internalDBError(ctx, "failed to get page version for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String(), "version_id", versionID.String())
 	}
 	maxVersion, err := s.queriesFor(ctx).GetMaxPageVersionNumberByPageID(ctx, pageID)
 	if err != nil {
-		return nil, s.internalDBError("failed to get max page version number for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to get max page version number for rollback", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	newVersionID, err := uuid.NewV7()
 	if err != nil {
@@ -591,7 +591,7 @@ func (s *adminServer) RollbackToVersion(
 	params.AuthorUserID = uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true}
 	newVersion, err := s.queriesFor(ctx).CreatePageVersion(ctx, params)
 	if err != nil {
-		return nil, s.internalDBError("failed to create rollback page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
+		return nil, s.internalDBError(ctx, "failed to create rollback page version", err, "tenant_id", tenant.ID.String(), "page_id", pageID.String())
 	}
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
 		TenantID:    tenant.ID,

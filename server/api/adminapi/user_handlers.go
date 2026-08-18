@@ -125,7 +125,7 @@ func (s *adminServer) ListTenantUsers(
 
 	rows, err := s.tenantUserPage(ctx, tenant.ID, keyword, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list tenant users", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list tenant users", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 

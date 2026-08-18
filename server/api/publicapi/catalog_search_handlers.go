@@ -143,12 +143,12 @@ func (s *apiServer) SearchPublishedSeries(
 	descending := cursor.Direction == pagination.Backward
 	ids, err := s.publishedSearchSeriesPageIDs(ctx, tenant.ID, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to search published series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
 	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
 	if err != nil {
-		return nil, s.internalDBError("failed to search published series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", tenant.ID.String())
 	}
 	items, err := s.publishedSeriesItems(ctx, rows)
 	if err != nil {

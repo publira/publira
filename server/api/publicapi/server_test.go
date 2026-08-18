@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -75,14 +77,53 @@ func (h *captureHandler) errorAttr() error {
 	return nil
 }
 
+// A DB failure is the log line an operator reaches for first, so it has
+// to carry the trace it belongs to. internalDBError is the shared path
+// every handler funnels those failures through.
+func TestInternalDBErrorLogsTheTraceOfTheRequest(t *testing.T) {
+	handler := &captureHandler{}
+	server := &apiServer{logger: slog.New(logging.NewTraceHandler(handler))}
+
+	traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	if err != nil {
+		t.Fatalf("TraceIDFromHex: %v", err)
+	}
+	spanID, err := trace.SpanIDFromHex("00f067aa0ba902b7")
+	if err != nil {
+		t.Fatalf("SpanIDFromHex: %v", err)
+	}
+	ctx := trace.ContextWithSpanContext(t.Context(), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: traceID,
+		SpanID:  spanID,
+	}))
+
+	_ = server.internalDBError(ctx, "failed to list example", errors.New(`pq: relation "x" does not exist`))
+
+	if len(handler.records) != 1 {
+		t.Fatalf("logged %d records, want 1", len(handler.records))
+	}
+	var logged string
+	handler.records[0].Attrs(func(a slog.Attr) bool {
+		if a.Key == logging.TraceIDKey {
+			logged = a.Value.String()
+			return false
+		}
+		return true
+	})
+	if logged != traceID.String() {
+		t.Errorf("%s = %q, want %s", logging.TraceIDKey, logged, traceID)
+	}
+}
+
 func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
 	handler := &captureHandler{}
+	ctx := t.Context()
 	server := &apiServer{logger: slog.New(handler)}
 
-	if got := server.internalDBError("ignored", context.Canceled); !errors.Is(got, context.Canceled) {
+	if got := server.internalDBError(ctx, "ignored", context.Canceled); !errors.Is(got, context.Canceled) {
 		t.Fatalf("canceled error = %v, want context.Canceled", got)
 	}
-	if got := server.internalDBError("ignored", context.DeadlineExceeded); !errors.Is(got, context.DeadlineExceeded) {
+	if got := server.internalDBError(ctx, "ignored", context.DeadlineExceeded); !errors.Is(got, context.DeadlineExceeded) {
 		t.Fatalf("deadline error = %v, want context.DeadlineExceeded", got)
 	}
 	if len(handler.records) != 0 {
@@ -90,7 +131,7 @@ func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
 	}
 
 	driverErr := errors.New(`pq: relation "x" does not exist`)
-	err := server.internalDBError("failed to list example", driverErr)
+	err := server.internalDBError(ctx, "failed to list example", driverErr)
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}

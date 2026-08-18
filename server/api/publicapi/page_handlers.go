@@ -60,7 +60,7 @@ func (s *apiServer) ListPublishedPages(
 
 	rows, err := s.queriesFor(ctx).ListPublishedPagesForTenant(ctx, tenant.ID)
 	if err != nil {
-		return nil, s.internalDBError("failed to list published pages", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list published pages", err, "tenant_id", tenant.ID.String())
 	}
 
 	pages := make([]*publirattypesv1.Page, 0, len(rows))
@@ -110,7 +110,7 @@ func (s *apiServer) GetPublishedPage(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("page not found"))
 		}
-		return nil, s.internalDBError("failed to get published page", err, "tenant_id", tenant.ID.String(), "slug", slug)
+		return nil, s.internalDBError(ctx, "failed to get published page", err, "tenant_id", tenant.ID.String(), "slug", slug)
 	}
 
 	return connect.NewResponse(&publirav1.GetPublishedPageResponse{

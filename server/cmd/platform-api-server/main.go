@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,26 +9,36 @@ import (
 	"strings"
 	"syscall"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-
 	"github.com/publira/publira/server/api/platformapi"
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/httpserver"
+	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
+	serviceName = "publira-platform-api-server"
+
 	defaultPlatformServerURL     = ":8002"
 	defaultPlatformGrpcServerURL = ":8102"
 	defaultPlatformDBURL         = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := logging.New(os.Stdout, nil)
+	slog.SetDefault(logger)
+
+	shutdownTracing, err := tracing.Setup(context.Background(), serviceName)
+	if err != nil {
+		// Telemetry is not worth refusing to serve traffic over.
+		logger.Error("failed to initialize tracing", "error", err)
+	}
 
 	cfg, err := config.New()
 	if err != nil {
@@ -43,7 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := openDB(resolvePlatformDBURL())
+	db, err := sqldb.Open(resolvePlatformDBURL())
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
@@ -79,24 +88,12 @@ func main() {
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
 		httpserver.New(addr, handler),
 		httpserver.New(grpcAddr, handler),
-	}, func(context.Context) error {
+	}, shutdownTracing, func(context.Context) error {
 		return db.Close()
 	}); err != nil {
 		logger.Error("platform api server failed", "error", err)
 		os.Exit(1)
 	}
-}
-
-func openDB(url string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", url)
-	if err != nil {
-		return nil, err
-	}
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return db, nil
 }
 
 func resolvePlatformDBURL() string {

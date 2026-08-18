@@ -44,7 +44,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("label not found"))
 		}
-		return nil, s.internalDBError("failed to get published label", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get published label", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
 	}
 
 	label := publishedLabelFromRow(row)
@@ -103,12 +103,12 @@ func (s *apiServer) publishedLabelSeriesPage(
 	descending := cursor.Direction == pagination.Backward
 	ids, err := s.publishedLabelSeriesPageIDs(ctx, tenantID, labelID, descending, keys, limit+1)
 	if err != nil {
-		return nil, "", "", s.internalDBError("failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
+		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
 	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, ids)
 	if err != nil {
-		return nil, "", "", s.internalDBError("failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
+		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
 	items, err := s.publishedSeriesItems(ctx, rows)
 	if err != nil {

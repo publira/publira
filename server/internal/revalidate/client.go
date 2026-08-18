@@ -12,6 +12,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 type Client struct {
@@ -42,6 +44,9 @@ func NewClient(token string, logger *slog.Logger) *Client {
 		token: normalizedToken,
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
+			// Carries the trace context of the request that triggered
+			// the revalidation into the Next.js app.
+			Transport: tracing.Transport(http.DefaultTransport),
 		},
 		logger: logger,
 	}

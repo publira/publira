@@ -30,16 +30,17 @@ func TestPlatformHandlerExposesOnlyPlatformRoutes(t *testing.T) {
 }
 
 func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
+	ctx := t.Context()
 	server := &platformServer{logger: slog.Default()}
 
-	if got := server.internalDBError("ignored", context.Canceled); !errors.Is(got, context.Canceled) {
+	if got := server.internalDBError(ctx, "ignored", context.Canceled); !errors.Is(got, context.Canceled) {
 		t.Fatalf("canceled error = %v, want context.Canceled", got)
 	}
-	if got := server.internalDBError("ignored", context.DeadlineExceeded); !errors.Is(got, context.DeadlineExceeded) {
+	if got := server.internalDBError(ctx, "ignored", context.DeadlineExceeded); !errors.Is(got, context.DeadlineExceeded) {
 		t.Fatalf("deadline error = %v, want context.DeadlineExceeded", got)
 	}
 
-	err := server.internalDBError("failed to list example", errors.New(`pq: relation "x" does not exist`))
+	err := server.internalDBError(ctx, "failed to list example", errors.New(`pq: relation "x" does not exist`))
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
