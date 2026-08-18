@@ -3,6 +3,7 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
   apiClient,
@@ -135,6 +136,7 @@ export const listPlatformEndUsers = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -162,6 +164,10 @@ export const listPlatformEndUsers = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(error, listErrorMessage),
       ok: false,
@@ -197,6 +203,7 @@ export const searchPlatformTenantFilterOptions = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       hasMore: false,
       message: "セッションが無効です。再ログインしてください。",
@@ -251,6 +258,10 @@ export const searchPlatformTenantFilterOptions = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       hasMore: false,
       message: rpcErrorMessage(error, tenantFilterSearchErrorMessage),
@@ -282,6 +293,7 @@ export const getPlatformEndUser = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
@@ -300,6 +312,10 @@ export const getPlatformEndUser = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,

@@ -413,6 +413,43 @@ describe("createPlatformTenant", () => {
     );
   });
 
+  it("見つからないテナントは失敗ではなく tenant: null で返す", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("tenant not found", Code.NotFound)
+    );
+
+    await expect(getPlatformTenant("tenant_missing")).resolves.toEqual({
+      ok: true,
+      tenant: null,
+    });
+  });
+
+  it("取得失敗は tenant: null と区別する", async () => {
+    // The page turns `tenant: null` into notFound(); an outage must not take
+    // that branch, or an existing tenant reads as deleted.
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream down", Code.Unavailable)
+    );
+
+    await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+      requiresSignIn: false,
+    });
+  });
+
+  it("失効セッションの取得失敗は再ログインを求める", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("invalid token", Code.Unauthenticated)
+    );
+
+    await expect(getPlatformTenant("tenant_seifuu")).resolves.toMatchObject({
+      ok: false,
+      requiresSignIn: true,
+    });
+  });
+
   it("テナントメンバー一覧を取得する", async () => {
     mockListTenantMembers.mockResolvedValueOnce({
       members: [

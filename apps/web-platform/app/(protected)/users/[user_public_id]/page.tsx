@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
+import { SectionError } from "@publira/ui-components/section-error";
 import { formatDate } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -76,6 +77,23 @@ const UserDetailSkeleton = () => (
   </PlatformPageContent>
 );
 
+/**
+ * A read that failed is not a user that is missing. Collapsing the two into
+ * `notFound()` would tell the operator to stop looking for an account that is
+ * still there, so an outage keeps the console's own wording and a way back.
+ */
+const UserLoadError = ({ message }: { message: string }) => (
+  <SectionError
+    actions={
+      <LinkButton render={<Link href="/users" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description={message}
+    title="ユーザーを表示できませんでした"
+  />
+);
+
 const UserDetailContent = async ({
   params,
 }: Pick<UserDetailPageProps, "params">) => {
@@ -87,15 +105,18 @@ const UserDetailContent = async ({
     getPlatformDisplayTimeZone(),
   ]);
 
-  // Before `notFound()`: a rejected session reads every record as missing, and
-  // a 404 would hide that the operator only needs to sign in again.
+  // Before both branches below: a rejected session reads every record as
+  // missing, and a 404 would hide that the operator only needs to sign in again.
   await redirectToLoginIfSessionRejected(userResult, currentOperatorResult);
 
-  if (!userResult.ok || !userResult.user) {
-    notFound();
+  if (!userResult.ok) {
+    return <UserLoadError message={userResult.message} />;
   }
 
   const { user } = userResult;
+  if (!user) {
+    notFound();
+  }
   const canManage = canManageEndUsers(
     currentOperatorResult.ok ? currentOperatorResult.operator.role : undefined
   );

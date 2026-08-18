@@ -1,6 +1,14 @@
 import { encryptSessionPayload } from "@publira/web-session";
 import type { NextRequest } from "next/server";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const { mockIsSetupCompleted } = vi.hoisted(() => ({
   mockIsSetupCompleted: vi.fn(),
@@ -51,8 +59,21 @@ const deletedCookieNames = (response: { headers: Headers }): string[] =>
     .map((value) => value.split("=")[0]);
 
 describe("web-platform proxy session handling", () => {
+  // `process.env` is shared by every file in the same Vitest worker, so the
+  // secret has to be put back or a later file inherits it.
+  let originalAuthSecret: string | undefined;
+
   beforeAll(() => {
+    originalAuthSecret = process.env.PUBLIRA_AUTH_SECRET;
     process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  afterAll(() => {
+    if (originalAuthSecret === undefined) {
+      delete process.env.PUBLIRA_AUTH_SECRET;
+      return;
+    }
+    process.env.PUBLIRA_AUTH_SECRET = originalAuthSecret;
   });
 
   beforeEach(() => {

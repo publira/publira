@@ -105,6 +105,7 @@ const readNotificationList = async (
 
   const sessionId = await resolveAccessToken();
   if (!sessionId) {
+    dropFailedCacheEntry();
     return {
       message: sessionErrorMessage,
       nextToken: "",
@@ -155,6 +156,7 @@ const readUnreadNotificationCount =
 
     const sessionId = await resolveAccessToken();
     if (!sessionId) {
+      dropFailedCacheEntry();
       return {
         message: sessionErrorMessage,
         ok: false,

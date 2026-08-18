@@ -68,6 +68,7 @@ export const getPlatformSettings =
 
     const sessionId = await resolveAccessToken();
     if (!sessionId) {
+      dropFailedCacheEntry();
       return {
         defaultTimezone: DEFAULT_TIME_ZONE,
         message: sessionErrorMessage,

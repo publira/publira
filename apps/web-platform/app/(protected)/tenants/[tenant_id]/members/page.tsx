@@ -1,5 +1,6 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
+import { SectionError } from "@publira/ui-components/section-error";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -66,6 +67,23 @@ const TenantMembersSkeleton = () => (
   </PlatformPageContent>
 );
 
+/**
+ * A read that failed is not a tenant that is missing. Collapsing the two into
+ * `notFound()` would tell the operator to stop looking for a tenant that is
+ * still there, so an outage keeps the console's own wording and a way back.
+ */
+const TenantMembersLoadError = ({ message }: { message: string }) => (
+  <SectionError
+    actions={
+      <LinkButton render={<Link href="/tenants" />} variant="outline">
+        一覧へ戻る
+      </LinkButton>
+    }
+    description={message}
+    title="メンバー管理を表示できませんでした"
+  />
+);
+
 const TenantMembersContent = async ({
   params,
   searchParams,
@@ -85,15 +103,18 @@ const TenantMembersContent = async ({
       getPlatformDisplayTimeZone(),
     ]);
 
-  // Before `notFound()`: a rejected session reads every record as missing, and
-  // a 404 would hide that the operator only needs to sign in again.
+  // Before both branches below: a rejected session reads every record as
+  // missing, and a 404 would hide that the operator only needs to sign in again.
   await redirectToLoginIfSessionRejected(tenantResult, invitationsResult);
 
-  if (!(tenantResult.ok && tenantResult.tenant)) {
-    notFound();
+  if (!tenantResult.ok) {
+    return <TenantMembersLoadError message={tenantResult.message} />;
   }
 
   const { tenant } = tenantResult;
+  if (!tenant) {
+    notFound();
+  }
 
   const previousHref = invitationsResult.previousToken
     ? buildMemberInvitationsPath(tenant.publicId, {

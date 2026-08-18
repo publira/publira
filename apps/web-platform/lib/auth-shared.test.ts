@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { encryptSessionPayload } from "@publira/web-session";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   buildLoginPath,
@@ -94,8 +94,21 @@ describe("isUnauthenticatedError / rethrowUnauthenticatedRpcError", () => {
 });
 
 describe("hasActivePlatformSessionCookie", () => {
+  // `process.env` is shared by every file in the same Vitest worker, so the
+  // secret has to be put back or a later file inherits it.
+  let originalAuthSecret: string | undefined;
+
   beforeAll(() => {
+    originalAuthSecret = process.env.PUBLIRA_AUTH_SECRET;
     process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  afterAll(() => {
+    if (originalAuthSecret === undefined) {
+      delete process.env.PUBLIRA_AUTH_SECRET;
+      return;
+    }
+    process.env.PUBLIRA_AUTH_SECRET = originalAuthSecret;
   });
 
   const sealed = (expiresAt: string): Promise<string> =>

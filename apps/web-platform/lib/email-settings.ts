@@ -3,6 +3,7 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
   apiClient,
@@ -109,6 +110,7 @@ export const getPlatformEmailSettings =
 
     const sessionId = await resolveAccessToken();
     if (!sessionId) {
+      dropFailedCacheEntry();
       return { message: sessionErrorMessage, ok: false, requiresSignIn: true };
     }
 
@@ -120,6 +122,10 @@ export const getPlatformEmailSettings =
       return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
     } catch (error) {
       rethrowUnclassifiedRpcError(error);
+      // A failed read must not be cached: the client router would replay it after
+      // the API recovers, and a cached `requiresSignIn` would bounce the operator
+      // back to /login even once they have signed in again.
+      dropFailedCacheEntry();
       return {
         message: parseErrorMessage(error),
         ok: false,

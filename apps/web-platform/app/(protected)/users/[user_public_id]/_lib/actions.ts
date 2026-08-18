@@ -8,12 +8,22 @@ import {
   redirectToLoginIfSessionRejected,
   withPlatformSessionReauth,
 } from "#lib/auth-session";
+import { requiredTrimmedString } from "#lib/form-schemas";
 import { canManageEndUsers } from "#lib/roles";
 import {
   deletePlatformEndUser,
   suspendPlatformEndUser,
   unsuspendPlatformEndUser,
 } from "#lib/users";
+
+/**
+ * A Server Action's arguments are request input, not a value the page handed
+ * over: the endpoint can be invoked directly with anything at all. Same schema
+ * the operator Actions use (`operators/[operator_public_id]/_lib/actions.ts`).
+ */
+const userPublicIdSchema = requiredTrimmedString(
+  "必須項目が入力されていません。"
+);
 
 /**
  * Whether the operator submitting this Action may manage end users, once a
@@ -30,10 +40,11 @@ const canCurrentOperatorManageEndUsers = async (): Promise<boolean> => {
 };
 
 export const suspendEndUserAction = async (publicId: string): Promise<void> => {
-  const normalizedPublicId = publicId.trim();
-  if (!normalizedPublicId) {
+  const parsed = userPublicIdSchema.safeParse(publicId);
+  if (!parsed.success) {
     return;
   }
+  const normalizedPublicId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
     return;
@@ -49,10 +60,11 @@ export const suspendEndUserAction = async (publicId: string): Promise<void> => {
 export const unsuspendEndUserAction = async (
   publicId: string
 ): Promise<void> => {
-  const normalizedPublicId = publicId.trim();
-  if (!normalizedPublicId) {
+  const parsed = userPublicIdSchema.safeParse(publicId);
+  if (!parsed.success) {
     return;
   }
+  const normalizedPublicId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
     return;
@@ -66,10 +78,11 @@ export const unsuspendEndUserAction = async (
 };
 
 export const deleteEndUserAction = async (publicId: string): Promise<void> => {
-  const normalizedPublicId = publicId.trim();
-  if (!normalizedPublicId) {
+  const parsed = userPublicIdSchema.safeParse(publicId);
+  if (!parsed.success) {
     return;
   }
+  const normalizedPublicId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
     return;

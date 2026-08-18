@@ -3,6 +3,7 @@ import {
   isRejectedRequestRpcError,
   isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
+import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import {
   apiClient,
@@ -72,6 +73,7 @@ export const getPlatformCurrentOperator =
 
     const sid = await resolveAccessToken();
     if (!sid) {
+      dropFailedCacheEntry();
       return { ok: false, requiresSignIn: true };
     }
     try {
@@ -90,6 +92,9 @@ export const getPlatformCurrentOperator =
       };
     } catch (error) {
       if (isUnauthenticatedRpcError(error)) {
+        // A rejected session must not be cached, or the console would keep
+        // redirecting to /login after the operator has signed in again.
+        dropFailedCacheEntry();
         return { ok: false, requiresSignIn: true };
       }
       if (isExpectedNullableRpcError(error)) {

@@ -134,6 +134,7 @@ export const listPlatformTenants = async (
 
   const sid = await resolveAccessToken();
   if (!sid) {
+    dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
       nextToken: "",
@@ -170,6 +171,10 @@ export const listPlatformTenants = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
         error,
@@ -237,8 +242,9 @@ export const getPlatformTenant = async (
       return { ok: true, tenant: null };
     }
     rethrowUnclassifiedRpcError(error);
-    // A failed read must not be cached: the console would keep answering 404
-    // for a tenant that exists after the API recovers.
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(
@@ -445,6 +451,7 @@ export const listPlatformTenantAdminInvitations = async (
   const tenantId = input.tenantId.trim();
   const sid = await resolveAccessToken();
   if (!tenantId || !sid) {
+    dropFailedCacheEntry();
     return {
       invitations: [],
       message: "セッションが無効です。再ログインしてください。",
@@ -474,6 +481,10 @@ export const listPlatformTenantAdminInvitations = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+    // A failed read must not be cached: the client router would replay it after
+    // the API recovers, and a cached `requiresSignIn` would bounce the operator
+    // back to /login even once they have signed in again.
+    dropFailedCacheEntry();
     return {
       invitations: [],
       message: rpcErrorMessage(
