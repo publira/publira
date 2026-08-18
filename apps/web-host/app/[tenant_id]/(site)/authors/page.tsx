@@ -22,13 +22,8 @@ const SECTION_TITLE = "著者一覧を表示できませんでした";
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-  const siteLabel = await getTenantSiteLabel(tenantId);
-
-  return {
-    title: `著者一覧 | ${siteLabel}`,
-  };
+export const metadata: Metadata = {
+  title: "著者一覧",
 };
 
 const AuthorsListSkeleton = () => (

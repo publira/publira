@@ -9,7 +9,6 @@ import { Suspense } from "react";
 
 import { PageLoadError } from "#components/page-load-error";
 import { getPublishedPage } from "#lib/pages";
-import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { PublishedPageContent } from "./_components/published-page-view";
@@ -37,17 +36,14 @@ export const generateMetadata = async (
   const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
   guardCatchAllSlug(slug);
 
-  const [siteLabel, result] = await Promise.all([
-    getTenantSiteLabel(tenantId),
-    getPublishedPage(tenantId, slug),
-  ]);
+  const result = await getPublishedPage(tenantId, slug);
 
   // An unavailable page reads as "not found" for the `<title>` alone; the page
   // body below says what actually happened.
   const page = result.ok ? result.value : null;
 
   return {
-    title: `${page ? page.title : "ページが見つかりません"} | ${siteLabel}`,
+    title: page ? page.title : "ページが見つかりません",
   };
 };
 

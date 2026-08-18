@@ -90,11 +90,14 @@ export const generateStaticParams = () =>
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-
   const siteLabel = await getTenantSiteLabel(tenantId);
 
+  // This page shares a route segment with `(site)/layout.tsx`, so Next.js does
+  // not apply that layout's `title.template`. Compose the full tab title here.
   return {
-    title: `トップ | ${siteLabel}`,
+    title: {
+      absolute: `トップ | ${siteLabel}`,
+    },
   };
 };
 

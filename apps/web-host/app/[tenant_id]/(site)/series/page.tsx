@@ -22,14 +22,8 @@ const SECTION_TITLE = "シリーズ一覧を表示できませんでした";
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-
-  const siteLabel = await getTenantSiteLabel(tenantId);
-
-  return {
-    title: `シリーズ一覧 | ${siteLabel}`,
-  };
+export const metadata: Metadata = {
+  title: "シリーズ一覧",
 };
 
 const SeriesCardSkeleton = () => (
