@@ -94,12 +94,9 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
           />
 
           <Field>
-            <FieldLabel htmlFor="label_name" required>
-              レーベル名
-            </FieldLabel>
+            <FieldLabel required>レーベル名</FieldLabel>
             <FieldContent>
               <Input
-                id="label_name"
                 name="name"
                 onChange={handleNameChange}
                 placeholder="例: 月刊ノベルズ"
@@ -112,13 +109,10 @@ export const LabelForm = ({ mode, action, initialLabel }: LabelFormProps) => {
 
           {isUpdate ? null : (
             <Field>
-              <FieldLabel htmlFor="label_eye_catch_image">
-                レーベルアイキャッチ画像
-              </FieldLabel>
+              <FieldLabel>レーベルアイキャッチ画像</FieldLabel>
               <FieldContent>
                 <Input
                   accept="image/jpeg,image/png,image/webp"
-                  id="label_eye_catch_image"
                   name="eye_catch_image"
                   type="file"
                 />

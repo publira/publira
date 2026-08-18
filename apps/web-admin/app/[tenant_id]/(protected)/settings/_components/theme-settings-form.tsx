@@ -33,18 +33,12 @@ interface ThemeSettingsFormProps {
 }
 
 interface ColorSwatchInputProps {
-  id: string;
   name: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const ColorSwatchInput = ({
-  id,
-  name,
-  value,
-  onChange,
-}: ColorSwatchInputProps) => {
+const ColorSwatchInput = ({ name, value, onChange }: ColorSwatchInputProps) => {
   const pickerId = useId();
   return (
     <div className="relative flex max-w-48 items-center">
@@ -65,7 +59,6 @@ const ColorSwatchInput = ({
       </label>
       <Input
         className="pl-10"
-        id={id}
         name={name}
         onChange={onChange}
         pattern="#[0-9a-fA-F]{6}"
@@ -367,12 +360,9 @@ export const ThemeSettingsForm = ({
                         key={`${field.key}-${pair.key}`}
                       >
                         <Field>
-                          <FieldLabel htmlFor={field.formName} required>
-                            {field.label}
-                          </FieldLabel>
+                          <FieldLabel required>{field.label}</FieldLabel>
                           <FieldContent>
                             <ColorSwatchInput
-                              id={field.formName}
                               name={field.formName}
                               onChange={createHandler(field.key)}
                               value={colors[field.key]}
@@ -390,12 +380,9 @@ export const ThemeSettingsForm = ({
                           </FieldContent>
                         </Field>
                         <Field>
-                          <FieldLabel htmlFor={pair.formName} required>
-                            {pair.label}
-                          </FieldLabel>
+                          <FieldLabel required>{pair.label}</FieldLabel>
                           <FieldContent>
                             <ColorSwatchInput
-                              id={pair.formName}
                               name={pair.formName}
                               onChange={createHandler(pair.key)}
                               value={colors[pair.key]}
@@ -418,12 +405,9 @@ export const ThemeSettingsForm = ({
 
                   return (
                     <Field key={field.key}>
-                      <FieldLabel htmlFor={field.formName} required>
-                        {field.label}
-                      </FieldLabel>
+                      <FieldLabel required>{field.label}</FieldLabel>
                       <FieldContent>
                         <ColorSwatchInput
-                          id={field.formName}
                           name={field.formName}
                           onChange={createHandler(field.key)}
                           value={colors[field.key]}

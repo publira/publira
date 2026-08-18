@@ -200,9 +200,7 @@ export const EpisodePagesForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="episode_pages" required>
-              {fileLabel}
-            </FieldLabel>
+            <FieldLabel required>{fileLabel}</FieldLabel>
             <FieldContent>
               <div
                 className={
@@ -220,7 +218,6 @@ export const EpisodePagesForm = ({
                 </p>
                 <Input
                   accept={acceptValue}
-                  id="episode_pages"
                   multiple={uploadMode === "pages"}
                   name={uploadMode === "pages" ? "pages" : "archive"}
                   onChange={handleChange}

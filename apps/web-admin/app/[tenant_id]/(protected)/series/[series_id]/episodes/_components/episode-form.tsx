@@ -75,12 +75,9 @@ export const EpisodeForm = ({
           <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
           <Field>
-            <FieldLabel htmlFor="episode_title" required>
-              タイトル
-            </FieldLabel>
+            <FieldLabel required>タイトル</FieldLabel>
             <FieldContent>
               <Input
-                id="episode_title"
                 name="title"
                 placeholder="例: 第1話 はじまりの朝"
                 required
@@ -90,13 +87,10 @@ export const EpisodeForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="episode_price" required>
-              価格
-            </FieldLabel>
+            <FieldLabel required>価格</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={0}
-                id="episode_price"
                 min={0}
                 name="price"
                 required
@@ -109,13 +103,10 @@ export const EpisodeForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="episode_reading_period_hours" required>
-              閲覧可能期間
-            </FieldLabel>
+            <FieldLabel required>閲覧可能期間</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={0}
-                id="episode_reading_period_hours"
                 min={0}
                 name="reading_period_hours"
                 required

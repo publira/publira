@@ -93,13 +93,10 @@ const ConfirmPasswordPageContent = async ({
         <input name="token" type="hidden" value={token} />
 
         <Field>
-          <FieldLabel htmlFor="password" required>
-            新しいパスワード
-          </FieldLabel>
+          <FieldLabel required>新しいパスワード</FieldLabel>
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="password"
               name="password"
               placeholder="••••••••"
               required
@@ -109,13 +106,10 @@ const ConfirmPasswordPageContent = async ({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="confirm_password" required>
-            新しいパスワード（確認）
-          </FieldLabel>
+          <FieldLabel required>新しいパスワード（確認）</FieldLabel>
           <FieldContent>
             <Input
               autoComplete="new-password"
-              id="confirm_password"
               name="confirm_password"
               placeholder="••••••••"
               required

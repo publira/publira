@@ -39,7 +39,6 @@ export const ActorFilterCombobox = ({
     <>
       <MultiCombobox
         emptyMessage="一致する操作者が見つかりません。"
-        id="actor"
         items={normalizedItems}
         onValueChange={handleValueChange}
         searchPlaceholder="操作者を検索"

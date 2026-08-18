@@ -70,13 +70,10 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel htmlFor="current_email" required>
-              現在のメールアドレス
-            </FieldLabel>
+            <FieldLabel required>現在のメールアドレス</FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="email"
-                id="current_email"
                 name="current_email"
                 onChange={handleCurrentEmailChange}
                 placeholder="current@example.com"
@@ -88,13 +85,10 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="new_email" required>
-              新しいメールアドレス
-            </FieldLabel>
+            <FieldLabel required>新しいメールアドレス</FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="email"
-                id="new_email"
                 name="new_email"
                 onChange={handleNewEmailChange}
                 placeholder="new@example.com"
@@ -106,13 +100,10 @@ export const EmailChangeForm = ({ action }: EmailChangeFormProps) => {
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="current_password" required>
-              現在のパスワード
-            </FieldLabel>
+            <FieldLabel required>現在のパスワード</FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="current-password"
-                id="current_password"
                 name="current_password"
                 onChange={handleCurrentPasswordChange}
                 placeholder="••••••••"

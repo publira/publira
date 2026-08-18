@@ -77,12 +77,9 @@ export const AnnouncementForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel htmlFor="announcement_title" required>
-              タイトル
-            </FieldLabel>
+            <FieldLabel required>タイトル</FieldLabel>
             <FieldContent>
               <Input
-                id="announcement_title"
                 maxLength={120}
                 name="title"
                 placeholder="例: 重要なお知らせ"
@@ -93,12 +90,9 @@ export const AnnouncementForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="announcement_body" required>
-              本文
-            </FieldLabel>
+            <FieldLabel required>本文</FieldLabel>
             <FieldContent>
               <Textarea
-                id="announcement_body"
                 maxLength={2000}
                 name="body"
                 placeholder="お知らせ本文を入力"
@@ -109,10 +103,9 @@ export const AnnouncementForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="announcement_link_url">リンク先</FieldLabel>
+            <FieldLabel>リンク先</FieldLabel>
             <FieldContent>
               <Input
-                id="announcement_link_url"
                 name="link_url"
                 placeholder="例: /series/SERIES001"
                 type="text"

@@ -56,18 +56,20 @@ test.describe("web-admin access tickets", () => {
       page.getByRole("heading", { name: "チケットを発行" })
     ).toBeVisible();
 
-    await page.locator("#user_public_id").fill(SEED_TICKET.memberPublicId);
+    await page
+      .getByRole("textbox", { name: /ユーザー public_id/u })
+      .fill(SEED_TICKET.memberPublicId);
     await selectComboboxOption(
       page,
-      page.locator("#ticket_series_combobox"),
+      page.getByRole("combobox", { name: /シリーズ/u }),
       SEED_TICKET.seriesLabel
     );
     await selectComboboxOption(
       page,
-      page.locator("#ticket_episode_combobox"),
+      page.getByRole("combobox", { name: /エピソード/u }),
       `${SEED_TICKET.episodeTitle} (${SEED_TICKET.episodePublicId})`
     );
-    await page.locator("#note").fill(note);
+    await page.getByRole("textbox", { name: /メモ/u }).fill(note);
     await page.getByRole("button", { name: "チケットを発行" }).click();
 
     await expect(page).toHaveURL(/\/access-tickets(?:\?[^/]*)?$/u);

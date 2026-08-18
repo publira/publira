@@ -74,7 +74,6 @@ export const EpisodeScheduleForm = ({
 
           <PublishAtInput
             defaultValue={toDateTimeLocalValue(scheduledAt, timeZone)}
-            id="episode_edit_publish_at"
             name="publish_at"
             timeZone={timeZone}
           />

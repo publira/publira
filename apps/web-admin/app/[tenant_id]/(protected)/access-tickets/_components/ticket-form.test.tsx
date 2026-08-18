@@ -58,8 +58,11 @@ const action = () => Promise.resolve({ message: "", ok: false });
 const seriesA = { publicId: "SERIES001", title: "シリーズA" };
 const seriesB = { publicId: "SERIES002", title: "シリーズB" };
 
+const seriesCombobox = () => screen.getAllByRole("combobox")[0];
+const episodeCombobox = () => screen.getAllByRole("combobox")[1];
+
 const selectSeries = (publicId: string) => {
-  fireEvent.change(screen.getByLabelText(/シリーズ/u), {
+  fireEvent.change(seriesCombobox(), {
     target: { value: publicId },
   });
 };
@@ -78,8 +81,8 @@ describe("TicketForm", () => {
       <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
     );
 
-    expect(screen.getByLabelText(/シリーズ/u)).toBeDefined();
-    expect(screen.getByLabelText(/^エピソード/u)).toBeDefined();
+    expect(seriesCombobox()).toBeDefined();
+    expect(episodeCombobox()).toBeDefined();
     expect(screen.queryByLabelText(/エピソード public_id/u)).toBeNull();
     expect(
       screen
@@ -138,7 +141,7 @@ describe("TicketForm", () => {
       await screen.findByRole("option", { name: "第1話 (EPISODE001)" })
     ).toBeDefined();
 
-    fireEvent.change(screen.getByLabelText(/^エピソード/u), {
+    fireEvent.change(episodeCombobox(), {
       target: { value: "EPISODE001" },
     });
     await waitFor(() => {
@@ -171,7 +174,7 @@ describe("TicketForm", () => {
     expect(
       await screen.findByText("エピソード一覧の取得に失敗しました。")
     ).toBeDefined();
-    expect(screen.getByLabelText(/シリーズ/u)).toBeDefined();
+    expect(seriesCombobox()).toBeDefined();
     expect(screen.queryByLabelText(/エピソード public_id/u)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "再試行" }));

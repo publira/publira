@@ -102,11 +102,10 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
           />
 
           <Field>
-            <FieldLabel htmlFor="page_slug">slug</FieldLabel>
+            <FieldLabel>slug</FieldLabel>
             <FieldContent>
               <Input
                 disabled={isUpdate}
-                id="page_slug"
                 name="slug"
                 onBlur={handleSlugBlur}
                 onChange={handleSlugChange}
@@ -123,12 +122,9 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="page_title" required>
-              タイトル
-            </FieldLabel>
+            <FieldLabel required>タイトル</FieldLabel>
             <FieldContent>
               <Input
-                id="page_title"
                 name="title"
                 onChange={handleTitleChange}
                 placeholder="プライバシーポリシー"
@@ -144,7 +140,6 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
               <label className="inline-flex items-center gap-2 text-sm text-foreground">
                 <input
                   checked={displayInFooter}
-                  id="page_display_in_footer"
                   onChange={handleDisplayInFooterChange}
                   type="checkbox"
                 />
@@ -158,10 +153,9 @@ export const PageForm = ({ action, initialPage, mode }: PageFormProps) => {
 
           {isUpdate ? null : (
             <Field>
-              <FieldLabel htmlFor="page_content_markdown">本文</FieldLabel>
+              <FieldLabel>本文</FieldLabel>
               <FieldContent>
                 <Textarea
-                  id="page_content_markdown"
                   name="content_markdown"
                   onChange={handleContentMarkdownChange}
                   placeholder="# プライバシーポリシー"

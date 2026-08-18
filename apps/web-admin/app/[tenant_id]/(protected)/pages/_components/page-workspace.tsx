@@ -16,6 +16,7 @@ import {
   FieldLabel,
 } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import {
   Table,
@@ -233,25 +234,20 @@ export const PageWorkspace = ({
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="page_slug_readonly">slug</FieldLabel>
+                <FieldLabel>slug</FieldLabel>
                 <FieldContent>
-                  <input
-                    className="flex h-10 w-full rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground shadow-xs"
+                  <Input
+                    className="bg-muted/40 text-muted-foreground"
                     disabled
-                    id="page_slug_readonly"
                     value={formatPagePath(initialPage.slug)}
                   />
                 </FieldContent>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="page_title_edit" required>
-                  タイトル
-                </FieldLabel>
+                <FieldLabel required>タイトル</FieldLabel>
                 <FieldContent>
-                  <input
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs"
-                    id="page_title_edit"
+                  <Input
                     name="title"
                     onChange={handleTitleChange}
                     required
@@ -301,10 +297,9 @@ export const PageWorkspace = ({
               <input name="title" type="hidden" value={initialPage.title} />
 
               <Field>
-                <FieldLabel htmlFor="page_content_markdown">本文</FieldLabel>
+                <FieldLabel>本文</FieldLabel>
                 <FieldContent>
                   <Textarea
-                    id="page_content_markdown"
                     name="content_markdown"
                     onChange={handleDraftContentChange}
                     rows={24}
@@ -472,10 +467,9 @@ export const PageWorkspace = ({
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="page_diff_current">比較元</FieldLabel>
+                  <FieldLabel>比較元</FieldLabel>
                   <FieldContent>
                     <Select
-                      id="page_diff_current"
                       items={versionOptions}
                       onValueChange={handleSelectedVersionChange}
                       value={selectedVersionId}
@@ -484,10 +478,9 @@ export const PageWorkspace = ({
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="page_diff_previous">比較先</FieldLabel>
+                  <FieldLabel>比較先</FieldLabel>
                   <FieldContent>
                     <Select
-                      id="page_diff_previous"
                       items={availableCompareOptions}
                       onValueChange={handleCompareVersionChange}
                       value={compareVersionId}
