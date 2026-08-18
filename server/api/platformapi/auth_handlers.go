@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
@@ -81,6 +82,7 @@ func (s *platformServer) authenticatePlatformSession(
 	if !auth.IsPlatformRole(resolvedRole) {
 		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", platformRoleRequiredError()
 	}
+	tracing.SetEndUser(ctx, platformUser.PublicID)
 	return platformUser, platformUser, resolvedRole, nil
 }
 

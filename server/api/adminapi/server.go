@@ -173,6 +173,7 @@ func (s *adminServer) authenticateSession(
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, s.internalDBError(ctx, "failed to list session user roles", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
+	tracing.SetEndUser(ctx, user.PublicID)
 	return rpcmiddleware.SessionContext{
 		Tenant: tenant,
 		User:   user,
@@ -396,6 +397,7 @@ func (s *adminServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			}
 			defer release()
 
+			tracing.SetTenant(ctx, tenant.PublicID)
 			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
 			ctx = rpcmiddleware.WithTenantConn(ctx, conn)
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))

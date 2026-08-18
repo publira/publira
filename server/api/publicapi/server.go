@@ -168,6 +168,7 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.Interceptor {
 			}
 			defer release()
 
+			tracing.SetTenant(ctx, tenant.PublicID)
 			ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
 			ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
 			return next(ctx, req)

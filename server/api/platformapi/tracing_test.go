@@ -75,7 +75,9 @@ func TestConnectHandlerContinuesTheCallersTrace(t *testing.T) {
 	if got := span.Parent().SpanID().String(); got != "00f067aa0ba902b7" {
 		t.Errorf("parent = %s, want the caller's span", got)
 	}
-	if want := "publira.platform.v1.PlatformTenantService/ListTenants"; span.Name() != want {
+	// The proto package is dropped: it is identical for every RPC this
+	// server handles, and rpc.service keeps the full name as an attribute.
+	if want := "PlatformTenantService/ListTenants"; span.Name() != want {
 		t.Errorf("span name = %q, want %q", span.Name(), want)
 	}
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
@@ -119,6 +120,7 @@ func (s *apiServer) authenticateAccessToken(
 	if err != nil {
 		return rpcmiddleware.SessionContext{}, err
 	}
+	tracing.SetEndUser(ctx, user.PublicID)
 	return rpcmiddleware.SessionContext{Tenant: tenant, User: user, Role: role}, nil
 }
 

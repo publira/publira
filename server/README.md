@@ -150,17 +150,54 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 `cmd/*` の全プロセスが OpenTelemetry でトレースを出します。**既定は無効**で、`PUBLIRA_TRACING_ENABLED` を立てない限り TracerProvider も propagator も差し替えず、計装導入前とまったく同じ挙動になります（収集基盤が無くても起動します）。
 
+属性名・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。
+
 ### 何に span が付くか
 
 | 層 | 計装 | span |
 | --- | --- | --- |
-| Connect / gRPC の inbound | `connectrpc.com/otelconnect` | RPC ごとに 1 本（`publira.admin.v1.AdminSeriesService/ListSeries` など） |
-| 素の HTTP の inbound（image-server / admin-image-server） | `otelhttp` | ルートパターンごとに 1 本。`/livez` `/readyz` は除外 |
-| DB クエリ | `XSAM/otelsql`（`internal/sqldb` で pgx ドライバをラップ） | sqlc 生成クエリごとに子 span。SQL 文（プレースホルダのまま）を含み、引数は含まない |
+| Connect / gRPC の inbound | `connectrpc.com/otelconnect` | RPC ごとに 1 本。名前は `AdminSeriesService/ListSeries`（proto パッケージは `rpc.service` 属性が持つので名前からは落とす） |
+| 素の HTTP の inbound（image-server / admin-image-server） | `otelhttp` | ルートパターンごとに 1 本（`GET /images/creators/{media_id}`）。`/livez` `/readyz` は除外 |
+| DB クエリ | `XSAM/otelsql`（`internal/sqldb` で pgx ドライバをラップ） | 文ごとに `db.query` 1 本 |
 | 予約公開バッチ | `internal/publishepisodes` | `RunOnce` 1 サイクルにつき 1 本の親 span |
 | outbound HTTP（Next.js 再検証 / email-renderer） | `otelhttp` の Transport | client span と `traceparent` の伝播 |
 
 伝播は W3C Trace Context（`traceparent`）と Baggage です。inbound の `traceparent` は**親として信頼**するため、web アプリから API、その先の DB クエリまでが 1 トレースに繋がります。
+
+### resource 属性
+
+| キー | 値 |
+| --- | --- |
+| `service.name` | プロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-publish-episodes`）。`OTEL_SERVICE_NAME` で上書き可能 |
+| `service.version` | ビルド時に埋め込んだ version。無ければチェックアウトの VCS リビジョン、それも無ければ `dev`（`internal/buildinfo`） |
+| `deployment.environment.name` | `PUBLIRA_DEPLOYMENT_ENVIRONMENT`。未設定なら `development` |
+
+コンテナイメージは `.git` を含まないビルドコンテキストで作るため Go が VCS 情報を埋められません。`task docker:build:api VERSION=v1.2.3` のように `VERSION` を渡すと ldflags で `internal/buildinfo` に埋め込まれます。渡さなければ `dev` です。
+
+### span 属性
+
+`otelconnect` / `otelhttp` / `otelsql` が付ける標準属性（`rpc.system` / `rpc.service` / `rpc.method`、`http.request.method` / `http.route`、`db.system.name`）に加えて、次を付けます。
+
+| キー | いつ |
+| --- | --- |
+| `tenant.public_id` | テナントを解決したあと（Connect のテナントスコープ interceptor と image-server のホスト解決） |
+| `enduser.id` | 認証が通ったあと。値は public ID |
+| `db.operation.name` | SQL のキーワード（`SELECT` / `INSERT` / …） |
+| `db.query.summary` | sqlc の `-- name: GetTenantByID :one` から取ったクエリ名 |
+| `db.query.text` | 生成された SQL 文。sqlc はプレースホルダ（`$1`）のまま出力し、引数値は決して記録しません |
+
+メール、生トークン、パスワード、リクエストボディ、`Authorization` ヘッダは span に載せません。内部 UUID ではなく public ID を使うのもこの方針の一部です。
+
+### サンプリング
+
+親準拠（parent-based）で、root span の扱いだけがデプロイ環境で変わります。
+
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT`          | root span |
+| ----------------------------------------- | --------- |
+| `development`（既定）                     | 全件      |
+| それ以外（`staging` / `production` など） | 10%       |
+
+`OTEL_TRACES_SAMPLER` を設定するとこの既定は使わず、SDK がその値を解釈します。`db.query.text` のような重い属性は sampled な span にしか載らないので、本番で SQL 全文が付くのはサンプルされた 10% だけです。
 
 ### ログとの相関
 
@@ -168,17 +205,18 @@ RustFS に対する Go の統合テストは `internal/testutil` の Testcontain
 
 ### 環境変数
 
-有効化フラグだけが自前の変数で、あとは OpenTelemetry SDK 自身が読むため名前を変えていません。
+自前の変数は有効化フラグとデプロイ環境の 2 つだけで、あとは OpenTelemetry SDK 自身が読むため名前を変えていません。
 
 | 変数 | 用途 |
 | --- | --- |
 | `PUBLIRA_TRACING_ENABLED` | トレースの有効化（`true` / `1` など）。未設定・解釈できない値は無効 |
+| `PUBLIRA_DEPLOYMENT_ENVIRONMENT` | `development`（既定） / `staging` / `production`。`deployment.environment.name` と既定サンプリング率を決める |
 | `OTEL_TRACES_EXPORTER` | `otlp`（既定） / `console` / `none` |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` / `grpc` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | 送信先（例: `http://jaeger:4318`） |
-| `OTEL_SERVICE_NAME` | `service.name` の上書き。未設定ならプロセスごとの既定値（`publira-api-server` / `publira-admin-api-server` / `publira-platform-api-server` / `publira-image-server` / `publira-admin-image-server` / `publira-publish-episodes`） |
+| `OTEL_SERVICE_NAME` | `service.name` の上書き |
 | `OTEL_RESOURCE_ATTRIBUTES` | 追加の resource 属性 |
-| `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | サンプラ。指定しなければ SDK 既定（親準拠 + 全件） |
+| `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG` | サンプラ。設定すると上記の既定を使わない |
 
 収集基盤を用意せずに動きを見たいときは `OTEL_TRACES_EXPORTER=console` にすると標準出力へ span が出ます。
 

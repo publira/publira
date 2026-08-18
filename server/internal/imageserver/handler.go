@@ -16,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/requestmeta"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 type ResolverQuerier interface {
@@ -129,6 +130,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			if err == nil {
 				user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
 				if err == nil && user.Status == "active" && user.CredentialsVersion == claims.CredentialsVersion {
+					tracing.SetEndUser(ctx, user.PublicID)
 					access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
 						ID:       mediaID,
 						TenantID: tenant.ID,
@@ -358,10 +360,16 @@ func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (d
 	candidates := requestmeta.HostCandidatesFromRequest(r)
 	tenant, err := h.resolverQuerier.GetTenantByDomains(ctx, candidates)
 	if err == nil {
+		tracing.SetTenant(ctx, tenant.PublicID)
 		return tenant, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return dbmodels.Tenant{}, err
 	}
-	return h.resolverQuerier.GetAdminTenantByDomains(ctx, candidates)
+	tenant, err = h.resolverQuerier.GetAdminTenantByDomains(ctx, candidates)
+	if err != nil {
+		return dbmodels.Tenant{}, err
+	}
+	tracing.SetTenant(ctx, tenant.PublicID)
+	return tenant, nil
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -129,6 +130,128 @@ func TestSetupEnabledInstallsProviderAndPropagator(t *testing.T) {
 	if !slices.Contains(fields, "baggage") {
 		t.Errorf("propagator fields = %v, want baggage", fields)
 	}
+}
+
+func TestEnvironmentDefaultsToDevelopment(t *testing.T) {
+	if got := Environment(); got != EnvironmentDevelopment {
+		t.Errorf("Environment() = %q, want %q", got, EnvironmentDevelopment)
+	}
+
+	t.Setenv(EnvironmentEnv, "  Production ")
+	if got := Environment(); got != "production" {
+		t.Errorf("Environment() = %q, want production", got)
+	}
+}
+
+// Sampling is what keeps a busy production service from exporting a span
+// per request, so the tier has to pick the sampler and the operator has to
+// be able to take it back.
+func TestDefaultSamplerFollowsTheDeploymentTier(t *testing.T) {
+	t.Run("development samples everything", func(t *testing.T) {
+		t.Setenv(EnvironmentEnv, EnvironmentDevelopment)
+		sampler, ok := defaultSampler()
+		if !ok {
+			t.Fatal("defaultSampler() declined to pick a sampler")
+		}
+		if want := sdktrace.ParentBased(sdktrace.AlwaysSample()).Description(); sampler.Description() != want {
+			t.Errorf("sampler = %q, want %q", sampler.Description(), want)
+		}
+	})
+
+	t.Run("production samples a share", func(t *testing.T) {
+		t.Setenv(EnvironmentEnv, "production")
+		sampler, ok := defaultSampler()
+		if !ok {
+			t.Fatal("defaultSampler() declined to pick a sampler")
+		}
+		want := sdktrace.ParentBased(sdktrace.TraceIDRatioBased(ProductionSampleRatio)).Description()
+		if sampler.Description() != want {
+			t.Errorf("sampler = %q, want %q", sampler.Description(), want)
+		}
+	})
+
+	t.Run("the operator wins", func(t *testing.T) {
+		t.Setenv(EnvironmentEnv, "production")
+		t.Setenv("OTEL_TRACES_SAMPLER", "always_on")
+		if _, ok := defaultSampler(); ok {
+			t.Error("defaultSampler() overrode OTEL_TRACES_SAMPLER")
+		}
+	})
+}
+
+func TestRPCSpanNameDropsTheProtoPackage(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name      string
+		procedure string
+		want      string
+	}{
+		{
+			name:      "admin procedure",
+			procedure: "/publira.admin.v1.AdminSeriesService/ListSeries",
+			want:      "AdminSeriesService/ListSeries",
+		},
+		{
+			name:      "public procedure",
+			procedure: "/publira.v1.CatalogService/GetEpisodeDetail",
+			want:      "CatalogService/GetEpisodeDetail",
+		},
+		{name: "no leading slash", procedure: "publira.v1.AuthService/GetMe", want: "AuthService/GetMe"},
+		{name: "no package", procedure: "/AuthService/GetMe", want: "AuthService/GetMe"},
+		{name: "no method", procedure: "/publira.v1.AuthService", want: ""},
+		{name: "empty", procedure: "", want: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := RPCSpanName(tc.procedure); got != tc.want {
+				t.Errorf("RPCSpanName(%q) = %q, want %q", tc.procedure, got, tc.want)
+			}
+		})
+	}
+}
+
+// The tenant and end user are the two dimensions an operator slices a
+// trace by, and both must be the public IDs rather than the internal keys.
+func TestSetTenantAndSetEndUserRecordPublicIDs(t *testing.T) {
+	provider, recorder := recordingProvider(t)
+
+	ctx, span := provider.Tracer("test").Start(t.Context(), "request")
+	SetTenant(ctx, "TENANT001")
+	SetEndUser(ctx, "USER001")
+	// Empty values mean "not resolved yet" and must not be recorded.
+	SetTenant(ctx, "")
+	SetEndUser(ctx, "")
+	span.End()
+
+	spans := recorder.Ended()
+	if len(spans) != 1 {
+		t.Fatalf("recorded %d spans, want 1", len(spans))
+	}
+
+	attributes := map[attribute.Key]string{}
+	for _, kv := range spans[0].Attributes() {
+		attributes[kv.Key] = kv.Value.AsString()
+	}
+	if got := attributes[TenantPublicIDKey]; got != "TENANT001" {
+		t.Errorf("%s = %q, want TENANT001", TenantPublicIDKey, got)
+	}
+	if got := attributes[EndUserIDKey]; got != "USER001" {
+		t.Errorf("%s = %q, want USER001", EndUserIDKey, got)
+	}
+	if len(spans[0].Attributes()) != 2 {
+		t.Errorf("recorded %d attributes, want 2 (empty values must be dropped)", len(spans[0].Attributes()))
+	}
+}
+
+// A span that is not recording must not pay for attribute construction or
+// blow up; the helpers are called on every request whether tracing is on
+// or off.
+func TestSetTenantAndSetEndUserAreSafeWithoutASpan(t *testing.T) {
+	t.Parallel()
+
+	SetTenant(t.Context(), "TENANT001")
+	SetEndUser(t.Context(), "USER001")
 }
 
 // The middleware must continue the caller's trace rather than starting a

@@ -32,8 +32,15 @@ RUN test -n "${CMD_NAME}" || (echo "ERROR: CMD_NAME is required (e.g. api-server
 ARG TARGETOS
 ARG TARGETARCH
 
+# The build context carries no .git, so Go cannot stamp VCS information by
+# itself and telemetry would report every image as "dev". VERSION is passed
+# in and linked into internal/buildinfo instead.
+ARG VERSION=dev
+
 RUN CGO_ENABLED=0 GOOS="${TARGETOS}" GOARCH="${TARGETARCH}" \
-  go build -trimpath -ldflags='-s -w' -o /out/server "./cmd/${CMD_NAME}"
+  go build -trimpath \
+  -ldflags="-s -w -X github.com/publira/publira/server/internal/buildinfo.version=${VERSION}" \
+  -o /out/server "./cmd/${CMD_NAME}"
 
 FROM gcr.io/distroless/static:nonroot@sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6
 

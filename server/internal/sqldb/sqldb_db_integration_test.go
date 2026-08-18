@@ -1,14 +1,16 @@
-package sqldb_test
+package sqldb
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 
-	"github.com/publira/publira/server/internal/sqldb"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -32,7 +34,7 @@ func TestDBQueriesBecomeChildSpans(t *testing.T) {
 	})
 	otel.SetTracerProvider(provider)
 
-	db, err := sqldb.Open(env.PublicURL)
+	db, err := Open(env.PublicURL)
 	if err != nil {
 		t.Fatalf("sqldb.Open: %v", err)
 	}
@@ -44,8 +46,13 @@ func TestDBQueriesBecomeChildSpans(t *testing.T) {
 
 	ctx, parent := provider.Tracer("test").Start(t.Context(), "inbound request")
 
-	var one int
-	if err := db.QueryRowContext(ctx, "SELECT 1").Scan(&one); err != nil {
+	// Shaped like a generated statement so the span carries the same
+	// attributes a sqlc query would produce.
+	const query = `-- name: GetTenantCount :one
+SELECT count(*) FROM tenants
+`
+	var tenants int
+	if err := db.QueryRowContext(ctx, query).Scan(&tenants); err != nil {
 		t.Fatalf("QueryRowContext: %v", err)
 	}
 	parent.End()
@@ -63,9 +70,40 @@ func TestDBQueriesBecomeChildSpans(t *testing.T) {
 			t.Errorf("span %q trace = %s, want the parent's trace %s",
 				span.Name(), span.SpanContext().TraceID(), parent.SpanContext().TraceID())
 		}
+		if span.Name() != querySpanName {
+			continue
+		}
 		queryChildren++
+		assertQueryAttributes(t, span.Attributes())
 	}
 	if queryChildren == 0 {
-		t.Fatalf("no DB span was recorded as a child of the request span; recorded %d spans", len(spans))
+		t.Fatalf("no %q span was recorded as a child of the request span; recorded %d spans",
+			querySpanName, len(spans))
+	}
+}
+
+// assertQueryAttributes pins what a statement span is allowed to say: the
+// operation and the sqlc query name identify it at low cardinality, and the
+// statement text is the generated SQL with placeholders, never argument
+// values.
+func assertQueryAttributes(t *testing.T, attributes []attribute.KeyValue) {
+	t.Helper()
+
+	values := map[attribute.Key]string{}
+	for _, kv := range attributes {
+		values[kv.Key] = kv.Value.AsString()
+	}
+
+	if got := values[semconv.DBOperationNameKey]; got != "SELECT" {
+		t.Errorf("%s = %q, want SELECT", semconv.DBOperationNameKey, got)
+	}
+	if got := values[semconv.DBQuerySummaryKey]; got != "GetTenantCount" {
+		t.Errorf("%s = %q, want GetTenantCount", semconv.DBQuerySummaryKey, got)
+	}
+	if got := values[semconv.DBSystemNameKey]; got != "postgresql" {
+		t.Errorf("%s = %q, want postgresql", semconv.DBSystemNameKey, got)
+	}
+	if got := values[semconv.DBQueryTextKey]; !strings.Contains(got, "SELECT count(*) FROM tenants") {
+		t.Errorf("%s = %q, want the generated statement", semconv.DBQueryTextKey, got)
 	}
 }
