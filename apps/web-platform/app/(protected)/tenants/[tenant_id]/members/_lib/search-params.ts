@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { cursorTokenSchema } from "#lib/cursor-token";
+import { requiredTrimmedString } from "#lib/form-schemas";
 
 type QueryParamValue = string | string[] | undefined;
 
@@ -13,6 +14,21 @@ export interface MemberPageSearchParams {
   membersToken: string;
   token: string;
 }
+
+const tenantMembersParamsSchema = z.object({
+  tenant_id: requiredTrimmedString("必須項目が入力されていません。"),
+});
+
+export const parseTenantMembersParams = (
+  input: unknown
+): { tenantId: string } | null => {
+  const parsed = tenantMembersParamsSchema.safeParse(input);
+  if (!parsed.success) {
+    return null;
+  }
+
+  return { tenantId: parsed.data.tenant_id };
+};
 
 const memberPageSearchParamsSchema = z.object({
   members_token: cursorTokenSchema,

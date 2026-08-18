@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -181,6 +182,31 @@ func TestCatalogListPublishedLabelsRejectsBrokenToken(t *testing.T) {
 	_, err := client.ListPublishedLabels(context.Background(), req)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListPublishedLabels code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogListPublishedLabelsVariantLookupErrorIsReturned(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+
+	rows := sqlmock.NewRows([]string{"id", "tenant_id", "public_id", "name", "created_at", "eye_catch_image_id", "eye_catch_image_updated_at"}).
+		AddRow(labelID, tenantID, "LABEL001", "Label", now, imageID, now)
+	mock.ExpectQuery(regexp.QuoteMeta(listLabelsByTenantDescQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}, false, sqlmock.AnyArg(), defaultLabelPageSize+1).
+		WillReturnRows(rows)
+	mock.ExpectQuery(regexp.QuoteMeta("-- name: ListLabelImageVariantsByImageIDs :many\n")).
+		WillReturnError(errors.New(`pq: relation "label_image_variants" does not exist`))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.ListPublishedLabels(context.Background(), newLabelListRequest(tenantID))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("ListPublishedLabels code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
 	}
 
 	assertPublicExpectations(t, mock)

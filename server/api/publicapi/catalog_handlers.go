@@ -476,12 +476,13 @@ func (s *apiServer) ListPublishedLabels(
 	// ラベル画像バリアント情報を取得
 	if len(imageIDs) > 0 {
 		variantsByImageID, variantsErr := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
-		if variantsErr == nil {
-			for i, row := range rows {
-				if row.eyeCatchImageID.Valid {
-					if variants, ok := variantsByImageID[row.eyeCatchImageID.UUID]; ok {
-						items[i].EyeCatchImageVariants = variants
-					}
+		if variantsErr != nil {
+			return nil, variantsErr
+		}
+		for i, row := range rows {
+			if row.eyeCatchImageID.Valid {
+				if variants, ok := variantsByImageID[row.eyeCatchImageID.UUID]; ok {
+					items[i].EyeCatchImageVariants = variants
 				}
 			}
 		}

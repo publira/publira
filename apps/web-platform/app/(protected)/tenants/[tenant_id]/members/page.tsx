@@ -38,6 +38,7 @@ import {
   buildMemberInvitationsPath,
   buildMembersPath,
   parseMemberInvitationFilters,
+  parseTenantMembersParams,
 } from "./_lib/search-params";
 
 export const metadata: Metadata = {
@@ -89,7 +90,11 @@ const TenantMembersContent = async ({
   params,
   searchParams,
 }: Pick<TenantMembersPageProps, "params" | "searchParams">) => {
-  const { tenant_id: tenantId } = await params;
+  const parsedParams = parseTenantMembersParams(await params);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { tenantId } = parsedParams;
   const pageFilters = parseMemberInvitationFilters(await searchParams);
 
   const [tenantResult, membersResult, invitationsResult, timeZone] =

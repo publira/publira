@@ -85,6 +85,66 @@ describe("listPlatformAuditLogs", () => {
     );
   });
 
+  it("応答の previousToken / nextToken をそのまま返す", async () => {
+    mockListAuditLogs.mockResolvedValueOnce({
+      auditLogs: [
+        {
+          action: "tenant.created",
+          actorName: "運営 太郎",
+          actorRole: "platform_owner",
+          actorUserPublicId: "op_001",
+          createdAt: "2026-03-24T01:23:45Z",
+          outcome: "success",
+          reason: "",
+          targetId: "tenant_001",
+          targetName: "テナントA",
+          targetPublicId: "tenant_001",
+          targetType: "tenant",
+          tenantName: "テナントA",
+          tenantPublicId: "tenant_001",
+        },
+      ],
+      nextToken: "next-page",
+      previousToken: "previous-page",
+    });
+
+    await expect(
+      listPlatformAuditLogs({ token: "current-page" })
+    ).resolves.toEqual({
+      auditLogs: [
+        {
+          action: "tenant.created",
+          actorName: "運営 太郎",
+          actorRole: "platform_owner",
+          actorUserPublicId: "op_001",
+          createdAt: "2026-03-24T01:23:45Z",
+          outcome: "success",
+          reason: "",
+          targetId: "tenant_001",
+          targetName: "テナントA",
+          targetPublicId: "tenant_001",
+          targetType: "tenant",
+          tenantId: "tenant_001",
+          tenantName: "テナントA",
+        },
+      ],
+      nextToken: "next-page",
+      ok: true,
+      previousToken: "previous-page",
+    });
+
+    expect(mockListAuditLogs).toHaveBeenCalledWith(
+      {
+        action: "",
+        actorUserPublicId: "",
+        limit: 100,
+        tenantId: "",
+        token: "current-page",
+      },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
   it("tenant / actor / action フィルターを API に渡す", async () => {
     mockListAuditLogs.mockResolvedValueOnce({ auditLogs: [] });
 
