@@ -19,11 +19,12 @@
 //     processing can run 15s per image, and the image servers stream
 //     object bytes to the client. Per-route deadlines belong on the
 //     handler once those paths have explicit budgets.
-//   - ShutdownTimeout is how long Serve waits for in-flight requests after
-//     the process is asked to stop. It is not a request deadline: handlers
-//     still have no WriteTimeout. It is the upper bound on process exit, so
-//     a stuck upload cannot hold a deploy. Idle keep-alives are not in-flight
-//     work; Shutdown closes them immediately and does not wait IdleTimeout.
+//   - ShutdownTimeout is the single deadline Serve uses after the process
+//     is asked to stop: first drain in-flight requests, then run hooks
+//     with whatever time remains. It is not a request deadline — handlers
+//     still have no WriteTimeout — and it is not two stacked 30s windows.
+//     Idle keep-alives are not in-flight work; Shutdown closes them
+//     immediately and does not wait IdleTimeout.
 package httpserver
 
 import (
@@ -41,12 +42,13 @@ const (
 	// after a request. 120s matches common reverse-proxy defaults.
 	IdleTimeout = 120 * time.Second
 
-	// ShutdownTimeout is how long Serve waits for in-flight requests
-	// after the caller cancels the serve context (SIGINT / SIGTERM).
+	// ShutdownTimeout is the total time Serve spends after the caller
+	// cancels the serve context (SIGINT / SIGTERM): first draining
+	// in-flight requests, then running hooks on the leftover time.
 	// 30s is longer than a single image-processing pass (~15s) and
 	// matches the common container stop grace period. Orchestrators
-	// should allow a little more than this before SIGKILL so Close and
-	// the after-shutdown hooks can still run.
+	// should allow a little more than this before SIGKILL so Close
+	// can still run if a request holds the drain until the deadline.
 	ShutdownTimeout = 30 * time.Second
 )
 

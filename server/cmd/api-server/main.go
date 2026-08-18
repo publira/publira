@@ -84,6 +84,8 @@ func main() {
 	if err := httpserver.Serve(ctx, logger, []*http.Server{
 		httpserver.New(addr, handler),
 		httpserver.New(grpcAddr, handler),
+	}, func(context.Context) error {
+		return db.Close()
 	}); err != nil {
 		logger.Error("public api server failed", "error", err)
 		os.Exit(1)

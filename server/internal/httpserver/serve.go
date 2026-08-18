@@ -12,11 +12,12 @@ import (
 // Serve listens on each server until ctx is cancelled or a listener
 // fails, then stops them together.
 //
-// On stop it calls Shutdown with [ShutdownTimeout] so in-flight
-// requests can finish. A server that has not drained by then is
-// Close'd so the process still exits. After every listener has
-// returned, hooks run in order on a fresh budget of ShutdownTimeout:
-// flush telemetry first, then close the database pool. Callers that
+// On stop it calls Shutdown against a deadline of [ShutdownTimeout]
+// so in-flight requests can finish. A server that has not drained
+// by then is Close'd so the process still exits. Hooks then run in
+// order against the same deadline — leftover time is theirs, not a
+// second ShutdownTimeout. Typical hooks close the database pool;
+// a telemetry flush belongs here once that work lands. Callers that
 // still defer db.Close keep that as a safety net for the paths that
 // never reach Serve; Close on *sql.DB is a no-op the second time.
 func Serve(ctx context.Context, logger *slog.Logger, servers []*http.Server, hooks ...func(context.Context) error) error {
@@ -85,7 +86,8 @@ func run(ctx context.Context, logger *slog.Logger, timeout time.Duration, server
 	case <-done:
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	deadline := time.Now().Add(timeout)
+	shutdownCtx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 
 	var shutdownWG sync.WaitGroup
@@ -109,7 +111,7 @@ func run(ctx context.Context, logger *slog.Logger, timeout time.Duration, server
 	<-done
 	drainErrs(serveErrs, setErr)
 
-	hookCtx, hookCancel := context.WithTimeout(context.Background(), timeout)
+	hookCtx, hookCancel := context.WithDeadline(context.Background(), deadline)
 	defer hookCancel()
 	for _, hook := range hooks {
 		if hook == nil {

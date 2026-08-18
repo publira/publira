@@ -260,6 +260,61 @@ func TestServeStopsEveryListener(t *testing.T) {
 	}
 }
 
+func TestServeSharesShutdownBudgetWithHooks(t *testing.T) {
+	t.Parallel()
+
+	const budget = 400 * time.Millisecond
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var (
+		hookStarted  time.Time
+		hookDeadline time.Time
+		hookHasDL    bool
+	)
+	addr, cancel, errCh := startTestServe(t, budget, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(started)
+		<-release
+		w.WriteHeader(http.StatusNoContent)
+	}), func(ctx context.Context) error {
+		hookStarted = time.Now()
+		hookDeadline, hookHasDL = ctx.Deadline()
+		return nil
+	})
+	defer cancel()
+
+	go func() {
+		resp, err := http.Get("http://" + addr + "/")
+		if err != nil {
+			return
+		}
+		_ = resp.Body.Close()
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler did not start")
+	}
+
+	cancel()
+	time.Sleep(150 * time.Millisecond)
+	close(release)
+
+	if err := waitServe(t, errCh); err != nil {
+		t.Fatalf("Serve: %v", err)
+	}
+	if !hookHasDL {
+		t.Fatal("hook context has no deadline")
+	}
+	remaining := hookDeadline.Sub(hookStarted)
+	if remaining <= 0 {
+		t.Fatal("hook deadline already expired")
+	}
+	if remaining > budget-100*time.Millisecond {
+		t.Fatalf("hook remaining = %s; drain took ~150ms of a %s window, so leftover should be well under a fresh budget", remaining, budget)
+	}
+}
+
 func TestServeReportsHookError(t *testing.T) {
 	t.Parallel()
 

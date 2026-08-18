@@ -77,7 +77,9 @@ func main() {
 	defer stop()
 
 	logger.Info("starting image server", "addr", addr)
-	if err := httpserver.Serve(ctx, logger, []*http.Server{httpserver.New(addr, imageHandler)}); err != nil {
+	if err := httpserver.Serve(ctx, logger, []*http.Server{httpserver.New(addr, imageHandler)}, func(context.Context) error {
+		return db.Close()
+	}); err != nil {
 		logger.Error("image server failed", "error", err)
 		os.Exit(1)
 	}

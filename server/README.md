@@ -72,7 +72,7 @@ task server:test
 
 ## Graceful shutdown
 
-常駐プロセス（`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server`）は SIGINT / SIGTERM で `http.Server.Shutdown` を呼び、処理中のリクエストを最大 30 秒待ちます。猶予を超えた接続は `Close` で切断し、その後にシャットダウンフック（テレメトリの flush など）と `defer` の DB プールクローズが走ります。
+常駐プロセス（`api-server` / `admin-api-server` / `platform-api-server` / `image-server` / `admin-image-server`）は SIGINT / SIGTERM で `http.Server.Shutdown` を呼びます。処理中リクエストの排出と、登録済みのシャットダウンフックは同じ 30 秒の期限を共有します。猶予を超えた接続は `Close` で切断します。各 `main` は DB プールのクローズをフックとして渡し、起動失敗経路の安全網として `defer db.Close()` も残しています。OpenTelemetry の span flush は [#196](https://github.com/publira/publira/issues/196) がフックを追加したあとにこの経路へ乗ります。
 
 オーケストレータの SIGKILL 猶予は 30 秒より長くしてください（Kubernetes なら `terminationGracePeriodSeconds` を 45 以上）。ロードバランサの readiness 排出は別途の設定です。
 
