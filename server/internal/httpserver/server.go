@@ -19,6 +19,11 @@
 //     processing can run 15s per image, and the image servers stream
 //     object bytes to the client. Per-route deadlines belong on the
 //     handler once those paths have explicit budgets.
+//   - ShutdownTimeout is how long Serve waits for in-flight requests after
+//     the process is asked to stop. It is not a request deadline: handlers
+//     still have no WriteTimeout. It is the upper bound on process exit, so
+//     a stuck upload cannot hold a deploy. Idle keep-alives are not in-flight
+//     work; Shutdown closes them immediately and does not wait IdleTimeout.
 package httpserver
 
 import (
@@ -35,6 +40,14 @@ const (
 	// IdleTimeout is how long a keep-alive connection may sit unused
 	// after a request. 120s matches common reverse-proxy defaults.
 	IdleTimeout = 120 * time.Second
+
+	// ShutdownTimeout is how long Serve waits for in-flight requests
+	// after the caller cancels the serve context (SIGINT / SIGTERM).
+	// 30s is longer than a single image-processing pass (~15s) and
+	// matches the common container stop grace period. Orchestrators
+	// should allow a little more than this before SIGKILL so Close and
+	// the after-shutdown hooks can still run.
+	ShutdownTimeout = 30 * time.Second
 )
 
 // New returns an http.Server that serves handler on addr with the shared

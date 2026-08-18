@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
-	"errors"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
-	"sync"
+	"syscall"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -70,41 +71,16 @@ func main() {
 
 	handler := platformapi.NewHandler(db, dbmodels.New(db), logger, encryptor, internalsmtp.NewClient(), emailrenderer.NewClient(resolveEmailRendererURL()), tokens)
 
-	// Start Connect server on public port
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	logger.Info("starting platform api server (Connect)", "addr", addr)
-	connectServer := httpserver.New(addr, handler)
-
-	// Start gRPC server on internal port
 	logger.Info("starting platform api server (gRPC)", "addr", grpcAddr)
-	grpcServer := httpserver.New(grpcAddr, handler)
-
-	// Run servers concurrently
-	var wg sync.WaitGroup
-	var connectErr, grpcErr error
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		if err := connectServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			connectErr = err
-			logger.Error("connect server failed", "error", err)
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if err := grpcServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			grpcErr = err
-			logger.Error("grpc server failed", "error", err)
-		}
-	}()
-
-	wg.Wait()
-
-	if connectErr != nil {
-		os.Exit(1)
-	}
-	if grpcErr != nil {
+	if err := httpserver.Serve(ctx, logger, []*http.Server{
+		httpserver.New(addr, handler),
+		httpserver.New(grpcAddr, handler),
+	}); err != nil {
+		logger.Error("platform api server failed", "error", err)
 		os.Exit(1)
 	}
 }
