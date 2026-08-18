@@ -13,6 +13,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/cenkalti/backoff/v5"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -22,7 +23,10 @@ import (
 )
 
 const (
-	defaultRetryBaseDelay = 2 * time.Second
+	defaultRetryBaseDelay  = 2 * time.Second
+	defaultRetryMultiplier = 2
+	// The delay keeps doubling for the whole PUBLIRA_PUBLISH_MAX_RETRIES budget.
+	defaultRetryMaxInterval = time.Duration(math.MaxInt64)
 
 	notificationTypeEpisodePublished     = "episode_published"
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
@@ -106,49 +110,62 @@ func (r *Runner) RunOnce(ctx context.Context) {
 }
 
 func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) {
-	var lastErr error
-	for attempt := 0; attempt <= r.maxRetries; attempt++ {
-		if attempt > 0 {
-			delay := time.Duration(math.Pow(2, float64(attempt-1))) * defaultRetryBaseDelay
+	attempt := 0
+	_, err := backoff.Retry(
+		ctx,
+		func() (struct{}, error) {
+			attempt++
+			return struct{}{}, r.publishOne(ctx, row)
+		},
+		backoff.WithBackOff(newPublishBackOff()),
+		backoff.WithMaxTries(uint(r.maxRetries)+1),
+		// Drops the library's 15-minute cap so the attempt budget and ctx are the limits.
+		backoff.WithMaxElapsedTime(0),
+		backoff.WithNotify(func(err error, delay time.Duration) {
+			r.logger.WarnContext(ctx, "failed to publish episode",
+				"episode_id", row.EpisodeID,
+				"tenant_id", row.TenantID.String(),
+				"attempt", attempt,
+				"error", err,
+			)
 			r.logger.InfoContext(ctx, "retrying publish",
 				"episode_id", row.EpisodeID,
 				"attempt", attempt,
 				"delay", delay,
 			)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(delay):
-			}
+		}),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			return
 		}
-
-		if err := r.publishOne(ctx, row); err != nil {
-			lastErr = err
-			r.logger.WarnContext(ctx, "failed to publish episode",
-				"episode_id", row.EpisodeID,
-				"tenant_id", row.TenantID.String(),
-				"attempt", attempt+1,
-				"error", err,
-			)
-			continue
-		}
-
-		r.logger.InfoContext(ctx, "episode published successfully",
+		r.logger.ErrorContext(ctx, "episode publish failed after all retries",
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
+			"max_retries", r.maxRetries,
+			"error", err,
 		)
-		r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublished)
+		r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublishFailed)
+		r.notifyOperatorsOfPublishFailure(ctx, row)
 		return
 	}
 
-	r.logger.ErrorContext(ctx, "episode publish failed after all retries",
+	r.logger.InfoContext(ctx, "episode published successfully",
 		"episode_id", row.EpisodeID,
 		"tenant_id", row.TenantID.String(),
-		"max_retries", r.maxRetries,
-		"error", lastErr,
 	)
-	r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublishFailed)
-	r.notifyOperatorsOfPublishFailure(ctx, row)
+	r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublished)
+}
+
+// newPublishBackOff builds the retry schedule: defaultRetryBaseDelay, doubling
+// on every further attempt, without jitter.
+func newPublishBackOff() *backoff.ExponentialBackOff {
+	bo := backoff.NewExponentialBackOff()
+	bo.InitialInterval = defaultRetryBaseDelay
+	bo.Multiplier = defaultRetryMultiplier
+	bo.RandomizationFactor = 0
+	bo.MaxInterval = defaultRetryMaxInterval
+	return bo
 }
 
 func (r *Runner) publishOne(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) error {

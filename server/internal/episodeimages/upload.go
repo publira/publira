@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/cenkalti/backoff/v5"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
@@ -27,10 +28,11 @@ import (
 )
 
 const (
-	imageProcessingTimeout       = 15 * time.Second
-	imagePersistenceRetryMax     = 3
-	imagePersistenceRetryBackoff = 100 * time.Millisecond
-	maxArchiveEntries            = 1000
+	imageProcessingTimeout          = 15 * time.Second
+	imagePersistenceRetryMax        = 3
+	imagePersistenceRetryBackoff    = 100 * time.Millisecond
+	imagePersistenceRetryMultiplier = 2
+	maxArchiveEntries               = 1000
 )
 
 type Querier interface {
@@ -218,48 +220,41 @@ func (s Service) storeImages(
 			objectKey := fmt.Sprintf("tenants/%s/episodes/%s/%s-%s-%s%s", tenant.PublicID, episodePublicID, objectPrefix, baseObjectID, variant.Label, variant.Extension)
 
 			variantCtx, cancel := context.WithTimeout(ctx, imageProcessingTimeout)
-			createdVariant, persistErr := func() (dbmodels.EpisodeImageVariant, error) {
-				var lastErr error
-				for attempt := 1; attempt <= imagePersistenceRetryMax; attempt++ {
+			createdVariant, persistErr := backoff.Retry(
+				variantCtx,
+				func() (dbmodels.EpisodeImageVariant, error) {
 					uploaded, uploadErr := s.Storage.Upload(variantCtx, storage.UploadRequest{
 						ObjectKey:   objectKey,
 						ContentType: variant.ContentType,
 						Data:        variant.Data,
 					})
 					if uploadErr != nil {
-						lastErr = uploadErr
-					} else {
-						variantID, variantIDErr := uuid.NewV7()
-						if variantIDErr != nil {
-							return dbmodels.EpisodeImageVariant{}, variantIDErr
-						}
-						createdRow, createRowErr := s.Queries.CreateEpisodeImageVariant(variantCtx, dbmodels.CreateEpisodeImageVariantParams{
-							ID:              variantID,
-							EpisodeImageID:  createdImage.ID,
-							Label:           variant.Label,
-							StorageProvider: uploaded.Provider,
-							ObjectKey:       uploaded.ObjectKey,
-							ContentType:     variant.ContentType,
-							FileSizeBytes:   uploaded.SizeBytes,
-							Width:           int32(variant.Width),
-							Height:          int32(variant.Height),
-						})
-						if createRowErr == nil {
-							return createdRow, nil
-						}
-						lastErr = createRowErr
+						return dbmodels.EpisodeImageVariant{}, uploadErr
 					}
-					if attempt < imagePersistenceRetryMax {
-						if err := sleepWithContext(variantCtx, time.Duration(attempt)*imagePersistenceRetryBackoff); err != nil {
-							return dbmodels.EpisodeImageVariant{}, err
-						}
+					variantID, variantIDErr := uuid.NewV7()
+					if variantIDErr != nil {
+						return dbmodels.EpisodeImageVariant{}, backoff.Permanent(variantIDErr)
 					}
-				}
-				return dbmodels.EpisodeImageVariant{}, fmt.Errorf("variant persistence failed after %d attempts: %w", imagePersistenceRetryMax, lastErr)
-			}()
+					return s.Queries.CreateEpisodeImageVariant(variantCtx, dbmodels.CreateEpisodeImageVariantParams{
+						ID:              variantID,
+						EpisodeImageID:  createdImage.ID,
+						Label:           variant.Label,
+						StorageProvider: uploaded.Provider,
+						ObjectKey:       uploaded.ObjectKey,
+						ContentType:     variant.ContentType,
+						FileSizeBytes:   uploaded.SizeBytes,
+						Width:           int32(variant.Width),
+						Height:          int32(variant.Height),
+					})
+				},
+				backoff.WithBackOff(newVariantPersistenceBackOff()),
+				backoff.WithMaxTries(imagePersistenceRetryMax),
+				// Drops the library's 15-minute cap so variantCtx stays the one deadline.
+				backoff.WithMaxElapsedTime(0),
+			)
 			cancel()
 			if persistErr != nil {
-				return nil, connect.NewError(connect.CodeInternal, persistErr)
+				return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("variant persistence failed: %w", persistErr))
 			}
 			lastVariant = createdVariant
 		}
@@ -293,13 +288,13 @@ func objectPrefix(filename string) string {
 	return objectPrefix
 }
 
-func sleepWithContext(ctx context.Context, d time.Duration) error {
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C:
-		return nil
-	}
+// newVariantPersistenceBackOff builds the retry schedule: 100ms then 200ms
+// between the imagePersistenceRetryMax attempts, without jitter. Those stay
+// well under the library's default MaxInterval, which is therefore left as is.
+func newVariantPersistenceBackOff() *backoff.ExponentialBackOff {
+	bo := backoff.NewExponentialBackOff()
+	bo.InitialInterval = imagePersistenceRetryBackoff
+	bo.Multiplier = imagePersistenceRetryMultiplier
+	bo.RandomizationFactor = 0
+	return bo
 }
