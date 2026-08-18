@@ -166,12 +166,10 @@ describe("web-host auth", () => {
 
   it("getMe: 分類できない RPC エラーは再試行せずそのまま伝播する", async () => {
     const { getMe } = await importAuth();
-    mockGetMe.mockRejectedValueOnce(new ConnectError("boom", Code.Internal));
+    const thrown = new ConnectError("boom", Code.Internal);
+    mockGetMe.mockRejectedValueOnce(thrown);
 
-    await expect(getMe("TENANT001")).rejects.toMatchObject({
-      code: Code.Internal,
-      message: "[internal] boom",
-    });
+    await expect(getMe("TENANT001")).rejects.toBe(thrown);
     expect(mockGetMe).toHaveBeenCalledOnce();
   });
 
