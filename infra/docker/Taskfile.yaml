@@ -7,7 +7,7 @@ version: "3"
 #   task docker:build:web APP_NAME=web-host PORT=3000
 #   task docker:build:api CMD_NAME=api-server PORT=8000
 #   task docker:build:batch CMD_NAME=publish-episodes
-#   task docker:build:email-renderer PORT=8080
+#   task docker:build:node APP_NAME=email-renderer PORT=8080
 #   task docker:verify
 
 tasks:
@@ -53,20 +53,23 @@ tasks:
           -t "publira/{{.CMD_NAME}}:local" \
           .
 
-  build:email-renderer:
-    desc: Build the email-renderer Node.js service image (PORT optional, default 8080)
+  build:node:
+    desc: Build a long-running Node.js service image (APP_NAME required; PORT optional, default 8080)
+    requires:
+      vars: [APP_NAME]
     vars:
       PORT: '{{.PORT | default "8080"}}'
     cmds:
       - |
         docker build \
-          -f infra/docker/email-renderer/Dockerfile \
+          -f infra/docker/node/Dockerfile \
+          --build-arg "APP_NAME={{.APP_NAME}}" \
           --build-arg "PORT={{.PORT}}" \
-          -t "publira/email-renderer:local" \
+          -t "publira/{{.APP_NAME}}:local" \
           .
 
   # Representative set shared by local checks and CI (path-filtered / PR).
-  # Covers each role once: web / api / batch / email-renderer.
+  # Covers each role once: web / api / batch / node.
   verify:
     desc: Build representative images (web-host, api-server, publish-episodes, email-renderer)
     cmds:
@@ -81,8 +84,9 @@ tasks:
       - task: build:batch
         vars:
           CMD_NAME: publish-episodes
-      - task: build:email-renderer
+      - task: build:node
         vars:
+          APP_NAME: email-renderer
           PORT: "8080"
 
   # Full matrix used by nightly CI and manual full verification.
@@ -103,8 +107,8 @@ tasks:
         vars: { CMD_NAME: platform-api-server, PORT: "8002" }
       - task: build:batch
         vars: { CMD_NAME: publish-episodes }
-      - task: build:email-renderer
-        vars: { PORT: "8080" }
+      - task: build:node
+        vars: { APP_NAME: email-renderer, PORT: "8080" }
 
   smoke:web:
     desc: Run a short /livez smoke check against a built web image (APP_NAME, optional PORT)
@@ -143,11 +147,13 @@ tasks:
         docker logs "{{.CONTAINER_NAME}}" >&2 || true
         exit 1
 
-  smoke:email-renderer:
-    desc: Run a /livez and /readyz smoke check against the built email-renderer image (optional PORT)
+  smoke:node:
+    desc: Run a /livez and /readyz smoke check against a built Node.js service image (APP_NAME, optional PORT)
+    requires:
+      vars: [APP_NAME]
     vars:
       PORT: '{{.PORT | default "8080"}}'
-      CONTAINER_NAME: "publira-email-renderer-smoke"
+      CONTAINER_NAME: "publira-{{.APP_NAME}}-smoke"
     cmds:
       - |
         set -euo pipefail
@@ -157,7 +163,7 @@ tasks:
         docker run -d \
           --name "{{.CONTAINER_NAME}}" \
           -p "127.0.0.1::{{.PORT}}" \
-          "publira/email-renderer:local"
+          "publira/{{.APP_NAME}}:local"
         cleanup() { docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true; }
         trap cleanup EXIT
         host_port="$(docker port "{{.CONTAINER_NAME}}" "{{.PORT}}" | awk -F: 'NR==1 { print $NF }')"
@@ -173,13 +179,13 @@ tasks:
           sleep 1
         done
         if ! curl -fsS "http://127.0.0.1:${host_port}/livez" | grep -qx 'ok'; then
-          echo "smoke failed: email-renderer /livez did not become ready" >&2
+          echo "smoke failed: {{.APP_NAME}} /livez did not become ready" >&2
           docker logs "{{.CONTAINER_NAME}}" >&2 || true
           exit 1
         fi
-        if ! curl -fsS "http://127.0.0.1:${host_port}/readyz" | grep -qx '{"status":"ok","checks":{}}'; then
-          echo "smoke failed: email-renderer /readyz did not return the expected payload" >&2
+        if ! curl -fsS "http://127.0.0.1:${host_port}/readyz" | grep -q '"status":"ok"'; then
+          echo "smoke failed: {{.APP_NAME}} /readyz did not report status ok" >&2
           docker logs "{{.CONTAINER_NAME}}" >&2 || true
           exit 1
         fi
-        echo "smoke ok: email-renderer /livez and /readyz (host port ${host_port})"
+        echo "smoke ok: {{.APP_NAME}} /livez and /readyz (host port ${host_port})"

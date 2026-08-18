@@ -11,9 +11,9 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) |
 | `batch/Dockerfile` | One-shot Go jobs (`server/cmd/*`) |
-| `email-renderer/Dockerfile` | The `@publira/email-renderer` Node.js ConnectRPC service (`apps/email-renderer`) |
+| `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
-| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:email-renderer` (included from repo root) |
+| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` (included from repo root) |
 
 Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile).
 
@@ -24,8 +24,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    `docker build -f infra/docker/<role>/Dockerfile ... .`
 3. **Do not** add `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`.
 4. **Do not** reintroduce template → copy expansion under service directories.
-5. New runtime family (not web/api/batch/email-renderer) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
-6. `email-renderer` is the one directory named after a service rather than a runtime kind: it is the only non-Next.js Node.js service so far. A second one is the trigger to extract a shared role, not to widen this one.
+5. New runtime family (not web/api/batch/node) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
 
 ### ARG map
 
@@ -34,12 +33,12 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 | `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
 | `api` | `CMD_NAME` (e.g. `api-server`) | `PORT` (default `8000`) | `server/cmd/${CMD_NAME}` → binary `/app/server` |
 | `batch` | `CMD_NAME` (e.g. `publish-episodes`) | — | `server/cmd/${CMD_NAME}` → binary `/app/job` |
-| `email-renderer` | — | `PORT` (default `8080`) | fixed workspace `@publira/email-renderer`, path `apps/email-renderer` |
+| `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
 
 ## Implementation rules
 
 1. **Multi-stage**: build on Debian toolchain images; run on **distroless `nonroot`**.
-   - Web / email-renderer: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
+   - Web / Node: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
    - Go: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
 2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
 3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, same style as `.devcontainer/Dockerfile`:
@@ -53,7 +52,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    - liveness `GET /livez`
    - readiness `GET /readyz`
 5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`).
-6. **email-renderer**: also `turbo prune --docker`, but there is no standalone output. The runner gets a `pnpm install --frozen-lockfile --prod` tree plus every workspace `dist/`; sources and dev dependencies stay in the builder. Two consequences:
+6. **Node**: also `turbo prune --docker`, but there is no standalone output. The runner gets a `pnpm install --frozen-lockfile --prod` tree plus every workspace `dist/`; sources and dev dependencies stay in the builder, and the pack stage renames `apps/${APP_NAME}` to `apps/node` so the distroless `CMD` is a fixed path. Two consequences:
    - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.
    - `turbo prune` does not carry repo-root assets. `@publira/email-templates` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
 7. **Go**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
@@ -71,11 +70,11 @@ task docker:verify
 task docker:build:web APP_NAME=web-admin PORT=4000
 task docker:build:api CMD_NAME=api-server PORT=8000
 task docker:build:batch CMD_NAME=publish-episodes
-task docker:build:email-renderer PORT=8080
+task docker:build:node APP_NAME=email-renderer PORT=8080
 
 # Runtime smoke (the roles that have no external dependencies)
 task docker:smoke:web APP_NAME=web-host PORT=3000
-task docker:smoke:email-renderer PORT=8080
+task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
 Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
