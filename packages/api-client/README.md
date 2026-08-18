@@ -57,7 +57,7 @@ cursor 一覧 RPC をアプリ側で順に辿るときは、共有 helper を使
 
 ### 単体検索
 
-単体取得 RPC がないリソースを `publicId` で探す場合（暫定）:
+単体取得 RPC がないリソースを `publicId` で探す場合:
 
 ```ts
 import { findByPublicIdWithToken } from "@publira/api-client/pagination";

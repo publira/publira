@@ -183,11 +183,10 @@ useEffect(() => {
 
 Good in-repo example: `apps/web-admin/components/flash-toast.tsx` (`useEffectEvent` called only from inside Effects).
 
-### Forbidden / tracking
+### Forbidden
 
 - Do not leave props→state Effects with `oxlint-disable` just to silence lint.
-- Render-time `prev*` + bare `setXxx` is an **intermediate form**, not the end state.  
-  Full removal (`key` remount, Action-side `redirect`, etc.) is tracked in [#456](https://github.com/publira/publira/issues/456).
+- Render-time `prev*` + bare `setXxx` is an **intermediate form**, not the end state. The end state is a `key` remount or an Action-side `redirect`.
 
 ## Date and time: `Temporal`, not `Date`
 

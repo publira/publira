@@ -6,13 +6,7 @@ Flutter によるエンドユーザー向けモバイルアプリ (iOS / Android
 
 - `web-host` と同等の閲覧体験をモバイルで提供する
 - テナント別テーマ・ブランド表現をモバイル UI に反映する
-- 将来的な閲覧保護やオフライン最適化に対応する
-
-## 実装方針 (初期)
-
-- 画面構成はカタログ一覧・シリーズ詳細・エピソード閲覧を優先
 - API は `packages/api-client/` で生成されるスキーマと整合させる
-- モバイル固有機能 (通知・スクショ検知等) は要件確定後に段階導入する
 
 ## 前提条件
 
@@ -128,7 +122,7 @@ mobile/
 | `/`                 | カタログ一覧 |
 | `/series/:seriesId` | シリーズ詳細 |
 
-一覧はローディング / 空 / 通信エラー（再試行）、詳細はローディング / 見つからない / 通信エラーを出します。ビューアは後続 Issue です。
+一覧はローディング / 空 / 通信エラー（再試行）、詳細はローディング / 見つからない / 通信エラーを出します。
 
 ## 公開 API への接続
 
@@ -150,8 +144,6 @@ flutter run -d android \
   --dart-define=PUBLIRA_API_BASE_URL=http://10.0.2.2:8000 \
   --dart-define=PUBLIRA_TENANT_HOST=localhost
 ```
-
-フレーバー (Android の productFlavors / iOS の Scheme) は、要件が確定した段階で導入します。
 
 ## Integration test
 
