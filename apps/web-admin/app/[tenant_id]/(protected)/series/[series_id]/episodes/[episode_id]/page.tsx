@@ -19,6 +19,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getEpisode, listEpisodeImages } from "#lib/episode";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -64,6 +65,8 @@ const EditEpisodePage = async ({
   if (!episodeResult.ok && episodeResult.notFound) {
     notFound();
   }
+
+  await redirectToLoginIfSessionRejected(episodeResult, imagesResult);
 
   return (
     <AdminPage>

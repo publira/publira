@@ -7,6 +7,10 @@ import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 import { z } from "zod";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -35,7 +39,13 @@ export interface LabelItem {
 export type ListLabelsResult = CursorPageTokens &
   (
     | { ok: true; labels: LabelItem[] }
-    | { ok: false; message: string; labels: LabelItem[] }
+    | {
+        ok: false;
+        message: string;
+        labels: LabelItem[];
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn: boolean;
+      }
   );
 
 export type CreateLabelResult =
@@ -59,7 +69,13 @@ export type UpdateLabelResult =
 export type GetLabelResult =
   | { ok: true; label: LabelItem }
   | { notFound: true; ok: false }
-  | { message: string; notFound?: false; ok: false };
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
 
 const genericListErrorMessage =
   "レーベル一覧の取得に失敗しました。時間をおいて再試行してください。";
@@ -135,6 +151,7 @@ export const listLabels = async (
       labels: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -159,6 +176,7 @@ export const listLabels = async (
       labels: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -187,6 +205,7 @@ export const listAllLabels = async (
       labels: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -222,6 +241,7 @@ export const listAllLabels = async (
         labels: [],
         message: genericListErrorMessage,
         ok: false,
+        requiresSignIn: false,
       };
     }
 
@@ -237,6 +257,7 @@ export const listAllLabels = async (
       labels: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -278,6 +299,7 @@ export const createLabel = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -327,6 +349,7 @@ export const updateLabel = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -361,6 +384,7 @@ export const getLabel = async (input: {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -392,6 +416,7 @@ export const getLabel = async (input: {
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

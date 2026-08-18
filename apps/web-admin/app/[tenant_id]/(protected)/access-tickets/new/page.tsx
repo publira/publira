@@ -14,6 +14,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -45,6 +46,8 @@ const NewAccessTicketFormData = async () => {
     getTenantDisplayTimeZone(tenantId),
     listAllSeries(tenantId),
   ]);
+  await redirectToLoginIfSessionRejected(seriesResult);
+
   return (
     <TicketForm
       action={issueAccessTicketAction}

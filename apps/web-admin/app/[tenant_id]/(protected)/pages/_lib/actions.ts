@@ -6,6 +6,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -83,12 +84,14 @@ export const createPageAction = async (
     return toFailure("タイトルは必須です。", "create");
   }
 
-  const result = await createPage({
-    displayInFooter: parsed.data.displayInFooter === true,
-    slug: parsed.data.slug,
-    tenantId: parsed.data.tenantId,
-    title: parsed.data.title,
-  });
+  const result = await withAdminSessionReauth(() =>
+    createPage({
+      displayInFooter: parsed.data.displayInFooter === true,
+      slug: parsed.data.slug,
+      tenantId: parsed.data.tenantId,
+      title: parsed.data.title,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "create");
@@ -97,11 +100,13 @@ export const createPageAction = async (
   updateTag(`pages-${parsed.data.tenantId}`);
 
   if (parsed.data.contentMarkdown.trim()) {
-    const versionResult = await createPageVersion({
-      contentMarkdown: parsed.data.contentMarkdown,
-      pageId: result.page.id,
-      tenantId: parsed.data.tenantId,
-    });
+    const versionResult = await withAdminSessionReauth(() =>
+      createPageVersion({
+        contentMarkdown: parsed.data.contentMarkdown,
+        pageId: result.page.id,
+        tenantId: parsed.data.tenantId,
+      })
+    );
 
     if (!versionResult.ok) {
       return toFailure(versionResult.message, "create");
@@ -128,12 +133,14 @@ export const updatePageAction = async (
     return toFailure("タイトルは必須です。", "update");
   }
 
-  const result = await updatePage({
-    displayInFooter: parsed.data.displayInFooter,
-    pageId: parsed.data.pageId,
-    tenantId: parsed.data.tenantId,
-    title: parsed.data.title,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updatePage({
+      displayInFooter: parsed.data.displayInFooter,
+      pageId: parsed.data.pageId,
+      tenantId: parsed.data.tenantId,
+      title: parsed.data.title,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "update");
@@ -157,11 +164,13 @@ export const createDraftVersionAction = async (
     return toFailure("ページ ID が見つかりません。", "draft");
   }
 
-  const result = await createPageVersion({
-    contentMarkdown: parsed.data.contentMarkdown,
-    pageId: parsed.data.pageId,
-    tenantId: parsed.data.tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    createPageVersion({
+      contentMarkdown: parsed.data.contentMarkdown,
+      pageId: parsed.data.pageId,
+      tenantId: parsed.data.tenantId,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "draft");
@@ -178,11 +187,13 @@ export const publishVersionAction = async (formData: FormData) => {
     return;
   }
 
-  const result = await publishPageVersion({
-    pageId: parsed.data.pageId,
-    tenantId: parsed.data.tenantId,
-    versionId: parsed.data.versionId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    publishPageVersion({
+      pageId: parsed.data.pageId,
+      tenantId: parsed.data.tenantId,
+      versionId: parsed.data.versionId,
+    })
+  );
 
   if (!result.ok) {
     throw new Error(result.message);
@@ -200,11 +211,13 @@ export const rollbackVersionAction = async (formData: FormData) => {
     return;
   }
 
-  const result = await rollbackPageVersion({
-    pageId: parsed.data.pageId,
-    tenantId: parsed.data.tenantId,
-    versionId: parsed.data.versionId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    rollbackPageVersion({
+      pageId: parsed.data.pageId,
+      tenantId: parsed.data.tenantId,
+      versionId: parsed.data.versionId,
+    })
+  );
 
   if (!result.ok) {
     throw new Error(result.message);

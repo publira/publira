@@ -8,6 +8,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { issueAccessTicket, revokeAccessTicket } from "#lib/access-ticket";
+import {
+  redirectToLoginIfSessionRejected,
+  withAdminSessionReauth,
+} from "#lib/auth-session";
 import { listAllEpisodes } from "#lib/episode";
 import {
   optionalTrimmedString,
@@ -91,13 +95,15 @@ export const issueAccessTicketAction = async (
     };
   }
 
-  const result = await issueAccessTicket({
-    episodePublicId: parsed.data.episodePublicId,
-    expiresAt: parsed.data.expiresAt,
-    note: parsed.data.note,
-    tenantId: parsed.data.tenantId,
-    userPublicId: parsed.data.userPublicId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    issueAccessTicket({
+      episodePublicId: parsed.data.episodePublicId,
+      expiresAt: parsed.data.expiresAt,
+      note: parsed.data.note,
+      tenantId: parsed.data.tenantId,
+      userPublicId: parsed.data.userPublicId,
+    })
+  );
 
   if (!result.ok) {
     return {
@@ -142,6 +148,7 @@ export const listEpisodeOptionsAction = async (
     seriesPublicId: parsed.data.seriesPublicId,
     tenantId: parsed.data.tenantId,
   });
+  await redirectToLoginIfSessionRejected(result);
   if (!result.ok) {
     return {
       episodes: [],
@@ -178,9 +185,8 @@ export const revokeAccessTicketAction = async (
     };
   }
 
-  const result = await revokeAccessTicket(
-    parsed.data.tenantId,
-    parsed.data.publicId
+  const result = await withAdminSessionReauth(() =>
+    revokeAccessTicket(parsed.data.tenantId, parsed.data.publicId)
   );
   if (!result.ok) {
     return {

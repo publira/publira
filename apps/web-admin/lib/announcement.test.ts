@@ -167,6 +167,7 @@ describe("announcement lib", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: false,
     });
   });
 
@@ -273,6 +274,7 @@ describe("announcement lib", () => {
     expect(result).toEqual({
       message: "対象ユーザー一覧の取得に失敗しました。",
       ok: false,
+      requiresSignIn: false,
       users: [],
     });
   });
@@ -289,6 +291,7 @@ describe("announcement lib", () => {
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
+      requiresSignIn: false,
       users: [],
     });
   });

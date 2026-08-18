@@ -2,6 +2,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 
+import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 import { getTenantDisplayTimeZone } from "./tenant-timezone";
@@ -43,6 +44,8 @@ export type ListAuditActorCandidatesResult =
       ok: false;
       actors: AuditActorCandidate[];
       message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
     };
 
 export type ListAuditLogsResult =
@@ -58,6 +61,8 @@ export type ListAuditLogsResult =
       message: string;
       nextToken: string;
       previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
     };
 
 const genericListErrorMessage =
@@ -137,6 +142,7 @@ export const listAuditActorCandidates = async (
       actors: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -162,6 +168,7 @@ export const listAuditActorCandidates = async (
       actors: [],
       message: mapErrorToMessage(error),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -178,6 +185,7 @@ export const listAuditLogs = async (
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
     };
   }
 
@@ -210,6 +218,7 @@ export const listAuditLogs = async (
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

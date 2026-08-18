@@ -11,6 +11,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listCreators } from "#lib/creator";
 import {
   cursorPageHrefs,
@@ -47,6 +48,8 @@ const CreatorManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const listResult = await listCreators(tenantId, { token });
+
+  await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <CreatorManager

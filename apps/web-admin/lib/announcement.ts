@@ -9,6 +9,10 @@ import type {
   AnnouncementItem,
   AnnouncementTargetUser,
 } from "../app/[tenant_id]/(protected)/announcements/announcement-types";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions } from "./cursor-page";
 import {
@@ -78,6 +82,7 @@ export const listAllAnnouncementTargetUsers = async (
     return {
       message: sessionErrorMessage,
       ok: false,
+      requiresSignIn: true,
       users: [],
     };
   }
@@ -115,6 +120,7 @@ export const listAllAnnouncementTargetUsers = async (
       return {
         message: targetUsersErrorMessage,
         ok: false,
+        requiresSignIn: false,
         users: [],
       };
     }
@@ -128,6 +134,7 @@ export const listAllAnnouncementTargetUsers = async (
     return {
       message: mapErrorMessage(error, targetUsersErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       users: [],
     };
   }
@@ -154,6 +161,7 @@ export const listAnnouncements = async (
       announcements: [],
       message: sessionErrorMessage,
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -180,6 +188,7 @@ export const listAnnouncements = async (
       announcements: [],
       message: mapErrorMessage(error, listErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -225,6 +234,7 @@ export const createAnnouncement = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, createErrorMessage),

@@ -7,6 +7,10 @@ import {
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -44,7 +48,13 @@ export type CreateEpisodeResult =
 export type ListEpisodesResult = CursorPageTokens &
   (
     | { ok: true; episodes: EpisodeItem[] }
-    | { ok: false; message: string; episodes: EpisodeItem[] }
+    | {
+        ok: false;
+        message: string;
+        episodes: EpisodeItem[];
+        /** The API rejected the session — the caller raises the login redirect. */
+        requiresSignIn: boolean;
+      }
   );
 
 /**
@@ -56,7 +66,13 @@ export type ListEpisodesResult = CursorPageTokens &
 export type GetEpisodeResult =
   | { ok: true; episode: EpisodeItem }
   | { notFound: true; ok: false }
-  | { message: string; notFound?: false; ok: false };
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
 
 export type UpdateEpisodePublishScheduleResult =
   | { ok: true; episode: EpisodeItem }
@@ -68,7 +84,13 @@ export type UploadEpisodePagesResult =
 
 export type ListEpisodeImagesResult =
   | { ok: true; images: EpisodeImageItem[] }
-  | { ok: false; message: string; images: EpisodeImageItem[] };
+  | {
+      ok: false;
+      message: string;
+      images: EpisodeImageItem[];
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 export type ReorderEpisodesResult =
   | { ok: true; episodes: EpisodeItem[] }
@@ -264,6 +286,7 @@ export const createEpisode = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -292,6 +315,7 @@ export const listEpisodes = async (
       episodes: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -317,6 +341,7 @@ export const listEpisodes = async (
       episodes: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -343,6 +368,7 @@ export const listAllEpisodes = async (input: {
       episodes: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -377,6 +403,7 @@ export const listAllEpisodes = async (input: {
         episodes: [],
         message: genericListErrorMessage,
         ok: false,
+        requiresSignIn: false,
       };
     }
 
@@ -392,6 +419,7 @@ export const listAllEpisodes = async (input: {
       episodes: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -406,6 +434,7 @@ export const getEpisode = async (input: {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -438,6 +467,7 @@ export const getEpisode = async (input: {
     return {
       message: mapErrorToMessage(error, genericGetErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -477,6 +507,7 @@ export const updateEpisodePublishSchedule = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericScheduleErrorMessage),
@@ -528,6 +559,7 @@ export const uploadEpisodePages = async (input: {
       uploadedCount: response.images.length,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapEpisodeUploadErrorMessage(error),
@@ -546,6 +578,7 @@ export const listEpisodeImages = async (input: {
       images: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -568,6 +601,7 @@ export const listEpisodeImages = async (input: {
       images: [],
       message: mapErrorToMessage(error, genericEpisodeImagesErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -609,6 +643,7 @@ const reorderEpisodes = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapReorderErrorToMessage(error),
@@ -771,6 +806,7 @@ export const reorderEpisodePage = async (input: {
       tenantId: input.tenantId,
     });
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericEpisodeReorderErrorMessage),
@@ -841,6 +877,7 @@ export const reorderEpisodeImages = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericEpisodeImageReorderErrorMessage),

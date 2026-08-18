@@ -21,6 +21,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getCreator } from "#lib/creator";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -69,6 +70,8 @@ const EditCreatorFormData = async ({
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
+
+    await redirectToLoginIfSessionRejected(result);
 
     return (
       <SectionError

@@ -13,6 +13,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { listAccessTickets } from "#lib/access-ticket";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { DEFAULT_PAGE_SIZE } from "#lib/cursor-page";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
@@ -67,6 +68,8 @@ const TicketManagerData = async ({
     }),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
+  await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <div className="grid gap-6">

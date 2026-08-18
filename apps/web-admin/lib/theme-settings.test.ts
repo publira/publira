@@ -83,6 +83,7 @@ describe("theme-settings", () => {
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
     expect(mockGetTenantThemeApi).not.toHaveBeenCalled();
   });

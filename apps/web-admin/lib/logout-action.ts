@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { ADMIN_SESSION_COOKIE_NAME, logoutAdmin } from "./admin-auth";
+import { logoutAdmin } from "./admin-auth";
+import { clearAdminSessionCookie } from "./auth-session";
 import { getAccessToken as getSession } from "./session";
 
 /**
@@ -20,7 +20,6 @@ export const logoutAction = async (tenantId: string): Promise<void> => {
     // Always clear local session cookie, even when upstream revoke fails.
   }
 
-  const cookieStore = await cookies();
-  cookieStore.delete(ADMIN_SESSION_COOKIE_NAME);
+  await clearAdminSessionCookie();
   redirect("/login");
 };

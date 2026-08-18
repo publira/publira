@@ -11,6 +11,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
@@ -29,6 +30,8 @@ const SettingsThemePage = async () => {
   const tenantId = await getTenantId();
 
   const themeResult = await getTenantThemeSettings(tenantId);
+
+  await redirectToLoginIfSessionRejected(themeResult);
 
   return (
     <AdminPage>

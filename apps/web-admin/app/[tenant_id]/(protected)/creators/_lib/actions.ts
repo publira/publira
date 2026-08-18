@@ -6,6 +6,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { withAdminSessionReauth } from "#lib/auth-session";
 import { createCreator, updateCreator } from "#lib/creator";
 import {
   flagOneFormSchema,
@@ -70,13 +71,15 @@ export const createCreatorAction = async (
   const { iconImage, name, profileText, tenantId } = parsed.data;
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
-  const result = await createCreator({
-    iconImageContentType,
-    iconImageData,
-    name,
-    profileText,
-    tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    createCreator({
+      iconImageContentType,
+      iconImageData,
+      name,
+      profileText,
+      tenantId,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "create");
@@ -105,15 +108,17 @@ export const updateCreatorAction = async (
     parsed.data;
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
-  const result = await updateCreator({
-    clearIconImage,
-    iconImageContentType,
-    iconImageData,
-    name,
-    profileText,
-    publicId,
-    tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateCreator({
+      clearIconImage,
+      iconImageContentType,
+      iconImageData,
+      name,
+      profileText,
+      publicId,
+      tenantId,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "update");

@@ -12,6 +12,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { listAnnouncements } from "#lib/announcement";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -51,6 +52,8 @@ const AnnouncementManagerData = async ({
     listAnnouncements(tenantId, { token }),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
+  await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <AnnouncementManager

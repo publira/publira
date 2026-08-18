@@ -33,6 +33,7 @@ import {
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { buildQueryString } from "#lib/query-string";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -122,6 +123,8 @@ const AuditLogsContent = async ({
     }),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
+  await redirectToLoginIfSessionRejected(result, actorCandidatesResult);
 
   const resetHref = buildQueryString({});
   const previousHref = result.previousToken

@@ -1,6 +1,10 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -12,7 +16,13 @@ export interface TenantSiteSettings {
 
 export type GetTenantSiteSettingsResult =
   | { ok: true; settings: TenantSiteSettings }
-  | { ok: false; message: string; settings: TenantSiteSettings };
+  | {
+      ok: false;
+      message: string;
+      settings: TenantSiteSettings;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 export type UpdateTenantSiteSettingsResult =
   | { ok: true; settings: TenantSiteSettings }
@@ -43,6 +53,7 @@ export const getTenantSiteSettings = async (
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: !sessionId,
       settings: defaultSettings,
     };
   }
@@ -68,6 +79,7 @@ export const getTenantSiteSettings = async (
     return {
       message: mapErrorToMessage(error, genericLoadErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       settings: defaultSettings,
     };
   }
@@ -108,6 +120,7 @@ export const updateTenantSiteSettings = async (input: {
       },
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericUpdateErrorMessage),

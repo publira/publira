@@ -67,6 +67,7 @@ describe("tenant-timezone", () => {
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
       timezone: "Asia/Tokyo",
     });
     expect(mockGetTenantTimezoneApi).not.toHaveBeenCalled();

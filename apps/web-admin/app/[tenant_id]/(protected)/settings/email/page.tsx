@@ -11,6 +11,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantEmailSettings } from "#lib/email-settings";
 import type { TenantSmtpSettings } from "#lib/email-settings";
 import { getTenantForSession } from "#lib/tenant-detail";
@@ -45,11 +46,18 @@ const emptySettings: TenantSmtpSettings = {
 const SettingsEmailPage = async () => {
   const tenantId = await getTenantId();
 
-  const [emailSettingsResult, currentUser, tenant] = await Promise.all([
-    getTenantEmailSettings(tenantId),
-    getAdminCurrentUser(tenantId),
-    getTenantForSession(tenantId),
-  ]);
+  const [emailSettingsResult, currentUserResult, tenantResult] =
+    await Promise.all([
+      getTenantEmailSettings(tenantId),
+      getAdminCurrentUser(tenantId),
+      getTenantForSession(tenantId),
+    ]);
+
+  await redirectToLoginIfSessionRejected(
+    emailSettingsResult,
+    currentUserResult,
+    tenantResult
+  );
 
   return (
     <AdminPage>
@@ -66,7 +74,9 @@ const SettingsEmailPage = async () => {
         <div className="grid gap-6">
           <SettingsTabNav current="email" />
           <TenantEmailSettingsForm
-            canEdit={isTenantAdminRole(currentUser?.role)}
+            canEdit={isTenantAdminRole(
+              currentUserResult.ok ? currentUserResult.user.role : undefined
+            )}
             initialSettings={
               emailSettingsResult.ok
                 ? emailSettingsResult.settings
@@ -76,7 +86,7 @@ const SettingsEmailPage = async () => {
               emailSettingsResult.ok ? undefined : emailSettingsResult.message
             }
             saveAction={updateTenantEmailSettingsAction}
-            tenantName={tenant?.name ?? ""}
+            tenantName={tenantResult.ok ? tenantResult.tenant.name : ""}
             testAction={sendTenantSmtpTestEmailAction}
           />
         </div>

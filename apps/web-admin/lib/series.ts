@@ -5,6 +5,10 @@ import {
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -50,6 +54,8 @@ export type ListSeriesResult = CursorPageTokens &
         message: string;
         series: SeriesItem[];
         defaultReadingPeriodHours: number;
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn: boolean;
       }
   );
 
@@ -74,7 +80,13 @@ export type UpdateSeriesResult =
 export type GetSeriesResult =
   | { ok: true; series: SeriesItem }
   | { notFound: true; ok: false }
-  | { message: string; notFound?: false; ok: false };
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
 
 const genericListErrorMessage =
   "シリーズ一覧の取得に失敗しました。時間をおいて再試行してください。";
@@ -171,6 +183,7 @@ export const listSeries = async (
       defaultReadingPeriodHours: 0,
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
       series: [],
     };
   }
@@ -197,6 +210,7 @@ export const listSeries = async (
       defaultReadingPeriodHours: 0,
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       series: [],
     };
   }
@@ -227,6 +241,7 @@ export const listAllSeries = async (
       defaultReadingPeriodHours: 0,
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
       series: [],
     };
   }
@@ -265,6 +280,7 @@ export const listAllSeries = async (
         defaultReadingPeriodHours: 0,
         message: genericListErrorMessage,
         ok: false,
+        requiresSignIn: false,
         series: [],
       };
     }
@@ -282,6 +298,7 @@ export const listAllSeries = async (
       defaultReadingPeriodHours: 0,
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       series: [],
     };
   }
@@ -298,6 +315,7 @@ export const getSeries = async (input: {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -329,6 +347,7 @@ export const getSeries = async (input: {
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -385,6 +404,7 @@ export const createSeries = async (input: {
       },
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -449,6 +469,7 @@ export const updateSeries = async (input: {
       },
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),

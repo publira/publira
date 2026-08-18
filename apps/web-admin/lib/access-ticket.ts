@@ -5,6 +5,10 @@ import {
 } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -49,6 +53,8 @@ export type ListAccessTicketsOptions = CursorPageOptions & {
 export type ListAccessTicketsResult = CursorPageTokens & {
   message?: string;
   ok: boolean;
+  /** The API rejected the session — the page raises the login redirect. */
+  requiresSignIn?: boolean;
   tickets: AccessTicketItem[];
 };
 
@@ -139,6 +145,7 @@ export const listAccessTickets = async (
       ...emptyCursorPageTokens,
       message: sessionErrorMessage,
       ok: false,
+      requiresSignIn: true,
       tickets: [],
     };
   }
@@ -166,6 +173,7 @@ export const listAccessTickets = async (
       ...emptyCursorPageTokens,
       message: mapErrorMessage(error, listErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       tickets: [],
     };
   }
@@ -206,6 +214,7 @@ export const issueAccessTicket = async (
       ticket: mapTicket(response.ticket),
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, issueErrorMessage),
@@ -247,6 +256,7 @@ export const revokeAccessTicket = async (
       ticket: mapTicket(response.ticket),
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, revokeErrorMessage),

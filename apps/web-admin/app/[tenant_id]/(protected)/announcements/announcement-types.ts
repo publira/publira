@@ -26,6 +26,8 @@ export type ListAnnouncementsResult = CursorPageTokens &
         ok: false;
         message: string;
         announcements: AnnouncementItem[];
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn: boolean;
       }
   );
 
@@ -39,6 +41,8 @@ export type ListAnnouncementTargetUsersResult =
       ok: false;
       message: string;
       users: AnnouncementTargetUser[];
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
     };
 
 export type CreateAnnouncementActionState =

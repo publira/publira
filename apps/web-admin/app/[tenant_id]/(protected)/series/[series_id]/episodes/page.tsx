@@ -27,6 +27,7 @@ import {
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { FlashToast } from "#components/flash-toast";
 import { PaginationFooter } from "#components/pagination-controls";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -67,6 +68,8 @@ const SeriesEpisodesPage = async ({
     }),
     getTenantDisplayTimeZone(tenantId),
   ]);
+  await redirectToLoginIfSessionRejected(result);
+
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);
 

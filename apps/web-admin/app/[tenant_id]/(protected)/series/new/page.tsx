@@ -13,6 +13,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listAllLabels } from "#lib/label";
 import { listSeries } from "#lib/series";
@@ -53,6 +54,12 @@ const NewSeriesFormData = async () => {
       listAllLabels(tenantId),
       getTenantDisplayTimeZone(tenantId),
     ]);
+
+  await redirectToLoginIfSessionRejected(
+    listResult,
+    creatorsResult,
+    labelsResult
+  );
 
   return (
     <SeriesForm

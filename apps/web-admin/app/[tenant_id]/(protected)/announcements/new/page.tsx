@@ -15,6 +15,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { listAllAnnouncementTargetUsers } from "#lib/announcement";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantId } from "#lib/tenant-id";
 
 import { AnnouncementForm } from "../_components/announcement-form";
@@ -41,6 +42,8 @@ const AnnouncementFormSkeleton = () => (
 const AnnouncementFormData = async () => {
   const tenantId = await getTenantId();
   const usersResult = await listAllAnnouncementTargetUsers(tenantId);
+
+  await redirectToLoginIfSessionRejected(usersResult);
 
   return (
     <AnnouncementForm

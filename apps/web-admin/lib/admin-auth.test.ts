@@ -51,33 +51,33 @@ beforeEach(() => {
 });
 
 describe("getAdminCurrentUser", () => {
-  it("空の accessToken に対して null を返す", async () => {
+  it("空の accessToken では再ログインを求める", async () => {
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await getAdminCurrentUser("tenant_001");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, requiresSignIn: true });
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
-  it("空白のみの accessToken に対して null を返す", async () => {
+  it("空白のみの accessToken でも再ログインを求める", async () => {
     // getAccessToken は常にトリム済みの値を返すため、空白のみのケースは空文字と同等
     mockGetAccessToken.mockResolvedValueOnce("");
     const result = await getAdminCurrentUser("tenant_001");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, requiresSignIn: true });
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
-  it("API が user を返さない場合に null を返す", async () => {
+  it("API が user を返さない場合は再ログインを求めずに失敗する", async () => {
     mockGetMe.mockResolvedValueOnce({});
     const result = await getAdminCurrentUser("tenant_001");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, requiresSignIn: false });
   });
 
-  it("API が publicId 空の user を返した場合に null を返す", async () => {
+  it("API が publicId 空の user を返した場合は再ログインを求めない", async () => {
     mockGetMe.mockResolvedValueOnce({
       user: { name: "テスト", publicId: "", role: "admin" },
     });
     const result = await getAdminCurrentUser("tenant_001");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, requiresSignIn: false });
   });
 
   it("有効なレスポンスからユーザー情報を返す", async () => {
@@ -86,9 +86,8 @@ describe("getAdminCurrentUser", () => {
     });
     const result = await getAdminCurrentUser("tenant_001");
     expect(result).toEqual({
-      name: "山田太郎",
-      publicId: "user-001",
-      role: "admin",
+      ok: true,
+      user: { name: "山田太郎", publicId: "user-001", role: "admin" },
     });
   });
 
@@ -106,12 +105,20 @@ describe("getAdminCurrentUser", () => {
     );
   });
 
-  it("想定内エラーは null を返す", async () => {
+  it("権限エラーは再ログインを求めずに失敗する", async () => {
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("forbidden", Code.PermissionDenied)
     );
     const result = await getAdminCurrentUser("tenant_001");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, requiresSignIn: false });
+  });
+
+  it("セッションが拒否されたら再ログインを求める", async () => {
+    mockGetMe.mockRejectedValueOnce(
+      new ConnectError("invalid token", Code.Unauthenticated)
+    );
+    const result = await getAdminCurrentUser("tenant_001");
+    expect(result).toEqual({ ok: false, requiresSignIn: true });
   });
 
   it("想定外エラーは再throwする", async () => {
@@ -126,7 +133,10 @@ describe("getAdminCurrentUser", () => {
       user: { name: "  ", publicId: "user-002", role: "" },
     });
     const result = await getAdminCurrentUser("tenant_001");
-    expect(result).toEqual({ name: "", publicId: "user-002", role: "" });
+    expect(result).toEqual({
+      ok: true,
+      user: { name: "", publicId: "user-002", role: "" },
+    });
   });
 });
 

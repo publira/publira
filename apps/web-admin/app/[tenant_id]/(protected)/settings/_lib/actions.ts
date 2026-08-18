@@ -7,6 +7,7 @@ import { updateTag } from "next/cache";
 import { z } from "zod";
 
 import { requestAdminEmailChange } from "#lib/admin-auth";
+import { requireAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import {
   sendTenantSmtpTestEmail,
   updateTenantEmailSettings,
@@ -17,7 +18,6 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
-import { getAccessToken } from "#lib/session";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
   tenantTimezoneCacheTag,
@@ -216,12 +216,14 @@ export const updateSiteSettingsAction = async (
     };
   }
 
-  const result = await updateTenantSiteSettings({
-    copyrightText,
-    siteDescription,
-    siteTagline,
-    tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateTenantSiteSettings({
+      copyrightText,
+      siteDescription,
+      siteTagline,
+      tenantId,
+    })
+  );
 
   if (!result.ok) {
     return {
@@ -260,10 +262,12 @@ export const updateTenantThemeSettingsAction = async (
     };
   }
 
-  const result = await updateTenantThemeSettings({
-    ...parsed.data,
-    tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateTenantThemeSettings({
+      ...parsed.data,
+      tenantId,
+    })
+  );
 
   if (!result.ok) {
     return {
@@ -305,10 +309,12 @@ export const updateTenantTimezoneAction = async (
     };
   }
 
-  const result = await updateTenantTimezone({
-    tenantId,
-    timezone: parsed.data.timezone,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateTenantTimezone({
+      tenantId,
+      timezone: parsed.data.timezone,
+    })
+  );
 
   if (!result.ok) {
     return {
@@ -341,7 +347,9 @@ export const updateTenantEmailSettingsAction = async (
     };
   }
 
-  const result = await updateTenantEmailSettings(input);
+  const result = await withAdminSessionReauth(() =>
+    updateTenantEmailSettings(input)
+  );
   if (!result.ok) {
     return {
       message: result.message,
@@ -369,7 +377,9 @@ export const sendTenantSmtpTestEmailAction = async (
     };
   }
 
-  const result = await sendTenantSmtpTestEmail(input);
+  const result = await withAdminSessionReauth(() =>
+    sendTenantSmtpTestEmail(input)
+  );
   if (!result.ok) {
     return {
       message: result.message,
@@ -407,19 +417,10 @@ export const requestEmailChangeAction = async (
     };
   }
 
-  const sessionId = await getAccessToken();
-  if (!sessionId) {
-    return {
-      message: "セッションが無効です。再度ログインしてください。",
-      ok: false,
-    };
-  }
+  await requireAdminSession();
 
-  const result = await requestAdminEmailChange(
-    tenantId,
-    currentEmail,
-    newEmail,
-    currentPassword
+  const result = await withAdminSessionReauth(() =>
+    requestAdminEmailChange(tenantId, currentEmail, newEmail, currentPassword)
   );
 
   if (!result.ok) {

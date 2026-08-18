@@ -1,12 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDeleteCookie, mockGetAccessToken, mockLogoutAdmin, mockRedirect } =
-  vi.hoisted(() => ({
-    mockDeleteCookie: vi.fn(),
-    mockGetAccessToken: vi.fn(),
-    mockLogoutAdmin: vi.fn(),
-    mockRedirect: vi.fn(),
-  }));
+const {
+  mockDeleteCookie,
+  mockGetAccessToken,
+  mockLogoutAdmin,
+  mockRedirect,
+  mockUpdateTag,
+} = vi.hoisted(() => ({
+  mockDeleteCookie: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockLogoutAdmin: vi.fn(),
+  mockRedirect: vi.fn(),
+  mockUpdateTag: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  updateTag: mockUpdateTag,
+}));
 
 vi.mock("next/headers", () => ({
   cookies: () => ({
@@ -19,7 +29,6 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./admin-auth", () => ({
-  ADMIN_SESSION_COOKIE_NAME: "publira_web_admin_auth",
   logoutAdmin: mockLogoutAdmin,
 }));
 
@@ -42,6 +51,7 @@ describe("logoutAction", () => {
     expect(mockGetAccessToken).toHaveBeenCalledOnce();
     expect(mockLogoutAdmin).toHaveBeenCalledWith("tok_abc", "TENANT001");
     expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_admin_auth");
+    expect(mockUpdateTag).toHaveBeenCalledWith("admin-session-cookie");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 
@@ -53,6 +63,7 @@ describe("logoutAction", () => {
     await logoutAction("TENANT001");
 
     expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_admin_auth");
+    expect(mockUpdateTag).toHaveBeenCalledWith("admin-session-cookie");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 });

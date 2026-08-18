@@ -21,6 +21,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPage, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -91,10 +92,14 @@ const PageWorkspaceData = async ({
       notFound();
     }
 
+    await redirectToLoginIfSessionRejected(pageResult);
+
     return <PageLoadError message={pageResult.message} />;
   }
 
   if (!versionsResult.ok && versionsResult.versions.length === 0) {
+    await redirectToLoginIfSessionRejected(versionsResult);
+
     return <PageLoadError message={versionsResult.message} />;
   }
 

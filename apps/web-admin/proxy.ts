@@ -6,6 +6,10 @@ import { NextResponse } from "next/server";
 import {
   ADMIN_SESSION_COOKIE_NAME,
   buildLoginUrl,
+  buildReturnToPath,
+  hasActiveAdminSessionCookie,
+  isSessionRevokedRedirect,
+  RETURN_TO_HEADER_NAME,
 } from "./lib/admin-auth-shared";
 import { resolveTenantId } from "./lib/tenant";
 
@@ -55,18 +59,41 @@ export const proxy = async (request: NextRequest) => {
   const rewriteUrl = request.nextUrl.clone();
   rewriteUrl.pathname = `/${tenantId}${pathname}`;
 
+  const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE_NAME)?.value;
+  const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
+
   if (PUBLIC_PATHS.has(pathname)) {
-    return NextResponse.rewrite(rewriteUrl);
+    const response = NextResponse.rewrite(rewriteUrl);
+    // The API rejected this session while a page was rendering, where the
+    // cookie cannot be touched. Clearing it here is what keeps the console from
+    // waving the operator back in with the same dead credentials.
+    if (hasStoredSessionCookie && isSessionRevokedRedirect(request.nextUrl)) {
+      response.cookies.delete(ADMIN_SESSION_COOKIE_NAME);
+    }
+    return response;
   }
 
-  const sessionId = request.cookies
-    .get(ADMIN_SESSION_COOKIE_NAME)
-    ?.value?.trim();
-  if (sessionId) {
-    return NextResponse.rewrite(rewriteUrl);
+  if (await hasActiveAdminSessionCookie(sessionCookie)) {
+    // The console cannot read the URL it is serving, so the path travels with
+    // the request: a layout, a page, or a Server Action whose RPC comes back
+    // `unauthenticated` sends the operator to `/login?next=` here.
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(
+      RETURN_TO_HEADER_NAME,
+      buildReturnToPath(request.nextUrl)
+    );
+    return NextResponse.rewrite(rewriteUrl, {
+      request: { headers: requestHeaders },
+    });
   }
 
-  return NextResponse.redirect(buildLoginUrl(request.nextUrl));
+  const response = NextResponse.redirect(buildLoginUrl(request.nextUrl));
+  // A cookie that no longer decrypts or has run out is not worth carrying to
+  // the login page, where it would only be rejected again.
+  if (hasStoredSessionCookie) {
+    response.cookies.delete(ADMIN_SESSION_COOKIE_NAME);
+  }
+  return response;
 };
 
 export const config = {

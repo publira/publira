@@ -4,6 +4,10 @@ import {
   rpcErrorRawMessage,
 } from "@publira/api-client/errors";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { TenantSmtpSettings } from "./email-settings-shared";
 import { getAccessToken } from "./session";
@@ -42,7 +46,16 @@ export interface SendTenantSmtpTestInput {
 
 export type TenantSmtpSettingsResult =
   | { ok: true; settings: TenantSmtpSettings }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /**
+       * The API rejected the session while reading the settings — the page
+       * raises the login redirect. The update path throws instead, so only
+       * {@link getTenantEmailSettings} ever sets it.
+       */
+      requiresSignIn?: boolean;
+    };
 
 export type TenantSmtpTestResult =
   | { ok: true; recipientEmail: string }
@@ -98,7 +111,11 @@ export const getTenantEmailSettings = async (
   const normalizedTenantId = tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return {
+      message: sessionErrorMessage,
+      ok: false,
+      requiresSignIn: !sessionId,
+    };
   }
 
   try {
@@ -112,7 +129,11 @@ export const getTenantEmailSettings = async (
     return { ok: true, settings: toTenantSmtpSettings(response.settings) };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    return { message: parseErrorMessage(error), ok: false };
+    return {
+      message: parseErrorMessage(error),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
   }
 };
 
@@ -146,6 +167,7 @@ export const updateTenantEmailSettings = async (
 
     return { ok: true, settings: toTenantSmtpSettings(response.settings) };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }
@@ -183,6 +205,7 @@ export const sendTenantSmtpTestEmail = async (
 
     return { ok: true, recipientEmail: response.recipientEmail };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }
