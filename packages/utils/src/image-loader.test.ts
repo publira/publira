@@ -28,6 +28,21 @@ describe("imageServerLoader", () => {
     expect(url.searchParams.has("q")).toBe(false);
   });
 
+  it("passes an explicit 75 through rather than treating it as unset", () => {
+    // `next/image` hands the loader `undefined`, not 75, when the prop is
+    // absent, so 75 here is a real choice by the call site.
+    const url = new URL(
+      imageServerLoader({
+        quality: 75,
+        src: "/images/episodes/page-1",
+        width: 640,
+      }),
+      "https://example.test"
+    );
+
+    expect(url.searchParams.get("q")).toBe("75");
+  });
+
   it("passes a requested quality through as q", () => {
     const url = new URL(
       imageServerLoader({

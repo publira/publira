@@ -287,7 +287,8 @@ images: {
 | `blob:` / `data:` / 絶対 URL / その他のパス | そのまま返す |
 
 - `fit=scale-down` は原寸より大きくしないための指定です。`next/image` は `deviceSizes` の全幅（最大 3840px）を要求するので、Manael の既定（`contain`、拡大あり）では小さなアイコンが 3840px に引き伸ばされます。
-- `q` は呼び出し側が `quality` を指定したときだけ付けます。無指定のときは Manael のフォーマット別既定（WebP 90 / AVIF 60）が効きます。
+- `q` は呼び出し側が `quality` を指定したときだけ付けます。`next/image` は `quality` プロップが無いとローダーに `undefined` を渡すので（Next.js 16.3 の `get-img-props`）、無指定のときは Manael のフォーマット別既定（WebP 90 / AVIF 60）が効きます。
+- `quality` を指定する場合は、その値を各アプリの `images.qualities` にも足してください。既定は `[75]` で、外れた値は開発時に警告が出ます（custom loader なので値そのものはローダーまで届きます）。
 - WebP / AVIF の選択はブラウザの `Accept` によるので、ローダーは形式を指定しません。
 - `blob:` の一時プレビューなど image-server を経由しない `<Image>` は、そのまま `unoptimized` を付けたままにします。
 
