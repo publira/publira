@@ -77,15 +77,14 @@ func TestDBListEndUsersPagesAreStableWhenCreatedAtTies(t *testing.T) {
 
 	client := publirasplatformv1connect.NewPlatformUserServiceClient(ts.Client(), ts.URL)
 	first, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
-		Limit:  1,
-		Offset: 0,
+		Limit: 1,
 	}))
 	if err != nil {
 		t.Fatalf("ListEndUsers first page: %v", err)
 	}
 	second, err := client.ListEndUsers(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.ListEndUsersRequest{
-		Limit:  1,
-		Offset: 1,
+		Limit: 1,
+		Token: first.Msg.NextToken,
 	}))
 	if err != nil {
 		t.Fatalf("ListEndUsers second page: %v", err)

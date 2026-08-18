@@ -327,7 +327,7 @@ func (q *Queries) ListAuditLogsByTenantDesc(ctx context.Context, arg ListAuditLo
 	return items, nil
 }
 
-const listPlatformAuditLogs = `-- name: ListPlatformAuditLogs :many
+const listPlatformAuditLogsAsc = `-- name: ListPlatformAuditLogsAsc :many
 SELECT a.id,
     a.actor_platform_user_id,
     a.actor_role,
@@ -364,20 +364,33 @@ FROM platform_audit_logs a
     AND a.target_type = 'tenant'
 WHERE ($1::text IS NULL OR actor_pu.public_id = $1::text)
     AND ($2::text IS NULL OR (a.target_type = 'tenant' AND target_t.public_id = $2::text))
-  AND ($3::text IS NULL OR a.action = $3::text)
-ORDER BY a.created_at DESC
-LIMIT $5 OFFSET $4
+    AND ($3::text IS NULL OR a.action = $3::text)
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND (a.created_at, a.id) >= ($6::timestamptz, $4::uuid)
+        )
+        OR (
+            NOT $5::boolean
+            AND (a.created_at, a.id) > ($6::timestamptz, $4::uuid)
+        )
+    )
+ORDER BY a.created_at ASC, a.id ASC
+LIMIT $7
 `
 
-type ListPlatformAuditLogsParams struct {
+type ListPlatformAuditLogsAscParams struct {
 	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
 	FilterTenantPublicID    sql.NullString `json:"filter_tenant_public_id"`
 	FilterAction            sql.NullString `json:"filter_action"`
-	Offset                  int32          `json:"offset"`
+	CursorID                uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive         bool           `json:"cursor_inclusive"`
+	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
 	Limit                   int32          `json:"limit"`
 }
 
-type ListPlatformAuditLogsRow struct {
+type ListPlatformAuditLogsAscRow struct {
 	ID                  uuid.UUID      `json:"id"`
 	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
 	ActorRole           string         `json:"actor_role"`
@@ -396,22 +409,158 @@ type ListPlatformAuditLogsRow struct {
 	TargetName          string         `json:"target_name"`
 }
 
-// 管理操作監査ログ一覧取得（フィルタ対応）
-func (q *Queries) ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformAuditLogs,
+func (q *Queries) ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatformAuditLogsAscParams) ([]ListPlatformAuditLogsAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPlatformAuditLogsAsc,
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantPublicID,
 		arg.FilterAction,
-		arg.Offset,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
 		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListPlatformAuditLogsRow
+	var items []ListPlatformAuditLogsAscRow
 	for rows.Next() {
-		var i ListPlatformAuditLogsRow
+		var i ListPlatformAuditLogsAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorPlatformUserID,
+			&i.ActorRole,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.Outcome,
+			&i.Reason,
+			&i.ClientIp,
+			&i.CreatedAt,
+			&i.ActorName,
+			&i.ActorPublicID,
+			&i.TenantName,
+			&i.TenantPublicID,
+			&i.TargetPublicID,
+			&i.TargetName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlatformAuditLogsDesc = `-- name: ListPlatformAuditLogsDesc :many
+SELECT a.id,
+    a.actor_platform_user_id,
+    a.actor_role,
+    a.action,
+    a.target_type,
+    a.target_id,
+    a.outcome,
+    a.reason,
+    a.client_ip,
+    a.created_at,
+    COALESCE(actor_pu.name, ''::text) AS actor_name,
+    COALESCE(actor_pu.public_id, ''::text) AS actor_public_id,
+    COALESCE(target_t.name, ''::text) AS tenant_name,
+    COALESCE(target_t.public_id, ''::text) AS tenant_public_id,
+    CASE
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.public_id, ''::text)
+        WHEN a.target_type = 'operator' THEN COALESCE(target_pu.public_id, ''::text)
+        WHEN a.target_type = 'user' THEN COALESCE(target_u.public_id, ''::text)
+        ELSE ''::text
+    END AS target_public_id,
+    CASE
+        WHEN a.target_type = 'tenant' THEN COALESCE(target_t.name, ''::text)
+        WHEN a.target_type = 'operator' THEN COALESCE(target_pu.name, ''::text)
+        WHEN a.target_type = 'user' THEN COALESCE(target_u.name, ''::text)
+        ELSE ''::text
+    END AS target_name
+FROM platform_audit_logs a
+    LEFT JOIN platform_users actor_pu ON actor_pu.id = a.actor_platform_user_id
+    LEFT JOIN platform_users target_pu ON target_pu.id::text = a.target_id
+    AND a.target_type = 'operator'
+    LEFT JOIN users target_u ON target_u.id::text = a.target_id
+    AND a.target_type = 'user'
+    LEFT JOIN tenants target_t ON target_t.id::text = a.target_id
+    AND a.target_type = 'tenant'
+WHERE ($1::text IS NULL OR actor_pu.public_id = $1::text)
+    AND ($2::text IS NULL OR (a.target_type = 'tenant' AND target_t.public_id = $2::text))
+    AND ($3::text IS NULL OR a.action = $3::text)
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND (a.created_at, a.id) <= ($6::timestamptz, $4::uuid)
+        )
+        OR (
+            NOT $5::boolean
+            AND (a.created_at, a.id) < ($6::timestamptz, $4::uuid)
+        )
+    )
+ORDER BY a.created_at DESC, a.id DESC
+LIMIT $7
+`
+
+type ListPlatformAuditLogsDescParams struct {
+	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
+	FilterTenantPublicID    sql.NullString `json:"filter_tenant_public_id"`
+	FilterAction            sql.NullString `json:"filter_action"`
+	CursorID                uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive         bool           `json:"cursor_inclusive"`
+	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
+	Limit                   int32          `json:"limit"`
+}
+
+type ListPlatformAuditLogsDescRow struct {
+	ID                  uuid.UUID      `json:"id"`
+	ActorPlatformUserID uuid.UUID      `json:"actor_platform_user_id"`
+	ActorRole           string         `json:"actor_role"`
+	Action              string         `json:"action"`
+	TargetType          sql.NullString `json:"target_type"`
+	TargetID            sql.NullString `json:"target_id"`
+	Outcome             string         `json:"outcome"`
+	Reason              sql.NullString `json:"reason"`
+	ClientIp            sql.NullString `json:"client_ip"`
+	CreatedAt           time.Time      `json:"created_at"`
+	ActorName           string         `json:"actor_name"`
+	ActorPublicID       string         `json:"actor_public_id"`
+	TenantName          string         `json:"tenant_name"`
+	TenantPublicID      string         `json:"tenant_public_id"`
+	TargetPublicID      string         `json:"target_public_id"`
+	TargetName          string         `json:"target_name"`
+}
+
+// Platform ListAuditLogs は (created_at, id) の降順で表示する。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+// 読めないため、走査方向ごとにクエリを分ける。
+// cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPlatformAuditLogsDesc,
+		arg.FilterActorUserPublicID,
+		arg.FilterTenantPublicID,
+		arg.FilterAction,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlatformAuditLogsDescRow
+	for rows.Next() {
+		var i ListPlatformAuditLogsDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ActorPlatformUserID,

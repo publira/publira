@@ -2,12 +2,34 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildMemberInvitationsPath,
+  buildMembersPath,
   parseMemberInvitationFilters,
+  parseTenantMembersParams,
 } from "./search-params";
+
+describe("parseTenantMembersParams", () => {
+  it("前後空白を除いた tenant_id を返す", () => {
+    expect(parseTenantMembersParams({ tenant_id: " TENANT001 " })).toEqual({
+      tenantId: "TENANT001",
+    });
+  });
+
+  it("空や未指定は拒否する", () => {
+    expect(parseTenantMembersParams({ tenant_id: "   " })).toBeNull();
+    expect(parseTenantMembersParams({})).toBeNull();
+    expect(parseTenantMembersParams({ tenant_id: ["a", "b"] })).toBeNull();
+  });
+});
 
 describe("parseMemberInvitationFilters", () => {
   it("ページ token をそのまま受け取る", () => {
-    expect(parseMemberInvitationFilters({ token: " page-token " })).toEqual({
+    expect(
+      parseMemberInvitationFilters({
+        members_token: " members-token ",
+        token: " page-token ",
+      })
+    ).toEqual({
+      membersToken: " members-token ",
       token: " page-token ",
     });
   });
@@ -20,30 +42,61 @@ describe("parseMemberInvitationFilters", () => {
 
   it("複数値や未指定は空文字にする", () => {
     expect(
-      parseMemberInvitationFilters({ token: ["first", "second"] })
+      parseMemberInvitationFilters({
+        members_token: ["first", "second"],
+        token: ["first", "second"],
+      })
     ).toEqual({
+      membersToken: "",
       token: "",
     });
-    expect(parseMemberInvitationFilters({})).toEqual({ token: "" });
+    expect(parseMemberInvitationFilters({})).toEqual({
+      membersToken: "",
+      token: "",
+    });
   });
 });
 
 describe("buildMemberInvitationsPath", () => {
-  it("ページ token を URL に保持する", () => {
+  it("招待とメンバーの token を URL に保持する", () => {
     expect(
-      buildMemberInvitationsPath("tenant_seifuu", { token: "next/page" })
-    ).toBe("/tenants/tenant_seifuu/members?token=next%2Fpage");
-  });
-
-  it("token がなければメンバー画面のルートを返す", () => {
-    expect(buildMemberInvitationsPath("tenant_seifuu", { token: "" })).toBe(
-      "/tenants/tenant_seifuu/members"
+      buildMemberInvitationsPath("tenant_seifuu", {
+        membersToken: "members/page",
+        token: "next/page",
+      })
+    ).toBe(
+      "/tenants/tenant_seifuu/members?token=next%2Fpage&members_token=members%2Fpage"
     );
   });
 
+  it("token がなければメンバー画面のルートを返す", () => {
+    expect(
+      buildMemberInvitationsPath("tenant_seifuu", {
+        membersToken: "",
+        token: "",
+      })
+    ).toBe("/tenants/tenant_seifuu/members");
+  });
+
   it("tenant id を URL エンコードする", () => {
-    expect(buildMemberInvitationsPath("tenant/with space", { token: "" })).toBe(
-      "/tenants/tenant%2Fwith%20space/members"
+    expect(
+      buildMemberInvitationsPath("tenant/with space", {
+        membersToken: "",
+        token: "",
+      })
+    ).toBe("/tenants/tenant%2Fwith%20space/members");
+  });
+});
+
+describe("buildMembersPath", () => {
+  it("メンバー一覧の token を URL に保持する", () => {
+    expect(
+      buildMembersPath("tenant_seifuu", {
+        membersToken: "members-next",
+        token: "invites",
+      })
+    ).toBe(
+      "/tenants/tenant_seifuu/members?token=invites&members_token=members-next"
     );
   });
 });

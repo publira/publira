@@ -246,14 +246,14 @@ export const getCatalogTopFeaturedLabels = async (
 ): Promise<CachedReadResult<LabelListItem[]>> => {
   "use cache";
 
-  const labels = await listPublishedLabels(tenantId, maxLabels, 0);
+  const labels = await listPublishedLabels(tenantId, { limit: maxLabels });
   if (!labels.ok) {
     // Re-marking the outer entry is deliberate: the inner cache life does
     // propagate, but this scope owning its own drop keeps the guarantee local.
     return cachedReadFailure(labels.message);
   }
 
-  return labels;
+  return { ok: true, value: labels.value.labels };
 };
 
 export const getCatalogTopFeaturedAuthors = async (

@@ -42,7 +42,7 @@ import type {
   PlatformAuditLogSummary,
 } from "#lib/audit-logs";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { DEFAULT_LIST_PAGE_SIZE, MAX_LIST_OFFSET } from "#lib/list-pagination";
+import { DEFAULT_LIST_PAGE_SIZE } from "#lib/list-pagination";
 import { getOperatorRoleLabel } from "#lib/operator-labels";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantRoleLabel } from "#lib/tenant-labels";
@@ -152,17 +152,14 @@ const getActorRoleLabel = (role: string): string => {
   }
 };
 
-const getSummaryText = (
-  result: ListPlatformAuditLogsResult,
-  offset: number
-): string => {
+const getSummaryText = (result: ListPlatformAuditLogsResult): string => {
   if (!result.ok) {
     return "-";
   }
   if (result.auditLogs.length === 0) {
     return "0件を表示";
   }
-  return `${offset + 1}〜${offset + result.auditLogs.length}件を表示`;
+  return `${result.auditLogs.length}件を表示`;
 };
 
 const AuditLogsFilters = ({
@@ -206,46 +203,23 @@ const AuditLogsFilters = ({
 );
 
 const AuditLogsPagination = ({
-  actionFilter,
-  actorFilter,
-  hasNext,
-  hasPrev,
-  nextOffset,
-  prevOffset,
+  nextHref,
+  previousHref,
   summaryText,
 }: {
-  actionFilter: string;
-  actorFilter: string;
-  hasNext: boolean;
-  hasPrev: boolean;
-  nextOffset: number;
-  prevOffset: number;
+  nextHref?: string;
+  previousHref?: string;
   summaryText: string;
-}) => {
-  const filterParams = {
-    action: actionFilter,
-    actorUserPublicId: actorFilter,
-  };
-
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <p className="text-xs text-muted-foreground">{summaryText}</p>
-      <PaginationControls
-        ariaLabel="監査ログ一覧のページ送り"
-        nextHref={
-          hasNext
-            ? buildAuditLogsPath({ ...filterParams, offset: nextOffset })
-            : undefined
-        }
-        previousHref={
-          hasPrev
-            ? buildAuditLogsPath({ ...filterParams, offset: prevOffset })
-            : undefined
-        }
-      />
-    </div>
-  );
-};
+}) => (
+  <div className="flex items-center justify-between gap-3">
+    <p className="text-xs text-muted-foreground">{summaryText}</p>
+    <PaginationControls
+      ariaLabel="監査ログ一覧のページ送り"
+      nextHref={nextHref}
+      previousHref={previousHref}
+    />
+  </div>
+);
 
 const renderAuditLogTarget = (log: PlatformAuditLogSummary) => {
   if (log.targetPublicId && isOperatorTargetType(log.targetType)) {
@@ -382,7 +356,7 @@ const AuditLogsContent = async ({
   const {
     action: actionFilter,
     actorUserPublicId: actorFilter,
-    offset,
+    token,
   } = parseAuditLogFilters(await searchParams, allowedActionValues);
 
   const hasFilter = Boolean(actorFilter || actionFilter);
@@ -394,21 +368,24 @@ const AuditLogsContent = async ({
       action: actionFilter || undefined,
       actorUserPublicId: actorFilter || undefined,
       limit: pageSize,
-      offset,
+      token: token || undefined,
     }),
     getPlatformDisplayTimeZone(),
   ]);
 
   await redirectToLoginIfSessionRejected(result);
 
-  const hasPrev = offset > 0;
-  const prevOffset = Math.max(0, offset - pageSize);
-  const nextOffset = offset + pageSize;
-  const hasNext =
-    result.ok &&
-    result.auditLogs.length === pageSize &&
-    nextOffset <= MAX_LIST_OFFSET;
-  const summaryText = getSummaryText(result, offset);
+  const filterParams = {
+    action: actionFilter,
+    actorUserPublicId: actorFilter,
+  };
+  const previousHref = result.previousToken
+    ? buildAuditLogsPath({ ...filterParams, token: result.previousToken })
+    : undefined;
+  const nextHref = result.nextToken
+    ? buildAuditLogsPath({ ...filterParams, token: result.nextToken })
+    : undefined;
+  const summaryText = getSummaryText(result);
 
   return (
     <Card>
@@ -449,12 +426,8 @@ const AuditLogsContent = async ({
         </Table>
 
         <AuditLogsPagination
-          actionFilter={actionFilter}
-          actorFilter={actorFilter}
-          hasNext={hasNext}
-          hasPrev={hasPrev}
-          nextOffset={nextOffset}
-          prevOffset={prevOffset}
+          nextHref={nextHref}
+          previousHref={previousHref}
           summaryText={summaryText}
         />
       </CardContent>

@@ -29,6 +29,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { PaginationControls } from "#components/pagination-controls";
 import {
   PlatformPage,
   PlatformPageContent,
@@ -40,7 +41,6 @@ import {
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { MAX_LIST_OFFSET } from "#lib/list-pagination";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import type { GetPlatformTenantResult } from "#lib/tenants";
 import { getPlatformTenant } from "#lib/tenants";
@@ -116,13 +116,6 @@ const createdRangeEnd = (date: string, timeZone: string): string | undefined =>
 
 type UsersPageProps = PageProps<"/users">;
 
-interface PaginationState {
-  hasNext: boolean;
-  hasPrev: boolean;
-  nextOffset: number;
-  prevOffset: number;
-}
-
 interface TenantFilterMessage {
   text: string;
   variant: "destructive" | "info";
@@ -140,30 +133,37 @@ const emptySelectedTenant = {
   tenant: null,
 } as const satisfies GetPlatformTenantResult;
 
-const buildPaginationState = (
+const emptyUsersListResult = {
+  nextToken: "",
+  ok: true as const,
+  previousToken: "",
+  users: [],
+} satisfies ListPlatformEndUsersResult;
+
+const buildUsersPageHrefs = (
+  filters: UsersFilters,
   result: ListPlatformEndUsersResult,
-  offset: number,
-  limit: number
-): PaginationState => {
-  const nextOffset = offset + limit;
+  skip: boolean
+): { nextHref?: string; previousHref?: string } => {
+  if (skip) {
+    return {};
+  }
   return {
-    hasNext:
-      result.ok &&
-      result.users.length === limit &&
-      nextOffset <= MAX_LIST_OFFSET,
-    hasPrev: offset > 0,
-    nextOffset,
-    prevOffset: Math.max(0, offset - limit),
+    nextHref: result.nextToken
+      ? buildUsersPath({ ...filters, token: result.nextToken })
+      : undefined,
+    previousHref: result.previousToken
+      ? buildUsersPath({ ...filters, token: result.previousToken })
+      : undefined,
   };
 };
 
 const buildSummaryText = (
   result: ListPlatformEndUsersResult,
-  offset: number,
   usersLength: number
 ): string => {
   if (result.ok) {
-    return `${offset + 1}〜${offset + usersLength}件を表示`;
+    return usersLength === 0 ? "0件を表示" : `${usersLength}件を表示`;
   }
   return "-";
 };
@@ -396,58 +396,6 @@ const UsersTableSection = ({
   </Table>
 );
 
-const PaginationControls = ({
-  filters,
-  pagination,
-}: {
-  filters: UsersFilters;
-  pagination: PaginationState;
-}) => (
-  <div className="flex items-center gap-2">
-    {pagination.hasPrev ? (
-      <LinkButton
-        render={
-          <Link
-            href={buildUsersPath({
-              ...filters,
-              offset: pagination.prevOffset,
-            })}
-          />
-        }
-        size="sm"
-        variant="outline"
-      >
-        前へ
-      </LinkButton>
-    ) : (
-      <Button disabled size="sm" variant="outline">
-        前へ
-      </Button>
-    )}
-
-    {pagination.hasNext ? (
-      <LinkButton
-        render={
-          <Link
-            href={buildUsersPath({
-              ...filters,
-              offset: pagination.nextOffset,
-            })}
-          />
-        }
-        size="sm"
-        variant="outline"
-      >
-        次へ
-      </LinkButton>
-    ) : (
-      <Button disabled size="sm" variant="outline">
-        次へ
-      </Button>
-    )}
-  </div>
-);
-
 const UsersContent = async ({
   searchParams,
 }: Pick<UsersPageProps, "searchParams">) => {
@@ -491,14 +439,14 @@ const UsersContent = async ({
   });
 
   const result = pendingTenantPick
-    ? { ok: true as const, users: [] }
+    ? emptyUsersListResult
     : await listPlatformEndUsers({
         createdAfter: createdRangeStart(filters.createdFrom, timeZone),
         createdBefore: createdRangeEnd(filters.createdTo, timeZone),
         limit: filters.limit,
-        offset: filters.offset,
         status: filters.status || undefined,
         tenantId: tenantId || undefined,
+        token: filters.token || undefined,
       });
 
   await redirectToLoginIfSessionRejected(
@@ -515,9 +463,11 @@ const UsersContent = async ({
     filters.createdFrom ||
     filters.createdTo
   );
-  const pagination = pendingTenantPick
-    ? { hasNext: false, hasPrev: false, nextOffset: 0, prevOffset: 0 }
-    : buildPaginationState(result, filters.offset, filters.limit);
+  const { nextHref, previousHref } = buildUsersPageHrefs(
+    listFilters,
+    result,
+    pendingTenantPick
+  );
 
   return (
     <Card>
@@ -553,11 +503,13 @@ const UsersContent = async ({
 
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            {pendingTenantPick
-              ? "-"
-              : buildSummaryText(result, filters.offset, users.length)}
+            {pendingTenantPick ? "-" : buildSummaryText(result, users.length)}
           </p>
-          <PaginationControls filters={listFilters} pagination={pagination} />
+          <PaginationControls
+            ariaLabel="ユーザー一覧のページ送り"
+            nextHref={nextHref}
+            previousHref={previousHref}
+          />
         </div>
       </CardContent>
     </Card>

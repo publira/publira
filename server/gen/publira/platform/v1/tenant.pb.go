@@ -718,13 +718,16 @@ func (x *TenantMember) GetCreatedAt() string {
 	return ""
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListTenantMembersRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	Limit          int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset         int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListTenantMembersRequest) Reset() {
@@ -771,16 +774,20 @@ func (x *ListTenantMembersRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListTenantMembersRequest) GetOffset() int32 {
+func (x *ListTenantMembersRequest) GetToken() string {
 	if x != nil {
-		return x.Offset
+		return x.Token
 	}
-	return 0
+	return ""
 }
 
 type ListTenantMembersResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Members       []*TenantMember        `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Members []*TenantMember        `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -820,6 +827,20 @@ func (x *ListTenantMembersResponse) GetMembers() []*TenantMember {
 		return x.Members
 	}
 	return nil
+}
+
+func (x *ListTenantMembersResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListTenantMembersResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type AddTenantMemberRequest struct {
@@ -1810,13 +1831,16 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"r\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\"~\n" +
 	"\x18ListTenantMembersRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"X\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\x9e\x01\n" +
 	"\x19ListTenantMembersResponse\x12;\n" +
-	"\amembers\x18\x01 \x03(\v2!.publira.platform.v1.TenantMemberR\amembers\"\x92\x01\n" +
+	"\amembers\x18\x01 \x03(\v2!.publira.platform.v1.TenantMemberR\amembers\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x92\x01\n" +
 	"\x16AddTenantMemberRequest\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12$\n" +
 	"\x0euser_public_id\x18\x02 \x01(\tR\fuserPublicId\x12\x12\n" +

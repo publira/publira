@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/user.proto.
  */
 export const file_publira_platform_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("Ch5wdWJsaXJhL3BsYXRmb3JtL3YxL3VzZXIucHJvdG8SE3B1YmxpcmEucGxhdGZvcm0udjEihgEKB0VuZFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDgoGc3RhdHVzGAQgASgJEhIKCmNyZWF0ZWRfYXQYBSABKAkSEgoKdGVuYW50X2lkcxgGIAMoCRITCgt0ZW5hbnRfbmFtZRgHIAEoCSKhAQoTTGlzdEVuZFVzZXJzUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIOCgZvZmZzZXQYAiABKAUSFQoNY3JlYXRlZF9hZnRlchgDIAEoCRIOCgZzdGF0dXMYBCABKAkSFgoOY3JlYXRlZF9iZWZvcmUYBSABKAkSEgoKcHVibGljX2lkcxgGIAMoCRIYChB0ZW5hbnRfcHVibGljX2lkGAcgASgJIkMKFExpc3RFbmRVc2Vyc1Jlc3BvbnNlEisKBXVzZXJzGAEgAygLMhwucHVibGlyYS5wbGF0Zm9ybS52MS5FbmRVc2VyIiYKEUdldEVuZFVzZXJSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCSJAChJHZXRFbmRVc2VyUmVzcG9uc2USKgoEdXNlchgBIAEoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlciIqChVTdXNwZW5kRW5kVXNlclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIkQKFlN1c3BlbmRFbmRVc2VyUmVzcG9uc2USKgoEdXNlchgBIAEoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlciIsChdVbnN1c3BlbmRFbmRVc2VyUmVxdWVzdBIRCglwdWJsaWNfaWQYASABKAkiRgoYVW5zdXNwZW5kRW5kVXNlclJlc3BvbnNlEioKBHVzZXIYASABKAsyHC5wdWJsaXJhLnBsYXRmb3JtLnYxLkVuZFVzZXIiKQoURGVsZXRlRW5kVXNlclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIioKFURlbGV0ZUVuZFVzZXJSZXNwb25zZRIRCglwdWJsaWNfaWQYASABKAkypwQKE1BsYXRmb3JtVXNlclNlcnZpY2USZQoMTGlzdEVuZFVzZXJzEigucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXF1ZXN0GikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXNwb25zZSIAEl8KCkdldEVuZFVzZXISJi5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldEVuZFVzZXJSZXF1ZXN0GicucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRFbmRVc2VyUmVzcG9uc2UiABJrCg5TdXNwZW5kRW5kVXNlchIqLnB1YmxpcmEucGxhdGZvcm0udjEuU3VzcGVuZEVuZFVzZXJSZXF1ZXN0GisucHVibGlyYS5wbGF0Zm9ybS52MS5TdXNwZW5kRW5kVXNlclJlc3BvbnNlIgAScQoQVW5zdXNwZW5kRW5kVXNlchIsLnB1YmxpcmEucGxhdGZvcm0udjEuVW5zdXNwZW5kRW5kVXNlclJlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLlVuc3VzcGVuZEVuZFVzZXJSZXNwb25zZSIAEmgKDURlbGV0ZUVuZFVzZXISKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkRlbGV0ZUVuZFVzZXJSZXF1ZXN0GioucHVibGlyYS5wbGF0Zm9ybS52MS5EZWxldGVFbmRVc2VyUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
+  fileDesc("Ch5wdWJsaXJhL3BsYXRmb3JtL3YxL3VzZXIucHJvdG8SE3B1YmxpcmEucGxhdGZvcm0udjEihgEKB0VuZFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFZW1haWwYAyABKAkSDgoGc3RhdHVzGAQgASgJEhIKCmNyZWF0ZWRfYXQYBSABKAkSEgoKdGVuYW50X2lkcxgGIAMoCRITCgt0ZW5hbnRfbmFtZRgHIAEoCSKuAQoTTGlzdEVuZFVzZXJzUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIVCg1jcmVhdGVkX2FmdGVyGAMgASgJEg4KBnN0YXR1cxgEIAEoCRIWCg5jcmVhdGVkX2JlZm9yZRgFIAEoCRISCgpwdWJsaWNfaWRzGAYgAygJEhgKEHRlbmFudF9wdWJsaWNfaWQYByABKAkSDQoFdG9rZW4YCCABKAlKBAgCEANSBm9mZnNldCJvChRMaXN0RW5kVXNlcnNSZXNwb25zZRIrCgV1c2VycxgBIAMoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIiYKEUdldEVuZFVzZXJSZXF1ZXN0EhEKCXB1YmxpY19pZBgBIAEoCSJAChJHZXRFbmRVc2VyUmVzcG9uc2USKgoEdXNlchgBIAEoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlciIqChVTdXNwZW5kRW5kVXNlclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIkQKFlN1c3BlbmRFbmRVc2VyUmVzcG9uc2USKgoEdXNlchgBIAEoCzIcLnB1YmxpcmEucGxhdGZvcm0udjEuRW5kVXNlciIsChdVbnN1c3BlbmRFbmRVc2VyUmVxdWVzdBIRCglwdWJsaWNfaWQYASABKAkiRgoYVW5zdXNwZW5kRW5kVXNlclJlc3BvbnNlEioKBHVzZXIYASABKAsyHC5wdWJsaXJhLnBsYXRmb3JtLnYxLkVuZFVzZXIiKQoURGVsZXRlRW5kVXNlclJlcXVlc3QSEQoJcHVibGljX2lkGAEgASgJIioKFURlbGV0ZUVuZFVzZXJSZXNwb25zZRIRCglwdWJsaWNfaWQYASABKAkypwQKE1BsYXRmb3JtVXNlclNlcnZpY2USZQoMTGlzdEVuZFVzZXJzEigucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXF1ZXN0GikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0RW5kVXNlcnNSZXNwb25zZSIAEl8KCkdldEVuZFVzZXISJi5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldEVuZFVzZXJSZXF1ZXN0GicucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRFbmRVc2VyUmVzcG9uc2UiABJrCg5TdXNwZW5kRW5kVXNlchIqLnB1YmxpcmEucGxhdGZvcm0udjEuU3VzcGVuZEVuZFVzZXJSZXF1ZXN0GisucHVibGlyYS5wbGF0Zm9ybS52MS5TdXNwZW5kRW5kVXNlclJlc3BvbnNlIgAScQoQVW5zdXNwZW5kRW5kVXNlchIsLnB1YmxpcmEucGxhdGZvcm0udjEuVW5zdXNwZW5kRW5kVXNlclJlcXVlc3QaLS5wdWJsaXJhLnBsYXRmb3JtLnYxLlVuc3VzcGVuZEVuZFVzZXJSZXNwb25zZSIAEmgKDURlbGV0ZUVuZFVzZXISKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkRlbGV0ZUVuZFVzZXJSZXF1ZXN0GioucHVibGlyYS5wbGF0Zm9ybS52MS5EZWxldGVFbmRVc2VyUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
 
 /**
  * エンドユーザー情報（プラットフォーム運営者視点）
@@ -64,18 +64,17 @@ export const EndUserSchema: GenMessage<EndUser> = /*@__PURE__*/
   messageDesc(file_publira_platform_v1_user, 0);
 
 /**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
  * @generated from message publira.platform.v1.ListEndUsersRequest
  */
 export type ListEndUsersRequest = Message<"publira.platform.v1.ListEndUsersRequest"> & {
   /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
    * @generated from field: int32 limit = 1;
    */
   limit: number;
-
-  /**
-   * @generated from field: int32 offset = 2;
-   */
-  offset: number;
 
   /**
    * フィルタ条件
@@ -111,6 +110,13 @@ export type ListEndUsersRequest = Message<"publira.platform.v1.ListEndUsersReque
    * @generated from field: string tenant_public_id = 7;
    */
   tenantPublicId: string;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 8;
+   */
+  token: string;
 };
 
 /**
@@ -128,6 +134,20 @@ export type ListEndUsersResponse = Message<"publira.platform.v1.ListEndUsersResp
    * @generated from field: repeated publira.platform.v1.EndUser users = 1;
    */
   users: EndUser[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
 };
 
 /**

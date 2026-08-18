@@ -68,7 +68,9 @@ describe("listPlatformAuditLogs", () => {
           tenantName: "テナントA",
         },
       ],
+      nextToken: "",
       ok: true,
+      previousToken: "",
     });
 
     expect(mockListAuditLogs).toHaveBeenCalledWith(
@@ -76,8 +78,68 @@ describe("listPlatformAuditLogs", () => {
         action: "",
         actorUserPublicId: "",
         limit: 100,
-        offset: 0,
         tenantId: "",
+        token: "",
+      },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("応答の previousToken / nextToken をそのまま返す", async () => {
+    mockListAuditLogs.mockResolvedValueOnce({
+      auditLogs: [
+        {
+          action: "tenant.created",
+          actorName: "運営 太郎",
+          actorRole: "platform_owner",
+          actorUserPublicId: "op_001",
+          createdAt: "2026-03-24T01:23:45Z",
+          outcome: "success",
+          reason: "",
+          targetId: "tenant_001",
+          targetName: "テナントA",
+          targetPublicId: "tenant_001",
+          targetType: "tenant",
+          tenantName: "テナントA",
+          tenantPublicId: "tenant_001",
+        },
+      ],
+      nextToken: "next-page",
+      previousToken: "previous-page",
+    });
+
+    await expect(
+      listPlatformAuditLogs({ token: "current-page" })
+    ).resolves.toEqual({
+      auditLogs: [
+        {
+          action: "tenant.created",
+          actorName: "運営 太郎",
+          actorRole: "platform_owner",
+          actorUserPublicId: "op_001",
+          createdAt: "2026-03-24T01:23:45Z",
+          outcome: "success",
+          reason: "",
+          targetId: "tenant_001",
+          targetName: "テナントA",
+          targetPublicId: "tenant_001",
+          targetType: "tenant",
+          tenantId: "tenant_001",
+          tenantName: "テナントA",
+        },
+      ],
+      nextToken: "next-page",
+      ok: true,
+      previousToken: "previous-page",
+    });
+
+    expect(mockListAuditLogs).toHaveBeenCalledWith(
+      {
+        action: "",
+        actorUserPublicId: "",
+        limit: 100,
+        tenantId: "",
+        token: "current-page",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -91,18 +153,23 @@ describe("listPlatformAuditLogs", () => {
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
         limit: 20,
-        offset: 40,
         tenantId: "tenant_999",
+        token: "page-2",
       })
-    ).resolves.toEqual({ auditLogs: [], ok: true });
+    ).resolves.toEqual({
+      auditLogs: [],
+      nextToken: "",
+      ok: true,
+      previousToken: "",
+    });
 
     expect(mockListAuditLogs).toHaveBeenCalledWith(
       {
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
         limit: 20,
-        offset: 40,
         tenantId: "tenant_999",
+        token: "page-2",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -147,7 +214,9 @@ describe("listPlatformAuditLogs", () => {
           tenantName: "",
         },
       ],
+      nextToken: "",
       ok: true,
+      previousToken: "",
     });
   });
 
@@ -155,8 +224,11 @@ describe("listPlatformAuditLogs", () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(listPlatformAuditLogs({})).resolves.toEqual({
+      auditLogs: [],
       message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: true,
     });
 
@@ -169,9 +241,12 @@ describe("listPlatformAuditLogs", () => {
     );
 
     await expect(listPlatformAuditLogs({})).resolves.toEqual({
+      auditLogs: [],
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: false,
     });
   });

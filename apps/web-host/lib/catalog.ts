@@ -267,11 +267,23 @@ export const listPublishedSeries = async (
   };
 };
 
+export interface LabelListPage {
+  labels: LabelListItem[];
+  /** Token for the previous page. Empty on the first page. */
+  previousToken: string;
+  /** Token for the next page. Empty on the last page. */
+  nextToken: string;
+}
+
+/**
+ * Cursor pagination: `token` is whatever the previous response returned as
+ * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
+ * `proto/README.md`.
+ */
 export const listPublishedLabels = async (
   tenantId: string,
-  limit = 50,
-  offset = 0
-): Promise<CachedReadResult<LabelListItem[]>> => {
+  { limit = 50, token = "" }: { limit?: number; token?: string } = {}
+): Promise<CachedReadResult<LabelListPage>> => {
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
@@ -282,8 +294,8 @@ export const listPublishedLabels = async (
   try {
     response = await apiClient.catalog.listPublishedLabels({
       limit,
-      offset,
       tenant: { tenantId: normalizedTenantId },
+      token,
     });
   } catch (error) {
     return cachedReadFailure(rpcErrorMessage(error, LABEL_LIST_ERROR_MESSAGE));
@@ -291,14 +303,18 @@ export const listPublishedLabels = async (
 
   return {
     ok: true,
-    value: (response.labels ?? []).map((label) => ({
-      eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
-      eyeCatchImageVariants: toEyeCatchImageVariants(
-        label.eyeCatchImageVariants
-      ),
-      name: label.name,
-      publicId: label.publicId,
-    })),
+    value: {
+      labels: (response.labels ?? []).map((label) => ({
+        eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt || undefined,
+        eyeCatchImageVariants: toEyeCatchImageVariants(
+          label.eyeCatchImageVariants
+        ),
+        name: label.name,
+        publicId: label.publicId,
+      })),
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+    },
   };
 };
 

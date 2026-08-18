@@ -257,32 +257,84 @@ export const getPlatformTenant = async (
   }
 };
 
+export interface ListPlatformTenantMembersInput {
+  limit?: number;
+  tenantId: string;
+  token?: string;
+}
+
+export type ListPlatformTenantMembersResult =
+  | {
+      members: PlatformTenantMemberSummary[];
+      nextToken: string;
+      ok: true;
+      previousToken: string;
+    }
+  | {
+      members: PlatformTenantMemberSummary[];
+      message: string;
+      nextToken: string;
+      ok: false;
+      previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
+
 export const listPlatformTenantMembers = async (
-  tenantId: string
-): Promise<PlatformTenantMemberSummary[]> => {
+  input: ListPlatformTenantMembersInput
+): Promise<ListPlatformTenantMembersResult> => {
   "use cache: private";
 
+  const tenantId = input.tenantId.trim();
   const sid = await resolveAccessToken();
-  if (!tenantId.trim() || !sid) {
-    return [];
+  if (!tenantId || !sid) {
+    dropFailedCacheEntry();
+    return {
+      members: [],
+      message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+      requiresSignIn: !sid,
+    };
   }
 
   try {
     const response = await apiClient.tenants.listTenantMembers(
-      { tenantPublicId: tenantId },
+      {
+        limit: input.limit ?? 20,
+        tenantPublicId: tenantId,
+        token: input.token ?? "",
+      },
       buildSessionHeaders(sid)
     );
-    return (response.members ?? []).map((member) => ({
-      createdAt: member.createdAt,
-      email: member.email,
-      name: member.name,
-      role: member.role,
-      status: member.status,
-      userPublicId: member.userPublicId,
-    }));
+    return {
+      members: (response.members ?? []).map((member) => ({
+        createdAt: member.createdAt,
+        email: member.email,
+        name: member.name,
+        role: member.role,
+        status: member.status,
+        userPublicId: member.userPublicId,
+      })),
+      nextToken: response.nextToken ?? "",
+      ok: true,
+      previousToken: response.previousToken ?? "",
+    };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
-    return [];
+    dropFailedCacheEntry();
+    return {
+      members: [],
+      message: rpcErrorMessage(
+        error,
+        "メンバー一覧の取得に失敗しました。時間をおいて再試行してください。"
+      ),
+      nextToken: "",
+      ok: false,
+      previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
+    };
   }
 };
 

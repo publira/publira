@@ -1,73 +1,61 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_LIST_OFFSET } from "#lib/list-pagination";
-
 import { buildAuditLogsPath, parseAuditLogFilters } from "./search-params";
 
 const allowedActions = new Set(["operator_created", "tenant_created"]);
 
 describe("parseAuditLogFilters", () => {
-  it("正規化したフィルタとオフセットを返す", () => {
+  it("正規化したフィルタとページ token を返す", () => {
     expect(
       parseAuditLogFilters(
         {
           action: " operator_created ",
           actor_user_public_id: " user_1 ",
-          offset: "20",
+          token: "next-page",
         },
         allowedActions
       )
     ).toEqual({
       action: "operator_created",
       actorUserPublicId: "user_1",
-      offset: 20,
+      token: "next-page",
     });
   });
 
-  it("不正値・範囲外の値を既定値または上限にクランプする", () => {
+  it("不正値を既定値にする", () => {
     expect(
       parseAuditLogFilters(
         {
           action: "unknown",
           actor_user_public_id: ["a", "b"],
-          offset: "abc",
+          token: ["first", "second"],
         },
         allowedActions
       )
     ).toEqual({
       action: "",
       actorUserPublicId: "",
-      offset: 0,
+      token: "",
     });
-
-    expect(parseAuditLogFilters({ offset: "-4" }, allowedActions).offset).toBe(
-      0
-    );
-    expect(
-      parseAuditLogFilters(
-        { offset: String(MAX_LIST_OFFSET + 50) },
-        allowedActions
-      ).offset
-    ).toBe(MAX_LIST_OFFSET);
   });
 });
 
 describe("buildAuditLogsPath", () => {
-  it("フィルタとオフセットを URL に保持する", () => {
+  it("フィルタとページ token を URL に保持する", () => {
     expect(
       buildAuditLogsPath({
         action: "operator_created",
         actorUserPublicId: "user_1",
-        offset: 20,
+        token: "next-page",
       })
     ).toBe(
-      "/audit-logs?actor_user_public_id=user_1&action=operator_created&offset=20"
+      "/audit-logs?actor_user_public_id=user_1&action=operator_created&token=next-page"
     );
   });
 
   it("条件がなければ一覧のルートを返す", () => {
     expect(
-      buildAuditLogsPath({ action: "", actorUserPublicId: "", offset: 0 })
+      buildAuditLogsPath({ action: "", actorUserPublicId: "", token: "" })
     ).toBe("/audit-logs");
   });
 });

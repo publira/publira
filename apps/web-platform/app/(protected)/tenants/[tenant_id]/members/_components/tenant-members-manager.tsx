@@ -75,6 +75,9 @@ interface TenantMembersManagerProps {
   invitationsNextHref?: string;
   invitationsPreviousHref?: string;
   members: PlatformTenantMemberSummary[];
+  membersErrorMessage?: string;
+  membersNextHref?: string;
+  membersPreviousHref?: string;
   removeAction: (
     prevState: FormActionState,
     formData: FormData
@@ -501,6 +504,9 @@ export const TenantMembersManager = ({
   invitationsNextHref,
   invitationsPreviousHref,
   members,
+  membersErrorMessage,
+  membersNextHref,
+  membersPreviousHref,
   removeAction,
   resendInvitationAction,
   tenantId,
@@ -601,47 +607,58 @@ export const TenantMembersManager = ({
             このテナントに所属するメンバーの一覧です。
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-4">
           {deleteState ? (
-            <FormMessage
-              className="mb-4"
-              variant={deleteState.ok ? "success" : "destructive"}
-            >
+            <FormMessage variant={deleteState.ok ? "success" : "destructive"}>
               {deleteState.message}
             </FormMessage>
           ) : null}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>氏名</TableHead>
-                <TableHead>メール</TableHead>
-                <TableHead>ロール</TableHead>
-                <TableHead>状態</TableHead>
-                <TableHead>参加日</TableHead>
-                <TableHead className="w-56">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.length === 0 ? (
-                <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={6}>
-                    メンバーがまだ登録されていません。メールアドレスを指定して追加してください。
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              {members.map((member) => (
-                <TenantMemberRow
-                  key={member.userPublicId || member.email}
-                  member={member}
-                  removeAction={removeAction}
-                  setDeleteState={setDeleteState}
-                  tenantId={tenantId}
-                  timeZone={timeZone}
-                  updateRoleAction={updateRoleAction}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          {membersErrorMessage ? (
+            <SectionError
+              description={membersErrorMessage}
+              title="メンバー一覧を表示できませんでした"
+            />
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>氏名</TableHead>
+                    <TableHead>メール</TableHead>
+                    <TableHead>ロール</TableHead>
+                    <TableHead>状態</TableHead>
+                    <TableHead>参加日</TableHead>
+                    <TableHead className="w-56">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="text-muted-foreground" colSpan={6}>
+                        メンバーがまだ登録されていません。メールアドレスを指定して追加してください。
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {members.map((member) => (
+                    <TenantMemberRow
+                      key={member.userPublicId || member.email}
+                      member={member}
+                      removeAction={removeAction}
+                      setDeleteState={setDeleteState}
+                      tenantId={tenantId}
+                      timeZone={timeZone}
+                      updateRoleAction={updateRoleAction}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              <PaginationControls
+                ariaLabel="テナントメンバー一覧のページ送り"
+                nextHref={membersNextHref}
+                previousHref={membersPreviousHref}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 

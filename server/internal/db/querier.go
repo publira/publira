@@ -247,10 +247,14 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
-	// エンドユーザー（tenant_user_roles未保持）の一覧取得。
-	// テナントメンバーは意図的に含めない。プラットフォームのユーザー一覧は
-	// この結果が完全な集合であり、クライアントが ListTenantMembers で補完しない。
-	ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error)
+	ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams) ([]ListEndUsersAscRow, error)
+	// ListEndUsers はエンドユーザー（tenant_user_roles 未保持）の一覧を
+	// (created_at, id) の降順で表示する。テナントメンバーは意図的に含めない。
+	// プラットフォームのユーザー一覧はこの結果が完全な集合であり、クライアントが
+	// ListTenantMembers で補完しない。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
 	// 並び替えを伴う操作はシリーズ配下のエピソードを全件見る必要があるため、
@@ -268,10 +272,9 @@ type Querier interface {
 	ListEpisodesReadyToPublish(ctx context.Context) ([]uuid.UUID, error)
 	ListEpisodesReadyToPublishWithTenantInfo(ctx context.Context) ([]ListEpisodesReadyToPublishWithTenantInfoRow, error)
 	ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListLabelImageVariantsByImageIDsRow, error)
-	// ListPublishedLabels はまだ offset pagination を使用する。
-	ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error)
 	ListLabelsByTenantAsc(ctx context.Context, arg ListLabelsByTenantAscParams) ([]ListLabelsByTenantAscRow, error)
-	// Admin ListLabels は (created_at, id) の降順で表示する。
+	// Admin ListLabels と公開側 ListPublishedLabels は (created_at, id) の降順で
+	// 表示する。並びも列も同じなので 1 組のクエリを両方から使う。
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error)
@@ -290,8 +293,13 @@ type Querier interface {
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListPagesForTenantAsc(ctx context.Context, arg ListPagesForTenantAscParams) ([]Page, error)
 	ListPagesForTenantDesc(ctx context.Context, arg ListPagesForTenantDescParams) ([]Page, error)
-	// 管理操作監査ログ一覧取得（フィルタ対応）
-	ListPlatformAuditLogs(ctx context.Context, arg ListPlatformAuditLogsParams) ([]ListPlatformAuditLogsRow, error)
+	ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatformAuditLogsAscParams) ([]ListPlatformAuditLogsAscRow, error)
+	// Platform ListAuditLogs は (created_at, id) の降順で表示する。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。ORDER BY をパラメータで分岐させると索引順に
+	// 読めないため、走査方向ごとにクエリを分ける。
+	// cursor の共通仕様は proto/README.md を参照。
+	ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatformAuditLogsDescParams) ([]ListPlatformAuditLogsDescRow, error)
 	ListPlatformNotificationsForUserAsc(ctx context.Context, arg ListPlatformNotificationsForUserAscParams) ([]ListPlatformNotificationsForUserAscRow, error)
 	ListPlatformNotificationsForUserDesc(ctx context.Context, arg ListPlatformNotificationsForUserDescParams) ([]ListPlatformNotificationsForUserDescRow, error)
 	// Worker fan-out: every platform user that holds a role is an operator.
@@ -359,10 +367,15 @@ type Querier interface {
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
 	// Worker fan-out: members are tenant users that do not hold a tenant role.
 	ListTenantMemberIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
+	ListTenantMembersAsc(ctx context.Context, arg ListTenantMembersAscParams) ([]ListTenantMembersAscRow, error)
+	// Platform ListTenantMembers はテナントに所属する管理・編集ユーザーを
+	// (created_at, id) の降順で表示する。admin の ListTenantUsers とは列が違う
+	// （こちらはメール・ステータスも返し、検索の絞り込みを持たない）ので別のクエリ。
+	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+	ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error)
 	// テナントユーザーのロール一覧を取得する
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
-	// テナントに所属する管理・編集ユーザー一覧を取得する
-	ListTenantUsers(ctx context.Context, arg ListTenantUsersParams) ([]ListTenantUsersRow, error)
 	// テナントに所属する管理・編集ユーザー一覧（前ページ方向）
 	ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error)
 	// Admin ListTenantUsers は (created_at, id) の降順で表示する。
