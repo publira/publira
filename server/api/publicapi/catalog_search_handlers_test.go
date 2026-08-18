@@ -332,3 +332,101 @@ func TestCatalogSearchPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T)
 	}
 	assertPublicExpectations(t, mock)
 }
+
+func TestCatalogSearchPublishedSeriesEmptyPageKeepsAWayBack(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		direction pagination.Direction
+		wantQuery string
+	}{
+		{
+			name:      "forward",
+			direction: pagination.Forward,
+			wantQuery: listPublishedSeriesIDsBySearchTitleAscQuery,
+		},
+		{
+			name:      "backward",
+			direction: pagination.Backward,
+			wantQuery: listPublishedSeriesIDsBySearchTitleDescQuery,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			testServer, mock := newTestPublicServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC()
+			boundaryID := uuid.Must(uuid.NewV7())
+			token := pagination.Encode(test.direction, "seed", "Beta Seed", boundaryID.String())
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
+				WithArgs(tenantID, "%seed%", boundaryID, false, "Beta Seed", int32(21)).
+				WillReturnRows(seriesIDRows())
+
+			client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+			resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Query:  "Seed",
+				Token:  token,
+			}))
+			if err != nil {
+				t.Fatalf("SearchPublishedSeries: %v", err)
+			}
+			if len(resp.Msg.Series) != 0 {
+				t.Fatalf("series = %+v, want an empty page", resp.Msg.Series)
+			}
+
+			wantPrevious := test.direction == pagination.Forward
+			if (resp.Msg.PreviousToken != "") != wantPrevious {
+				t.Fatalf("previous_token = %q, want present: %t", resp.Msg.PreviousToken, wantPrevious)
+			}
+			if (resp.Msg.NextToken != "") == wantPrevious {
+				t.Fatalf("next_token = %q, want present: %t", resp.Msg.NextToken, !wantPrevious)
+			}
+
+			recoveryToken := resp.Msg.PreviousToken
+			recoveryDirection := pagination.Backward
+			if test.direction == pagination.Backward {
+				recoveryToken = resp.Msg.NextToken
+				recoveryDirection = pagination.Forward
+			}
+			cursor, err := pagination.Decode(recoveryToken)
+			if err != nil {
+				t.Fatalf("decode recovery token: %v", err)
+			}
+			wantKeys := []string{"seed", "Beta Seed", boundaryID.String(), seriesInclusiveKey}
+			if cursor.Direction != recoveryDirection || !slices.Equal(cursor.Keys, wantKeys) {
+				t.Fatalf("recovery token = %+v, want direction %q and keys %v", cursor, recoveryDirection, wantKeys)
+			}
+			assertPublicExpectations(t, mock)
+		})
+	}
+}
+
+func TestCatalogSearchPublishedSeriesEmptyRecoveryPageDropsBothTokens(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	boundaryID := uuid.Must(uuid.NewV7())
+	token := pagination.Encode(pagination.Forward, "seed", "Beta Seed", boundaryID.String(), seriesInclusiveKey)
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsBySearchTitleAscQuery)).
+		WithArgs(tenantID, "%seed%", boundaryID, true, "Beta Seed", int32(21)).
+		WillReturnRows(seriesIDRows())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.SearchPublishedSeries(context.Background(), connect.NewRequest(&publirav1.SearchPublishedSeriesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Query:  "Seed",
+		Token:  token,
+	}))
+	if err != nil {
+		t.Fatalf("SearchPublishedSeries: %v", err)
+	}
+	if resp.Msg.PreviousToken != "" || resp.Msg.NextToken != "" {
+		t.Fatalf("tokens = (%q, %q), want both empty after a failed recovery", resp.Msg.PreviousToken, resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
