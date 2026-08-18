@@ -111,10 +111,13 @@ e2e/
 │   ├── admin.ts           # web-admin ログイン・フォーム操作ヘルパー
 │   ├── api-server.ts      # api-server の停止・再起動（障害シナリオ用）
 │   ├── db.ts              # scenario SQL 適用ヘルパー
+│   ├── host.ts            # web-host ログイン・ログアウトヘルパー
 │   ├── platform.ts        # web-platform ログイン・テナント操作ヘルパー
+│   ├── session.ts         # セッション Cookie / JWT 失効ヘルパー
 │   ├── scenarios/         # scenario seed / seed アカウントの定数
 │   └── urls.ts            # host ベース URL 定数
 └── tests/
+    ├── admin.auth.spec.ts
     ├── admin.publish-flow.spec.ts
     ├── catalog.browse.spec.ts
     ├── catalog.not-found.spec.ts
@@ -123,6 +126,9 @@ e2e/
     ├── catalog.tenant-boundary.spec.ts
     ├── admin.error-boundary.spec.ts
     ├── announcements.pagination.spec.ts
+    ├── host.auth.spec.ts
+    ├── platform.auth.spec.ts
+    ├── platform.logout.spec.ts
     ├── platform.tenant-ops.spec.ts
     ├── smoke.health.spec.ts
     └── smoke.web-host-home.spec.ts
@@ -232,15 +238,19 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 | `catalog.tenant-boundary.spec.ts` | Host による別テナント解決、公開中コンテンツのみの表示、テナント跨ぎ参照の遮断、未知 Host の 404 |
 | `admin.error-boundary.spec.ts` | 管理 API 停止中のコンソールエラー画面と再試行。隔離 project `admin-error-boundary` |
 | `announcements.pagination.spec.ts` | 会員お知らせ一覧の cursor ページングと既読 |
+| `admin.auth.spec.ts` | web-admin のログイン成功/失敗、returnTo、ログアウト、未認証ガード、Cookie / JWT / `credentials_version` 失効、会員の閲覧専用、GET `/logout` がセッションを消さないこと |
 | `admin.publish-flow.spec.ts` | web-admin 入稿（シリーズ/エピソード作成・編集・公開）→ 管理画面再表示 → web-host 反映、バリデーションエラー、tenant 境界 |
+| `host.auth.spec.ts` | web-host のログイン成功/失敗、returnTo、ログアウト、会員ページの未認証ガード、公開カタログ、Cookie / JWT / `credentials_version` 失効、GET `/logout` がセッションを消さないこと |
+| `platform.auth.spec.ts` | web-platform のログイン成功/失敗、returnTo、ログアウト、未認証ガード、Cookie / JWT / `credentials_version` 失効 |
 | `platform.tenant-ops.spec.ts` | Platform Console のテナント作成・編集・停止/再開、domain の公開/管理側解決、監査ログ、operator ロール別の操作可否 |
 
 `catalog.tenant-boundary.spec.ts` / `admin.publish-flow.spec.ts`（tenant 境界ケース）は `db/seeds/scenarios/010_multi_tenant.sql` を適用します（`applyScenarioSql`）。  
 `platform.tenant-ops.spec.ts`（ロール拒否ケース）は `db/seeds/scenarios/030_platform_operators.sql` を適用します。  
 `catalog.outage.spec.ts` / `catalog.error-boundary.spec.ts` は `src/api-server.ts` 経由で api-server を落として戻すので、単体で走らせる場合も `task e2e:test`（`scripts/test.sh` が `lib.sh` を読み込む）を使ってください。ファイル名で絞ると依存 project にマッチするテストが無いため、隔離 project だけが走ります。隔離 project 名を直接指定するとき（`--project=catalog-outage`）は、先に main 3 project 全部が走らないよう `--no-deps` を付けてください。
 
-`admin.publish-flow.spec.ts` は dev seed の `admin@example.com` / `adminpass` でログインします（ログイン網羅は #67）。  
+`admin.publish-flow.spec.ts` は dev seed の `admin@example.com` / `adminpass` でログインします。  
 `platform.tenant-ops.spec.ts` は dev seed の `platform@example.com` / `platformpass`（super admin）と scenario の `platform-operator@example.com` を使います。  
+`admin.auth.spec.ts` / `host.auth.spec.ts` / `platform.auth.spec.ts` の `credentials_version` 失効ケースは `db/seeds/scenarios/040_auth_e2e.sql` の専用アカウントを使います（共有 seed のセッションをバンプで壊さないため）。  
 エピソードの予約公開は UI で `scheduled` にしたあと、`datetime-local` の分単位制約を避けるため `runSql` で `scheduled_at` を過去へ進め、`publish-episodes` ワーカーの反映を待ちます。
 
 ### 未対応の挙動を先に書いておく
@@ -257,7 +267,6 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 ## 非スコープ
 
 - モバイルの業務シナリオ本体（#518）
-- ログイン・ログアウトとセッション失効の網羅（#67）
 - ホストベースルーティングの Traefik 疎通（#55 → [`routing/`](./routing/README.md)）
 - 開発環境の bootstrap 検証（#514 → [`bootstrap/`](./bootstrap/README.md)）
 - 負荷試験

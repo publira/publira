@@ -6,25 +6,34 @@ import {
   SEED_CATALOG,
   toTokyoDateTimeLocal,
 } from "./scenarios/admin-publish";
+import { fillLoginForm } from "./session";
 import { WEB_ADMIN_BASE_URL } from "./urls";
 
 const adminUrl = (pathname: string): string =>
   `${WEB_ADMIN_BASE_URL}${pathname}`;
 
-/**
- * Sign in as the dev seed tenant admin. Login itself is covered by #67; this
- * only builds the authenticated state the publish-flow scenarios need.
- */
-export const signInAsSeedAdmin = async (
+export const signInAsAdmin = async (
   page: Page,
+  credentials: { email: string; password: string } = SEED_ADMIN,
   nextPath = "/series"
 ): Promise<void> => {
   const next = encodeURIComponent(nextPath);
   await page.goto(adminUrl(`/login?next=${next}`));
-  await page.getByLabel(/メールアドレス/u).fill(SEED_ADMIN.email);
-  await page.getByLabel(/パスワード/u).fill(SEED_ADMIN.password);
-  await page.getByRole("button", { name: "ログイン" }).click();
+  await fillLoginForm(page, credentials);
   await page.waitForURL((url) => !url.pathname.endsWith("/login"));
+};
+
+/** Sign in as the dev seed tenant admin (`admin@example.com`). */
+export const signInAsSeedAdmin = async (
+  page: Page,
+  nextPath = "/series"
+): Promise<void> => {
+  await signInAsAdmin(page, SEED_ADMIN, nextPath);
+};
+
+export const signOutAdmin = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: "ログアウト" }).click();
+  await page.waitForURL((url) => url.pathname.endsWith("/login"));
 };
 
 /** Select a Combobox or MultiCombobox option by label. */

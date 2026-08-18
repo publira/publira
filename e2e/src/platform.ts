@@ -5,15 +5,12 @@ import {
   SCENARIO_PLATFORM_OPERATOR,
   SEED_PLATFORM_SUPER_ADMIN,
 } from "./scenarios/platform-tenants";
+import { fillLoginForm } from "./session";
 import { WEB_PLATFORM_BASE_URL } from "./urls";
 
 const platformUrl = (pathname: string): string =>
   `${WEB_PLATFORM_BASE_URL}${pathname}`;
 
-/**
- * Sign in as a platform operator. Login itself is covered by #67; this only
- * builds the authenticated state the tenant-ops scenarios need.
- */
 export const signInAsPlatformOperator = async (
   page: Page,
   credentials: { email: string; password: string } = SEED_PLATFORM_SUPER_ADMIN,
@@ -21,9 +18,7 @@ export const signInAsPlatformOperator = async (
 ): Promise<void> => {
   const next = encodeURIComponent(nextPath);
   await page.goto(platformUrl(`/login?next=${next}`));
-  await page.getByLabel(/メールアドレス/u).fill(credentials.email);
-  await page.getByLabel(/パスワード/u).fill(credentials.password);
-  await page.getByRole("button", { name: "ログイン" }).click();
+  await fillLoginForm(page, credentials);
   await page.waitForURL((url) => !url.pathname.endsWith("/login"));
 };
 

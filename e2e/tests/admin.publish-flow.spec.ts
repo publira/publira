@@ -75,7 +75,7 @@ const waitUntilEpisodePublishedInDb = async (
 /**
  * Admin → admin API → public API → web-host publish flow (#516).
  *
- * Login is a prerequisite helper (full auth coverage is #67). Each test uses a
+ * Login is a prerequisite helper (auth coverage is `admin.auth.spec.ts`). Each test uses a
  * unique title so runs do not depend on leftover rows from a previous suite.
  * Series created during the suite are deleted in `afterEach` so `task e2e:test`
  * against a long-lived stack does not accumulate rows.

@@ -387,9 +387,15 @@ importers:
       '@publira/tsconfig':
         specifier: workspace:*
         version: link:../packages/tsconfig
+      '@publira/web-session':
+        specifier: workspace:*
+        version: link:../packages/web-session
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      jose:
+        specifier: 'catalog:'
+        version: 6.2.9
       temporal-polyfill:
         specifier: 'catalog:'
         version: 1.0.4

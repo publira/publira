@@ -1,17 +1,22 @@
 import { expect, test } from "@playwright/test";
 
 import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import {
+  PLATFORM_SESSION_COOKIE_NAME,
+  sessionCookieValue,
+} from "../src/session";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 const platformUrl = (pathname: string): string =>
   `${WEB_PLATFORM_BASE_URL}${pathname}`;
 
-const PLATFORM_SESSION_COOKIE_NAME = "publira_web_platform_auth";
-
-const sessionCookieValue = (
-  cookies: { name: string; value: string }[]
-): string | undefined =>
-  cookies.find((cookie) => cookie.name === PLATFORM_SESSION_COOKIE_NAME)?.value;
+const currentSession = async (
+  page: Parameters<typeof signInAsSeedPlatformSuperAdmin>[0]
+): Promise<string | undefined> =>
+  sessionCookieValue(
+    await page.context().cookies(),
+    PLATFORM_SESSION_COOKIE_NAME
+  );
 
 /**
  * GET /logout must not be a logout (forced-logout CSRF). The route is gone;
@@ -21,7 +26,7 @@ test.describe("platform GET /logout", () => {
   test("認証済み GET は 404 でセッションを維持する", async ({ page }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
 
-    const before = sessionCookieValue(await page.context().cookies());
+    const before = await currentSession(page);
     expect(before).toBeTruthy();
 
     const response = await page.request.get(platformUrl("/logout"));
@@ -30,8 +35,7 @@ test.describe("platform GET /logout", () => {
       PLATFORM_SESSION_COOKIE_NAME
     );
 
-    const after = sessionCookieValue(await page.context().cookies());
-    expect(after).toBe(before);
+    expect(await currentSession(page)).toBe(before);
 
     await page.goto(platformUrl("/tenants"));
     await expect(
@@ -50,7 +54,7 @@ test.describe("platform GET /logout", () => {
   test("クロスサイト GET でもセッションを消さない", async ({ page }) => {
     await signInAsSeedPlatformSuperAdmin(page, "/tenants");
 
-    const before = sessionCookieValue(await page.context().cookies());
+    const before = await currentSession(page);
     expect(before).toBeTruthy();
 
     const response = await page.request.get(platformUrl("/logout"), {
@@ -64,8 +68,7 @@ test.describe("platform GET /logout", () => {
       PLATFORM_SESSION_COOKIE_NAME
     );
 
-    const after = sessionCookieValue(await page.context().cookies());
-    expect(after).toBe(before);
+    expect(await currentSession(page)).toBe(before);
 
     await page.goto(platformUrl("/tenants"));
     await expect(
