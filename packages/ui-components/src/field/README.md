@@ -2,6 +2,8 @@
 
 フォームフィールドを構成するコンポーネント群です。ラベル、説明文、エラーメッセージ、コンテンツから構成されます。
 
+`FieldLabel` は同じ `Field` 内のコントロールと `for` / `id` で結びつき、ラベルをクリックするとそのコントロールへフォーカスします。`Input` / `Textarea` / `Select` / `Checkbox` / `Switch` / `RadioGroup` / `Combobox` / `MultiCombobox` は `id` 未指定でも一意な id を採番します。呼び出し側がコントロールに `id` を渡した場合はその id を使います。
+
 ## 使用方法
 
 ```tsx
