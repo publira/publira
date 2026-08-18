@@ -52,6 +52,7 @@ start_web_app() {
       env \
         PORT="${app_port}" \
         HOSTNAME="${bind_host}" \
+        PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
         PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
         PUBLIRA_CACHE_APP="${cache_app}" \
         "${grpc_url_env_name}=${grpc_url_value}" \
@@ -63,6 +64,7 @@ start_web_app() {
       env \
         PORT="${app_port}" \
         HOSTNAME="${bind_host}" \
+        PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET}" \
         PUBLIRA_REDIS_URL="${PUBLIRA_REDIS_URL}" \
         PUBLIRA_CACHE_APP="${cache_app}" \
         "${grpc_url_env_name}=${grpc_url_value}" \

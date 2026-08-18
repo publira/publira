@@ -62,6 +62,11 @@ export E2E_PUBLISH_EPISODES_INTERVAL_SEC="${E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2
 
 export PUBLIRA_CACHE_APP="${PUBLIRA_CACHE_APP:-web-host}"
 
+# Session cookie (JWE) key for the three Next.js apps. Required — the apps have
+# no fallback. Test-stack value only; inheriting the devcontainer's is fine
+# because nothing here depends on which key it is, only that one is set.
+export PUBLIRA_AUTH_SECRET="${PUBLIRA_AUTH_SECRET:-publira-e2e-only-insecure-web-session-secret}"
+
 # PID files, logs, and local storage for one stack run.
 #
 # Concurrent stacks that override ports or COMPOSE_PROJECT_NAME must not share

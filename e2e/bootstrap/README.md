@@ -58,7 +58,7 @@ task e2e:bootstrap
 
 phase 2 で `task setup` を丸ごと実行するのは Flutter SDK がある環境（Dev Container）のみ。無い環境では `mobile:deps` を除いた `task deps` + `task db:setup` を実行する（モバイル依存は `Test / Mobile` ジョブの担当）。
 
-`task dev` に渡す環境変数（`PUBLIRA_DB_URL` / `PUBLIRA_*_DB_URL` / `PUBLIRA_REDIS_URL` / `PUBLIRA_S3_*` / `AWS_*`）は `scripts/lib.sh` が bootstrap 用スタックを指すよう export する。ストレージは Dev Container と同じく path-style で、`PUBLIRA_S3_ENDPOINT` は bootstrap 用 RustFS（`http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}`）に固定する。Go サーバーと Next.js アプリの API 向き先は既定値（`localhost` + 標準ポート）のままなので上書きしない。
+`task dev` に渡す環境変数（`PUBLIRA_DB_URL` / `PUBLIRA_*_DB_URL` / `PUBLIRA_REDIS_URL` / `PUBLIRA_S3_*` / `AWS_*` / `PUBLIRA_AUTH_SECRET`）は `scripts/lib.sh` が bootstrap 用スタックを指すよう export する。`PUBLIRA_AUTH_SECRET` だけはスタックを指す値ではなく、Next.js アプリが必須とするセッション暗号鍵をチェック用に与えるもの（`task dev` はホスト側で走るので Dev Container の compose が渡す値は届かない）。ストレージは Dev Container と同じく path-style で、`PUBLIRA_S3_ENDPOINT` は bootstrap 用 RustFS（`http://127.0.0.1:${BOOTSTRAP_RUSTFS_PORT}`）に固定する。Go サーバーと Next.js アプリの API 向き先は既定値（`localhost` + 標準ポート）のままなので上書きしない。
 
 phase 4 の最後に bootstrap 用 Redis の `connected_clients` を確認するのは、`/readyz` が 200 でも「別の Redis に繋がっているだけ」の可能性を潰すため。実際 turbo は既定が strict env mode で、`turbo.json` の `dev` に `passThroughEnv` が無いと `PUBLIRA_REDIS_URL` がアプリに届かず `redis://localhost:6379` へフォールバックする。
 

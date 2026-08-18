@@ -97,6 +97,17 @@ Dev Container 起動時に Mailpit コンテナも起動します。
 3. SMTP テスト送信や通知送信を実行
 4. Mailpit UI (`http://localhost:8025`) で受信メールを確認
 
+## セッション Cookie の暗号鍵 (`PUBLIRA_AUTH_SECRET`)
+
+3 つの Next.js アプリ（web-host / web-admin / web-platform）は、ログインセッションを `@publira/web-session` の JWE (`dir` + `A256GCM`) で封じます。その鍵が `PUBLIRA_AUTH_SECRET` です。
+
+- **必須**です。コード側にフォールバックは無く、未設定または 32 バイト未満なら暗号化・復号が例外になります（`resolveAuthSecret()`）
+- Cookie の payload には API のアクセストークンが入るため、鍵が漏れるとセッションの偽造と復号ができます。環境ごとに払い出してください（例: `openssl rand -base64 32`）
+- Dev Container では `.devcontainer/compose.yaml` が開発専用の値を app コンテナに渡します。`turbo.json` の `dev` は `passThroughEnv: ["PUBLIRA_*"]` なので `task dev` にそのまま届きます
+- E2E は `e2e/scripts/lib.sh`、bootstrap チェックは `e2e/bootstrap/scripts/lib.sh` がそれぞれのスタック用の値を export します
+
+リポジトリに書いてある値は **ローカル開発・テスト専用**です。本番へ持ち込まないでください。
+
 ## Next.js 共有キャッシュ (Redis)
 
 self-host / multi-instance 向けに、Next.js のサーバー側キャッシュを **Redis** で共有します（`@publira/next-cache-handlers`）。

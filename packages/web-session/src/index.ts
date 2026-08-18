@@ -12,13 +12,17 @@ export interface WebSessionPayload {
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
+// A256GCM takes exactly 32 bytes, so a shorter secret cannot key the JWE at all.
+const AES_GCM_KEY_BYTES = 32;
+
 const toAesGcmKeyBytes = (secret: string): Uint8Array => {
   const raw = textEncoder.encode(secret);
-  if (raw.length < 32) {
-    throw new Error("PUBLIRA_AUTH_SECRET must be at least 32 bytes");
+  if (raw.length < AES_GCM_KEY_BYTES) {
+    throw new Error(
+      `PUBLIRA_AUTH_SECRET must be at least ${AES_GCM_KEY_BYTES} bytes`
+    );
   }
-  // A256GCM requires exactly 32 bytes
-  return raw.slice(0, 32);
+  return raw.slice(0, AES_GCM_KEY_BYTES);
 };
 
 export const encryptSessionPayload = (
@@ -35,8 +39,10 @@ export const decryptSessionPayload = async (
   token: string,
   secret: string
 ): Promise<WebSessionPayload | null> => {
+  // Outside the try: an unusable key is a misconfigured deployment, and
+  // reporting it as "no session" would send every visitor to the login screen.
+  const key = toAesGcmKeyBytes(secret);
   try {
-    const key = toAesGcmKeyBytes(secret);
     const { plaintext } = await compactDecrypt(token, key);
     const parsed = JSON.parse(
       textDecoder.decode(plaintext)
@@ -61,13 +67,24 @@ export const isSessionExpired = (
   return exp <= now;
 };
 
+/**
+ * The key every app's session cookie is sealed with.
+ *
+ * There is deliberately no fallback: a built-in value would be published in
+ * this repository, and it keys a JWE whose payload carries the API access
+ * token. Anyone holding it could forge a session cookie or read one. So the
+ * variable is required, and a value too short to key A256GCM is rejected
+ * rather than quietly padded — a secret that was set but does not take effect
+ * is the failure mode that is hardest to notice.
+ */
 export const resolveAuthSecret = (): string => {
   const secret = process.env.PUBLIRA_AUTH_SECRET?.trim() ?? "";
-  if (secret.length >= 32) {
-    return secret;
+  if (textEncoder.encode(secret).length < AES_GCM_KEY_BYTES) {
+    throw new Error(
+      `PUBLIRA_AUTH_SECRET is required and must be at least ${AES_GCM_KEY_BYTES} bytes`
+    );
   }
-  // Dev/test fallback (must be >= 32 bytes)
-  return "publira-dev-web-auth-secret-32b!!";
+  return secret;
 };
 
 export const buildBearerHeaders = (accessToken: string) =>
