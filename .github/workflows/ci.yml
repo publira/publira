@@ -247,6 +247,14 @@ jobs:
               - '.dockerignore'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+            docker_image:
+              - *docs_excluded
+              - 'server/**'
+              - 'infra/docker/image/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             docker_batch:
               - *docs_excluded
               - 'server/**'
@@ -273,6 +281,7 @@ jobs:
               - *docs_excluded
               - 'infra/docker/web/**'
               - 'infra/docker/api/**'
+              - 'infra/docker/image/**'
               - 'infra/docker/batch/**'
               - 'infra/docker/node/**'
               - 'infra/docker/Taskfile.yaml'
@@ -298,6 +307,7 @@ jobs:
           FILTER_BUILD: ${{ steps.filter.outputs.build }}
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
+          FILTER_DOCKER_IMAGE: ${{ steps.filter.outputs.docker_image }}
           FILTER_DOCKER_BATCH: ${{ steps.filter.outputs.docker_batch }}
           FILTER_DOCKER_NODE: ${{ steps.filter.outputs.docker_node }}
           FILTER_DOCKER_CORE: ${{ steps.filter.outputs.docker_core }}
@@ -402,6 +412,9 @@ jobs:
           go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
       # The action installs the pinned binary and caches the analysis results;
       # the rule set itself lives in server/.golangci.yml, so this runs exactly
       # what `task server:lint` runs locally.
@@ -427,6 +440,9 @@ jobs:
         with:
           go-version: 1.26.6
           cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
 
       - name: Validate / Go Tests
         working-directory: server
@@ -582,6 +598,9 @@ jobs:
           go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
       - name: Setup / Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
@@ -683,6 +702,9 @@ jobs:
           go-version: 1.26.6
           cache-dependency-path: server/go.sum
 
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
+
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
         with:
@@ -758,6 +780,9 @@ jobs:
         with:
           go-version: 1.26.6
           cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
@@ -852,6 +877,9 @@ jobs:
         with:
           go-version: 1.26.6
           cache-dependency-path: server/go.sum
+
+      - name: Setup / libvips
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libvips-dev pkg-config
 
       - name: Install Task
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0

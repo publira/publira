@@ -20,7 +20,8 @@ build context は常に **リポジトリルート**（`.`）。
 | ロール | パス | 対象 | 主な ARG |
 | --- | --- | --- | --- |
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
-| API (常駐) | [`api/Dockerfile`](./api/Dockerfile) | `server/cmd/*` の HTTP サーバー | `CMD_NAME`, `PORT` |
+| API (常駐) | [`api/Dockerfile`](./api/Dockerfile) | `server/cmd/*` の HTTP サーバー（CGO なし） | `CMD_NAME`, `PORT` |
+| Image (常駐) | [`image/Dockerfile`](./image/Dockerfile) | `image-server` / `admin-image-server`（Manael / libvips） | `CMD_NAME`, `PORT` |
 | Batch (単発) | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/*` のジョブ | `CMD_NAME` |
 | Node (常駐) | [`node/Dockerfile`](./node/Dockerfile) | `apps/*` のうち Next.js でないもの | `APP_NAME`, `PORT` |
 
@@ -53,10 +54,15 @@ Dev Container 用は本番と分離する。
 │    → --build-arg APP_NAME=<name>   # package 名は @publira/<name>
 │    → 必要なら PORT（既定 3000）
 │
-├─ Go の常駐 HTTP サーバー (server/cmd/<name>)
+├─ Go の常駐 HTTP サーバー (server/cmd/<name>、CGO なし)
 │    → infra/docker/api/Dockerfile
 │    → --build-arg CMD_NAME=<name>
 │    → 必要なら PORT（既定 8000）
+│
+├─ Go の画像サーバー (image-server / admin-image-server)
+│    → infra/docker/image/Dockerfile
+│    → --build-arg CMD_NAME=<name>
+│    → 必要なら PORT（既定 8200）
 │
 ├─ Go の単発ジョブ (server/cmd/<name>)
 │    → infra/docker/batch/Dockerfile
@@ -120,6 +126,15 @@ docker build -f infra/docker/api/Dockerfile \
   --build-arg CMD_NAME=platform-api-server --build-arg PORT=8002 \
   -t publira/platform-api-server:local .
 
+# Image (Manael / libvips)
+docker build -f infra/docker/image/Dockerfile \
+  --build-arg CMD_NAME=image-server --build-arg PORT=8200 \
+  -t publira/image-server:local .
+
+docker build -f infra/docker/image/Dockerfile \
+  --build-arg CMD_NAME=admin-image-server --build-arg PORT=8201 \
+  -t publira/admin-image-server:local .
+
 # Batch
 docker build -f infra/docker/batch/Dockerfile \
   --build-arg CMD_NAME=publish-episodes \
@@ -136,7 +151,7 @@ docker build -f infra/docker/node/Dockerfile \
 | 段階 | 内容 |
 | --- | --- |
 | ビルド | フルツールチェーン付き Debian 系（Node bookworm-slim / golang bookworm） |
-| 実行 | distroless（Web / Node: `nodejs24-debian12:nonroot`、Go: `static:nonroot`） |
+| 実行 | distroless（Web / Node: `nodejs24-debian12:nonroot`、Go API / batch: `static:nonroot`）。画像サーバーだけ `debian:bookworm-slim` + `libvips42`（CGO） |
 | ベースイメージ | `tag@sha256:…` で digest 固定（Renovate が追跡） |
 | ツール版（turbo / pnpm 等） | `ARG *_VERSION` + `# renovate: datasource=…`（[`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) と同じ形式） |
 
@@ -185,7 +200,7 @@ Node ロールは Next.js の standalone 出力に相当する仕組みを持た
 Issue / CI の「主要ビルド経路」は次の 4 本（各ロール 1 つ）とする。
 
 ```bash
-# まとめて（web-host / api-server / publish-episodes / email-renderer）
+# まとめて（web-host / api-server / publish-episodes / email-renderer / image-server）
 task docker:verify
 
 # または個別
@@ -193,6 +208,7 @@ task docker:build:web APP_NAME=web-host PORT=3000
 task docker:build:api CMD_NAME=api-server PORT=8000
 task docker:build:batch CMD_NAME=publish-episodes
 task docker:build:node APP_NAME=email-renderer PORT=8080
+task docker:build:image CMD_NAME=image-server PORT=8200
 ```
 
 起動確認（distroless・外部依存無し）:
@@ -253,6 +269,7 @@ docker build -f infra/docker/web/Dockerfile \
 | --- | --- | --- |
 | web | `web-host` | `apps/**`, `packages/**`, lockfile / turbo, `infra/docker/web/**` |
 | api | `api-server` | `server/**`, `infra/docker/api/**` |
+| image | `image-server` | `server/**`, `infra/docker/image/**` |
 | batch | `publish-episodes` | `server/**`, `infra/docker/batch/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
@@ -278,7 +295,7 @@ docker build -f infra/docker/web/Dockerfile \
 
    ```bash
    task docker:build:web APP_NAME=web-host PORT=3000
-   # または代表 4 本まとめて
+   # または代表まとめて
    task docker:verify
    ```
 
@@ -301,7 +318,7 @@ docker build -f infra/docker/web/Dockerfile \
    - キャッシュ汚れ → ローカルは `docker builder prune`、CI は再実行
    - path filter の取りこぼし懸念 → `workflow_dispatch` で Docker `full`、または Nightly 結果を確認
 5. **直したら**
-   - 代表 4 本（`task docker:verify`）が通ることを確認してから PR を更新する
+   - 代表イメージ（`task docker:verify`）が通ることを確認してから PR を更新する
    - ロール追加時は本 README の表・[`Taskfile.yaml`](./Taskfile.yaml) の `verify:full`・[`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) の Docker full 行列を同時更新する
 
 ## 変更時のチェックリスト

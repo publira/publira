@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1.26@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+
+# Image-server image. Manael (libvips / CGO) is linked in, so this is a
+# separate runtime family from infra/docker/api (CGO_ENABLED=0, distroless/static).
+#
+# Build from the repository root:
+#
+#   docker build \
+#     -f infra/docker/image/Dockerfile \
+#     --build-arg CMD_NAME=image-server \
+#     --build-arg PORT=8200 \
+#     -t publira/image-server:local \
+#     .
+#
+# Examples:
+#   CMD_NAME=image-server        PORT=8200
+#   CMD_NAME=admin-image-server  PORT=8201
+#
+# CGO cannot be cross-compiled without a matching toolchain, so this
+# Dockerfile does not set GOOS/GOARCH. Buildx --platform must match the
+# builder (native per-arch builds).
+
+FROM golang:1.26-bookworm@sha256:116d58cbd88c1297624acc6e967a060012422bacf9930927e23fb719189c6f36 AS builder
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libvips-dev pkg-config \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+
+COPY server/ ./
+
+ARG CMD_NAME
+RUN test -n "${CMD_NAME}" || (echo "ERROR: CMD_NAME is required (e.g. image-server)" >&2 && exit 1)
+
+RUN CGO_ENABLED=1 go build -trimpath -ldflags='-s -w' -o /out/server "./cmd/${CMD_NAME}"
+
+FROM debian:bookworm-slim@sha256:60eac759739651111db372c07be67863818726f754804b8707c90979bda511df
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates libvips42 \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --gid 65532 nonroot \
+ && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin nonroot
+
+ARG PORT=8200
+
+ENV APP_PORT=${PORT}
+ENV HEALTHCHECK_PORT=${PORT}
+
+WORKDIR /app
+
+COPY --from=builder /out/server /app/server
+
+EXPOSE ${PORT}
+
+# debian-slim has no HEALTHCHECK convention here; orchestrator probes:
+#   liveness  -> GET /livez
+#   readiness -> GET /readyz
+
+USER nonroot
+
+ENTRYPOINT ["/app/server"]
