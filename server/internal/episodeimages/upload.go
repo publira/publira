@@ -249,8 +249,6 @@ func (s Service) storeImages(
 				},
 				backoff.WithBackOff(newVariantPersistenceBackOff()),
 				backoff.WithMaxTries(imagePersistenceRetryMax),
-				// Drops the library's 15-minute cap so variantCtx stays the one deadline.
-				backoff.WithMaxElapsedTime(0),
 			)
 			cancel()
 			if persistErr != nil {
@@ -288,13 +286,13 @@ func objectPrefix(filename string) string {
 	return objectPrefix
 }
 
-// newVariantPersistenceBackOff builds the retry schedule: 100ms then 200ms
-// between the imagePersistenceRetryMax attempts, without jitter. Those stay
-// well under the library's default MaxInterval, which is therefore left as is.
+// newVariantPersistenceBackOff builds the retry schedule: imagePersistenceRetryBackoff
+// doubling on every further attempt. The library's randomization, interval ceiling,
+// and total elapsed limit are left at their defaults; variantCtx owns the deadline
+// that matters here.
 func newVariantPersistenceBackOff() *backoff.ExponentialBackOff {
 	bo := backoff.NewExponentialBackOff()
 	bo.InitialInterval = imagePersistenceRetryBackoff
 	bo.Multiplier = imagePersistenceRetryMultiplier
-	bo.RandomizationFactor = 0
 	return bo
 }

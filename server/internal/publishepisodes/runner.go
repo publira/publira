@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
@@ -25,8 +24,6 @@ import (
 const (
 	defaultRetryBaseDelay  = 2 * time.Second
 	defaultRetryMultiplier = 2
-	// The delay keeps doubling for the whole PUBLIRA_PUBLISH_MAX_RETRIES budget.
-	defaultRetryMaxInterval = time.Duration(math.MaxInt64)
 
 	notificationTypeEpisodePublished     = "episode_published"
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
@@ -119,8 +116,6 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 		},
 		backoff.WithBackOff(newPublishBackOff()),
 		backoff.WithMaxTries(uint(r.maxRetries)+1),
-		// Drops the library's 15-minute cap so the attempt budget and ctx are the limits.
-		backoff.WithMaxElapsedTime(0),
 		backoff.WithNotify(func(err error, delay time.Duration) {
 			r.logger.WarnContext(ctx, "failed to publish episode",
 				"episode_id", row.EpisodeID,
@@ -157,14 +152,13 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 	r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublished)
 }
 
-// newPublishBackOff builds the retry schedule: defaultRetryBaseDelay, doubling
-// on every further attempt, without jitter.
+// newPublishBackOff builds the retry schedule: defaultRetryBaseDelay doubling on
+// every further attempt. The library's randomization, interval ceiling, and total
+// elapsed limit are left at their defaults.
 func newPublishBackOff() *backoff.ExponentialBackOff {
 	bo := backoff.NewExponentialBackOff()
 	bo.InitialInterval = defaultRetryBaseDelay
 	bo.Multiplier = defaultRetryMultiplier
-	bo.RandomizationFactor = 0
-	bo.MaxInterval = defaultRetryMaxInterval
 	return bo
 }
 
