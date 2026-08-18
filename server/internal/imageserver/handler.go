@@ -55,23 +55,36 @@ type Handler struct {
 	objects         ObjectStore
 	logger          *slog.Logger
 	tokens          *auth.TokenManager
+	cache           ImageCache
+	proxy           http.Handler
+	maxConverted    int
 }
 
-func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) http.Handler {
+func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) (*Server, error) {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	h := &Handler{
 		resolverQuerier: resolver,
 		tenantFactory:   tenantFactory,
 		objects:         objects,
 		logger:          logger,
 		tokens:          tokens,
+		cache:           newImageCacheFromEnv(logger),
+		maxConverted:    defaultMaxConvertedBytes,
 	}
+	origin, proxy, err := startOriginAndProxy(h)
+	if err != nil {
+		return nil, err
+	}
+	h.proxy = proxy
 	mux := http.NewServeMux()
 	health.Register(mux, health.WithDB(db))
 	mux.HandleFunc("GET /images/creators/{media_id}", h.handleGetCreatorImage)
 	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
 	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)
 	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
-	return mux
+	return &Server{mux: mux, origin: origin}, nil
 }
 
 func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) {
@@ -167,38 +180,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 		contentTypeFromDB = publicAccess.ContentType
 	}
 
-	object, err := h.objects.GetObject(ctx, objectKey)
-	if err != nil {
-		if errors.Is(err, ErrObjectNotFound) {
-			http.Error(w, "image not found", http.StatusNotFound)
-			return
-		}
-		h.logger.Error("failed to load image object", "error", err, "object_key", objectKey)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer object.Body.Close() //nolint:errcheck
-
-	contentType := strings.TrimSpace(contentTypeFromDB)
-	if contentType == "" {
-		contentType = strings.TrimSpace(object.ContentType)
-	}
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", cacheControl)
-	if strings.HasPrefix(cacheControl, "private") {
-		w.Header().Set("Vary", "Cookie")
-	}
-	if object.ContentLength > 0 {
-		w.Header().Set("Content-Length", strconv.FormatInt(object.ContentLength, 10))
-	}
-
-	if _, err := io.Copy(w, object.Body); err != nil {
-		h.logger.Error("failed to stream image", "error", err, "media_id", mediaID.String())
-	}
+	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl)
 }
 
 func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) {
@@ -247,34 +229,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	object, err := h.objects.GetObject(ctx, imageRow.ObjectKey)
-	if err != nil {
-		if errors.Is(err, ErrObjectNotFound) {
-			http.Error(w, "image not found", http.StatusNotFound)
-			return
-		}
-		h.logger.Error("failed to load creator image object", "error", err, "object_key", imageRow.ObjectKey)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer object.Body.Close() //nolint:errcheck
-
-	contentType := "application/octet-stream"
-	if strings.TrimSpace(imageRow.ContentType) != "" {
-		contentType = imageRow.ContentType
-	} else if strings.TrimSpace(object.ContentType) != "" {
-		contentType = object.ContentType
-	}
-
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	if object.ContentLength > 0 {
-		w.Header().Set("Content-Length", strconv.FormatInt(object.ContentLength, 10))
-	}
-
-	if _, err := io.Copy(w, object.Body); err != nil {
-		h.logger.Error("failed to stream creator image", "error", err, "media_id", mediaID.String())
-	}
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
 }
 
 func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
@@ -335,34 +290,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	object, err := h.objects.GetObject(ctx, imageRow.ObjectKey)
-	if err != nil {
-		if errors.Is(err, ErrObjectNotFound) {
-			http.Error(w, "image not found", http.StatusNotFound)
-			return
-		}
-		h.logger.Error("failed to load series image object", "error", err, "object_key", imageRow.ObjectKey)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer object.Body.Close() //nolint:errcheck
-
-	contentType := "application/octet-stream"
-	if strings.TrimSpace(imageRow.ContentType) != "" {
-		contentType = imageRow.ContentType
-	} else if strings.TrimSpace(object.ContentType) != "" {
-		contentType = object.ContentType
-	}
-
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	if object.ContentLength > 0 {
-		w.Header().Set("Content-Length", strconv.FormatInt(object.ContentLength, 10))
-	}
-
-	if _, err := io.Copy(w, object.Body); err != nil {
-		h.logger.Error("failed to stream series image", "error", err, "media_id", mediaID.String())
-	}
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
 }
 
 func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
@@ -423,34 +351,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	object, err := h.objects.GetObject(ctx, imageRow.ObjectKey)
-	if err != nil {
-		if errors.Is(err, ErrObjectNotFound) {
-			http.Error(w, "image not found", http.StatusNotFound)
-			return
-		}
-		h.logger.Error("failed to load label image object", "error", err, "object_key", imageRow.ObjectKey)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer object.Body.Close() //nolint:errcheck
-
-	contentType := "application/octet-stream"
-	if strings.TrimSpace(imageRow.ContentType) != "" {
-		contentType = imageRow.ContentType
-	} else if strings.TrimSpace(object.ContentType) != "" {
-		contentType = object.ContentType
-	}
-
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	if object.ContentLength > 0 {
-		w.Header().Set("Content-Length", strconv.FormatInt(object.ContentLength, 10))
-	}
-
-	if _, err := io.Copy(w, object.Body); err != nil {
-		h.logger.Error("failed to stream label image", "error", err, "media_id", mediaID.String())
-	}
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
 }
 
 func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, error) {

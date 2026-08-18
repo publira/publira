@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -59,7 +60,7 @@ func main() {
 	resolverQueries := dbmodels.New(db)
 	tenantFactory := imageserver.NewDBTenantScopedFactory(db, logger)
 
-	imageHandler := imageserver.NewHandler(
+	imageHandler, err := imageserver.NewHandler(
 		resolverQueries,
 		tenantFactory,
 		objectStore,
@@ -67,6 +68,10 @@ func main() {
 		db,
 		tokens,
 	)
+	if err != nil {
+		logger.Error("failed to initialize image handler", "error", err)
+		os.Exit(1)
+	}
 
 	addr := strings.TrimSpace(os.Getenv("PUBLIRA_IMAGE_SERVER_ADDR"))
 	if addr == "" {
@@ -78,7 +83,7 @@ func main() {
 
 	logger.Info("starting image server", "addr", addr)
 	if err := httpserver.Serve(ctx, logger, []*http.Server{httpserver.New(addr, imageHandler)}, func(context.Context) error {
-		return db.Close()
+		return errors.Join(imageHandler.Close(), db.Close())
 	}); err != nil {
 		logger.Error("image server failed", "error", err)
 		os.Exit(1)

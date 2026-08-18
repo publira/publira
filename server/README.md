@@ -10,6 +10,8 @@ server/
 │   ├── api-server/        # 公開向け ConnectRPC API サーバー
 │   ├── admin-api-server/  # 管理向け ConnectRPC API サーバー
 │   ├── platform-api-server/ # プラットフォーム管理向け ConnectRPC API サーバー
+│   ├── image-server/      # 公開向け画像配送（Manael 変換）
+│   ├── admin-image-server/ # 管理向け画像配送
 │   └── publish-episodes/  # 単発バッチ処理
 ├── bin/                   # task build で生成されるバイナリ
 ├── gen/                   # buf 自動生成コード (編集禁止)
@@ -68,6 +70,8 @@ task server:test
 - 公開 API サーバー: [cmd/api-server/README.md](cmd/api-server/README.md)
 - 管理 API サーバー: [cmd/admin-api-server/README.md](cmd/admin-api-server/README.md)
 - プラットフォーム API サーバー: [cmd/platform-api-server/README.md](cmd/platform-api-server/README.md)
+- 公開画像サーバー: [cmd/image-server/README.md](cmd/image-server/README.md)
+- 管理画像サーバー: [cmd/admin-image-server/README.md](cmd/admin-image-server/README.md)
 - 予約公開バッチ: [cmd/publish-episodes/README.md](cmd/publish-episodes/README.md)
 
 ## Graceful shutdown
@@ -118,6 +122,15 @@ aws CLI で `PUBLIRA_S3_BUCKET` を作成します（既存ならそのまま成
 Dev Container では S3 互換の RustFS が起動し、path-style で接続します（エンドポイント `http://rustfs:9000`、バケット `publira`、資格情報はローカル専用の `publira` / `publirapass`）。値の一覧とコンソール URL は [../README.md](../README.md#開発用オブジェクトストレージ-rustfs) を参照してください。
 
 RustFS に対する Go の統合テストは `internal/testutil` の Testcontainers ヘルパー (`StartRustFS`) を使い、`internal/storage/s3` のアップロードと `internal/imageserver` の取得を検証します（`-short` や Docker 不在ではスキップ）。
+
+## 画像配送（Manael）
+
+`image-server` / `admin-image-server` は権限確認のあと [Manael](https://github.com/manaelproxy/manael) で JPEG/PNG/GIF を WebP または AVIF に変換し、`w` / `h` / `fit` / `q` で縮小します。変換結果は中間キャッシュに置き、同じ `Accept` とクエリなら S3 と変換を再実行しません。
+
+- `PUBLIRA_REDIS_URL`: 変換キャッシュの Redis。未設定 / `disabled` / `off` / `false` のときはプロセス内メモリのみ
+- `PUBLIRA_IMAGE_CACHE_TTL`: 変換キャッシュの TTL（Go duration または秒。既定 `1h`）
+
+ビルドには libvips が必要です。詳細は [cmd/image-server/README.md](cmd/image-server/README.md)。
 
 ## Platform Console URL
 

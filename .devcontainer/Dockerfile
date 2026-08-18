@@ -15,7 +15,7 @@ ARG FLUTTER_VERSION=3.47.0
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
  && apt-get -y install --no-install-recommends postgresql-client \
-    clang cmake ninja-build pkg-config libgtk-3-dev unzip xz-utils
+    clang cmake ninja-build pkg-config libgtk-3-dev libvips-dev unzip xz-utils
 
 RUN set -eux; \
   sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d v${TASK_VERSION}; \

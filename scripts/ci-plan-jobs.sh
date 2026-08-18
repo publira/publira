@@ -6,7 +6,7 @@
 #   EVENT_NAME, DOCKER_MODE_INPUT
 #   FILTER_CHECK, FILTER_LINT_GO, FILTER_TEST_GO, FILTER_TEST_TS, FILTER_TEST_DB_MIGRATIONS, FILTER_TEST_MOBILE, FILTER_TEST_MOBILE_E2E, FILTER_TEST_E2E,
 #   FILTER_TEST_BOOTSTRAP, FILTER_TEST_ROUTING, FILTER_BUILD
-#   FILTER_DOCKER_WEB, FILTER_DOCKER_API, FILTER_DOCKER_BATCH, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
+#   FILTER_DOCKER_WEB, FILTER_DOCKER_API, FILTER_DOCKER_IMAGE, FILTER_DOCKER_BATCH, FILTER_DOCKER_NODE, FILTER_DOCKER_CORE
 #   GITHUB_OUTPUT (required)
 set -euo pipefail
 
@@ -29,6 +29,7 @@ flag() {
 # Fixed matrix rows (JSON objects, no spaces needed for GITHUB_OUTPUT single-line).
 rep_web='{"role":"web","target":"web-host","port":"3000","task":"docker:build:web","arg":"APP_NAME=web-host","extra":"PORT=3000"}'
 rep_api='{"role":"api","target":"api-server","port":"8000","task":"docker:build:api","arg":"CMD_NAME=api-server","extra":"PORT=8000"}'
+rep_image='{"role":"image","target":"image-server","port":"8200","task":"docker:build:image","arg":"CMD_NAME=image-server","extra":"PORT=8200"}'
 rep_batch='{"role":"batch","target":"publish-episodes","port":"","task":"docker:build:batch","arg":"CMD_NAME=publish-episodes","extra":""}'
 rep_node='{"role":"node","target":"email-renderer","port":"8080","task":"docker:build:node","arg":"APP_NAME=email-renderer","extra":"PORT=8080"}'
 
@@ -39,6 +40,8 @@ full_api='{"role":"api","target":"api-server","port":"8000","task":"docker:build
 full_admin_api='{"role":"api","target":"admin-api-server","port":"8001","task":"docker:build:api","arg":"CMD_NAME=admin-api-server","extra":"PORT=8001"}'
 full_platform_api='{"role":"api","target":"platform-api-server","port":"8002","task":"docker:build:api","arg":"CMD_NAME=platform-api-server","extra":"PORT=8002"}'
 full_batch='{"role":"batch","target":"publish-episodes","port":"","task":"docker:build:batch","arg":"CMD_NAME=publish-episodes","extra":""}'
+full_image='{"role":"image","target":"image-server","port":"8200","task":"docker:build:image","arg":"CMD_NAME=image-server","extra":"PORT=8200"}'
+full_admin_image='{"role":"image","target":"admin-image-server","port":"8201","task":"docker:build:image","arg":"CMD_NAME=admin-image-server","extra":"PORT=8201"}'
 full_node_email_renderer='{"role":"node","target":"email-renderer","port":"8080","task":"docker:build:node","arg":"APP_NAME=email-renderer","extra":"PORT=8080"}'
 skip_row='{"role":"none","target":"skip","port":"","task":"skip","arg":"","extra":""}'
 
@@ -84,6 +87,8 @@ case "${event}" in
       "${full_admin_api}"
       "${full_platform_api}"
       "${full_batch}"
+      "${full_image}"
+      "${full_admin_image}"
       "${full_node_email_renderer}"
     )
     ;;
@@ -109,10 +114,12 @@ case "${event}" in
         "${full_admin_api}"
         "${full_platform_api}"
         "${full_batch}"
+        "${full_image}"
+        "${full_admin_image}"
         "${full_node_email_renderer}"
       )
     else
-      matrix_items=("${rep_web}" "${rep_api}" "${rep_batch}" "${rep_node}")
+      matrix_items=("${rep_web}" "${rep_api}" "${rep_batch}" "${rep_node}" "${rep_image}")
     fi
     ;;
   *)
@@ -137,11 +144,14 @@ case "${event}" in
         "${full_admin_api}"
         "${full_platform_api}"
         "${full_batch}"
+        "${full_image}"
+        "${full_admin_image}"
         "${full_node_email_renderer}"
       )
     else
       if flag FILTER_DOCKER_WEB; then matrix_items+=("${rep_web}"); fi
       if flag FILTER_DOCKER_API; then matrix_items+=("${rep_api}"); fi
+      if flag FILTER_DOCKER_IMAGE; then matrix_items+=("${rep_image}"); fi
       if flag FILTER_DOCKER_BATCH; then matrix_items+=("${rep_batch}"); fi
       if flag FILTER_DOCKER_NODE; then matrix_items+=("${rep_node}"); fi
     fi

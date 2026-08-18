@@ -41,6 +41,21 @@ tasks:
           -t "publira/{{.CMD_NAME}}:local" \
           .
 
+  build:image:
+    desc: Build a Go image-server image that links Manael/libvips (CMD_NAME required; PORT optional, default 8200)
+    requires:
+      vars: [CMD_NAME]
+    vars:
+      PORT: '{{.PORT | default "8200"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/image/Dockerfile \
+          --build-arg "CMD_NAME={{.CMD_NAME}}" \
+          --build-arg "PORT={{.PORT}}" \
+          -t "publira/{{.CMD_NAME}}:local" \
+          .
+
   build:batch:
     desc: Build a one-shot Go batch image (CMD_NAME required)
     requires:
@@ -69,9 +84,9 @@ tasks:
           .
 
   # Representative set shared by local checks and CI (path-filtered / PR).
-  # Covers each role once: web / api / batch / node.
+  # Covers each role once: web / api / batch / node / image.
   verify:
-    desc: Build representative images (web-host, api-server, publish-episodes, email-renderer)
+    desc: Build representative images (web-host, api-server, publish-episodes, email-renderer, image-server)
     cmds:
       - task: build:web
         vars:
@@ -88,6 +103,10 @@ tasks:
         vars:
           APP_NAME: email-renderer
           PORT: "8080"
+      - task: build:image
+        vars:
+          CMD_NAME: image-server
+          PORT: "8200"
 
   # Full matrix used by nightly CI and manual full verification.
   verify:full:
@@ -109,6 +128,10 @@ tasks:
         vars: { CMD_NAME: publish-episodes }
       - task: build:node
         vars: { APP_NAME: email-renderer, PORT: "8080" }
+      - task: build:image
+        vars: { CMD_NAME: image-server, PORT: "8200" }
+      - task: build:image
+        vars: { CMD_NAME: admin-image-server, PORT: "8201" }
 
   smoke:web:
     desc: Run a short /livez smoke check against a built web image (APP_NAME, optional PORT)
