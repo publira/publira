@@ -20,7 +20,7 @@ import {
 } from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
-import { Suspense, useId } from "react";
+import { Suspense } from "react";
 
 import {
   AdminPage,
@@ -39,6 +39,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { ActorFilterCombobox } from "./_components/actor-filter-combobox";
+import { AuditActionSelect } from "./_components/audit-action-select";
 import {
   AuditLogActionCell,
   AuditLogActorCell,
@@ -63,31 +64,6 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const allowedActionValues = toAllowedActionValues(auditActionOptions);
-
-const AuditActionSelect = ({ defaultValue }: { defaultValue: string }) => {
-  // Native <select> is not a Field control, so the label needs an id to point at.
-  const actionSelectId = useId();
-
-  return (
-    <Field>
-      <FieldLabel htmlFor={actionSelectId}>アクション</FieldLabel>
-      <FieldContent>
-        <select
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs"
-          defaultValue={defaultValue}
-          id={actionSelectId}
-          name="action"
-        >
-          {auditActionOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </FieldContent>
-    </Field>
-  );
-};
 
 const AuditLogsSkeleton = () => (
   <div className="grid gap-6">
@@ -206,7 +182,10 @@ const AuditLogsContent = async ({
               </FieldContent>
             </Field>
 
-            <AuditActionSelect defaultValue={filters.action} />
+            <AuditActionSelect
+              defaultValue={filters.action}
+              options={auditActionOptions}
+            />
 
             <Field>
               <FieldLabel>操作者</FieldLabel>
