@@ -53,6 +53,12 @@ const (
 	// CatalogServiceGetPublishedAuthorDetailProcedure is the fully-qualified name of the
 	// CatalogService's GetPublishedAuthorDetail RPC.
 	CatalogServiceGetPublishedAuthorDetailProcedure = "/publira.v1.CatalogService/GetPublishedAuthorDetail"
+	// CatalogServiceGetPublishedLabelDetailProcedure is the fully-qualified name of the
+	// CatalogService's GetPublishedLabelDetail RPC.
+	CatalogServiceGetPublishedLabelDetailProcedure = "/publira.v1.CatalogService/GetPublishedLabelDetail"
+	// CatalogServiceSearchPublishedSeriesProcedure is the fully-qualified name of the CatalogService's
+	// SearchPublishedSeries RPC.
+	CatalogServiceSearchPublishedSeriesProcedure = "/publira.v1.CatalogService/SearchPublishedSeries"
 	// PurchaseServiceStartEpisodeCheckoutProcedure is the fully-qualified name of the PurchaseService's
 	// StartEpisodeCheckout RPC.
 	PurchaseServiceStartEpisodeCheckoutProcedure = "/publira.v1.PurchaseService/StartEpisodeCheckout"
@@ -79,6 +85,14 @@ type CatalogServiceClient interface {
 	// authors are all surfaced as NotFound so an unpublished author cannot be
 	// distinguished from one that does not exist.
 	GetPublishedAuthorDetail(context.Context, *connect.Request[v1.GetPublishedAuthorDetailRequest]) (*connect.Response[v1.GetPublishedAuthorDetailResponse], error)
+	// Returns a label that belongs to the requested tenant. Cross-tenant and
+	// missing labels are surfaced as NotFound so a foreign label cannot be
+	// distinguished from one that does not exist.
+	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
+	// Keyword search over published series titles and synopses. An empty query
+	// is invalid_argument. A token carries the query it was built for; sending
+	// it with a different query is invalid_argument.
+	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 }
 
 // NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. By
@@ -128,6 +142,18 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("GetPublishedAuthorDetail")),
 			connect.WithClientOptions(opts...),
 		),
+		getPublishedLabelDetail: connect.NewClient[v1.GetPublishedLabelDetailRequest, v1.GetPublishedLabelDetailResponse](
+			httpClient,
+			baseURL+CatalogServiceGetPublishedLabelDetailProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("GetPublishedLabelDetail")),
+			connect.WithClientOptions(opts...),
+		),
+		searchPublishedSeries: connect.NewClient[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse](
+			httpClient,
+			baseURL+CatalogServiceSearchPublishedSeriesProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedSeries")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -139,6 +165,8 @@ type catalogServiceClient struct {
 	getEpisodeDetail         *connect.Client[v1.GetEpisodeDetailRequest, v1.GetEpisodeDetailResponse]
 	listPublishedAuthors     *connect.Client[v1.ListPublishedAuthorsRequest, v1.ListPublishedAuthorsResponse]
 	getPublishedAuthorDetail *connect.Client[v1.GetPublishedAuthorDetailRequest, v1.GetPublishedAuthorDetailResponse]
+	getPublishedLabelDetail  *connect.Client[v1.GetPublishedLabelDetailRequest, v1.GetPublishedLabelDetailResponse]
+	searchPublishedSeries    *connect.Client[v1.SearchPublishedSeriesRequest, v1.SearchPublishedSeriesResponse]
 }
 
 // ListPublishedLabels calls publira.v1.CatalogService.ListPublishedLabels.
@@ -171,6 +199,16 @@ func (c *catalogServiceClient) GetPublishedAuthorDetail(ctx context.Context, req
 	return c.getPublishedAuthorDetail.CallUnary(ctx, req)
 }
 
+// GetPublishedLabelDetail calls publira.v1.CatalogService.GetPublishedLabelDetail.
+func (c *catalogServiceClient) GetPublishedLabelDetail(ctx context.Context, req *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error) {
+	return c.getPublishedLabelDetail.CallUnary(ctx, req)
+}
+
+// SearchPublishedSeries calls publira.v1.CatalogService.SearchPublishedSeries.
+func (c *catalogServiceClient) SearchPublishedSeries(ctx context.Context, req *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
+	return c.searchPublishedSeries.CallUnary(ctx, req)
+}
+
 // CatalogServiceHandler is an implementation of the publira.v1.CatalogService service.
 type CatalogServiceHandler interface {
 	ListPublishedLabels(context.Context, *connect.Request[v1.ListPublishedLabelsRequest]) (*connect.Response[v1.ListPublishedLabelsResponse], error)
@@ -186,6 +224,14 @@ type CatalogServiceHandler interface {
 	// authors are all surfaced as NotFound so an unpublished author cannot be
 	// distinguished from one that does not exist.
 	GetPublishedAuthorDetail(context.Context, *connect.Request[v1.GetPublishedAuthorDetailRequest]) (*connect.Response[v1.GetPublishedAuthorDetailResponse], error)
+	// Returns a label that belongs to the requested tenant. Cross-tenant and
+	// missing labels are surfaced as NotFound so a foreign label cannot be
+	// distinguished from one that does not exist.
+	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
+	// Keyword search over published series titles and synopses. An empty query
+	// is invalid_argument. A token carries the query it was built for; sending
+	// it with a different query is invalid_argument.
+	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 }
 
 // NewCatalogServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -231,6 +277,18 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("GetPublishedAuthorDetail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceGetPublishedLabelDetailHandler := connect.NewUnaryHandler(
+		CatalogServiceGetPublishedLabelDetailProcedure,
+		svc.GetPublishedLabelDetail,
+		connect.WithSchema(catalogServiceMethods.ByName("GetPublishedLabelDetail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	catalogServiceSearchPublishedSeriesHandler := connect.NewUnaryHandler(
+		CatalogServiceSearchPublishedSeriesProcedure,
+		svc.SearchPublishedSeries,
+		connect.WithSchema(catalogServiceMethods.ByName("SearchPublishedSeries")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CatalogServiceListPublishedLabelsProcedure:
@@ -245,6 +303,10 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceListPublishedAuthorsHandler.ServeHTTP(w, r)
 		case CatalogServiceGetPublishedAuthorDetailProcedure:
 			catalogServiceGetPublishedAuthorDetailHandler.ServeHTTP(w, r)
+		case CatalogServiceGetPublishedLabelDetailProcedure:
+			catalogServiceGetPublishedLabelDetailHandler.ServeHTTP(w, r)
+		case CatalogServiceSearchPublishedSeriesProcedure:
+			catalogServiceSearchPublishedSeriesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -276,6 +338,14 @@ func (UnimplementedCatalogServiceHandler) ListPublishedAuthors(context.Context, 
 
 func (UnimplementedCatalogServiceHandler) GetPublishedAuthorDetail(context.Context, *connect.Request[v1.GetPublishedAuthorDetailRequest]) (*connect.Response[v1.GetPublishedAuthorDetailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetPublishedAuthorDetail is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.GetPublishedLabelDetail is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.v1.CatalogService.SearchPublishedSeries is not implemented"))
 }
 
 // PurchaseServiceClient is a client for the publira.v1.PurchaseService service.

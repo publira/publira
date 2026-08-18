@@ -1214,6 +1214,14 @@ CREATE INDEX idx_series_tenant_published_at ON series USING btree (tenant_id, is
 -- タイトル順の cursor 用。並び替えキーと同じ (title, id) の組で張る。
 CREATE INDEX idx_series_tenant_title ON series USING btree (tenant_id, is_published, title, id);
 
+-- INDEX: idx_series_tenant_label_title
+-- GetPublishedLabelDetail の関連シリーズ。キーセットはタイトル順と同じ
+-- (title, id) で、先頭に label_id を足してそのレーベルだけを索引順に取る。
+-- SearchPublishedSeries は title / synopsis の ILIKE '%q%' なのでこの btree
+-- には乗らない。テナント + is_published で絞ったうえで LIMIT が効くうちは
+-- シーケンシャルで足り、pg_trgm の GIN は件数が増えて遅延が見えた時点で足す。
+CREATE INDEX idx_series_tenant_label_title ON series USING btree (tenant_id, label_id, is_published, title, id);
+
 -- INDEX: idx_tenant_admin_invitations_tenant_created_at
 -- 末尾の id は招待一覧の cursor のタイブレーカー。btree は逆順にも走査
 -- できるので、この 1 本で次ページと前ページの両方を索引順に取り出せる。

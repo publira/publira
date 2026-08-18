@@ -157,6 +157,66 @@ message GetPublishedAuthorDetailResponse {
   string next_token = 4;
 }
 
+// A label that belongs to the requested tenant, plus how many of its series
+// are currently published. Labels have no unpublished state of their own; a
+// label with zero published series is still returned so a shareable detail
+// URL stays valid after its last series is taken down.
+message PublishedLabel {
+  string public_id = 1;
+  string name = 2;
+  string eye_catch_image_updated_at = 3;
+  repeated publira.types.v1.SeriesEyeCatchVariant eye_catch_image_variants = 4;
+  int32 published_series_count = 5;
+}
+
+// Cursor pagination for the label's published series. Field shape and token
+// rules: proto/README.md. Sorted by title, then id. There is no order field:
+// title order is the only series list the label page needs, and a later
+// selectable order would have to carry its name in the token.
+message GetPublishedLabelDetailRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string public_id = 2;
+  // Max series in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message GetPublishedLabelDetailResponse {
+  PublishedLabel label = 1;
+  // One page of published series on this label, title ascending.
+  repeated publira.types.v1.Series series = 2;
+  // Token for the previous series page. Empty on the first page.
+  string previous_token = 3;
+  // Token for the next series page. Empty on the last page.
+  string next_token = 4;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+// Matches published series whose title or synopsis contains `query`
+// (case-insensitive substring). Sorted by title, then id. There is no order
+// field: title order is the only search result list the storefront needs.
+// The token carries the query it was built for; sending it with a different
+// query is invalid_argument, because the page it points at no longer exists
+// under the new query. Changing the query restarts at page 1.
+message SearchPublishedSeriesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
+  string query = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 4;
+}
+
+message SearchPublishedSeriesResponse {
+  repeated publira.types.v1.Series series = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 service CatalogService {
   rpc ListPublishedLabels(ListPublishedLabelsRequest) returns (ListPublishedLabelsResponse) {}
   rpc ListPublishedSeries(ListPublishedSeriesRequest) returns (ListPublishedSeriesResponse) {}
@@ -171,6 +231,14 @@ service CatalogService {
   // authors are all surfaced as NotFound so an unpublished author cannot be
   // distinguished from one that does not exist.
   rpc GetPublishedAuthorDetail(GetPublishedAuthorDetailRequest) returns (GetPublishedAuthorDetailResponse) {}
+  // Returns a label that belongs to the requested tenant. Cross-tenant and
+  // missing labels are surfaced as NotFound so a foreign label cannot be
+  // distinguished from one that does not exist.
+  rpc GetPublishedLabelDetail(GetPublishedLabelDetailRequest) returns (GetPublishedLabelDetailResponse) {}
+  // Keyword search over published series titles and synopses. An empty query
+  // is invalid_argument. A token carries the query it was built for; sending
+  // it with a different query is invalid_argument.
+  rpc SearchPublishedSeries(SearchPublishedSeriesRequest) returns (SearchPublishedSeriesResponse) {}
 }
 
 // A one-time paid-episode checkout. Purchases are created only by the Stripe

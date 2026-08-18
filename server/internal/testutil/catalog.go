@@ -39,6 +39,8 @@ type SeriesSeed struct {
 	PublicID string
 	Title    string
 	Synopsis string
+	// LabelID hangs the series off a seeded label. Zero means no label.
+	LabelID uuid.UUID
 	// Published maps to series.is_published. Published series are also the only
 	// ones that get a published_at, which the catalog queries require.
 	Published bool
@@ -112,10 +114,11 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 	ctx, cancel := seedContext()
 	defer cancel()
 
+	labelID := uuid.NullUUID{UUID: seed.LabelID, Valid: seed.LabelID != uuid.Nil}
 	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO series (id, tenant_id, public_id, title, is_published, published_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, seriesID, tenantID, publicID, title, seed.Published, publishedAt); err != nil {
+		INSERT INTO series (id, tenant_id, public_id, title, is_published, published_at, label_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, seriesID, tenantID, publicID, title, seed.Published, publishedAt, labelID); err != nil {
 		t.Fatalf("insert series %s: %v", publicID, err)
 	}
 
@@ -145,6 +148,50 @@ type CreatorSeed struct {
 	PublicID    string
 	Name        string
 	ProfileText string
+}
+
+// Label is a seeded labels row. The public catalog addresses a label by its
+// public ID; the UUID is what series.label_id hangs off.
+type Label struct {
+	ID       uuid.UUID
+	PublicID string
+	Name     string
+}
+
+// LabelSeed describes one label to insert. The zero value is a nameless label.
+type LabelSeed struct {
+	PublicID string
+	Name     string
+}
+
+// SeedLabel inserts a label for the tenant. Uses the superuser connection,
+// which is not subject to RLS.
+func (e *PostgresEnv) SeedLabel(t *testing.T, tenantID uuid.UUID, seed LabelSeed) Label {
+	t.Helper()
+	e.requireDB(t)
+
+	labelID := uuid.Must(uuid.NewV7())
+	publicID := seed.PublicID
+	if publicID == "" {
+		var err error
+		publicID, err = publicid.New()
+		if err != nil {
+			t.Fatalf("publicid.New: %v", err)
+		}
+	}
+	name := defaultIfEmpty(seed.Name, "Label")
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO labels (id, tenant_id, public_id, name)
+		VALUES ($1, $2, $3, $4)
+	`, labelID, tenantID, publicID, name); err != nil {
+		t.Fatalf("insert label %s: %v", publicID, err)
+	}
+
+	return Label{ID: labelID, PublicID: publicID, Name: name}
 }
 
 // SeedCreator inserts a creator for the tenant. Uses the superuser connection,

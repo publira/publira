@@ -211,3 +211,186 @@ func TestCatalogListPublishedLabelsVariantLookupErrorIsReturned(t *testing.T) {
 
 	assertPublicExpectations(t, mock)
 }
+
+func labelDetailColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id",
+		"public_id",
+		"name",
+		"eye_catch_image_id",
+		"eye_catch_image_updated_at",
+		"published_series_count",
+	})
+}
+
+func TestCatalogGetPublishedLabelDetailSuccess(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+		WithArgs(tenantID, "LABEL000001").
+		WillReturnRows(labelDetailColumns().
+			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(1)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByLabelTitleAscQuery)).
+		WithArgs(labelID, tenantID, nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows(seriesID))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", now, nil, nil, []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "LABEL000001",
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedLabelDetail: %v", err)
+	}
+	if resp.Msg.Label == nil || resp.Msg.Label.PublicId != "LABEL000001" {
+		t.Fatalf("label = %+v, want LABEL000001", resp.Msg.Label)
+	}
+	if resp.Msg.Label.Name != "Weekly Jump" {
+		t.Fatalf("name = %q, want Weekly Jump", resp.Msg.Label.Name)
+	}
+	if resp.Msg.Label.PublishedSeriesCount != 1 {
+		t.Fatalf("published_series_count = %d, want 1", resp.Msg.Label.PublishedSeriesCount)
+	}
+	if len(resp.Msg.Series) != 1 || resp.Msg.Series[0].PublicId != "SERIESPUB" {
+		t.Fatalf("series = %+v, want SERIESPUB", resp.Msg.Series)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	if resp.Msg.NextToken != "" {
+		t.Fatalf("next_token = %q, want empty when every series fits in one page", resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedLabelDetailReturnsLabelWithNoSeries(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+		WithArgs(tenantID, "LABELEMPTY1").
+		WillReturnRows(labelDetailColumns().
+			AddRow(labelID, "LABELEMPTY1", "Empty Label", nil, nil, int32(0)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByLabelTitleAscQuery)).
+		WithArgs(labelID, tenantID, nil, false, nil, int32(21)).
+		WillReturnRows(seriesIDRows())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "LABELEMPTY1",
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedLabelDetail: %v", err)
+	}
+	if resp.Msg.Label == nil || resp.Msg.Label.PublicId != "LABELEMPTY1" {
+		t.Fatalf("label = %+v, want LABELEMPTY1", resp.Msg.Label)
+	}
+	if len(resp.Msg.Series) != 0 {
+		t.Fatalf("series count = %d, want 0", len(resp.Msg.Series))
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedLabelDetailNotFound(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+		WithArgs(tenantID, "MISSING00001").
+		WillReturnRows(labelDetailColumns())
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "MISSING00001",
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("error = %v, want not_found", err)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	ids := newSeriesIDs(3)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+		WithArgs(tenantID, "LABEL000001").
+		WillReturnRows(labelDetailColumns().
+			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(3)))
+	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsByLabelTitleAscQuery)).
+		WithArgs(labelID, tenantID, nil, false, nil, int32(3)).
+		WillReturnRows(seriesIDRows(ids...))
+	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(seriesDetailColumns().
+			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)).
+			AddRow(ids[1], "SERIESBETA0", "Beta", nil, now, nil, nil, []byte(`[]`), []byte(`{}`)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "LABEL000001",
+		Limit:    2,
+	}))
+	if err != nil {
+		t.Fatalf("GetPublishedLabelDetail: %v", err)
+	}
+	if got := len(resp.Msg.Series); got != 2 {
+		t.Fatalf("series count = %d, want the over-fetched row dropped", got)
+	}
+	if resp.Msg.PreviousToken != "" {
+		t.Fatalf("previous_token = %q, want empty on the first page", resp.Msg.PreviousToken)
+	}
+	wantToken := pagination.Encode(pagination.Forward, "title_asc", "Beta", ids[1].String())
+	if resp.Msg.NextToken != wantToken {
+		t.Fatalf("next_token = %q, want the last returned title cursor", resp.Msg.NextToken)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestCatalogGetPublishedLabelDetailRejectsInvalidToken(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	labelID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(getPublishedLabelByPublicIDQuery)).
+		WithArgs(tenantID, "LABEL000001").
+		WillReturnRows(labelDetailColumns().
+			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(1)))
+
+	client := publirav1connect.NewCatalogServiceClient(testServer.Client(), testServer.URL)
+	_, err := client.GetPublishedLabelDetail(context.Background(), connect.NewRequest(&publirav1.GetPublishedLabelDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "LABEL000001",
+		Token:    "not-a-token",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("error = %v, want invalid_argument", err)
+	}
+	if err.Error() != "invalid_argument: token is invalid" {
+		t.Fatalf("error = %q, want token internals hidden", err)
+	}
+	assertPublicExpectations(t, mock)
+}
