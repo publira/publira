@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockUpdateTag, mockUpdateTenantTimezone } =
-  vi.hoisted(() => ({
-    mockGetAccessToken: vi.fn(),
-    mockUpdateTag: vi.fn(),
-    mockUpdateTenantTimezone: vi.fn(),
-  }));
+const {
+  mockDeleteTenantFavicon,
+  mockGetAccessToken,
+  mockUpdateTag,
+  mockUpdateTenantTimezone,
+  mockUploadTenantFavicon,
+} = vi.hoisted(() => ({
+  mockDeleteTenantFavicon: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockUpdateTag: vi.fn(),
+  mockUpdateTenantTimezone: vi.fn(),
+  mockUploadTenantFavicon: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({
   updateTag: mockUpdateTag,
@@ -34,7 +41,11 @@ vi.mock("#lib/tenant-timezone", () => ({
 }));
 
 vi.mock("#lib/theme-settings", () => ({
+  deleteTenantFavicon: mockDeleteTenantFavicon,
+  tenantThemeCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:theme-settings`,
   updateTenantThemeSettings: vi.fn(),
+  uploadTenantFavicon: mockUploadTenantFavicon,
 }));
 
 const timezoneFormData = (values: Record<string, string>): FormData => {
@@ -172,6 +183,120 @@ describe("updateTenantTimezoneAction", () => {
     );
 
     expect(result).toEqual({ message: "権限がありません。", ok: false });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const faviconFormData = (
+  values: Record<string, string>,
+  file?: File
+): FormData => {
+  const formData = new FormData();
+  for (const [name, value] of Object.entries(values)) {
+    formData.set(name, value);
+  }
+  if (file) {
+    formData.set("favicon", file);
+  }
+  return formData;
+};
+
+const pngFile = () =>
+  new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "favicon.png", {
+    type: "image/png",
+  });
+
+describe("updateTenantFaviconAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("選択された画像をアップロードし、公開サイトと設定画面のキャッシュを更新する", async () => {
+    mockUploadTenantFavicon.mockResolvedValueOnce({
+      faviconUrl: "/images/tenants/favicon-1",
+      ok: true,
+    });
+
+    const { updateTenantFaviconAction } = await import("./actions");
+
+    const result = await updateTenantFaviconAction(
+      null,
+      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
+    );
+
+    expect(result).toEqual({
+      faviconUrl: "/images/tenants/favicon-1",
+      message: "ファビコンを保存しました。",
+      ok: true,
+    });
+    expect(mockUploadTenantFavicon).toHaveBeenCalledWith({
+      faviconContentType: "image/png",
+      faviconData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+      tenantId: "TENANT001",
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
+  });
+
+  it("削除では画像を送らずに削除 API を呼ぶ", async () => {
+    mockDeleteTenantFavicon.mockResolvedValueOnce({
+      faviconUrl: "",
+      ok: true,
+    });
+
+    const { updateTenantFaviconAction } = await import("./actions");
+
+    const result = await updateTenantFaviconAction(
+      null,
+      faviconFormData({ intent: "delete", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      faviconUrl: "",
+      message: "ファビコンを削除しました。",
+      ok: true,
+    });
+    expect(mockDeleteTenantFavicon).toHaveBeenCalledWith("TENANT001");
+    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+  });
+
+  it("画像を選ばずにアップロードした場合は API を呼ばない", async () => {
+    const { updateTenantFaviconAction } = await import("./actions");
+
+    const result = await updateTenantFaviconAction(
+      null,
+      faviconFormData({ intent: "upload", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "画像ファイルを選択してください。",
+      ok: false,
+    });
+    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("アップロードに失敗した場合はキャッシュを更新しない", async () => {
+    mockUploadTenantFavicon.mockResolvedValueOnce({
+      message: "favicon image must be at least 32x32",
+      ok: false,
+    });
+
+    const { updateTenantFaviconAction } = await import("./actions");
+
+    const result = await updateTenantFaviconAction(
+      null,
+      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
+    );
+
+    expect(result).toEqual({
+      message: "favicon image must be at least 32x32",
+      ok: false,
+    });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

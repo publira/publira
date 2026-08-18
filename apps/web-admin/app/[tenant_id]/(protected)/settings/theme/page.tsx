@@ -16,8 +16,12 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
+import { TenantFaviconForm } from "../_components/tenant-favicon-form";
 import { ThemeSettingsForm } from "../_components/theme-settings-form";
-import { updateTenantThemeSettingsAction } from "../_lib/actions";
+import {
+  updateTenantFaviconAction,
+  updateTenantThemeSettingsAction,
+} from "../_lib/actions";
 
 export const metadata: Metadata = {
   title: "設定 - テーマ",
@@ -40,7 +44,7 @@ const SettingsThemePage = async () => {
           <AdminPageEyebrow>Console</AdminPageEyebrow>
           <AdminPageTitle>設定</AdminPageTitle>
           <AdminPageDescription>
-            テナントごとのテーマカラーを管理します。
+            テナントごとのテーマカラーとファビコンを管理します。
           </AdminPageDescription>
         </AdminPageHeading>
       </AdminPageHeader>
@@ -48,10 +52,16 @@ const SettingsThemePage = async () => {
         <div className="grid gap-6">
           <SettingsTabNav current="theme" />
           {themeResult.ok ? (
-            <ThemeSettingsForm
-              action={updateTenantThemeSettingsAction}
-              initialTheme={themeResult.theme}
-            />
+            <>
+              <TenantFaviconForm
+                action={updateTenantFaviconAction}
+                initialFaviconUrl={themeResult.faviconUrl}
+              />
+              <ThemeSettingsForm
+                action={updateTenantThemeSettingsAction}
+                initialTheme={themeResult.theme}
+              />
+            </>
           ) : (
             <SectionError
               description={themeResult.message}

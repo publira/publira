@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/theme.proto.
  */
 export const file_publira_admin_v1_theme: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL3RoZW1lLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIkgKFUdldFRlbmFudFRoZW1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiRgoWR2V0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieQoYVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIsCgV0aGVtZRgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiSQoZVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUy6wEKElRlbmFudFRoZW1lU2VydmljZRJlCg5HZXRUZW5hbnRUaGVtZRInLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGhlbWVSZXF1ZXN0GigucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaGVtZVJlc3BvbnNlIgASbgoRVXBzZXJ0VGVuYW50VGhlbWUSKi5wdWJsaXJhLmFkbWluLnYxLlVwc2VydFRlbmFudFRoZW1lUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZSIAQkdaRWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL3RoZW1lLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIkgKFUdldFRlbmFudFRoZW1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiRgoWR2V0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieQoYVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIsCgV0aGVtZRgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiSQoZVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUigQEKGlVwbG9hZFRlbmFudEZhdmljb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIUCgxmYXZpY29uX2RhdGEYAiABKAwSHAoUZmF2aWNvbl9jb250ZW50X3R5cGUYAyABKAkiSwobVXBsb2FkVGVuYW50RmF2aWNvblJlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJNChpEZWxldGVUZW5hbnRGYXZpY29uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiSwobRGVsZXRlVGVuYW50RmF2aWNvblJlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZTLXAwoSVGVuYW50VGhlbWVTZXJ2aWNlEmUKDkdldFRlbmFudFRoZW1lEicucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaGVtZVJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRoZW1lUmVzcG9uc2UiABJuChFVcHNlcnRUZW5hbnRUaGVtZRIqLnB1YmxpcmEuYWRtaW4udjEuVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5VcHNlcnRUZW5hbnRUaGVtZVJlc3BvbnNlIgASdAoTVXBsb2FkVGVuYW50RmF2aWNvbhIsLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50RmF2aWNvblJlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZFRlbmFudEZhdmljb25SZXNwb25zZSIAEnQKE0RlbGV0ZVRlbmFudEZhdmljb24SLC5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudEZhdmljb25SZXF1ZXN0Gi0ucHVibGlyYS5hZG1pbi52MS5EZWxldGVUZW5hbnRGYXZpY29uUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantThemeRequest
@@ -88,6 +88,87 @@ export const UpsertTenantThemeResponseSchema: GenMessage<UpsertTenantThemeRespon
   messageDesc(file_publira_admin_v1_theme, 3);
 
 /**
+ * Uploading again replaces the stored favicon, so there is no separate replace
+ * RPC.
+ *
+ * @generated from message publira.admin.v1.UploadTenantFaviconRequest
+ */
+export type UploadTenantFaviconRequest = Message<"publira.admin.v1.UploadTenantFaviconRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: bytes favicon_data = 2;
+   */
+  faviconData: Uint8Array;
+
+  /**
+   * @generated from field: string favicon_content_type = 3;
+   */
+  faviconContentType: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UploadTenantFaviconRequest.
+ * Use `create(UploadTenantFaviconRequestSchema)` to create a new message.
+ */
+export const UploadTenantFaviconRequestSchema: GenMessage<UploadTenantFaviconRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 4);
+
+/**
+ * @generated from message publira.admin.v1.UploadTenantFaviconResponse
+ */
+export type UploadTenantFaviconResponse = Message<"publira.admin.v1.UploadTenantFaviconResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantTheme theme = 1;
+   */
+  theme?: TenantTheme | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UploadTenantFaviconResponse.
+ * Use `create(UploadTenantFaviconResponseSchema)` to create a new message.
+ */
+export const UploadTenantFaviconResponseSchema: GenMessage<UploadTenantFaviconResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 5);
+
+/**
+ * @generated from message publira.admin.v1.DeleteTenantFaviconRequest
+ */
+export type DeleteTenantFaviconRequest = Message<"publira.admin.v1.DeleteTenantFaviconRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteTenantFaviconRequest.
+ * Use `create(DeleteTenantFaviconRequestSchema)` to create a new message.
+ */
+export const DeleteTenantFaviconRequestSchema: GenMessage<DeleteTenantFaviconRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 6);
+
+/**
+ * @generated from message publira.admin.v1.DeleteTenantFaviconResponse
+ */
+export type DeleteTenantFaviconResponse = Message<"publira.admin.v1.DeleteTenantFaviconResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantTheme theme = 1;
+   */
+  theme?: TenantTheme | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteTenantFaviconResponse.
+ * Use `create(DeleteTenantFaviconResponseSchema)` to create a new message.
+ */
+export const DeleteTenantFaviconResponseSchema: GenMessage<DeleteTenantFaviconResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 7);
+
+/**
  * @generated from service publira.admin.v1.TenantThemeService
  */
 export const TenantThemeService: GenService<{
@@ -106,6 +187,22 @@ export const TenantThemeService: GenService<{
     methodKind: "unary";
     input: typeof UpsertTenantThemeRequestSchema;
     output: typeof UpsertTenantThemeResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantThemeService.UploadTenantFavicon
+   */
+  uploadTenantFavicon: {
+    methodKind: "unary";
+    input: typeof UploadTenantFaviconRequestSchema;
+    output: typeof UploadTenantFaviconResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantThemeService.DeleteTenantFavicon
+   */
+  deleteTenantFavicon: {
+    methodKind: "unary";
+    input: typeof DeleteTenantFaviconRequestSchema;
+    output: typeof DeleteTenantFaviconResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_theme, 0);

@@ -118,6 +118,11 @@ message TenantTheme {
   string destructive_foreground_color = 26;
   string info_color = 27;
   string info_foreground_color = 28;
+  // Tenant favicon, uploaded and stored independently from logo_url. Empty
+  // when the tenant has not set one, which is what makes the public site fall
+  // back to the logo. Replacing the favicon stores a new image, so the URL
+  // itself changes and no separate cache-busting field is needed.
+  string favicon_url = 29;
 }
 
 message Page {

@@ -8,11 +8,16 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/storage"
 )
 
 var hexColorCodePattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -163,4 +168,159 @@ func (s *adminServer) UpsertTenantTheme(
 	return connect.NewResponse(&publiraadminv1.UpsertTenantThemeResponse{
 		Theme: protomapper.TenantThemeFromModel(updated),
 	}), nil
+}
+
+// storeTenantFavicon uploads the normalized favicon and returns the tenant
+// image it was stored as. A replace stores a new image rather than overwriting
+// the old object, so the favicon URL changes and no client keeps serving the
+// previous icon from its cache.
+func (s *adminServer) storeTenantFavicon(ctx context.Context, tenant dbmodels.Tenant, variant imageproc.Variant) (uuid.UUID, error) {
+	if s.storage == nil {
+		return uuid.Nil, connect.NewError(connect.CodeInternal, errors.New("storage provider is not configured"))
+	}
+
+	tenantImageID, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodeInternal, err)
+	}
+	createdImage, err := s.queriesFor(ctx).CreateTenantImage(ctx, dbmodels.CreateTenantImageParams{
+		ID:       tenantImageID,
+		TenantID: tenant.ID,
+	})
+	if err != nil {
+		return uuid.Nil, s.internalDBError(ctx, "failed to create tenant image", err, "tenant_id", tenant.ID.String())
+	}
+
+	objectKey := fmt.Sprintf("tenants/%s/favicons/%s-%s%s", tenant.PublicID, createdImage.ID.String(), variant.Label, variant.Extension)
+	uploaded, err := s.storage.Upload(ctx, storage.UploadRequest{
+		ObjectKey:   objectKey,
+		ContentType: variant.ContentType,
+		Data:        variant.Data,
+	})
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	variantID, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if _, err := s.queriesFor(ctx).CreateTenantImageVariant(ctx, dbmodels.CreateTenantImageVariantParams{
+		ID:              variantID,
+		TenantID:        tenant.ID,
+		TenantImageID:   createdImage.ID,
+		Label:           variant.Label,
+		StorageProvider: uploaded.Provider,
+		ObjectKey:       uploaded.ObjectKey,
+		ContentType:     variant.ContentType,
+		FileSizeBytes:   uploaded.SizeBytes,
+		Width:           int32(variant.Width),
+		Height:          int32(variant.Height),
+	}); err != nil {
+		return uuid.Nil, s.internalDBError(ctx, "failed to create tenant image variant", err, "tenant_id", tenant.ID.String(), "tenant_image_id", createdImage.ID.String())
+	}
+
+	return createdImage.ID, nil
+}
+
+// applyTenantFavicon points the tenant theme at faviconVariant, or clears the
+// favicon when it is nil, and drops the tenant image the theme pointed at
+// before. The writes share one tenant-scoped transaction, so a failure never
+// leaves the theme referencing an image whose variant row was not written.
+func (s *adminServer) applyTenantFavicon(ctx context.Context, tenant dbmodels.Tenant, faviconVariant *imageproc.Variant) (*publirattypesv1.TenantTheme, error) {
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin tenant favicon transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	current, err := s.queriesFor(txCtx).GetTenantThemeByTenantID(txCtx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get tenant theme", err, "tenant_id", tenant.ID.String())
+	}
+
+	faviconImageID := uuid.NullUUID{}
+	if faviconVariant != nil {
+		storedImageID, storeErr := s.storeTenantFavicon(txCtx, tenant, *faviconVariant)
+		if storeErr != nil {
+			return nil, storeErr
+		}
+		faviconImageID = uuid.NullUUID{UUID: storedImageID, Valid: true}
+	}
+
+	updated, err := s.queriesFor(txCtx).SetTenantThemeFaviconImage(txCtx, dbmodels.SetTenantThemeFaviconImageParams{
+		TenantID:       tenant.ID,
+		FaviconImageID: faviconImageID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to set tenant favicon", err, "tenant_id", tenant.ID.String())
+	}
+
+	if current.FaviconImageID.Valid {
+		if err := s.queriesFor(txCtx).DeleteTenantImage(txCtx, dbmodels.DeleteTenantImageParams{
+			ID:       current.FaviconImageID.UUID,
+			TenantID: tenant.ID,
+		}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to delete replaced tenant favicon image", err, "tenant_id", tenant.ID.String(), "tenant_image_id", current.FaviconImageID.UUID.String())
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit tenant favicon change", err, "tenant_id", tenant.ID.String())
+	}
+
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, themeRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after tenant favicon change", "tenant_public_id", tenant.PublicID, "error", err)
+		}
+	}
+
+	return protomapper.TenantThemeFromModel(updated), nil
+}
+
+func (s *adminServer) UploadTenantFavicon(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UploadTenantFaviconRequest],
+) (*connect.Response[publiraadminv1.UploadTenantFaviconResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	variant, err := imageproc.BuildFavicon(req.Msg.FaviconData, req.Msg.FaviconContentType)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "favicon_data")
+	}
+
+	theme, err := s.applyTenantFavicon(ctx, tenant, &variant)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&publiraadminv1.UploadTenantFaviconResponse{Theme: theme}), nil
+}
+
+func (s *adminServer) DeleteTenantFavicon(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.DeleteTenantFaviconRequest],
+) (*connect.Response[publiraadminv1.DeleteTenantFaviconResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	theme, err := s.applyTenantFavicon(ctx, tenant, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&publiraadminv1.DeleteTenantFaviconResponse{Theme: theme}), nil
 }

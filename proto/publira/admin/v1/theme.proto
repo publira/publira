@@ -23,7 +23,29 @@ message UpsertTenantThemeResponse {
   publira.types.v1.TenantTheme theme = 1;
 }
 
+// Uploading again replaces the stored favicon, so there is no separate replace
+// RPC.
+message UploadTenantFaviconRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bytes favicon_data = 2;
+  string favicon_content_type = 3;
+}
+
+message UploadTenantFaviconResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
+message DeleteTenantFaviconRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message DeleteTenantFaviconResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
 service TenantThemeService {
   rpc GetTenantTheme(GetTenantThemeRequest) returns (GetTenantThemeResponse) {}
   rpc UpsertTenantTheme(UpsertTenantThemeRequest) returns (UpsertTenantThemeResponse) {}
+  rpc UploadTenantFavicon(UploadTenantFaviconRequest) returns (UploadTenantFaviconResponse) {}
+  rpc DeleteTenantFavicon(DeleteTenantFaviconRequest) returns (DeleteTenantFaviconResponse) {}
 }

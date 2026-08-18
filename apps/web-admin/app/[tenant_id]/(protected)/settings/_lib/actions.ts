@@ -18,12 +18,21 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
+import {
+  optionalFileFormSchema,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
   tenantTimezoneCacheTag,
   updateTenantTimezone,
 } from "#lib/tenant-timezone";
-import { updateTenantThemeSettings } from "#lib/theme-settings";
+import {
+  deleteTenantFavicon,
+  tenantThemeCacheTag,
+  updateTenantThemeSettings,
+  uploadTenantFavicon,
+} from "#lib/theme-settings";
 
 import type {
   EmailChangeActionState,
@@ -31,6 +40,7 @@ import type {
   ThemeSettingsActionState,
   ThemeSettingsFieldErrors,
   TenantEmailSettingsFormState,
+  TenantFaviconActionState,
   TenantSmtpTestFormState,
   TenantTimezoneActionState,
 } from "../settings-types";
@@ -86,6 +96,22 @@ const tenantThemeSchema = z.object({
   warningColor: hexColorCodeSchema,
   warningForegroundColor: hexColorCodeSchema,
 });
+
+/**
+ * Upload and delete share one Action so the card renders the current favicon
+ * straight from the Action state: with a state per operation there is no way to
+ * tell which of the two ran last.
+ */
+const tenantFaviconSchema = z
+  .object({
+    favicon: optionalFileFormSchema,
+    intent: z.enum(["upload", "delete"], { error: "不正な操作です。" }),
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  })
+  .refine((value) => value.intent !== "upload" || value.favicon !== undefined, {
+    error: "画像ファイルを選択してください。",
+    path: ["favicon"],
+  });
 
 /**
  * The Go server validates against the IANA tzdata it embeds
@@ -278,11 +304,69 @@ export const updateTenantThemeSettingsAction = async (
 
   // Refresh SSR theme injection for this admin app (public GetTenant cache).
   updateTag(`tenant:${tenantId}:site`);
+  updateTag(tenantThemeCacheTag(tenantId));
 
   return {
     message: "テーマを保存しました。",
     ok: true,
     theme: result.theme,
+  };
+};
+
+export const updateTenantFaviconAction = async (
+  _prevState: TenantFaviconActionState,
+  formData: FormData
+): Promise<TenantFaviconActionState> => {
+  const parsed = tenantFaviconSchema.safeParse(
+    toFormDataInput(formData, {
+      favicon: { kind: "file", name: "favicon" },
+      intent: { kind: "value", name: "intent" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return {
+      message: toFormErrorMessage(parsed.error),
+      ok: false,
+    };
+  }
+
+  const { favicon, intent, tenantId } = parsed.data;
+  const isDelete = intent === "delete";
+  const faviconData = favicon
+    ? new Uint8Array(await favicon.arrayBuffer())
+    : new Uint8Array();
+
+  const result = await withAdminSessionReauth(() => {
+    if (isDelete) {
+      return deleteTenantFavicon(tenantId);
+    }
+
+    return uploadTenantFavicon({
+      faviconContentType: favicon?.type ?? "",
+      faviconData,
+      tenantId,
+    });
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // Refresh the public site's tenant read and this screen's own private cache.
+  updateTag(`tenant:${tenantId}:site`);
+  updateTag(tenantThemeCacheTag(tenantId));
+
+  return {
+    faviconUrl: result.faviconUrl,
+    message: isDelete
+      ? "ファビコンを削除しました。"
+      : "ファビコンを保存しました。",
+    ok: true,
   };
 };
 

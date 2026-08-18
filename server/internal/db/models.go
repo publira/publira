@@ -443,6 +443,27 @@ type TenantConfig struct {
 	SiteTagline     sql.NullString `json:"site_tagline"`
 }
 
+type TenantImage struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type TenantImageVariant struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	TenantImageID   uuid.UUID `json:"tenant_image_id"`
+	Label           string    `json:"label"`
+	StorageProvider string    `json:"storage_provider"`
+	ObjectKey       string    `json:"object_key"`
+	ContentType     string    `json:"content_type"`
+	FileSizeBytes   int64     `json:"file_size_bytes"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
 type TenantSmtpConfig struct {
 	TenantID            uuid.UUID      `json:"tenant_id"`
 	SmtpOverrideEnabled bool           `json:"smtp_override_enabled"`
@@ -489,6 +510,7 @@ type TenantTheme struct {
 	DestructiveForegroundColor string         `json:"destructive_foreground_color"`
 	InfoColor                  string         `json:"info_color"`
 	InfoForegroundColor        string         `json:"info_foreground_color"`
+	FaviconImageID             uuid.NullUUID  `json:"favicon_image_id"`
 }
 
 type TenantUserRole struct {

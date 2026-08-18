@@ -5,6 +5,7 @@ import {
 } from "@publira/api-client/errors";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
+import { cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -18,7 +19,7 @@ export interface UpdateTenantThemeSettingsInput extends TenantThemeColors {
 }
 
 export type TenantThemeSettingsResult =
-  | { ok: true; theme: TenantThemeColors }
+  | { ok: true; theme: TenantThemeColors; faviconUrl: string }
   | {
       ok: false;
       message: string;
@@ -30,11 +31,33 @@ export type TenantThemeSettingsResult =
       requiresSignIn?: boolean;
     };
 
+export type TenantFaviconResult =
+  | { ok: true; faviconUrl: string }
+  | { ok: false; message: string };
+
+export interface UploadTenantFaviconInput {
+  tenantId: string;
+  faviconContentType: string;
+  faviconData: Uint8Array;
+}
+
 const genericLoadErrorMessage =
   "テーマの取得に失敗しました。時間をおいて再試行してください。";
 const genericUpdateErrorMessage =
   "テーマの保存に失敗しました。時間をおいて再試行してください。";
+const genericFaviconUploadErrorMessage =
+  "ファビコンのアップロードに失敗しました。時間をおいて再試行してください。";
+const genericFaviconDeleteErrorMessage =
+  "ファビコンの削除に失敗しました。時間をおいて再試行してください。";
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
+
+/**
+ * Tag the settings screen's cached read carries, so `updateTag` in a Server
+ * Action makes a saved theme or a replaced favicon visible in the same session
+ * instead of leaving the previous value in the private cache.
+ */
+export const tenantThemeCacheTag = (tenantId: string): string =>
+  `tenant:${tenantId.trim()}:theme-settings`;
 
 /**
  * Theme validation errors name the offending field ("theme.primary_color must
@@ -58,6 +81,8 @@ export const getTenantThemeSettings = async (
 ): Promise<TenantThemeSettingsResult> => {
   "use cache: private";
 
+  cacheTag(tenantThemeCacheTag(tenantId));
+
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
@@ -76,7 +101,11 @@ export const getTenantThemeSettings = async (
       withSessionHeaders(sessionId)
     );
 
-    return { ok: true, theme: toTenantTheme(response.theme) };
+    return {
+      faviconUrl: response.theme?.faviconUrl ?? "",
+      ok: true,
+      theme: toTenantTheme(response.theme),
+    };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     return {
@@ -133,12 +162,72 @@ export const updateTenantThemeSettings = async (
       withSessionHeaders(sessionId)
     );
 
-    return { ok: true, theme: toTenantTheme(response.theme) };
+    return {
+      faviconUrl: response.theme?.faviconUrl ?? "",
+      ok: true,
+      theme: toTenantTheme(response.theme),
+    };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: parseErrorMessage(error, genericUpdateErrorMessage),
+      ok: false,
+    };
+  }
+};
+
+export const uploadTenantFavicon = async (
+  input: UploadTenantFaviconInput
+): Promise<TenantFaviconResult> => {
+  const sessionId = await getAccessToken();
+  const normalizedTenantId = input.tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return { message: sessionErrorMessage, ok: false };
+  }
+
+  try {
+    const response = await apiClient.theme.uploadTenantFavicon(
+      {
+        faviconContentType: input.faviconContentType,
+        faviconData: input.faviconData,
+        tenant: { tenantId: normalizedTenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { faviconUrl: response.theme?.faviconUrl ?? "", ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: parseErrorMessage(error, genericFaviconUploadErrorMessage),
+      ok: false,
+    };
+  }
+};
+
+export const deleteTenantFavicon = async (
+  tenantId: string
+): Promise<TenantFaviconResult> => {
+  const sessionId = await getAccessToken();
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return { message: sessionErrorMessage, ok: false };
+  }
+
+  try {
+    const response = await apiClient.theme.deleteTenantFavicon(
+      { tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { faviconUrl: response.theme?.faviconUrl ?? "", ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: parseErrorMessage(error, genericFaviconDeleteErrorMessage),
       ok: false,
     };
   }

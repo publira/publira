@@ -1,12 +1,25 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetSessionId, mockGetTenantThemeApi, mockUpsertTenantThemeApi } =
-  vi.hoisted(() => ({
-    mockGetSessionId: vi.fn(),
-    mockGetTenantThemeApi: vi.fn(),
-    mockUpsertTenantThemeApi: vi.fn(),
-  }));
+const {
+  mockCacheTag,
+  mockDeleteTenantFaviconApi,
+  mockGetSessionId,
+  mockGetTenantThemeApi,
+  mockUploadTenantFaviconApi,
+  mockUpsertTenantThemeApi,
+} = vi.hoisted(() => ({
+  mockCacheTag: vi.fn(),
+  mockDeleteTenantFaviconApi: vi.fn(),
+  mockGetSessionId: vi.fn(),
+  mockGetTenantThemeApi: vi.fn(),
+  mockUploadTenantFaviconApi: vi.fn(),
+  mockUpsertTenantThemeApi: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  cacheTag: mockCacheTag,
+}));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetSessionId,
@@ -15,7 +28,9 @@ vi.mock("./session", () => ({
 vi.mock("@publira/api-client/admin/client", () => ({
   createAdminApiClient: () => ({
     theme: {
+      deleteTenantFavicon: mockDeleteTenantFaviconApi,
       getTenantTheme: mockGetTenantThemeApi,
+      uploadTenantFavicon: mockUploadTenantFaviconApi,
       upsertTenantTheme: mockUpsertTenantThemeApi,
     },
   }),
@@ -65,8 +80,11 @@ describe("theme-settings", () => {
 
     const result = await getTenantThemeSettings("TENANT001");
 
-    expect(result).toEqual({ ok: true, theme: fullTheme });
+    expect(result).toEqual({ faviconUrl: "", ok: true, theme: fullTheme });
 
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
     expect(mockGetTenantThemeApi).toHaveBeenCalledWith(
       { tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
@@ -121,6 +139,90 @@ describe("theme-settings", () => {
       tenantId: "TENANT001",
     });
 
-    expect(result).toEqual({ ok: true, theme: updatedTheme });
+    expect(result).toEqual({
+      faviconUrl: "",
+      ok: true,
+      theme: updatedTheme,
+    });
+  });
+
+  it("favicon が設定されている場合はその URL も返す", async () => {
+    mockGetTenantThemeApi.mockResolvedValueOnce({
+      theme: { ...fullTheme, faviconUrl: "/images/tenants/favicon-1" },
+    });
+
+    const { getTenantThemeSettings } = await import("./theme-settings");
+
+    const result = await getTenantThemeSettings("TENANT001");
+
+    expect(result).toEqual({
+      faviconUrl: "/images/tenants/favicon-1",
+      ok: true,
+      theme: fullTheme,
+    });
+  });
+
+  it("favicon をアップロードすると保存後の URL を返す", async () => {
+    mockUploadTenantFaviconApi.mockResolvedValueOnce({
+      theme: { ...fullTheme, faviconUrl: "/images/tenants/favicon-2" },
+    });
+
+    const { uploadTenantFavicon } = await import("./theme-settings");
+
+    const faviconData = new Uint8Array([1, 2, 3]);
+    const result = await uploadTenantFavicon({
+      faviconContentType: "image/png",
+      faviconData,
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toEqual({
+      faviconUrl: "/images/tenants/favicon-2",
+      ok: true,
+    });
+    expect(mockUploadTenantFaviconApi).toHaveBeenCalledWith(
+      {
+        faviconContentType: "image/png",
+        faviconData,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("favicon の削除に成功した場合は空の URL を返す", async () => {
+    mockDeleteTenantFaviconApi.mockResolvedValueOnce({ theme: fullTheme });
+
+    const { deleteTenantFavicon } = await import("./theme-settings");
+
+    const result = await deleteTenantFavicon("TENANT001");
+
+    expect(result).toEqual({ faviconUrl: "", ok: true });
+    expect(mockDeleteTenantFaviconApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("favicon のアップロードが拒否された場合はサーバのメッセージを返す", async () => {
+    mockUploadTenantFaviconApi.mockRejectedValueOnce(
+      new ConnectError(
+        "favicon image must be at least 32x32",
+        Code.InvalidArgument
+      )
+    );
+
+    const { uploadTenantFavicon } = await import("./theme-settings");
+
+    const result = await uploadTenantFavicon({
+      faviconContentType: "image/png",
+      faviconData: new Uint8Array([1]),
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toEqual({
+      message: "favicon image must be at least 32x32",
+      ok: false,
+    });
   });
 });

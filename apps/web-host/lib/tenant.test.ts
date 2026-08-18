@@ -51,6 +51,25 @@ describe("tenant", () => {
     expect(info?.timeZone).toBe("America/Los_Angeles");
   });
 
+  it("テナント favicon が設定されていればサイト情報から取得できる", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      theme: { faviconUrl: "/images/tenants/favicon-1" },
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.faviconUrl).toBe("/images/tenants/favicon-1");
+  });
+
+  it("テナント favicon が未設定なら favicon の URL を持たない", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.faviconUrl).toBeUndefined();
+  });
+
   it("フィールドが空のときは既定タイムゾーンにフォールバックする", async () => {
     mockGetTenant.mockResolvedValueOnce({ ...tenantResponse, timezone: "  " });
 

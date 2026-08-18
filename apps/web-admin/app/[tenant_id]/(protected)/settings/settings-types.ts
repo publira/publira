@@ -59,6 +59,18 @@ export type ThemeSettingsActionState =
     }
   | null;
 
+export type TenantFaviconActionState =
+  | {
+      ok: true;
+      message: string;
+      faviconUrl: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
 export type TenantTimezoneActionState =
   | {
       ok: true;

@@ -512,6 +512,32 @@ CREATE TABLE tenant_config (
     site_tagline text
 );
 
+-- TABLE: tenant_image_variants
+CREATE TABLE tenant_image_variants (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_image_id uuid NOT NULL,
+    label character varying(32) NOT NULL,
+    storage_provider character varying(32) NOT NULL,
+    object_key text NOT NULL,
+    content_type character varying(255) NOT NULL,
+    file_size_bytes bigint NOT NULL,
+    width integer NOT NULL,
+    height integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT tenant_image_variants_file_size_bytes_check CHECK ((file_size_bytes > 0)),
+    CONSTRAINT tenant_image_variants_height_check CHECK ((height > 0)),
+    CONSTRAINT tenant_image_variants_width_check CHECK ((width > 0))
+);
+
+-- TABLE: tenant_images
+CREATE TABLE tenant_images (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 -- TABLE: tenant_smtp_config
 CREATE TABLE tenant_smtp_config (
     tenant_id uuid NOT NULL,
@@ -562,7 +588,8 @@ CREATE TABLE tenant_themes (
     destructive_color character varying(32) DEFAULT '#b54444'::character varying NOT NULL,
     destructive_foreground_color character varying(32) DEFAULT '#fff4f4'::character varying NOT NULL,
     info_color character varying(32) DEFAULT '#3c78c2'::character varying NOT NULL,
-    info_foreground_color character varying(32) DEFAULT '#f3f8ff'::character varying NOT NULL
+    info_foreground_color character varying(32) DEFAULT '#f3f8ff'::character varying NOT NULL,
+    favicon_image_id uuid
 );
 
 -- TABLE: tenant_user_roles
@@ -895,6 +922,14 @@ ALTER TABLE ONLY tenant_admin_invitations
 -- CONSTRAINT: tenant_config tenant_config_pkey
 ALTER TABLE ONLY tenant_config
     ADD CONSTRAINT tenant_config_pkey PRIMARY KEY (tenant_id);
+
+-- CONSTRAINT: tenant_image_variants tenant_image_variants_pkey
+ALTER TABLE ONLY tenant_image_variants
+    ADD CONSTRAINT tenant_image_variants_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: tenant_images tenant_images_pkey
+ALTER TABLE ONLY tenant_images
+    ADD CONSTRAINT tenant_images_pkey PRIMARY KEY (id);
 
 -- CONSTRAINT: tenant_smtp_config tenant_smtp_config_pkey
 ALTER TABLE ONLY tenant_smtp_config
@@ -1230,6 +1265,15 @@ CREATE INDEX idx_tenant_admin_invitations_tenant_created_at ON tenant_admin_invi
 -- INDEX: idx_tenant_admin_invitations_tenant_token_hash
 CREATE UNIQUE INDEX idx_tenant_admin_invitations_tenant_token_hash ON tenant_admin_invitations USING btree (tenant_id, token_hash);
 
+-- INDEX: idx_tenant_image_variants_tenant_image_id
+CREATE INDEX idx_tenant_image_variants_tenant_image_id ON tenant_image_variants USING btree (tenant_image_id);
+
+-- INDEX: idx_tenant_image_variants_tenant_id
+CREATE INDEX idx_tenant_image_variants_tenant_id ON tenant_image_variants USING btree (tenant_id);
+
+-- INDEX: idx_tenant_images_tenant_id
+CREATE INDEX idx_tenant_images_tenant_id ON tenant_images USING btree (tenant_id);
+
 -- INDEX: idx_tenant_user_roles_tenant_id
 CREATE INDEX idx_tenant_user_roles_tenant_id ON tenant_user_roles USING btree (tenant_id);
 
@@ -1562,9 +1606,25 @@ ALTER TABLE ONLY tenant_admin_invitations
 ALTER TABLE ONLY tenant_config
     ADD CONSTRAINT tenant_config_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: tenant_image_variants tenant_image_variants_tenant_image_id_fkey
+ALTER TABLE ONLY tenant_image_variants
+    ADD CONSTRAINT tenant_image_variants_tenant_image_id_fkey FOREIGN KEY (tenant_image_id) REFERENCES tenant_images(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: tenant_image_variants tenant_image_variants_tenant_id_fkey
+ALTER TABLE ONLY tenant_image_variants
+    ADD CONSTRAINT tenant_image_variants_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: tenant_images tenant_images_tenant_id_fkey
+ALTER TABLE ONLY tenant_images
+    ADD CONSTRAINT tenant_images_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: tenant_smtp_config tenant_smtp_config_tenant_id_fkey
 ALTER TABLE ONLY tenant_smtp_config
     ADD CONSTRAINT tenant_smtp_config_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: tenant_themes tenant_themes_favicon_image_id_fkey
+ALTER TABLE ONLY tenant_themes
+    ADD CONSTRAINT tenant_themes_favicon_image_id_fkey FOREIGN KEY (favicon_image_id) REFERENCES tenant_images(id) ON DELETE SET NULL;
 
 -- FK CONSTRAINT: tenant_themes tenant_themes_tenant_id_fkey
 ALTER TABLE ONLY tenant_themes
@@ -1771,6 +1831,18 @@ ALTER TABLE tenant_config ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: tenant_config tenant_config_tenant_isolation
 CREATE POLICY tenant_config_tenant_isolation ON tenant_config USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: tenant_image_variants
+ALTER TABLE tenant_image_variants ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: tenant_image_variants tenant_image_variants_tenant_isolation
+CREATE POLICY tenant_image_variants_tenant_isolation ON tenant_image_variants USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: tenant_images
+ALTER TABLE tenant_images ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: tenant_images tenant_images_tenant_isolation
+CREATE POLICY tenant_images_tenant_isolation ON tenant_images USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 -- ROW SECURITY: tenant_smtp_config
 ALTER TABLE tenant_smtp_config ENABLE ROW LEVEL SECURITY;

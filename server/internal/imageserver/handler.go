@@ -26,6 +26,7 @@ type ResolverQuerier interface {
 
 type TenantScopedQuerier interface {
 	GetCreatorImageByIDForTenant(ctx context.Context, arg dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error)
+	GetTenantImageByIDForTenant(ctx context.Context, arg dbmodels.GetTenantImageByIDForTenantParams) (dbmodels.GetTenantImageByIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error)
@@ -85,6 +86,7 @@ func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
 	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)
 	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
+	mux.HandleFunc("GET /images/tenants/{media_id}", h.handleGetTenantImage)
 	return &Server{mux: mux, origin: origin}, nil
 }
 
@@ -297,6 +299,58 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		h.logger.ErrorContext(ctx, "failed to load creator image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
+}
+
+// handleGetTenantImage serves a tenant branding image — currently the tenant
+// favicon. The tenant is resolved from the host, so a media id only ever
+// resolves against the tenant whose domain the request arrived on.
+func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, err := h.resolveTenantFromHost(ctx, r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "tenant not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetTenantImageByIDForTenant(ctx, dbmodels.GetTenantImageByIDForTenantParams{
+		ID:       mediaID,
+		TenantID: tenant.ID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load tenant image metadata", "error", err, "media_id", mediaID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
