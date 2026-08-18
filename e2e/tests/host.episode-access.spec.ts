@@ -1,21 +1,10 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
+import { signInAsSeedMember } from "../src/host";
 import { SEED_MEMBER } from "../src/scenarios/member-announcements";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 
 const paidEpisodePath = `/series/${SEED_TENANT.series.publicId}/episodes/${SEED_TENANT.series.paidEpisodeId}`;
-
-const signInAsSeedMember = async (
-  page: Page,
-  returnTo = paidEpisodePath
-): Promise<void> => {
-  await page.goto(`/login?returnTo=${encodeURIComponent(returnTo)}`);
-  await page.getByLabel(/メールアドレス/u).fill(SEED_MEMBER.email);
-  await page.getByLabel(/パスワード/u).fill(SEED_MEMBER.password);
-  await page.getByRole("button", { name: "ログイン" }).click();
-  await page.waitForURL((url) => !url.pathname.endsWith("/login"));
-};
 
 /**
  * Public episode access gate (#616). Paid Seed Episode 001-10 is locked
@@ -47,7 +36,7 @@ test.describe("web-host episode access", () => {
   });
 
   test("有効チケットの会員は有料エピソードの本文を開ける", async ({ page }) => {
-    await signInAsSeedMember(page);
+    await signInAsSeedMember(page, paidEpisodePath);
 
     await expect(page).toHaveURL(new RegExp(`${paidEpisodePath}$`, "u"));
     await expect(

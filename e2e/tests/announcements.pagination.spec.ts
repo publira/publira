@@ -2,20 +2,17 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql } from "../src/db";
+import { signInAsSeedMember } from "../src/host";
 import {
   MEMBER_ANNOUNCEMENTS,
   MEMBER_ANNOUNCEMENTS_SCENARIO,
-  SEED_MEMBER,
 } from "../src/scenarios/member-announcements";
 
 /** Keep in sync with `ANNOUNCEMENTS_PAGE_SIZE` in the web-host announcements page. */
 const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
 const signIn = async (page: Page): Promise<void> => {
-  await page.goto("/login?returnTo=%2Fannouncements");
-  await page.getByLabel(/メールアドレス/u).fill(SEED_MEMBER.email);
-  await page.getByLabel(/パスワード/u).fill(SEED_MEMBER.password);
-  await page.getByRole("button", { name: "ログイン" }).click();
+  await signInAsSeedMember(page, "/announcements");
   await expect(page).toHaveURL(/\/announcements/u);
 };
 

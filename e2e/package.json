@@ -17,7 +17,9 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@publira/tsconfig": "workspace:*",
+    "@publira/web-session": "workspace:*",
     "@types/node": "catalog:",
+    "jose": "catalog:",
     "temporal-polyfill": "catalog:",
     "typescript": "catalog:"
   }
