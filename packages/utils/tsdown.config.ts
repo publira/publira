@@ -11,6 +11,7 @@ export default defineConfig({
     "src/format-date-time.ts",
     "src/health.ts",
     "src/i18n.ts",
+    "src/image-loader.ts",
     "src/next-static-params.ts",
     "src/search-params.ts",
     "src/static-param-placeholder.ts",

@@ -13,6 +13,7 @@
 - `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー
 - `@publira/utils/cached-read`: `"use cache"` の読み取りで失敗を「値」として返し、その失敗をキャッシュに残さないためのヘルパー
 - `@publira/utils/i18n`: ロケール判定と、動的 `import()` したメッセージカタログからキーに一致する文字列を返すヘルパー
+- `@publira/utils/image-loader`: `next/image` から image-server (Manael) の変換・縮小を使うためのカスタムローダー
 
 ## 使い方
 
@@ -257,6 +258,39 @@ const greeting = getMessage(catalog, "greeting", { name: "山田" });
 - 存在するキーは一致した文字列を返し、`{name}` だけを補間する
 - 未知キーは開発時に throw、本番ではキーをそのまま返す
 - TypeScript のカタログモジュールを手で書く場合は、`export default { … } satisfies Messages` でも欠け・余剰を型エラーにできる
+
+## `next/image` のローダー（`image-loader`）
+
+`imageServerLoader` は `next/image` の custom loader です。`/images/...`（image-server / admin-image-server）を読むときだけ、Manael が解釈するクエリを組み立てます。
+
+```ts
+// apps/web-host/lib/image-loader.ts
+"use client";
+
+export { imageServerLoader as default } from "@publira/utils/image-loader";
+```
+
+```ts
+// apps/web-host/next.config.ts
+images: {
+  loader: "custom",
+  loaderFile: "./lib/image-loader.ts",
+},
+```
+
+`images.loaderFile` はアプリルートからの相対パスしか受け付けず、`import.meta.resolve` で解決したパッケージを渡せません。各アプリに再エクスポートだけを置き、実装はこのパッケージに置いています。
+
+| 入力 | 出力 |
+| --- | --- |
+| `/images/creators/<uuid>`、幅 96 | `/images/creators/<uuid>?w=96&fit=scale-down` |
+| 同上、`quality={60}` 指定あり | `…?w=96&fit=scale-down&q=60` |
+| `blob:` / `data:` / 絶対 URL / その他のパス | そのまま返す |
+
+- `fit=scale-down` は原寸より大きくしないための指定です。`next/image` は `deviceSizes` の全幅（最大 3840px）を要求するので、Manael の既定（`contain`、拡大あり）では小さなアイコンが 3840px に引き伸ばされます。
+- `q` は呼び出し側が `quality` を指定したときだけ付けます。`next/image` は `quality` プロップが無いとローダーに `undefined` を渡すので（Next.js 16.3 の `get-img-props`）、無指定のときは Manael のフォーマット別既定（WebP 90 / AVIF 60）が効きます。
+- `quality` を指定する場合は、その値を各アプリの `images.qualities` にも足してください。既定は `[75]` で、外れた値は開発時に警告が出ます（custom loader なので値そのものはローダーまで届きます）。
+- WebP / AVIF の選択はブラウザの `Accept` によるので、ローダーは形式を指定しません。
+- `blob:` の一時プレビューなど image-server を経由しない `<Image>` は、そのまま `unoptimized` を付けたままにします。
 
 ## ビルド
 

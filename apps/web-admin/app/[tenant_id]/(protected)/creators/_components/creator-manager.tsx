@@ -91,7 +91,6 @@ const CreatorListBody = ({
                   className="size-10 rounded-full border object-cover"
                   height={40}
                   src={creator.iconImageUrl}
-                  unoptimized
                   width={40}
                 />
               ) : (

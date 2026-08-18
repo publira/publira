@@ -264,7 +264,6 @@ const AuthorDetailContent = async ({
                 decoding="async"
                 height={96}
                 src={author.iconImageUrl}
-                unoptimized
                 width={96}
               />
             </div>

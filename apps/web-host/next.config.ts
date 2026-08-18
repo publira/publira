@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  // Singular: ISR / Route Handler / fetch / next/image (with customCacheHandler).
+  // Singular: ISR / Route Handler / fetch / unstable_cache.
   cacheHandler: import.meta.resolve("@publira/next-cache-handlers/incremental"),
   // Plural: "use cache" / "use cache: remote" → same Redis store.
   cacheHandlers: {
@@ -17,7 +17,10 @@ const nextConfig: NextConfig = {
     turbopackRustReactCompiler: true,
   },
   images: {
-    customCacheHandler: true,
+    // image-server converts and resizes through Manael, so `next/image` asks it
+    // for the width it needs instead of re-encoding through `/_next/image`.
+    loader: "custom",
+    loaderFile: "./lib/image-loader.ts",
   },
   logging: {
     fetches: {

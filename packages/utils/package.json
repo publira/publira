@@ -54,6 +54,10 @@
     "./field-errors": {
       "types": "./dist/field-errors.d.mts",
       "default": "./dist/field-errors.mjs"
+    },
+    "./image-loader": {
+      "types": "./dist/image-loader.d.mts",
+      "default": "./dist/image-loader.mjs"
     }
   },
   "scripts": {

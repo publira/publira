@@ -59,7 +59,6 @@ const IconImageField = ({
             className="size-20 rounded-full border object-cover"
             height={80}
             src={iconImageUrl}
-            unoptimized
             width={80}
           />
         ) : null}
