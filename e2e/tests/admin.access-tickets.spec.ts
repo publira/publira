@@ -59,12 +59,12 @@ test.describe("web-admin access tickets", () => {
     await page.locator("#user_public_id").fill(SEED_TICKET.memberPublicId);
     await selectComboboxOption(
       page,
-      "ticket_series_combobox",
+      page.locator("#ticket_series_combobox"),
       SEED_TICKET.seriesLabel
     );
     await selectComboboxOption(
       page,
-      "ticket_episode_combobox",
+      page.locator("#ticket_episode_combobox"),
       `${SEED_TICKET.episodeTitle} (${SEED_TICKET.episodePublicId})`
     );
     await page.locator("#note").fill(note);

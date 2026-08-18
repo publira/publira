@@ -22,6 +22,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from "react";
@@ -79,43 +80,51 @@ const CreatorField = ({
   creatorsErrorMessage,
   selectedCreatorPublicIds,
   onChange,
-}: CreatorFieldProps) => (
-  <Field>
-    <FieldLabel htmlFor="series_creator_combobox">クリエイター</FieldLabel>
-    <FieldContent>
-      {creatorsErrorMessage ? (
-        <FormMessage variant="destructive">{creatorsErrorMessage}</FormMessage>
-      ) : null}
+}: CreatorFieldProps) => {
+  // MultiCombobox renders its own input instead of a Field control, so the
+  // label needs an id to point at.
+  const comboboxId = useId();
 
-      {creatorItems.length === 0 ? (
+  return (
+    <Field>
+      <FieldLabel htmlFor={comboboxId}>クリエイター</FieldLabel>
+      <FieldContent>
+        {creatorsErrorMessage ? (
+          <FormMessage variant="destructive">
+            {creatorsErrorMessage}
+          </FormMessage>
+        ) : null}
+
+        {creatorItems.length === 0 ? (
+          <FieldDescription>
+            選択可能なクリエイターがいません。先にクリエイターを作成してください。
+          </FieldDescription>
+        ) : (
+          <MultiCombobox
+            id={comboboxId}
+            items={creatorItems}
+            onValueChange={onChange}
+            searchPlaceholder="クリエイター名で検索"
+            value={selectedCreatorPublicIds}
+          />
+        )}
+
+        {selectedCreatorPublicIds.map((publicId) => (
+          <input
+            key={publicId}
+            name="creator_public_ids"
+            type="hidden"
+            value={publicId}
+          />
+        ))}
+
         <FieldDescription>
-          選択可能なクリエイターがいません。先にクリエイターを作成してください。
+          複数選択できます。シリーズに紐づけるクリエイターを選んでください。
         </FieldDescription>
-      ) : (
-        <MultiCombobox
-          id="series_creator_combobox"
-          items={creatorItems}
-          onValueChange={onChange}
-          searchPlaceholder="クリエイター名で検索"
-          value={selectedCreatorPublicIds}
-        />
-      )}
-
-      {selectedCreatorPublicIds.map((publicId) => (
-        <input
-          key={publicId}
-          name="creator_public_ids"
-          type="hidden"
-          value={publicId}
-        />
-      ))}
-
-      <FieldDescription>
-        複数選択できます。シリーズに紐づけるクリエイターを選んでください。
-      </FieldDescription>
-    </FieldContent>
-  </Field>
-);
+      </FieldContent>
+    </Field>
+  );
+};
 
 interface LabelFieldProps {
   labelItems: ComboboxItem[];
@@ -133,56 +142,65 @@ const LabelField = ({
   useLabelFallbackInput,
   onComboboxChange,
   onFallbackChange,
-}: LabelFieldProps) => (
-  <Field>
-    <FieldLabel htmlFor="series_label_combobox" required>
-      レーベル
-    </FieldLabel>
-    <FieldContent>
-      {labelsErrorMessage ? (
-        <FormMessage variant="destructive">{labelsErrorMessage}</FormMessage>
-      ) : null}
+}: LabelFieldProps) => {
+  // Combobox renders its own input instead of a Field control, so the label
+  // needs an id to point at. The fallback Input is a Field control and wires
+  // itself up.
+  const comboboxId = useId();
 
-      {useLabelFallbackInput ? (
-        <>
-          <Input
-            id="series_label_public_id"
-            name="label_public_id"
-            onChange={onFallbackChange}
-            placeholder="例: label_demo"
-            required
-            type="text"
-            value={selectedLabelPublicId}
-          />
-          <FieldDescription>
-            レーベル一覧を取得できないため、公開 ID を直接入力してください。
-          </FieldDescription>
-        </>
-      ) : (
-        <>
-          <Combobox
-            emptyMessage="一致するレーベルが見つかりません。"
-            id="series_label_combobox"
-            items={labelItems}
-            onValueChange={onComboboxChange}
-            placeholder="レーベル名で検索"
-            value={selectedLabelPublicId}
-          />
+  return (
+    <Field>
+      <FieldLabel
+        htmlFor={useLabelFallbackInput ? undefined : comboboxId}
+        required
+      >
+        レーベル
+      </FieldLabel>
+      <FieldContent>
+        {labelsErrorMessage ? (
+          <FormMessage variant="destructive">{labelsErrorMessage}</FormMessage>
+        ) : null}
 
-          <input
-            name="label_public_id"
-            type="hidden"
-            value={selectedLabelPublicId}
-          />
+        {useLabelFallbackInput ? (
+          <>
+            <Input
+              name="label_public_id"
+              onChange={onFallbackChange}
+              placeholder="例: label_demo"
+              required
+              type="text"
+              value={selectedLabelPublicId}
+            />
+            <FieldDescription>
+              レーベル一覧を取得できないため、公開 ID を直接入力してください。
+            </FieldDescription>
+          </>
+        ) : (
+          <>
+            <Combobox
+              emptyMessage="一致するレーベルが見つかりません。"
+              id={comboboxId}
+              items={labelItems}
+              onValueChange={onComboboxChange}
+              placeholder="レーベル名で検索"
+              value={selectedLabelPublicId}
+            />
 
-          <FieldDescription>
-            シリーズに紐づけるレーベルを選択してください。
-          </FieldDescription>
-        </>
-      )}
-    </FieldContent>
-  </Field>
-);
+            <input
+              name="label_public_id"
+              type="hidden"
+              value={selectedLabelPublicId}
+            />
+
+            <FieldDescription>
+              シリーズに紐づけるレーベルを選択してください。
+            </FieldDescription>
+          </>
+        )}
+      </FieldContent>
+    </Field>
+  );
+};
 
 interface EyeCatchImageFieldProps {
   clearEyeCatchImage: boolean;
@@ -199,7 +217,7 @@ const EyeCatchImageField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor="series_eye_catch_image">アイキャッチ画像</FieldLabel>
+      <FieldLabel>アイキャッチ画像</FieldLabel>
       <FieldContent>
         <div className="grid gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
           <div className="rounded-xl border border-border/60 bg-background p-3">
@@ -225,7 +243,6 @@ const EyeCatchImageField = ({
 
         <Input
           accept="image/jpeg,image/png,image/webp"
-          id="series_eye_catch_image"
           name="eye_catch_image"
           onChange={onImageFileChange}
           type="file"
@@ -394,13 +411,10 @@ export const SeriesForm = ({
 
           <div className="grid gap-4">
             <Field>
-              <FieldLabel htmlFor="series_title" required>
-                タイトル
-              </FieldLabel>
+              <FieldLabel required>タイトル</FieldLabel>
               <FieldContent>
                 <Input
                   defaultValue={initialSeries?.title ?? ""}
-                  id="series_title"
                   name="title"
                   placeholder="例: 海風と活版印刷"
                   required
@@ -410,16 +424,13 @@ export const SeriesForm = ({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="series_reading_period_hours" required>
-                閲覧可能期間
-              </FieldLabel>
+              <FieldLabel required>閲覧可能期間</FieldLabel>
               <FieldContent>
                 <Input
                   defaultValue={
                     initialSeries?.readingPeriodHours ??
                     defaultReadingPeriodHours
                   }
-                  id="series_reading_period_hours"
                   min={0}
                   name="reading_period_hours"
                   required
@@ -432,13 +443,10 @@ export const SeriesForm = ({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="series_synopsis" required>
-                概要
-              </FieldLabel>
+              <FieldLabel required>概要</FieldLabel>
               <FieldContent>
                 <Textarea
                   defaultValue={initialSeries?.synopsis ?? ""}
-                  id="series_synopsis"
                   name="synopsis"
                   placeholder="シリーズの紹介文を入力"
                   required
@@ -464,7 +472,7 @@ export const SeriesForm = ({
             />
 
             <Field>
-              <FieldLabel htmlFor="series_published_at">公開日時</FieldLabel>
+              <FieldLabel>公開日時</FieldLabel>
               <FieldContent>
                 <input defaultValue="" name="published_at" type="hidden" />
                 <Input
@@ -474,7 +482,6 @@ export const SeriesForm = ({
                     initialSeries?.publishedAt ?? "",
                     timeZone
                   )}
-                  id="series_published_at"
                   name="published_at_local"
                   type="datetime-local"
                 />
