@@ -13,6 +13,7 @@ import { apiClient, buildSessionHeaders } from "./api-client";
 import {
   applyCacheTag,
   tenantAuthorsTag,
+  tenantLabelsTag,
   tenantSeriesDetailTag,
   tenantSeriesListTag,
   tenantSeriesTag,
@@ -28,7 +29,7 @@ export interface EyeCatchImageVariant {
   fileSizeBytes: number;
 }
 
-const toEyeCatchImageVariants = (
+export const toEyeCatchImageVariants = (
   variants:
     | {
         variantType?: string;
@@ -170,6 +171,7 @@ export interface SeriesDetail {
   title: string;
   synopsis: string;
   labelName: string;
+  labelPublicId: string;
   creatorNames: string[];
   readingPeriodHours: number;
   eyeCatchImageUpdatedAt?: string;
@@ -186,6 +188,8 @@ export interface LabelListItem {
 /** Wording for a catalog read that could not reach the API. */
 const SERIES_LIST_ERROR_MESSAGE =
   "シリーズ一覧を取得できませんでした。時間をおいて再試行してください。";
+const SERIES_SEARCH_ERROR_MESSAGE =
+  "検索結果を取得できませんでした。時間をおいて再試行してください。";
 const LABEL_LIST_ERROR_MESSAGE =
   "レーベル一覧を取得できませんでした。時間をおいて再試行してください。";
 const SERIES_DETAIL_ERROR_MESSAGE =
@@ -275,11 +279,81 @@ export interface LabelListPage {
   nextToken: string;
 }
 
+/** Matches SearchPublishedSeries: empty after trim is rejected, max 100 runes. */
+export const SEARCH_QUERY_MAX_LENGTH = 100;
+
 /**
  * Cursor pagination: `token` is whatever the previous response returned as
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
- * `proto/README.md`.
+ * `proto/README.md`. `query` is the keyword the token was built for — sending
+ * a token from another query is rejected by the server.
  */
+export const searchPublishedSeries = async (
+  tenantId: string,
+  {
+    limit = 20,
+    query,
+    token = "",
+  }: { limit?: number; query: string; token?: string }
+): Promise<CachedReadResult<SeriesListPage>> => {
+  "use cache";
+
+  const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+
+  let response: Awaited<
+    ReturnType<typeof apiClient.catalog.searchPublishedSeries>
+  >;
+  try {
+    response = await apiClient.catalog.searchPublishedSeries({
+      limit,
+      query,
+      tenant: { tenantId: normalizedTenantId },
+      token,
+    });
+  } catch (error) {
+    return cachedReadFailure(
+      rpcErrorMessage(error, SERIES_SEARCH_ERROR_MESSAGE)
+    );
+  }
+
+  const series = (response.series ?? []).map((s) => ({
+    creatorNames: (s.creators ?? []).flatMap((c) => {
+      const name = (c.name ?? "").trim();
+      return name.length > 0 ? [name] : [];
+    }),
+    creators: (s.creators ?? []).flatMap((c) => {
+      const name = (c.name ?? "").trim();
+      return name.length > 0
+        ? [
+            {
+              iconImageUrl: c.iconImageUrl?.trim() ?? "",
+              name,
+              profileText: (c.profileText ?? "").trim(),
+              publicId: c.publicId ?? "",
+            },
+          ]
+        : [];
+    }),
+    eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
+    eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
+    labelName: s.label?.name?.trim() ?? "",
+    labelPublicId: s.label?.publicId?.trim() ?? "",
+    publicId: s.publicId,
+    synopsis: s.synopsis,
+    title: s.title,
+  }));
+
+  return {
+    ok: true,
+    value: {
+      nextToken: response.nextToken ?? "",
+      previousToken: response.previousToken ?? "",
+      series,
+    },
+  };
+};
+
 export const listPublishedLabels = async (
   tenantId: string,
   { limit = 50, token = "" }: { limit?: number; token?: string } = {}
@@ -287,6 +361,7 @@ export const listPublishedLabels = async (
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
+  applyCacheTag(tenantLabelsTag(normalizedTenantId));
 
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.listPublishedLabels>
@@ -378,6 +453,7 @@ export const getSeriesDetail = async (
             response.series.eyeCatchImageVariants
           ),
           labelName: response.series.label?.name?.trim() ?? "",
+          labelPublicId: response.series.label?.publicId?.trim() ?? "",
           publicId: response.series.publicId ?? "",
           readingPeriodHours: response.series.readingPeriodHours ?? 0,
           synopsis: response.series.synopsis ?? "",

@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 
+import { CatalogSearchForm } from "#components/catalog-search-form";
 import {
   NotificationBell,
   NotificationBellSkeleton,
@@ -30,6 +31,7 @@ const siteNavItems: LayoutLinkItem[] = [
   { href: "/authors", label: "Authors" },
   { href: "/labels", label: "Labels" },
   { href: "/series", label: "Series" },
+  { href: "/search", label: "Search" },
 ];
 
 const HostNotificationBell = async () => {
@@ -132,6 +134,9 @@ const TenantLayout = ({ children }: LayoutProps<"/[tenant_id]">) => {
       <SiteLayoutHeader>
         <SiteLayoutBrand label={getAppLabel(tenantInfoPromise)} />
         <SiteLayoutNav items={siteNavItems} />
+        <div className="flex max-w-40 min-w-0 flex-1 justify-end sm:max-w-64">
+          <CatalogSearchForm id="catalog-search-header" />
+        </div>
         <SiteLayoutHeaderActions content={getHeaderActionsContent()} />
       </SiteLayoutHeader>
       <SiteLayoutMain>{children}</SiteLayoutMain>

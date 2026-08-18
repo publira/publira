@@ -392,9 +392,10 @@ const FeaturedLabelsSection = async () => {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {featuredLabels.map((label) => (
-        <article
+        <Link
           key={label.publicId}
-          className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
+          href={`/labels/${label.publicId}`}
+          className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm transition hover:border-secondary/40 hover:shadow-md"
         >
           {label.eyeCatchImageVariants &&
           label.eyeCatchImageVariants.length > 0 ? (
@@ -414,7 +415,7 @@ const FeaturedLabelsSection = async () => {
           <div className="p-4">
             <p className="font-medium">{label.name}</p>
           </div>
-        </article>
+        </Link>
       ))}
     </div>
   );

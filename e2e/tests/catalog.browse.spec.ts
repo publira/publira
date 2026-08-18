@@ -161,18 +161,60 @@ test.describe("web-host catalog browsing", () => {
     ).resolves.toEqual(firstPageHrefs);
   });
 
-  test("レーベル一覧が seed レーベルを表示する", async ({ page }) => {
+  test("レーベル一覧からレーベル詳細に辿れる", async ({ page }) => {
     const response = await page.goto("/labels");
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(
       page.getByRole("heading", { level: 1, name: "レーベル一覧" })
     ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { level: 2, name: "Seed Label 01" })
-    ).toBeVisible();
     // db/seeds/dev/010_catalog.sql creates exactly 10 labels.
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(10);
+
+    const labelCard = page.getByRole("link").filter({
+      has: page.getByRole("heading", {
+        level: 2,
+        name: SEED_TENANT.labelName,
+      }),
+    });
+    await expect(labelCard).toHaveCount(1);
+    await labelCard.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/labels/${SEED_TENANT.labelId}$`, "u")
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: SEED_TENANT.labelName })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 2, name: "所属シリーズ" })
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("link", { name: new RegExp(SEED_TENANT.series.title, "u") })
+        .first()
+    ).toBeVisible();
+  });
+
+  test("代表キーワードで期待シリーズがヒットする", async ({ page }) => {
+    const response = await page.goto("/search");
+    expect(response?.status(), await page.content()).toBe(200);
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "検索" })
+    ).toBeVisible();
+
+    const search = page.getByRole("main").getByRole("search");
+    await search.getByLabel("作品を検索").fill(SEED_TENANT.series.title);
+    await search.getByRole("button", { name: "検索" }).click();
+
+    await expect(page).toHaveURL(/\/search\?q=/u);
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: SEED_TENANT.series.title,
+      })
+    ).toBeVisible();
   });
 
   test("著者一覧から著者詳細に辿れる", async ({ page }) => {

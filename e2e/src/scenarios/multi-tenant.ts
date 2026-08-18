@@ -10,6 +10,7 @@ export const MULTI_TENANT_SCENARIO = "010_multi_tenant";
 export const OTHER_TENANT = {
   authorId: "BndrAUTHAAA1",
   authorName: "Boundary Author 001",
+  labelId: "BndrLABLAAA1",
   labelName: "Boundary Label 01",
   name: "Boundary Tenant",
   /** Published, with two published episodes and one still scheduled. */
@@ -37,6 +38,8 @@ export const OTHER_TENANT = {
 export const SEED_TENANT = {
   authorId: "SeedAUTHAAA1",
   authorName: "Seed Author 001",
+  labelId: "SeedLABLAAA1",
+  labelName: "Seed Label 01",
   name: "Seed Tenant",
   series: {
     /** `Seed Episode 001-10` is the priced one; 001-01 is free. */

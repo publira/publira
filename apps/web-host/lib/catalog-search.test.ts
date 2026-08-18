@@ -1,0 +1,109 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { searchPublishedSeries } from "./catalog";
+
+const { mockSearchPublishedSeries } = vi.hoisted(() => ({
+  mockSearchPublishedSeries: vi.fn(),
+}));
+
+vi.mock("./api-client", () => ({
+  apiClient: {
+    catalog: {
+      searchPublishedSeries: mockSearchPublishedSeries,
+    },
+  },
+}));
+
+describe("searchPublishedSeries", () => {
+  beforeEach(() => {
+    mockSearchPublishedSeries.mockReset();
+  });
+
+  it("検索ヒットと cursor トークンを整形して返す", async () => {
+    mockSearchPublishedSeries.mockResolvedValueOnce({
+      nextToken: "NEXT",
+      previousToken: "PREV",
+      series: [
+        {
+          creators: [{ name: "著者A", publicId: "AUTH_A" }],
+          label: { name: "レーベルA", publicId: "LABEL_A" },
+          publicId: "SERIES_1",
+          synopsis: "あらすじ",
+          title: "シリーズ1",
+        },
+      ],
+    });
+
+    const result = await searchPublishedSeries(" TENANT_1 ", {
+      limit: 12,
+      query: "シリーズ",
+      token: "abc",
+    });
+
+    expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
+      limit: 12,
+      query: "シリーズ",
+      tenant: { tenantId: "TENANT_1" },
+      token: "abc",
+    });
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        nextToken: "NEXT",
+        previousToken: "PREV",
+        series: [
+          {
+            creatorNames: ["著者A"],
+            creators: [
+              {
+                iconImageUrl: "",
+                name: "著者A",
+                profileText: "",
+                publicId: "AUTH_A",
+              },
+            ],
+            eyeCatchImageUpdatedAt: undefined,
+            eyeCatchImageVariants: undefined,
+            labelName: "レーベルA",
+            labelPublicId: "LABEL_A",
+            publicId: "SERIES_1",
+            synopsis: "あらすじ",
+            title: "シリーズ1",
+          },
+        ],
+      },
+    });
+  });
+
+  it("token を省略したら先頭ページを取る", async () => {
+    mockSearchPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await searchPublishedSeries("TENANT_1", { query: "Seed" });
+
+    expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
+      limit: 20,
+      query: "Seed",
+      tenant: { tenantId: "TENANT_1" },
+      token: "",
+    });
+  });
+
+  it("取得に失敗したら throw せず失敗の値を返す", async () => {
+    mockSearchPublishedSeries.mockRejectedValueOnce(
+      new ConnectError("connect ECONNREFUSED", Code.Unavailable)
+    );
+
+    await expect(
+      searchPublishedSeries("TENANT_1", { query: "Seed" })
+    ).resolves.toEqual({
+      message:
+        "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      ok: false,
+    });
+  });
+});
