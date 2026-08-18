@@ -49,7 +49,7 @@ Docker イメージの配置規約・ビルド手順・Docker 固有のトリア
 | `Test / Bootstrap` | `task e2e:bootstrap`（空 volume → `task setup` → DB 再起動 → `task dev`） | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`（Dev Container Traefik のホスト / `/api` / `/images` 疎通） | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Build` | `pnpm build`（Web）・`task server:build`（Go） | 本ファイル |
-| `Docker / <target>` | `task docker:build:*`（web は続けて `task docker:smoke:web`） | [`infra/docker/README.md`](../../infra/docker/README.md) |
+| `Docker / <target>` | `task docker:build:*`（web は続けて `task docker:smoke:web`、node は `task docker:smoke:node`） | [`infra/docker/README.md`](../../infra/docker/README.md) |
 | `Summary` | 全ジョブの結果を集約する最終ジョブ | 本ファイル |
 
 Branch ruleset が要求する必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`）。中間ジョブは path filter で個別にスキップされうるが、`Summary` は `skipped` を success として扱う。
@@ -159,7 +159,7 @@ Go / TypeScript / DB migration / Mobile / Mobile E2E / E2E / Bootstrap / Routing
 
 ## Docker ジョブ
 
-`Docker / <target>` は matrix ジョブで、`scripts/ci-plan-jobs.sh` が組み立てた行列（ロール・ターゲット・`task` 名・build arg）をそのまま実行する。コマンドはローカルと同一の `task docker:build:web|api|batch` で、web ロールは続けて `task docker:smoke:web` を走らせる。
+`Docker / <target>` は matrix ジョブで、`scripts/ci-plan-jobs.sh` が組み立てた行列（ロール・ターゲット・`task` 名・build arg）をそのまま実行する。コマンドはローカルと同一の `task docker:build:web|api|batch|node` で、web ロールは続けて `task docker:smoke:web`、node ロールは `task docker:smoke:node` を走らせる。
 
 - 変更検知のロール対応（どの path でどの代表イメージをビルドするか）・verify / full の使い分け: [`infra/docker/README.md`](../../infra/docker/README.md) の「Docker の CI 実行戦略」
 - ビルド規約・ローカル検証・Docker 固有のトリアージ: [`infra/docker/README.md`](../../infra/docker/README.md)

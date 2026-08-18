@@ -11,8 +11,9 @@ Human-facing placement rationale and full decision tables: [`README.md`](./READM
 | `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
 | `api/Dockerfile` | Long-running Go HTTP servers (`server/cmd/*`) |
 | `batch/Dockerfile` | One-shot Go jobs (`server/cmd/*`) |
+| `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
 | `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
-| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` (included from repo root) |
+| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` (included from repo root) |
 
 Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile).
 
@@ -23,7 +24,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    `docker build -f infra/docker/<role>/Dockerfile ... .`
 3. **Do not** add `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`.
 4. **Do not** reintroduce template → copy expansion under service directories.
-5. New runtime family (not web/api/batch) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
+5. New runtime family (not web/api/batch/node) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
 
 ### ARG map
 
@@ -32,11 +33,12 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 | `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
 | `api` | `CMD_NAME` (e.g. `api-server`) | `PORT` (default `8000`) | `server/cmd/${CMD_NAME}` → binary `/app/server` |
 | `batch` | `CMD_NAME` (e.g. `publish-episodes`) | — | `server/cmd/${CMD_NAME}` → binary `/app/job` |
+| `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
 
 ## Implementation rules
 
 1. **Multi-stage**: build on Debian toolchain images; run on **distroless `nonroot`**.
-   - Web: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
+   - Web / Node: `node:*-bookworm-slim` → `gcr.io/distroless/nodejs*-debian12:nonroot`
    - Go: `golang:*-bookworm` → `gcr.io/distroless/static:nonroot`
 2. **Pin base images by digest** (`image:tag@sha256:…`). Match existing files and Renovate Docker updates.
 3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, same style as `.devcontainer/Dockerfile`:
@@ -50,24 +52,29 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
    - liveness `GET /livez`
    - readiness `GET /readyz`
 5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`).
-6. **Go**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
-7. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
+6. **Node**: also `turbo prune --docker`, but there is no standalone output. The runner gets a `pnpm install --frozen-lockfile --prod` tree plus every workspace `dist/`; sources and dev dependencies stay in the builder, and the pack stage renames `apps/${APP_NAME}` to `apps/node` so the distroless `CMD` is a fixed path. Two consequences:
+   - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.
+   - `turbo prune` does not carry repo-root assets. `@publira/email-templates` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
+7. **Go**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
+8. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
 
 ## Verification after Dockerfile changes
 
 From the **repository root**, prefer Task (same entrypoint as CI):
 
 ```bash
-# Role representatives (web-host / api-server / publish-episodes)
+# Role representatives (web-host / api-server / publish-episodes / email-renderer)
 task docker:verify
 
 # Or only what you touched
 task docker:build:web APP_NAME=web-admin PORT=4000
 task docker:build:api CMD_NAME=api-server PORT=8000
 task docker:build:batch CMD_NAME=publish-episodes
+task docker:build:node APP_NAME=email-renderer PORT=8080
 
-# Optional web runtime smoke
+# Runtime smoke (the roles that have no external dependencies)
 task docker:smoke:web APP_NAME=web-host PORT=3000
+task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
 Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.

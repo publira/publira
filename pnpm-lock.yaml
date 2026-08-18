@@ -435,6 +435,12 @@ importers:
       '@publira/utils':
         specifier: workspace:*
         version: link:../utils
+      react:
+        specifier: 'catalog:'
+        version: 19.2.8
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.8(react@19.2.8)
       react-email:
         specifier: 'catalog:'
         version: 6.9.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@7.2.0)
@@ -454,12 +460,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.4(@types/react@19.2.18)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.8
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.2.8(react@19.2.8)
       tsdown:
         specifier: 'catalog:'
         version: 0.22.14(typescript@6.0.3)

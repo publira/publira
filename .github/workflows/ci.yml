@@ -255,11 +255,26 @@ jobs:
               - '.dockerignore'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
+            docker_node:
+              - *docs_excluded
+              - 'apps/email-renderer/**'
+              - 'packages/**'
+              - 'locales/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'infra/docker/node/**'
+              - 'infra/docker/Taskfile.yaml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
             docker_core:
               - *docs_excluded
               - 'infra/docker/web/**'
               - 'infra/docker/api/**'
               - 'infra/docker/batch/**'
+              - 'infra/docker/node/**'
               - 'infra/docker/Taskfile.yaml'
               - '.dockerignore'
               - '.github/workflows/ci.yml'
@@ -284,6 +299,7 @@ jobs:
           FILTER_DOCKER_WEB: ${{ steps.filter.outputs.docker_web }}
           FILTER_DOCKER_API: ${{ steps.filter.outputs.docker_api }}
           FILTER_DOCKER_BATCH: ${{ steps.filter.outputs.docker_batch }}
+          FILTER_DOCKER_NODE: ${{ steps.filter.outputs.docker_node }}
           FILTER_DOCKER_CORE: ${{ steps.filter.outputs.docker_core }}
         run: bash scripts/ci-plan-jobs.sh
 
@@ -896,6 +912,13 @@ jobs:
           APP_NAME: ${{ matrix.target }}
           PORT: ${{ matrix.port }}
         run: task docker:smoke:web "APP_NAME=${APP_NAME}" "PORT=${PORT}"
+
+      - name: Smoke / Node service /livez /readyz
+        if: matrix.role == 'node'
+        env:
+          APP_NAME: ${{ matrix.target }}
+          PORT: ${{ matrix.port }}
+        run: task docker:smoke:node "APP_NAME=${APP_NAME}" "PORT=${PORT}"
 
   # Single required status check for the branch ruleset (shown as "CI / Summary").
   # Intermediate jobs may be skipped when their paths did not change.

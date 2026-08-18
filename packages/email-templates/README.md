@@ -51,3 +51,5 @@ result.text;
 ```bash
 pnpm --filter @publira/email-templates build
 ```
+
+`react` / `react-dom` は `peerDependencies` ではなく `dependencies` です。ビルド成果物の `dist/` は `react/jsx-runtime` と `react-email` を外部 import として残すため、`pnpm install --prod` だけで組んだ本番ツリー（`infra/docker/node/Dockerfile`）でも解決できる必要があります。利用側は現状 `apps/email-renderer` だけで、共有すべきホスト側の React インスタンスはありません。

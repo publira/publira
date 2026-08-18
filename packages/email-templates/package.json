@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@publira/utils": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "react-email": "catalog:",
     "temporal-polyfill": "catalog:",
     "zod": "catalog:"
@@ -27,14 +29,8 @@
     "@publira/tsconfig": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
   }
 }
