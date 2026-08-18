@@ -5,18 +5,18 @@ import {
 } from "@publira/utils/search-params";
 import { z } from "zod";
 
-import { listOffsetSearchParam } from "#lib/list-pagination";
+import { cursorTokenSchema } from "#lib/cursor-token";
 
 interface ParseAuditLogFiltersInput {
   action?: SearchParamValue;
   actor_user_public_id?: SearchParamValue;
-  offset?: SearchParamValue;
+  token?: SearchParamValue;
 }
 
 export interface AuditLogFilters {
   action: string;
   actorUserPublicId: string;
-  offset: number;
+  token: string;
 }
 
 export const toAllowedActionValues = (
@@ -36,6 +36,7 @@ export const toAllowedActionValues = (
 /**
  * Every filter falls back to the default list view: an unusable query string
  * still renders `/audit-logs` instead of 404ing an operator out of the log.
+ * Cursor tokens stay opaque — they are not trimmed or length-capped here.
  */
 const createAuditLogFiltersSchema = (
   allowedActionValues: ReadonlySet<string>
@@ -43,7 +44,7 @@ const createAuditLogFiltersSchema = (
   z.object({
     action: searchParamEnum(allowedActionValues, { fallback: "" }),
     actor_user_public_id: searchParamString({ fallback: "" }),
-    offset: listOffsetSearchParam,
+    token: cursorTokenSchema,
   });
 
 export const parseAuditLogFilters = (
@@ -55,14 +56,14 @@ export const parseAuditLogFilters = (
   return {
     action: parsed.action,
     actorUserPublicId: parsed.actor_user_public_id,
-    offset: parsed.offset,
+    token: parsed.token,
   };
 };
 
 export const buildAuditLogsPath = ({
   action,
   actorUserPublicId,
-  offset,
+  token,
 }: AuditLogFilters): string => {
   const search = new URLSearchParams();
   if (actorUserPublicId) {
@@ -71,8 +72,8 @@ export const buildAuditLogsPath = ({
   if (action) {
     search.set("action", action);
   }
-  if (offset > 0) {
-    search.set("offset", String(offset));
+  if (token) {
+    search.set("token", token);
   }
   const query = search.toString();
   return query ? `/audit-logs?${query}` : "/audit-logs";

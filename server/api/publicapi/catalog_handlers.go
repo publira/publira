@@ -23,6 +23,8 @@ import (
 const (
 	defaultSeriesPageSize = int32(20)
 	maxSeriesPageSize     = int32(100)
+	defaultLabelPageSize  = int32(20)
+	maxLabelPageSize      = int32(100)
 	seriesInclusiveKey    = "inclusive"
 )
 
@@ -354,6 +356,82 @@ func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 	return mapped, nil
 }
 
+type labelPageRow struct {
+	id                     uuid.UUID
+	publicID               string
+	name                   string
+	createdAt              time.Time
+	eyeCatchImageID        uuid.NullUUID
+	eyeCatchImageUpdatedAt sql.NullTime
+}
+
+func labelPageFromDesc(row dbmodels.ListLabelsByTenantDescRow) labelPageRow {
+	return labelPageRow{
+		id:                     row.ID,
+		publicID:               row.PublicID,
+		name:                   row.Name,
+		createdAt:              row.CreatedAt,
+		eyeCatchImageID:        row.EyeCatchImageID,
+		eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+	}
+}
+
+func labelPageFromAsc(row dbmodels.ListLabelsByTenantAscRow) labelPageRow {
+	return labelPageRow{
+		id:                     row.ID,
+		publicID:               row.PublicID,
+		name:                   row.Name,
+		createdAt:              row.CreatedAt,
+		eyeCatchImageID:        row.EyeCatchImageID,
+		eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+	}
+}
+
+func toLabelPage[T any](rows []T, convert func(T) labelPageRow) []labelPageRow {
+	page := make([]labelPageRow, len(rows))
+	for index, row := range rows {
+		page[index] = convert(row)
+	}
+	return page
+}
+
+func (s *apiServer) labelPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]labelPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListLabelsByTenantAsc(ctx, dbmodels.ListLabelsByTenantAscParams{
+			TenantID:        tenantID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return toLabelPage(rows, labelPageFromAsc), nil
+	}
+
+	rows, err := queries.ListLabelsByTenantDesc(ctx, dbmodels.ListLabelsByTenantDescParams{
+		TenantID:        tenantID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toLabelPage(rows, labelPageFromDesc), nil
+}
+
 func (s *apiServer) ListPublishedLabels(
 	ctx context.Context,
 	req *connect.Request[publirav1.ListPublishedLabelsRequest],
@@ -362,39 +440,46 @@ func (s *apiServer) ListPublishedLabels(
 	if err != nil {
 		return nil, err
 	}
-	limit := req.Msg.Limit
-	if limit <= 0 || limit > 100 {
-		limit = 20
+
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultLabelPageSize, maxLabelPageSize)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
-	rows, err := s.queriesFor(ctx).ListLabelsByTenant(ctx, dbmodels.ListLabelsByTenantParams{TenantID: tenant.ID, Limit: limit, Offset: offset})
+
+	rows, err := s.labelPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError("failed to list published labels", err, "tenant_id", tenant.ID.String())
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	items := make([]*publirattypesv1.Label, 0, len(rows))
 	imageIDs := make([]uuid.UUID, 0)
 	for _, row := range rows {
-		item := &publirattypesv1.Label{PublicId: row.PublicID, Name: row.Name}
-		if row.EyeCatchImageUpdatedAt.Valid {
-			item.EyeCatchImageUpdatedAt = row.EyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+		item := &publirattypesv1.Label{PublicId: row.publicID, Name: row.name}
+		if row.eyeCatchImageUpdatedAt.Valid {
+			item.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 		}
-		if row.EyeCatchImageID.Valid {
-			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
+		if row.eyeCatchImageID.Valid {
+			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
 		}
 		items = append(items, item)
 	}
 
 	// ラベル画像バリアント情報を取得
 	if len(imageIDs) > 0 {
-		variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
-		if err == nil {
+		variantsByImageID, variantsErr := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
+		if variantsErr == nil {
 			for i, row := range rows {
-				if row.EyeCatchImageID.Valid {
-					if variants, ok := variantsByImageID[row.EyeCatchImageID.UUID]; ok {
+				if row.eyeCatchImageID.Valid {
+					if variants, ok := variantsByImageID[row.eyeCatchImageID.UUID]; ok {
 						items[i].EyeCatchImageVariants = variants
 					}
 				}
@@ -402,7 +487,29 @@ func (s *apiServer) ListPublishedLabels(
 		}
 	}
 
-	return connect.NewResponse(&publirav1.ListPublishedLabelsResponse{Labels: items}), nil
+	res := &publirav1.ListPublishedLabelsResponse{Labels: items}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			res.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].id)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			res.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		res.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		res.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *apiServer) ListPublishedSeries(

@@ -59,10 +59,10 @@ describe("listPlatformEndUsers", () => {
       ],
     });
 
-    await expect(
-      listPlatformEndUsers({ limit: 20, offset: 0 })
-    ).resolves.toEqual({
+    await expect(listPlatformEndUsers({ limit: 20 })).resolves.toEqual({
+      nextToken: "",
       ok: true,
+      previousToken: "",
       users: [
         {
           createdAt: "2026-03-01T00:00:00Z",
@@ -82,10 +82,10 @@ describe("listPlatformEndUsers", () => {
         createdAfter: "",
         createdBefore: "",
         limit: 20,
-        offset: 0,
         publicIds: [],
         status: "",
         tenantPublicId: "",
+        token: "",
       },
       sessionHeaders
     );
@@ -110,11 +110,12 @@ describe("listPlatformEndUsers", () => {
     await expect(
       listPlatformEndUsers({
         limit: 20,
-        offset: 0,
         tenantId: "tenant_a",
       })
     ).resolves.toEqual({
+      nextToken: "",
       ok: true,
+      previousToken: "",
       users: [
         {
           createdAt: "2026-03-02T00:00:00Z",
@@ -134,17 +135,17 @@ describe("listPlatformEndUsers", () => {
         createdAfter: "",
         createdBefore: "",
         limit: 20,
-        offset: 0,
         publicIds: [],
         status: "",
         tenantPublicId: "tenant_a",
+        token: "",
       },
       sessionHeaders
     );
     expect(mockListTenants).not.toHaveBeenCalled();
   });
 
-  it("ページ境界はサーバーへ渡した limit / offset のままにする", async () => {
+  it("ページ境界はサーバーへ渡した limit / token のままにする", async () => {
     mockListEndUsers.mockResolvedValueOnce({
       users: [
         {
@@ -160,7 +161,7 @@ describe("listPlatformEndUsers", () => {
     });
 
     await expect(
-      listPlatformEndUsers({ limit: 10, offset: 20 })
+      listPlatformEndUsers({ limit: 10, token: "page-2" })
     ).resolves.toMatchObject({
       ok: true,
       users: [{ publicId: "USER000002" }],
@@ -171,10 +172,10 @@ describe("listPlatformEndUsers", () => {
         createdAfter: "",
         createdBefore: "",
         limit: 10,
-        offset: 20,
         publicIds: [],
         status: "",
         tenantPublicId: "",
+        token: "page-2",
       },
       sessionHeaders
     );

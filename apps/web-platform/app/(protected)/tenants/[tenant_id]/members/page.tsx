@@ -36,6 +36,7 @@ import {
 import { TenantMembersManager } from "./_components/tenant-members-manager";
 import {
   buildMemberInvitationsPath,
+  buildMembersPath,
   parseMemberInvitationFilters,
 } from "./_lib/search-params";
 
@@ -89,23 +90,30 @@ const TenantMembersContent = async ({
   searchParams,
 }: Pick<TenantMembersPageProps, "params" | "searchParams">) => {
   const { tenant_id: tenantId } = await params;
-  const invitationFilters = parseMemberInvitationFilters(await searchParams);
+  const pageFilters = parseMemberInvitationFilters(await searchParams);
 
-  const [tenantResult, members, invitationsResult, timeZone] =
+  const [tenantResult, membersResult, invitationsResult, timeZone] =
     await Promise.all([
       getPlatformTenant(tenantId),
-      listPlatformTenantMembers(tenantId),
+      listPlatformTenantMembers({
+        tenantId,
+        token: pageFilters.membersToken || undefined,
+      }),
       listPlatformTenantAdminInvitations({
         limit: invitationPageSize,
         tenantId,
-        token: invitationFilters.token || undefined,
+        token: pageFilters.token || undefined,
       }),
       getPlatformDisplayTimeZone(),
     ]);
 
   // Before both branches below: a rejected session reads every record as
   // missing, and a 404 would hide that the operator only needs to sign in again.
-  await redirectToLoginIfSessionRejected(tenantResult, invitationsResult);
+  await redirectToLoginIfSessionRejected(
+    tenantResult,
+    membersResult,
+    invitationsResult
+  );
 
   if (!tenantResult.ok) {
     return <TenantMembersLoadError message={tenantResult.message} />;
@@ -118,12 +126,26 @@ const TenantMembersContent = async ({
 
   const previousHref = invitationsResult.previousToken
     ? buildMemberInvitationsPath(tenant.publicId, {
+        membersToken: pageFilters.membersToken,
         token: invitationsResult.previousToken,
       })
     : undefined;
   const nextHref = invitationsResult.nextToken
     ? buildMemberInvitationsPath(tenant.publicId, {
+        membersToken: pageFilters.membersToken,
         token: invitationsResult.nextToken,
+      })
+    : undefined;
+  const membersPreviousHref = membersResult.previousToken
+    ? buildMembersPath(tenant.publicId, {
+        membersToken: membersResult.previousToken,
+        token: pageFilters.token,
+      })
+    : undefined;
+  const membersNextHref = membersResult.nextToken
+    ? buildMembersPath(tenant.publicId, {
+        membersToken: membersResult.nextToken,
+        token: pageFilters.token,
       })
     : undefined;
 
@@ -157,7 +179,12 @@ const TenantMembersContent = async ({
             invitations={invitationsResult.invitations}
             invitationsNextHref={nextHref}
             invitationsPreviousHref={previousHref}
-            members={members}
+            members={membersResult.members}
+            membersErrorMessage={
+              membersResult.ok ? undefined : membersResult.message
+            }
+            membersNextHref={membersNextHref}
+            membersPreviousHref={membersPreviousHref}
             removeAction={removeTenantMemberAction}
             resendInvitationAction={resendTenantAdminInvitationAction}
             tenantId={tenant.publicId}

@@ -29,15 +29,23 @@ export interface ListPlatformAuditLogsInput {
   action?: string;
   actorUserPublicId?: string;
   limit?: number;
-  offset?: number;
   tenantId?: string;
+  token?: string;
 }
 
 export type ListPlatformAuditLogsResult =
-  | { ok: true; auditLogs: PlatformAuditLogSummary[] }
   | {
+      auditLogs: PlatformAuditLogSummary[];
+      nextToken: string;
+      ok: true;
+      previousToken: string;
+    }
+  | {
+      auditLogs: PlatformAuditLogSummary[];
       ok: false;
       message: string;
+      nextToken: string;
+      previousToken: string;
       /** The API rejected the session — the page raises the login redirect. */
       requiresSignIn: boolean;
     };
@@ -51,8 +59,11 @@ export const listPlatformAuditLogs = async (
   if (!sid) {
     dropFailedCacheEntry();
     return {
+      auditLogs: [],
       message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: true,
     };
   }
@@ -61,10 +72,6 @@ export const listPlatformAuditLogs = async (
     typeof input.limit === "number" && Number.isFinite(input.limit)
       ? Math.max(1, Math.min(200, Math.trunc(input.limit)))
       : 100;
-  const offset =
-    typeof input.offset === "number" && Number.isFinite(input.offset)
-      ? Math.max(0, Math.trunc(input.offset))
-      : 0;
 
   try {
     const response = await apiClient.auditLogs.listAuditLogs(
@@ -72,8 +79,8 @@ export const listPlatformAuditLogs = async (
         action: input.action?.trim() ?? "",
         actorUserPublicId: input.actorUserPublicId?.trim() ?? "",
         limit,
-        offset,
         tenantId: input.tenantId?.trim() ?? "",
+        token: input.token ?? "",
       } as never,
       buildSessionHeaders(sid)
     );
@@ -94,7 +101,9 @@ export const listPlatformAuditLogs = async (
         tenantId: log.tenantPublicId ?? "",
         tenantName: log.tenantName ?? "",
       })),
+      nextToken: response.nextToken ?? "",
       ok: true,
+      previousToken: response.previousToken ?? "",
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
@@ -103,11 +112,14 @@ export const listPlatformAuditLogs = async (
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
     return {
+      auditLogs: [],
       message: rpcErrorMessage(
         error,
         "監査ログの取得に失敗しました。時間をおいて再試行してください。"
       ),
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: isUnauthenticatedError(error),
     };
   }

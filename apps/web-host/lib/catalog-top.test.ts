@@ -197,14 +197,18 @@ describe("catalog-top section loaders", () => {
     });
     mockListPublishedLabels.mockResolvedValue({
       ok: true,
-      value: [
-        {
-          eyeCatchImageVariants: [],
-          name: "ラベルA",
-          publicId: "LABEL_1",
-          seriesCount: 3,
-        },
-      ],
+      value: {
+        labels: [
+          {
+            eyeCatchImageVariants: [],
+            name: "ラベルA",
+            publicId: "LABEL_1",
+            seriesCount: 3,
+          },
+        ],
+        nextToken: "",
+        previousToken: "",
+      },
     });
 
     await expect(

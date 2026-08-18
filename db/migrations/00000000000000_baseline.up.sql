@@ -1132,7 +1132,10 @@ CREATE INDEX idx_pages_tenant_created_at ON pages USING btree (tenant_id, create
 CREATE INDEX idx_platform_audit_logs_actor ON platform_audit_logs USING btree (actor_platform_user_id);
 
 -- INDEX: idx_platform_audit_logs_created_at
-CREATE INDEX idx_platform_audit_logs_created_at ON platform_audit_logs USING btree (created_at DESC);
+-- 末尾の id は Platform ListAuditLogs の cursor のタイブレーカー。btree は
+-- 逆順にも走査できるので、この 1 本で次ページと前ページの両方を索引順に
+-- 取り出せる。
+CREATE INDEX idx_platform_audit_logs_created_at ON platform_audit_logs USING btree (created_at DESC, id DESC);
 
 -- INDEX: idx_platform_audit_logs_target
 CREATE INDEX idx_platform_audit_logs_target ON platform_audit_logs USING btree (target_type, target_id);
@@ -1247,6 +1250,11 @@ CREATE INDEX idx_user_password_reset_tokens_tenant_token ON user_password_reset_
 
 -- INDEX: idx_user_password_reset_tokens_user_id
 CREATE INDEX idx_user_password_reset_tokens_user_id ON user_password_reset_tokens USING btree (user_id);
+
+-- INDEX: idx_users_created_at
+-- テナントを跨ぐ ListEndUsers の cursor 用。tenant_id 先頭の索引は
+-- 全テナントを走る一覧では使えないので、並び替えキーだけの索引を別に張る。
+CREATE INDEX idx_users_created_at ON users USING btree (created_at DESC, id DESC);
 
 -- INDEX: idx_users_tenant_created_at
 CREATE INDEX idx_users_tenant_created_at ON users USING btree (tenant_id, created_at DESC, id DESC);

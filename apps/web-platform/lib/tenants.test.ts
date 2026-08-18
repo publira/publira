@@ -464,19 +464,26 @@ describe("createPlatformTenant", () => {
       ],
     });
 
-    await expect(listPlatformTenantMembers("tenant_seifuu")).resolves.toEqual([
-      {
-        createdAt: "2026-03-02T00:00:00Z",
-        email: "owner@example.com",
-        name: "Owner",
-        role: "tenant_owner",
-        status: "active",
-        userPublicId: "user_001",
-      },
-    ]);
+    await expect(
+      listPlatformTenantMembers({ tenantId: "tenant_seifuu" })
+    ).resolves.toEqual({
+      members: [
+        {
+          createdAt: "2026-03-02T00:00:00Z",
+          email: "owner@example.com",
+          name: "Owner",
+          role: "tenant_owner",
+          status: "active",
+          userPublicId: "user_001",
+        },
+      ],
+      nextToken: "",
+      ok: true,
+      previousToken: "",
+    });
 
     expect(mockListTenantMembers).toHaveBeenCalledWith(
-      { tenantPublicId: "tenant_seifuu" },
+      { limit: 20, tenantPublicId: "tenant_seifuu", token: "" },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
   });

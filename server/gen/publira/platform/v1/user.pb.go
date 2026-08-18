@@ -115,10 +115,11 @@ func (x *EndUser) GetTenantName() string {
 	return ""
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListEndUsersRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	Limit  int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// フィルタ条件
 	CreatedAfter  string   `protobuf:"bytes,3,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`    // RFC3339形式
 	Status        string   `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`                                    // active, suspended, inactive
@@ -126,8 +127,10 @@ type ListEndUsersRequest struct {
 	PublicIds     []string `protobuf:"bytes,6,rep,name=public_ids,json=publicIds,proto3" json:"public_ids,omitempty"`
 	// Tenant public_id. Empty means every tenant.
 	TenantPublicId string `protobuf:"bytes,7,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,8,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListEndUsersRequest) Reset() {
@@ -167,13 +170,6 @@ func (x *ListEndUsersRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListEndUsersRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
 func (x *ListEndUsersRequest) GetCreatedAfter() string {
 	if x != nil {
 		return x.CreatedAfter
@@ -209,9 +205,20 @@ func (x *ListEndUsersRequest) GetTenantPublicId() string {
 	return ""
 }
 
+func (x *ListEndUsersRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type ListEndUsersResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Users         []*EndUser             `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Users []*EndUser             `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -251,6 +258,20 @@ func (x *ListEndUsersResponse) GetUsers() []*EndUser {
 		return x.Users
 	}
 	return nil
+}
+
+func (x *ListEndUsersResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListEndUsersResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type GetEndUserRequest struct {
@@ -620,18 +641,21 @@ const file_publira_platform_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"tenant_ids\x18\x06 \x03(\tR\ttenantIds\x12\x1f\n" +
 	"\vtenant_name\x18\a \x01(\tR\n" +
-	"tenantName\"\xf0\x01\n" +
+	"tenantName\"\xfc\x01\n" +
 	"\x13ListEndUsersRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12#\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12#\n" +
 	"\rcreated_after\x18\x03 \x01(\tR\fcreatedAfter\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12%\n" +
 	"\x0ecreated_before\x18\x05 \x01(\tR\rcreatedBefore\x12\x1d\n" +
 	"\n" +
 	"public_ids\x18\x06 \x03(\tR\tpublicIds\x12(\n" +
-	"\x10tenant_public_id\x18\a \x01(\tR\x0etenantPublicId\"J\n" +
+	"\x10tenant_public_id\x18\a \x01(\tR\x0etenantPublicId\x12\x14\n" +
+	"\x05token\x18\b \x01(\tR\x05tokenJ\x04\b\x02\x10\x03R\x06offset\"\x90\x01\n" +
 	"\x14ListEndUsersResponse\x122\n" +
-	"\x05users\x18\x01 \x03(\v2\x1c.publira.platform.v1.EndUserR\x05users\"0\n" +
+	"\x05users\x18\x01 \x03(\v2\x1c.publira.platform.v1.EndUserR\x05users\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"0\n" +
 	"\x11GetEndUserRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"F\n" +
 	"\x12GetEndUserResponse\x120\n" +

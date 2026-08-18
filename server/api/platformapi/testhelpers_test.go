@@ -54,7 +54,8 @@ const (
 	testListTenantUserRolesQuery           = "-- name: ListTenantUserRoles :many\n"
 	testCreateTenantUserRoleQuery          = "-- name: CreateTenantUserRole :one\n"
 	testDeleteTenantUserRolesByUserIDQuery = "-- name: DeleteTenantUserRolesByUserID :exec\n"
-	testListTenantUsersQuery               = "-- name: ListTenantUsers :many\n"
+	testListTenantMembersDescQuery         = "-- name: ListTenantMembersDesc :many\n"
+	testListTenantMembersAscQuery          = "-- name: ListTenantMembersAsc :many\n"
 	testGetPlatformSMTPConfigQuery         = "-- name: GetPlatformSMTPConfig :one\n"
 	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
 
@@ -63,7 +64,8 @@ const (
 	testUpsertPlatformDefaultTimezoneQuery = "-- name: UpsertPlatformDefaultTimezone :one\n"
 
 	// エンドユーザー
-	testListEndUsersQuery               = "-- name: ListEndUsers :many\n"
+	testListEndUsersDescQuery           = "-- name: ListEndUsersDesc :many\n"
+	testListEndUsersAscQuery            = "-- name: ListEndUsersAsc :many\n"
 	testGetUserByPublicIDQuery          = "-- name: GetUserByPublicID :one\n"
 	testGetTenantByUserIDQuery          = "-- name: GetTenantByUserID :one\n"
 	testUpdateUserStatusQuery           = "-- name: UpdateUserStatus :one\n"
@@ -155,7 +157,8 @@ const (
 	integrationCountSuspendedTenantsQuery    = "-- name: CountSuspendedTenants :one\n"
 	integrationCountPendingEndUsersQuery     = "-- name: CountPendingEndUsers :one\n"
 	integrationListRecentPlatformEventsQuery = "-- name: ListRecentPlatformEvents :many\n"
-	integrationListAdminAuditLogsQuery       = "-- name: ListPlatformAuditLogs :many\n"
+	integrationListPlatformAuditLogsQuery    = "-- name: ListPlatformAuditLogsDesc :many\n"
+	integrationListPlatformAuditLogsAscQuery = "-- name: ListPlatformAuditLogsAsc :many\n"
 	integrationSessionToken                  = "platform-session-token"
 	integrationPlatformRole                  = "platform_operator"
 )

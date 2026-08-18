@@ -169,15 +169,18 @@ func (x *PlatformAuditLog) GetTargetName() string {
 	return ""
 }
 
+// Cursor pagination. Field shape and token rules: proto/README.md.
 type ListAuditLogsRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Limit             int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset            int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
-	TenantPublicId    string                 `protobuf:"bytes,3,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	ActorUserPublicId string                 `protobuf:"bytes,4,opt,name=actor_user_public_id,json=actorUserPublicId,proto3" json:"actor_user_public_id,omitempty"`
-	Action            string                 `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit             int32  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	TenantPublicId    string `protobuf:"bytes,3,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	ActorUserPublicId string `protobuf:"bytes,4,opt,name=actor_user_public_id,json=actorUserPublicId,proto3" json:"actor_user_public_id,omitempty"`
+	Action            string `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListAuditLogsRequest) Reset() {
@@ -217,13 +220,6 @@ func (x *ListAuditLogsRequest) GetLimit() int32 {
 	return 0
 }
 
-func (x *ListAuditLogsRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
 func (x *ListAuditLogsRequest) GetTenantPublicId() string {
 	if x != nil {
 		return x.TenantPublicId
@@ -245,9 +241,20 @@ func (x *ListAuditLogsRequest) GetAction() string {
 	return ""
 }
 
+func (x *ListAuditLogsRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type ListAuditLogsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AuditLogs     []*PlatformAuditLog    `protobuf:"bytes,1,rep,name=audit_logs,json=auditLogs,proto3" json:"audit_logs,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	AuditLogs []*PlatformAuditLog    `protobuf:"bytes,1,rep,name=audit_logs,json=auditLogs,proto3" json:"audit_logs,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -289,6 +296,20 @@ func (x *ListAuditLogsResponse) GetAuditLogs() []*PlatformAuditLog {
 	return nil
 }
 
+func (x *ListAuditLogsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListAuditLogsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
+}
+
 var File_publira_platform_v1_audit_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_audit_proto_rawDesc = "" +
@@ -315,16 +336,19 @@ const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\vtenant_name\x18\f \x01(\tR\n" +
 	"tenantName\x12\x1f\n" +
 	"\vtarget_name\x18\r \x01(\tR\n" +
-	"targetName\"\xb7\x01\n" +
+	"targetName\"\xc3\x01\n" +
 	"\x14ListAuditLogsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12(\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12(\n" +
 	"\x10tenant_public_id\x18\x03 \x01(\tR\x0etenantPublicId\x12/\n" +
 	"\x14actor_user_public_id\x18\x04 \x01(\tR\x11actorUserPublicId\x12\x16\n" +
-	"\x06action\x18\x05 \x01(\tR\x06action\"]\n" +
+	"\x06action\x18\x05 \x01(\tR\x06action\x12\x14\n" +
+	"\x05token\x18\x06 \x01(\tR\x05tokenJ\x04\b\x02\x10\x03R\x06offset\"\xa3\x01\n" +
 	"\x15ListAuditLogsResponse\x12D\n" +
 	"\n" +
-	"audit_logs\x18\x01 \x03(\v2%.publira.platform.v1.PlatformAuditLogR\tauditLogs2\x83\x01\n" +
+	"audit_logs\x18\x01 \x03(\v2%.publira.platform.v1.PlatformAuditLogR\tauditLogs\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken2\x83\x01\n" +
 	"\x17PlatformAuditLogService\x12h\n" +
 	"\rListAuditLogs\x12).publira.platform.v1.ListAuditLogsRequest\x1a*.publira.platform.v1.ListAuditLogsResponse\"\x00BNZLgithub.com/publira/publira/server/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
 

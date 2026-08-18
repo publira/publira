@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/audit.proto.
  */
 export const file_publira_platform_v1_audit: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL2F1ZGl0LnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIrYCChBQbGF0Zm9ybUF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX3JvbGUYAiABKAkSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEhgKEHRhcmdldF9wdWJsaWNfaWQYDiABKAkSDwoHb3V0Y29tZRgHIAEoCRIOCgZyZWFzb24YCCABKAkSEQoJY2xpZW50X2lwGAkgASgJEhIKCmNyZWF0ZWRfYXQYCiABKAkSEgoKYWN0b3JfbmFtZRgLIAEoCRITCgt0ZW5hbnRfbmFtZRgMIAEoCRITCgt0YXJnZXRfbmFtZRgNIAEoCSJ9ChRMaXN0QXVkaXRMb2dzUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIOCgZvZmZzZXQYAiABKAUSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIcChRhY3Rvcl91c2VyX3B1YmxpY19pZBgEIAEoCRIOCgZhY3Rpb24YBSABKAkiUgoVTGlzdEF1ZGl0TG9nc1Jlc3BvbnNlEjkKCmF1ZGl0X2xvZ3MYASADKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtQXVkaXRMb2cygwEKF1BsYXRmb3JtQXVkaXRMb2dTZXJ2aWNlEmgKDUxpc3RBdWRpdExvZ3MSKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkxpc3RBdWRpdExvZ3NSZXF1ZXN0GioucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0QXVkaXRMb2dzUmVzcG9uc2UiAEJOWkxnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
+  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL2F1ZGl0LnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIrYCChBQbGF0Zm9ybUF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX3JvbGUYAiABKAkSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEhgKEHRhcmdldF9wdWJsaWNfaWQYDiABKAkSDwoHb3V0Y29tZRgHIAEoCRIOCgZyZWFzb24YCCABKAkSEQoJY2xpZW50X2lwGAkgASgJEhIKCmNyZWF0ZWRfYXQYCiABKAkSEgoKYWN0b3JfbmFtZRgLIAEoCRITCgt0ZW5hbnRfbmFtZRgMIAEoCRITCgt0YXJnZXRfbmFtZRgNIAEoCSKKAQoUTGlzdEF1ZGl0TG9nc1JlcXVlc3QSDQoFbGltaXQYASABKAUSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIcChRhY3Rvcl91c2VyX3B1YmxpY19pZBgEIAEoCRIOCgZhY3Rpb24YBSABKAkSDQoFdG9rZW4YBiABKAlKBAgCEANSBm9mZnNldCJ+ChVMaXN0QXVkaXRMb2dzUmVzcG9uc2USOQoKYXVkaXRfbG9ncxgBIAMoCzIlLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1BdWRpdExvZxIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJMoMBChdQbGF0Zm9ybUF1ZGl0TG9nU2VydmljZRJoCg1MaXN0QXVkaXRMb2dzEikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0QXVkaXRMb2dzUmVxdWVzdBoqLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdEF1ZGl0TG9nc1Jlc3BvbnNlIgBCTlpMZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3BsYXRmb3JtL3YxO3B1YmxpcmFzcGxhdGZvcm12MWIGcHJvdG8z");
 
 /**
  * @generated from message publira.platform.v1.PlatformAuditLog
@@ -95,18 +95,17 @@ export const PlatformAuditLogSchema: GenMessage<PlatformAuditLog> = /*@__PURE__*
   messageDesc(file_publira_platform_v1_audit, 0);
 
 /**
+ * Cursor pagination. Field shape and token rules: proto/README.md.
+ *
  * @generated from message publira.platform.v1.ListAuditLogsRequest
  */
 export type ListAuditLogsRequest = Message<"publira.platform.v1.ListAuditLogsRequest"> & {
   /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
    * @generated from field: int32 limit = 1;
    */
   limit: number;
-
-  /**
-   * @generated from field: int32 offset = 2;
-   */
-  offset: number;
 
   /**
    * @generated from field: string tenant_public_id = 3;
@@ -122,6 +121,13 @@ export type ListAuditLogsRequest = Message<"publira.platform.v1.ListAuditLogsReq
    * @generated from field: string action = 5;
    */
   action: string;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page.
+   *
+   * @generated from field: string token = 6;
+   */
+  token: string;
 };
 
 /**
@@ -139,6 +145,20 @@ export type ListAuditLogsResponse = Message<"publira.platform.v1.ListAuditLogsRe
    * @generated from field: repeated publira.platform.v1.PlatformAuditLog audit_logs = 1;
    */
   auditLogs: PlatformAuditLog[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
 };
 
 /**

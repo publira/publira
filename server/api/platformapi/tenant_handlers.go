@@ -477,15 +477,86 @@ func normalizeTenantMemberRole(rawRole string) (string, bool) {
 	}
 }
 
-func tenantMemberToProto(row dbmodels.ListTenantUsersRow) *publirasplatformv1.TenantMember {
-	return &publirasplatformv1.TenantMember{
-		UserPublicId: row.PublicID,
-		Name:         row.Name,
-		Email:        row.Email,
-		Role:         row.Role,
-		Status:       row.Status,
-		CreatedAt:    row.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+type tenantMemberPageRow struct {
+	userID    uuid.UUID
+	publicID  string
+	name      string
+	email     string
+	role      string
+	status    string
+	createdAt time.Time
+}
+
+func tenantMemberPageFromDesc(row dbmodels.ListTenantMembersDescRow) tenantMemberPageRow {
+	return tenantMemberPageRow{
+		userID:    row.UserID,
+		publicID:  row.PublicID,
+		name:      row.Name,
+		email:     row.Email,
+		role:      row.Role,
+		status:    row.Status,
+		createdAt: row.CreatedAt,
 	}
+}
+
+func tenantMemberPageFromAsc(row dbmodels.ListTenantMembersAscRow) tenantMemberPageRow {
+	return tenantMemberPageRow{
+		userID:    row.UserID,
+		publicID:  row.PublicID,
+		name:      row.Name,
+		email:     row.Email,
+		role:      row.Role,
+		status:    row.Status,
+		createdAt: row.CreatedAt,
+	}
+}
+
+func tenantMemberToProto(row tenantMemberPageRow) *publirasplatformv1.TenantMember {
+	return &publirasplatformv1.TenantMember{
+		UserPublicId: row.publicID,
+		Name:         row.name,
+		Email:        row.email,
+		Role:         row.role,
+		Status:       row.status,
+		CreatedAt:    row.createdAt.UTC().Format("2006-01-02T15:04:05Z"),
+	}
+}
+
+func (s *platformServer) tenantMemberPage(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]tenantMemberPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListTenantMembersAsc(ctx, dbmodels.ListTenantMembersAscParams{
+			TenantID:        uuid.NullUUID{UUID: tenantID, Valid: true},
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return toPage(rows, tenantMemberPageFromAsc), nil
+	}
+
+	rows, err := queries.ListTenantMembersDesc(ctx, dbmodels.ListTenantMembersDescParams{
+		TenantID:        uuid.NullUUID{UUID: tenantID, Valid: true},
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toPage(rows, tenantMemberPageFromDesc), nil
 }
 
 func (s *platformServer) ListTenantMembers(
@@ -497,16 +568,17 @@ func (s *platformServer) ListTenantMembers(
 		return nil, err
 	}
 
-	limit := req.Msg.Limit
-	if limit <= 0 {
-		limit = defaultListLimit
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	if limit > maxListLimit {
-		limit = maxListLimit
-	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
 
 	tenant, err := s.queriesFor(ctx).GetTenantByPublicID(ctx, tenantPublicID)
@@ -517,20 +589,37 @@ func (s *platformServer) ListTenantMembers(
 		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
-	rows, err := s.queriesFor(ctx).ListTenantUsers(ctx, dbmodels.ListTenantUsersParams{
-		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		Limit:    limit,
-		Offset:   offset,
-	})
+	rows, err := s.tenantMemberPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError("failed to list tenant members", err, "tenant_id", tenant.ID.String())
 	}
+	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
 	resp := &publirasplatformv1.ListTenantMembersResponse{
 		Members: make([]*publirasplatformv1.TenantMember, len(rows)),
 	}
 	for i, row := range rows {
 		resp.Members[i] = tenantMemberToProto(row)
+	}
+	switch {
+	case len(rows) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, rows[0].createdAt, rows[0].userID)
+		}
+		if hasNext {
+			last := rows[len(rows)-1]
+			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.userID)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		resp.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 	return connect.NewResponse(resp), nil
 }

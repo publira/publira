@@ -13,6 +13,7 @@ import (
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/pagination"
 )
 
 const (
@@ -40,8 +41,45 @@ func newEndUser(publicID, name, email, status string, createdAt time.Time, tenan
 	}
 }
 
-func endUserFromListRow(u dbmodels.ListEndUsersRow) *publirasplatformv1.EndUser {
-	return newEndUser(u.PublicID, u.Name, u.Email, u.Status, u.CreatedAt, u.TenantPublicID, u.TenantName)
+type endUserPageRow struct {
+	id             uuid.UUID
+	publicID       string
+	name           string
+	email          string
+	status         string
+	createdAt      time.Time
+	tenantPublicID string
+	tenantName     string
+}
+
+func endUserPageFromDesc(row dbmodels.ListEndUsersDescRow) endUserPageRow {
+	return endUserPageRow{
+		id:             row.ID,
+		publicID:       row.PublicID,
+		name:           row.Name,
+		email:          row.Email,
+		status:         row.Status,
+		createdAt:      row.CreatedAt,
+		tenantPublicID: row.TenantPublicID,
+		tenantName:     row.TenantName,
+	}
+}
+
+func endUserPageFromAsc(row dbmodels.ListEndUsersAscRow) endUserPageRow {
+	return endUserPageRow{
+		id:             row.ID,
+		publicID:       row.PublicID,
+		name:           row.Name,
+		email:          row.Email,
+		status:         row.Status,
+		createdAt:      row.CreatedAt,
+		tenantPublicID: row.TenantPublicID,
+		tenantName:     row.TenantName,
+	}
+}
+
+func endUserFromListRow(u endUserPageRow) *publirasplatformv1.EndUser {
+	return newEndUser(u.publicID, u.name, u.email, u.status, u.createdAt, u.tenantPublicID, u.tenantName)
 }
 
 func (s *platformServer) endUserTenant(ctx context.Context, userID uuid.UUID) (publicID, name string, err error) {
@@ -101,6 +139,59 @@ func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID str
 	return user, nil
 }
 
+type endUserQueryFilters struct {
+	createdAfter   sql.NullTime
+	createdBefore  sql.NullTime
+	publicIDs      []string
+	status         sql.NullString
+	tenantPublicID sql.NullString
+}
+
+func (s *platformServer) endUserPage(
+	ctx context.Context,
+	filters endUserQueryFilters,
+	keys pagination.TimeUUIDKeys,
+	direction pagination.Direction,
+	limit int32,
+) ([]endUserPageRow, error) {
+	queries := s.queriesFor(ctx)
+	if direction == pagination.Backward {
+		rows, err := queries.ListEndUsersAsc(ctx, dbmodels.ListEndUsersAscParams{
+			CreatedAfter:    filters.createdAfter,
+			CreatedBefore:   filters.createdBefore,
+			PublicIds:       filters.publicIDs,
+			Status:          filters.status,
+			TenantPublicID:  filters.tenantPublicID,
+			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+			CursorInclusive: keys.Inclusive,
+			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+			Limit:           limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return toPage(rows, endUserPageFromAsc), nil
+	}
+
+	rows, err := queries.ListEndUsersDesc(ctx, dbmodels.ListEndUsersDescParams{
+		CreatedAfter:    filters.createdAfter,
+		CreatedBefore:   filters.createdBefore,
+		PublicIds:       filters.publicIDs,
+		Status:          filters.status,
+		TenantPublicID:  filters.tenantPublicID,
+		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
+		CursorInclusive: keys.Inclusive,
+		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toPage(rows, endUserPageFromDesc), nil
+}
+
 func (s *platformServer) ListEndUsers(
 	ctx context.Context,
 	req *connect.Request[publirasplatformv1.ListEndUsersRequest],
@@ -110,58 +201,78 @@ func (s *platformServer) ListEndUsers(
 		return nil, err
 	}
 
-	limit := req.Msg.Limit
-	if limit <= 0 {
-		limit = defaultListLimit
+	limit := pagination.NormalizeLimit(req.Msg.Limit, defaultListLimit, maxListLimit)
+	cursor, err := pagination.Decode(req.Msg.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
 	}
-	if limit > maxListLimit {
-		limit = maxListLimit
-	}
-	offset := req.Msg.Offset
-	if offset < 0 {
-		offset = 0
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = pagination.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is invalid"))
+		}
 	}
 
 	// フィルタパラメータを処理
 	var createdAfterFilter sql.NullTime
 	if req.Msg.CreatedAfter != "" {
-		t, err := time.Parse(time.RFC3339, req.Msg.CreatedAfter)
-		if err != nil {
+		t, parseErr := time.Parse(time.RFC3339, req.Msg.CreatedAfter)
+		if parseErr != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid created_after format"))
 		}
 		createdAfterFilter = sql.NullTime{Time: t, Valid: true}
 	}
 	var createdBeforeFilter sql.NullTime
 	if req.Msg.CreatedBefore != "" {
-		t, err := time.Parse(time.RFC3339, req.Msg.CreatedBefore)
-		if err != nil {
+		t, parseErr := time.Parse(time.RFC3339, req.Msg.CreatedBefore)
+		if parseErr != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid created_before format"))
 		}
 		createdBeforeFilter = sql.NullTime{Time: t, Valid: true}
 	}
 
 	filterStatus := strings.TrimSpace(req.Msg.Status)
-	publicIDs := normalizePublicIDs(req.Msg.PublicIds)
 	filterTenantPublicID := strings.TrimSpace(req.Msg.TenantPublicId)
+	filters := endUserQueryFilters{
+		createdAfter:   createdAfterFilter,
+		createdBefore:  createdBeforeFilter,
+		publicIDs:      normalizePublicIDs(req.Msg.PublicIds),
+		status:         sql.NullString{String: filterStatus, Valid: filterStatus != ""},
+		tenantPublicID: sql.NullString{String: filterTenantPublicID, Valid: filterTenantPublicID != ""},
+	}
 
-	users, err := s.queriesFor(ctx).ListEndUsers(ctx, dbmodels.ListEndUsersParams{
-		Limit:          limit,
-		Offset:         offset,
-		CreatedAfter:   createdAfterFilter,
-		CreatedBefore:  createdBeforeFilter,
-		PublicIds:      publicIDs,
-		Status:         sql.NullString{String: filterStatus, Valid: filterStatus != ""},
-		TenantPublicID: sql.NullString{String: filterTenantPublicID, Valid: filterTenantPublicID != ""},
-	})
+	users, err := s.endUserPage(ctx, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError("failed to list end users", err)
 	}
+	users, hasMore := pagination.Page(users, limit, cursor.Direction)
 
 	resp := &publirasplatformv1.ListEndUsersResponse{
 		Users: make([]*publirasplatformv1.EndUser, 0, len(users)),
 	}
 	for _, u := range users {
 		resp.Users = append(resp.Users, endUserFromListRow(u))
+	}
+	switch {
+	case len(users) > 0:
+		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
+		if hasPrevious {
+			resp.PreviousToken = pagination.EncodeTimeUUID(pagination.Backward, users[0].createdAt, users[0].id)
+		}
+		if hasNext {
+			last := users[len(users)-1]
+			resp.NextToken = pagination.EncodeTimeUUID(pagination.Forward, last.createdAt, last.id)
+		}
+	// An empty page means the boundary row was removed after the token was
+	// issued. Hand back a token to where the client came from, so the only way
+	// out is not to start over from the first page. A recovery token that comes
+	// back empty means the boundary row is gone too: recover once, then leave
+	// both tokens empty rather than bouncing the client between empty pages.
+	case cursor.Direction == pagination.Forward && !keys.Inclusive:
+		resp.PreviousToken = pagination.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+	case cursor.Direction == pagination.Backward && !keys.Inclusive:
+		resp.NextToken = pagination.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 
 	return connect.NewResponse(resp), nil

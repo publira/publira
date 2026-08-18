@@ -1967,10 +1967,13 @@ WHERE el.episode_id = e.id
     AND s.tenant_id = $1
     AND e.public_id = $2;
 
--- name: ListEndUsers :many
--- エンドユーザー（tenant_user_roles未保持）の一覧取得。
--- テナントメンバーは意図的に含めない。プラットフォームのユーザー一覧は
--- この結果が完全な集合であり、クライアントが ListTenantMembers で補完しない。
+-- ListEndUsers はエンドユーザー（tenant_user_roles 未保持）の一覧を
+-- (created_at, id) の降順で表示する。テナントメンバーは意図的に含めない。
+-- プラットフォームのユーザー一覧はこの結果が完全な集合であり、クライアントが
+-- ListTenantMembers で補完しない。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListEndUsersDesc :many
 SELECT u.id,
     u.public_id,
     u.name,
@@ -1999,11 +2002,69 @@ WHERE NOT EXISTS (
         OR sqlc.narg('tenant_public_id')::text = ''
         OR t.public_id = sqlc.narg('tenant_public_id')::text
     )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
 ORDER BY u.created_at DESC, u.id DESC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+LIMIT sqlc.arg('limit');
 
--- name: ListTenantUsers :many
--- テナントに所属する管理・編集ユーザー一覧を取得する
+-- name: ListEndUsersAsc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    COALESCE(t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(t.name, ''::text) AS tenant_name
+FROM users u
+    LEFT JOIN tenants t ON t.id = u.tenant_id
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
+    AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
+    AND (
+        sqlc.narg('status')::text IS NULL
+        OR sqlc.narg('status')::text = ''
+        OR u.status = sqlc.narg('status')::text
+    )
+    AND (sqlc.narg('public_ids')::text[] IS NULL OR u.public_id = ANY(sqlc.narg('public_ids')::text[]))
+    AND (
+        sqlc.narg('tenant_public_id')::text IS NULL
+        OR sqlc.narg('tenant_public_id')::text = ''
+        OR t.public_id = sqlc.narg('tenant_public_id')::text
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
+
+-- Platform ListTenantMembers はテナントに所属する管理・編集ユーザーを
+-- (created_at, id) の降順で表示する。admin の ListTenantUsers とは列が違う
+-- （こちらはメール・ステータスも返し、検索の絞り込みを持たない）ので別のクエリ。
+-- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+-- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+-- name: ListTenantMembersDesc :many
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -2027,14 +2088,69 @@ SELECT u.id AS user_id,
     u.status,
     u.created_at
 FROM users u
-WHERE u.tenant_id = $1
+WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
         WHERE tur.user_id = u.id
     )
-ORDER BY u.created_at DESC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) <= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListTenantMembersAsc :many
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    u.email,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = sqlc.arg('tenant_id')
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        sqlc.narg('cursor_id')::uuid IS NULL
+        OR (
+            sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) >= (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+        OR (
+            NOT sqlc.arg('cursor_inclusive')::boolean
+            AND (u.created_at, u.id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT sqlc.arg('limit');
 
 -- Admin ListTenantUsers は (created_at, id) の降順で表示する。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
@@ -2349,22 +2465,8 @@ ORDER BY label_image_id,
     variant_type,
     width;
 
--- ListPublishedLabels はまだ offset pagination を使用する。
--- name: ListLabelsByTenant :many
-SELECT labels.id,
-    labels.tenant_id,
-    labels.public_id,
-    labels.name,
-    labels.created_at,
-    labels.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
-FROM labels
-LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
-WHERE labels.tenant_id = $1
-ORDER BY labels.created_at DESC
-LIMIT $2 OFFSET $3;
-
--- Admin ListLabels は (created_at, id) の降順で表示する。
+-- Admin ListLabels と公開側 ListPublishedLabels は (created_at, id) の降順で
+-- 表示する。並びも列も同じなので 1 組のクエリを両方から使う。
 -- 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 -- handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 -- name: ListLabelsByTenantDesc :many

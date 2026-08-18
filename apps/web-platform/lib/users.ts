@@ -35,19 +35,27 @@ export interface ListPlatformEndUsersInput {
   createdAfter?: string;
   createdBefore?: string;
   limit?: number;
-  offset?: number;
   publicIds?: string[];
   status?: string;
   tenantId?: string;
+  token?: string;
 }
 
 export type ListPlatformEndUsersResult =
-  | { ok: true; users: PlatformEndUserSummary[] }
+  | {
+      nextToken: string;
+      ok: true;
+      previousToken: string;
+      users: PlatformEndUserSummary[];
+    }
   | {
       ok: false;
       message: string;
+      nextToken: string;
+      previousToken: string;
       /** The API rejected the session — the page raises the login redirect. */
       requiresSignIn: boolean;
+      users: PlatformEndUserSummary[];
     };
 
 const genericErrorMessage =
@@ -139,8 +147,11 @@ export const listPlatformEndUsers = async (
     dropFailedCacheEntry();
     return {
       message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: true,
+      users: [],
     };
   }
 
@@ -150,16 +161,18 @@ export const listPlatformEndUsers = async (
         createdAfter: input.createdAfter ?? "",
         createdBefore: input.createdBefore ?? "",
         limit: Math.max(1, input.limit ?? 20),
-        offset: Math.max(0, input.offset ?? 0),
         publicIds: normalizePublicIds(input),
         status: input.status ?? "",
         tenantPublicId: normalizeTenantId(input),
+        token: input.token ?? "",
       },
       buildSessionHeaders(sid)
     );
 
     return {
+      nextToken: response.nextToken ?? "",
       ok: true,
+      previousToken: response.previousToken ?? "",
       users: (response.users ?? []).map((user) => mapEndUser(user)),
     };
   } catch (error) {
@@ -170,8 +183,11 @@ export const listPlatformEndUsers = async (
     dropFailedCacheEntry();
     return {
       message: rpcErrorMessage(error, listErrorMessage),
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: isUnauthenticatedError(error),
+      users: [],
     };
   }
 };

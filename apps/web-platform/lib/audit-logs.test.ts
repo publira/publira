@@ -68,7 +68,9 @@ describe("listPlatformAuditLogs", () => {
           tenantName: "テナントA",
         },
       ],
+      nextToken: "",
       ok: true,
+      previousToken: "",
     });
 
     expect(mockListAuditLogs).toHaveBeenCalledWith(
@@ -76,8 +78,8 @@ describe("listPlatformAuditLogs", () => {
         action: "",
         actorUserPublicId: "",
         limit: 100,
-        offset: 0,
         tenantId: "",
+        token: "",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -91,18 +93,23 @@ describe("listPlatformAuditLogs", () => {
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
         limit: 20,
-        offset: 40,
         tenantId: "tenant_999",
+        token: "page-2",
       })
-    ).resolves.toEqual({ auditLogs: [], ok: true });
+    ).resolves.toEqual({
+      auditLogs: [],
+      nextToken: "",
+      ok: true,
+      previousToken: "",
+    });
 
     expect(mockListAuditLogs).toHaveBeenCalledWith(
       {
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
         limit: 20,
-        offset: 40,
         tenantId: "tenant_999",
+        token: "page-2",
       },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
@@ -147,7 +154,9 @@ describe("listPlatformAuditLogs", () => {
           tenantName: "",
         },
       ],
+      nextToken: "",
       ok: true,
+      previousToken: "",
     });
   });
 
@@ -155,8 +164,11 @@ describe("listPlatformAuditLogs", () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     await expect(listPlatformAuditLogs({})).resolves.toEqual({
+      auditLogs: [],
       message: "セッションが無効です。再ログインしてください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: true,
     });
 
@@ -169,9 +181,12 @@ describe("listPlatformAuditLogs", () => {
     );
 
     await expect(listPlatformAuditLogs({})).resolves.toEqual({
+      auditLogs: [],
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
+      nextToken: "",
       ok: false,
+      previousToken: "",
       requiresSignIn: false,
     });
   });

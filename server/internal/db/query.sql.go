@@ -4747,7 +4747,7 @@ func (q *Queries) ListCreatorsByTenantDesc(ctx context.Context, arg ListCreators
 	return items, nil
 }
 
-const listEndUsers = `-- name: ListEndUsers :many
+const listEndUsersAsc = `-- name: ListEndUsersAsc :many
 SELECT u.id,
     u.public_id,
     u.name,
@@ -4776,21 +4776,34 @@ WHERE NOT EXISTS (
         OR $5::text = ''
         OR t.public_id = $5::text
     )
-ORDER BY u.created_at DESC, u.id DESC
-LIMIT $7 OFFSET $6
+    AND (
+        $6::uuid IS NULL
+        OR (
+            $7::boolean
+            AND (u.created_at, u.id) >= ($8::timestamptz, $6::uuid)
+        )
+        OR (
+            NOT $7::boolean
+            AND (u.created_at, u.id) > ($8::timestamptz, $6::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT $9
 `
 
-type ListEndUsersParams struct {
-	CreatedAfter   sql.NullTime   `json:"created_after"`
-	CreatedBefore  sql.NullTime   `json:"created_before"`
-	Status         sql.NullString `json:"status"`
-	PublicIds      []string       `json:"public_ids"`
-	TenantPublicID sql.NullString `json:"tenant_public_id"`
-	Offset         int32          `json:"offset"`
-	Limit          int32          `json:"limit"`
+type ListEndUsersAscParams struct {
+	CreatedAfter    sql.NullTime   `json:"created_after"`
+	CreatedBefore   sql.NullTime   `json:"created_before"`
+	Status          sql.NullString `json:"status"`
+	PublicIds       []string       `json:"public_ids"`
+	TenantPublicID  sql.NullString `json:"tenant_public_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
 }
 
-type ListEndUsersRow struct {
+type ListEndUsersAscRow struct {
 	ID             uuid.UUID `json:"id"`
 	PublicID       string    `json:"public_id"`
 	Name           string    `json:"name"`
@@ -4801,26 +4814,140 @@ type ListEndUsersRow struct {
 	TenantName     string    `json:"tenant_name"`
 }
 
-// エンドユーザー（tenant_user_roles未保持）の一覧取得。
-// テナントメンバーは意図的に含めない。プラットフォームのユーザー一覧は
-// この結果が完全な集合であり、クライアントが ListTenantMembers で補完しない。
-func (q *Queries) ListEndUsers(ctx context.Context, arg ListEndUsersParams) ([]ListEndUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEndUsers,
+func (q *Queries) ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams) ([]ListEndUsersAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEndUsersAsc,
 		arg.CreatedAfter,
 		arg.CreatedBefore,
 		arg.Status,
 		pq.Array(arg.PublicIds),
 		arg.TenantPublicID,
-		arg.Offset,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
 		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListEndUsersRow
+	var items []ListEndUsersAscRow
 	for rows.Next() {
-		var i ListEndUsersRow
+		var i ListEndUsersAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Email,
+			&i.Status,
+			&i.CreatedAt,
+			&i.TenantPublicID,
+			&i.TenantName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEndUsersDesc = `-- name: ListEndUsersDesc :many
+SELECT u.id,
+    u.public_id,
+    u.name,
+    u.email,
+    u.status,
+    u.created_at,
+    COALESCE(t.public_id, ''::text) AS tenant_public_id,
+    COALESCE(t.name, ''::text) AS tenant_name
+FROM users u
+    LEFT JOIN tenants t ON t.id = u.tenant_id
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND ($1::timestamptz IS NULL OR u.created_at >= $1::timestamptz)
+    AND ($2::timestamptz IS NULL OR u.created_at <= $2::timestamptz)
+    AND (
+        $3::text IS NULL
+        OR $3::text = ''
+        OR u.status = $3::text
+    )
+    AND ($4::text[] IS NULL OR u.public_id = ANY($4::text[]))
+    AND (
+        $5::text IS NULL
+        OR $5::text = ''
+        OR t.public_id = $5::text
+    )
+    AND (
+        $6::uuid IS NULL
+        OR (
+            $7::boolean
+            AND (u.created_at, u.id) <= ($8::timestamptz, $6::uuid)
+        )
+        OR (
+            NOT $7::boolean
+            AND (u.created_at, u.id) < ($8::timestamptz, $6::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $9
+`
+
+type ListEndUsersDescParams struct {
+	CreatedAfter    sql.NullTime   `json:"created_after"`
+	CreatedBefore   sql.NullTime   `json:"created_before"`
+	Status          sql.NullString `json:"status"`
+	PublicIds       []string       `json:"public_ids"`
+	TenantPublicID  sql.NullString `json:"tenant_public_id"`
+	CursorID        uuid.NullUUID  `json:"cursor_id"`
+	CursorInclusive bool           `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime   `json:"cursor_created_at"`
+	Limit           int32          `json:"limit"`
+}
+
+type ListEndUsersDescRow struct {
+	ID             uuid.UUID `json:"id"`
+	PublicID       string    `json:"public_id"`
+	Name           string    `json:"name"`
+	Email          string    `json:"email"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	TenantPublicID string    `json:"tenant_public_id"`
+	TenantName     string    `json:"tenant_name"`
+}
+
+// ListEndUsers はエンドユーザー（tenant_user_roles 未保持）の一覧を
+// (created_at, id) の降順で表示する。テナントメンバーは意図的に含めない。
+// プラットフォームのユーザー一覧はこの結果が完全な集合であり、クライアントが
+// ListTenantMembers で補完しない。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEndUsersDesc,
+		arg.CreatedAfter,
+		arg.CreatedBefore,
+		arg.Status,
+		pq.Array(arg.PublicIds),
+		arg.TenantPublicID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEndUsersDescRow
+	for rows.Next() {
+		var i ListEndUsersDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,
@@ -5403,69 +5530,6 @@ func (q *Queries) ListLabelImageVariantsByImageIDs(ctx context.Context, imageIds
 	return items, nil
 }
 
-const listLabelsByTenant = `-- name: ListLabelsByTenant :many
-SELECT labels.id,
-    labels.tenant_id,
-    labels.public_id,
-    labels.name,
-    labels.created_at,
-    labels.eye_catch_image_id,
-    li.updated_at AS eye_catch_image_updated_at
-FROM labels
-LEFT JOIN label_images li ON li.id = labels.eye_catch_image_id
-WHERE labels.tenant_id = $1
-ORDER BY labels.created_at DESC
-LIMIT $2 OFFSET $3
-`
-
-type ListLabelsByTenantParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Limit    int32     `json:"limit"`
-	Offset   int32     `json:"offset"`
-}
-
-type ListLabelsByTenantRow struct {
-	ID                     uuid.UUID     `json:"id"`
-	TenantID               uuid.UUID     `json:"tenant_id"`
-	PublicID               string        `json:"public_id"`
-	Name                   string        `json:"name"`
-	CreatedAt              time.Time     `json:"created_at"`
-	EyeCatchImageID        uuid.NullUUID `json:"eye_catch_image_id"`
-	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
-}
-
-// ListPublishedLabels はまだ offset pagination を使用する。
-func (q *Queries) ListLabelsByTenant(ctx context.Context, arg ListLabelsByTenantParams) ([]ListLabelsByTenantRow, error) {
-	rows, err := q.db.QueryContext(ctx, listLabelsByTenant, arg.TenantID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListLabelsByTenantRow
-	for rows.Next() {
-		var i ListLabelsByTenantRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.TenantID,
-			&i.PublicID,
-			&i.Name,
-			&i.CreatedAt,
-			&i.EyeCatchImageID,
-			&i.EyeCatchImageUpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLabelsByTenantAsc = `-- name: ListLabelsByTenantAsc :many
 SELECT labels.id,
     labels.tenant_id,
@@ -5591,7 +5655,8 @@ type ListLabelsByTenantDescRow struct {
 	EyeCatchImageUpdatedAt sql.NullTime  `json:"eye_catch_image_updated_at"`
 }
 
-// Admin ListLabels は (created_at, id) の降順で表示する。
+// Admin ListLabels と公開側 ListPublishedLabels は (created_at, id) の降順で
+// 表示する。並びも列も同じなので 1 組のクエリを両方から使う。
 // 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 // handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 func (q *Queries) ListLabelsByTenantDesc(ctx context.Context, arg ListLabelsByTenantDescParams) ([]ListLabelsByTenantDescRow, error) {
@@ -7225,38 +7290,7 @@ func (q *Queries) ListTenantMemberIDs(ctx context.Context, tenantID uuid.UUID) (
 	return items, nil
 }
 
-const listTenantUserRoles = `-- name: ListTenantUserRoles :many
-SELECT role
-FROM tenant_user_roles
-WHERE user_id = $1
-ORDER BY role
-`
-
-// テナントユーザーのロール一覧を取得する
-func (q *Queries) ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantUserRoles, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var role string
-		if err := rows.Scan(&role); err != nil {
-			return nil, err
-		}
-		items = append(items, role)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listTenantUsers = `-- name: ListTenantUsers :many
+const listTenantMembersAsc = `-- name: ListTenantMembersAsc :many
 SELECT u.id AS user_id,
     u.public_id,
     u.name,
@@ -7286,17 +7320,30 @@ WHERE u.tenant_id = $1
         FROM tenant_user_roles tur
         WHERE tur.user_id = u.id
     )
-ORDER BY u.created_at DESC
-LIMIT $3 OFFSET $2
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (u.created_at, u.id) >= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (u.created_at, u.id) > ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY u.created_at ASC, u.id ASC
+LIMIT $5
 `
 
-type ListTenantUsersParams struct {
-	TenantID uuid.NullUUID `json:"tenant_id"`
-	Offset   int32         `json:"offset"`
-	Limit    int32         `json:"limit"`
+type ListTenantMembersAscParams struct {
+	TenantID        uuid.NullUUID `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
 }
 
-type ListTenantUsersRow struct {
+type ListTenantMembersAscRow struct {
 	UserID    uuid.UUID `json:"user_id"`
 	PublicID  string    `json:"public_id"`
 	Name      string    `json:"name"`
@@ -7306,16 +7353,21 @@ type ListTenantUsersRow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// テナントに所属する管理・編集ユーザー一覧を取得する
-func (q *Queries) ListTenantUsers(ctx context.Context, arg ListTenantUsersParams) ([]ListTenantUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTenantUsers, arg.TenantID, arg.Offset, arg.Limit)
+func (q *Queries) ListTenantMembersAsc(ctx context.Context, arg ListTenantMembersAscParams) ([]ListTenantMembersAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantMembersAsc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListTenantUsersRow
+	var items []ListTenantMembersAscRow
 	for rows.Next() {
-		var i ListTenantUsersRow
+		var i ListTenantMembersAscRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.PublicID,
@@ -7328,6 +7380,142 @@ func (q *Queries) ListTenantUsers(ctx context.Context, arg ListTenantUsersParams
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantMembersDesc = `-- name: ListTenantMembersDesc :many
+SELECT u.id AS user_id,
+    u.public_id,
+    u.name,
+    u.email,
+    COALESCE(
+        (
+            SELECT tur.role
+            FROM tenant_user_roles tur
+            WHERE tur.user_id = u.id
+            ORDER BY CASE
+                    WHEN tur.role = 'tenant_admin' THEN 3
+                    WHEN tur.role = 'tenant_editor' THEN 2
+                    WHEN tur.role = 'tenant_auditor' THEN 1
+                    ELSE 0
+                END DESC,
+                tur.role ASC
+            LIMIT 1
+        ),
+        ''::text
+    )::text AS role,
+    u.status,
+    u.created_at
+FROM users u
+WHERE u.tenant_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM tenant_user_roles tur
+        WHERE tur.user_id = u.id
+    )
+    AND (
+        $2::uuid IS NULL
+        OR (
+            $3::boolean
+            AND (u.created_at, u.id) <= ($4::timestamptz, $2::uuid)
+        )
+        OR (
+            NOT $3::boolean
+            AND (u.created_at, u.id) < ($4::timestamptz, $2::uuid)
+        )
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $5
+`
+
+type ListTenantMembersDescParams struct {
+	TenantID        uuid.NullUUID `json:"tenant_id"`
+	CursorID        uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive bool          `json:"cursor_inclusive"`
+	CursorCreatedAt sql.NullTime  `json:"cursor_created_at"`
+	Limit           int32         `json:"limit"`
+}
+
+type ListTenantMembersDescRow struct {
+	UserID    uuid.UUID `json:"user_id"`
+	PublicID  string    `json:"public_id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Platform ListTenantMembers はテナントに所属する管理・編集ユーザーを
+// (created_at, id) の降順で表示する。admin の ListTenantUsers とは列が違う
+// （こちらはメール・ステータスも返し、検索の絞り込みを持たない）ので別のクエリ。
+// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
+// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
+func (q *Queries) ListTenantMembersDesc(ctx context.Context, arg ListTenantMembersDescParams) ([]ListTenantMembersDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantMembersDesc,
+		arg.TenantID,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorCreatedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantMembersDescRow
+	for rows.Next() {
+		var i ListTenantMembersDescRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.PublicID,
+			&i.Name,
+			&i.Email,
+			&i.Role,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantUserRoles = `-- name: ListTenantUserRoles :many
+SELECT role
+FROM tenant_user_roles
+WHERE user_id = $1
+ORDER BY role
+`
+
+// テナントユーザーのロール一覧を取得する
+func (q *Queries) ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantUserRoles, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var role string
+		if err := rows.Scan(&role); err != nil {
+			return nil, err
+		}
+		items = append(items, role)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

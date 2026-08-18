@@ -6,10 +6,10 @@ import {
 } from "@publira/utils/search-params";
 import { z } from "zod";
 
+import { cursorTokenSchema } from "#lib/cursor-token";
 import {
   DEFAULT_LIST_PAGE_SIZE,
   listLimitSearchParam,
-  listOffsetSearchParam,
 } from "#lib/list-pagination";
 
 export const defaultUsersPageSize = DEFAULT_LIST_PAGE_SIZE;
@@ -20,34 +20,35 @@ interface ParseUsersFiltersInput {
   created_from?: SearchParamValue;
   created_to?: SearchParamValue;
   limit?: SearchParamValue;
-  offset?: SearchParamValue;
   status?: SearchParamValue;
   tenant_id?: SearchParamValue;
   tenant_q?: SearchParamValue;
+  token?: SearchParamValue;
 }
 
 export interface UsersFilters {
   createdFrom: string;
   createdTo: string;
   limit: number;
-  offset: number;
   status: string;
   tenantId: string;
   tenantQuery: string;
+  token: string;
 }
 
 /**
  * Every filter falls back to the default list view: an unusable query string
  * still renders `/users` instead of 404ing an operator out of the list.
+ * Cursor tokens stay opaque — they are not trimmed or length-capped here.
  */
 const usersFiltersSchema = z.object({
   created_from: searchParamDate({ fallback: "" }),
   created_to: searchParamDate({ fallback: "" }),
   limit: listLimitSearchParam,
-  offset: listOffsetSearchParam,
   status: searchParamEnum(statusValues, { fallback: "" }),
   tenant_id: searchParamString({ fallback: "" }),
   tenant_q: searchParamString({ fallback: "" }),
+  token: cursorTokenSchema,
 });
 
 export const parseUsersFilters = (
@@ -59,10 +60,10 @@ export const parseUsersFilters = (
     createdFrom: parsed.created_from,
     createdTo: parsed.created_to,
     limit: Number(parsed.limit),
-    offset: parsed.offset,
     status: parsed.status,
     tenantId: parsed.tenant_id,
     tenantQuery: parsed.tenant_q,
+    token: parsed.token,
   };
 };
 
@@ -70,10 +71,10 @@ export const buildUsersPath = ({
   createdFrom,
   createdTo,
   limit,
-  offset,
   status,
   tenantId,
   tenantQuery,
+  token,
 }: UsersFilters): string => {
   const search = new URLSearchParams();
   if (status) {
@@ -94,8 +95,8 @@ export const buildUsersPath = ({
   if (limit !== defaultUsersPageSize) {
     search.set("limit", String(limit));
   }
-  if (offset > 0) {
-    search.set("offset", String(offset));
+  if (token) {
+    search.set("token", token);
   }
 
   const query = search.toString();

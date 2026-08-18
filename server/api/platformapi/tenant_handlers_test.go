@@ -304,8 +304,8 @@ func TestListTenantMembersSuccess(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUsersQuery)).
-		WithArgs(tenantID, int32(0), int32(20)).
+	mock.ExpectQuery(regexp.QuoteMeta(testListTenantMembersDescQuery)).
+		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(tenantMemberColumns()).
 			AddRow(member1ID, "USER000001", "Alice", "alice@example.com", "tenant_admin", "active", now).
 			AddRow(member2ID, "USER000002", "Bob", "bob@example.com", "tenant_editor", "active", now))
@@ -337,8 +337,8 @@ func TestListTenantMembersEmptyList(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
 
-	mock.ExpectQuery(regexp.QuoteMeta(testListTenantUsersQuery)).
-		WithArgs(tenantID, int32(0), int32(20)).
+	mock.ExpectQuery(regexp.QuoteMeta(testListTenantMembersDescQuery)).
+		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(sqlmock.NewRows(tenantMemberColumns()))
 
 	resp, err := server.ListTenantMembers(context.Background(), connect.NewRequest(&publirasplatformv1.ListTenantMembersRequest{TenantPublicId: "TENANT001"}))
