@@ -38,7 +38,7 @@ func newPublicDBEnv(t *testing.T) *publicDBEnv {
 
 	// Mail delivery and secret decryption belong to the signup and password reset
 	// flows, which these tests seed around rather than drive.
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, nil))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return &publicDBEnv{Server: server, PG: pg}
 }
@@ -69,7 +69,7 @@ func tenantContext(tenant testutil.Tenant) *publirattypesv1.TenantContext {
 func tokenFor(t *testing.T, tenant testutil.Tenant, user testutil.TenantUser) string {
 	t.Helper()
 
-	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+	token, _, err := testutil.TokenManager().Issue(
 		user.PublicID,
 		auth.AudiencePublic,
 		tenant.ID.String(),

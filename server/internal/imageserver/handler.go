@@ -57,13 +57,13 @@ type Handler struct {
 	tokens          *auth.TokenManager
 }
 
-func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB) http.Handler {
+func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) http.Handler {
 	h := &Handler{
 		resolverQuerier: resolver,
 		tenantFactory:   tenantFactory,
 		objects:         objects,
 		logger:          logger,
-		tokens:          auth.MustTokenManagerFromEnv(),
+		tokens:          tokens,
 	}
 	mux := http.NewServeMux()
 	health.Register(mux, health.WithDB(db))

@@ -62,7 +62,7 @@ func newDBIntegrationEnvWithSMTP(
 	if mailer != nil {
 		tester = mailer
 	}
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), encryptor, tester, nil))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), slog.Default(), encryptor, tester, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, pg
 }
@@ -87,7 +87,7 @@ func newDBIntegrationSuperAdminServer(t *testing.T) (*httptest.Server, *testutil
 }
 
 func issueDBIntegrationToken(operator testutil.PlatformOperator) string {
-	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+	token, _, err := testutil.TokenManager().Issue(
 		operator.PublicID,
 		auth.AudiencePlatform,
 		"",

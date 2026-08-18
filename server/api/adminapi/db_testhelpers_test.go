@@ -36,7 +36,7 @@ func newAdminDBEnv(t *testing.T) *adminDBEnv {
 	pg.Reset(t)
 	db := pg.OpenAdminDB(t)
 
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return &adminDBEnv{Server: server, PG: pg}
 }
@@ -71,7 +71,7 @@ func (a adminDBTenant) tenantContext() *publirattypesv1.TenantContext {
 }
 
 func (a adminDBTenant) token() string {
-	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+	token, _, err := testutil.TokenManager().Issue(
 		a.User.PublicID,
 		auth.AudienceAdmin,
 		a.Tenant.ID.String(),

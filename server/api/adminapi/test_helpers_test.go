@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -59,7 +60,7 @@ func newTestAdminServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, mock
 }
@@ -129,7 +130,7 @@ func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 // issueTestAdminToken creates a signed JWT for admin API tests.
 // tenantID is the tenant primary key (UUID string).
 func issueTestAdminToken(tenantID, userPublicID, role string) string {
-	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+	token, _, err := testutil.TokenManager().Issue(
 		userPublicID,
 		auth.AudienceAdmin,
 		tenantID,

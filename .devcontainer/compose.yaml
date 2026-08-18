@@ -46,6 +46,10 @@ services:
       # default; point it at the persisted volume so rebuilds don't force
       # re-auth. https://code.claude.com/docs/en/devcontainer
       CLAUDE_CONFIG_DIR: /home/vscode/.claude
+      # Key the Go APIs and image servers sign HS256 access tokens with.
+      # Required — the servers refuse to start without it. Local development
+      # only: it is published in this repository, so never reuse it elsewhere.
+      PUBLIRA_AUTH_JWT_SECRET: publira-dev-only-insecure-access-token-secret
       # Key the Next.js apps seal their session cookie (JWE) with. Required —
       # `resolveAuthSecret()` has no fallback. Local development only: it is
       # published in this repository, so never reuse it outside a dev stack.

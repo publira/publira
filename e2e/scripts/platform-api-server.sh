@@ -37,6 +37,7 @@ start_platform_api_server() {
       PUBLIRA_PLATFORM_DB_URL="${PUBLIRA_PLATFORM_DB_URL}" \
       PUBLIRA_PLATFORM_API_ADDR=":${E2E_PLATFORM_API_PORT}" \
       PUBLIRA_PLATFORM_API_GRPC_ADDR=":${E2E_PLATFORM_API_GRPC_PORT}" \
+      PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET}" \
       "${api_bin}"
   ) >>"${LOG_DIR}/platform-api-server.log" 2>&1 &
   write_pid "platform-api-server" $!

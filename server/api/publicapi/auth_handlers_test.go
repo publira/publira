@@ -19,6 +19,7 @@ import (
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -34,7 +35,7 @@ const (
 const testPublicUserPublicID = "USR001"
 
 func issueTestPublicToken(tenantID string) string {
-	token, _, err := auth.MustTokenManagerFromEnv().Issue(
+	token, _, err := testutil.TokenManager().Issue(
 		testPublicUserPublicID,
 		auth.AudiencePublic,
 		tenantID,

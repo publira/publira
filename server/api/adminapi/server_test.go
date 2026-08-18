@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // TestAdminHandlerExposesOnlyAdminRoutes は、NewHandler が管理 API (AdminSeriesService, AdminAuthService) だけ
@@ -33,7 +35,7 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 
 func newAdminRouteTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(NewHandler(nil, nil, nil, slog.Default(), nil, nil))
+	return httptest.NewServer(NewHandler(nil, nil, nil, slog.Default(), nil, nil, testutil.TokenManager()))
 }
 
 func TestInternalDBErrorPreservesContextErrors(t *testing.T) {

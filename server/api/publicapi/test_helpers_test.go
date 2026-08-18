@@ -12,6 +12,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/storage"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 const (
@@ -45,7 +46,7 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, nil))
+	server := httptest.NewServer(NewHandler(db, dbmodels.New(db), &testStorageProvider{}, nil, nil, testutil.TokenManager()))
 	t.Cleanup(server.Close)
 	return server, mock
 }

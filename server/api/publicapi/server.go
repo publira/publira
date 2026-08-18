@@ -89,7 +89,7 @@ func (s *apiServer) queriesFor(ctx context.Context) Querier {
 
 // NewHandler は公開 API 専用の HTTP ハンドラを返します。
 // CatalogService / AuthService / NotificationService / TenantService / DomainService を公開し、管理 API は含みません。
-func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender) http.Handler {
+func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, mailer internalsmtp.Sender, tokens *auth.TokenManager) http.Handler {
 	webHostURL, err := parseWebHostURL(os.Getenv("PUBLIRA_WEB_HOST_URL"))
 	if err != nil {
 		slog.Error("Stripe Checkout is disabled because PUBLIRA_WEB_HOST_URL is invalid", "error", err)
@@ -100,7 +100,7 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, e
 		storage:    storageProvider,
 		encryptor:  encryptor,
 		mailer:     mailer,
-		tokens:     auth.MustTokenManagerFromEnv(),
+		tokens:     tokens,
 		logger:     slog.Default(),
 		stripe:     newStripeCheckoutProvider(os.Getenv("STRIPE_SECRET_KEY")),
 		webHostURL: webHostURL,

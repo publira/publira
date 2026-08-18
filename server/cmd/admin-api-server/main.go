@@ -14,6 +14,7 @@ import (
 
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/config"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/secretcrypto"
@@ -36,6 +37,13 @@ func main() {
 		logger.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+
+	tokens, err := auth.NewTokenManagerFromEnv()
+	if err != nil {
+		logger.Error("failed to initialize access token manager", "error", err)
+		os.Exit(1)
+	}
+
 	db, err := openDB(resolveAdminDBURL())
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
@@ -67,7 +75,7 @@ func main() {
 		grpcAddr = defaultAdminGrpcServerURL
 	}
 
-	handler := adminapi.NewHandler(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient())
+	handler := adminapi.NewHandler(db, dbmodels.New(db), storageProvider, logger, encryptor, internalsmtp.NewClient(), tokens)
 
 	// Start Connect server on public port
 	logger.Info("starting admin api server (Connect)", "addr", addr)
