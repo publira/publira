@@ -4,6 +4,7 @@ import {
   createEpisodeViaUi,
   createSeriesViaUi,
   formMessage,
+  seriesFormFields,
   signInAsSeedAdmin,
 } from "../src/admin";
 import {
@@ -110,26 +111,23 @@ test.describe("admin publish flow", () => {
     );
 
     await expect(page).toHaveURL(new RegExp(`/series/${seriesId}`, "u"));
-    // After create the edit form may briefly coexist with a streaming shell.
-    const titleField = page.getByRole("textbox", { name: /タイトル/u });
-    await expect(titleField).toHaveValue(title);
-    await expect(page.locator("#series_synopsis").first()).toHaveValue(
-      synopsis
-    );
+    const fields = seriesFormFields(page);
+    await expect(fields.title).toHaveValue(title);
+    await expect(fields.synopsis).toHaveValue(synopsis);
     // Draft: published_at left empty.
-    await expect(page.locator("#series_published_at").first()).toHaveValue("");
+    await expect(fields.publishedAt).toHaveValue("");
 
     const editedTitle = `${title} (edited)`;
     const editedSynopsis = `${synopsis} (edited)`;
-    await titleField.fill(editedTitle);
-    await page.locator("#series_synopsis").first().fill(editedSynopsis);
+    await fields.title.fill(editedTitle);
+    await fields.synopsis.fill(editedSynopsis);
     await page.getByRole("button", { name: "シリーズを更新" }).click();
     // FlashToast strips `?updated=1` via client replace; assert on values
     // rather than waiting for a load event that may never re-fire.
-    await expect(page.locator("#series_title")).toHaveValue(editedTitle, {
+    await expect(fields.title).toHaveValue(editedTitle, {
       timeout: 30_000,
     });
-    await expect(page.locator("#series_synopsis")).toHaveValue(editedSynopsis);
+    await expect(fields.synopsis).toHaveValue(editedSynopsis);
 
     // List row reflects the save.
     await page.goto(adminUrl("/series"));
@@ -157,14 +155,9 @@ test.describe("admin publish flow", () => {
       })
     );
 
-    // After create the edit form may briefly coexist with a streaming shell —
-    // pin the filled title field, not every #series_title in the tree.
-    await expect(page.getByRole("textbox", { name: /タイトル/u })).toHaveValue(
-      title
-    );
-    await expect(page.locator("#series_published_at").first()).not.toHaveValue(
-      ""
-    );
+    const fields = seriesFormFields(page);
+    await expect(fields.title).toHaveValue(title);
+    await expect(fields.publishedAt).not.toHaveValue("");
 
     // Brand-new public_id: first host request misses cache and hits public API.
     const response = await page.goto(hostUrl(`/series/${seriesId}`));
@@ -225,8 +218,9 @@ test.describe("admin publish flow", () => {
 
   test("必須項目が欠けているとエラーが表示される", async ({ page }) => {
     await page.goto(adminUrl("/series/new"));
-    await page.locator("#series_title").fill(`E2E Invalid ${uniqueSuffix()}`);
-    await page.locator("#series_synopsis").fill("概要だけ埋めた不完全な入力");
+    const fields = seriesFormFields(page);
+    await fields.title.fill(`E2E Invalid ${uniqueSuffix()}`);
+    await fields.synopsis.fill("概要だけ埋めた不完全な入力");
     // Intentionally skip label selection.
     await page.getByRole("button", { name: "シリーズを作成" }).click();
 
@@ -253,6 +247,6 @@ test.describe("admin publish flow", () => {
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.title)
     ).toHaveCount(0);
-    await expect(page.locator("#series_title")).toHaveCount(0);
+    await expect(seriesFormFields(page).title).toHaveCount(0);
   });
 });

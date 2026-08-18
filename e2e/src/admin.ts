@@ -30,14 +30,40 @@ export const signInAsSeedAdmin = async (
 /** Select a Combobox or MultiCombobox option by label. */
 export const selectComboboxOption = async (
   page: Page,
-  inputId: string,
+  combobox: Locator,
   optionLabel: string
 ): Promise<void> => {
-  const input = page.locator(`#${inputId}`);
-  await input.click();
-  await input.fill(optionLabel);
+  await combobox.click();
+  await combobox.fill(optionLabel);
   await page.getByRole("option", { name: optionLabel }).click();
 };
+
+export interface SeriesFormFields {
+  title: Locator;
+  readingPeriodHours: Locator;
+  synopsis: Locator;
+  creatorCombobox: Locator;
+  labelCombobox: Locator;
+  publishedAt: Locator;
+}
+
+/**
+ * Fields of the series form on the page the router currently shows.
+ *
+ * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
+ * for its router bfcache, so the create form stays in the DOM while the edit
+ * page is on screen. Role locators skip elements that are hidden from the
+ * accessibility tree, which pins these to the page in front of the user.
+ */
+export const seriesFormFields = (page: Page): SeriesFormFields => ({
+  creatorCombobox: page.getByRole("combobox", { name: /クリエイター/u }),
+  labelCombobox: page.getByRole("combobox", { name: /レーベル/u }),
+  // `datetime-local` has no ARIA role, so this one filters on visibility.
+  publishedAt: page.getByLabel(/公開日時/u).filter({ visible: true }),
+  readingPeriodHours: page.getByRole("spinbutton", { name: /閲覧可能期間/u }),
+  synopsis: page.getByRole("textbox", { name: /概要/u }),
+  title: page.getByRole("textbox", { name: /タイトル/u }),
+});
 
 export interface CreateSeriesInput {
   title: string;
@@ -60,29 +86,26 @@ export const createSeriesViaUi = async (
     page.getByRole("heading", { name: "シリーズを新規作成" })
   ).toBeVisible();
 
-  await page.locator("#series_title").fill(input.title);
-  await page.locator("#series_synopsis").fill(input.synopsis);
+  const fields = seriesFormFields(page);
+  await fields.title.fill(input.title);
+  await fields.synopsis.fill(input.synopsis);
   if (input.readingPeriodHours !== undefined) {
-    await page
-      .locator("#series_reading_period_hours")
-      .fill(String(input.readingPeriodHours));
+    await fields.readingPeriodHours.fill(String(input.readingPeriodHours));
   }
 
   await selectComboboxOption(
     page,
-    "series_label_combobox",
+    fields.labelCombobox,
     SEED_CATALOG.labelName
   );
   await selectComboboxOption(
     page,
-    "series_creator_combobox",
+    fields.creatorCombobox,
     SEED_CATALOG.creatorName
   );
 
   if (input.publishedAt) {
-    await page
-      .locator("#series_published_at")
-      .fill(toTokyoDateTimeLocal(input.publishedAt));
+    await fields.publishedAt.fill(toTokyoDateTimeLocal(input.publishedAt));
   }
 
   await page.getByRole("button", { name: "シリーズを作成" }).click();
