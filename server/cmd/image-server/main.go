@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -72,9 +73,13 @@ func main() {
 		addr = defaultImageServerAddr
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	logger.Info("starting image server", "addr", addr)
-	server := httpserver.New(addr, imageHandler)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := httpserver.Serve(ctx, logger, []*http.Server{httpserver.New(addr, imageHandler)}, func(context.Context) error {
+		return db.Close()
+	}); err != nil {
 		logger.Error("image server failed", "error", err)
 		os.Exit(1)
 	}
