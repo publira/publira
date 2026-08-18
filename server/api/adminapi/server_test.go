@@ -42,11 +42,26 @@ func TestInternalDBErrorPreservesContextErrors(t *testing.T) {
 	ctx := t.Context()
 	server := &adminServer{logger: slog.Default()}
 
-	if got := server.internalDBError(ctx, "ignored", context.Canceled); !errors.Is(got, context.Canceled) {
-		t.Fatalf("canceled error = %v, want context.Canceled", got)
-	}
-	if got := server.internalDBError(ctx, "ignored", context.DeadlineExceeded); !errors.Is(got, context.DeadlineExceeded) {
-		t.Fatalf("deadline error = %v, want context.DeadlineExceeded", got)
+	// Returning the context error is only half the contract. It has to
+	// come back uncoded as well: connect's wrapIfContextError turns an
+	// uncoded context error into CodeCanceled / CodeDeadlineExceeded at
+	// the protocol boundary, and wrapping it here — even preserving the
+	// chain, which errors.Is alone would not notice — would pin the wrong
+	// code instead.
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{name: "canceled", err: context.Canceled},
+		{name: "deadline exceeded", err: context.DeadlineExceeded},
+	} {
+		got := server.internalDBError(ctx, "ignored", tc.err)
+		if !errors.Is(got, tc.err) {
+			t.Fatalf("%s error = %v, want %v", tc.name, got, tc.err)
+		}
+		if code := connect.CodeOf(got); code != connect.CodeUnknown {
+			t.Fatalf("%s code = %v, want it left uncoded for connect to map", tc.name, code)
+		}
 	}
 
 	err := server.internalDBError(ctx, "failed to list example", errors.New(`pq: relation "x" does not exist`))

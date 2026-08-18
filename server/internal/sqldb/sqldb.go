@@ -15,6 +15,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"strings"
+	"time"
 
 	"github.com/XSAM/otelsql"
 	"go.opentelemetry.io/otel/attribute"
@@ -31,6 +32,14 @@ const driverName = "pgx"
 // actually ran is carried by db.operation.name and db.query.summary,
 // which stay low cardinality; the statement text never reaches the name.
 const querySpanName = "db.query"
+
+// PingTimeout bounds the startup connectivity check. Neither the default
+// DSNs nor database/sql set a connect timeout, so an unreachable host
+// would otherwise hold the process in Open until the kernel gives up on
+// the TCP handshake — minutes on some networks, during which the
+// orchestrator sees a container that never becomes ready and never says
+// why. Failing in 10s turns that into a startup error with a log line.
+const PingTimeout = 10 * time.Second
 
 // Open opens an instrumented pool for url and verifies it with a ping, so
 // an unreachable database fails at startup instead of on the first query.
@@ -51,7 +60,9 @@ func Open(url string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.Ping(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), PingTimeout)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
 		return nil, err
 	}

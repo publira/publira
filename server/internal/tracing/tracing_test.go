@@ -50,25 +50,25 @@ func installGlobals(t *testing.T, provider trace.TracerProvider) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 }
 
+// The Dev Container turns tracing on for the whole shell, so every test
+// that reads the environment sets what it needs rather than inheriting it.
+// An empty value is how these tests express "unset": Enabled and
+// Environment both treat it that way, and t.Setenv cannot unset.
 func TestEnabledReadsTheEnvironment(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		value string
-		set   bool
 		want  bool
 	}{
-		{name: "unset", want: false},
-		{name: "empty", value: "", set: true, want: false},
-		{name: "true", value: "true", set: true, want: true},
-		{name: "one", value: "1", set: true, want: true},
-		{name: "false", value: "false", set: true, want: false},
-		{name: "padded", value: "  true  ", set: true, want: true},
-		{name: "garbage", value: "yes-please", set: true, want: false},
+		{name: "unset", value: "", want: false},
+		{name: "true", value: "true", want: true},
+		{name: "one", value: "1", want: true},
+		{name: "false", value: "false", want: false},
+		{name: "padded", value: "  true  ", want: true},
+		{name: "garbage", value: "yes-please", want: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.set {
-				t.Setenv(EnabledEnv, tc.value)
-			}
+			t.Setenv(EnabledEnv, tc.value)
 			if got := Enabled(); got != tc.want {
 				t.Errorf("Enabled() = %v, want %v", got, tc.want)
 			}
@@ -80,6 +80,7 @@ func TestEnabledReadsTheEnvironment(t *testing.T) {
 // instrumentation: no provider, no propagator, and a shutdown that is
 // safe to call.
 func TestSetupDisabledLeavesTheGlobalsAlone(t *testing.T) {
+	t.Setenv(EnabledEnv, "false")
 	before := noop.NewTracerProvider()
 	installGlobals(t, before)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator())
@@ -133,6 +134,7 @@ func TestSetupEnabledInstallsProviderAndPropagator(t *testing.T) {
 }
 
 func TestEnvironmentDefaultsToDevelopment(t *testing.T) {
+	t.Setenv(EnvironmentEnv, "")
 	if got := Environment(); got != EnvironmentDevelopment {
 		t.Errorf("Environment() = %q, want %q", got, EnvironmentDevelopment)
 	}
@@ -149,6 +151,7 @@ func TestEnvironmentDefaultsToDevelopment(t *testing.T) {
 func TestDefaultSamplerFollowsTheDeploymentTier(t *testing.T) {
 	t.Run("development samples everything", func(t *testing.T) {
 		t.Setenv(EnvironmentEnv, EnvironmentDevelopment)
+		t.Setenv(samplerEnv, "")
 		sampler, ok := defaultSampler()
 		if !ok {
 			t.Fatal("defaultSampler() declined to pick a sampler")
@@ -160,6 +163,7 @@ func TestDefaultSamplerFollowsTheDeploymentTier(t *testing.T) {
 
 	t.Run("production samples a share", func(t *testing.T) {
 		t.Setenv(EnvironmentEnv, "production")
+		t.Setenv(samplerEnv, "")
 		sampler, ok := defaultSampler()
 		if !ok {
 			t.Fatal("defaultSampler() declined to pick a sampler")

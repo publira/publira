@@ -122,7 +122,8 @@ func (c *Client) sendRequest(ctx context.Context, endpoint, tenantID, tenantDoma
 		return fmt.Errorf("revalidate endpoint returned status=%d body=%q", res.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	c.logger.Info(
+	c.logger.InfoContext(
+		ctx,
 		"next revalidate requested",
 		"tenant_id", tenantID,
 		"tenant_domain", tenantDomain,
