@@ -2,27 +2,14 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { getTenantSiteLabel } from "#lib/tenant";
-import { getTenantId } from "#lib/tenant-id";
-
 import { parseSettingsFlashSearchParams } from "./_lib/search-params";
 import { SettingsTabs } from "./settings-tabs";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async ({
-  params: _params,
-}: {
-  params: Promise<{ tenant_id: string }>;
-}): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-
-  const siteLabel = await getTenantSiteLabel(tenantId);
-
-  return {
-    title: `設定 | ${siteLabel}`,
-  };
+export const metadata: Metadata = {
+  title: "設定",
 };
 
 const FlashMessage = async ({

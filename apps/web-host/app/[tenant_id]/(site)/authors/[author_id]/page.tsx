@@ -72,10 +72,7 @@ export const generateMetadata = async ({
 
   const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
 
-  const [siteLabel, result] = await Promise.all([
-    getTenantSiteLabel(tenantId),
-    loadPublishedAuthorDetail(tenantId, author_id, token),
-  ]);
+  const result = await loadPublishedAuthorDetail(tenantId, author_id, token);
 
   // An unavailable author reads as "not found" for the `<title>` alone; the
   // page body below says what actually happened.
@@ -83,7 +80,7 @@ export const generateMetadata = async ({
 
   if (!author) {
     return {
-      title: `著者が見つかりません | ${siteLabel}`,
+      title: "著者が見つかりません",
     };
   }
 
@@ -91,7 +88,7 @@ export const generateMetadata = async ({
     description:
       author.profileText ||
       `${author.name} が関わっている公開中シリーズ ${author.seriesCount} 件`,
-    title: `${author.name} | ${siteLabel}`,
+    title: author.name,
   };
 };
 

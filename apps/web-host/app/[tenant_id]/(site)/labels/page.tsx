@@ -22,14 +22,8 @@ const SECTION_TITLE = "レーベル一覧を表示できませんでした";
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-export const generateMetadata = async (): Promise<Metadata> => {
-  const tenantId = await getTenantId();
-
-  const siteLabel = await getTenantSiteLabel(tenantId);
-
-  return {
-    title: `レーベル一覧 | ${siteLabel}`,
-  };
+export const metadata: Metadata = {
+  title: "レーベル一覧",
 };
 
 const LabelsListSkeleton = () => (
