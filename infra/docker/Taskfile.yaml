@@ -7,6 +7,7 @@ version: "3"
 #   task docker:build:web APP_NAME=web-host PORT=3000
 #   task docker:build:api CMD_NAME=api-server PORT=8000
 #   task docker:build:batch CMD_NAME=publish-episodes
+#   task docker:build:email-renderer PORT=8080
 #   task docker:verify
 
 tasks:
@@ -52,10 +53,22 @@ tasks:
           -t "publira/{{.CMD_NAME}}:local" \
           .
 
+  build:email-renderer:
+    desc: Build the email-renderer Node.js service image (PORT optional, default 8080)
+    vars:
+      PORT: '{{.PORT | default "8080"}}'
+    cmds:
+      - |
+        docker build \
+          -f infra/docker/email-renderer/Dockerfile \
+          --build-arg "PORT={{.PORT}}" \
+          -t "publira/email-renderer:local" \
+          .
+
   # Representative set shared by local checks and CI (path-filtered / PR).
-  # Covers each role once: web / api / batch.
+  # Covers each role once: web / api / batch / email-renderer.
   verify:
-    desc: Build representative images (web-host, api-server, publish-episodes)
+    desc: Build representative images (web-host, api-server, publish-episodes, email-renderer)
     cmds:
       - task: build:web
         vars:
@@ -68,6 +81,9 @@ tasks:
       - task: build:batch
         vars:
           CMD_NAME: publish-episodes
+      - task: build:email-renderer
+        vars:
+          PORT: "8080"
 
   # Full matrix used by nightly CI and manual full verification.
   verify:full:
@@ -87,6 +103,8 @@ tasks:
         vars: { CMD_NAME: platform-api-server, PORT: "8002" }
       - task: build:batch
         vars: { CMD_NAME: publish-episodes }
+      - task: build:email-renderer
+        vars: { PORT: "8080" }
 
   smoke:web:
     desc: Run a short /livez smoke check against a built web image (APP_NAME, optional PORT)
@@ -124,3 +142,44 @@ tasks:
         echo "smoke failed: {{.APP_NAME}} /livez did not become ready" >&2
         docker logs "{{.CONTAINER_NAME}}" >&2 || true
         exit 1
+
+  smoke:email-renderer:
+    desc: Run a /livez and /readyz smoke check against the built email-renderer image (optional PORT)
+    vars:
+      PORT: '{{.PORT | default "8080"}}'
+      CONTAINER_NAME: "publira-email-renderer-smoke"
+    cmds:
+      - |
+        set -euo pipefail
+        docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true
+        # Omit --rm so `docker logs` still works if the process exits before smoke finishes.
+        # Empty host port lets Docker pick a free port (avoids collisions with local :8080 etc.).
+        docker run -d \
+          --name "{{.CONTAINER_NAME}}" \
+          -p "127.0.0.1::{{.PORT}}" \
+          "publira/email-renderer:local"
+        cleanup() { docker rm -f "{{.CONTAINER_NAME}}" >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        host_port="$(docker port "{{.CONTAINER_NAME}}" "{{.PORT}}" | awk -F: 'NR==1 { print $NF }')"
+        if [ -z "${host_port}" ]; then
+          echo "smoke failed: could not resolve host port for {{.CONTAINER_NAME}}" >&2
+          docker logs "{{.CONTAINER_NAME}}" >&2 || true
+          exit 1
+        fi
+        for _ in $(seq 1 30); do
+          if curl -fsS "http://127.0.0.1:${host_port}/livez" | grep -qx 'ok'; then
+            break
+          fi
+          sleep 1
+        done
+        if ! curl -fsS "http://127.0.0.1:${host_port}/livez" | grep -qx 'ok'; then
+          echo "smoke failed: email-renderer /livez did not become ready" >&2
+          docker logs "{{.CONTAINER_NAME}}" >&2 || true
+          exit 1
+        fi
+        if ! curl -fsS "http://127.0.0.1:${host_port}/readyz" | grep -qx '{"status":"ok","checks":{}}'; then
+          echo "smoke failed: email-renderer /readyz did not return the expected payload" >&2
+          docker logs "{{.CONTAINER_NAME}}" >&2 || true
+          exit 1
+        fi
+        echo "smoke ok: email-renderer /livez and /readyz (host port ${host_port})"

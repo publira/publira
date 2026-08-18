@@ -22,6 +22,7 @@ build context は常に **リポジトリルート**（`.`）。
 | Web (Next.js) | [`web/Dockerfile`](./web/Dockerfile) | `apps/*` | `APP_NAME`, `PORT` |
 | API (常駐) | [`api/Dockerfile`](./api/Dockerfile) | `server/cmd/*` の HTTP サーバー | `CMD_NAME`, `PORT` |
 | Batch (単発) | [`batch/Dockerfile`](./batch/Dockerfile) | `server/cmd/*` のジョブ | `CMD_NAME` |
+| email-renderer (Node.js 常駐) | [`email-renderer/Dockerfile`](./email-renderer/Dockerfile) | `apps/email-renderer` | `PORT` |
 
 Dev Container 用は本番と分離する。
 
@@ -61,14 +62,19 @@ Dev Container 用は本番と分離する。
 │    → infra/docker/batch/Dockerfile
 │    → --build-arg CMD_NAME=<name>
 │
-└─ 上記以外のランタイム（例: 別言語のワーカー）
+├─ email-renderer (apps/email-renderer)
+│    → infra/docker/email-renderer/Dockerfile
+│    → 必要なら PORT（既定 8080）
+│
+└─ 上記以外のランタイム（例: 別言語のワーカー、2 本目の Node.js 常駐サービス）
      → 新ロール infra/docker/<role>/Dockerfile を追加し、本表を更新する
      → 既存ロールに無理に載せない
 ```
 
 ### 命名
 
-- **ロールディレクトリ**: 短い種別名（`web` / `api` / `batch`）。サービス名は付けない。
+- **ロールディレクトリ**: 短い種別名（`web` / `api` / `batch`）。サービス名は付けない。  
+  例外は `email-renderer`。Next.js を使わない Node.js 常駐サービスは現状これ 1 本きりで、共有すべき別サービスがまだ無い。2 本目が来た時点で共通ロールへ切り出す。
 - **`APP_NAME`**: `apps/` 直下のディレクトリ名（例: `web-admin`）。`@publira/` プレフィックスは Dockerfile 内で付与。
 - **`CMD_NAME`**: `server/cmd/` 直下のディレクトリ名（例: `api-server`）。
 - **イメージタグ例**: `publira/<サービス名>:local`（ビルド側の慣習。レジストリ方針はデプロイ側で別途定義）。
@@ -118,6 +124,11 @@ docker build -f infra/docker/api/Dockerfile \
 docker build -f infra/docker/batch/Dockerfile \
   --build-arg CMD_NAME=publish-episodes \
   -t publira/publish-episodes:local .
+
+# email-renderer
+docker build -f infra/docker/email-renderer/Dockerfile \
+  --build-arg PORT=8080 \
+  -t publira/email-renderer:local .
 ```
 
 ### マルチステージの共通方針
@@ -125,17 +136,20 @@ docker build -f infra/docker/batch/Dockerfile \
 | 段階 | 内容 |
 | --- | --- |
 | ビルド | フルツールチェーン付き Debian 系（Node bookworm-slim / golang bookworm） |
-| 実行 | distroless（Web: `nodejs24-debian12:nonroot`、Go: `static:nonroot`） |
+| 実行 | distroless（Web / email-renderer: `nodejs24-debian12:nonroot`、Go: `static:nonroot`） |
 | ベースイメージ | `tag@sha256:…` で digest 固定（Renovate が追跡） |
 | ツール版（turbo / pnpm 等） | `ARG *_VERSION` + `# renovate: datasource=…`（[`.devcontainer/Dockerfile`](../../.devcontainer/Dockerfile) と同じ形式） |
 
-Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools/docker) に沿い `turbo prune --docker` で依存を絞る。  
+Web と email-renderer は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools/docker) に沿い `turbo prune --docker` で依存を絞る。  
 実行イメージに shell / wget が無いため、**Docker `HEALTHCHECK` は置かない**。オーケストレータ側で `/livez`（liveness）/ `/readyz`（readiness）を probe する。
+
+email-renderer は Next.js の standalone 出力に相当する仕組みを持たないため、`pnpm install --prod` で作った実行時依存ツリーと、ワークスペース各パッケージの `dist/` だけをランナーへ渡す。ソースと開発依存はランナーに入らない。
 
 ### 実行時に渡す主な環境変数（参考）
 
 - Web: `PORT`, `HOSTNAME`（イメージ内既定あり）, **`PUBLIRA_AUTH_SECRET`（必須。32 バイト以上。未設定だとセッション Cookie の暗号化・復号が例外になる）**, `PUBLIRA_REDIS_URL`, `PUBLIRA_CACHE_APP`（ビルド時に `APP_NAME` を既定セット）
 - API: **`PUBLIRA_AUTH_JWT_SECRET`（必須。32 バイト以上。未設定だとアクセストークンの署名鍵が無く起動に失敗する）**, アプリ固有（`PUBLIRA_*_DB_URL` 等）。待受はバイナリ側の設定。`PORT` は `EXPOSE` / ドキュメント用メタデータ
+- email-renderer: `PORT`（既定 8080）, `HOST`（イメージ内既定 `0.0.0.0`）。外部依存を持たないサービスなので、他に必須の変数は無い
 
 詳細は各サービスの README と Dockerfile コメントを参照。
 
@@ -168,23 +182,27 @@ Web は [Turborepo の Docker ガイド](https://turborepo.dev/docs/guides/tools
 
 ### 代表イメージ（日常の確認）
 
-Issue / CI の「主要ビルド経路」は次の 3 本（各ロール 1 つ）とする。
+Issue / CI の「主要ビルド経路」は次の 4 本（各ロール 1 つ）とする。
 
 ```bash
-# まとめて（web-host / api-server / publish-episodes）
+# まとめて（web-host / api-server / publish-episodes / email-renderer）
 task docker:verify
 
 # または個別
 task docker:build:web APP_NAME=web-host PORT=3000
 task docker:build:api CMD_NAME=api-server PORT=8000
 task docker:build:batch CMD_NAME=publish-episodes
+task docker:build:email-renderer PORT=8080
 ```
 
-Web のみ起動確認（distroless・Redis 無し）:
+起動確認（distroless・外部依存無し）:
 
 ```bash
 task docker:smoke:web APP_NAME=web-host PORT=3000
+task docker:smoke:email-renderer PORT=8080
 ```
+
+`smoke:web` は `/livez`、`smoke:email-renderer` は `/livez` と `/readyz` の応答本文まで確認する。
 
 API / batch のランタイムスモークは DB・ストレージ等の依存があるため、**イメージビルド成功をゲート**とする。起動確認はオーケストレータまたは結合環境で行う。
 
@@ -236,12 +254,14 @@ docker build -f infra/docker/web/Dockerfile \
 | web | `web-host` | `apps/**`, `packages/**`, lockfile / turbo, `infra/docker/web/**` |
 | api | `api-server` | `server/**`, `infra/docker/api/**` |
 | batch | `publish-episodes` | `server/**`, `infra/docker/batch/**` |
+| email-renderer | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/email-renderer/**` |
 
-`server/**` 変更時は api と batch の両方の代表をビルドする（共有モジュールのため）。
+`server/**` 変更時は api と batch の両方の代表をビルドする（共有モジュールのため）。  
+`locales/**` は email-renderer だけが見る。`@publira/email-templates` がリポジトリルートの文言カタログを相対 import してバンドルするため。
 
 実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
 ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Docker 行列を決定）。  
-ローカルと同一コマンド: `task docker:build:web|api|batch`（Web は続けて `task docker:smoke:web`）。
+ローカルと同一コマンド: `task docker:build:web|api|batch|email-renderer`（Web は続けて `task docker:smoke:web`、email-renderer は `task docker:smoke:email-renderer`）。
 
 `Docker / <target>` も他ジョブと同様に path filter でスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
 
@@ -251,14 +271,14 @@ docker build -f infra/docker/web/Dockerfile \
 
 1. **落ちた段階を切り分ける**
    - イメージビルド → Dockerfile 経路・context・ベースイメージ・コンテナ内ビルド
-   - Web smoke（`/livez`）のみ → エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している）
+   - smoke（`/livez` / `/readyz`）のみ → エントリポイント経路・`PORT`・standalone 出力や `dist/` の配置（ビルドは成功している）
 2. **ローカルで同じ Task を再現する**
 
    CI ログの `task docker:build:…` 行をそのまま実行する。
 
    ```bash
    task docker:build:web APP_NAME=web-host PORT=3000
-   # または代表 3 本まとめて
+   # または代表 4 本まとめて
    task docker:verify
    ```
 
@@ -273,13 +293,15 @@ docker build -f infra/docker/web/Dockerfile \
    | `go build` 失敗 | `server/` のコンパイルエラー（先に `task server:build`） |
    | ベース pull 失敗 / digest | レジストリ・digest 更新・Renovate PR の取りこぼし |
    | Web smoke (`/livez`) のみ失敗 | エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している） |
+   | email-renderer smoke で `Cannot find package` | 実行時依存が `dependencies` ではなく `devDependencies` / `peerDependencies` にある（`pnpm install --prod` に載らない） |
+   | email-renderer で `locales/*.json` が解決できない | `turbo prune` はリポジトリルートの `locales/` を含めないため、builder 段で明示 `COPY` する必要がある |
 
 4. **CI だけ失敗する場合**
    - ランナー arch / Buildx とローカルの差（Go は `TARGETOS`/`TARGETARCH` を既定固定しない）
    - キャッシュ汚れ → ローカルは `docker builder prune`、CI は再実行
    - path filter の取りこぼし懸念 → `workflow_dispatch` で Docker `full`、または Nightly 結果を確認
 5. **直したら**
-   - 代表 3 本（`task docker:verify`）が通ることを確認してから PR を更新する
+   - 代表 4 本（`task docker:verify`）が通ることを確認してから PR を更新する
    - ロール追加時は本 README の表・[`Taskfile.yaml`](./Taskfile.yaml) の `verify:full`・[`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh) の Docker full 行列を同時更新する
 
 ## 変更時のチェックリスト
