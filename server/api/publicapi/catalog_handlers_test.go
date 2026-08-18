@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -17,7 +18,9 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
@@ -930,6 +933,48 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 	}
 }
 
+// A free body stays a plain public URL. An entitled body carries the media
+// token, which is what lets the reader's <img> request name them at
+// image-server: a browser cannot put the bearer on that request.
+func assertEpisodeImageURL(
+	t *testing.T,
+	imageURL string,
+	tenantID uuid.UUID,
+	episodeID uuid.UUID,
+	access publirav1.EpisodeAccess,
+) {
+	t.Helper()
+	parsed, err := url.Parse(imageURL)
+	if err != nil {
+		t.Fatalf("image url %q: %v", imageURL, err)
+	}
+	token := parsed.Query().Get(auth.MediaTokenQueryParam)
+
+	if access != publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+		if token != "" {
+			t.Errorf("image url %q carries a media token, want a plain public url", imageURL)
+		}
+		return
+	}
+	if token == "" {
+		t.Fatalf("image url %q has no media token", imageURL)
+	}
+
+	claims, err := testutil.TokenManager().Verify(token, auth.AudienceMedia)
+	if err != nil {
+		t.Fatalf("Verify media token: %v", err)
+	}
+	if claims.Subject != testPublicUserPublicID {
+		t.Errorf("media token subject = %q, want %q", claims.Subject, testPublicUserPublicID)
+	}
+	if claims.TenantID != tenantID.String() {
+		t.Errorf("media token tenant = %q, want %q", claims.TenantID, tenantID.String())
+	}
+	if claims.EpisodeID != episodeID.String() {
+		t.Errorf("media token episode = %q, want %q", claims.EpisodeID, episodeID.String())
+	}
+}
+
 func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -1042,6 +1087,9 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			}
 			if len(resp.Msg.Images) != tc.wantImageCount {
 				t.Fatalf("images count = %d, want %d", len(resp.Msg.Images), tc.wantImageCount)
+			}
+			for _, image := range resp.Msg.Images {
+				assertEpisodeImageURL(t, image.ImageUrl, tenantID, episodeID, tc.wantAccess)
 			}
 			assertPublicExpectations(t, mock)
 		})

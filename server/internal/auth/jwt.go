@@ -14,11 +14,26 @@ const (
 	// AccessTokenTTL matches the previous session TTL.
 	AccessTokenTTL = 24 * time.Hour
 
+	// MediaTokenTTL bounds how long a media URL keeps working after it leaves
+	// the API response. It has to outlive the reader's page render and the
+	// private caches in front of it, and stay short enough that a copied URL
+	// is not a session.
+	MediaTokenTTL = 15 * time.Minute
+
 	JWTIssuer = "publira"
 
 	AudiencePublic   = "public"
 	AudienceAdmin    = "admin"
 	AudiencePlatform = "platform"
+	// AudienceMedia marks the token image-server accepts from a URL query.
+	// Keeping it out of AudiencePublic means a media token cannot be replayed
+	// against the API, and an API access token cannot be pasted into an image
+	// URL.
+	AudienceMedia = "media"
+	// MediaTokenQueryParam is where an AudienceMedia token rides on an image
+	// URL. image-server ignores it when building its conversion cache key, so
+	// two readers of the same image still share one cached rendition.
+	MediaTokenQueryParam = "t"
 )
 
 // AccessTokenClaims are the claims embedded in API access tokens.
@@ -27,6 +42,9 @@ type AccessTokenClaims struct {
 	TenantID           string `json:"tid,omitempty"`
 	Role               string `json:"role,omitempty"`
 	CredentialsVersion int32  `json:"cv"`
+	// EpisodeID scopes an AudienceMedia token to one episode (primary key
+	// UUID). API access tokens leave it empty.
+	EpisodeID string `json:"eid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -71,9 +89,6 @@ func (m *TokenManager) Issue(
 	credentialsVersion int32,
 	now time.Time,
 ) (token string, expiresAt time.Time, err error) {
-	if m == nil || len(m.secret) == 0 {
-		return "", time.Time{}, errors.New("token manager is not configured")
-	}
 	subjectPublicID = strings.TrimSpace(subjectPublicID)
 	if subjectPublicID == "" {
 		return "", time.Time{}, errors.New("subject is required")
@@ -83,21 +98,61 @@ func (m *TokenManager) Issue(
 		return "", time.Time{}, errors.New("audience is required")
 	}
 
-	expiresAt = now.Add(AccessTokenTTL)
-	claims := AccessTokenClaims{
+	return m.sign(AccessTokenClaims{
 		TenantID:           strings.TrimSpace(tenantID),
 		Role:               strings.TrimSpace(role),
 		CredentialsVersion: credentialsVersion,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    JWTIssuer,
-			Subject:   subjectPublicID,
-			Audience:  jwt.ClaimStrings{audience},
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(expiresAt),
-		},
+	}, subjectPublicID, audience, AccessTokenTTL, now)
+}
+
+// IssueMediaToken creates the short-lived token that travels in an image URL
+// query. A browser <img> request cannot set an Authorization header, so an
+// entitled reader's request for a paid body image would otherwise reach
+// image-server indistinguishable from an anonymous one. The token carries
+// identity only: image-server still evaluates purchases and tickets against
+// the database, and episodeID keeps a copied URL from unlocking anything
+// beyond that one episode.
+func (m *TokenManager) IssueMediaToken(
+	subjectPublicID string,
+	tenantID string,
+	episodeID string,
+	credentialsVersion int32,
+	now time.Time,
+) (token string, expiresAt time.Time, err error) {
+	subjectPublicID = strings.TrimSpace(subjectPublicID)
+	if subjectPublicID == "" {
+		return "", time.Time{}, errors.New("subject is required")
 	}
-	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := t.SignedString(m.secret)
+	episodeID = strings.TrimSpace(episodeID)
+	if episodeID == "" {
+		return "", time.Time{}, errors.New("episode is required")
+	}
+	return m.sign(AccessTokenClaims{
+		TenantID:           strings.TrimSpace(tenantID),
+		CredentialsVersion: credentialsVersion,
+		EpisodeID:          episodeID,
+	}, subjectPublicID, AudienceMedia, MediaTokenTTL, now)
+}
+
+func (m *TokenManager) sign(
+	claims AccessTokenClaims,
+	subjectPublicID string,
+	audience string,
+	ttl time.Duration,
+	now time.Time,
+) (string, time.Time, error) {
+	if m == nil || len(m.secret) == 0 {
+		return "", time.Time{}, errors.New("token manager is not configured")
+	}
+	expiresAt := now.Add(ttl)
+	claims.RegisteredClaims = jwt.RegisteredClaims{
+		Issuer:    JWTIssuer,
+		Subject:   subjectPublicID,
+		Audience:  jwt.ClaimStrings{audience},
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(expiresAt),
+	}
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(m.secret)
 	if err != nil {
 		return "", time.Time{}, err
 	}

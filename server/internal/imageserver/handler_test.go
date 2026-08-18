@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
@@ -34,10 +35,16 @@ func (s stubResolver) GetAdminTenantByDomains(context.Context, []string) (dbmode
 }
 
 type stubTenantQueries struct {
-	public     dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow
-	publicErr  error
-	creator    dbmodels.GetCreatorImageByIDForTenantRow
-	creatorErr error
+	public        dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow
+	publicErr     error
+	creator       dbmodels.GetCreatorImageByIDForTenantRow
+	creatorErr    error
+	userRef       dbmodels.GetUserByPublicIDForTenantRow
+	userRefErr    error
+	user          dbmodels.User
+	userErr       error
+	userAccess    dbmodels.GetEpisodeImageAccessByIDForUserRow
+	userAccessErr error
 }
 
 func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error) {
@@ -53,7 +60,7 @@ func (s stubTenantQueries) GetSeriesImageVariantByTypeAndWidthForTenant(context.
 }
 
 func (s stubTenantQueries) GetEpisodeImageAccessByIDForUser(context.Context, dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error) {
-	return dbmodels.GetEpisodeImageAccessByIDForUserRow{}, sql.ErrNoRows
+	return s.userAccess, s.userAccessErr
 }
 
 func (s stubTenantQueries) GetEpisodeImagePublicAccessByIDForTenant(context.Context, dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams) (dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow, error) {
@@ -61,11 +68,11 @@ func (s stubTenantQueries) GetEpisodeImagePublicAccessByIDForTenant(context.Cont
 }
 
 func (s stubTenantQueries) GetUserByPublicIDForTenant(context.Context, dbmodels.GetUserByPublicIDForTenantParams) (dbmodels.GetUserByPublicIDForTenantRow, error) {
-	return dbmodels.GetUserByPublicIDForTenantRow{}, sql.ErrNoRows
+	return s.userRef, s.userRefErr
 }
 
 func (s stubTenantQueries) GetUserByID(context.Context, uuid.UUID) (dbmodels.User, error) {
-	return dbmodels.User{}, sql.ErrNoRows
+	return s.user, s.userErr
 }
 
 type stubFactory struct {
@@ -119,8 +126,13 @@ func testJPEG() []byte {
 
 func newTestServer(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore) *Server {
 	t.Helper()
+	return newTestServerWithTokens(t, resolver, factory, store, nil)
+}
+
+func newTestServerWithTokens(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore, tokens *auth.TokenManager) *Server {
+	t.Helper()
 	t.Setenv("PUBLIRA_REDIS_URL", "disabled")
-	srv, err := NewHandler(resolver, factory, store, nil, nil, (*auth.TokenManager)(nil))
+	srv, err := NewHandler(resolver, factory, store, nil, nil, tokens)
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -260,6 +272,125 @@ func TestEpisodeImageForbiddenWhenNotPublic(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+}
+
+const testMediaJWTSecret = "publira-image-server-unit-test-secret-32b"
+
+// paidEpisodeQueries describes an episode the public rule denies, so only a
+// credential naming an entitled reader can unlock the image.
+func paidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion int32) stubTenantQueries {
+	return stubTenantQueries{
+		public: dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow{
+			ID:              mediaID,
+			ObjectKey:       "episodes/page.jpg",
+			ContentType:     "image/jpeg",
+			IsPublished:     sql.NullBool{Bool: true, Valid: true},
+			HasPublicAccess: false,
+		},
+		userRef: dbmodels.GetUserByPublicIDForTenantRow{ID: userID, PublicID: "reader-public-id", Status: "active"},
+		user: dbmodels.User{
+			ID:                 userID,
+			PublicID:           "reader-public-id",
+			Status:             "active",
+			CredentialsVersion: credentialsVersion,
+		},
+		userAccess: dbmodels.GetEpisodeImageAccessByIDForUserRow{
+			ID:          mediaID,
+			EpisodeID:   episodeID,
+			ObjectKey:   "episodes/page.jpg",
+			ContentType: "image/jpeg",
+			IsPublished: sql.NullBool{Bool: true, Valid: true},
+			HasAccess:   sql.NullBool{Bool: true, Valid: true},
+		},
+	}
+}
+
+// A browser <img> cannot send Authorization, so an entitled reader's paid body
+// images arrive with the media token GetEpisodeDetail put in their URL. What
+// the token buys is evaluated here against the same purchases and tickets the
+// API read.
+func TestEpisodeImageMediaToken(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	userID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
+
+	serve := func(t *testing.T, queries stubTenantQueries, token string) *httptest.ResponseRecorder {
+		t.Helper()
+		srv := newTestServerWithTokens(t,
+			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+			stubFactory{q: queries},
+			&countingStore{objects: map[string]storedObject{
+				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+			}},
+			tokens,
+		)
+		target := "/images/episodes/" + mediaID.String() +
+			"?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.Host = "example.test"
+		req.Header.Set("Accept", "image/webp")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+
+	issue := func(t *testing.T, scopedEpisodeID uuid.UUID, credentialsVersion int32, issuedAt time.Time) string {
+		t.Helper()
+		token, _, err := tokens.IssueMediaToken("reader-public-id", tenantID.String(), scopedEpisodeID.String(), credentialsVersion, issuedAt)
+		if err != nil {
+			t.Fatalf("IssueMediaToken() error = %v", err)
+		}
+		return token
+	}
+
+	t.Run("serves the body that a purchase or ticket unlocked", func(t *testing.T) {
+		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), issue(t, episodeID, 4, time.Now()))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+		}
+		if got := rec.Header().Get("Cache-Control"); got != "private, max-age=60" {
+			t.Errorf("Cache-Control = %q, want %q", got, "private, max-age=60")
+		}
+		if rec.Body.Len() == 0 {
+			t.Error("body is empty")
+		}
+	})
+
+	t.Run("a token issued for another episode does not unlock this one", func(t *testing.T) {
+		otherEpisodeID := uuid.MustParse("88888888-8888-8888-8888-888888888888")
+		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), issue(t, otherEpisodeID, 4, time.Now()))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("an expired token stops working", func(t *testing.T) {
+		issuedAt := time.Now().Add(-auth.MediaTokenTTL - time.Minute)
+		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), issue(t, episodeID, 4, issuedAt))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("a token from before a password change stops working", func(t *testing.T) {
+		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), issue(t, episodeID, 3, time.Now()))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("an access token pasted into the query does not unlock the body", func(t *testing.T) {
+		accessToken, _, err := tokens.Issue("reader-public-id", auth.AudiencePublic, tenantID.String(), "", 4, time.Now())
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), accessToken)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
 }
 
 func TestCreatorImageConvertsToWebP(t *testing.T) {

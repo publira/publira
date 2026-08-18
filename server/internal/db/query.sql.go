@@ -1939,6 +1939,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 
 const getEpisodeImageAccessByIDForUser = `-- name: GetEpisodeImageAccessByIDForUser :one
 SELECT ei.id,
+    ei.episode_id,
     eiv.object_key,
     eiv.content_type,
     (
@@ -1999,6 +2000,7 @@ type GetEpisodeImageAccessByIDForUserParams struct {
 
 type GetEpisodeImageAccessByIDForUserRow struct {
 	ID          uuid.UUID    `json:"id"`
+	EpisodeID   uuid.UUID    `json:"episode_id"`
 	ObjectKey   string       `json:"object_key"`
 	ContentType string       `json:"content_type"`
 	IsPublished sql.NullBool `json:"is_published"`
@@ -2010,6 +2012,7 @@ func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetE
 	var i GetEpisodeImageAccessByIDForUserRow
 	err := row.Scan(
 		&i.ID,
+		&i.EpisodeID,
 		&i.ObjectKey,
 		&i.ContentType,
 		&i.IsPublished,

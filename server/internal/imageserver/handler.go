@@ -120,42 +120,21 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 	contentTypeFromDB := ""
 	cacheControl := "public, max-age=3600"
 
-	if rawToken, ok := requestmeta.AccessTokenFromRequest(r); ok && h.tokens != nil {
-		claims, err := h.tokens.Verify(rawToken, auth.AudiencePublic)
-		if err == nil && (claims.TenantID == "" || claims.TenantID == tenant.ID.String()) {
-			userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-				PublicID: claims.Subject,
-				TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
-			})
-			if err == nil {
-				user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
-				if err == nil && user.Status == "active" && user.CredentialsVersion == claims.CredentialsVersion {
-					tracing.SetEndUser(ctx, user.PublicID)
-					access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
-						ID:       mediaID,
-						TenantID: tenant.ID,
-						UserID:   user.ID,
-					})
-					if err != nil {
-						if errors.Is(err, sql.ErrNoRows) {
-							http.Error(w, "image not found", http.StatusNotFound)
-							return
-						}
-						h.logger.ErrorContext(ctx, "failed to evaluate token image access", "error", err, "media_id", mediaID.String())
-						http.Error(w, "internal server error", http.StatusInternalServerError)
-						return
-					}
-					if access.IsPublished.Valid && access.IsPublished.Bool && access.HasAccess.Valid && access.HasAccess.Bool {
-						objectKey = access.ObjectKey
-						contentTypeFromDB = access.ContentType
-						cacheControl = "private, max-age=60"
-					}
-				}
-			} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				h.logger.ErrorContext(ctx, "failed to resolve user from token", "error", err)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
+	if claims, ok := h.episodeImageClaims(r, tenant.ID); ok {
+		access, err := h.grantedEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, claims)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Error(w, "image not found", http.StatusNotFound)
 				return
 			}
+			h.logger.ErrorContext(ctx, "failed to evaluate token image access", "error", err, "media_id", mediaID.String())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if access != nil {
+			objectKey = access.ObjectKey
+			contentTypeFromDB = access.ContentType
+			cacheControl = "private, max-age=60"
 		}
 	}
 
@@ -183,6 +162,95 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	h.serveConverted(w, r, objectKey, contentTypeFromDB, cacheControl)
+}
+
+// episodeImageClaims resolves whatever credential the request carries into the
+// user it speaks for. API clients send Authorization: Bearer, but a browser
+// <img> cannot set a header, so an entitled reader's URL carries an
+// AudienceMedia token in the query instead. Both only name a user: the grant
+// itself is still read from the database by grantedEpisodeImage.
+func (h *Handler) episodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth.AccessTokenClaims, bool) {
+	if h.tokens == nil {
+		return nil, false
+	}
+
+	rawToken, audience := "", ""
+	if token, ok := requestmeta.AccessTokenFromRequest(r); ok {
+		rawToken, audience = token, auth.AudiencePublic
+	} else if token := strings.TrimSpace(r.URL.Query().Get(auth.MediaTokenQueryParam)); token != "" {
+		rawToken, audience = token, auth.AudienceMedia
+	}
+	if rawToken == "" {
+		return nil, false
+	}
+
+	claims, err := h.tokens.Verify(rawToken, audience)
+	if err != nil {
+		return nil, false
+	}
+	if claims.TenantID != "" && claims.TenantID != tenantID.String() {
+		return nil, false
+	}
+	if audience == auth.AudienceMedia && strings.TrimSpace(claims.EpisodeID) == "" {
+		return nil, false
+	}
+	return claims, true
+}
+
+// grantedEpisodeImage evaluates a verified credential against one image. A nil
+// row with a nil error means the credential unlocks nothing here — an unknown,
+// disabled, or password-rotated user, an unpublished episode, no purchase or
+// ticket, or a media token issued for a different episode — and the caller
+// falls back to the public rule, which is the same one the API applies.
+func (h *Handler) grantedEpisodeImage(
+	ctx context.Context,
+	tenantQueries TenantScopedQuerier,
+	tenantID uuid.UUID,
+	mediaID uuid.UUID,
+	claims *auth.AccessTokenClaims,
+) (*dbmodels.GetEpisodeImageAccessByIDForUserRow, error) {
+	userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		PublicID: claims.Subject,
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+		return nil, nil
+	}
+	tracing.SetEndUser(ctx, user.PublicID)
+
+	access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
+		ID:       mediaID,
+		TenantID: tenantID,
+		UserID:   user.ID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// A media token unlocks the episode it was issued for and no other. The
+	// URL is readable by anyone it reaches, so this is what keeps a shared
+	// link from covering the reader's whole library until it expires.
+	if claims.EpisodeID != "" && claims.EpisodeID != access.EpisodeID.String() {
+		return nil, nil
+	}
+	isPublished := access.IsPublished.Valid && access.IsPublished.Bool
+	hasAccess := access.HasAccess.Valid && access.HasAccess.Bool
+	if !isPublished || !hasAccess {
+		return nil, nil
+	}
+	return &access, nil
 }
 
 func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) {
