@@ -206,9 +206,14 @@ func Setup(ctx context.Context, serviceName string) (func(context.Context) error
 // instead of a link. Without it every RPC starts a fresh trace and a
 // request cannot be followed from the web app through the API into the
 // queries it issues, which is the whole point of the instrumentation.
-// The callers here are the first-party Next.js apps reaching the API
-// through the internal gateway; a forged traceparent buys an attacker
-// nothing but a polluted trace.
+//
+// Every one of these servers is reachable through the gateway, so this
+// trusts a header an outside caller can set: a forged traceparent can
+// pollute a trace, and a forged sampled flag can force export past the
+// production sampling ratio. The gateway is where that header has to be
+// normalised, which is https://github.com/publira/publira/issues/1036 —
+// and it has to land before this option comes off, or the trace breaks
+// in two at the API boundary.
 //
 // Pass the option unconditionally: with tracing disabled the interceptors
 // record into the no-op TracerProvider.
