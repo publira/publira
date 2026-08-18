@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,22 +14,33 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/publira/publira/server/config"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/imageserver"
+	"github.com/publira/publira/server/internal/logging"
+	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
+	serviceName = "publira-admin-image-server"
+
 	defaultAdminImageServerAddr = ":8201"
 	defaultAdminDBURL           = "postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable"
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := logging.New(os.Stdout, nil)
+	slog.SetDefault(logger)
+
+	shutdownTracing, err := tracing.Setup(context.Background(), serviceName)
+	if err != nil {
+		// Telemetry is not worth refusing to serve traffic over.
+		logger.Error("failed to initialize tracing", "error", err)
+	}
 
 	cfg, err := config.New()
 	if err != nil {
@@ -44,7 +54,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := openDB(resolveAdminImageDBURL())
+	db, err := sqldb.Open(resolveAdminImageDBURL())
 	if err != nil {
 		logger.Error("failed to initialize db", "error", err)
 		os.Exit(1)
@@ -82,24 +92,14 @@ func main() {
 	defer stop()
 
 	logger.Info("starting admin image server", "addr", addr)
-	if err := httpserver.Serve(ctx, logger, []*http.Server{httpserver.New(addr, imageHandler)}, func(context.Context) error {
+	if err := httpserver.Serve(ctx, logger, []*http.Server{
+		httpserver.New(addr, tracing.HTTPMiddleware(imageHandler)),
+	}, shutdownTracing, func(context.Context) error {
 		return errors.Join(imageHandler.Close(), db.Close())
 	}); err != nil {
 		logger.Error("admin image server failed", "error", err)
 		os.Exit(1)
 	}
-}
-
-func openDB(url string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", url)
-	if err != nil {
-		return nil, err
-	}
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return db, nil
 }
 
 func resolveAdminImageDBURL() string {

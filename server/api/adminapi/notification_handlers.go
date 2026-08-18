@@ -148,7 +148,7 @@ func (s *adminServer) ListNotifications(
 
 	rows, err := s.notificationPage(ctx, tenant.ID, sessionCtx.User.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list notifications", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list notifications", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -195,7 +195,7 @@ func (s *adminServer) CountUnreadNotifications(
 		UserID:   sessionCtx.User.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to count unread notifications", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count unread notifications", err, "tenant_id", tenant.ID.String())
 	}
 
 	return connect.NewResponse(&publiraadminv1.CountUnreadNotificationsResponse{UnreadCount: unread}), nil
@@ -228,7 +228,7 @@ func (s *adminServer) MarkNotificationAsRead(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("notification not found"))
 		}
-		return nil, s.internalDBError("failed to mark notification as read", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to mark notification as read", err, "tenant_id", tenant.ID.String())
 	}
 
 	return connect.NewResponse(&publiraadminv1.MarkNotificationAsReadResponse{Marked: true}), nil
@@ -252,7 +252,7 @@ func (s *adminServer) MarkAllNotificationsAsRead(
 		UserID:   sessionCtx.User.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to mark notifications as read", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to mark notifications as read", err, "tenant_id", tenant.ID.String())
 	}
 	markedCount, err := notificationMarkedCount(marked)
 	if err != nil {

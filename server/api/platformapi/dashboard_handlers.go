@@ -41,19 +41,19 @@ func (s *platformServer) GetDashboardSummary(
 
 	totalTenants, err := s.queriesFor(ctx).CountAllTenants(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to count tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
 	}
 	activeTenants, err := s.queriesFor(ctx).CountActiveTenants(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to count active tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count active tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
 	}
 	suspendedTenants, err := s.queriesFor(ctx).CountSuspendedTenants(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to count suspended tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count suspended tenants for dashboard", err, "platform_user_id", actorUser.ID.String())
 	}
 	pendingEndUsers, err := s.queriesFor(ctx).CountPendingEndUsers(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to count pending end users for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to count pending end users for dashboard", err, "platform_user_id", actorUser.ID.String())
 	}
 
 	limit := req.Msg.RecentEventsLimit
@@ -66,7 +66,7 @@ func (s *platformServer) GetDashboardSummary(
 
 	recentEvents, err := s.queriesFor(ctx).ListRecentPlatformEvents(ctx, limit)
 	if err != nil {
-		return nil, s.internalDBError("failed to list recent platform events for dashboard", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list recent platform events for dashboard", err, "platform_user_id", actorUser.ID.String())
 	}
 
 	items := make([]*publirasplatformv1.DashboardRecentEvent, 0, len(recentEvents))

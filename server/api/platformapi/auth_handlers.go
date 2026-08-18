@@ -23,6 +23,7 @@ import (
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
@@ -44,7 +45,7 @@ func platformRoleRequiredError() error {
 func (s *platformServer) platformRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error) {
 	roles, err := s.queriesFor(ctx).ListPlatformUserRoles(ctx, platformUserID)
 	if err != nil {
-		return nil, s.internalDBError("failed to list platform user roles", err, "platform_user_id", platformUserID.String())
+		return nil, s.internalDBError(ctx, "failed to list platform user roles", err, "platform_user_id", platformUserID.String())
 	}
 	return roles, nil
 }
@@ -68,7 +69,7 @@ func (s *platformServer) authenticatePlatformSession(
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
 		}
-		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", s.internalDBError("failed to get platform user by public id", err)
+		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", s.internalDBError(ctx, "failed to get platform user by public id", err)
 	}
 	if platformUser.Status != "active" || platformUser.CredentialsVersion != claims.CredentialsVersion {
 		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", invalidSessionError()
@@ -81,6 +82,7 @@ func (s *platformServer) authenticatePlatformSession(
 	if !auth.IsPlatformRole(resolvedRole) {
 		return dbmodels.PlatformUser{}, dbmodels.PlatformUser{}, "", platformRoleRequiredError()
 	}
+	tracing.SetEndUser(ctx, platformUser.PublicID)
 	return platformUser, platformUser, resolvedRole, nil
 }
 
@@ -132,7 +134,7 @@ func (s *platformServer) resolvePlatformSMTPSettings(ctx context.Context) (email
 		if errors.Is(err, sql.ErrNoRows) {
 			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
 		}
-		return emailsettings.SMTPSettings{}, s.internalDBError("failed to get platform smtp config", err)
+		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get platform smtp config", err)
 	}
 
 	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
@@ -263,7 +265,7 @@ func (s *platformServer) Login(
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 		}
 		auth.AuditEvent(req.Header(), "platform_login", "failure", "", "", "user_lookup_failed")
-		return nil, s.internalDBError("failed to get platform user for login", err)
+		return nil, s.internalDBError(ctx, "failed to get platform user for login", err)
 	}
 	roles, err := s.platformRoles(ctx, platformUser.ID)
 	if err != nil {
@@ -327,12 +329,12 @@ func (s *platformServer) RequestPasswordReset(
 			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceRequestPasswordResetResponse{Requested: true}), nil
 		}
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", "", "user_lookup_failed")
-		return nil, s.internalDBError("failed to get platform user for password reset", err)
+		return nil, s.internalDBError(ctx, "failed to get platform user for password reset", err)
 	}
 
 	if err := s.queriesFor(ctx).DeletePlatformUserPasswordResetTokensByUserID(ctx, platformUser.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_delete_failed")
-		return nil, s.internalDBError("failed to delete password reset tokens", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to delete password reset tokens", err, "platform_user_id", platformUser.ID.String())
 	}
 
 	rawToken := make([]byte, 32)
@@ -355,7 +357,7 @@ func (s *platformServer) RequestPasswordReset(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_request", "failure", "", platformUser.PublicID, "token_create_failed")
-		return nil, s.internalDBError("failed to create password reset token", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create password reset token", err, "platform_user_id", platformUser.ID.String())
 	}
 
 	if err := s.sendPlatformPasswordResetEmail(ctx, platformUser.Email, resetToken); err != nil {
@@ -382,7 +384,7 @@ func (s *platformServer) VerifyPasswordResetToken(
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyPasswordResetTokenResponse{Valid: false}), nil
 		}
-		return nil, s.internalDBError("failed to get password reset token", err)
+		return nil, s.internalDBError(ctx, "failed to get password reset token", err)
 	}
 
 	valid := !resetToken.CompletedAt.Valid && resetToken.ExpiresAt.After(time.Now())
@@ -407,7 +409,7 @@ func (s *platformServer) ConfirmPasswordReset(
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
 		}
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "token_lookup_failed")
-		return nil, s.internalDBError("failed to get password reset token", err)
+		return nil, s.internalDBError(ctx, "failed to get password reset token", err)
 	}
 
 	if resetToken.CompletedAt.Valid {
@@ -425,7 +427,7 @@ func (s *platformServer) ConfirmPasswordReset(
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("password reset token is invalid or expired"))
 		}
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", "", "user_lookup_failed")
-		return nil, s.internalDBError("failed to get platform user for password reset confirm", err, "platform_user_id", resetToken.PlatformUserID.String())
+		return nil, s.internalDBError(ctx, "failed to get platform user for password reset confirm", err, "platform_user_id", resetToken.PlatformUserID.String())
 	}
 
 	passwordHash, err := auth.HashPassword(newPassword)
@@ -439,15 +441,15 @@ func (s *platformServer) ConfirmPasswordReset(
 		PasswordHash: passwordHash,
 	}); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "password_update_failed")
-		return nil, s.internalDBError("failed to update password", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update password", err, "platform_user_id", platformUser.ID.String())
 	}
 	if _, err := s.queriesFor(ctx).BumpPlatformUserCredentialsVersion(ctx, platformUser.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "session_terminate_failed")
-		return nil, s.internalDBError("failed to bump credentials version", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "platform_user_id", platformUser.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkPlatformUserPasswordResetTokenCompleted(ctx, resetToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "failure", "", platformUser.PublicID, "token_complete_failed")
-		return nil, s.internalDBError("failed to complete password reset token", err, "platform_user_id", platformUser.ID.String(), "token_id", resetToken.ID.String())
+		return nil, s.internalDBError(ctx, "failed to complete password reset token", err, "platform_user_id", platformUser.ID.String(), "token_id", resetToken.ID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "platform_password_reset_confirm", "success", "", platformUser.PublicID, "confirmed")
@@ -499,12 +501,12 @@ func (s *platformServer) RequestEmailChange(
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "user_lookup_failed")
-		return nil, s.internalDBError("failed to check email uniqueness", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to check email uniqueness", err, "platform_user_id", platformUser.ID.String())
 	}
 
 	if err := s.queriesFor(ctx).DeletePlatformUserEmailChangeTokensByUserID(ctx, platformUser.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_delete_failed")
-		return nil, s.internalDBError("failed to delete email change tokens", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to delete email change tokens", err, "platform_user_id", platformUser.ID.String())
 	}
 
 	rawToken := make([]byte, 32)
@@ -536,7 +538,7 @@ func (s *platformServer) RequestEmailChange(
 	})
 	if err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_request", "failure", "", platformUser.PublicID, "token_create_failed")
-		return nil, s.internalDBError("failed to create email change token", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create email change token", err, "platform_user_id", platformUser.ID.String())
 	}
 
 	if err := s.sendPlatformEmailChangeVerificationEmail(ctx, platformUser.Email, "current_email", platformUser.Email, newEmail, currentEmailToken); err != nil {
@@ -568,7 +570,7 @@ func (s *platformServer) VerifyEmailChangeToken(
 		if errors.Is(err, sql.ErrNoRows) {
 			return connect.NewResponse(&publirasplatformv1.PlatformAuthServiceVerifyEmailChangeTokenResponse{Valid: false}), nil
 		}
-		return nil, s.internalDBError("failed to get email change token", err)
+		return nil, s.internalDBError(ctx, "failed to get email change token", err)
 	}
 
 	valid := !changeToken.CompletedAt.Valid && changeToken.ExpiresAt.After(time.Now())
@@ -592,7 +594,7 @@ func (s *platformServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
 		}
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "token_lookup_failed")
-		return nil, s.internalDBError("failed to get email change token", err)
+		return nil, s.internalDBError(ctx, "failed to get email change token", err)
 	}
 
 	if changeToken.CompletedAt.Valid {
@@ -610,7 +612,7 @@ func (s *platformServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("email change token is invalid or expired"))
 		}
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", "", "user_lookup_failed")
-		return nil, s.internalDBError("failed to get platform user for email change confirm", err, "platform_user_id", changeToken.PlatformUserID.String())
+		return nil, s.internalDBError(ctx, "failed to get platform user for email change confirm", err, "platform_user_id", changeToken.PlatformUserID.String())
 	}
 	if !strings.EqualFold(platformUser.Email, changeToken.CurrentEmail) {
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "stale_request")
@@ -621,12 +623,12 @@ func (s *platformServer) ConfirmEmailChange(
 	if matchedTarget == "current_email" {
 		if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeCurrentEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "current_email_confirm_failed")
-			return nil, s.internalDBError("failed to confirm current email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
+			return nil, s.internalDBError(ctx, "failed to confirm current email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 		}
 	} else {
 		if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeNewEmailConfirmed(ctx, changeToken.ID); err != nil {
 			auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "new_email_confirm_failed")
-			return nil, s.internalDBError("failed to confirm new email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
+			return nil, s.internalDBError(ctx, "failed to confirm new email", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 		}
 	}
 
@@ -654,11 +656,11 @@ func (s *platformServer) ConfirmEmailChange(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 		}
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "email_update_failed")
-		return nil, s.internalDBError("failed to update platform user email", err, "platform_user_id", platformUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update platform user email", err, "platform_user_id", platformUser.ID.String())
 	}
 	if err := s.queriesFor(ctx).MarkPlatformUserEmailChangeCompleted(ctx, changeToken.ID); err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "request_complete_failed")
-		return nil, s.internalDBError("failed to complete email change token", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
+		return nil, s.internalDBError(ctx, "failed to complete email change token", err, "platform_user_id", platformUser.ID.String(), "token_id", changeToken.ID.String())
 	}
 	if err := s.sendPlatformEmailChangedNotice(ctx, changeToken.CurrentEmail, changeToken.NewEmail); err != nil {
 		auth.AuditEvent(req.Header(), "platform_email_change_confirm", "failure", "", platformUser.PublicID, "old_email_notice_failed")

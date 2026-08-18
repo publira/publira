@@ -148,7 +148,7 @@ func (s *adminServer) GetTenantEmailSettings(
 				Settings: &publiraadminv1.TenantEmailSettings{},
 			}), nil
 		}
-		return nil, s.internalDBError("failed to get tenant email settings", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get tenant email settings", err, "tenant_id", tenant.ID.String())
 	}
 	return connect.NewResponse(&publiraadminv1.GetTenantEmailSettingsResponse{
 		Settings: tenantEmailSettingsToProto(config),
@@ -212,7 +212,7 @@ func (s *adminServer) UpdateTenantEmailSettings(
 		ReplyTo:             nullableString(normalized.ReplyTo),
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to upsert tenant email settings", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to upsert tenant email settings", err, "tenant_id", tenant.ID.String())
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -295,7 +295,7 @@ func (s *adminServer) loadTenantSMTPConfigByID(ctx context.Context, tenantID uui
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.TenantSmtpConfig{}, false, nil
 		}
-		return dbmodels.TenantSmtpConfig{}, false, s.internalDBError("failed to get tenant smtp config", err, "tenant_id", tenantID.String())
+		return dbmodels.TenantSmtpConfig{}, false, s.internalDBError(ctx, "failed to get tenant smtp config", err, "tenant_id", tenantID.String())
 	}
 	return config, true, nil
 }
@@ -306,7 +306,7 @@ func (s *adminServer) loadPlatformSMTPConfigByID(ctx context.Context) (dbmodels.
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.PlatformSmtpConfig{}, false, nil
 		}
-		return dbmodels.PlatformSmtpConfig{}, false, s.internalDBError("failed to get platform smtp config", err)
+		return dbmodels.PlatformSmtpConfig{}, false, s.internalDBError(ctx, "failed to get platform smtp config", err)
 	}
 	return config, true, nil
 }

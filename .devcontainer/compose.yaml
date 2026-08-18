@@ -34,6 +34,7 @@ services:
       - ../..:/workspaces:cached
     depends_on:
       - db
+      - jaeger
       - mailpit
       - redis
       - rustfs
@@ -46,6 +47,11 @@ services:
       # default; point it at the persisted volume so rebuilds don't force
       # re-auth. https://code.claude.com/docs/en/devcontainer
       CLAUDE_CONFIG_DIR: /home/vscode/.claude
+      # Where the Go servers send spans. The OpenTelemetry SDK reads these
+      # names itself, so they keep the spelling its documentation uses.
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
       # Key the Go APIs and image servers sign HS256 access tokens with.
       # Required — the servers refuse to start without it. Local development
       # only: it is published in this repository, so never reuse it elsewhere.
@@ -60,6 +66,8 @@ services:
       PUBLIRA_S3_BUCKET: publira
       PUBLIRA_S3_ENDPOINT: http://rustfs:9000
       PUBLIRA_S3_FORCE_PATH_STYLE: "true"
+      # Tracing is off unless a deployment asks for it; the dev stack asks.
+      PUBLIRA_TRACING_ENABLED: "true"
     labels:
       # web-host: テナント公開サイト (port 3000)
       - "traefik.enable=true"
@@ -117,6 +125,13 @@ services:
       POSTGRES_USER: postgres
     volumes:
       - postgres-data:/var/lib/postgresql
+
+  # Trace collector and UI for the Go servers. All-in-one, in memory: the
+  # spans are a debugging aid for the current session, not a record worth
+  # surviving a restart.
+  jaeger:
+    image: jaegertracing/jaeger:2.20.0@sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
+    restart: unless-stopped
 
   mailpit:
     image: axllent/mailpit:v1.30.7@sha256:d5ecbb067db3705fa953d79e1b7f81ef84038df67aba6c52825d8c02a1ea748a

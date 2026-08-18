@@ -162,7 +162,7 @@ func (s *adminServer) ListAnnouncements(
 
 	rows, err := s.announcementPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list announcements", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list announcements", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -256,7 +256,7 @@ func (s *adminServer) CreateAnnouncement(
 				if errors.Is(getUserErr, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target user not found"))
 				}
-				return nil, s.internalDBError("failed to get announcement target user", getUserErr, "tenant_id", tenant.ID.String(), "user_public_id", publicID)
+				return nil, s.internalDBError(ctx, "failed to get announcement target user", getUserErr, "tenant_id", tenant.ID.String(), "user_public_id", publicID)
 			}
 			selectedUsers = append(selectedUsers, userRow)
 		}
@@ -284,7 +284,7 @@ func (s *adminServer) CreateAnnouncement(
 			Metadata:         metadata,
 		})
 		if createErr != nil {
-			return nil, s.internalDBError("failed to create announcement", createErr, "tenant_id", tenant.ID.String())
+			return nil, s.internalDBError(ctx, "failed to create announcement", createErr, "tenant_id", tenant.ID.String())
 		}
 		created = append(created, &publiraadminv1.AdminAnnouncement{
 			Id:           row.ID.String(),
@@ -312,7 +312,7 @@ func (s *adminServer) CreateAnnouncement(
 				Metadata:         metadata,
 			})
 			if createErr != nil {
-				return nil, s.internalDBError("failed to create announcement", createErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String())
+				return nil, s.internalDBError(ctx, "failed to create announcement", createErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String())
 			}
 			created = append(created, &publiraadminv1.AdminAnnouncement{
 				Id:                 row.ID.String(),

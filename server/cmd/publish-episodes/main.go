@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -11,24 +10,39 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-
 	"github.com/publira/publira/server/config"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/logging"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/sqldb"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 const (
+	serviceName = "publira-publish-episodes"
+
 	defaultIntervalSeconds = 60
 	defaultMaxRetries      = 3
 	defaultWorkerDBURL     = "postgres://postgres:password@db:5432/publira?sslmode=disable"
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	logger := logging.New(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
-	}))
+	})
+	slog.SetDefault(logger)
+
+	shutdownTracing, err := tracing.Setup(context.Background(), serviceName)
+	if err != nil {
+		// Telemetry is not worth refusing to run the batch over.
+		logger.Error("failed to initialize tracing", "error", err)
+	}
+	defer func() {
+		if err := shutdownTracing(context.Background()); err != nil {
+			logger.Error("failed to flush pending spans", "error", err)
+		}
+	}()
 
 	cfg, err := config.New()
 	if err != nil {
@@ -41,7 +55,7 @@ func main() {
 		dbURL = defaultWorkerDBURL
 	}
 
-	db, err := openDB(dbURL)
+	db, err := sqldb.Open(dbURL)
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
 		os.Exit(1)
@@ -79,18 +93,6 @@ func main() {
 			runner.RunOnce(ctx)
 		}
 	}
-}
-
-func openDB(url string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", url)
-	if err != nil {
-		return nil, err
-	}
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return db, nil
 }
 
 func resolveInterval() time.Duration {

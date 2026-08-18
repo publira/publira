@@ -114,7 +114,7 @@ func platformEmailSettingsFromConfig(config dbmodels.PlatformSmtpConfig, passwor
 func (s *platformServer) resolveSMTPSettingsForTenant(ctx context.Context, tenantID uuid.UUID) (emailsettings.SMTPSettings, error) {
 	tenantConfig, err := s.queriesFor(ctx).GetTenantSMTPConfigByTenantID(ctx, tenantID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return emailsettings.SMTPSettings{}, s.internalDBError("failed to get tenant smtp config", err, "tenant_id", tenantID.String())
+		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get tenant smtp config", err, "tenant_id", tenantID.String())
 	}
 	if err == nil && tenantConfig.SmtpOverrideEnabled {
 		password, decryptErr := emailsettings.DecryptPassword(tenantConfig.PasswordEncrypted.String, s.encryptor)
@@ -133,7 +133,7 @@ func (s *platformServer) resolveSMTPSettingsForTenant(ctx context.Context, tenan
 		if errors.Is(err, sql.ErrNoRows) {
 			return emailsettings.SMTPSettings{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("platform smtp settings are not configured"))
 		}
-		return emailsettings.SMTPSettings{}, s.internalDBError("failed to get platform smtp config", err)
+		return emailsettings.SMTPSettings{}, s.internalDBError(ctx, "failed to get platform smtp config", err)
 	}
 	password, decryptErr := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, s.encryptor)
 	if decryptErr != nil {
@@ -287,12 +287,12 @@ func (s *platformServer) ListTenantAdminInvitations(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
+		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
 	rows, err := s.tenantAdminInvitationPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list tenant admin invitations", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list tenant admin invitations", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -343,7 +343,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
+		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
 	user, userErr := s.queriesFor(ctx).GetUserByEmailForTenant(ctx, dbmodels.GetUserByEmailForTenantParams{
@@ -351,22 +351,22 @@ func (s *platformServer) CreateTenantAdminInvitation(
 		Email:    email,
 	})
 	if userErr != nil && !errors.Is(userErr, sql.ErrNoRows) {
-		return nil, s.internalDBError("failed to get user by email for tenant", userErr, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get user by email for tenant", userErr, "tenant_id", tenant.ID.String())
 	}
 
 	if userErr == nil {
 		tx, err := s.db.BeginTx(ctx, nil)
 		if err != nil {
-			return nil, s.internalDBError("failed to begin grant tenant admin role transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+			return nil, s.internalDBError(ctx, "failed to begin grant tenant admin role transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		defer tx.Rollback() //nolint:errcheck
 
 		txq := dbmodels.New(tx)
 		if err := ensureTenantAdminRole(ctx, txq, tenant.ID, user.ID); err != nil {
-			return nil, s.internalDBError("failed to grant tenant admin role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+			return nil, s.internalDBError(ctx, "failed to grant tenant admin role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 		if err := tx.Commit(); err != nil {
-			return nil, s.internalDBError("failed to commit grant tenant admin role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+			return nil, s.internalDBError(ctx, "failed to commit grant tenant admin role", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 		}
 
 		if actor, ok := platformActorFromContext(ctx); ok {
@@ -405,7 +405,7 @@ func (s *platformServer) CreateTenantAdminInvitation(
 			ExpiresAt: expiresAt,
 		})
 		if err != nil {
-			return nil, s.internalDBError("failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String())
+			return nil, s.internalDBError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String())
 		}
 	} else if errors.Is(err, sql.ErrNoRows) {
 		invitationID, newIDErr := uuid.NewV7()
@@ -420,10 +420,10 @@ func (s *platformServer) CreateTenantAdminInvitation(
 			ExpiresAt: expiresAt,
 		})
 		if err != nil {
-			return nil, s.internalDBError("failed to create tenant admin invitation", err, "tenant_id", tenant.ID.String())
+			return nil, s.internalDBError(ctx, "failed to create tenant admin invitation", err, "tenant_id", tenant.ID.String())
 		}
 	} else {
-		return nil, s.internalDBError("failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String())
 	}
 
 	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, invitation, token); err != nil {
@@ -462,7 +462,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
+		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
 	}
 
 	parsedID, err := uuid.Parse(invitationID)
@@ -477,7 +477,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("invitation not found"))
 		}
-		return nil, s.internalDBError("failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID)
+		return nil, s.internalDBError(ctx, "failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID)
 	}
 	if invitation.AcceptedAt.Valid {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation already accepted"))
@@ -497,7 +497,7 @@ func (s *platformServer) ResendTenantAdminInvitation(
 		ExpiresAt: time.Now().Add(tenantAdminInvitationTTL),
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
+		return nil, s.internalDBError(ctx, "failed to resend tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
 	}
 
 	if err := s.sendTenantAdminInvitationEmail(ctx, tenant, updated, token); err != nil {
@@ -536,7 +536,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
 		}
-		return nil, s.internalDBError("failed to get tenant", err, "public_id", tenantPublicID)
+		return nil, s.internalDBError(ctx, "failed to get tenant", err, "public_id", tenantPublicID)
 	}
 	parsedID, err := uuid.Parse(invitationID)
 	if err != nil {
@@ -550,7 +550,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("invitation not found"))
 		}
-		return nil, s.internalDBError("failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID)
+		return nil, s.internalDBError(ctx, "failed to get tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitationID)
 	}
 	if invitation.AcceptedAt.Valid {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("invitation already accepted"))
@@ -561,7 +561,7 @@ func (s *platformServer) CancelTenantAdminInvitation(
 		ID:       invitation.ID,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to cancel tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
+		return nil, s.internalDBError(ctx, "failed to cancel tenant admin invitation", err, "tenant_id", tenant.ID.String(), "invitation_id", invitation.ID.String())
 	}
 
 	if actor, ok := platformActorFromContext(ctx); ok {

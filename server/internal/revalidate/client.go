@@ -12,6 +12,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 type Client struct {
@@ -42,6 +44,9 @@ func NewClient(token string, logger *slog.Logger) *Client {
 		token: normalizedToken,
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
+			// Carries the trace context of the request that triggered
+			// the revalidation into the Next.js app.
+			Transport: tracing.Transport(http.DefaultTransport),
 		},
 		logger: logger,
 	}
@@ -117,7 +122,8 @@ func (c *Client) sendRequest(ctx context.Context, endpoint, tenantID, tenantDoma
 		return fmt.Errorf("revalidate endpoint returned status=%d body=%q", res.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	c.logger.Info(
+	c.logger.InfoContext(
+		ctx,
 		"next revalidate requested",
 		"tenant_id", tenantID,
 		"tenant_domain", tenantDomain,

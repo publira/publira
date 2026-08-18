@@ -157,3 +157,24 @@ app コンテナに渡す既定値は `.devcontainer/compose.yaml` にありま�
 このアクセスキーは **ローカル開発専用**です（RustFS コンテナにしか通用しません）。本番の S3 は IAM ロールや別途払い出した資格情報を使い、この値を持ち込まないでください。バケット作成には aws CLI を使うため、Dev Container では `aws-cli` feature を同梱しています。
 
 サーバー側の環境変数一覧は [server/README.md](server/README.md) を参照してください。
+
+## 分散トレーシング (Jaeger)
+
+Dev Container 起動時に **Jaeger** コンテナも起動し、Go サーバー群 (`server/cmd/*`) が OpenTelemetry で span を送ります。1 リクエストが Connect の RPC span から DB クエリの子 span まで 1 本のトレースに繋がるので、「どの層で時間を使ったか」を UI 上で追えます。
+
+- Jaeger UI: `http://localhost:16686`
+- OTLP 受信 (コンテナ内から): `http://jaeger:4318`（ホストには公開しません）
+- 保存はインメモリなので、コンテナを再起動すると過去のトレースは消えます
+
+app コンテナに渡す既定値は `.devcontainer/compose.yaml` にあります。
+
+| 変数                          | 既定値               |
+| ----------------------------- | -------------------- |
+| `PUBLIRA_TRACING_ENABLED`     | `true`               |
+| `OTEL_TRACES_EXPORTER`        | `otlp`               |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf`      |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://jaeger:4318` |
+
+`PUBLIRA_TRACING_ENABLED` 以外は OpenTelemetry SDK 自身が読む変数なので、名前は OpenTelemetry のドキュメントどおりです。トレースは既定で無効で、この dev スタックが明示的に有効化しています。`PUBLIRA_DEPLOYMENT_ENVIRONMENT` は未設定のままなので `development` 扱いになり、root span は全件サンプルされます。
+
+属性・span 命名・サンプリング方針は [#502](https://github.com/publira/publira/issues/502) の設計合意に従います。設定と計装の詳細は [server/README.md](server/README.md#分散トレーシング-opentelemetry) を参照してください。

@@ -34,6 +34,10 @@ cd server && make build
 - `PUBLIRA_S3_FORCE_PATH_STYLE` (任意)
 - `PUBLIRA_S3_PUBLIC_BASE_URL` (任意)
 - `PUBLIRA_REVALIDATE_TOKEN` (任意, `X-Revalidate-Token` ヘッダーで送る共有トークン)
+- `PUBLIRA_TRACING_ENABLED` (任意, 既定は無効。OpenTelemetry トレースの有効化)
+- `PUBLIRA_DEPLOYMENT_ENVIRONMENT` (任意, 未指定時 `development`。`deployment.environment.name` と既定サンプリング率を決める)
+
+トレースの属性・span 命名・サンプリング・`OTEL_*` の一覧は [server/README.md](../../README.md#分散トレーシング-opentelemetry) にあります。
 
 `PUBLIRA_REVALIDATE_TOKEN` が設定されている場合のみ、公開状態更新時に Next.js へ再検証リクエストを送信します。このとき内部ネットワーク上の Traefik 宛に送信し、`Host`/`X-Forwarded-Host` はテナントの `domain` を設定します。固定パスは次のとおりです:
 

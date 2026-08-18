@@ -278,7 +278,7 @@ func (s *adminServer) ListAccessTickets(
 					Tickets: []*publiraadminv1.AdminAccessTicket{},
 				}), nil
 			}
-			return nil, s.internalDBError("failed to resolve user for list access tickets", getUserErr, "tenant_id", tenant.ID.String())
+			return nil, s.internalDBError(ctx, "failed to resolve user for list access tickets", getUserErr, "tenant_id", tenant.ID.String())
 		}
 		filter.userID = uuid.NullUUID{UUID: userRow.ID, Valid: true}
 	}
@@ -294,7 +294,7 @@ func (s *adminServer) ListAccessTickets(
 					Tickets: []*publiraadminv1.AdminAccessTicket{},
 				}), nil
 			}
-			return nil, s.internalDBError("failed to resolve episode for list access tickets", getEpisodeErr, "tenant_id", tenant.ID.String())
+			return nil, s.internalDBError(ctx, "failed to resolve episode for list access tickets", getEpisodeErr, "tenant_id", tenant.ID.String())
 		}
 		filter.episodeID = uuid.NullUUID{UUID: episode.ID, Valid: true}
 	}
@@ -302,7 +302,7 @@ func (s *adminServer) ListAccessTickets(
 	// One row past the page: its presence is what says another page exists.
 	rows, err := s.accessTicketPage(ctx, filter, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list access tickets", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list access tickets", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -367,7 +367,7 @@ func (s *adminServer) IssueAccessTicket(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("user not found"), "user_public_id")
 		}
-		return nil, s.internalDBError("failed to get user for issue access ticket", err, "tenant_id", tenant.ID.String(), "user_public_id", userPublicID)
+		return nil, s.internalDBError(ctx, "failed to get user for issue access ticket", err, "tenant_id", tenant.ID.String(), "user_public_id", userPublicID)
 	}
 	if userRow.Status != "active" {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("user is not active"))
@@ -381,7 +381,7 @@ func (s *adminServer) IssueAccessTicket(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errors.New("episode not found"), "episode_public_id")
 		}
-		return nil, s.internalDBError("failed to get episode for issue access ticket", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
+		return nil, s.internalDBError(ctx, "failed to get episode for issue access ticket", err, "tenant_id", tenant.ID.String(), "episode_public_id", episodePublicID)
 	}
 
 	expiresAt, err := parseOptionalExpiresAt(req.Msg.ExpiresAt)
@@ -401,14 +401,14 @@ func (s *adminServer) IssueAccessTicket(
 	if existingErr == nil {
 		ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, existing.PublicID)
 		if getErr != nil {
-			return nil, s.internalDBError("failed to load existing access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", existing.PublicID)
+			return nil, s.internalDBError(ctx, "failed to load existing access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", existing.PublicID)
 		}
 		return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
 			Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
 		}), nil
 	}
 	if existingErr != nil && !errors.Is(existingErr, sql.ErrNoRows) {
-		return nil, s.internalDBError("failed to get non-revoked access ticket", existingErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get non-revoked access ticket", existingErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
 	}
 
 	note := strings.TrimSpace(req.Msg.Note)
@@ -438,22 +438,22 @@ func (s *adminServer) IssueAccessTicket(
 				EpisodeID: episode.ID,
 			})
 			if getWinnerErr != nil {
-				return nil, s.internalDBError("failed to get winning access ticket after conflict", getWinnerErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
+				return nil, s.internalDBError(ctx, "failed to get winning access ticket after conflict", getWinnerErr, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
 			}
 			ticketRow, getErr := s.loadAccessTicketByPublicID(ctx, tenant.ID, winner.PublicID)
 			if getErr != nil {
-				return nil, s.internalDBError("failed to load winning access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", winner.PublicID)
+				return nil, s.internalDBError(ctx, "failed to load winning access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", winner.PublicID)
 			}
 			return connect.NewResponse(&publiraadminv1.IssueAccessTicketResponse{
 				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
 			}), nil
 		}
-		return nil, s.internalDBError("failed to create access ticket", err, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create access ticket", err, "tenant_id", tenant.ID.String(), "user_id", userRow.ID.String(), "episode_id", episode.ID.String())
 	}
 
 	ticketRow, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, created.PublicID)
 	if err != nil {
-		return nil, s.internalDBError("failed to load created access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", created.PublicID)
+		return nil, s.internalDBError(ctx, "failed to load created access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", created.PublicID)
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -496,7 +496,7 @@ func (s *adminServer) RevokeAccessTicket(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
 		}
-		return nil, s.internalDBError("failed to get access ticket for revoke", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to get access ticket for revoke", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
 	}
 	if current.RevokedAt.Valid {
 		return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
@@ -517,18 +517,18 @@ func (s *adminServer) RevokeAccessTicket(
 				if errors.Is(getErr, sql.ErrNoRows) {
 					return nil, connect.NewError(connect.CodeNotFound, errors.New("access ticket not found"))
 				}
-				return nil, s.internalDBError("failed to load concurrently revoked access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+				return nil, s.internalDBError(ctx, "failed to load concurrently revoked access ticket", getErr, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
 			}
 			return connect.NewResponse(&publiraadminv1.RevokeAccessTicketResponse{
 				Ticket: mapAccessTicketFromGetRow(ticketRow, time.Now()),
 			}), nil
 		}
-		return nil, s.internalDBError("failed to revoke access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to revoke access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
 	}
 
 	ticketRow, err := s.loadAccessTicketByPublicID(ctx, tenant.ID, publicID)
 	if err != nil {
-		return nil, s.internalDBError("failed to load revoked access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to load revoked access ticket", err, "tenant_id", tenant.ID.String(), "ticket_public_id", publicID)
 	}
 
 	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{

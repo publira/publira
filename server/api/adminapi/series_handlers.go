@@ -84,7 +84,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 		SeriesID: seriesID,
 	})
 	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError("failed to create series image", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
+		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create series image", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
 
 	variants, err := imageproc.BuildEyeCatchVariants(img.Data, img.ContentType)
@@ -129,7 +129,7 @@ func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmo
 			Height:          int32(variant.Height),
 		})
 		if createVariantErr != nil {
-			return uuid.NullUUID{}, s.internalDBError("failed to create series image variant", createVariantErr, "tenant_id", tenant.ID.String(), "series_image_id", createdImage.ID.String())
+			return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create series image variant", createVariantErr, "tenant_id", tenant.ID.String(), "series_image_id", createdImage.ID.String())
 		}
 	}
 
@@ -162,7 +162,7 @@ func (s *adminServer) seriesEyeCatchVariantsByImageIDs(
 
 	rows, err := s.queriesFor(ctx).ListSeriesImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, s.internalDBError("failed to list series image variants", err)
+		return nil, s.internalDBError(ctx, "failed to list series image variants", err)
 	}
 
 	byImageID := make(map[uuid.UUID][]dbmodels.ListSeriesImageVariantsByImageIDsRow, len(imageIDs))
@@ -212,7 +212,7 @@ func (s *adminServer) resolveCreatorsByPublicIDs(
 		PublicIds: normalized,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to list creators by public ids", err, "tenant_id", tenantID.String())
+		return nil, s.internalDBError(ctx, "failed to list creators by public ids", err, "tenant_id", tenantID.String())
 	}
 	if len(rows) != len(normalized) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creator not found"))
@@ -240,7 +240,7 @@ func (s *adminServer) syncSeriesCreators(
 ) ([]*publirattypesv1.Creator, error) {
 	if replace {
 		if err := s.queriesFor(ctx).DeleteSeriesCreatorsBySeriesID(ctx, seriesID); err != nil {
-			return nil, s.internalDBError("failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
+			return nil, s.internalDBError(ctx, "failed to delete series creators", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 		}
 	}
 	items := make([]*publirattypesv1.Creator, 0, len(creators))
@@ -253,7 +253,7 @@ func (s *adminServer) syncSeriesCreators(
 			DisplayOrder: int32(index),
 		})
 		if err != nil {
-			return nil, s.internalDBError("failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", creator.ID.String())
+			return nil, s.internalDBError(ctx, "failed to create series creator", err, "tenant_id", tenantID.String(), "series_id", seriesID.String(), "creator_id", creator.ID.String())
 		}
 		items = append(items, protomapper.Creator(creator.PublicID, creator.Name, creator.ProfileText.String))
 	}
@@ -269,7 +269,7 @@ func (s *adminServer) seriesCreatorsBySeriesIDs(
 	}
 	rows, err := s.queriesFor(ctx).ListSeriesCreatorsBySeriesIDs(ctx, seriesIDs)
 	if err != nil {
-		return nil, s.internalDBError("failed to list series creators", err)
+		return nil, s.internalDBError(ctx, "failed to list series creators", err)
 	}
 	items := make(map[uuid.UUID][]*publirattypesv1.Creator, len(seriesIDs))
 	for _, row := range rows {
@@ -326,7 +326,7 @@ func (s *adminServer) CreateSeries(
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
 			}
-			return nil, s.internalDBError("failed to get label for create series", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.LabelPublicId)
+			return nil, s.internalDBError(ctx, "failed to get label for create series", err, "tenant_id", tenant.ID.String(), "label_public_id", req.Msg.LabelPublicId)
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
@@ -341,7 +341,7 @@ func (s *adminServer) CreateSeries(
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to begin create series transaction", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to begin create series transaction", err, "tenant_id", tenant.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 
@@ -352,7 +352,7 @@ func (s *adminServer) CreateSeries(
 		})
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to create series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to create series", err, "tenant_id", tenant.ID.String())
 	}
 	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
 		TenantID:           tenant.ID,
@@ -361,14 +361,14 @@ func (s *adminServer) CreateSeries(
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          base.ID,
 		PublishedAt: publishedAt,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	eyeCatchImageID, err := s.createSeriesEyeCatchImage(txCtx, tenant, base.ID, base.PublicID, eyeCatchImage)
 	if err != nil {
@@ -379,7 +379,7 @@ func (s *adminServer) CreateSeries(
 			ID:              base.ID,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
-			return nil, s.internalDBError("failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+			return nil, s.internalDBError(ctx, "failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 		}
 	}
 	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, base.ID, creatorsToLink, false)
@@ -387,7 +387,7 @@ func (s *adminServer) CreateSeries(
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError("failed to commit create series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+		return nil, s.internalDBError(ctx, "failed to commit create series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -408,7 +408,7 @@ func (s *adminServer) CreateSeries(
 	}
 	created, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: base.PublicID})
 	if err != nil {
-		return nil, s.internalDBError("failed to get created series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get created series", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
 	series := protomapper.SeriesFromGetSeriesByPublicIDForTenantRow(created)
 	if created.EyeCatchImageID.Valid {
@@ -455,7 +455,7 @@ func (s *adminServer) UpdateSeries(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError("failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get series for update", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
 	}
 	labelPublicID := strings.TrimSpace(req.Msg.LabelPublicId)
 	if labelPublicID == "" && current.LabelPublicID.Valid {
@@ -468,7 +468,7 @@ func (s *adminServer) UpdateSeries(
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("label not found"))
 			}
-			return nil, s.internalDBError("failed to get label for update series", err, "tenant_id", tenant.ID.String(), "label_public_id", labelPublicID)
+			return nil, s.internalDBError(ctx, "failed to get label for update series", err, "tenant_id", tenant.ID.String(), "label_public_id", labelPublicID)
 		}
 		labelID = uuid.NullUUID{UUID: label.ID, Valid: true}
 	}
@@ -479,14 +479,14 @@ func (s *adminServer) UpdateSeries(
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to begin update series transaction", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to begin update series transaction", err, "tenant_id", tenant.ID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Msg.Title, LabelID: labelID})
 	if err != nil {
-		return nil, s.internalDBError("failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	_, err = s.queriesFor(txCtx).UpsertSeriesListing(txCtx, dbmodels.UpsertSeriesListingParams{
 		TenantID:           tenant.ID,
@@ -495,14 +495,14 @@ func (s *adminServer) UpdateSeries(
 		ReadingPeriodHours: sql.NullInt32{Int32: req.Msg.ReadingPeriodHours, Valid: req.Msg.ReadingPeriodHours > 0},
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to upsert series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	err = s.queriesFor(txCtx).UpdateSeriesPublication(txCtx, dbmodels.UpdateSeriesPublicationParams{
 		ID:          current.ID,
 		PublishedAt: publishedAt,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.Msg.ClearEyeCatchImage {
@@ -519,7 +519,7 @@ func (s *adminServer) UpdateSeries(
 			ID:              current.ID,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
-			return nil, s.internalDBError("failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+			return nil, s.internalDBError(ctx, "failed to update series eye catch image", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 		}
 	}
 	creators, err := s.syncSeriesCreators(txCtx, tenant.ID, current.ID, creatorsToLink, true)
@@ -527,11 +527,11 @@ func (s *adminServer) UpdateSeries(
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError("failed to commit update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to commit update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	updated, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{TenantID: tenant.ID, PublicID: req.Msg.PublicId})
 	if err != nil {
-		return nil, s.internalDBError("failed to get updated series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+		return nil, s.internalDBError(ctx, "failed to get updated series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
 	}
 	if sessionCtx, ok := rpcmiddleware.SessionContextFromContext(ctx); ok {
 		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
@@ -690,7 +690,7 @@ func (s *adminServer) ListSeries(
 	// One row past the page: its presence is what says another page exists.
 	rows, err := s.seriesPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list series", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -788,7 +788,7 @@ func (s *adminServer) GetSeries(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError("failed to get series", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get series", err, "tenant_id", tenant.ID.String(), "series_public_id", req.Msg.PublicId)
 	}
 	creatorsBySeriesID, err := s.seriesCreatorsBySeriesIDs(ctx, []uuid.UUID{row.ID})
 	if err != nil {

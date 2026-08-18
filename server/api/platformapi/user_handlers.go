@@ -88,7 +88,7 @@ func (s *platformServer) endUserTenant(ctx context.Context, userID uuid.UUID) (p
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", "", nil
 		}
-		return "", "", s.internalDBError("failed to get tenant by user id", err, "user_id", userID.String())
+		return "", "", s.internalDBError(ctx, "failed to get tenant by user id", err, "user_id", userID.String())
 	}
 	return tenant.PublicID, tenant.Name, nil
 }
@@ -125,12 +125,12 @@ func (s *platformServer) ensureManageableEndUser(ctx context.Context, userID str
 		if errors.Is(err, sql.ErrNoRows) {
 			return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return dbmodels.GetUserByPublicIDRow{}, s.internalDBError("failed to get user by public id", err, "public_id", userID)
+		return dbmodels.GetUserByPublicIDRow{}, s.internalDBError(ctx, "failed to get user by public id", err, "public_id", userID)
 	}
 
 	tenantRoles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, user.ID)
 	if err != nil {
-		return dbmodels.GetUserByPublicIDRow{}, s.internalDBError("failed to list tenant user roles", err, "user_id", user.ID.String(), "public_id", userID)
+		return dbmodels.GetUserByPublicIDRow{}, s.internalDBError(ctx, "failed to list tenant user roles", err, "user_id", user.ID.String(), "public_id", userID)
 	}
 	if len(tenantRoles) > 0 {
 		return dbmodels.GetUserByPublicIDRow{}, connect.NewError(connect.CodePermissionDenied, errors.New("cannot operate tenant member users"))
@@ -244,7 +244,7 @@ func (s *platformServer) ListEndUsers(
 
 	users, err := s.endUserPage(ctx, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list end users", err)
+		return nil, s.internalDBError(ctx, "failed to list end users", err)
 	}
 	users, hasMore := pagination.Page(users, limit, cursor.Direction)
 
@@ -297,7 +297,7 @@ func (s *platformServer) GetEndUser(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return nil, s.internalDBError("failed to get end user", err, "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to get end user", err, "public_id", publicID)
 	}
 
 	tenantPublicID, tenantName, err := s.endUserTenant(ctx, user.ID)
@@ -335,12 +335,12 @@ func (s *platformServer) SuspendEndUser(
 		Status:   userStatusSuspended,
 	})
 	if err != nil {
-		return nil, s.internalDBError("failed to suspend end user", err, "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to suspend end user", err, "public_id", publicID)
 	}
 
 	// セッションを失効させる
 	if _, err := s.queriesFor(ctx).BumpUserCredentialsVersion(ctx, updated.ID); err != nil {
-		return nil, s.internalDBError("failed to bump end user credentials version", err, "user_id", updated.ID.String(), "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to bump end user credentials version", err, "user_id", updated.ID.String(), "public_id", publicID)
 	}
 
 	tenantPublicID, tenantName, err := s.endUserTenant(ctx, updated.ID)
@@ -391,7 +391,7 @@ func (s *platformServer) UnsuspendEndUser(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
-		return nil, s.internalDBError("failed to unsuspend end user", err, "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to unsuspend end user", err, "public_id", publicID)
 	}
 
 	tenantPublicID, tenantName, err := s.endUserTenant(ctx, updated.ID)
@@ -436,7 +436,7 @@ func (s *platformServer) DeleteEndUser(
 
 	// ユーザーを物理削除
 	if err := s.queriesFor(ctx).DeleteUserByID(ctx, user.ID); err != nil {
-		return nil, s.internalDBError("failed to delete end user", err, "user_id", user.ID.String(), "public_id", publicID)
+		return nil, s.internalDBError(ctx, "failed to delete end user", err, "user_id", user.ID.String(), "public_id", publicID)
 	}
 
 	s.recorder.RecordPlatform(ctx, auditlog.PlatformEntry{

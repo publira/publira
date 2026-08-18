@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -25,6 +27,8 @@ const (
 	notificationTypeEpisodePublished     = "episode_published"
 	notificationTypeEpisodePublishFailed = "episode_publish_failed"
 )
+
+var tracer = otel.Tracer("github.com/publira/publira/server/internal/publishepisodes")
 
 // Runner lists due scheduled episodes and publishes them with retries.
 type Runner struct {
@@ -74,17 +78,24 @@ func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Client, logger
 }
 
 // RunOnce publishes every episode that is due now.
+//
+// The cycle runs under one span so the queries it issues hang off a
+// single trace instead of arriving as one root span per statement.
 func (r *Runner) RunOnce(ctx context.Context) {
+	ctx, span := tracer.Start(ctx, "publishepisodes.RunOnce")
+	defer span.End()
+
 	rows, err := r.queries.ListEpisodesReadyToPublishWithTenantInfo(ctx)
 	if err != nil {
-		r.logger.Error("failed to list episodes ready to publish", "error", err)
+		r.logger.ErrorContext(ctx, "failed to list episodes ready to publish", "error", err)
 		return
 	}
 	if len(rows) == 0 {
 		return
 	}
 
-	r.logger.Info("found episodes ready to publish", "count", len(rows))
+	span.SetAttributes(attribute.Int("publira.episodes.due", len(rows)))
+	r.logger.InfoContext(ctx, "found episodes ready to publish", "count", len(rows))
 
 	for _, row := range rows {
 		if ctx.Err() != nil {
@@ -99,7 +110,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 	for attempt := 0; attempt <= r.maxRetries; attempt++ {
 		if attempt > 0 {
 			delay := time.Duration(math.Pow(2, float64(attempt-1))) * defaultRetryBaseDelay
-			r.logger.Info("retrying publish",
+			r.logger.InfoContext(ctx, "retrying publish",
 				"episode_id", row.EpisodeID,
 				"attempt", attempt,
 				"delay", delay,
@@ -113,7 +124,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 
 		if err := r.publishOne(ctx, row); err != nil {
 			lastErr = err
-			r.logger.Warn("failed to publish episode",
+			r.logger.WarnContext(ctx, "failed to publish episode",
 				"episode_id", row.EpisodeID,
 				"tenant_id", row.TenantID.String(),
 				"attempt", attempt+1,
@@ -122,7 +133,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 			continue
 		}
 
-		r.logger.Info("episode published successfully",
+		r.logger.InfoContext(ctx, "episode published successfully",
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
 		)
@@ -130,7 +141,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 		return
 	}
 
-	r.logger.Error("episode publish failed after all retries",
+	r.logger.ErrorContext(ctx, "episode publish failed after all retries",
 		"episode_id", row.EpisodeID,
 		"tenant_id", row.TenantID.String(),
 		"max_retries", r.maxRetries,
@@ -194,7 +205,7 @@ func (r *Runner) notifyMembersOfPublish(ctx context.Context, q *dbmodels.Queries
 func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow, notificationType string) {
 	admins, err := r.queries.ListTenantAdminIDs(ctx, row.TenantID)
 	if err != nil {
-		r.logger.Error("failed to list tenant admins for publish notification",
+		r.logger.ErrorContext(ctx, "failed to list tenant admins for publish notification",
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
 			"notification_type", notificationType,
@@ -210,7 +221,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 		SeriesTitle:  row.SeriesTitle,
 	})
 	if err != nil {
-		r.logger.Error("failed to encode publish notification payload",
+		r.logger.ErrorContext(ctx, "failed to encode publish notification payload",
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
 			"notification_type", notificationType,
@@ -223,7 +234,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 	for _, adminID := range admins {
 		notificationID, err := uuid.NewV7()
 		if err != nil {
-			r.logger.Error("failed to allocate publish notification id",
+			r.logger.ErrorContext(ctx, "failed to allocate publish notification id",
 				"episode_id", row.EpisodeID,
 				"user_id", adminID,
 				"notification_type", notificationType,
@@ -240,7 +251,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 			Payload:          payload,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			r.logger.Error("failed to insert publish notification",
+			r.logger.ErrorContext(ctx, "failed to insert publish notification",
 				"episode_id", row.EpisodeID,
 				"user_id", adminID,
 				"notification_type", notificationType,
@@ -253,7 +264,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmodels.ListEpisodesReadyToPublishWithTenantInfoRow) {
 	operators, err := r.queries.ListPlatformOperatorIDs(ctx)
 	if err != nil {
-		r.logger.Error("failed to list operators for publish-failed notification",
+		r.logger.ErrorContext(ctx, "failed to list operators for publish-failed notification",
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
 			"error", err,
@@ -270,7 +281,7 @@ func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmode
 		TenantName:   row.TenantName,
 	})
 	if err != nil {
-		r.logger.Error("failed to encode publish-failed notification payload",
+		r.logger.ErrorContext(ctx, "failed to encode publish-failed notification payload",
 			"episode_id", row.EpisodeID,
 			"tenant_id", row.TenantID.String(),
 			"error", err,
@@ -282,7 +293,7 @@ func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmode
 	for _, operatorID := range operators {
 		notificationID, err := uuid.NewV7()
 		if err != nil {
-			r.logger.Error("failed to allocate publish-failed notification id",
+			r.logger.ErrorContext(ctx, "failed to allocate publish-failed notification id",
 				"episode_id", row.EpisodeID,
 				"platform_user_id", operatorID,
 				"error", err,
@@ -297,7 +308,7 @@ func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmode
 			Payload:          payload,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			r.logger.Error("failed to insert publish-failed notification",
+			r.logger.ErrorContext(ctx, "failed to insert publish-failed notification",
 				"episode_id", row.EpisodeID,
 				"platform_user_id", operatorID,
 				"error", err,
@@ -332,7 +343,7 @@ func (r *Runner) publishEpisode(ctx context.Context, row dbmodels.ListEpisodesRe
 			fmt.Sprintf("tenant:%s:series:detail", tenantID),
 		}
 		if err := r.reval.RevalidateTags(ctx, tenantID, row.TenantDomain, tags); err != nil {
-			r.logger.Warn("failed to revalidate after episode publish",
+			r.logger.WarnContext(ctx, "failed to revalidate after episode publish",
 				"episode_id", row.EpisodeID,
 				"tenant_id", tenantID,
 				"error", err,

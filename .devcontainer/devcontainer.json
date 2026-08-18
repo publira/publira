@@ -42,7 +42,8 @@
     "traefik:3080",
     "mailpit:8025",
     "traefik:8080",
-    "rustfs:9001"
+    "rustfs:9001",
+    "jaeger:16686"
   ],
   "otherPortsAttributes": {
     "onAutoForward": "ignore"

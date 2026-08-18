@@ -16,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/requestmeta"
+	"github.com/publira/publira/server/internal/tracing"
 )
 
 type ResolverQuerier interface {
@@ -96,7 +97,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "tenant not found", http.StatusNotFound)
 			return
 		}
-		h.logger.Error("failed to resolve tenant from host", "error", err, "host", r.Host)
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -109,7 +110,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 
 	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
 	if err != nil {
-		h.logger.Error("failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -129,6 +130,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			if err == nil {
 				user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
 				if err == nil && user.Status == "active" && user.CredentialsVersion == claims.CredentialsVersion {
+					tracing.SetEndUser(ctx, user.PublicID)
 					access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
 						ID:       mediaID,
 						TenantID: tenant.ID,
@@ -139,7 +141,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 							http.Error(w, "image not found", http.StatusNotFound)
 							return
 						}
-						h.logger.Error("failed to evaluate token image access", "error", err, "media_id", mediaID.String())
+						h.logger.ErrorContext(ctx, "failed to evaluate token image access", "error", err, "media_id", mediaID.String())
 						http.Error(w, "internal server error", http.StatusInternalServerError)
 						return
 					}
@@ -150,7 +152,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 					}
 				}
 			} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				h.logger.Error("failed to resolve user from token", "error", err)
+				h.logger.ErrorContext(ctx, "failed to resolve user from token", "error", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
 			}
@@ -167,7 +169,7 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 				http.Error(w, "image not found", http.StatusNotFound)
 				return
 			}
-			h.logger.Error("failed to evaluate public image access", "error", err, "media_id", mediaID.String())
+			h.logger.ErrorContext(ctx, "failed to evaluate public image access", "error", err, "media_id", mediaID.String())
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -192,7 +194,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "tenant not found", http.StatusNotFound)
 			return
 		}
-		h.logger.Error("failed to resolve tenant from host", "error", err, "host", r.Host)
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -205,7 +207,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 
 	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
 	if err != nil {
-		h.logger.Error("failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -220,7 +222,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "image not found", http.StatusNotFound)
 			return
 		}
-		h.logger.Error("failed to load creator image metadata", "error", err, "media_id", mediaID.String())
+		h.logger.ErrorContext(ctx, "failed to load creator image metadata", "error", err, "media_id", mediaID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -241,7 +243,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
 			return
 		}
-		h.logger.Error("failed to resolve tenant from host", "error", err, "host", r.Host)
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -264,7 +266,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 
 	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
 	if err != nil {
-		h.logger.Error("failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -281,7 +283,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "image not found", http.StatusNotFound)
 			return
 		}
-		h.logger.Error("failed to load series image metadata", "error", err, "media_id", mediaID.String())
+		h.logger.ErrorContext(ctx, "failed to load series image metadata", "error", err, "media_id", mediaID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -302,7 +304,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
 			return
 		}
-		h.logger.Error("failed to resolve tenant from host", "error", err, "host", r.Host)
+		h.logger.ErrorContext(ctx, "failed to resolve tenant from host", "error", err, "host", r.Host)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -325,7 +327,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 
 	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
 	if err != nil {
-		h.logger.Error("failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -342,7 +344,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "image not found", http.StatusNotFound)
 			return
 		}
-		h.logger.Error("failed to load label image metadata", "error", err, "media_id", mediaID.String())
+		h.logger.ErrorContext(ctx, "failed to load label image metadata", "error", err, "media_id", mediaID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -358,10 +360,16 @@ func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (d
 	candidates := requestmeta.HostCandidatesFromRequest(r)
 	tenant, err := h.resolverQuerier.GetTenantByDomains(ctx, candidates)
 	if err == nil {
+		tracing.SetTenant(ctx, tenant.PublicID)
 		return tenant, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return dbmodels.Tenant{}, err
 	}
-	return h.resolverQuerier.GetAdminTenantByDomains(ctx, candidates)
+	tenant, err = h.resolverQuerier.GetAdminTenantByDomains(ctx, candidates)
+	if err != nil {
+		return dbmodels.Tenant{}, err
+	}
+	tracing.SetTenant(ctx, tenant.PublicID)
+	return tenant, nil
 }

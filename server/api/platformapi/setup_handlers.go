@@ -22,7 +22,7 @@ func (s *platformServer) CheckSetupStatus(
 ) (*connect.Response[publirasplatformv1.CheckSetupStatusResponse], error) {
 	count, err := s.queriesFor(ctx).CountPlatformUsers(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to count platform users", err)
+		return nil, s.internalDBError(ctx, "failed to count platform users", err)
 	}
 	return connect.NewResponse(&publirasplatformv1.CheckSetupStatusResponse{
 		SetupCompleted: count > 0,
@@ -49,7 +49,7 @@ func (s *platformServer) CreateInitialUser(
 	// Fast-path: セットアップ済み確認
 	count, err := s.queriesFor(ctx).CountPlatformUsers(ctx)
 	if err != nil {
-		return nil, s.internalDBError("failed to count platform users", err)
+		return nil, s.internalDBError(ctx, "failed to count platform users", err)
 	}
 	if count > 0 {
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "already_setup")
@@ -64,7 +64,7 @@ func (s *platformServer) CreateInitialUser(
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, s.internalDBError("failed to begin initial user transaction", err)
+		return nil, s.internalDBError(ctx, "failed to begin initial user transaction", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
@@ -89,7 +89,7 @@ func (s *platformServer) CreateInitialUser(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
 		}
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "user_creation_failed")
-		return nil, s.internalDBError("failed to create initial platform user", err)
+		return nil, s.internalDBError(ctx, "failed to create initial platform user", err)
 	}
 	_, err = txq.CreatePlatformUserRole(ctx, dbmodels.CreatePlatformUserRoleParams{
 		ID:             uuid.Must(uuid.NewV7()),
@@ -102,12 +102,12 @@ func (s *platformServer) CreateInitialUser(
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("setup already completed"))
 		}
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "platform_role_creation_failed")
-		return nil, s.internalDBError("failed to create initial platform user role", err, "platform_user_id", userID.String())
+		return nil, s.internalDBError(ctx, "failed to create initial platform user role", err, "platform_user_id", userID.String())
 	}
 
 	if err := tx.Commit(); err != nil {
 		auth.AuditEvent(req.Header(), "platform_initial_setup", "failure", "", "", "transaction_commit_failed")
-		return nil, s.internalDBError("failed to commit initial user transaction", err, "platform_user_id", userID.String())
+		return nil, s.internalDBError(ctx, "failed to commit initial user transaction", err, "platform_user_id", userID.String())
 	}
 
 	auth.AuditEvent(req.Header(), "platform_initial_setup", "success", "", user.PublicID, "")

@@ -33,7 +33,7 @@ func (s *platformServer) UpdatePlatformSettings(
 
 	updated, err := s.queriesFor(ctx).UpsertPlatformDefaultTimezone(ctx, timezone)
 	if err != nil {
-		return nil, s.internalDBError("failed to update platform default timezone", err)
+		return nil, s.internalDBError(ctx, "failed to update platform default timezone", err)
 	}
 
 	if actor, ok := platformActorFromContext(ctx); ok {

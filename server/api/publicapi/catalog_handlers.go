@@ -340,7 +340,7 @@ func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 
 	rows, err := s.queriesFor(ctx).ListSeriesImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, s.internalDBError("failed to list series image variants", err, "image_count", len(imageIDs))
+		return nil, s.internalDBError(ctx, "failed to list series image variants", err, "image_count", len(imageIDs))
 	}
 
 	byImageID := make(map[uuid.UUID][]dbmodels.ListSeriesImageVariantsByImageIDsRow, len(imageIDs))
@@ -456,7 +456,7 @@ func (s *apiServer) ListPublishedLabels(
 
 	rows, err := s.labelPage(ctx, tenant.ID, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list published labels", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list published labels", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
@@ -542,12 +542,12 @@ func (s *apiServer) ListPublishedSeries(
 	// One id past the page: its presence is what says another page exists.
 	ids, err := s.activeSeriesPageIDs(ctx, tenant.ID, order, descending, keys, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list published series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
 	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, ids)
 	if err != nil {
-		return nil, s.internalDBError("failed to list published series", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
 	items, err := s.publishedSeriesItems(ctx, rows)
 	if err != nil {
@@ -590,7 +590,7 @@ func (s *apiServer) GetSeriesDetail(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("series not found"))
 		}
-		return nil, s.internalDBError("failed to get series detail", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get series detail", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
 	}
 	if !row.IsPublished || !row.PublishedAt.Valid || row.PublishedAt.Time.After(time.Now()) {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("series is not published"))
@@ -685,7 +685,7 @@ func (s *apiServer) GetEpisodeDetail(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("episode not found"))
 		}
-		return nil, s.internalDBError("failed to get episode detail", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
+		return nil, s.internalDBError(ctx, "failed to get episode detail", err, "tenant_id", tenant.ID.String(), "public_id", req.Msg.PublicId)
 	}
 
 	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
@@ -713,7 +713,7 @@ func (s *apiServer) GetEpisodeDetail(
 				EpisodeID: row.ID,
 			})
 			if accessErr != nil {
-				return nil, s.internalDBError("failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+				return nil, s.internalDBError(ctx, "failed to check episode content access", accessErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 			}
 			if hasAccess.Valid && hasAccess.Bool {
 				access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
@@ -731,7 +731,7 @@ func (s *apiServer) GetEpisodeDetail(
 	if includeImages {
 		images, listErr := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
 		if listErr != nil {
-			return nil, s.internalDBError("failed to list episode images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
+			return nil, s.internalDBError(ctx, "failed to list episode images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.Msg.PublicId)
 		}
 		res.Msg.Images = make([]*publirattypesv1.EpisodeImage, 0, len(images))
 		for _, image := range images {
@@ -753,7 +753,7 @@ func (s *apiServer) labelEyeCatchVariantsByImageIDs(
 
 	rows, err := s.queriesFor(ctx).ListLabelImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, s.internalDBError("failed to list label image variants", err, "image_count", len(imageIDs))
+		return nil, s.internalDBError(ctx, "failed to list label image variants", err, "image_count", len(imageIDs))
 	}
 
 	byImageID := make(map[uuid.UUID][]dbmodels.ListLabelImageVariantsByImageIDsRow, len(imageIDs))

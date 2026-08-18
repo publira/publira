@@ -190,7 +190,7 @@ func (s *platformServer) ListAuditLogs(
 
 	rows, err := s.platformAuditLogPage(ctx, filters, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError("failed to list platform audit logs", err, "platform_user_id", actorUser.ID.String())
+		return nil, s.internalDBError(ctx, "failed to list platform audit logs", err, "platform_user_id", actorUser.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 

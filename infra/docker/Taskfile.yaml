@@ -27,17 +27,19 @@ tasks:
           .
 
   build:api:
-    desc: Build a long-running Go API image (CMD_NAME required; PORT optional, default 8000)
+    desc: Build a long-running Go API image (CMD_NAME required; PORT and VERSION optional)
     requires:
       vars: [CMD_NAME]
     vars:
       PORT: '{{.PORT | default "8000"}}'
+      VERSION: '{{.VERSION | default "dev"}}'
     cmds:
       - |
         docker build \
           -f infra/docker/api/Dockerfile \
           --build-arg "CMD_NAME={{.CMD_NAME}}" \
           --build-arg "PORT={{.PORT}}" \
+          --build-arg "VERSION={{.VERSION}}" \
           -t "publira/{{.CMD_NAME}}:local" \
           .
 
@@ -57,14 +59,17 @@ tasks:
           .
 
   build:batch:
-    desc: Build a one-shot Go batch image (CMD_NAME required)
+    desc: Build a one-shot Go batch image (CMD_NAME required; VERSION optional)
     requires:
       vars: [CMD_NAME]
+    vars:
+      VERSION: '{{.VERSION | default "dev"}}'
     cmds:
       - |
         docker build \
           -f infra/docker/batch/Dockerfile \
           --build-arg "CMD_NAME={{.CMD_NAME}}" \
+          --build-arg "VERSION={{.VERSION}}" \
           -t "publira/{{.CMD_NAME}}:local" \
           .
 
