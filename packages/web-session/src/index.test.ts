@@ -9,6 +9,13 @@ import {
 
 const SECRET = "test-secret-value-that-is-long-enough-000000";
 
+// Fixed points rather than an offset from the host clock: the JWE carries the
+// expiry as an opaque string, and `isSessionExpired` takes `now` explicitly.
+// NOW_MS is 2027-01-15T08:00:00.000Z in epoch milliseconds.
+const NOW_MS = 1_800_000_000_000;
+const PAST = "2027-01-15T07:59:59.000Z";
+const FUTURE = "2027-01-15T08:01:00.000Z";
+
 // No argument means "not set at all", which is the case the removed hardcoded
 // fallback used to swallow.
 const setSecret = (value?: string) => {
@@ -23,7 +30,7 @@ describe("web-session", () => {
   it("encrypts and decrypts a payload", async () => {
     const payload = {
       accessToken: "token-abc",
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      expiresAt: FUTURE,
       tenantId: "TENANT001",
     };
 
@@ -36,7 +43,7 @@ describe("web-session", () => {
   it("rejects a secret too short to key A256GCM", async () => {
     const payload = {
       accessToken: "token-abc",
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      expiresAt: FUTURE,
     };
     const sealed = await encryptSessionPayload(payload, SECRET);
 
@@ -50,12 +57,8 @@ describe("web-session", () => {
   });
 
   it("detects expired sessions", () => {
-    expect(isSessionExpired(new Date(Date.now() - 1000).toISOString())).toBe(
-      true
-    );
-    expect(isSessionExpired(new Date(Date.now() + 60_000).toISOString())).toBe(
-      false
-    );
+    expect(isSessionExpired(PAST, NOW_MS)).toBe(true);
+    expect(isSessionExpired(FUTURE, NOW_MS)).toBe(false);
   });
 
   describe("resolveAuthSecret", () => {
