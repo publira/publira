@@ -7,7 +7,7 @@ import { updateTag } from "next/cache";
 import { z } from "zod";
 
 import { requestAdminEmailChange } from "#lib/admin-auth";
-import { requireAdminSession, withAdminSessionReauth } from "#lib/auth-session";
+import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   sendTenantSmtpTestEmail,
   updateTenantEmailSettings,
@@ -416,8 +416,6 @@ export const requestEmailChangeAction = async (
       ok: false,
     };
   }
-
-  await requireAdminSession();
 
   const result = await withAdminSessionReauth(() =>
     requestAdminEmailChange(tenantId, currentEmail, newEmail, currentPassword)

@@ -108,6 +108,7 @@ describe("web-admin auth-session", () => {
   });
 
   it("withAdminSessionReauth は成功値をそのまま返す", async () => {
+    mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
     await expect(
@@ -117,6 +118,7 @@ describe("web-admin auth-session", () => {
   });
 
   it("withAdminSessionReauth は Unauthenticated のときだけ再ログインへ送る", async () => {
+    mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
     await expect(
@@ -130,6 +132,7 @@ describe("web-admin auth-session", () => {
   });
 
   it("withAdminSessionReauth はビジネスエラーを再認証扱いにしない", async () => {
+    mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
     // A wrong current password reaches the client as invalid_argument (#679);
@@ -145,11 +148,26 @@ describe("web-admin auth-session", () => {
   });
 
   it("withAdminSessionReauth は RPC 以外の失敗も伝播する", async () => {
+    mockGetAccessToken.mockResolvedValue("session-token");
     const { withAdminSessionReauth } = await importAuthSession();
 
     await expect(
       withAdminSessionReauth(() => Promise.reject(new Error("boom")))
     ).rejects.toThrow("boom");
     expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("withAdminSessionReauth は Cookie が無ければ RPC を呼ばずに再ログインへ送る", async () => {
+    // A missing cookie never reaches the API, so the mutation would answer with
+    // the form error this flow replaces instead of throwing Unauthenticated.
+    mockGetAccessToken.mockResolvedValue("");
+    const run = vi.fn();
+    const { withAdminSessionReauth } = await importAuthSession();
+
+    await expect(withAdminSessionReauth(run)).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(run).not.toHaveBeenCalled();
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/login?next=%2Fseries%3Ftoken%3Dabc&reason=session_revoked"
+    );
   });
 });

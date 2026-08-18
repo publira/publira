@@ -88,16 +88,24 @@ export const requireAdminSession = async (): Promise<string> => {
 };
 
 /**
- * Run an authenticated call, turning the API's rejection of the session into the
- * re-authentication flow.
+ * Run an authenticated call, turning a session the API rejects — or one that is
+ * already gone locally — into the re-authentication flow.
  *
- * Only `Code.Unauthenticated` qualifies. Everything else — a wrong password, a
- * validation failure, an outage — propagates unchanged, so a business error is
- * never mistaken for a lost session (Epic #65 / #679).
+ * The token is resolved first because a missing cookie never reaches the API: a
+ * `lib/` mutation that finds no token returns "セッションが無効です。再ログイン
+ * してください。" as an Action state, which is the form error this flow exists to
+ * replace. `requireAdminSession()` raises the redirect instead.
+ *
+ * Of the API's own rejections only `Code.Unauthenticated` qualifies. Everything
+ * else — a wrong password, a validation failure, an outage — propagates
+ * unchanged, so a business error is never mistaken for a lost session
+ * (Epic #65 / #679).
  */
 export const withAdminSessionReauth = async <T>(
   run: () => Promise<T>
 ): Promise<T> => {
+  await requireAdminSession();
+
   try {
     return await run();
   } catch (error) {
