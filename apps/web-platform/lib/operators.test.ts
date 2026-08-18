@@ -118,6 +118,7 @@ describe("listPlatformOperators", () => {
       ok: false,
       operators: [],
       previousToken: "",
+      requiresSignIn: true,
     });
     expect(mockListOperators).not.toHaveBeenCalled();
   });
@@ -134,6 +135,7 @@ describe("listPlatformOperators", () => {
       ok: false,
       operators: [],
       previousToken: "",
+      requiresSignIn: false,
     });
   });
 

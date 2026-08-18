@@ -6,6 +6,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { isUnauthenticatedError } from "./auth-shared";
 
 export interface PlatformAuditLogSummary {
   action: string;
@@ -33,7 +34,12 @@ export interface ListPlatformAuditLogsInput {
 
 export type ListPlatformAuditLogsResult =
   | { ok: true; auditLogs: PlatformAuditLogSummary[] }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 export const listPlatformAuditLogs = async (
   input: ListPlatformAuditLogsInput
@@ -45,6 +51,7 @@ export const listPlatformAuditLogs = async (
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -95,6 +102,7 @@ export const listPlatformAuditLogs = async (
         "監査ログの取得に失敗しました。時間をおいて再試行してください。"
       ),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

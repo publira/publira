@@ -20,10 +20,23 @@
 
 - `proxy.ts` で `PUBLIC_PATHS`（`/login`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`）に含まれないパスを保護対象にする
 - `/logout` は廃止済み。GET / POST とも 404 を返し、セッション Cookie は変更しない。ログアウトはヘッダーの Server Action のみ
-- セッション Cookie: `publira_platform_session`
+- セッション Cookie: `publira_web_platform_auth`
 - 初期ロール定義: `platform_owner`, `platform_operator`, `platform_auditor`
 - 画面ガードは `(protected)/layout.tsx` で行う
-- 認証 API 連携は後続 Issue で実装し、現状は骨格定義を優先する
+
+### セッション失効時の再認証 (#607)
+
+方針の正は Epic [#65](https://github.com/publira/publira/issues/65)。web-admin ([#605](https://github.com/publira/publira/issues/605)) と同じ形をこのアプリにも入れています。
+
+| 失効の入口 | 経路 |
+| --- | --- |
+| Cookie 欠落 / 復号失敗 / 期限切れ | `proxy.ts` が Cookie を削除し `buildLoginUrl` で `/login?next=` へ |
+| 画面が待つ読み取りが `Unauthenticated` | 読み取りが `requiresSignIn` を値で返し、キャッシュ外で `redirectToLoginIfSessionRejected()` が redirect |
+| Server Action の RPC が `Unauthenticated` | `lib/` の mutation が throw し、`withPlatformSessionReauth()` が redirect |
+
+- 戻り先は `proxy.ts` が保護ルートのリクエストに載せる `x-publira-return-to` を `lib/auth-session.ts` が読み直します。ページもレイアウトも Server Action も自分が処理している URL を読めないため、クエリ文字列ごと 1 か所で決めています。
+- レンダリング中は Cookie を消せない（`cookies().delete()` は Server Function / Route Handler 専用）ので、redirect に `reason=session_revoked` を付け、続く `/login` のリクエストで proxy が Cookie を落とします。このマーカーが無いと、他端末での `credentials_version` 更新で失効した Cookie が復号でき期限内のまま残り、保護ルート → redirect → 保護ルートのループになります。同じマーカーがログイン画面のフラッシュ文言にもなります。
+- 再認証扱いにするのは Connect の `Unauthenticated` だけです。現在のパスワード誤りのようなビジネスエラーはフォームのメッセージのままで、ログアウトさせません。
 
 ### 共通レイアウト (アプリシェル)
 

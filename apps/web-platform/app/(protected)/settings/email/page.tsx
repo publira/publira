@@ -9,6 +9,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformEmailSettings } from "#lib/email-settings";
 import type { PlatformSmtpSettings } from "#lib/email-settings";
 
@@ -35,6 +36,8 @@ const emptySettings: PlatformSmtpSettings = {
 
 const PlatformEmailSettingsPage = async () => {
   const settingsResult = await getPlatformEmailSettings();
+
+  await redirectToLoginIfSessionRejected(settingsResult);
 
   const initialSettings = settingsResult.ok
     ? settingsResult.settings

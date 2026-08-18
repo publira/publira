@@ -104,6 +104,7 @@ describe("getPlatformDashboardSummary", () => {
     await expect(getPlatformDashboardSummary()).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
 
     expect(mockGetDashboardSummary).not.toHaveBeenCalled();
@@ -118,6 +119,7 @@ describe("getPlatformDashboardSummary", () => {
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
+      requiresSignIn: false,
     });
   });
 

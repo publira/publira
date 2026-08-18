@@ -9,6 +9,10 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 
 export interface PlatformEndUserSummary {
   createdAt: string;
@@ -38,7 +42,12 @@ export interface ListPlatformEndUsersInput {
 
 export type ListPlatformEndUsersResult =
   | { ok: true; users: PlatformEndUserSummary[] }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 const genericErrorMessage =
   "処理に失敗しました。時間をおいて再試行してください。";
@@ -129,6 +138,7 @@ export const listPlatformEndUsers = async (
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -155,6 +165,7 @@ export const listPlatformEndUsers = async (
     return {
       message: rpcErrorMessage(error, listErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -169,6 +180,8 @@ export type SearchPlatformTenantFilterOptionsResult =
       hasMore: false;
       message: string;
       ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
       tenants: [];
     };
 
@@ -188,6 +201,7 @@ export const searchPlatformTenantFilterOptions = async (
       hasMore: false,
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
       tenants: [],
     };
   }
@@ -241,6 +255,7 @@ export const searchPlatformTenantFilterOptions = async (
       hasMore: false,
       message: rpcErrorMessage(error, tenantFilterSearchErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       tenants: [],
     };
   }
@@ -248,7 +263,12 @@ export const searchPlatformTenantFilterOptions = async (
 
 export type GetPlatformEndUserResult =
   | { ok: true; user: PlatformEndUserSummary | null }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 export const getPlatformEndUser = async (
   publicId: string
@@ -265,6 +285,7 @@ export const getPlatformEndUser = async (
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -285,6 +306,7 @@ export const getPlatformEndUser = async (
         "ユーザー情報の取得に失敗しました。時間をおいて再試行してください。"
       ),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -309,6 +331,7 @@ export const suspendPlatformEndUser = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -334,6 +357,7 @@ export const unsuspendPlatformEndUser = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -362,6 +386,7 @@ export const deletePlatformEndUser = async (
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: genericErrorMessage, ok: false };
   }

@@ -27,6 +27,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { getPlatformTenant } from "#lib/tenants";
@@ -87,15 +88,20 @@ const TenantDetailContent = async ({
 }: Pick<TenantDetailPageProps, "params">) => {
   const { tenant_id: tenantId } = await params;
 
-  const [tenant, timeZone] = await Promise.all([
+  const [tenantResult, timeZone] = await Promise.all([
     getPlatformTenant(tenantId),
     getPlatformDisplayTimeZone(),
   ]);
 
-  if (!tenant) {
+  // Before `notFound()`: a rejected session reads every record as missing, and
+  // a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(tenantResult);
+
+  if (!(tenantResult.ok && tenantResult.tenant)) {
     notFound();
   }
 
+  const { tenant } = tenantResult;
   const tenantStatusLabel = getTenantStatusLabel(tenant.status);
   const tenantStatusTone = getTenantStatusTone(tenant.status);
 

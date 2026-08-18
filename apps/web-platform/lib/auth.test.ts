@@ -108,9 +108,12 @@ describe("getPlatformCurrentOperator", () => {
 
     const result = await getPlatformCurrentOperator();
     expect(result).toEqual({
-      name: "Admin",
-      publicId: "usr_1",
-      role: "platform_super_admin",
+      ok: true,
+      operator: {
+        name: "Admin",
+        publicId: "usr_1",
+        role: "platform_super_admin",
+      },
     });
     expect(mockGetMe).toHaveBeenCalledWith(
       {},
@@ -125,31 +128,36 @@ describe("getPlatformCurrentOperator", () => {
 
     const result = await getPlatformCurrentOperator();
     expect(result).toEqual({
-      name: "Admin",
-      publicId: "usr_1",
-      role: "super-admin",
+      ok: true,
+      operator: { name: "Admin", publicId: "usr_1", role: "super-admin" },
     });
   });
 
-  it("セッションが解決できない場合は null を返す (API を呼ばない)", async () => {
+  it("セッションが解決できない場合は再ログインを求める (API を呼ばない)", async () => {
     mockResolveSessionId.mockResolvedValueOnce("");
 
     const result = await getPlatformCurrentOperator();
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, requiresSignIn: true });
     expect(mockGetMe).not.toHaveBeenCalled();
   });
 
-  it("API がユーザーを返さない場合は null を返す", async () => {
+  it("API がユーザーを返さない場合は再ログインを求めない", async () => {
     mockGetMe.mockResolvedValueOnce({});
 
-    await expect(getPlatformCurrentOperator()).resolves.toBeNull();
+    await expect(getPlatformCurrentOperator()).resolves.toEqual({
+      ok: false,
+      requiresSignIn: false,
+    });
   });
 
-  it("セッション無効 (Unauthenticated エラー) は null を返す", async () => {
+  it("セッション無効 (Unauthenticated エラー) は再ログインを求める", async () => {
     mockGetMe.mockRejectedValueOnce(
       new ConnectError("invalid session", Code.Unauthenticated)
     );
 
-    await expect(getPlatformCurrentOperator()).resolves.toBeNull();
+    await expect(getPlatformCurrentOperator()).resolves.toEqual({
+      ok: false,
+      requiresSignIn: true,
+    });
   });
 });

@@ -11,9 +11,11 @@ import { loginAction } from "../_lib/actions";
 export const LoginForm = ({
   nextPath,
   resetDone,
+  sessionRevoked,
 }: {
   nextPath?: string;
   resetDone?: boolean;
+  sessionRevoked?: boolean;
 }) => (
   <>
     <ActionForm
@@ -56,6 +58,12 @@ export const LoginForm = ({
           />
         </FieldContent>
       </Field>
+
+      {sessionRevoked ? (
+        <FormMessage variant="destructive">
+          セッションの有効期限が切れました。もう一度ログインしてください。
+        </FormMessage>
+      ) : null}
 
       {resetDone ? (
         <FormMessage variant="success">

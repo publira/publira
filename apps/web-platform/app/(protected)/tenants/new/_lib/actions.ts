@@ -6,6 +6,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { withPlatformSessionReauth } from "#lib/auth-session";
 import {
   commaOrNewlineStringListFormSchema,
   optionalTrimmedString,
@@ -39,7 +40,9 @@ export const createTenantAction = async (
     };
   }
 
-  const result = await createPlatformTenant(parsed.data);
+  const result = await withPlatformSessionReauth(() =>
+    createPlatformTenant(parsed.data)
+  );
 
   if (!result.ok) {
     return { message: result.message, ok: false };

@@ -17,6 +17,10 @@ import {
   resolveAccessToken,
 } from "./api-client";
 import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
+import {
   notificationDisplay,
   parseNotificationPayload,
 } from "./notification-copy";
@@ -107,6 +111,7 @@ const readNotificationList = async (
       notifications: [],
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
       unexpected: false,
     };
   }
@@ -137,6 +142,7 @@ const readNotificationList = async (
       notifications: [],
       ok: false,
       previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
       unexpected: isUnexpectedError(error),
     };
   }
@@ -152,6 +158,7 @@ const readUnreadNotificationCount =
       return {
         message: sessionErrorMessage,
         ok: false,
+        requiresSignIn: true,
         unexpected: false,
         unreadCount: 0,
       };
@@ -173,6 +180,7 @@ const readUnreadNotificationCount =
       return {
         message: mapErrorMessage(error, countErrorMessage),
         ok: false,
+        requiresSignIn: isUnauthenticatedError(error),
         unexpected: isUnexpectedError(error),
         unreadCount: 0,
       };
@@ -226,6 +234,7 @@ export const markNotificationAsRead = async (input: {
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, markReadErrorMessage),
@@ -255,6 +264,7 @@ export const markAllNotificationsAsRead = async (): Promise<
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, markAllReadErrorMessage),

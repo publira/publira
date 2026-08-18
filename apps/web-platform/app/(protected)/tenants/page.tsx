@@ -36,6 +36,7 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import { getTenantStatusLabel, getTenantStatusTone } from "#lib/tenant-labels";
 import { listPlatformTenants } from "#lib/tenants";
@@ -94,6 +95,8 @@ const TenantsContent = async ({
     }),
     getPlatformDisplayTimeZone(),
   ]);
+
+  await redirectToLoginIfSessionRejected(result);
 
   const previousHref = result.previousToken
     ? buildTenantsPath({

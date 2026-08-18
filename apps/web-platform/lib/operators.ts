@@ -7,6 +7,10 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 import { normalizePlatformRole } from "./roles";
 
 const getPlatformOperatorInputSchema = z.object({
@@ -53,6 +57,8 @@ export type ListPlatformOperatorsResult =
       ok: false;
       operators: PlatformOperatorSummary[];
       previousToken: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
     };
 
 const mapOperator = (operator: {
@@ -84,6 +90,7 @@ export const listPlatformOperators = async (
       ok: false,
       operators: [],
       previousToken: "",
+      requiresSignIn: true,
     };
   }
 
@@ -112,6 +119,7 @@ export const listPlatformOperators = async (
       ok: false,
       operators: [],
       previousToken: "",
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -134,6 +142,7 @@ export const createPlatformOperator = async (
     );
     return { ok: true, publicId: response.operator?.publicId };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(error, genericErrorMessage, {
@@ -161,6 +170,7 @@ export const suspendPlatformOperator = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -183,6 +193,7 @@ export const unsuspendPlatformOperator = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }
@@ -246,6 +257,7 @@ export const updatePlatformOperatorRole = async (
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: rpcErrorMessage(error, genericErrorMessage), ok: false };
   }
@@ -265,6 +277,7 @@ export const deactivatePlatformOperator = async (
     );
     return true;
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return false;
   }

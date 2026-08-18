@@ -5,6 +5,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
+import { withPlatformSessionReauth } from "#lib/auth-session";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -33,7 +34,9 @@ export const markNotificationAsReadAction = async (
     };
   }
 
-  const result = await markNotificationAsRead(parsed.data);
+  const result = await withPlatformSessionReauth(() =>
+    markNotificationAsRead(parsed.data)
+  );
   if (!result.ok) {
     return {
       message: result.message,
@@ -52,7 +55,9 @@ export const markAllNotificationsAsReadAction = async (
   _prevState: MarkNotificationActionState,
   _formData: FormData
 ): Promise<MarkNotificationActionState> => {
-  const result = await markAllNotificationsAsRead();
+  const result = await withPlatformSessionReauth(() =>
+    markAllNotificationsAsRead()
+  );
   if (!result.ok) {
     return {
       message: result.message,

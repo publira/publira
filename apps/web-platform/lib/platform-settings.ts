@@ -12,10 +12,25 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 
 export type GetPlatformSettingsResult =
   | { defaultTimezone: string; ok: true }
-  | { defaultTimezone: string; message: string; ok: false };
+  | {
+      defaultTimezone: string;
+      message: string;
+      ok: false;
+      /**
+       * The API rejected the session — the settings screen raises the login
+       * redirect. {@link getPlatformDisplayTimeZone} ignores it on purpose: a
+       * date rendered in the fallback zone is not worth interrupting a page
+       * whose own read will report the same rejection.
+       */
+      requiresSignIn: boolean;
+    };
 
 export type UpdatePlatformDefaultTimezoneResult =
   | { defaultTimezone: string; ok: true }
@@ -57,6 +72,7 @@ export const getPlatformSettings =
         defaultTimezone: DEFAULT_TIME_ZONE,
         message: sessionErrorMessage,
         ok: false,
+        requiresSignIn: true,
       };
     }
 
@@ -85,6 +101,7 @@ export const getPlatformSettings =
         defaultTimezone: DEFAULT_TIME_ZONE,
         message: parseErrorMessage(error, genericLoadErrorMessage),
         ok: false,
+        requiresSignIn: isUnauthenticatedError(error),
       };
     }
   };
@@ -120,6 +137,7 @@ export const updatePlatformDefaultTimezone = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: parseErrorMessage(error, genericUpdateErrorMessage),

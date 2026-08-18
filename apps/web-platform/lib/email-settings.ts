@@ -9,6 +9,10 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./auth-shared";
 import type { PlatformSmtpSettings } from "./email-settings-shared";
 
 export {
@@ -45,7 +49,16 @@ export interface SendPlatformSmtpTestInput {
 
 export type PlatformSmtpSettingsResult =
   | { ok: true; settings: PlatformSmtpSettings }
-  | { message: string; ok: false };
+  | {
+      message: string;
+      ok: false;
+      /**
+       * The API rejected the session while reading the settings — the page
+       * raises the login redirect. The update path throws instead, so only
+       * {@link getPlatformEmailSettings} ever sets it.
+       */
+      requiresSignIn?: boolean;
+    };
 
 export type PlatformSmtpTestResult =
   | { ok: true; recipientEmail: string }
@@ -96,7 +109,7 @@ export const getPlatformEmailSettings =
 
     const sessionId = await resolveAccessToken();
     if (!sessionId) {
-      return { message: sessionErrorMessage, ok: false };
+      return { message: sessionErrorMessage, ok: false, requiresSignIn: true };
     }
 
     try {
@@ -107,7 +120,11 @@ export const getPlatformEmailSettings =
       return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
     } catch (error) {
       rethrowUnclassifiedRpcError(error);
-      return { message: parseErrorMessage(error), ok: false };
+      return {
+        message: parseErrorMessage(error),
+        ok: false,
+        requiresSignIn: isUnauthenticatedError(error),
+      };
     }
   };
 
@@ -136,6 +153,7 @@ export const updatePlatformEmailSettings = async (
 
     return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }
@@ -168,6 +186,7 @@ export const sendPlatformSmtpTestEmail = async (
 
     return { ok: true, recipientEmail: response.recipientEmail };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return { message: parseErrorMessage(error), ok: false };
   }

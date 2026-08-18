@@ -200,6 +200,7 @@ describe("listPlatformTenants", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
       tenants: [],
     });
 
@@ -217,6 +218,7 @@ describe("listPlatformTenants", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: false,
       tenants: [],
     });
   });
@@ -394,12 +396,15 @@ describe("createPlatformTenant", () => {
     });
 
     await expect(getPlatformTenant("tenant_seifuu")).resolves.toEqual({
-      adminDomain: "admin.example.com",
-      createdAt: "2026-03-01T10:00:00Z",
-      domain: "example.com",
-      name: "青楓出版",
-      publicId: "tenant_seifuu",
-      status: "active",
+      ok: true,
+      tenant: {
+        adminDomain: "admin.example.com",
+        createdAt: "2026-03-01T10:00:00Z",
+        domain: "example.com",
+        name: "青楓出版",
+        publicId: "tenant_seifuu",
+        status: "active",
+      },
     });
 
     expect(mockGetTenant).toHaveBeenCalledWith(
@@ -604,6 +609,7 @@ describe("tenant admin invitations", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
     });
 
     expect(mockListTenantAdminInvitations).not.toHaveBeenCalled();
@@ -623,6 +629,7 @@ describe("tenant admin invitations", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: false,
     });
   });
 

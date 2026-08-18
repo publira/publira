@@ -1,6 +1,7 @@
 import {
   isExpectedNullableRpcError,
   isRejectedRequestRpcError,
+  isUnauthenticatedRpcError,
 } from "@publira/api-client/errors";
 
 import {
@@ -20,6 +21,17 @@ export interface PlatformCurrentOperator {
   publicId: string;
   role: string;
 }
+
+/**
+ * The signed-in operator, or why they could not be read.
+ *
+ * `requiresSignIn` separates a session the API rejected from a `GetMe` that
+ * answered nothing useful. Both used to arrive as `null`, and only the first is
+ * a reason to send the operator through login again.
+ */
+export type GetPlatformCurrentOperatorResult =
+  | { ok: true; operator: PlatformCurrentOperator }
+  | { ok: false; requiresSignIn: boolean };
 
 export const loginPlatform = async (
   email: string,
@@ -55,27 +67,33 @@ export const logoutPlatform = async (accessToken: string): Promise<void> => {
 };
 
 export const getPlatformCurrentOperator =
-  async (): Promise<PlatformCurrentOperator | null> => {
+  async (): Promise<GetPlatformCurrentOperatorResult> => {
     "use cache: private";
 
     const sid = await resolveAccessToken();
     if (!sid) {
-      return null;
+      return { ok: false, requiresSignIn: true };
     }
     try {
       const response = await apiClient.auth.getMe({}, buildSessionHeaders(sid));
       const { user } = response;
       if (!user) {
-        return null;
+        return { ok: false, requiresSignIn: false };
       }
       return {
-        name: user.name,
-        publicId: user.publicId,
-        role: normalizePlatformRole(user.role),
+        ok: true,
+        operator: {
+          name: user.name,
+          publicId: user.publicId,
+          role: normalizePlatformRole(user.role),
+        },
       };
     } catch (error) {
+      if (isUnauthenticatedRpcError(error)) {
+        return { ok: false, requiresSignIn: true };
+      }
       if (isExpectedNullableRpcError(error)) {
-        return null;
+        return { ok: false, requiresSignIn: false };
       }
       throw error;
     }

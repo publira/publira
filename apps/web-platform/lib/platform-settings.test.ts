@@ -68,6 +68,7 @@ describe("platform-settings", () => {
       defaultTimezone: "Asia/Tokyo",
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
     expect(mockGetPlatformSettingsApi).not.toHaveBeenCalled();
   });

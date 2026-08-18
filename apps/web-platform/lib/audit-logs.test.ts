@@ -157,6 +157,7 @@ describe("listPlatformAuditLogs", () => {
     await expect(listPlatformAuditLogs({})).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
 
     expect(mockListAuditLogs).not.toHaveBeenCalled();
@@ -171,6 +172,7 @@ describe("listPlatformAuditLogs", () => {
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
+      requiresSignIn: false,
     });
   });
 

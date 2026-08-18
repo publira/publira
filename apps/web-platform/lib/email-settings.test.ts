@@ -73,6 +73,7 @@ describe("getPlatformEmailSettings", () => {
     await expect(getPlatformEmailSettings()).resolves.toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
 
     expect(mockGetPlatformEmailSettings).not.toHaveBeenCalled();

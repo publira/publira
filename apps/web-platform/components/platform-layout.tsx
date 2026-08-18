@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { getPlatformCurrentOperator } from "../lib/auth";
+import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
 import { logoutAction } from "../lib/logout-action";
 import { countUnreadNotifications } from "../lib/notification";
 import {
@@ -27,12 +28,16 @@ const platformGradient =
   "bg-[radial-gradient(circle_at_top_left,rgba(21,121,194,0.11),transparent_28%),radial-gradient(circle_at_top_right,rgba(24,149,118,0.11),transparent_30%),linear-gradient(180deg,rgba(248,252,255,0.82),rgba(240,247,250,0.96))]";
 
 export const PlatformUser = async () => {
-  const currentOperator = await getPlatformCurrentOperator();
-  if (!currentOperator) {
+  const result = await getPlatformCurrentOperator();
+  if (!result.ok) {
+    // The proxy let this request in on a cookie the API has since rejected, so
+    // the console asks for the session again — with the path to come back to,
+    // and the marker that makes the proxy drop the cookie.
+    await redirectToLoginIfSessionRejected(result);
     redirect("/login");
   }
 
-  return <ConsoleHeaderUser currentUser={currentOperator} />;
+  return <ConsoleHeaderUser currentUser={result.operator} />;
 };
 
 export const PlatformNotificationBell = async () => {

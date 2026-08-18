@@ -6,6 +6,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { isUnauthenticatedError } from "./auth-shared";
 
 export interface PlatformDashboardRecentEvent {
   action: string;
@@ -25,7 +26,12 @@ export interface PlatformDashboardSummary {
 
 export type GetPlatformDashboardSummaryResult =
   | { ok: true; summary: PlatformDashboardSummary }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 const normalizeRecentEventsLimit = (value?: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -45,6 +51,7 @@ export const getPlatformDashboardSummary = async (input?: {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -80,6 +87,7 @@ export const getPlatformDashboardSummary = async (input?: {
         "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。"
       ),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

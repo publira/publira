@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { emailFormSchema } from "#lib/auth-input";
+import { withPlatformSessionReauth } from "#lib/auth-session";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { createPlatformOperator } from "#lib/operators";
 
@@ -37,7 +38,9 @@ export const createOperatorAction = async (
     };
   }
 
-  const result = await createPlatformOperator(parsed.data);
+  const result = await withPlatformSessionReauth(() =>
+    createPlatformOperator(parsed.data)
+  );
 
   if (!result.ok) {
     return { message: result.message, ok: false };

@@ -15,6 +15,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 import {
   getPlatformTenant,
@@ -72,20 +73,27 @@ const TenantMembersContent = async ({
   const { tenant_id: tenantId } = await params;
   const invitationFilters = parseMemberInvitationFilters(await searchParams);
 
-  const [tenant, members, invitationsResult, timeZone] = await Promise.all([
-    getPlatformTenant(tenantId),
-    listPlatformTenantMembers(tenantId),
-    listPlatformTenantAdminInvitations({
-      limit: invitationPageSize,
-      tenantId,
-      token: invitationFilters.token || undefined,
-    }),
-    getPlatformDisplayTimeZone(),
-  ]);
+  const [tenantResult, members, invitationsResult, timeZone] =
+    await Promise.all([
+      getPlatformTenant(tenantId),
+      listPlatformTenantMembers(tenantId),
+      listPlatformTenantAdminInvitations({
+        limit: invitationPageSize,
+        tenantId,
+        token: invitationFilters.token || undefined,
+      }),
+      getPlatformDisplayTimeZone(),
+    ]);
 
-  if (!tenant) {
+  // Before `notFound()`: a rejected session reads every record as missing, and
+  // a 404 would hide that the operator only needs to sign in again.
+  await redirectToLoginIfSessionRejected(tenantResult, invitationsResult);
+
+  if (!(tenantResult.ok && tenantResult.tenant)) {
     notFound();
   }
+
+  const { tenant } = tenantResult;
 
   const previousHref = invitationsResult.previousToken
     ? buildMemberInvitationsPath(tenant.publicId, {

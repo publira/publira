@@ -9,6 +9,7 @@ import {
   PlatformPageHeading,
   PlatformPageTitle,
 } from "#components/platform-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformSettings } from "#lib/platform-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
@@ -21,6 +22,8 @@ export const metadata: Metadata = {
 
 const PlatformGeneralSettingsPage = async () => {
   const settingsResult = await getPlatformSettings();
+
+  await redirectToLoginIfSessionRejected(settingsResult);
 
   return (
     <PlatformPage>

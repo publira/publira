@@ -39,8 +39,10 @@ import {
   PlatformPageTitle,
 } from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { MAX_LIST_OFFSET } from "#lib/list-pagination";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
+import type { GetPlatformTenantResult } from "#lib/tenants";
 import { getPlatformTenant } from "#lib/tenants";
 import { getEndUserStatusLabel, getEndUserStatusTone } from "#lib/user-labels";
 import {
@@ -131,6 +133,12 @@ const emptyTenantSearch = {
   ok: true,
   tenants: [],
 } as const satisfies SearchPlatformTenantFilterOptionsResult;
+
+/** No tenant filter is selected, so there is no tenant to read. */
+const emptySelectedTenant = {
+  ok: true,
+  tenant: null,
+} as const satisfies GetPlatformTenantResult;
 
 const buildPaginationState = (
   result: ListPlatformEndUsersResult,
@@ -445,16 +453,19 @@ const UsersContent = async ({
 }: Pick<UsersPageProps, "searchParams">) => {
   const filters = parseUsersFilters(await searchParams);
 
-  const [tenantSearch, selectedTenant, timeZone] = await Promise.all([
+  const [tenantSearch, selectedTenantResult, timeZone] = await Promise.all([
     filters.tenantQuery
       ? searchPlatformTenantFilterOptions(filters.tenantQuery)
       : Promise.resolve(emptyTenantSearch),
     filters.tenantId
       ? getPlatformTenant(filters.tenantId)
-      : Promise.resolve(null),
+      : Promise.resolve(emptySelectedTenant),
     getPlatformDisplayTimeZone(),
   ]);
 
+  const selectedTenant = selectedTenantResult.ok
+    ? selectedTenantResult.tenant
+    : null;
   const tenantItems = buildTenantFilterItems({
     selectedName: selectedTenant?.name.trim() ?? "",
     tenantId: filters.tenantId,
@@ -489,6 +500,12 @@ const UsersContent = async ({
         status: filters.status || undefined,
         tenantId: tenantId || undefined,
       });
+
+  await redirectToLoginIfSessionRejected(
+    tenantSearch,
+    selectedTenantResult,
+    result
+  );
 
   const users = result.ok ? result.users : [];
   const hasFilter = Boolean(

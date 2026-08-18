@@ -5,11 +5,17 @@ const {
   mockLogoutPlatform,
   mockRedirect,
   mockResolveAccessToken,
+  mockUpdateTag,
 } = vi.hoisted(() => ({
   mockDeleteCookie: vi.fn(),
   mockLogoutPlatform: vi.fn(),
   mockRedirect: vi.fn(),
   mockResolveAccessToken: vi.fn(),
+  mockUpdateTag: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  updateTag: mockUpdateTag,
 }));
 
 vi.mock("next/headers", () => ({
@@ -27,7 +33,6 @@ vi.mock("./api-client", () => ({
 }));
 
 vi.mock("./auth", () => ({
-  PLATFORM_SESSION_COOKIE_NAME: "publira_web_platform_auth",
   logoutPlatform: mockLogoutPlatform,
 }));
 
@@ -46,6 +51,7 @@ describe("logoutAction", () => {
     expect(mockResolveAccessToken).toHaveBeenCalledOnce();
     expect(mockLogoutPlatform).toHaveBeenCalledWith("tok_abc");
     expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_platform_auth");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform-session-cookie");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 
@@ -57,6 +63,7 @@ describe("logoutAction", () => {
     await logoutAction();
 
     expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_platform_auth");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform-session-cookie");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 });
