@@ -8,6 +8,7 @@ import {
 
 describe("isReservedTopLevelSegment", () => {
   it("アプリ固定ルートを予約扱いする", () => {
+    expect(isReservedTopLevelSegment("search")).toBe(true);
     expect(isReservedTopLevelSegment("series")).toBe(true);
     expect(isReservedTopLevelSegment("announcements")).toBe(true);
     expect(isReservedTopLevelSegment("notifications")).toBe(true);
@@ -44,6 +45,7 @@ describe("getPublishedPageSlugFromPathname", () => {
   it("ルート・予約・不正文字は null", () => {
     expect(getPublishedPageSlugFromPathname("/")).toBeNull();
     expect(getPublishedPageSlugFromPathname("")).toBeNull();
+    expect(getPublishedPageSlugFromPathname("/search")).toBeNull();
     expect(getPublishedPageSlugFromPathname("/series")).toBeNull();
     expect(getPublishedPageSlugFromPathname("/series/abc")).toBeNull();
     expect(getPublishedPageSlugFromPathname("/Privacy")).toBe("privacy");
@@ -77,6 +79,9 @@ describe("buildTenantRewritePathname", () => {
     expect(
       buildTenantRewritePathname("tenant-1", "/series/abc/episodes/ep1")
     ).toBe("/tenant-1/series/abc/episodes/ep1");
+    expect(buildTenantRewritePathname("tenant-1", "/search")).toBe(
+      "/tenant-1/search"
+    );
     expect(buildTenantRewritePathname("tenant-1", "/login")).toBe(
       "/tenant-1/login"
     );
