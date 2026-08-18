@@ -134,6 +134,28 @@ export interface CreateEpisodeInput {
   publishAt?: Temporal.Instant;
 }
 
+export interface EpisodeFormFields {
+  title: Locator;
+  price: Locator;
+  readingPeriodHours: Locator;
+  publishAt: Locator;
+}
+
+/**
+ * Fields of the episode form on the page the router currently shows.
+ *
+ * Next.js keeps recently visited pages mounted inside a hidden `<Activity>`
+ * for its router bfcache, so the create form stays in the DOM while the edit
+ * page is on screen. Role locators skip elements that are hidden from the
+ * accessibility tree, which pins these to the page in front of the user.
+ */
+export const episodeFormFields = (page: Page): EpisodeFormFields => ({
+  price: page.getByRole("spinbutton", { name: /価格/u }),
+  publishAt: page.getByLabel(/publish_at/u).filter({ visible: true }),
+  readingPeriodHours: page.getByRole("spinbutton", { name: /閲覧可能期間/u }),
+  title: page.getByRole("textbox", { name: /タイトル/u }),
+});
+
 /**
  * Fill and submit the episode create form. Resolves after redirect to the
  * edit URL.
@@ -147,16 +169,13 @@ export const createEpisodeViaUi = async (
     page.getByRole("heading", { name: /エピソード/u }).first()
   ).toBeVisible();
 
-  await page.locator("#episode_title").fill(input.title);
-  await page.locator("#episode_price").fill(String(input.price ?? 0));
-  await page
-    .locator("#episode_reading_period_hours")
-    .fill(String(input.readingPeriodHours ?? 0));
+  const fields = episodeFormFields(page);
+  await fields.title.fill(input.title);
+  await fields.price.fill(String(input.price ?? 0));
+  await fields.readingPeriodHours.fill(String(input.readingPeriodHours ?? 0));
 
   if (input.publishAt) {
-    await page
-      .locator("#episode_publish_at")
-      .fill(toTokyoDateTimeLocal(input.publishAt));
+    await fields.publishAt.fill(toTokyoDateTimeLocal(input.publishAt));
   }
 
   await page.getByRole("button", { name: "エピソードを入稿" }).click();

@@ -39,6 +39,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { ActorFilterCombobox } from "./_components/actor-filter-combobox";
+import { AuditActionSelect } from "./_components/audit-action-select";
 import {
   AuditLogActionCell,
   AuditLogActorCell,
@@ -168,49 +169,26 @@ const AuditLogsContent = async ({
         <CardContent>
           <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Field>
-              <FieldLabel htmlFor="from">開始日</FieldLabel>
+              <FieldLabel>開始日</FieldLabel>
               <FieldContent>
-                <Input
-                  defaultValue={filters.from}
-                  id="from"
-                  name="from"
-                  type="date"
-                />
+                <Input defaultValue={filters.from} name="from" type="date" />
               </FieldContent>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="to">終了日</FieldLabel>
+              <FieldLabel>終了日</FieldLabel>
               <FieldContent>
-                <Input
-                  defaultValue={filters.to}
-                  id="to"
-                  name="to"
-                  type="date"
-                />
+                <Input defaultValue={filters.to} name="to" type="date" />
               </FieldContent>
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="action">アクション</FieldLabel>
-              <FieldContent>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs"
-                  defaultValue={filters.action}
-                  id="action"
-                  name="action"
-                >
-                  {auditActionOptions.map((option) => (
-                    <option key={option.value || "all"} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </FieldContent>
-            </Field>
+            <AuditActionSelect
+              defaultValue={filters.action}
+              options={auditActionOptions}
+            />
 
             <Field>
-              <FieldLabel htmlFor="actor">操作者</FieldLabel>
+              <FieldLabel>操作者</FieldLabel>
               <FieldContent>
                 <ActorFilterCombobox
                   defaultValue={filters.actor}

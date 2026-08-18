@@ -59,14 +59,11 @@ const LoginPageContent = async ({
         <input name="next" type="hidden" value={nextPath} />
 
         <Field>
-          <FieldLabel htmlFor="email" required>
-            メールアドレス
-          </FieldLabel>
+          <FieldLabel required>メールアドレス</FieldLabel>
           <FieldContent>
             <Input
               autoComplete="email"
               defaultValue={defaultEmail}
-              id="email"
               name="email"
               placeholder="admin@example.com"
               required
@@ -76,13 +73,10 @@ const LoginPageContent = async ({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="password" required>
-            パスワード
-          </FieldLabel>
+          <FieldLabel required>パスワード</FieldLabel>
           <FieldContent>
             <Input
               autoComplete="current-password"
-              id="password"
               name="password"
               placeholder="••••••••"
               required

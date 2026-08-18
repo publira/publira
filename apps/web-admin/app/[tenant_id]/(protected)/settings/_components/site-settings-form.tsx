@@ -102,10 +102,9 @@ export const SiteSettingsForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel htmlFor="copyright_text">Copyright 表示</FieldLabel>
+            <FieldLabel>Copyright 表示</FieldLabel>
             <FieldContent>
               <Input
-                id="copyright_text"
                 name="copyright_text"
                 onChange={handleCopyrightTextChange}
                 placeholder="例: Copyright © 2026 Acme Inc."
@@ -119,10 +118,9 @@ export const SiteSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="site_tagline">サイトの宣伝文句</FieldLabel>
+            <FieldLabel>サイトの宣伝文句</FieldLabel>
             <FieldContent>
               <Input
-                id="site_tagline"
                 name="site_tagline"
                 onChange={handleSiteTaglineChange}
                 placeholder="例: 静かに読む、持続可能に出版する"
@@ -136,10 +134,9 @@ export const SiteSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="site_description">サイト説明文</FieldLabel>
+            <FieldLabel>サイト説明文</FieldLabel>
             <FieldContent>
               <Textarea
-                id="site_description"
                 name="site_description"
                 onChange={handleSiteDescriptionChange}
                 placeholder="例: 作品の最新情報や更新告知をお届けします。"

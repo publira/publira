@@ -66,14 +66,11 @@ const ForgotPasswordPageContent = async ({
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         <Field>
-          <FieldLabel htmlFor="email" required>
-            メールアドレス
-          </FieldLabel>
+          <FieldLabel required>メールアドレス</FieldLabel>
           <FieldContent>
             <Input
               autoComplete="email"
               defaultValue={defaultEmail}
-              id="email"
               name="email"
               placeholder="admin@example.com"
               required

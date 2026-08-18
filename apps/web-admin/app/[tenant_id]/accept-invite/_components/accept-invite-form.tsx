@@ -44,28 +44,17 @@ export const AcceptInviteForm = ({
       ) : (
         <>
           <Field>
-            <FieldLabel htmlFor="name" required>
-              お名前
-            </FieldLabel>
+            <FieldLabel required>お名前</FieldLabel>
             <FieldContent>
-              <Input
-                id="name"
-                name="name"
-                placeholder="山田 太郎"
-                required
-                type="text"
-              />
+              <Input name="name" placeholder="山田 太郎" required type="text" />
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="password" required>
-              パスワード
-            </FieldLabel>
+            <FieldLabel required>パスワード</FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="new-password"
-                id="password"
                 name="password"
                 placeholder="••••••••"
                 required
@@ -75,13 +64,10 @@ export const AcceptInviteForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="confirm_password" required>
-              パスワード（確認）
-            </FieldLabel>
+            <FieldLabel required>パスワード（確認）</FieldLabel>
             <FieldContent>
               <Input
                 autoComplete="new-password"
-                id="confirm_password"
                 name="confirm_password"
                 placeholder="••••••••"
                 required

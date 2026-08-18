@@ -70,12 +70,11 @@ export const TenantTimezoneForm = ({
           <input name="timezone" type="hidden" value={timezone} />
 
           <Field>
-            <FieldLabel htmlFor="timezone">タイムゾーン</FieldLabel>
+            <FieldLabel>タイムゾーン</FieldLabel>
             <FieldContent>
               <Combobox
                 disabled={!canEdit}
                 emptyMessage="一致するタイムゾーンが見つかりません。"
-                id="timezone"
                 items={items}
                 onValueChange={setTimezone}
                 placeholder="例: Asia/Tokyo"

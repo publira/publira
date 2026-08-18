@@ -51,7 +51,7 @@ const IconImageField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor="creator_icon_image">著者アイコン画像</FieldLabel>
+      <FieldLabel>著者アイコン画像</FieldLabel>
       <FieldContent>
         {hasExistingIconImage && !clearIconImage ? (
           <Image
@@ -65,7 +65,6 @@ const IconImageField = ({
         ) : null}
         <Input
           accept="image/jpeg,image/png,image/webp"
-          id="creator_icon_image"
           name="icon_image"
           type="file"
         />
@@ -172,12 +171,9 @@ export const CreatorForm = ({
           />
 
           <Field>
-            <FieldLabel htmlFor="creator_name" required>
-              名前
-            </FieldLabel>
+            <FieldLabel required>名前</FieldLabel>
             <FieldContent>
               <Input
-                id="creator_name"
                 name="name"
                 onChange={handleNameChange}
                 placeholder="例: 太郎"
@@ -189,10 +185,9 @@ export const CreatorForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="creator_profile_text">プロフィール</FieldLabel>
+            <FieldLabel>プロフィール</FieldLabel>
             <FieldContent>
               <Textarea
-                id="creator_profile_text"
                 name="profile_text"
                 onChange={handleProfileTextChange}
                 placeholder="著者の紹介文を入力"

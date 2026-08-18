@@ -8,24 +8,21 @@ import { Input } from "@publira/ui-components/input";
 
 interface PublishAtInputProps {
   defaultValue?: string;
-  id?: string;
   name?: string;
   timeZone: string;
 }
 
 export const PublishAtInput = ({
   defaultValue,
-  id = "episode_publish_at",
   name = "publish_at",
   timeZone,
 }: PublishAtInputProps) => (
   <Field>
-    <FieldLabel htmlFor={id}>publish_at</FieldLabel>
+    <FieldLabel>publish_at</FieldLabel>
     <FieldContent>
       <input defaultValue="" name={name} type="hidden" />
       <Input
         defaultValue={defaultValue}
-        id={id}
         name={`${name}_local`}
         step={60}
         type="datetime-local"

@@ -84,10 +84,7 @@ const PasswordFieldSection = ({
   onStartPasswordEdit,
 }: PasswordFieldSectionProps) => (
   <Field>
-    <FieldLabel
-      htmlFor="password"
-      required={fieldsInteractive && isPasswordEditing}
-    >
+    <FieldLabel required={fieldsInteractive && isPasswordEditing}>
       パスワード
     </FieldLabel>
     <FieldContent>
@@ -114,7 +111,6 @@ const PasswordFieldSection = ({
           <Input
             autoComplete="new-password"
             disabled={!fieldsInteractive}
-            id="password"
             key="password-editable"
             name="password"
             required={fieldsInteractive && isPasswordEditing}
@@ -218,13 +214,10 @@ const SmtpTestDialog = ({
 
               {sendToSelf ? null : (
                 <Field>
-                  <FieldLabel htmlFor="recipient_email" required>
-                    送信先メールアドレス
-                  </FieldLabel>
+                  <FieldLabel required>送信先メールアドレス</FieldLabel>
                   <FieldContent>
                     <Input
                       form={formId}
-                      id="recipient_email"
                       name="recipient_email"
                       placeholder="recipient@example.com"
                       required={!sendToSelf}
@@ -276,6 +269,7 @@ export const TenantEmailSettingsForm = ({
 }: TenantEmailSettingsFormProps) => {
   const tenantId = useTenantId();
   const formId = useId();
+  const smtpOverrideId = useId();
   const [saveState, saveFormAction, isSaving] = useActionState(
     saveAction,
     null
@@ -358,7 +352,7 @@ export const TenantEmailSettingsForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel htmlFor="smtp_override_enabled">
+            <FieldLabel htmlFor={smtpOverrideId}>
               テナントSMTP上書きを有効にする
             </FieldLabel>
             <FieldContent>
@@ -366,7 +360,7 @@ export const TenantEmailSettingsForm = ({
                 <input
                   checked={smtpOverrideEnabled}
                   disabled={!canEdit}
-                  id="smtp_override_enabled"
+                  id={smtpOverrideId}
                   name="smtp_override_enabled"
                   onChange={handleOverrideChange}
                   type="checkbox"
@@ -380,14 +374,11 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="host" required={fieldsInteractive}>
-              ホスト
-            </FieldLabel>
+            <FieldLabel required={fieldsInteractive}>ホスト</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.host}
                 disabled={!fieldsInteractive}
-                id="host"
                 name="host"
                 placeholder="smtp.example.com"
                 required={fieldsInteractive}
@@ -397,14 +388,11 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="port" required={fieldsInteractive}>
-              ポート
-            </FieldLabel>
+            <FieldLabel required={fieldsInteractive}>ポート</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={String(initialSettings.port || 587)}
                 disabled={!fieldsInteractive}
-                id="port"
                 max={65_535}
                 min={1}
                 name="port"
@@ -415,14 +403,11 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="username" required={fieldsInteractive}>
-              ユーザー名
-            </FieldLabel>
+            <FieldLabel required={fieldsInteractive}>ユーザー名</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.username}
                 disabled={!fieldsInteractive}
-                id="username"
                 name="username"
                 required={fieldsInteractive}
                 type="text"
@@ -439,14 +424,11 @@ export const TenantEmailSettingsForm = ({
           />
 
           <Field>
-            <FieldLabel htmlFor="encryption" required={fieldsInteractive}>
-              暗号化方式
-            </FieldLabel>
+            <FieldLabel required={fieldsInteractive}>暗号化方式</FieldLabel>
             <FieldContent>
               <Select
                 defaultValue={initialSettings.encryption || "starttls"}
                 disabled={!fieldsInteractive}
-                id="encryption"
                 items={encryptionOptions}
                 name="encryption"
                 required={fieldsInteractive}
@@ -455,12 +437,11 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="from_name">送信者名（任意）</FieldLabel>
+            <FieldLabel>送信者名（任意）</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.fromName}
                 disabled={!fieldsInteractive}
-                id="from_name"
                 name="from_name"
                 placeholder={tenantName || "テナント名"}
                 type="text"
@@ -472,14 +453,13 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="from_address" required={fieldsInteractive}>
+            <FieldLabel required={fieldsInteractive}>
               送信者メールアドレス
             </FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.fromAddress}
                 disabled={!fieldsInteractive}
-                id="from_address"
                 name="from_address"
                 placeholder="noreply@example.com"
                 required={fieldsInteractive}
@@ -489,14 +469,11 @@ export const TenantEmailSettingsForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="reply_to">
-              返信先メールアドレス（任意）
-            </FieldLabel>
+            <FieldLabel>返信先メールアドレス（任意）</FieldLabel>
             <FieldContent>
               <Input
                 defaultValue={initialSettings.replyTo}
                 disabled={!fieldsInteractive}
-                id="reply_to"
                 name="reply_to"
                 placeholder="support@example.com"
                 type="email"

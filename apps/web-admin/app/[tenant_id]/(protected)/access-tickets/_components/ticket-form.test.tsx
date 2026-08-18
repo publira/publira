@@ -21,35 +21,36 @@ vi.mock("../_lib/actions", () => ({
   listEpisodeOptionsAction: vi.fn(),
 }));
 
-vi.mock("@publira/ui-components/combobox", () => ({
-  Combobox: ({
-    disabled,
-    id,
-    items,
-    onValueChange,
-    value,
-  }: {
-    disabled?: boolean;
-    id?: string;
-    items: { label: string; value: string }[];
-    onValueChange: (next: string) => void;
-    value: string;
-  }) => (
-    <select
-      disabled={disabled}
-      id={id}
-      onChange={(event) => onValueChange(event.target.value)}
-      value={value}
-    >
-      <option value="">未選択</option>
-      {items.map((item) => (
-        <option key={item.value} value={item.value}>
-          {item.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
+vi.mock("@publira/ui-components/combobox", async () => {
+  const { Input } = await import("@publira/ui-components/input");
+
+  return {
+    Combobox: ({
+      disabled,
+      items,
+      onValueChange,
+      value,
+    }: {
+      disabled?: boolean;
+      items: { label: string; value: string }[];
+      onValueChange: (next: string) => void;
+      value: string;
+    }) => (
+      <>
+        <Input
+          disabled={disabled}
+          onChange={(event) => onValueChange(event.target.value)}
+          value={value}
+        />
+        {items.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </>
+    ),
+  };
+});
 
 const mockListEpisodeOptionsAction = vi.mocked(listEpisodeOptionsAction);
 
@@ -58,9 +59,12 @@ const action = () => Promise.resolve({ message: "", ok: false });
 const seriesA = { publicId: "SERIES001", title: "シリーズA" };
 const seriesB = { publicId: "SERIES002", title: "シリーズB" };
 
-const selectSeries = (publicId: string) => {
-  fireEvent.change(screen.getByLabelText(/シリーズ/u), {
-    target: { value: publicId },
+const seriesCombobox = () => screen.getByLabelText(/シリーズ/u);
+const episodeCombobox = () => screen.getByLabelText(/^エピソード/u);
+
+const selectSeries = (item: { publicId: string; title: string }) => {
+  fireEvent.change(seriesCombobox(), {
+    target: { value: item.publicId },
   });
 };
 
@@ -78,8 +82,8 @@ describe("TicketForm", () => {
       <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
     );
 
-    expect(screen.getByLabelText(/シリーズ/u)).toBeDefined();
-    expect(screen.getByLabelText(/^エピソード/u)).toBeDefined();
+    expect(seriesCombobox()).toBeDefined();
+    expect(episodeCombobox()).toBeDefined();
     expect(screen.queryByLabelText(/エピソード public_id/u)).toBeNull();
     expect(
       screen
@@ -126,7 +130,7 @@ describe("TicketForm", () => {
       <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
     );
 
-    selectSeries("SERIES001");
+    selectSeries(seriesA);
 
     await waitFor(() => {
       expect(mockListEpisodeOptionsAction).toHaveBeenCalledWith(
@@ -134,11 +138,12 @@ describe("TicketForm", () => {
         "SERIES001"
       );
     });
+
     expect(
       await screen.findByRole("option", { name: "第1話 (EPISODE001)" })
     ).toBeDefined();
 
-    fireEvent.change(screen.getByLabelText(/^エピソード/u), {
+    fireEvent.change(episodeCombobox(), {
       target: { value: "EPISODE001" },
     });
     await waitFor(() => {
@@ -166,12 +171,12 @@ describe("TicketForm", () => {
       <TicketForm action={action} series={[seriesA]} timeZone="Asia/Tokyo" />
     );
 
-    selectSeries("SERIES001");
+    selectSeries(seriesA);
 
     expect(
       await screen.findByText("エピソード一覧の取得に失敗しました。")
     ).toBeDefined();
-    expect(screen.getByLabelText(/シリーズ/u)).toBeDefined();
+    expect(seriesCombobox()).toBeDefined();
     expect(screen.queryByLabelText(/エピソード public_id/u)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "再試行" }));
@@ -203,8 +208,8 @@ describe("TicketForm", () => {
       />
     );
 
-    selectSeries("SERIES001");
-    selectSeries("SERIES002");
+    selectSeries(seriesA);
+    selectSeries(seriesB);
 
     firstLoad.resolve({
       episodes: [{ publicId: "EPISODE-A", title: "先に返った話" }],

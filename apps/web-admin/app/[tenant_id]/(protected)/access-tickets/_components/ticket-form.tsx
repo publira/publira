@@ -150,12 +150,9 @@ export const TicketForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel htmlFor="user_public_id" required>
-              ユーザー public_id
-            </FieldLabel>
+            <FieldLabel required>ユーザー public_id</FieldLabel>
             <FieldContent>
               <Input
-                id="user_public_id"
                 name="user_public_id"
                 placeholder="例: SeedMMBRAAA1"
                 required
@@ -169,9 +166,7 @@ export const TicketForm = ({
 
           {useEpisodeFallbackInput ? (
             <Field>
-              <FieldLabel htmlFor="episode_public_id" required>
-                エピソード public_id
-              </FieldLabel>
+              <FieldLabel required>エピソード public_id</FieldLabel>
               <FieldContent>
                 {seriesErrorMessage ? (
                   <FormMessage variant="destructive">
@@ -179,7 +174,6 @@ export const TicketForm = ({
                   </FormMessage>
                 ) : null}
                 <Input
-                  id="episode_public_id"
                   name="episode_public_id"
                   placeholder="例: SeedEPSDAAA1"
                   required
@@ -195,13 +189,10 @@ export const TicketForm = ({
           ) : (
             <>
               <Field>
-                <FieldLabel htmlFor="ticket_series_combobox" required>
-                  シリーズ
-                </FieldLabel>
+                <FieldLabel required>シリーズ</FieldLabel>
                 <FieldContent>
                   <Combobox
                     emptyMessage="一致するシリーズが見つかりません。"
-                    id="ticket_series_combobox"
                     items={seriesItems}
                     onValueChange={handleSeriesChange}
                     placeholder="シリーズ名で検索"
@@ -214,14 +205,11 @@ export const TicketForm = ({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="ticket_episode_combobox" required>
-                  エピソード
-                </FieldLabel>
+                <FieldLabel required>エピソード</FieldLabel>
                 <FieldContent>
                   <Combobox
                     disabled={isEpisodePending || seriesPublicId === ""}
                     emptyMessage="一致するエピソードが見つかりません。"
-                    id="ticket_episode_combobox"
                     items={episodeItems}
                     onValueChange={setEpisodePublicId}
                     placeholder={
@@ -259,13 +247,9 @@ export const TicketForm = ({
           )}
 
           <Field>
-            <FieldLabel htmlFor="expires_at_local">有効期限</FieldLabel>
+            <FieldLabel>有効期限</FieldLabel>
             <FieldContent>
-              <Input
-                id="expires_at_local"
-                name="expires_at_local"
-                type="datetime-local"
-              />
+              <Input name="expires_at_local" type="datetime-local" />
               <input defaultValue="" name="expires_at" type="hidden" />
               <FieldDescription>
                 未指定の場合は無期限です。テナントのタイムゾーン（{timeZone}
@@ -275,10 +259,9 @@ export const TicketForm = ({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="note">メモ</FieldLabel>
+            <FieldLabel>メモ</FieldLabel>
             <FieldContent>
               <Textarea
-                id="note"
                 maxLength={1000}
                 name="note"
                 placeholder="例: レビュー用の限定閲覧"
