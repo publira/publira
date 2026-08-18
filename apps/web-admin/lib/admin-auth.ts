@@ -3,6 +3,7 @@ import {
   isExpectedNullableRpcError,
   isMissingResourceRpcError,
   isRejectedRequestRpcError,
+  isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
   RPC_ERROR_REASON,
@@ -10,6 +11,7 @@ import {
   rpcErrorHasReason,
 } from "@publira/api-client/errors";
 
+import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -34,6 +36,17 @@ export interface AdminCurrentUser {
   publicId: string;
   role: string;
 }
+
+/**
+ * The signed-in operator, or why they could not be read.
+ *
+ * `requiresSignIn` separates a session the API rejected from a `GetMe` that
+ * answered nothing useful. Both used to arrive as `null`, and only the first is
+ * a reason to send the operator through login again.
+ */
+export type GetAdminCurrentUserResult =
+  | { ok: true; user: AdminCurrentUser }
+  | { ok: false; requiresSignIn: boolean };
 
 export interface TenantAdminInvitationState {
   accountExists: boolean;
@@ -165,12 +178,12 @@ export const logoutAdmin = async (
 
 export const getAdminCurrentUser = async (
   tenantId: string
-): Promise<AdminCurrentUser | null> => {
+): Promise<GetAdminCurrentUserResult> => {
   "use cache: private";
 
   const token = await getAccessToken();
   if (!token) {
-    return null;
+    return { ok: false, requiresSignIn: true };
   }
 
   try {
@@ -183,17 +196,23 @@ export const getAdminCurrentUser = async (
 
     const publicId = response.user?.publicId?.trim() ?? "";
     if (!publicId) {
-      return null;
+      return { ok: false, requiresSignIn: false };
     }
 
     return {
-      name: response.user?.name?.trim() ?? "",
-      publicId,
-      role: response.user?.role?.trim() ?? "",
+      ok: true,
+      user: {
+        name: response.user?.name?.trim() ?? "",
+        publicId,
+        role: response.user?.role?.trim() ?? "",
+      },
     };
   } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      return { ok: false, requiresSignIn: true };
+    }
     if (isExpectedNullableRpcError(error)) {
-      return null;
+      return { ok: false, requiresSignIn: false };
     }
     throw error;
   }
@@ -202,8 +221,8 @@ export const getAdminCurrentUser = async (
 export const isAdminSessionValid = async (
   tenantId: string
 ): Promise<boolean> => {
-  const user = await getAdminCurrentUser(tenantId);
-  return user !== null;
+  const result = await getAdminCurrentUser(tenantId);
+  return result.ok;
 };
 
 export const sessionCookieOptions = {
@@ -432,6 +451,7 @@ export const requestAdminEmailChange = async (
       requested: response.requested,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: rpcErrorMessage(error, genericEmailChangeRequestErrorMessage, {

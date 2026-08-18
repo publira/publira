@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createAnnouncement } from "#lib/announcement";
+import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   optionalTrimmedString,
   requiredTrimmedString,
@@ -83,14 +84,16 @@ export const createAnnouncementAction = async (
     };
   }
 
-  const result = await createAnnouncement({
-    audienceType: parsed.data.audienceType,
-    body: parsed.data.body,
-    linkUrl: parsed.data.linkUrl,
-    targetUserPublicIds: parsed.data.targetUserPublicIds,
-    tenantId: parsed.data.tenantId,
-    title: parsed.data.title,
-  });
+  const result = await withAdminSessionReauth(() =>
+    createAnnouncement({
+      audienceType: parsed.data.audienceType,
+      body: parsed.data.body,
+      linkUrl: parsed.data.linkUrl,
+      targetUserPublicIds: parsed.data.targetUserPublicIds,
+      tenantId: parsed.data.tenantId,
+      title: parsed.data.title,
+    })
+  );
 
   if (!result.ok) {
     return {

@@ -11,6 +11,10 @@ import type {
   ListNotificationsResult,
   NotificationItem,
 } from "../app/[tenant_id]/(protected)/notifications/notification-types";
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions } from "./cursor-page";
 import {
@@ -99,6 +103,7 @@ const readNotificationList = async (
       message: sessionErrorMessage,
       notifications: [],
       ok: false,
+      requiresSignIn: true,
       unexpected: false,
     };
   }
@@ -127,6 +132,7 @@ const readNotificationList = async (
       message: mapErrorMessage(error, listErrorMessage),
       notifications: [],
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       unexpected: isUnexpectedError(error),
     };
   }
@@ -143,6 +149,7 @@ const readUnreadNotificationCount = async (
     return {
       message: sessionErrorMessage,
       ok: false,
+      requiresSignIn: true,
       unexpected: false,
       unreadCount: 0,
     };
@@ -164,6 +171,7 @@ const readUnreadNotificationCount = async (
     return {
       message: mapErrorMessage(error, countErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       unexpected: isUnexpectedError(error),
       unreadCount: 0,
     };
@@ -223,6 +231,7 @@ export const markNotificationAsRead = async (input: {
     );
     return { ok: true };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, markReadErrorMessage),
@@ -254,6 +263,7 @@ export const markAllNotificationsAsRead = async (
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorMessage(error, markAllReadErrorMessage),

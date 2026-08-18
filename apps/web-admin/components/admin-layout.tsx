@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
+import { redirectToLoginIfSessionRejected } from "../lib/auth-session";
 import { logoutAction } from "../lib/logout-action";
 import { countUnreadNotifications } from "../lib/notification";
 import { getTenantId } from "../lib/tenant-id";
@@ -41,12 +42,13 @@ const adminGradient =
 
 export const AdminUser = async () => {
   const tenantId = await getTenantId();
-  const currentUser = await getAdminCurrentUser(tenantId);
-  if (!currentUser) {
+  const result = await getAdminCurrentUser(tenantId);
+  if (!result.ok) {
+    await redirectToLoginIfSessionRejected(result);
     redirect("/login");
   }
 
-  return <ConsoleHeaderUser currentUser={currentUser} />;
+  return <ConsoleHeaderUser currentUser={result.user} />;
 };
 
 export const AdminNotificationBell = async () => {

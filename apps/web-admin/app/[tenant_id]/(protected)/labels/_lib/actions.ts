@@ -6,6 +6,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   flagOneFormSchema,
   optionalFileFormSchema,
@@ -72,12 +73,14 @@ export const createLabelAction = async (
   const { eyeCatchImageContentType, eyeCatchImageData } =
     await toEyeCatchImage(eyeCatchImage);
 
-  const result = await createLabel({
-    eyeCatchImageContentType,
-    eyeCatchImageData,
-    name,
-    tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    createLabel({
+      eyeCatchImageContentType,
+      eyeCatchImageData,
+      name,
+      tenantId,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "create");
@@ -118,14 +121,16 @@ export const updateLabelAction = async (
   const { eyeCatchImageContentType, eyeCatchImageData } =
     await toEyeCatchImage(eyeCatchImage);
 
-  const result = await updateLabel({
-    clearEyeCatchImage,
-    eyeCatchImageContentType,
-    eyeCatchImageData,
-    name,
-    publicId,
-    tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateLabel({
+      clearEyeCatchImage,
+      eyeCatchImageContentType,
+      eyeCatchImageData,
+      name,
+      publicId,
+      tenantId,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "update");

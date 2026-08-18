@@ -30,6 +30,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getDashboard } from "#lib/dashboard";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
@@ -90,6 +91,8 @@ const DashboardContent = async () => {
   ]);
 
   if (!result.ok) {
+    await redirectToLoginIfSessionRejected(result);
+
     return (
       <SectionError
         description={result.message}

@@ -6,6 +6,10 @@ import {
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { cacheTag } from "next/cache";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -27,7 +31,13 @@ export interface CreatorItem {
 export type ListCreatorsResult = CursorPageTokens &
   (
     | { ok: true; creators: CreatorItem[] }
-    | { ok: false; message: string; creators: CreatorItem[] }
+    | {
+        ok: false;
+        message: string;
+        creators: CreatorItem[];
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn: boolean;
+      }
   );
 
 export type CreateCreatorResult =
@@ -51,7 +61,13 @@ export type UpdateCreatorResult =
 export type GetCreatorResult =
   | { ok: true; creator: CreatorItem }
   | { notFound: true; ok: false }
-  | { message: string; notFound?: false; ok: false };
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
 
 const genericListErrorMessage =
   "著者一覧の取得に失敗しました。時間をおいて再試行してください。";
@@ -94,6 +110,7 @@ export const listCreators = async (
       creators: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -119,6 +136,7 @@ export const listCreators = async (
       creators: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -147,6 +165,7 @@ export const listAllCreators = async (
       creators: [],
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -182,6 +201,7 @@ export const listAllCreators = async (
         creators: [],
         message: genericListErrorMessage,
         ok: false,
+        requiresSignIn: false,
       };
     }
 
@@ -197,6 +217,7 @@ export const listAllCreators = async (
       creators: [],
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -240,6 +261,7 @@ export const createCreator = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -291,6 +313,7 @@ export const updateCreator = async (input: {
       ok: true,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -312,6 +335,7 @@ export const getCreator = async (input: {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -343,6 +367,7 @@ export const getCreator = async (input: {
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

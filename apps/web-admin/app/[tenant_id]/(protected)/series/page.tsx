@@ -11,6 +11,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -51,6 +52,8 @@ const SeriesManagerData = async ({
     listSeries(tenantId, { token }),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
+  await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <SeriesManager

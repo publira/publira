@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUpdateTag, mockUpdateTenantTimezone } = vi.hoisted(() => ({
-  mockUpdateTag: vi.fn(),
-  mockUpdateTenantTimezone: vi.fn(),
-}));
+const { mockGetAccessToken, mockUpdateTag, mockUpdateTenantTimezone } =
+  vi.hoisted(() => ({
+    mockGetAccessToken: vi.fn(),
+    mockUpdateTag: vi.fn(),
+    mockUpdateTenantTimezone: vi.fn(),
+  }));
 
 vi.mock("next/cache", () => ({
   updateTag: mockUpdateTag,
@@ -19,7 +21,7 @@ vi.mock("#lib/email-settings", () => ({
 }));
 
 vi.mock("#lib/session", () => ({
-  getAccessToken: vi.fn(),
+  getAccessToken: mockGetAccessToken,
 }));
 
 vi.mock("#lib/site-settings", () => ({
@@ -47,6 +49,9 @@ describe("updateTenantTimezoneAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    // `withAdminSessionReauth` resolves the session before the mutation runs;
+    // without a token every Action under test would redirect to /login.
+    mockGetAccessToken.mockResolvedValue("session-token");
   });
 
   it("有効な IANA 名を保存し、キャッシュタグを更新する", async () => {

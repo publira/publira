@@ -18,6 +18,7 @@ describe("parseLoginSearchParams", () => {
       invitedDone: true,
       nextPath: "/series",
       passwordResetDone: true,
+      sessionRevoked: false,
     });
   });
 
@@ -36,6 +37,7 @@ describe("parseLoginSearchParams", () => {
       invitedDone: false,
       nextPath: "/",
       passwordResetDone: false,
+      sessionRevoked: false,
     });
   });
 
@@ -46,6 +48,22 @@ describe("parseLoginSearchParams", () => {
       invitedDone: false,
       nextPath: "/",
       passwordResetDone: false,
+      sessionRevoked: false,
+    });
+  });
+
+  it("reads the revoked-session marker and keeps the return path", () => {
+    expect(
+      parseLoginSearchParams({ next: "/series", reason: "session_revoked" })
+    ).toMatchObject({
+      nextPath: "/series",
+      sessionRevoked: true,
+    });
+  });
+
+  it("ignores an unknown reason", () => {
+    expect(parseLoginSearchParams({ reason: "whatever" })).toMatchObject({
+      sessionRevoked: false,
     });
   });
 });

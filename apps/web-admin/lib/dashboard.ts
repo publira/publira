@@ -1,6 +1,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 
+import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -21,7 +22,12 @@ export interface DashboardQueueItem {
 
 export type GetDashboardResult =
   | { ok: true; stats: DashboardStats; queue: DashboardQueueItem[] }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 const genericErrorMessage =
   "ダッシュボードの取得に失敗しました。時間をおいて再試行してください。";
@@ -39,6 +45,7 @@ export const getDashboard = async (
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -69,6 +76,7 @@ export const getDashboard = async (
     return {
       message: mapErrorToMessage(error),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };

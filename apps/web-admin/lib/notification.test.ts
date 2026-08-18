@@ -187,6 +187,7 @@ describe("notification lib", () => {
       notifications: [],
       ok: false,
       previousToken: "",
+      requiresSignIn: false,
     });
   });
 
@@ -242,6 +243,7 @@ describe("notification lib", () => {
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
+      requiresSignIn: false,
       unreadCount: 0,
     });
   });

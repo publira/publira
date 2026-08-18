@@ -39,10 +39,13 @@ describe("tenant-detail", () => {
     const { getTenantForSession } = await import("./tenant-detail");
 
     await expect(getTenantForSession("tenant_admin_001")).resolves.toEqual({
-      adminDomain: "admin.example.com",
-      domain: "example.com",
-      name: "青枝出版",
-      publicId: "tenant_admin_001",
+      ok: true,
+      tenant: {
+        adminDomain: "admin.example.com",
+        domain: "example.com",
+        name: "青枝出版",
+        publicId: "tenant_admin_001",
+      },
     });
 
     expect(mockGetTenant).toHaveBeenCalledWith(
@@ -55,7 +58,7 @@ describe("tenant-detail", () => {
     );
   });
 
-  it("tenant 名が空なら null を返す", async () => {
+  it("tenant 名が空なら再ログインを求めずに失敗する", async () => {
     mockGetTenant.mockResolvedValueOnce({
       tenant: {
         domain: "example.com",
@@ -66,16 +69,47 @@ describe("tenant-detail", () => {
 
     const { getTenantForSession } = await import("./tenant-detail");
 
-    await expect(getTenantForSession("tenant_admin_001")).resolves.toBeNull();
+    await expect(getTenantForSession("tenant_admin_001")).resolves.toEqual({
+      ok: false,
+      requiresSignIn: false,
+    });
   });
 
-  it("API エラー時は null を返す", async () => {
+  it("セッションが拒否されたら再ログインを求める", async () => {
     mockGetTenant.mockRejectedValueOnce(
       new ConnectError("invalid session", Code.Unauthenticated)
     );
 
     const { getTenantForSession } = await import("./tenant-detail");
 
-    await expect(getTenantForSession("tenant_admin_001")).resolves.toBeNull();
+    await expect(getTenantForSession("tenant_admin_001")).resolves.toEqual({
+      ok: false,
+      requiresSignIn: true,
+    });
+  });
+
+  it("テナントが見えない場合は再ログインを求めない", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("tenant not found", Code.NotFound)
+    );
+
+    const { getTenantForSession } = await import("./tenant-detail");
+
+    await expect(getTenantForSession("tenant_admin_001")).resolves.toEqual({
+      ok: false,
+      requiresSignIn: false,
+    });
+  });
+
+  it("分類できないエラーはそのまま送出する", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantForSession } = await import("./tenant-detail");
+
+    await expect(getTenantForSession("tenant_admin_001")).rejects.toThrow(
+      "boom"
+    );
   });
 });

@@ -22,6 +22,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { listAllLabels } from "#lib/label";
@@ -130,6 +131,7 @@ const EditSeriesFormData = async ({
         // `(protected)/not-found.tsx` inside the console chrome.
         notFound();
       }
+      await redirectToLoginIfSessionRejected(result);
       return <SeriesLoadError message={result.message} />;
     }
     return (
@@ -152,8 +154,11 @@ const EditSeriesFormData = async ({
     if (result.notFound) {
       notFound();
     }
+    await redirectToLoginIfSessionRejected(result);
     return <SeriesLoadError message={result.message} />;
   }
+
+  await redirectToLoginIfSessionRejected(creatorsResult, labelsResult);
 
   return (
     <SeriesForm

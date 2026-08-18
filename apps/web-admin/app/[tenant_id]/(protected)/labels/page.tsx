@@ -11,6 +11,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -47,6 +48,8 @@ const LabelManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const listResult = await listLabels(tenantId, { token });
+
+  await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <LabelManager

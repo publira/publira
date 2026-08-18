@@ -6,12 +6,27 @@ import {
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { cacheTag } from "next/cache";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
 export type GetTenantTimezoneResult =
   | { ok: true; timezone: string }
-  | { ok: false; message: string; timezone: string };
+  | {
+      ok: false;
+      message: string;
+      timezone: string;
+      /**
+       * The API rejected the session — the settings screen raises the login
+       * redirect. {@link getTenantDisplayTimeZone} ignores it on purpose: a
+       * date rendered in the fallback zone is not worth interrupting a page
+       * whose own read will report the same rejection.
+       */
+      requiresSignIn: boolean;
+    };
 
 export type UpdateTenantTimezoneResult =
   | { ok: true; timezone: string }
@@ -54,6 +69,7 @@ export const getTenantTimezone = async (
     return {
       message: sessionErrorMessage,
       ok: false,
+      requiresSignIn: !sessionId,
       timezone: DEFAULT_TIME_ZONE,
     };
   }
@@ -79,6 +95,7 @@ export const getTenantTimezone = async (
     return {
       message: parseErrorMessage(error, genericLoadErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       timezone: DEFAULT_TIME_ZONE,
     };
   }
@@ -127,6 +144,7 @@ export const updateTenantTimezone = async (input: {
       timezone: response.timezone.trim() || DEFAULT_TIME_ZONE,
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: parseErrorMessage(error, genericUpdateErrorMessage),

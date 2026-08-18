@@ -12,6 +12,7 @@ import {
   AdminPageTitle,
 } from "#components/admin-page";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantSiteSettings } from "#lib/site-settings";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantTimezone } from "#lib/tenant-timezone";
@@ -34,11 +35,19 @@ export const generateStaticParams = () =>
 const SettingsPage = async () => {
   const tenantId = await getTenantId();
 
-  const [settingsResult, timezoneResult, currentUser] = await Promise.all([
-    getTenantSiteSettings(tenantId),
-    getTenantTimezone(tenantId),
-    getAdminCurrentUser(tenantId),
-  ]);
+  const [settingsResult, timezoneResult, currentUserResult] = await Promise.all(
+    [
+      getTenantSiteSettings(tenantId),
+      getTenantTimezone(tenantId),
+      getAdminCurrentUser(tenantId),
+    ]
+  );
+
+  await redirectToLoginIfSessionRejected(
+    settingsResult,
+    timezoneResult,
+    currentUserResult
+  );
 
   return (
     <AdminPage>
@@ -69,7 +78,9 @@ const SettingsPage = async () => {
 
           <TenantTimezoneForm
             action={updateTenantTimezoneAction}
-            canEdit={isTenantAdminRole(currentUser?.role)}
+            canEdit={isTenantAdminRole(
+              currentUserResult.ok ? currentUserResult.user.role : undefined
+            )}
             initialTimezone={timezoneResult.timezone}
             loadErrorMessage={
               timezoneResult.ok ? undefined : timezoneResult.message

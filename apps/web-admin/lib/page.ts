@@ -8,6 +8,10 @@ import {
 } from "@publira/api-client/errors";
 import { cacheTag } from "next/cache";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -42,7 +46,13 @@ export interface PageVersionItem {
 export type ListPagesResult = CursorPageTokens &
   (
     | { ok: true; pages: PageItem[] }
-    | { ok: false; message: string; pages: PageItem[] }
+    | {
+        ok: false;
+        message: string;
+        pages: PageItem[];
+        /** The API rejected the session — the page raises the login redirect. */
+        requiresSignIn: boolean;
+      }
   );
 
 /**
@@ -58,11 +68,23 @@ export type ListPagesResult = CursorPageTokens &
 export type GetPageResult =
   | { ok: true; page: PageItem }
   | { notFound: true; ok: false }
-  | { message: string; notFound?: false; ok: false };
+  | {
+      message: string;
+      notFound?: false;
+      ok: false;
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn?: boolean;
+    };
 
 export type ListPageVersionsResult =
   | { ok: true; versions: PageVersionItem[] }
-  | { ok: false; message: string; versions: PageVersionItem[] };
+  | {
+      ok: false;
+      message: string;
+      versions: PageVersionItem[];
+      /** The API rejected the session — the page raises the login redirect. */
+      requiresSignIn: boolean;
+    };
 
 export type CreatePageResult =
   | { ok: true; page: PageItem }
@@ -163,6 +185,7 @@ export const listPages = async (
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
       pages: [],
+      requiresSignIn: true,
     };
   }
 
@@ -187,6 +210,7 @@ export const listPages = async (
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
       pages: [],
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -204,6 +228,7 @@ export const getPage = async (input: {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     };
   }
 
@@ -241,6 +266,7 @@ export const getPage = async (input: {
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -257,6 +283,7 @@ export const listPageVersions = async (input: {
     return {
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
       versions: [],
     };
   }
@@ -281,6 +308,7 @@ export const listPageVersions = async (input: {
     return {
       message: mapErrorToMessage(error, genericListErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
       versions: [],
     };
   }
@@ -323,6 +351,7 @@ export const createPage = async (input: {
       page: mapPage(response.page),
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -371,6 +400,7 @@ export const updatePage = async (input: {
       page: mapPage(response.page),
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -414,6 +444,7 @@ export const createPageVersion = async (input: {
       version: mapPageVersion(response.version),
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -457,6 +488,7 @@ export const publishPageVersion = async (input: {
       version: mapPageVersion(response.version),
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),
@@ -500,6 +532,7 @@ export const rollbackPageVersion = async (input: {
       version: mapPageVersion(response.version),
     };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: mapErrorToMessage(error, genericMutationErrorMessage),

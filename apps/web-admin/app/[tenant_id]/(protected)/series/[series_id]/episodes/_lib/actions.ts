@@ -6,6 +6,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { withAdminSessionReauth } from "#lib/auth-session";
 import { createEpisode, reorderEpisodePage } from "#lib/episode";
 import {
   jsonStringArrayFormSchema,
@@ -100,14 +101,16 @@ export const createEpisodeAction = async (
 
   // orderIndex は送らない。ListEpisodes がページ単位で返すようになったため
   // 全件を読んで末尾を数える形は使えず、末尾への追加はサーバーが決める。
-  const result = await createEpisode({
-    price: parsed.data.price,
-    publishAt: scheduledAt.value,
-    readingPeriodHours: parsed.data.readingPeriodHours,
-    seriesPublicId: parsed.data.seriesPublicId,
-    tenantId: parsed.data.tenantId,
-    title: parsed.data.title,
-  });
+  const result = await withAdminSessionReauth(() =>
+    createEpisode({
+      price: parsed.data.price,
+      publishAt: scheduledAt.value,
+      readingPeriodHours: parsed.data.readingPeriodHours,
+      seriesPublicId: parsed.data.seriesPublicId,
+      tenantId: parsed.data.tenantId,
+      title: parsed.data.title,
+    })
+  );
 
   if (!result.ok) {
     return toCreateFailure(result.message);
@@ -157,12 +160,14 @@ export const reorderEpisodesAction = async (formData: FormData) => {
 
   // The list screen posts the order of the page that was dragged on, not of the
   // whole series; the merge back into the series' order happens in the lib.
-  const reordered = await reorderEpisodePage({
-    currentEpisodePublicIds: parsed.data.currentEpisodeIds,
-    episodePublicIds: parsed.data.orderedEpisodeIds,
-    seriesPublicId: parsed.data.seriesPublicId,
-    tenantId: parsed.data.tenantId,
-  });
+  const reordered = await withAdminSessionReauth(() =>
+    reorderEpisodePage({
+      currentEpisodePublicIds: parsed.data.currentEpisodeIds,
+      episodePublicIds: parsed.data.orderedEpisodeIds,
+      seriesPublicId: parsed.data.seriesPublicId,
+      tenantId: parsed.data.tenantId,
+    })
+  );
   if (!reordered.ok) {
     return reordered;
   }

@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockGetAccessToken,
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockReorderEpisodeImages,
   mockUpdateEpisodePublishSchedule,
   mockUploadEpisodePages,
 } = vi.hoisted(() => ({
+  mockGetAccessToken: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
@@ -16,6 +18,10 @@ const {
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
+}));
+
+vi.mock("#lib/session", () => ({
+  getAccessToken: mockGetAccessToken,
 }));
 
 vi.mock("#lib/episode", () => ({
@@ -33,6 +39,9 @@ describe("episode actions", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Tokyo");
+    // `withAdminSessionReauth` resolves the session before the mutation runs;
+    // without a token every Action under test would redirect to /login.
+    mockGetAccessToken.mockResolvedValue("session-token");
   });
 
   it("公開スケジュール更新: hidden パラメータ不足でエラーを返す", async () => {

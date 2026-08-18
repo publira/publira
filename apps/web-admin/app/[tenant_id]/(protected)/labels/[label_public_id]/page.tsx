@@ -22,6 +22,7 @@ import {
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { parseEditTab } from "#lib/edit-tab-search-params";
 import { getLabel } from "#lib/label";
 import { getTenantId } from "#lib/tenant-id";
@@ -111,6 +112,8 @@ const EditLabelFormData = async ({
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
+
+    await redirectToLoginIfSessionRejected(result);
 
     return (
       <SectionError

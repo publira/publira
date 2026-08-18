@@ -6,6 +6,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   reorderEpisodeImages,
   updateEpisodePublishSchedule,
@@ -128,11 +129,13 @@ export const updateEpisodeScheduleAction = async (
     return schedule;
   }
 
-  const result = await updateEpisodePublishSchedule({
-    episodePublicId: parsed.data.episodePublicId,
-    publishAt: schedule.iso,
-    tenantId: parsed.data.tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateEpisodePublishSchedule({
+      episodePublicId: parsed.data.episodePublicId,
+      publishAt: schedule.iso,
+      tenantId: parsed.data.tenantId,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "schedule");
@@ -195,12 +198,14 @@ export const uploadEpisodePagesAction = async (
       );
     }
 
-    const result = await uploadEpisodePages({
-      archive,
-      episodePublicId,
-      seriesPublicId,
-      tenantId,
-    });
+    const result = await withAdminSessionReauth(() =>
+      uploadEpisodePages({
+        archive,
+        episodePublicId,
+        seriesPublicId,
+        tenantId,
+      })
+    );
 
     if (!result.ok) {
       return toFailure(result.message, "pages");
@@ -215,11 +220,13 @@ export const uploadEpisodePagesAction = async (
     return toFailure("追加するページ画像を選択してください。", "pages");
   }
 
-  const result = await uploadEpisodePages({
-    episodePublicId,
-    pages,
-    tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    uploadEpisodePages({
+      episodePublicId,
+      pages,
+      tenantId,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "pages");
@@ -255,11 +262,13 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
     };
   }
 
-  const result = await reorderEpisodeImages({
-    episodePublicId: parsed.data.episodePublicId,
-    imageIds: parsed.data.orderedImageIds,
-    tenantId: parsed.data.tenantId,
-  });
+  const result = await withAdminSessionReauth(() =>
+    reorderEpisodeImages({
+      episodePublicId: parsed.data.episodePublicId,
+      imageIds: parsed.data.orderedImageIds,
+      tenantId: parsed.data.tenantId,
+    })
+  );
 
   if (!result.ok) {
     return result;

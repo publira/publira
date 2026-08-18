@@ -207,6 +207,7 @@ describe("getLabel", () => {
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
   });
 
@@ -331,6 +332,7 @@ describe("listAllLabels", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
     });
   });
 
@@ -359,6 +361,7 @@ describe("listAllLabels", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: false,
     });
   });
 });

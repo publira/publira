@@ -22,6 +22,7 @@ interface LoginPageProps {
     error?: string;
     invited?: string;
     next?: string;
+    reason?: string;
     reset?: string;
   }>;
 }
@@ -45,6 +46,7 @@ const LoginPageContent = async ({
     invitedDone,
     nextPath,
     passwordResetDone,
+    sessionRevoked,
   } = parseLoginSearchParams(await searchParams);
   const forgotPasswordHref = defaultEmail
     ? `/forgot-password?${new URLSearchParams({ email: defaultEmail }).toString()}`
@@ -98,6 +100,12 @@ const LoginPageContent = async ({
         {passwordResetDone ? (
           <FormMessage variant="success">
             パスワードを再設定しました。新しいパスワードでログインしてください。
+          </FormMessage>
+        ) : null}
+
+        {sessionRevoked ? (
+          <FormMessage variant="destructive">
+            セッションの有効期限が切れました。もう一度ログインしてください。
           </FormMessage>
         ) : null}
 

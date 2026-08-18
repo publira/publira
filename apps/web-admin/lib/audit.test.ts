@@ -109,6 +109,7 @@ describe("audit lib", () => {
       nextToken: "",
       ok: false,
       previousToken: "",
+      requiresSignIn: true,
     });
   });
 

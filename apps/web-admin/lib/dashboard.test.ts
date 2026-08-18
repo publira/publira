@@ -101,6 +101,7 @@ describe("dashboard", () => {
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
     expect(mockGetDashboardApi).not.toHaveBeenCalled();
   });
@@ -117,6 +118,7 @@ describe("dashboard", () => {
     expect(result).toEqual({
       message: "セッションが無効です。再ログインしてください。",
       ok: false,
+      requiresSignIn: true,
     });
   });
 
@@ -133,6 +135,7 @@ describe("dashboard", () => {
       message:
         "サーバーに接続できませんでした。時間をおいて再試行してください。",
       ok: false,
+      requiresSignIn: false,
     });
   });
 

@@ -6,6 +6,10 @@ import {
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 
+import {
+  isUnauthenticatedError,
+  rethrowUnauthenticatedRpcError,
+} from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getAccessToken } from "./session";
 
@@ -15,7 +19,16 @@ export interface UpdateTenantThemeSettingsInput extends TenantThemeColors {
 
 export type TenantThemeSettingsResult =
   | { ok: true; theme: TenantThemeColors }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /**
+       * The API rejected the session while reading the theme — the page raises
+       * the login redirect. The save path throws instead, so only
+       * {@link getTenantThemeSettings} ever sets it.
+       */
+      requiresSignIn?: boolean;
+    };
 
 const genericLoadErrorMessage =
   "テーマの取得に失敗しました。時間をおいて再試行してください。";
@@ -48,7 +61,11 @@ export const getTenantThemeSettings = async (
   const sessionId = await getAccessToken();
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId || !sessionId) {
-    return { message: sessionErrorMessage, ok: false };
+    return {
+      message: sessionErrorMessage,
+      ok: false,
+      requiresSignIn: !sessionId,
+    };
   }
 
   try {
@@ -65,6 +82,7 @@ export const getTenantThemeSettings = async (
     return {
       message: parseErrorMessage(error, genericLoadErrorMessage),
       ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
     };
   }
 };
@@ -117,6 +135,7 @@ export const updateTenantThemeSettings = async (
 
     return { ok: true, theme: toTenantTheme(response.theme) };
   } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
       message: parseErrorMessage(error, genericUpdateErrorMessage),

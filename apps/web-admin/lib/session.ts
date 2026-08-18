@@ -6,9 +6,10 @@ import {
 import { cacheLife, cacheTag, io } from "next/cache";
 import { cookies } from "next/headers";
 
-import { ADMIN_SESSION_COOKIE_NAME } from "./admin-auth-shared";
-
-const ADMIN_SESSION_CACHE_TAG = "admin-session-cookie";
+import {
+  ADMIN_SESSION_CACHE_TAG,
+  ADMIN_SESSION_COOKIE_NAME,
+} from "./admin-auth-shared";
 
 const looksLikeJwt = (value: string): boolean => value.split(".").length === 3;
 

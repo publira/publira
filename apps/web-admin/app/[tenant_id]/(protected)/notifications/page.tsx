@@ -11,6 +11,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   cursorPageHrefs,
   DEFAULT_PAGE_SIZE,
@@ -52,6 +53,8 @@ const NotificationManagerData = async ({
     countUnreadNotifications(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
+  await redirectToLoginIfSessionRejected(listResult);
 
   return (
     <NotificationManager

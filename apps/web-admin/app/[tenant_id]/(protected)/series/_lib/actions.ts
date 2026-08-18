@@ -6,6 +6,7 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { withAdminSessionReauth } from "#lib/auth-session";
 import {
   checkboxOnFormSchema,
   flagOneFormSchema,
@@ -129,18 +130,20 @@ export const createSeriesAction = async (
     parsed.data.eyeCatchImage
   );
 
-  const result = await createSeries({
-    creatorPublicIds: parsed.data.creatorPublicIds,
-    eyeCatchImageContentType,
-    eyeCatchImageData,
-    isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-    labelPublicId: parsed.data.labelPublicId,
-    publishedAt: schedule.publishedAt,
-    readingPeriodHours: parsed.data.readingPeriodHours,
-    synopsis: parsed.data.synopsis,
-    tenantId: parsed.data.tenantId,
-    title: parsed.data.title,
-  });
+  const result = await withAdminSessionReauth(() =>
+    createSeries({
+      creatorPublicIds: parsed.data.creatorPublicIds,
+      eyeCatchImageContentType,
+      eyeCatchImageData,
+      isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
+      labelPublicId: parsed.data.labelPublicId,
+      publishedAt: schedule.publishedAt,
+      readingPeriodHours: parsed.data.readingPeriodHours,
+      synopsis: parsed.data.synopsis,
+      tenantId: parsed.data.tenantId,
+      title: parsed.data.title,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "create");
@@ -176,19 +179,21 @@ export const updateSeriesAction = async (
     parsed.data.eyeCatchImage
   );
 
-  const result = await updateSeries({
-    creatorPublicIds: parsed.data.creatorPublicIds,
-    eyeCatchImageContentType,
-    eyeCatchImageData,
-    isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-    labelPublicId: parsed.data.labelPublicId,
-    publicId: parsed.data.publicId,
-    publishedAt: schedule.publishedAt,
-    readingPeriodHours: parsed.data.readingPeriodHours,
-    synopsis: parsed.data.synopsis,
-    tenantId: parsed.data.tenantId,
-    title: parsed.data.title,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateSeries({
+      creatorPublicIds: parsed.data.creatorPublicIds,
+      eyeCatchImageContentType,
+      eyeCatchImageData,
+      isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
+      labelPublicId: parsed.data.labelPublicId,
+      publicId: parsed.data.publicId,
+      publishedAt: schedule.publishedAt,
+      readingPeriodHours: parsed.data.readingPeriodHours,
+      synopsis: parsed.data.synopsis,
+      tenantId: parsed.data.tenantId,
+      title: parsed.data.title,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "update");
@@ -236,20 +241,22 @@ export const updateSeriesEyeCatchAction = async (
     );
   }
 
-  const result = await updateSeries({
-    clearEyeCatchImage: parsed.data.clearEyeCatchImage,
-    creatorPublicIds: parsed.data.creatorPublicIds,
-    eyeCatchImageContentType,
-    eyeCatchImageData,
-    isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
-    labelPublicId: parsed.data.labelPublicId,
-    publicId: parsed.data.publicId,
-    publishedAt: schedule.publishedAt,
-    readingPeriodHours: parsed.data.readingPeriodHours,
-    synopsis: parsed.data.synopsis,
-    tenantId: parsed.data.tenantId,
-    title: parsed.data.title,
-  });
+  const result = await withAdminSessionReauth(() =>
+    updateSeries({
+      clearEyeCatchImage: parsed.data.clearEyeCatchImage,
+      creatorPublicIds: parsed.data.creatorPublicIds,
+      eyeCatchImageContentType,
+      eyeCatchImageData,
+      isPublished: parsed.data.isPublished || schedule.publishedAt.length > 0,
+      labelPublicId: parsed.data.labelPublicId,
+      publicId: parsed.data.publicId,
+      publishedAt: schedule.publishedAt,
+      readingPeriodHours: parsed.data.readingPeriodHours,
+      synopsis: parsed.data.synopsis,
+      tenantId: parsed.data.tenantId,
+      title: parsed.data.title,
+    })
+  );
 
   if (!result.ok) {
     return toFailure(result.message, "update");
