@@ -55,7 +55,7 @@ task e2e
 | --- | --- |
 | `task e2e:prepare` | server 全バイナリ / `web-host` / `web-admin` / `web-platform` ビルド + Playwright Chromium インストール |
 | `task e2e:up` | Postgres + Redis + RustFS のみ起動 |
-| `task e2e:db` | migrate + dev seed + S3 バケット作成（`task server:storage-init`） |
+| `task e2e:db` | migrate + dev seed + S3 バケット作成（`task storage:init`） |
 | `task e2e:start-apps` | api-server / admin-api-server / platform-api-server / publish-episodes / web-host / web-admin / web-platform をバックグラウンド起動 |
 | `bash e2e/scripts/api-server.sh <start\|start-wait\|stop>` | api-server だけを操作（障害シナリオが使用） |
 | `bash e2e/scripts/admin-api-server.sh <start\|start-wait\|stop>` | admin-api-server だけを操作 |

@@ -52,8 +52,8 @@ task e2e:bootstrap
 | phase | 実行 | アサーション |
 | --- | --- | --- |
 | 1 | 専用 project `publira-bootstrap` で `db` + `redis` + `rustfs` を起動 | volume `publira-bootstrap_postgres-data` が `/var/lib/postgresql` にマウントされている / `data_directory` がその配下（PG 18 なら `/var/lib/postgresql/18/docker`）にあり `PG_VERSION` が存在する / `schema_migrations` がまだ無い / teardown 後に `publira-bootstrap_postgres-data`・`publira-bootstrap_rustfs-data` が残っていない |
-| 2 | `task setup`（Flutter が無ければ `task deps` + `task db:setup` + `task server:storage-init`） | `schema_migrations` が最新 version かつ dirty でない / seed テナント `localhost` がある / 主要テーブルが空でない / `task db:seed` を再実行しても件数が変わらない / `task server:storage-init` を再実行しても成功する（バケット作成が冪等） |
-| 3 | `compose stop db rustfs` → `compose up --wait db rustfs` | `data_directory`・migration 状態・全 seed 件数が再起動前と一致する / 再起動前に置いた sentinel object がバケットごと残り、内容も一致する（`storage-init` を再実行する**前**に確認する） / 再度 `task db:setup` と `task server:storage-init` を流しても dirty にならない |
+| 2 | `task setup`（Flutter が無ければ `task deps` + `task db:setup` + `task storage:init`） | `schema_migrations` が最新 version かつ dirty でない / seed テナント `localhost` がある / 主要テーブルが空でない / `task db:seed` を再実行しても件数が変わらない / `task storage:init` を再実行しても成功する（バケット作成が冪等） |
+| 3 | `compose stop db rustfs` → `compose up --wait db rustfs` | `data_directory`・migration 状態・全 seed 件数が再起動前と一致する / 再起動前に置いた sentinel object がバケットごと残り、内容も一致する（`storage-init` を再実行する**前**に確認する） / 再度 `task db:setup` と `task storage:init` を流しても dirty にならない |
 | 4 | `task dev` | 5 つの Go サーバー（public / admin / platform API の Connect + gRPC 口、image / admin image）と 3 つの Next.js アプリが `/livez`・`/readyz` を 200 で返し、11 ポート全てが listen している / bootstrap 用 Redis に app からの接続がある |
 
 phase 2 で `task setup` を丸ごと実行するのは Flutter SDK がある環境（Dev Container）のみ。無い環境では `mobile:deps` を除いた `task deps` + `task db:setup` を実行する（モバイル依存は `Test / Mobile` ジョブの担当）。

@@ -10,15 +10,15 @@ ensure_run_dirs
 
 bootstrap_log "=== phase 2: task setup ==="
 
-# `task setup` = deps + mobile:deps + db:setup + server:storage-init. Without a Flutter SDK (CI hosts
+# `task setup` = deps + mobile:deps + db:setup + storage:init. Without a Flutter SDK (CI hosts
 # other than Test / Mobile) run the halves that do not need it; mobile deps
 # are covered by the Test / Mobile job.
 if command -v flutter >/dev/null 2>&1; then
   bootstrap_log "running task setup"
   (cd "${REPO_ROOT}" && task setup)
 else
-  bootstrap_log "flutter not found — running task setup without mobile:deps (task deps + task db:setup + task server:storage-init)"
-  (cd "${REPO_ROOT}" && task deps && task db:setup && task server:storage-init)
+  bootstrap_log "flutter not found — running task setup without mobile:deps (task deps + task db:setup + task storage:init)"
+  (cd "${REPO_ROOT}" && task deps && task db:setup && task storage:init)
 fi
 
 # golang-migrate stores the numeric filename prefix; compare against the
@@ -61,7 +61,7 @@ bootstrap_log "ok: dev seed re-run left every row count unchanged"
 
 # Re-running storage-init must succeed idempotently
 bootstrap_log "re-applying storage-init (idempotency)"
-(cd "${REPO_ROOT}" && task server:storage-init)
+(cd "${REPO_ROOT}" && task storage:init)
 bootstrap_log "ok: storage-init re-run succeeded"
 
 assert_equals "schema_migrations after re-seed" "${expected_version} false" "$(migration_state)"

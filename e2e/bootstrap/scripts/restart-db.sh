@@ -58,8 +58,8 @@ assert_equals "rustfs sentinel object after restart" "${sentinel_value}" \
 
 # Re-running setup on an already-migrated database must stay a no-op, not a
 # dirty migration.
-bootstrap_log "re-running task db:setup and task server:storage-init on the restarted services"
-(cd "${REPO_ROOT}" && task db:setup && task server:storage-init)
+bootstrap_log "re-running task db:setup and task storage:init on the restarted services"
+(cd "${REPO_ROOT}" && task db:setup && task storage:init)
 assert_equals "schema_migrations after re-setup" "${before_migration}" "$(migration_state)"
 
 bootstrap_log "phase 3 passed"

@@ -102,10 +102,10 @@ stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
 バケット作成はアプリの責務ではありません（通常リクエストで作成しません）。開発環境では次のタスクが冪等に用意します。
 
 ```bash
-task server:storage-init
+task storage:init
 ```
 
-aws CLI で `PUBLIRA_S3_BUCKET` を作成します（既存ならそのまま成功）。`task setup` と `task dev` の先頭、および E2E / bootstrap の準備でも実行されます。本番バケットは対象外で、IAM やライフサイクルと合わせて別途プロビジョニングします。
+aws CLI で `PUBLIRA_S3_BUCKET` を作成します（既存ならそのまま成功）。`task dev` では各サーバーの起動前に、`task setup` では `db:setup` の後に実行され、E2E / bootstrap の準備でも実行されます。本番バケットは対象外で、IAM やライフサイクルと合わせて別途プロビジョニングします。
 
 ### 開発環境 (RustFS)
 

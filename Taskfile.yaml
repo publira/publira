@@ -27,9 +27,9 @@ tasks:
 
   dev:
     desc: Start both web and server development tasks
-    deps:
-      - task: dev-web
-      - task: server:dev
+    cmds:
+      - task: storage:init
+      - task: dev-all
 
   e2e:
     desc: Run Playwright E2E (build stack, sample suite, always tear down)
@@ -54,7 +54,12 @@ tasks:
       - task: deps
       - task: mobile:deps
       - task: db:setup
-      - task: server:storage-init
+      - task: storage:init
+
+  storage:init:
+    desc: Initialize the storage backend (create the S3 bucket)
+    cmds:
+      - bash scripts/storage-init.sh
 
   test:
     desc: Run monorepo tests and server Go tests
@@ -66,6 +71,13 @@ tasks:
     desc: Run TypeScript type checks across packages
     cmds:
       - pnpm typecheck
+
+  dev-all:
+    desc: Run web and server development tasks concurrently
+    internal: true
+    deps:
+      - task: dev-web
+      - task: server:dev
 
   dev-web:
     desc: Start web development servers via Turbo
