@@ -31,10 +31,11 @@ func normalizeSearchQuery(raw string) (string, error) {
 	return query, nil
 }
 
-// searchQueryKey is the token identity of a search. ILIKE does not care about
-// ASCII case, so a token issued for "Seed" must still work with "seed".
-// strings.ToLower is only this identity; it is not a claim about PostgreSQL's
-// locale-aware ILIKE.
+// searchQueryKey is the identity of a search for both the cursor token and
+// the ILIKE pattern. A token issued for "Seed" must still work with "seed"
+// because both become the same key and the same '%seed%' pattern.
+// strings.ToLower is that shared identity. It is not PostgreSQL's locale-
+// aware ILIKE folding, and the API does not restrict queries to ASCII.
 func searchQueryKey(query string) string {
 	return strings.ToLower(query)
 }
@@ -140,7 +141,7 @@ func (s *apiServer) SearchPublishedSeries(
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedSearchSeriesPageIDs(ctx, tenant.ID, ilikeContainsPattern(query), descending, keys, limit+1)
+	ids, err := s.publishedSearchSeriesPageIDs(ctx, tenant.ID, ilikeContainsPattern(searchQueryKey(query)), descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError("failed to search published series", err, "tenant_id", tenant.ID.String())
 	}

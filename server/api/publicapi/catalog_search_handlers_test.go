@@ -18,6 +18,20 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 )
 
+func TestSearchQueryKeyAndIlikePatternShareIdentity(t *testing.T) {
+	t.Parallel()
+
+	if searchQueryKey("SEED") != searchQueryKey("Seed") {
+		t.Fatal("ASCII case changes must share a token key")
+	}
+	if got, want := ilikeContainsPattern(searchQueryKey("SEED")), "%seed%"; got != want {
+		t.Fatalf("ILIKE pattern = %q, want the same lowercased pattern as the token key", got)
+	}
+	if searchQueryKey("シード") != "シード" {
+		t.Fatal("Japanese queries must stay as-is; the API does not restrict to ASCII")
+	}
+}
+
 func TestIlikeContainsPatternEscapesMetacharacters(t *testing.T) {
 	t.Parallel()
 
@@ -74,7 +88,7 @@ func TestCatalogSearchPublishedSeriesSuccess(t *testing.T) {
 	now := time.Now().UTC()
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsBySearchTitleAscQuery)).
-		WithArgs(tenantID, "%Seed%", nil, false, nil, int32(21)).
+		WithArgs(tenantID, "%seed%", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -146,7 +160,7 @@ func TestCatalogSearchPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(3)
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsBySearchTitleAscQuery)).
-		WithArgs(tenantID, "%Seed%", nil, false, nil, int32(3)).
+		WithArgs(tenantID, "%seed%", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -187,7 +201,7 @@ func TestCatalogSearchPublishedSeriesFollowsNextToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsBySearchTitleAscQuery)).
-		WithArgs(tenantID, "%Seed%", boundaryID, false, "Beta Seed", int32(3)).
+		WithArgs(tenantID, "%seed%", boundaryID, false, "Beta Seed", int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -248,7 +262,7 @@ func TestCatalogSearchPublishedSeriesAcceptsRecasedQueryOnToken(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsBySearchTitleAscQuery)).
-		WithArgs(tenantID, "%SEED%", boundaryID, false, "Beta Seed", int32(21)).
+		WithArgs(tenantID, "%seed%", boundaryID, false, "Beta Seed", int32(21)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
@@ -284,7 +298,7 @@ func TestCatalogSearchPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T)
 	// A backward page scans descending titles, so Zeta's predecessor Beta
 	// comes first, then Alpha. pagination.Page flips that back to title asc.
 	mock.ExpectQuery(regexp.QuoteMeta(listPublishedSeriesIDsBySearchTitleDescQuery)).
-		WithArgs(tenantID, "%Seed%", boundaryID, false, "Zeta Seed", int32(3)).
+		WithArgs(tenantID, "%seed%", boundaryID, false, "Zeta Seed", int32(3)).
 		WillReturnRows(seriesIDRows(betaID, alphaID))
 	mock.ExpectQuery(regexp.QuoteMeta(listActiveSeriesByIDsQuery)).
 		WithArgs(tenantID, sqlmock.AnyArg()).

@@ -577,9 +577,10 @@ export const GetPublishedLabelDetailResponseSchema: GenMessage<GetPublishedLabel
  * Matches published series whose title or synopsis contains `query`
  * (case-insensitive substring). Sorted by title, then id. There is no order
  * field: title order is the only search result list the storefront needs.
- * The token carries the query it was built for; sending it with a different
- * query is invalid_argument, because the page it points at no longer exists
- * under the new query. Changing the query restarts at page 1.
+ * The token carries the Unicode-lowercased query it was built for; that same
+ * string is the ILIKE pattern. Sending the token with a query that lowers to
+ * a different string is invalid_argument. ASCII case changes of the same
+ * query are the same search. Changing to a different query restarts at page 1.
  *
  * @generated from message publira.v1.SearchPublishedSeriesRequest
  */
@@ -591,6 +592,7 @@ export type SearchPublishedSeriesRequest = Message<"publira.v1.SearchPublishedSe
 
   /**
    * Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
+   * Not restricted to ASCII; Japanese titles are the expected input.
    *
    * @generated from field: string query = 2;
    */
@@ -1012,8 +1014,9 @@ export const CatalogService: GenService<{
   },
   /**
    * Keyword search over published series titles and synopses. An empty query
-   * is invalid_argument. A token carries the query it was built for; sending
-   * it with a different query is invalid_argument.
+   * is invalid_argument. A token carries the Unicode-lowercased query it was
+   * built for; sending it with a query that lowers to a different string is
+   * invalid_argument.
    *
    * @generated from rpc publira.v1.CatalogService.SearchPublishedSeries
    */

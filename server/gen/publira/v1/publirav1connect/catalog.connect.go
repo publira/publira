@@ -90,8 +90,9 @@ type CatalogServiceClient interface {
 	// distinguished from one that does not exist.
 	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
 	// Keyword search over published series titles and synopses. An empty query
-	// is invalid_argument. A token carries the query it was built for; sending
-	// it with a different query is invalid_argument.
+	// is invalid_argument. A token carries the Unicode-lowercased query it was
+	// built for; sending it with a query that lowers to a different string is
+	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 }
 
@@ -229,8 +230,9 @@ type CatalogServiceHandler interface {
 	// distinguished from one that does not exist.
 	GetPublishedLabelDetail(context.Context, *connect.Request[v1.GetPublishedLabelDetailRequest]) (*connect.Response[v1.GetPublishedLabelDetailResponse], error)
 	// Keyword search over published series titles and synopses. An empty query
-	// is invalid_argument. A token carries the query it was built for; sending
-	// it with a different query is invalid_argument.
+	// is invalid_argument. A token carries the Unicode-lowercased query it was
+	// built for; sending it with a query that lowers to a different string is
+	// invalid_argument.
 	SearchPublishedSeries(context.Context, *connect.Request[v1.SearchPublishedSeriesRequest]) (*connect.Response[v1.SearchPublishedSeriesResponse], error)
 }
 

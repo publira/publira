@@ -1223,13 +1223,15 @@ func (x *GetPublishedLabelDetailResponse) GetNextToken() string {
 // Matches published series whose title or synopsis contains `query`
 // (case-insensitive substring). Sorted by title, then id. There is no order
 // field: title order is the only search result list the storefront needs.
-// The token carries the query it was built for; sending it with a different
-// query is invalid_argument, because the page it points at no longer exists
-// under the new query. Changing the query restarts at page 1.
+// The token carries the Unicode-lowercased query it was built for; that same
+// string is the ILIKE pattern. Sending the token with a query that lowers to
+// a different string is invalid_argument. ASCII case changes of the same
+// query are the same search. Changing to a different query restarts at page 1.
 type SearchPublishedSeriesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
+	// Not restricted to ASCII; Japanese titles are the expected input.
 	Query string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
