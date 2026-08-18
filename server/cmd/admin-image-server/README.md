@@ -21,7 +21,7 @@ Manael は libvips を使うため、ビルドと実行には `libvips-dev`（�
 ## 主な環境変数
 
 - `PUBLIRA_ADMIN_IMAGE_SERVER_ADDR` (任意, 既定 `:8201`)
-- `PUBLIRA_ADMIN_IMAGE_DB_URL` / `PUBLIRA_ADMIN_DB_URL` (任意)
+- `PUBLIRA_ADMIN_IMAGE_DB_URL` / `PUBLIRA_ADMIN_DB_URL` (任意。どちらも未設定なら `postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable`)
 - `PUBLIRA_AUTH_JWT_SECRET` (必須, 32 バイト以上)
 - `PUBLIRA_S3_BUCKET` (必須)
 - `AWS_REGION` / `PUBLIRA_S3_ENDPOINT` / `PUBLIRA_S3_FORCE_PATH_STYLE` (ストレージ)

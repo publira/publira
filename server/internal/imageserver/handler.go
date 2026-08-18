@@ -57,6 +57,7 @@ type Handler struct {
 	tokens          *auth.TokenManager
 	cache           ImageCache
 	proxy           http.Handler
+	maxConverted    int
 }
 
 func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) (*Server, error) {
@@ -70,6 +71,7 @@ func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 		logger:          logger,
 		tokens:          tokens,
 		cache:           newImageCacheFromEnv(logger),
+		maxConverted:    defaultMaxConvertedBytes,
 	}
 	origin, proxy, err := startOriginAndProxy(h)
 	if err != nil {

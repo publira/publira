@@ -197,7 +197,7 @@ Node ロールは Next.js の standalone 出力に相当する仕組みを持た
 
 ### 代表イメージ（日常の確認）
 
-Issue / CI の「主要ビルド経路」は次の 4 本（各ロール 1 つ）とする。
+Issue / CI の「主要ビルド経路」は次の 5 本（各ロール 1 つ）とする。
 
 ```bash
 # まとめて（web-host / api-server / publish-episodes / email-renderer / image-server）
@@ -273,12 +273,12 @@ docker build -f infra/docker/web/Dockerfile \
 | batch | `publish-episodes` | `server/**`, `infra/docker/batch/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
-`server/**` 変更時は api と batch の両方の代表をビルドする（共有モジュールのため）。  
+`server/**` 変更時は api、batch、image の代表をビルドする（共有モジュールのため）。  
 `locales/**` は node ロールだけが見る。`@publira/email-templates` がリポジトリルートの文言カタログを相対 import してバンドルするため。
 
 実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
 ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Docker 行列を決定）。  
-ローカルと同一コマンド: `task docker:build:web|api|batch|node`（Web は続けて `task docker:smoke:web`、Node は `task docker:smoke:node`）。
+ローカルと同一コマンド: `task docker:build:web|api|image|batch|node`（Web は続けて `task docker:smoke:web`、Node は `task docker:smoke:node`）。
 
 `Docker / <target>` も他ジョブと同様に path filter でスキップされうる。Branch ruleset が見る必須チェックは最終集約ジョブ **`Summary` のみ**（UI 上は `CI / Summary`。スキップされた中間ジョブは success 扱い）。
 

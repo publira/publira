@@ -1,12 +1,12 @@
 package imageserver
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"strconv"
 	"strings"
@@ -21,7 +21,12 @@ const (
 	imageCacheHeader        = "X-Publira-Image-Cache"
 	originReadHeaderTimeout = 5 * time.Second
 	originShutdownTimeout   = 5 * time.Second
+	// defaultMaxConvertedBytes matches Manael's default upstream limit so a
+	// converted payload cannot grow past what we are willing to buffer.
+	defaultMaxConvertedBytes = 20 << 20
 )
+
+var errConvertedTooLarge = errors.New("converted image exceeds size limit")
 
 // Server is the image-server HTTP handler. Close shuts down the loopback
 // origin that Manael fetches original objects from.
@@ -115,12 +120,21 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectK
 		return
 	}
 
-	rec := httptest.NewRecorder()
+	limit := h.maxConverted
+	if limit <= 0 {
+		limit = defaultMaxConvertedBytes
+	}
+	rec := newLimitedRecorder(limit)
 	h.proxy.ServeHTTP(rec, rewriteOriginRequest(r, objectKey, fallbackContentType))
+	if rec.overflow {
+		h.logger.Error("converted image exceeds size limit", "object_key", objectKey, "limit", limit)
+		writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusInternalServerError, []byte("internal server error\n"))
+		return
+	}
 
-	body := rec.Body.Bytes()
-	if rec.Code == http.StatusOK && len(body) > 0 {
-		contentType := strings.TrimSpace(rec.Header().Get("Content-Type"))
+	body := rec.buf.Bytes()
+	if rec.code == http.StatusOK && len(body) > 0 {
+		contentType := strings.TrimSpace(rec.header.Get("Content-Type"))
 		if contentType == "" {
 			contentType = fallbackContentType
 		}
@@ -130,7 +144,7 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectK
 		h.cache.Set(r.Context(), key, CacheEntry{ContentType: contentType, Data: append([]byte(nil), body...)})
 	}
 
-	for name, values := range rec.Header() {
+	for name, values := range rec.header {
 		if strings.EqualFold(name, "Content-Length") {
 			continue
 		}
@@ -138,11 +152,11 @@ func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, objectK
 			w.Header().Add(name, value)
 		}
 	}
-	contentType := strings.TrimSpace(rec.Header().Get("Content-Type"))
+	contentType := strings.TrimSpace(rec.header.Get("Content-Type"))
 	if contentType == "" {
 		contentType = fallbackContentType
 	}
-	writeImage(w, contentType, cacheControl, "miss", rec.Code, body)
+	writeImage(w, contentType, cacheControl, "miss", rec.code, body)
 }
 
 func rewriteOriginRequest(r *http.Request, objectKey, contentType string) *http.Request {
@@ -154,26 +168,67 @@ func rewriteOriginRequest(r *http.Request, objectKey, contentType string) *http.
 	out := r.Clone(r.Context())
 	out.URL = &u
 	out.RequestURI = ""
+	out.Header.Del(originContentTypeHeader)
 	if contentType != "" {
 		out.Header.Set(originContentTypeHeader, contentType)
 	}
 	return out
 }
 
+type limitedRecorder struct {
+	header   http.Header
+	code     int
+	buf      bytes.Buffer
+	limit    int
+	overflow bool
+}
+
+func newLimitedRecorder(limit int) *limitedRecorder {
+	return &limitedRecorder{
+		header: make(http.Header),
+		code:   http.StatusOK,
+		limit:  limit,
+	}
+}
+
+func (r *limitedRecorder) Header() http.Header { return r.header }
+
+func (r *limitedRecorder) WriteHeader(code int) {
+	if code != 0 {
+		r.code = code
+	}
+}
+
+func (r *limitedRecorder) Write(p []byte) (int, error) {
+	if r.overflow {
+		return 0, errConvertedTooLarge
+	}
+	if r.limit > 0 && r.buf.Len()+len(p) > r.limit {
+		r.overflow = true
+		r.buf.Reset()
+		return 0, errConvertedTooLarge
+	}
+	return r.buf.Write(p)
+}
+
 func writeImage(w http.ResponseWriter, contentType, cacheControl, cacheStatus string, status int, body []byte) {
-	if contentType != "" {
-		w.Header().Set("Content-Type", contentType)
+	if status == 0 {
+		status = http.StatusOK
 	}
-	if cacheControl != "" {
-		w.Header().Set("Cache-Control", cacheControl)
+	if status >= 200 && status < 300 {
+		if contentType != "" {
+			w.Header().Set("Content-Type", contentType)
+		}
+		if cacheControl != "" {
+			w.Header().Set("Cache-Control", cacheControl)
+		}
+		setVary(w, cacheControl)
+	} else {
+		w.Header().Set("Cache-Control", "no-store")
 	}
-	setVary(w, cacheControl)
 	w.Header().Set(imageCacheHeader, cacheStatus)
 	if len(body) > 0 {
 		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
-	}
-	if status == 0 {
-		status = http.StatusOK
 	}
 	w.WriteHeader(status)
 	if len(body) > 0 {

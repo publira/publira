@@ -7,10 +7,12 @@ import (
 	"image"
 	"image/jpeg"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -290,5 +292,77 @@ func TestCreatorImageConvertsToWebP(t *testing.T) {
 	}
 	if got := rec.Header().Get("Content-Type"); got != "image/webp" {
 		t.Fatalf("Content-Type = %q, want image/webp", got)
+	}
+}
+
+func TestRewriteOriginRequestDropsClientOriginContentType(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/images/episodes/x", nil)
+	req.Header.Set(originContentTypeHeader, "text/html")
+
+	cleared := rewriteOriginRequest(req, "obj", "")
+	if got := cleared.Header.Get(originContentTypeHeader); got != "" {
+		t.Fatalf("empty fallback left client header %q", got)
+	}
+
+	replaced := rewriteOriginRequest(req, "obj", "image/jpeg")
+	if got := replaced.Header.Get(originContentTypeHeader); got != "image/jpeg" {
+		t.Fatalf("header = %q, want image/jpeg", got)
+	}
+}
+
+func TestEpisodeImageMissingObjectIsNotPubliclyCacheable(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: stubTenantQueries{
+			public: dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow{
+				ID:              mediaID,
+				ObjectKey:       "episodes/missing.jpg",
+				ContentType:     "image/jpeg",
+				IsPublished:     sql.NullBool{Bool: true, Valid: true},
+				HasPublicAccess: true,
+			},
+		}},
+		&countingStore{objects: map[string]storedObject{}},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/images/episodes/"+mediaID.String(), nil)
+	req.Host = "example.test"
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
+}
+
+func TestServeConvertedRejectsOversizeConversion(t *testing.T) {
+	t.Parallel()
+
+	h := &Handler{
+		cache:        newMemoryCache(time.Hour, defaultMemoryMaxBytes),
+		maxConverted: 8,
+		logger:       slog.Default(),
+		proxy: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "image/webp")
+			_, _ = w.Write([]byte("0123456789"))
+		}),
+	}
+	req := httptest.NewRequest(http.MethodGet, "/images/episodes/x", nil)
+	rec := httptest.NewRecorder()
+	h.serveConverted(rec, req, "obj", "image/jpeg", "public, max-age=3600")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
+	if _, ok := h.cache.Get(context.Background(), cacheKey("obj", req)); ok {
+		t.Fatal("oversized conversion was cached")
 	}
 }
