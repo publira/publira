@@ -16,11 +16,6 @@ export type FetchCursorPage<T> = (
   limit: number
 ) => Promise<{ items: readonly T[]; nextToken: string }>;
 
-export type FetchOffsetPage<T> = (
-  offset: number,
-  limit: number
-) => Promise<{ items: readonly T[] }>;
-
 /** `false` stops the walk; any other value continues while budget remains. */
 export type CursorPageVisitResult = boolean | undefined;
 
@@ -38,9 +33,6 @@ export type CursorWalkStop =
   | "max-rows"
   | "stopped-by-callback"
   | "repeated-token";
-
-/** Offset walks cannot see a repeated cursor, so they never return that stop. */
-export type OffsetWalkStop = Exclude<CursorWalkStop, "repeated-token">;
 
 /**
  * Visit each page of a cursor-paginated list RPC in order.
@@ -107,62 +99,6 @@ export const forEachPageWithToken = async <T>(
   if (visitedTokens.has(token)) {
     return "repeated-token";
   }
-  if (pagesRead >= maxPages) {
-    return "max-pages";
-  }
-  return "max-rows";
-};
-
-/**
- * Visit each page of an offset-paginated list RPC in order.
- *
- * Pages are sequential because each request's offset depends on how many
- * rows the previous page actually returned. Page and row bounds stop a
- * malformed or unbounded response from looping forever.
- *
- * A last page that is still full when the budget ends is `max-pages` or
- * `max-rows`, not `completed` — more rows may exist.
- */
-export const forEachPageWithOffset = async <T>(
-  fetchPage: FetchOffsetPage<T>,
-  onPage: (
-    items: readonly T[]
-  ) => CursorPageVisitResult | Promise<CursorPageVisitResult>,
-  {
-    maxPages = defaultMaxPages,
-    maxRows = defaultMaxRows,
-    pageSize = defaultPageSize,
-  }: CursorPageOptions = {}
-): Promise<OffsetWalkStop> => {
-  let offset = 0;
-  let pagesRead = 0;
-  let rowsRead = 0;
-
-  while (pagesRead < maxPages && rowsRead < maxRows) {
-    const remainingRows = maxRows - rowsRead;
-    const limit = Math.min(pageSize, remainingRows);
-    const { items } = await fetchPage(offset, limit);
-    const pageItems = items.slice(0, remainingRows);
-    if (pageItems.length === 0) {
-      return "completed";
-    }
-
-    const shouldContinue = await onPage(pageItems);
-    if (shouldContinue === false) {
-      return "stopped-by-callback";
-    }
-
-    rowsRead += pageItems.length;
-    pagesRead += 1;
-    offset += pageItems.length;
-    if (pageItems.length < limit) {
-      return "completed";
-    }
-    if (rowsRead >= maxRows) {
-      return "max-rows";
-    }
-  }
-
   if (pagesRead >= maxPages) {
     return "max-pages";
   }

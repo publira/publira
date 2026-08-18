@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  findByPublicIdWithToken,
-  forEachPageWithOffset,
-  forEachPageWithToken,
-} from "./pagination";
+import { findByPublicIdWithToken, forEachPageWithToken } from "./pagination";
 
 describe("forEachPageWithToken", () => {
   it("token を順に辿って各ページを onPage に渡し completed を返す", async () => {
@@ -111,86 +107,6 @@ describe("forEachPageWithToken", () => {
 
     expect(fetchPage).toHaveBeenCalledWith("", 2);
     expect(onPage).toHaveBeenCalledWith([{ id: "1" }, { id: "2" }]);
-    expect(fetchPage).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("forEachPageWithOffset", () => {
-  it("offset を順に辿って各ページを onPage に渡し completed を返す", async () => {
-    const fetchPage = vi
-      .fn()
-      .mockResolvedValueOnce({
-        items: [{ id: "a" }, { id: "b" }],
-      })
-      .mockResolvedValueOnce({
-        items: [{ id: "c" }],
-      });
-    const onPage = vi.fn();
-
-    await expect(
-      forEachPageWithOffset(fetchPage, onPage, { pageSize: 2 })
-    ).resolves.toBe("completed");
-
-    expect(fetchPage).toHaveBeenNthCalledWith(1, 0, 2);
-    expect(fetchPage).toHaveBeenNthCalledWith(2, 2, 2);
-    expect(onPage).toHaveBeenNthCalledWith(1, [{ id: "a" }, { id: "b" }]);
-    expect(onPage).toHaveBeenNthCalledWith(2, [{ id: "c" }]);
-  });
-
-  it("空ページなら completed を返す", async () => {
-    const fetchPage = vi.fn().mockResolvedValue({ items: [] });
-    const onPage = vi.fn();
-
-    await expect(forEachPageWithOffset(fetchPage, onPage)).resolves.toBe(
-      "completed"
-    );
-    expect(onPage).not.toHaveBeenCalled();
-  });
-
-  it("onPage が false を返したら stopped-by-callback で止まる", async () => {
-    const fetchPage = vi.fn().mockResolvedValue({
-      items: [{ id: "a" }],
-    });
-    const onPage = vi.fn().mockReturnValue(false);
-
-    await expect(forEachPageWithOffset(fetchPage, onPage)).resolves.toBe(
-      "stopped-by-callback"
-    );
-    expect(fetchPage).toHaveBeenCalledTimes(1);
-  });
-
-  it("最終ページが満杯のまま上限に達したら max-pages を返す", async () => {
-    const fetchPage = vi.fn().mockResolvedValue({
-      items: [{ id: "a" }],
-    });
-    const onPage = vi.fn();
-
-    await expect(
-      forEachPageWithOffset(fetchPage, onPage, {
-        maxPages: 3,
-        pageSize: 1,
-      })
-    ).resolves.toBe("max-pages");
-    expect(fetchPage).toHaveBeenCalledTimes(3);
-    expect(onPage).toHaveBeenCalledTimes(3);
-  });
-
-  it("maxRows が pageSize より小さいとき limit を残り件数に抑える", async () => {
-    const fetchPage = vi.fn().mockResolvedValue({
-      items: Array.from({ length: 50 }, (_, index) => ({
-        id: `item-${index}`,
-      })),
-    });
-    const onPage = vi.fn();
-
-    await expect(
-      forEachPageWithOffset(fetchPage, onPage, {
-        maxRows: 50,
-        pageSize: 100,
-      })
-    ).resolves.toBe("max-rows");
-
-    expect(fetchPage).toHaveBeenCalledWith(0, 50);
     expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 });
