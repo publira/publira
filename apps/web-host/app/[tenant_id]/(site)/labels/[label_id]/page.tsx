@@ -58,12 +58,9 @@ export const generateMetadata = async ({
   const labelId = parseLabelDetailParams({ label_id });
   const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
 
-  const [siteLabel, result] = await Promise.all([
-    getTenantSiteLabel(tenantId),
-    labelId
-      ? loadPublishedLabelDetail(tenantId, labelId, token)
-      : Promise.resolve({ ok: true as const, value: null }),
-  ]);
+  const result = labelId
+    ? await loadPublishedLabelDetail(tenantId, labelId, token)
+    : { ok: true as const, value: null };
 
   // An unavailable label reads as "not found" for the `<title>` alone; the
   // page body below says what actually happened.
@@ -71,13 +68,13 @@ export const generateMetadata = async ({
 
   if (!label) {
     return {
-      title: `レーベルが見つかりません | ${siteLabel}`,
+      title: "レーベルが見つかりません",
     };
   }
 
   return {
     description: `${label.name} の公開中シリーズ ${label.seriesCount} 件`,
-    title: `${label.name} | ${siteLabel}`,
+    title: label.name,
   };
 };
 

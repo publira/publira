@@ -9,7 +9,6 @@ import { CatalogSearchForm } from "#components/catalog-search-form";
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { searchPublishedSeries } from "#lib/catalog";
-import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
@@ -28,21 +27,17 @@ type SearchPageProps = PageProps<"/[tenant_id]/search">;
 export const generateMetadata = async ({
   searchParams,
 }: SearchPageProps): Promise<Metadata> => {
-  const [tenantId, resolvedSearchParams] = await Promise.all([
-    getTenantId(),
-    searchParams,
-  ]);
+  const resolvedSearchParams = await searchParams;
   const { query } = parseSearchPageSearchParams(resolvedSearchParams);
-  const siteLabel = await getTenantSiteLabel(tenantId);
 
   if (!query) {
     return {
-      title: `検索 | ${siteLabel}`,
+      title: "検索",
     };
   }
 
   return {
-    title: `「${query}」の検索結果 | ${siteLabel}`,
+    title: `「${query}」の検索結果`,
   };
 };
 
