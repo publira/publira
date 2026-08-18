@@ -25,5 +25,5 @@
     "typescript": "catalog:",
     "ultracite": "7.10.5"
   },
-  "packageManager": "pnpm@11.21.0"
+  "packageManager": "pnpm@11.22.0"
 }
