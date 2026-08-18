@@ -84,6 +84,23 @@ describe("getPublishedLabelDetail", () => {
     ]);
   });
 
+  it("publicId が空のレーベルは null", async () => {
+    mockGetPublishedLabelDetail.mockResolvedValueOnce({
+      label: {
+        name: "レーベルA",
+        publicId: "  ",
+        publishedSeriesCount: 1,
+      },
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await expect(
+      getPublishedLabelDetail("TENANT_1", "LABEL_A")
+    ).resolves.toEqual({ ok: true, value: null });
+  });
+
   it("label が欠けている場合は null", async () => {
     mockGetPublishedLabelDetail.mockResolvedValueOnce({
       label: undefined,

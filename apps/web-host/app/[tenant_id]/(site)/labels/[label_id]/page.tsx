@@ -17,6 +17,7 @@ import { getTenantId } from "#lib/tenant-id";
 
 import {
   labelDetailHref,
+  parseLabelDetailParams,
   parseLabelDetailSearchParams,
 } from "./_lib/search-params";
 
@@ -54,11 +55,14 @@ export const generateMetadata = async ({
 
   guardPlaceholders({ label_id });
 
+  const labelId = parseLabelDetailParams({ label_id });
   const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
 
   const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
-    loadPublishedLabelDetail(tenantId, label_id, token),
+    labelId
+      ? loadPublishedLabelDetail(tenantId, labelId, token)
+      : Promise.resolve({ ok: true as const, value: null }),
   ]);
 
   // An unavailable label reads as "not found" for the `<title>` alone; the
@@ -211,14 +215,19 @@ const LabelDetailContent = async ({
 
   guardPlaceholders({ label_id });
 
+  const labelId = parseLabelDetailParams({ label_id });
   const { token } = parseLabelDetailSearchParams(resolvedSearchParams);
+
+  if (!labelId) {
+    notFound();
+  }
 
   // A failed read is a value, not a throw: a `"use cache"` fill that throws
   // fails the whole request, so neither this page nor any boundary would get
   // to render anything (#672).
   const [siteLabel, result] = await Promise.all([
     getTenantSiteLabel(tenantId),
-    loadPublishedLabelDetail(tenantId, label_id, token),
+    loadPublishedLabelDetail(tenantId, labelId, token),
   ]);
 
   if (!result.ok) {

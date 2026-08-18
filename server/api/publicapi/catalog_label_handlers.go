@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"connectrpc.com/connect"
@@ -49,10 +50,11 @@ func (s *apiServer) GetPublishedLabelDetail(
 	label := publishedLabelFromRow(row)
 	if row.EyeCatchImageID.Valid {
 		variants, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
-		if variantErr == nil {
-			if imageVariants, ok := variants[row.EyeCatchImageID.UUID]; ok {
-				label.EyeCatchImageVariants = imageVariants
-			}
+		if variantErr != nil {
+			// Variants decorate the label; the page itself is still usable.
+			slog.WarnContext(ctx, "label eye catch variants unavailable", "error", variantErr)
+		} else if imageVariants, ok := variants[row.EyeCatchImageID.UUID]; ok {
+			label.EyeCatchImageVariants = imageVariants
 		}
 	}
 

@@ -31,6 +31,14 @@ func normalizeSearchQuery(raw string) (string, error) {
 	return query, nil
 }
 
+// searchQueryKey is the token identity of a search. ILIKE does not care about
+// ASCII case, so a token issued for "Seed" must still work with "seed".
+// strings.ToLower is only this identity; it is not a claim about PostgreSQL's
+// locale-aware ILIKE.
+func searchQueryKey(query string) string {
+	return strings.ToLower(query)
+}
+
 // ilikeContainsPattern wraps the keyword as '%q%' and escapes ILIKE
 // metacharacters so a user typing % or _ cannot widen the match. The escape
 // character is '!', matching ESCAPE '!' on ListPublishedSeriesIDsBySearch*.
@@ -48,11 +56,11 @@ func ilikeContainsPattern(query string) string {
 // reinterpreted: its keys point into a page that does not exist under the new
 // query. Token rules: proto/README.md.
 func encodeSearchCursor(direction pagination.Direction, query string, row dbmodels.ListActiveSeriesByIDsRow) string {
-	return pagination.Encode(direction, query, row.Title, row.ID.String())
+	return pagination.Encode(direction, searchQueryKey(query), row.Title, row.ID.String())
 }
 
 func encodeSearchRecoveryToken(direction pagination.Direction, query string, keys seriesCursorKeys) string {
-	return pagination.Encode(direction, query, keys.title.String, keys.id.UUID.String(), seriesInclusiveKey)
+	return pagination.Encode(direction, searchQueryKey(query), keys.title.String, keys.id.UUID.String(), seriesInclusiveKey)
 }
 
 func decodeSearchCursorKeys(cursor pagination.Cursor, query string) (seriesCursorKeys, error) {
@@ -64,7 +72,7 @@ func decodeSearchCursorKeys(cursor pagination.Cursor, query string) (seriesCurso
 	if inclusive && cursor.Keys[3] != seriesInclusiveKey {
 		return seriesCursorKeys{}, invalid
 	}
-	if cursor.Keys[0] != query {
+	if cursor.Keys[0] != searchQueryKey(query) {
 		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, errors.New("token was issued for another query"))
 	}
 	seriesID, err := uuid.Parse(cursor.Keys[2])

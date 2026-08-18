@@ -77,6 +77,46 @@ export interface SeriesListItem {
   creatorNames: string[];
 }
 
+const toSeriesListItem = (s: {
+  creators?: {
+    iconImageUrl?: string;
+    name?: string;
+    profileText?: string;
+    publicId?: string;
+  }[];
+  eyeCatchImageUpdatedAt?: string;
+  eyeCatchImageVariants?: Parameters<typeof toEyeCatchImageVariants>[0];
+  label?: { name?: string; publicId?: string };
+  publicId: string;
+  synopsis: string;
+  title: string;
+}): SeriesListItem => ({
+  creatorNames: (s.creators ?? []).flatMap((c) => {
+    const name = (c.name ?? "").trim();
+    return name.length > 0 ? [name] : [];
+  }),
+  creators: (s.creators ?? []).flatMap((c) => {
+    const name = (c.name ?? "").trim();
+    return name.length > 0
+      ? [
+          {
+            iconImageUrl: c.iconImageUrl?.trim() ?? "",
+            name,
+            profileText: (c.profileText ?? "").trim(),
+            publicId: c.publicId ?? "",
+          },
+        ]
+      : [];
+  }),
+  eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
+  eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
+  labelName: s.label?.name?.trim() ?? "",
+  labelPublicId: s.label?.publicId?.trim() ?? "",
+  publicId: s.publicId,
+  synopsis: s.synopsis,
+  title: s.title,
+});
+
 export interface EpisodeItem {
   publicId: string;
   title: string;
@@ -234,32 +274,7 @@ export const listPublishedSeries = async (
     return cachedReadFailure(rpcErrorMessage(error, SERIES_LIST_ERROR_MESSAGE));
   }
 
-  const series = (response.series ?? []).map((s) => ({
-    creatorNames: (s.creators ?? []).flatMap((c) => {
-      const name = (c.name ?? "").trim();
-      return name.length > 0 ? [name] : [];
-    }),
-    creators: (s.creators ?? []).flatMap((c) => {
-      const name = (c.name ?? "").trim();
-      return name.length > 0
-        ? [
-            {
-              iconImageUrl: c.iconImageUrl?.trim() ?? "",
-              name,
-              profileText: (c.profileText ?? "").trim(),
-              publicId: c.publicId ?? "",
-            },
-          ]
-        : [];
-    }),
-    eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
-    eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
-    labelName: s.label?.name?.trim() ?? "",
-    labelPublicId: s.label?.publicId?.trim() ?? "",
-    publicId: s.publicId,
-    synopsis: s.synopsis,
-    title: s.title,
-  }));
+  const series = (response.series ?? []).map(toSeriesListItem);
 
   return {
     ok: true,
@@ -300,6 +315,7 @@ export const searchPublishedSeries = async (
 
   const normalizedTenantId = tenantId.trim();
   applyCacheTag(tenantSeriesListTag(normalizedTenantId));
+  applyCacheTag(tenantAuthorsTag(normalizedTenantId));
 
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.searchPublishedSeries>
@@ -317,32 +333,7 @@ export const searchPublishedSeries = async (
     );
   }
 
-  const series = (response.series ?? []).map((s) => ({
-    creatorNames: (s.creators ?? []).flatMap((c) => {
-      const name = (c.name ?? "").trim();
-      return name.length > 0 ? [name] : [];
-    }),
-    creators: (s.creators ?? []).flatMap((c) => {
-      const name = (c.name ?? "").trim();
-      return name.length > 0
-        ? [
-            {
-              iconImageUrl: c.iconImageUrl?.trim() ?? "",
-              name,
-              profileText: (c.profileText ?? "").trim(),
-              publicId: c.publicId ?? "",
-            },
-          ]
-        : [];
-    }),
-    eyeCatchImageUpdatedAt: s.eyeCatchImageUpdatedAt || undefined,
-    eyeCatchImageVariants: toEyeCatchImageVariants(s.eyeCatchImageVariants),
-    labelName: s.label?.name?.trim() ?? "",
-    labelPublicId: s.label?.publicId?.trim() ?? "",
-    publicId: s.publicId,
-    synopsis: s.synopsis,
-    title: s.title,
-  }));
+  const series = (response.series ?? []).map(toSeriesListItem);
 
   return {
     ok: true,

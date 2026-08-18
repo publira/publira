@@ -209,6 +209,9 @@ test.describe("web-host catalog browsing", () => {
     await search.getByRole("button", { name: "検索" }).click();
 
     await expect(page).toHaveURL(/\/search\?q=/u);
+    expect(new URL(page.url()).searchParams.get("q")).toBe(
+      SEED_TENANT.series.title
+    );
     await expect(
       page.getByRole("heading", {
         level: 2,

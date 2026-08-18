@@ -75,7 +75,8 @@ export const getPublishedLabelDetail = async (
     );
   }
 
-  if (!response.label) {
+  const publicId = response.label?.publicId?.trim() ?? "";
+  if (!response.label || publicId.length === 0) {
     return { ok: true, value: null };
   }
 
@@ -87,14 +88,14 @@ export const getPublishedLabelDetail = async (
       eyeCatchImageVariants: toEyeCatchImageVariants(
         response.label.eyeCatchImageVariants
       ),
-      id: response.label.publicId ?? "",
+      id: publicId,
       name: (response.label.name ?? "").trim(),
       nextToken: response.nextToken ?? "",
       previousToken: response.previousToken ?? "",
       series: (response.series ?? []).flatMap((series) => {
-        const publicId = series.publicId?.trim() ?? "";
-        return publicId.length > 0
-          ? [{ publicId, title: series.title?.trim() ?? "" }]
+        const seriesPublicId = series.publicId?.trim() ?? "";
+        return seriesPublicId.length > 0
+          ? [{ publicId: seriesPublicId, title: series.title?.trim() ?? "" }]
           : [];
       }),
       seriesCount: response.label.publishedSeriesCount ?? 0,

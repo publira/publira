@@ -1,10 +1,28 @@
 import { describe, expect, it } from "vitest";
 
-import { labelDetailHref, parseLabelDetailSearchParams } from "./search-params";
+import {
+  labelDetailHref,
+  parseLabelDetailParams,
+  parseLabelDetailSearchParams,
+} from "./search-params";
 
 // Token normalization itself is covered in `lib/cursor-token.test.ts`; these
 // only pin down that this detail route is wired to it and points at the
 // label.
+describe("parseLabelDetailParams", () => {
+  it("12 文字の Base58 public_id を通す", () => {
+    expect(parseLabelDetailParams({ label_id: " SeedLABLAAA1 " })).toBe(
+      "SeedLABLAAA1"
+    );
+  });
+
+  it("形が違う label_id は null にする", () => {
+    expect(parseLabelDetailParams({ label_id: "not-a-public-id" })).toBeNull();
+    expect(parseLabelDetailParams({ label_id: "0OOOOOOOOOOO" })).toBeNull();
+    expect(parseLabelDetailParams({ label_id: "" })).toBeNull();
+  });
+});
+
 describe("parseLabelDetailSearchParams", () => {
   it("base64url の token は前後の空白だけ落として通す", () => {
     expect(parseLabelDetailSearchParams({ token: " djF8Zg-_ " })).toEqual({

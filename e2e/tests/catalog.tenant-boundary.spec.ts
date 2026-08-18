@@ -187,19 +187,30 @@ test.describe("web-host tenant boundary", () => {
     );
 
     expect(response?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "ページが見つかりません" })
+    ).toBeVisible();
     await expect(page.getByText(SEED_TENANT.labelName)).toHaveCount(0);
   });
 
   test("検索結果に他テナントのシリーズが混ざらない", async ({ page }) => {
-    await page.goto(otherTenantUrl("/search?q=Seed"));
+    const foreign = await page.goto(otherTenantUrl("/search?q=Seed"));
+    expect(foreign?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "検索" })
+    ).toBeVisible();
 
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
 
-    await page.goto(
+    const own = await page.goto(
       otherTenantUrl(
         `/search?q=${encodeURIComponent(OTHER_TENANT.publishedSeries.title)}`
       )
     );
+    expect(own?.status(), await page.content()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "検索" })
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", {
         level: 2,
