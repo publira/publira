@@ -4,6 +4,7 @@ import {
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
+import pRetry, { AbortError } from "p-retry";
 
 import {
   apiClient,
@@ -252,6 +253,22 @@ export const requestPublicEmailChange = async (
   }
 };
 
+/**
+ * The retry below only covers "the session we just wrote is not visible to this
+ * read yet", which the server reports as a missing / not-permitted record. An
+ * `unauthenticated` session is a decision, not a race, so it is excluded even
+ * though `isExpectedNullableRpcError` accepts it.
+ */
+const isStaleSessionReadError = (error: unknown): boolean =>
+  isExpectedNullableRpcError(error) && !isUnauthenticatedRpcError(error);
+
+/**
+ * `p-retry` defaults to `minTimeout: 1000`, which would put up to a second onto
+ * a request-path read. The wait only has to outlast the replication of a write
+ * that already completed, so 100ms is used instead.
+ */
+const GET_ME_RETRY_MIN_TIMEOUT_MS = 100;
+
 export const getMe = async (
   tenantId: string,
   accessToken?: string
@@ -261,41 +278,41 @@ export const getMe = async (
     return null;
   }
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      // Retried once because a session written moments ago may not be visible
-      // to the first read; must stay sequential.
-      // oxlint-disable-next-line no-await-in-loop
-      const response = await apiClient.auth.getMe(
-        {
-          tenant: { tenantId },
-        },
-        buildSessionHeaders(sid)
-      );
+  try {
+    return await pRetry(
+      async () => {
+        try {
+          const response = await apiClient.auth.getMe(
+            {
+              tenant: { tenantId },
+            },
+            buildSessionHeaders(sid)
+          );
 
-      if (!response.user) {
-        return null;
-      }
+          if (!response.user) {
+            return null;
+          }
 
-      return {
-        name: response.user.name,
-        publicId: response.user.publicId,
-        role: response.user.role,
-      };
-    } catch (error) {
-      if (isUnauthenticatedRpcError(error)) {
-        throw error;
-      }
-      if (!isExpectedNullableRpcError(error)) {
-        throw error;
-      }
-      if (attempt === 1) {
-        return null;
-      }
+          return {
+            name: response.user.name,
+            publicId: response.user.publicId,
+            role: response.user.role,
+          };
+        } catch (error) {
+          if (isStaleSessionReadError(error)) {
+            throw error;
+          }
+          throw new AbortError(error instanceof Error ? error : String(error));
+        }
+      },
+      { minTimeout: GET_ME_RETRY_MIN_TIMEOUT_MS, retries: 1 }
+    );
+  } catch (error) {
+    if (isStaleSessionReadError(error)) {
+      return null;
     }
+    throw error;
   }
-
-  return null;
 };
 
 export const updateMe = async (

@@ -145,6 +145,32 @@ describe("web-host auth", () => {
       );
 
     await expect(getMe("TENANT001")).resolves.toBeNull();
+    expect(mockGetMe).toHaveBeenCalledTimes(2);
+  });
+
+  it("getMe: 直後の read に見えなかったセッションは再試行で解決する", async () => {
+    const { getMe } = await importAuth();
+    mockGetMe
+      .mockRejectedValueOnce(new ConnectError("not found", Code.NotFound))
+      .mockResolvedValueOnce({
+        user: { name: "Alice", publicId: "U001", role: "reader" },
+      });
+
+    await expect(getMe("TENANT001")).resolves.toEqual({
+      name: "Alice",
+      publicId: "U001",
+      role: "reader",
+    });
+    expect(mockGetMe).toHaveBeenCalledTimes(2);
+  });
+
+  it("getMe: 分類できない RPC エラーは再試行せずそのまま伝播する", async () => {
+    const { getMe } = await importAuth();
+    const thrown = new ConnectError("boom", Code.Internal);
+    mockGetMe.mockRejectedValueOnce(thrown);
+
+    await expect(getMe("TENANT001")).rejects.toBe(thrown);
+    expect(mockGetMe).toHaveBeenCalledOnce();
   });
 
   it("updateMe: expected error は null", async () => {
