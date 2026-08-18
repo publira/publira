@@ -18,7 +18,7 @@
   - `010_catalog.sql`: レーベル・著者・シリーズ・エピソード
   - `020_audit_logs.sql`: 監査ログ
   - `030_smtp_config.sql`: SMTP 設定
-- `scenarios/`: 将来追加するシナリオ別データ（任意実行）
+- `scenarios/`: シナリオ別データ（任意実行）— [`scenarios/README.md`](./scenarios/README.md)
 
 ## 実行方法
 

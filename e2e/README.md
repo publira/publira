@@ -1,7 +1,7 @@
 # E2E テスト基盤
 
 Playwright による Web 横断 E2E の共通基盤と、公開カタログ・管理画面入稿フローのシナリオです。  
-残りの製品シナリオは子 Issue（#517–#518 など）側で追加します。本ディレクトリは起動・readiness・CI・成果物の標準化も責務に含みます。
+本ディレクトリは起動・readiness・CI・成果物の標準化も責務に含みます。
 
 関連: [#513](https://github.com/publira/publira/issues/513) / [#516](https://github.com/publira/publira/issues/516) / Epic [#512](https://github.com/publira/publira/issues/512)
 
@@ -246,12 +246,6 @@ CI 全体のジョブ構成・path filter・トリアージ: [.github/workflows/
 ### 未対応の挙動を先に書いておく
 
 まだ直っていない挙動は、期待する側を `test.skip` で置き、コメントに Issue の URL を書いておきます。修正時に `test.skip` を外すだけで検証できます。
-
-現在の `test.skip`:
-
-| spec | 内容 | Issue |
-| --- | --- | --- |
-| `catalog.outage.spec.ts` | API 障害中のデータ取得失敗が素の 500 になり、フォールバックが表示されない | [#672](https://github.com/publira/publira/issues/672) |
 
 ## 失敗時のトリアージ
 

@@ -59,8 +59,6 @@ Go 側の符号化と検証は [`server/internal/pagination`](../server/internal
 
 cursor に移した RPC からは `offset` を**削除**し、フィールド番号と名前を `reserved` に入れる。この製品はまだ公開前で、後方互換のために非推奨フィールドを残す理由がない。`limit` は 1 ページの件数としてそのまま使う。
 
-まだ移行していない RPC の `limit` / `offset` はそのまま。移行は画面ごとの Epic の Sub-issue が持つ。
-
 ### 実装チェックリスト
 
 1. proto に `token` を足し、`offset` を消して `reserved` にする。Response に `previous_token` / `next_token` を足す。
