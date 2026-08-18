@@ -14,6 +14,7 @@ import {
   ADMIN_SESSION_COOKIE_NAME,
   bumpUserCredentialsVersion,
   expectLoginPage,
+  expectSameOriginPath,
   expectSessionRevokedFlash,
   fillLoginForm,
   LOGIN_FAILED_MESSAGE,
@@ -85,7 +86,7 @@ test.describe("web-admin auth", () => {
     );
     await fillLoginForm(page, SEED_ADMIN);
 
-    await expect(page).toHaveURL(/\/(?:$|\?)/u);
+    await expectSameOriginPath(page, WEB_ADMIN_BASE_URL, "/");
     await expect(
       page.getByRole("heading", { name: "ダッシュボード" })
     ).toBeVisible();

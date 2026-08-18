@@ -38,8 +38,7 @@ SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
     password_hash = EXCLUDED.password_hash,
     name = EXCLUDED.name,
-    status = EXCLUDED.status,
-    email_verified_at = EXCLUDED.email_verified_at;
+    status = EXCLUDED.status;
 
 INSERT INTO tenant_user_roles (id, user_id, role, tenant_id)
 SELECT
@@ -80,8 +79,7 @@ SET tenant_id = EXCLUDED.tenant_id,
     email = EXCLUDED.email,
     password_hash = EXCLUDED.password_hash,
     name = EXCLUDED.name,
-    status = EXCLUDED.status,
-    email_verified_at = EXCLUDED.email_verified_at;
+    status = EXCLUDED.status;
 
 WITH platform_user_seed AS (
     SELECT '018f0e8d-1000-7000-8000-000000000001'::uuid AS id

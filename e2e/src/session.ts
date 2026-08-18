@@ -50,6 +50,21 @@ export const expectLoginPage = async (page: Page): Promise<void> => {
   await expect(page.getByRole("button", { name: "ログイン" })).toBeVisible();
 };
 
+/**
+ * Landed on `pathname` at `baseUrl`'s origin. A `/` regex also matches
+ * `https://evil.example/`, so open-redirect tests must compare origin.
+ */
+export const expectSameOriginPath = async (
+  page: Page,
+  baseUrl: string,
+  pathname: string
+): Promise<void> => {
+  const expectedOrigin = new URL(baseUrl).origin;
+  await expect(page).toHaveURL(
+    (url) => url.origin === expectedOrigin && url.pathname === pathname
+  );
+};
+
 export const expectSessionRevokedFlash = async (page: Page): Promise<void> => {
   await expect(page).toHaveURL(/\/login/u);
   await expect(page).toHaveURL(/reason=session_revoked/u);

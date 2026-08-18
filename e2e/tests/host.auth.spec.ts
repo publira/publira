@@ -12,6 +12,7 @@ import {
 import {
   bumpUserCredentialsVersion,
   expectLoginPage,
+  expectSameOriginPath,
   expectSessionRevokedFlash,
   fillLoginForm,
   HOST_SESSION_COOKIE_NAME,
@@ -91,8 +92,7 @@ test.describe("web-host auth", () => {
     );
     await fillLoginForm(page, SEED_MEMBER);
 
-    await expect(page).toHaveURL(/\/(?:$|\?)/u);
-    await expect(page).not.toHaveURL(/\/login/u);
+    await expectSameOriginPath(page, WEB_HOST_BASE_URL, "/");
   });
 
   test("ログイン済みで /login を開くと My Page へ送る", async ({ page }) => {

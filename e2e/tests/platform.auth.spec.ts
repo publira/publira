@@ -14,6 +14,7 @@ import {
 import {
   bumpPlatformUserCredentialsVersion,
   expectLoginPage,
+  expectSameOriginPath,
   expectSessionRevokedFlash,
   fillLoginForm,
   LOGIN_FAILED_MESSAGE,
@@ -88,7 +89,7 @@ test.describe("web-platform auth", () => {
     );
     await fillLoginForm(page, SEED_PLATFORM_SUPER_ADMIN);
 
-    await expect(page).toHaveURL(/\/(?:$|\?)/u);
+    await expectSameOriginPath(page, WEB_PLATFORM_BASE_URL, "/");
     await expect(
       page.getByRole("heading", { name: "横断オペレーションの基準点" })
     ).toBeVisible();
