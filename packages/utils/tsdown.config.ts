@@ -5,6 +5,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/cached-read.ts",
+    "src/catalog.ts",
     "src/cn.ts",
     "src/field-errors.ts",
     "src/form-data.ts",

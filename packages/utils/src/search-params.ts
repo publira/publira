@@ -20,6 +20,9 @@
 
 import { z } from "zod";
 
+import { sharedMessage } from "./catalog";
+import type { Locale } from "./i18n";
+
 /** A single entry of Next.js' resolved `searchParams` object. */
 export type SearchParamValue = string | string[] | undefined;
 
@@ -76,6 +79,11 @@ export interface SearchParamStringArrayOptions {
 export interface SearchParamEnumOptions<F extends string> {
   /** Returned when the value is absent or outside `values`. Omit to fail instead. */
   fallback?: F;
+  /**
+   * UI locale for the rejection message when `fallback` is omitted.
+   * Unknown values fall back to `ja`.
+   */
+  locale?: Locale | string;
   /** Maximum length in UTF-16 code units. Default: {@link DEFAULT_MAX_LENGTH}. */
   maxLength?: number;
 }
@@ -260,7 +268,7 @@ export const searchParamEnum = <T extends string, F extends string = never>(
   const schema = z.preprocess(
     (value) => normalizeSingle(value, maxLength, false),
     z.string().refine((value): value is T => allowed.has(value), {
-      message: "許可されていない値です。",
+      message: sharedMessage("errors.disallowed_value", options?.locale),
     })
   );
 

@@ -20,6 +20,18 @@
       "subject": "{tenant_name} 管理者招待"
     }
   },
+  "errors": {
+    "disallowed_value": "許可されていない値です。",
+    "rpc": {
+      "conflict": "重複するデータがあるため保存できません。",
+      "forbidden": "この操作を行う権限がありません。",
+      "invalid-argument": "入力内容に誤りがあります。",
+      "not-found": "対象が見つかりません。",
+      "unauthenticated": "セッションが無効です。再ログインしてください。",
+      "unavailable": "サーバーに接続できませんでした。時間をおいて再試行してください。"
+    },
+    "validation": "入力内容を確認してください。"
+  },
   "locale": {
     "en": "英語",
     "ja": "日本語"

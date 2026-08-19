@@ -197,6 +197,18 @@ describe("getMessage", () => {
     expect(enMatchesJa).toBe(enCatalog);
     expect(getMessage(jaCatalog, "locale.ja")).toBe("日本語");
     expect(getMessage(enCatalog, "locale.en")).toBe("English");
+    expect(getMessage(jaCatalog, "errors.rpc.unauthenticated")).toBe(
+      "セッションが無効です。再ログインしてください。"
+    );
+    expect(getMessage(enCatalog, "errors.rpc.unauthenticated")).toBe(
+      "Your session is no longer valid. Please sign in again."
+    );
+    expect(getMessage(jaCatalog, "errors.validation")).toBe(
+      "入力内容を確認してください。"
+    );
+    expect(getMessage(enCatalog, "errors.validation")).toBe(
+      "Please check the information you entered."
+    );
   });
 
   describe("unknown keys", () => {

@@ -72,7 +72,7 @@ The normalization every boundary needs lives in `@publira/utils`, so a screen wr
 | --- | --- |
 | `searchParams` | `@publira/utils/search-params`: `searchParamString` / `searchParamStringArray` / `searchParamEnum` / `searchParamNumber` / `searchParamBoolean` / `searchParamDate` |
 | `FormData` | `@publira/utils/form-data`: `toFormDataInput(formData, fields)`, declaring each field as `value` / `values` / `file` / `files` |
-| `safeParse` failure → Action state | `@publira/utils/field-errors`: `toFieldErrors`, `toFormErrorMessage`, `VALIDATION_ERROR_MESSAGE` |
+| `safeParse` failure → Action state | `@publira/utils/field-errors`: `toFieldErrors`, `toFormErrorMessage`, `validationErrorMessage` / `VALIDATION_ERROR_MESSAGE` |
 
 The `searchParams` factories encode the failure decision above in one place: passing `fallback` gives a schema that never fails and resolves to that explicit safe default, and omitting it gives a schema that reports an issue so the page can `notFound()`. Do not re-add a local `z.preprocess` that only trims and length-checks — extend the shared schema instead, and keep genuinely screen-specific rules (which action values exist, which sort keys a table has) at the call site.
 
@@ -100,9 +100,9 @@ The same rules apply to all three apps:
 | Record missing, or not visible to this caller | `isMissingResourceRpcError()` → treat as `notFound()`. Never distinguish the two — that leaks whether the record exists |
 | Session-scoped read that may resolve to `null` | `isExpectedNullableRpcError()` |
 | Form submission the server rejected | `isRejectedRequestRpcError()` |
-| Any `catch` that turns an error into a message | `rethrowUnclassifiedRpcError(error)` first, then `rpcErrorMessage(error, fallback, overrides?)` |
+| Any `catch` that turns an error into a message | `rethrowUnclassifiedRpcError(error)` first, then `rpcErrorMessage(error, fallback, options?)` |
 
-- Take the wording from `rpcErrorMessage`'s shared table and override only the categories a screen genuinely words differently. Do not build a per-file mapping table.
+- Take the wording from `rpcErrorMessage`'s shared table and override only the categories a screen genuinely words differently. Do not build a per-file mapping table. Pass `{ locale }` so the shared categories follow the UI locale; omitting it keeps Japanese.
 - When one `Code` covers multiple actionable cases, choose wording with `rpcErrorHasFieldViolation()` (`google.rpc.BadRequest`) or `rpcErrorHasReason()` (`google.rpc.ErrorInfo`) after `rpcErrorDisposition()` has selected the category. Never read the server message. Details are unavailable after a `"use cache"` serialization boundary, so complete detail-based wording inside that scope.
 - **Never swallow an unclassifiable error** (`internal`, `unimplemented`, or a throw that is not an RPC error at all). A `catch` returning `null` / `false` / `[]` still calls `rethrowUnclassifiedRpcError(error)` first.
 - The exceptions are logout (the cookie must clear either way), non-critical chrome such as footer links, and every `catch` inside a `"use cache"` scope — that one cannot rethrow, because the fill would fail the whole request (see **A `"use cache"` function must not throw** below). Each one records why in a comment.

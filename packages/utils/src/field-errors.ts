@@ -10,7 +10,7 @@
  * if (!parsed.success) {
  *   return {
  *     fieldErrors: toFieldErrors(parsed.error),
- *     message: VALIDATION_ERROR_MESSAGE,
+ *     message: validationErrorMessage(locale),
  *     ok: false,
  *   };
  * }
@@ -21,8 +21,18 @@
 
 import { z } from "zod";
 
-/** Shared wording so a rejected form reads the same in all three apps. */
-export const VALIDATION_ERROR_MESSAGE = "入力内容を確認してください。";
+import { sharedMessage } from "./catalog";
+import type { Locale } from "./i18n";
+
+/**
+ * Shared wording so a rejected form reads the same in all three apps.
+ * Omit `locale` (or pass an unknown value) to keep the Japanese default.
+ */
+export const validationErrorMessage = (locale?: Locale | string): string =>
+  sharedMessage("errors.validation", locale);
+
+/** Japanese default. Prefer {@link validationErrorMessage} when a locale is known. */
+export const VALIDATION_ERROR_MESSAGE = validationErrorMessage();
 
 /** At most one message per schema field, ready to hand to the form controls. */
 export type FieldErrors<T> = {
@@ -30,8 +40,10 @@ export type FieldErrors<T> = {
 };
 
 export interface FormErrorMessageOptions {
-  /** Used when the error carries no message at all. Default: {@link VALIDATION_ERROR_MESSAGE}. */
+  /** Used when the error carries no message at all. Default: {@link validationErrorMessage} for `locale`. */
   fallback?: string;
+  /** UI locale (`ja` | `en`). Unknown values fall back to `ja`. */
+  locale?: Locale | string;
 }
 
 /**
@@ -75,5 +87,5 @@ export const toFormErrorMessage = <T>(
     }
   }
 
-  return options?.fallback ?? VALIDATION_ERROR_MESSAGE;
+  return options?.fallback ?? validationErrorMessage(options?.locale);
 };

@@ -19,6 +19,10 @@
       "types": "./dist/cached-read.d.mts",
       "default": "./dist/cached-read.mjs"
     },
+    "./catalog": {
+      "types": "./dist/catalog.d.mts",
+      "default": "./dist/catalog.mjs"
+    },
     "./cn": {
       "types": "./dist/cn.d.mts",
       "default": "./dist/cn.mjs"

@@ -426,6 +426,9 @@ importers:
       '@connectrpc/connect-web':
         specifier: 2.1.2
         version: 2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))
+      '@publira/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
