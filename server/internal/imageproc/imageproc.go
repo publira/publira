@@ -460,7 +460,7 @@ const (
 // 入力バリデーション:
 //   - 10MB 以内、image/* content_type
 //   - ピクセル数が MaxPixels 以内
-//   - 短辺が 32px 以上
+//   - 短辺が 32px 以上 (長辺を縮小したあとの寸法も含む)
 //
 // 出力は常に PNG です。logo は背景色の異なるヘッダーに重ねて置かれるため、
 // JPEG に落とすと透過が失われて周囲に矩形が出ます。
@@ -502,7 +502,13 @@ func BuildLogo(raw []byte, contentType string) (Variant, error) {
 		return Variant{}, errors.New("image is not decodable")
 	}
 
+	// 短辺の下限は縮小後にも効かせます。入稿時に両辺が 32px 以上でも、
+	// 20000x40 のような極端に細長い入力は長辺を 1024px に収める過程で短辺が
+	// 数 px まで潰れ、ロゴとして使えない画像が保存されるためです。
 	width, height := fitWithinLongestEdge(cfg.Width, cfg.Height, LogoMaxDimension)
+	if width < LogoMinDimension || height < LogoMinDimension {
+		return Variant{}, fmt.Errorf("logo image aspect ratio is too extreme: %dx%d after scaling is below %dpx", width, height, LogoMinDimension)
+	}
 
 	encoded, err := encode(src, width, height, "image/png")
 	if err != nil {

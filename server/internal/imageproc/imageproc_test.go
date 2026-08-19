@@ -364,6 +364,14 @@ func TestBuildLogo_RejectsShortEdgeBelowMinimum(t *testing.T) {
 	}
 }
 
+func TestBuildLogo_RejectsShortEdgeThatFallsBelowMinimumAfterScaling(t *testing.T) {
+	// 両辺とも入稿時は 32px 以上だが、長辺を 1024px に収めると短辺が 2px になる。
+	raw := makePNG(t, 20_000, 40)
+	if _, err := imageproc.BuildLogo(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose short edge falls below the minimum after scaling")
+	}
+}
+
 func TestBuildLogo_RejectsNonImageContentType(t *testing.T) {
 	raw := makePNG(t, 400, 200)
 	if _, err := imageproc.BuildLogo(raw, "application/pdf"); err == nil {

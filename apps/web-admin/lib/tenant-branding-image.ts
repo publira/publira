@@ -42,7 +42,15 @@ const toVariants = (
       variantType: variant.variantType ?? "",
       width: variant.width ?? 0,
     };
-    return mapped.label.length > 0 && mapped.url.length > 0 ? [mapped] : [];
+    // The preview lays out at the stored master's own width and height, so a
+    // variant that arrives without them would render at 0x0. Dropping it leaves
+    // the card in its "unset" state instead of showing an invisible image.
+    return mapped.label.length > 0 &&
+      mapped.url.length > 0 &&
+      mapped.width > 0 &&
+      mapped.height > 0
+      ? [mapped]
+      : [];
   });
 
 /** `null` when the tenant has not uploaded this image. */

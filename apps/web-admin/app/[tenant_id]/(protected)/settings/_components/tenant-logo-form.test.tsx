@@ -73,6 +73,13 @@ describe("TenantLogoForm", () => {
 
     expect(submit.name).toBe("intent");
     expect(submit.value).toBe("upload");
+
+    const remove = screen.getByRole<HTMLButtonElement>("button", {
+      name: "ロゴを削除",
+    });
+
+    expect(remove.name).toBe("intent");
+    expect(remove.value).toBe("delete");
   });
 
   it("保存に成功したら、保存されたロゴをプレビューに反映する", async () => {
@@ -100,9 +107,55 @@ describe("TenantLogoForm", () => {
     });
   });
 
-  it("送信が失敗しても、直前に保存されたロゴを残す", () => {
+  it("送信が失敗しても、直前に保存されたロゴを残す", async () => {
     // 失敗した Action state は logo を持たないので、表示をそこから導くと
     // 保存済みの画像が消える。保持しているのは最後に成功した画像である。
+    const action = vi
+      .fn()
+      .mockResolvedValueOnce({
+        logo: brandingImage("/images/tenants/logo-2"),
+        message: "ロゴを保存しました。",
+        ok: true,
+      })
+      .mockResolvedValueOnce({
+        message: "ロゴの保存に失敗しました。",
+        ok: false,
+      });
+
+    render(
+      <TenantLogoForm
+        action={action}
+        initialLogo={brandingImage("/images/tenants/logo-1")}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "ロゴを保存" }));
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getByAltText<HTMLImageElement>("現在のロゴ")
+          .src.includes("logo-2")
+      ).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "ロゴを保存" }));
+
+    // 送信が終わるまで待つ。FormMessage 側の本文は検査しない — <output> は
+    // フォーム reset で既定値のテキストに畳まれ、2 回目以降の本文が DOM に
+    // 反映されない (#1070)。ここで確かめたいのはプレビューの保持である。
+    await waitFor(() => {
+      expect(action).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "保存中..." })).toBeNull();
+    });
+    expect(
+      screen.getByAltText<HTMLImageElement>("現在のロゴ").src.includes("logo-2")
+    ).toBe(true);
+  });
+
+  it("initialLogo が差し替わったら、そのプレビューに追従する", () => {
     const { rerender } = render(
       <TenantLogoForm action={noopAction} initialLogo={null} />
     );

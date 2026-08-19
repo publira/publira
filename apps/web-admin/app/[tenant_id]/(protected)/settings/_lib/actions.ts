@@ -98,22 +98,31 @@ const tenantThemeSchema = z.object({
 });
 
 /**
+ * The icon and the logo accept the same file. They differ in how the server
+ * normalizes what it is given — a square crop for the icon, the source aspect
+ * ratio kept for the logo — not in what it takes, so the two are one schema
+ * rather than two that have to be kept identical by hand.
+ *
  * The Go server re-checks all of this and stays the authority. Checking size and
  * type here keeps a rejected file from being read into memory and shipped over
  * the RPC first — the `accept` attribute constrains the file picker, not a
  * request someone posts directly.
  */
-const ICON_MAX_BYTES = 10 * 1024 * 1024;
-const ICON_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const BRANDING_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const BRANDING_IMAGE_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
-const iconFileSchema = z
+const brandingImageFileSchema = z
   .custom<File>((value) => value instanceof File, {
     error: "画像ファイルを選択してください。",
   })
-  .refine((file) => file.size <= ICON_MAX_BYTES, {
+  .refine((file) => file.size <= BRANDING_IMAGE_MAX_BYTES, {
     error: "画像は 10MB 以下にしてください。",
   })
-  .refine((file) => ICON_CONTENT_TYPES.has(file.type), {
+  .refine((file) => BRANDING_IMAGE_CONTENT_TYPES.has(file.type), {
     error: "JPEG / PNG / WebP の画像を選択してください。",
   });
 
@@ -124,7 +133,7 @@ const iconFileSchema = z
  */
 const tenantIconSchema = z.discriminatedUnion("intent", [
   z.object({
-    icon: iconFileSchema,
+    icon: brandingImageFileSchema,
     intent: z.literal("upload"),
     tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
   }),
@@ -134,30 +143,11 @@ const tenantIconSchema = z.discriminatedUnion("intent", [
   }),
 ]);
 
-/**
- * The logo keeps the source aspect ratio rather than being cropped, so both
- * edges have to clear the minimum instead of one square side. The size and type
- * limits match the icon's, and the Go server re-checks all of it.
- */
-const LOGO_MAX_BYTES = 10 * 1024 * 1024;
-const LOGO_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-const logoFileSchema = z
-  .custom<File>((value) => value instanceof File, {
-    error: "画像ファイルを選択してください。",
-  })
-  .refine((file) => file.size <= LOGO_MAX_BYTES, {
-    error: "画像は 10MB 以下にしてください。",
-  })
-  .refine((file) => LOGO_CONTENT_TYPES.has(file.type), {
-    error: "JPEG / PNG / WebP の画像を選択してください。",
-  });
-
 /** Upload and delete share one Action, for the reason the icon's does. */
 const tenantLogoSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("upload"),
-    logo: logoFileSchema,
+    logo: brandingImageFileSchema,
     tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
   }),
   z.object({

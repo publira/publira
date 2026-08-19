@@ -42,27 +42,46 @@ vi.mock("@publira/api-client/admin/client", () => ({
   }),
 }));
 
-const brandingVariants = [
-  {
-    contentType: "image/png",
-    fileSizeBytes: 1024,
-    height: 64,
-    label: "original",
-    url: "",
-    variantType: "icon",
-    width: 64,
-  },
-];
+const brandingImageUpdatedAt = "2026-08-19T00:00:00.000Z";
 
-/** The API answer for a stored branding image, with the URL the server built. */
-const storedImage = (url: string) => ({
-  updatedAt: "2026-08-19T00:00:00.000Z",
-  variants: [{ ...brandingVariants[0], url }],
+/**
+ * `file_size_bytes` is an int64, so the wire value is a `bigint` and the mapper
+ * is what narrows it. A fixture that already held a `number` on both sides
+ * never ran that conversion. (`BigInt(...)` rather than `1024n`: the app's
+ * TypeScript target is ES2017, which has no bigint literal.)
+ */
+const brandingImageFileSizeBytes = 1024;
+
+const brandingVariant = (variantType: string) => ({
+  contentType: "image/png",
+  height: 64,
+  label: "original",
+  variantType,
+  width: 64,
 });
 
-const storedImageResponse = (url: string) => ({
-  updatedAt: "2026-08-19T00:00:00.000Z",
-  variants: [{ ...brandingVariants[0], url }],
+/** The API answer for a stored branding image, with the URL the server built. */
+const storedImageResponse = (url: string, variantType: string) => ({
+  updatedAt: brandingImageUpdatedAt,
+  variants: [
+    {
+      ...brandingVariant(variantType),
+      fileSizeBytes: BigInt(brandingImageFileSizeBytes),
+      url,
+    },
+  ],
+});
+
+/** What the mapper has to produce from it. */
+const storedImage = (url: string, variantType: string) => ({
+  updatedAt: brandingImageUpdatedAt,
+  variants: [
+    {
+      ...brandingVariant(variantType),
+      fileSizeBytes: brandingImageFileSizeBytes,
+      url,
+    },
+  ],
 });
 
 const fullTheme = {
@@ -182,7 +201,7 @@ describe("theme-settings", () => {
   });
 
   it("icon が設定されている場合はそのバリアントも返す", async () => {
-    const stored = storedImageResponse("/images/tenants/icon-1");
+    const stored = storedImageResponse("/images/tenants/icon-1", "icon");
     mockGetTenantThemeApi.mockResolvedValueOnce({
       theme: {
         ...fullTheme,
@@ -196,7 +215,31 @@ describe("theme-settings", () => {
     const result = await getTenantThemeSettings("TENANT001");
 
     expect(result).toEqual({
-      icon: storedImage("/images/tenants/icon-1"),
+      icon: storedImage("/images/tenants/icon-1", "icon"),
+      logo: null,
+      ok: true,
+      theme: fullTheme,
+    });
+  });
+
+  it("寸法のないバリアントは未設定として扱う", async () => {
+    // プレビューは保存時の width / height でレイアウトするため、寸法のない
+    // バリアントを通すと 0x0 の見えない画像になる。未設定として扱う。
+    const stored = storedImageResponse("/images/tenants/icon-1", "icon");
+    mockGetTenantThemeApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        iconImageUpdatedAt: stored.updatedAt,
+        iconImageVariants: [{ ...stored.variants[0], height: 0, width: 0 }],
+      },
+    });
+
+    const { getTenantThemeSettings } = await import("./theme-settings");
+
+    const result = await getTenantThemeSettings("TENANT001");
+
+    expect(result).toEqual({
+      icon: null,
       logo: null,
       ok: true,
       theme: fullTheme,
@@ -204,7 +247,7 @@ describe("theme-settings", () => {
   });
 
   it("icon をアップロードすると保存後のバリアントを返す", async () => {
-    const stored = storedImageResponse("/images/tenants/icon-2");
+    const stored = storedImageResponse("/images/tenants/icon-2", "icon");
     mockUploadTenantIconApi.mockResolvedValueOnce({
       theme: {
         ...fullTheme,
@@ -223,7 +266,7 @@ describe("theme-settings", () => {
     });
 
     expect(result).toEqual({
-      icon: storedImage("/images/tenants/icon-2"),
+      icon: storedImage("/images/tenants/icon-2", "icon"),
       ok: true,
     });
     expect(mockUploadTenantIconApi).toHaveBeenCalledWith(
@@ -273,7 +316,7 @@ describe("theme-settings", () => {
   });
 
   it("ロゴが設定されている場合はそのバリアントも返す", async () => {
-    const stored = storedImageResponse("/images/tenants/logo-1");
+    const stored = storedImageResponse("/images/tenants/logo-1", "logo");
     mockGetTenantThemeApi.mockResolvedValueOnce({
       theme: {
         ...fullTheme,
@@ -288,14 +331,14 @@ describe("theme-settings", () => {
 
     expect(result).toEqual({
       icon: null,
-      logo: storedImage("/images/tenants/logo-1"),
+      logo: storedImage("/images/tenants/logo-1", "logo"),
       ok: true,
       theme: fullTheme,
     });
   });
 
   it("ロゴをアップロードすると保存後のバリアントを返す", async () => {
-    const stored = storedImageResponse("/images/tenants/logo-2");
+    const stored = storedImageResponse("/images/tenants/logo-2", "logo");
     mockUploadTenantLogoApi.mockResolvedValueOnce({
       theme: {
         ...fullTheme,
@@ -314,7 +357,7 @@ describe("theme-settings", () => {
     });
 
     expect(result).toEqual({
-      logo: storedImage("/images/tenants/logo-2"),
+      logo: storedImage("/images/tenants/logo-2", "logo"),
       ok: true,
     });
     expect(mockUploadTenantLogoApi).toHaveBeenCalledWith(

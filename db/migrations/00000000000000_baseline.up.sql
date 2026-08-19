@@ -1333,6 +1333,11 @@ CREATE UNIQUE INDEX uq_label_image_variants_label_image_type_width ON label_imag
 -- INDEX: uq_series_image_variants_series_image_type_width
 CREATE UNIQUE INDEX uq_series_image_variants_series_image_type_width ON series_image_variants USING btree (series_image_id, variant_type, width);
 
+-- INDEX: uq_tenant_image_variants_image_type
+-- A branding image holds one variant per type, so the pair is unique. It is also
+-- how the image server and the theme read look the rows up.
+CREATE UNIQUE INDEX uq_tenant_image_variants_image_type ON tenant_image_variants USING btree (tenant_image_id, variant_type);
+
 -- FK CONSTRAINT: access_tickets access_tickets_created_by_user_id_fkey
 -- Single-column on purpose: multi-column FK with ON DELETE SET NULL would also null tenant_id.
 ALTER TABLE ONLY access_tickets
