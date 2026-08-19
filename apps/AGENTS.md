@@ -176,6 +176,14 @@ Form components keep `FormMessage` for the row above: `creatorsErrorMessage`, `u
 
 The `catchError` call itself stays in each app's `components/section-error-boundary.tsx` rather than in `@publira/ui-components`: `tsdown` drops the `"use client"` directive when it bundles the package, and `catchError` cannot run in the server graph. The fallback body is shared from the package; only the four-line wiring is per app, the same split the route-level `error.tsx` bodies already use.
 
+## Live regions in a form: `<p role="status">`, never `<output>`
+
+A live region rendered inside a form — `FormMessage` above all — must not be an `<output>`. `<output>` is a resettable element, and resetting a form replaces such an element's children with a single text node holding its default value. React resets a form on its own once the Action passed to it settles, so the elements React rendered inside the `<output>` are detached on the very first submission; every message written after that goes to nodes the document no longer holds. `className` sits on the element itself and keeps updating, which is what makes the symptom confusing: the border turns red while the body still reads「保存しました。」(#1070).
+
+Use `<p role="status">`. That is the role `<output>` carried implicitly, so `getByRole("status")` in unit tests and e2e keeps matching.
+
+oxlint's `jsx-a11y/prefer-tag-over-role` asks for the opposite — `<output>` for any `role="status"` — and inside a form its advice is the bug. `packages/ui-components/src/form-message/form-message.tsx` turns that rule off through an `oxlint.config.ts` override, with the reason recorded there. Do not silence it with an inline `oxlint-disable`, and do not read the override as licence to bring `<output>` back.
+
 ## A `"use cache"` function must not throw
 
 Measured against the production build under Cache Components ([#672](https://github.com/publira/publira/issues/672)): **when a cache fill throws, Next.js fails the request that triggered it.** An awaiting `try` / `catch` does not save it, and neither does an outer cached function catching an inner one — both were measured returning a perfectly good element while the response was still a bare `500 Internal Server Error` document. The failure is only recoverable when a static shell has already been committed, and then only by a client error boundary (`SectionErrorBoundary`), which is why the catalog's `<Suspense>` sections survived an outage while its detail routes answered 500.

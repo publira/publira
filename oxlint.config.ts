@@ -61,6 +61,21 @@ export default defineConfig({
     },
     {
       /**
+       * `prefer-tag-over-role` wants `<output>` wherever `role="status"`
+       * appears, and for a form message that swap is the bug: `<output>` is a
+       * resettable element, so the reset React runs after a form Action
+       * settles replaces its children with a single text node. React keeps
+       * rendering into the nodes that reset detached, and every message after
+       * the first stops reaching the document. See AGENTS.md
+       * "Live regions in a form" (#1070).
+       */
+      files: ["packages/ui-components/src/form-message/form-message.tsx"],
+      rules: {
+        "jsx-a11y/prefer-tag-over-role": "off",
+      },
+    },
+    {
+      /**
        * `packages/icons` is the one place allowed to touch `lucide-react`: it
        * is the wrapper that gives every icon the same props and the same
        * import path. See AGENTS.md "Icons" (#690).

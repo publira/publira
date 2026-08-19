@@ -141,11 +141,8 @@ describe("TenantLogoForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "ロゴを保存" }));
 
-    // 送信が終わるまで待つ。FormMessage 側の本文は検査しない — <output> は
-    // フォーム reset で既定値のテキストに畳まれ、2 回目以降の本文が DOM に
-    // 反映されない (#1070)。ここで確かめたいのはプレビューの保持である。
     await waitFor(() => {
-      expect(action).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("ロゴの保存に失敗しました。")).toBeDefined();
     });
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: "保存中..." })).toBeNull();
