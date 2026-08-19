@@ -22,7 +22,7 @@ const formMessageVariants = cva(
   }
 );
 
-export type FormMessageProps = ComponentPropsWithoutRef<"output"> &
+export type FormMessageProps = ComponentPropsWithoutRef<"p"> &
   VariantProps<typeof formMessageVariants>;
 
 const iconByVariant = {
@@ -41,7 +41,13 @@ export const FormMessage = ({
   const tone = variant ?? "info";
 
   return (
-    <output
+    // The live region is a <p role="status">, not an <output>. React resets a
+    // form once its Action settles, and resetting an <output> replaces its
+    // children with a single text node holding the default value. React's fiber
+    // keeps pointing at the detached nodes, so every later message is written
+    // to a <span> the document no longer contains (#1070).
+    <p
+      role="status"
       {...props}
       className={cn(formMessageVariants({ variant: tone }), className)}
     >
@@ -52,6 +58,6 @@ export const FormMessage = ({
         {iconByVariant[tone]}
       </span>
       <span className="leading-5">{children}</span>
-    </output>
+    </p>
   );
 };

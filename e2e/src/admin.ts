@@ -203,5 +203,5 @@ export const createEpisodeViaUi = async (
 };
 
 export const formMessage = (page: Page): Locator =>
-  // FormMessage renders an <output> (implicit role=status).
+  // FormMessage renders a <p role="status">.
   page.getByRole("status");
