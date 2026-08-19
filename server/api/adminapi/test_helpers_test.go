@@ -48,6 +48,11 @@ const (
 	getEpisodeByPublicIDForTenantAndSeriesQuery              = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
 	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery           = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
 	updateEpisodePublishScheduleByPublicIDForTenantQuery     = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
+	lockTenantForUpdateQuery                                 = "-- name: LockTenantForUpdate :one\n"
+	createTenantImageQuery                                   = "-- name: CreateTenantImage :one\n"
+	createTenantImageVariantQuery                            = "-- name: CreateTenantImageVariant :one\n"
+	setTenantThemeFaviconImageQuery                          = "-- name: SetTenantThemeFaviconImage :one\n"
+	deleteTenantImageQuery                                   = "-- name: DeleteTenantImage :exec\n"
 	testUserPublicID                                         = "USER001"
 )
 

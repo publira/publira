@@ -13,3 +13,7 @@ import { rpcErrorHasFieldViolation } from "@publira/api-client/errors";
 export const mentionsImageRejection = (error: unknown): boolean =>
   rpcErrorHasFieldViolation(error, "eye_catch_image_data") ||
   rpcErrorHasFieldViolation(error, "eye_catch_image_content_type");
+
+/** Whether an `invalid_argument` rejection is about the uploaded favicon. */
+export const mentionsFaviconRejection = (error: unknown): boolean =>
+  rpcErrorHasFieldViolation(error, "favicon_data");

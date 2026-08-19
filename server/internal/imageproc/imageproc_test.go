@@ -2,6 +2,8 @@ package imageproc_test
 
 import (
 	"bytes"
+	"encoding/binary"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -214,5 +216,89 @@ func TestBuildEyeCatchVariants_RejectsTooSmallImage(t *testing.T) {
 	_, err := imageproc.BuildEyeCatchVariants(raw, "image/jpeg")
 	if err == nil {
 		t.Fatal("want error for too small image, got nil")
+	}
+}
+
+// --- TestBuildFavicon ---
+
+func TestBuildFavicon_CropsNonSquareSourceToSquarePNG(t *testing.T) {
+	raw := makeJPEG(t, 400, 200)
+	variant, err := imageproc.BuildFavicon(raw, "image/jpeg")
+	if err != nil {
+		t.Fatalf("BuildFavicon: %v", err)
+	}
+	if variant.Width != 200 || variant.Height != 200 {
+		t.Fatalf("size = %dx%d, want 200x200", variant.Width, variant.Height)
+	}
+	if variant.ContentType != "image/png" {
+		t.Fatalf("content_type = %q, want image/png", variant.ContentType)
+	}
+	if variant.Extension != ".png" {
+		t.Fatalf("extension = %q, want .png", variant.Extension)
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(variant.Data))
+	if err != nil {
+		t.Fatalf("DecodeConfig: %v", err)
+	}
+	if cfg.Width != 200 || cfg.Height != 200 {
+		t.Fatalf("encoded size = %dx%d, want 200x200", cfg.Width, cfg.Height)
+	}
+}
+
+func TestBuildFavicon_ScalesOversizedSourceDown(t *testing.T) {
+	raw := makePNG(t, 2000, 2000)
+	variant, err := imageproc.BuildFavicon(raw, "image/png")
+	if err != nil {
+		t.Fatalf("BuildFavicon: %v", err)
+	}
+	if variant.Width != imageproc.FaviconMaxDimension || variant.Height != imageproc.FaviconMaxDimension {
+		t.Fatalf("size = %dx%d, want %dx%d", variant.Width, variant.Height, imageproc.FaviconMaxDimension, imageproc.FaviconMaxDimension)
+	}
+}
+
+func TestBuildFavicon_RejectsTooSmallImage(t *testing.T) {
+	raw := makePNG(t, 16, 16)
+	if _, err := imageproc.BuildFavicon(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image below the minimum dimension")
+	}
+}
+
+func TestBuildFavicon_RejectsNonImageContentType(t *testing.T) {
+	raw := makePNG(t, 64, 64)
+	if _, err := imageproc.BuildFavicon(raw, "application/pdf"); err == nil {
+		t.Fatal("want error for a non-image content type")
+	}
+}
+
+func TestBuildFavicon_RejectsEmptyData(t *testing.T) {
+	if _, err := imageproc.BuildFavicon(nil, "image/png"); err == nil {
+		t.Fatal("want error for empty data")
+	}
+}
+
+// pngHeaderWithDeclaredSize は IHDR だけを持つ PNG を組み立てます。
+// image.DecodeConfig は IHDR しか読まないため、実データを伴わずに巨大な寸法を
+// 宣言した入稿を再現できます。
+func pngHeaderWithDeclaredSize(width, height uint32) []byte {
+	var ihdr bytes.Buffer
+	ihdr.WriteString("IHDR")
+	_ = binary.Write(&ihdr, binary.BigEndian, width)
+	_ = binary.Write(&ihdr, binary.BigEndian, height)
+	ihdr.Write([]byte{8, 6, 0, 0, 0}) // bit depth, color type, compression, filter, interlace
+
+	var buf bytes.Buffer
+	buf.Write([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'})
+	_ = binary.Write(&buf, binary.BigEndian, uint32(13))
+	buf.Write(ihdr.Bytes())
+	_ = binary.Write(&buf, binary.BigEndian, crc32.ChecksumIEEE(ihdr.Bytes()))
+	return buf.Bytes()
+}
+
+func TestBuildFavicon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
+	// 入稿バイト数は数十バイトでも、展開すれば 16 億ピクセルになる画像。
+	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
+
+	if _, err := imageproc.BuildFavicon(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
 	}
 }

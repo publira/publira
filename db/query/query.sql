@@ -116,6 +116,7 @@ SELECT
     COALESCE(tt.info_color, '#3c78c2') AS info_color,
     COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,
     tt.logo_url,
+    tt.favicon_image_id,
     COALESCE(tt.updated_at, NOW()) AS updated_at
 FROM tenants t
 LEFT JOIN tenant_themes tt ON tt.tenant_id = t.id
@@ -216,6 +217,72 @@ SET background_color = EXCLUDED.background_color,
     logo_url = EXCLUDED.logo_url,
     updated_at = NOW()
 RETURNING *;
+
+-- name: LockTenantForUpdate :one
+-- Lock the tenant row so concurrent tenant favicon uploads and deletes
+-- serialize. The following read of the current favicon must be a separate
+-- statement: READ COMMITTED freezes its snapshot at statement start, so waiting
+-- for the lock in the same statement would still see the pre-wait row.
+SELECT id
+FROM tenants
+WHERE id = $1
+FOR UPDATE;
+
+-- name: SetTenantThemeFaviconImage :one
+-- The theme row is created on demand: a tenant can upload a favicon before it
+-- has ever saved a color, and the colors then keep their column defaults.
+INSERT INTO tenant_themes (tenant_id, favicon_image_id, updated_at)
+VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
+UPDATE
+SET favicon_image_id = EXCLUDED.favicon_image_id,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: CreateTenantImage :one
+INSERT INTO tenant_images (
+        id,
+        tenant_id,
+        updated_at
+    )
+VALUES ($1, $2, NOW())
+RETURNING *;
+
+-- name: CreateTenantImageVariant :one
+INSERT INTO tenant_image_variants (
+        id,
+        tenant_id,
+        tenant_image_id,
+        label,
+        storage_provider,
+        object_key,
+        content_type,
+        file_size_bytes,
+        width,
+        height
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING *;
+
+-- name: DeleteTenantImage :exec
+DELETE FROM tenant_images
+WHERE id = $1
+    AND tenant_id = $2;
+
+-- name: GetTenantImageByIDForTenant :one
+SELECT tiv.object_key,
+    tiv.content_type
+FROM tenant_images ti
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM tenant_image_variants
+    WHERE tenant_image_id = ti.id
+    ORDER BY width DESC
+    LIMIT 1
+) tiv ON true
+WHERE ti.id = $1
+    AND ti.tenant_id = $2
+LIMIT 1;
+
 -- name: CreateUserEmailVerificationToken :one
 INSERT INTO user_email_verification_tokens (
         id,

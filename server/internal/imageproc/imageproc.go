@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	xdraw "golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 )
 
 const (
@@ -355,4 +356,82 @@ func BuildEyeCatchVariants(raw []byte, contentType string) ([]Variant, error) {
 		}
 	}
 	return variants, nil
+}
+
+// FaviconMaxBytes / FaviconMinDimension / FaviconMaxDimension はテナント
+// favicon の入稿制約です。最小 32px は 32x32 の描画に耐える下限、最大 512px は
+// apple-touch-icon まで賄える上限で、それを超える入稿は縮小します。
+const (
+	FaviconMaxBytes     = 10 << 20
+	FaviconMinDimension = 32
+	FaviconMaxDimension = 512
+)
+
+// BuildFavicon は入稿画像からテナント favicon のバリアントを 1 つ生成します。
+//
+// 入力バリデーション:
+//   - 10MB 以内、image/* content_type
+//   - ピクセル数が MaxPixels 以内
+//   - センタークロップ後の一辺が 32px 以上
+//
+// 出力は常に PNG です。favicon は透過を保ったまま小さなサイズで描画されるため、
+// JPEG に落とすと背景が潰れます。
+func BuildFavicon(raw []byte, contentType string) (Variant, error) {
+	if len(raw) == 0 {
+		return Variant{}, errors.New("image data is required")
+	}
+	if len(raw) > FaviconMaxBytes {
+		return Variant{}, fmt.Errorf("image size exceeds %d bytes", FaviconMaxBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return Variant{}, errors.New("content_type must be image/*")
+	}
+
+	// 展開後のサイズはヘッダから先に検査します。入力バイト数の上限だけでは、
+	// 小さな PNG / WebP が巨大な寸法を宣言してデコードでメモリを食い潰す経路を
+	// 塞げません。
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return Variant{}, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
+	}
+
+	src, _, err := image.Decode(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+
+	cropped := centerCropToAspect(src, 1, 1)
+	size := cropped.Bounds().Dx()
+	if size < FaviconMinDimension {
+		return Variant{}, fmt.Errorf("favicon image must be at least %dx%d", FaviconMinDimension, FaviconMinDimension)
+	}
+	if size > FaviconMaxDimension {
+		size = FaviconMaxDimension
+	}
+
+	encoded, err := encode(cropped, size, size, "image/png")
+	if err != nil {
+		return Variant{}, fmt.Errorf("encode favicon: %w", err)
+	}
+
+	return Variant{
+		VariantType: "favicon",
+		Label:       "original",
+		ContentType: "image/png",
+		Extension:   ".png",
+		Width:       size,
+		Height:      size,
+		Data:        encoded,
+	}, nil
 }

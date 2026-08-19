@@ -40,6 +40,8 @@ type stubTenantQueries struct {
 	publicErr     error
 	creator       dbmodels.GetCreatorImageByIDForTenantRow
 	creatorErr    error
+	tenant        dbmodels.GetTenantImageByIDForTenantRow
+	tenantErr     error
 	userRef       dbmodels.GetUserByPublicIDForTenantRow
 	userRefErr    error
 	user          dbmodels.User
@@ -50,6 +52,16 @@ type stubTenantQueries struct {
 
 func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error) {
 	return s.creator, s.creatorErr
+}
+
+func (s stubTenantQueries) GetTenantImageByIDForTenant(context.Context, dbmodels.GetTenantImageByIDForTenantParams) (dbmodels.GetTenantImageByIDForTenantRow, error) {
+	if s.tenantErr != nil {
+		return dbmodels.GetTenantImageByIDForTenantRow{}, s.tenantErr
+	}
+	if s.tenant.ObjectKey == "" {
+		return dbmodels.GetTenantImageByIDForTenantRow{}, sql.ErrNoRows
+	}
+	return s.tenant, nil
 }
 
 func (s stubTenantQueries) GetLabelImageVariantByTypeAndWidthForTenant(context.Context, dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error) {
@@ -449,6 +461,55 @@ func TestCreatorImageConvertsToWebP(t *testing.T) {
 	}
 	if got := rec.Header().Get("Content-Type"); got != "image/webp" {
 		t.Fatalf("Content-Type = %q, want image/webp", got)
+	}
+}
+
+func TestTenantImageServesStoredFavicon(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	store := &countingStore{
+		objects: map[string]storedObject{
+			"tenants/acme/favicons/favicon.png": {data: testJPEG(), contentType: "image/png"},
+		},
+	}
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: stubTenantQueries{
+			tenant: dbmodels.GetTenantImageByIDForTenantRow{
+				ObjectKey:   "tenants/acme/favicons/favicon.png",
+				ContentType: "image/png",
+			},
+		}},
+		store,
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String(), nil)
+	req.Host = "example.test"
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=3600" {
+		t.Fatalf("Cache-Control = %q, want public, max-age=3600", got)
+	}
+}
+
+func TestTenantImageMissingReturnsNotFound(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("88888888-8888-8888-8888-888888888888")
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: stubTenantQueries{}},
+		&countingStore{objects: map[string]storedObject{}},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String(), nil)
+	req.Host = "example.test"
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }
 

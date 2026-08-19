@@ -68,6 +68,8 @@ type Querier interface {
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
 	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
+	CreateTenantImage(ctx context.Context, arg CreateTenantImageParams) (TenantImage, error)
+	CreateTenantImageVariant(ctx context.Context, arg CreateTenantImageVariantParams) (TenantImageVariant, error)
 	CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserEmailChangeToken(ctx context.Context, arg CreateUserEmailChangeTokenParams) (UserEmailChangeToken, error)
@@ -77,6 +79,7 @@ type Querier interface {
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
+	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
 	// テナントユーザーのロールをすべて削除する
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
 	// ユーザーを物理削除（外部キー制約により関連データも削除）
@@ -145,6 +148,7 @@ type Querier interface {
 	// ユーザーが所属するテナントを取得
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
+	GetTenantImageByIDForTenant(ctx context.Context, arg GetTenantImageByIDForTenantParams) (GetTenantImageByIDForTenantRow, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
@@ -419,6 +423,11 @@ type Querier interface {
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
+	// Lock the tenant row so concurrent tenant favicon uploads and deletes
+	// serialize. The following read of the current favicon must be a separate
+	// statement: READ COMMITTED freezes its snapshot at statement start, so waiting
+	// for the lock in the same statement would still see the pre-wait row.
+	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// 指定ユーザーの未読お知らせを一括既読化
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
 	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)
@@ -443,6 +452,9 @@ type Querier interface {
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
 	// ページの公開バージョンIDを更新する
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
+	// The theme row is created on demand: a tenant can upload a favicon before it
+	// has ever saved a color, and the colors then keep their column defaults.
+	SetTenantThemeFaviconImage(ctx context.Context, arg SetTenantThemeFaviconImageParams) (TenantTheme, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error

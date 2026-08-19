@@ -18,12 +18,18 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
+import { requiredTrimmedString } from "#lib/form-schemas";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
   tenantTimezoneCacheTag,
   updateTenantTimezone,
 } from "#lib/tenant-timezone";
-import { updateTenantThemeSettings } from "#lib/theme-settings";
+import {
+  deleteTenantFavicon,
+  tenantThemeCacheTag,
+  updateTenantThemeSettings,
+  uploadTenantFavicon,
+} from "#lib/theme-settings";
 
 import type {
   EmailChangeActionState,
@@ -31,6 +37,7 @@ import type {
   ThemeSettingsActionState,
   ThemeSettingsFieldErrors,
   TenantEmailSettingsFormState,
+  TenantFaviconActionState,
   TenantSmtpTestFormState,
   TenantTimezoneActionState,
 } from "../settings-types";
@@ -86,6 +93,47 @@ const tenantThemeSchema = z.object({
   warningColor: hexColorCodeSchema,
   warningForegroundColor: hexColorCodeSchema,
 });
+
+/**
+ * The Go server re-checks all of this and stays the authority. Checking size and
+ * type here keeps a rejected file from being read into memory and shipped over
+ * the RPC first — the `accept` attribute constrains the file picker, not a
+ * request someone posts directly.
+ */
+const FAVICON_MAX_BYTES = 10 * 1024 * 1024;
+const FAVICON_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+const faviconFileSchema = z
+  .custom<File>((value) => value instanceof File, {
+    error: "画像ファイルを選択してください。",
+  })
+  .refine((file) => file.size <= FAVICON_MAX_BYTES, {
+    error: "画像は 10MB 以下にしてください。",
+  })
+  .refine((file) => FAVICON_CONTENT_TYPES.has(file.type), {
+    error: "JPEG / PNG / WebP の画像を選択してください。",
+  });
+
+/**
+ * Upload and delete share one Action so the card renders the current favicon
+ * straight from the Action state: with a state per operation there is no way to
+ * tell which of the two ran last.
+ */
+const tenantFaviconSchema = z.discriminatedUnion("intent", [
+  z.object({
+    favicon: faviconFileSchema,
+    intent: z.literal("upload"),
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  }),
+  z.object({
+    intent: z.literal("delete"),
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  }),
+]);
 
 /**
  * The Go server validates against the IANA tzdata it embeds
@@ -278,11 +326,68 @@ export const updateTenantThemeSettingsAction = async (
 
   // Refresh SSR theme injection for this admin app (public GetTenant cache).
   updateTag(`tenant:${tenantId}:site`);
+  updateTag(tenantThemeCacheTag(tenantId));
 
   return {
     message: "テーマを保存しました。",
     ok: true,
     theme: result.theme,
+  };
+};
+
+export const updateTenantFaviconAction = async (
+  _prevState: TenantFaviconActionState,
+  formData: FormData
+): Promise<TenantFaviconActionState> => {
+  const parsed = tenantFaviconSchema.safeParse(
+    toFormDataInput(formData, {
+      favicon: { kind: "file", name: "favicon" },
+      intent: { kind: "value", name: "intent" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return {
+      message: toFormErrorMessage(parsed.error),
+      ok: false,
+    };
+  }
+
+  const input = parsed.data;
+  const isDelete = input.intent === "delete";
+
+  // The file is read into memory inside the callback, so an unauthorized caller
+  // never gets a 10MB upload buffered on its behalf.
+  const result = await withAdminSessionReauth(async () => {
+    if (input.intent === "delete") {
+      return deleteTenantFavicon(input.tenantId);
+    }
+
+    return uploadTenantFavicon({
+      faviconContentType: input.favicon.type,
+      faviconData: new Uint8Array(await input.favicon.arrayBuffer()),
+      tenantId: input.tenantId,
+    });
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // Refresh the public site's tenant read and this screen's own private cache.
+  updateTag(`tenant:${input.tenantId}:site`);
+  updateTag(tenantThemeCacheTag(input.tenantId));
+
+  return {
+    faviconUrl: result.faviconUrl,
+    message: isDelete
+      ? "ファビコンを削除しました。"
+      : "ファビコンを保存しました。",
+    ok: true,
   };
 };
 

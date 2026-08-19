@@ -235,6 +235,7 @@ func TenantThemeFromGetRow(row dbmodels.GetTenantThemeByTenantIDRow) *publiratty
 	if row.LogoUrl.Valid {
 		theme.LogoUrl = row.LogoUrl.String
 	}
+	theme.FaviconUrl = tenantFaviconURL(row.FaviconImageID)
 	return theme
 }
 
@@ -271,5 +272,15 @@ func TenantThemeFromModel(model dbmodels.TenantTheme) *publirattypesv1.TenantThe
 	if model.LogoUrl.Valid {
 		theme.LogoUrl = model.LogoUrl.String
 	}
+	theme.FaviconUrl = tenantFaviconURL(model.FaviconImageID)
 	return theme
+}
+
+// The favicon is served by the image server from the tenant image it points
+// at, so an upload that stores a new image also changes this URL.
+func tenantFaviconURL(faviconImageID uuid.NullUUID) string {
+	if !faviconImageID.Valid {
+		return ""
+	}
+	return fmt.Sprintf("/images/tenants/%s", faviconImageID.UUID.String())
 }

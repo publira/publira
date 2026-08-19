@@ -1,10 +1,14 @@
 package adminapi
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"image"
+	"image/color"
+	"image/png"
 	"regexp"
 	"testing"
 	"time"
@@ -50,6 +54,7 @@ func tenantThemeColumns() []string {
 		"destructive_foreground_color",
 		"info_color",
 		"info_foreground_color",
+		"favicon_image_id",
 	}
 }
 
@@ -84,11 +89,12 @@ func tenantThemeSelectColumns() []string {
 		"info_color",
 		"info_foreground_color",
 		"logo_url",
+		"favicon_image_id",
 		"updated_at",
 	}
 }
 
-func tenantThemeUpsertRow(tenantID uuid.UUID, primaryColor, secondaryColor, accentColor string, logo sql.NullString, now time.Time) []driver.Value {
+func tenantThemeUpsertRow(tenantID uuid.UUID, primaryColor, secondaryColor, accentColor string, logo sql.NullString, favicon uuid.NullUUID, now time.Time) []driver.Value {
 	return []driver.Value{
 		tenantID,
 		primaryColor,
@@ -120,10 +126,11 @@ func tenantThemeUpsertRow(tenantID uuid.UUID, primaryColor, secondaryColor, acce
 		"#fff4f4",
 		"#3c78c2",
 		"#f3f8ff",
+		favicon,
 	}
 }
 
-func tenantThemeSelectRow(tenantID uuid.UUID, primaryColor, secondaryColor, accentColor string, logo sql.NullString, now time.Time) []driver.Value {
+func tenantThemeSelectRow(tenantID uuid.UUID, primaryColor, secondaryColor, accentColor string, logo sql.NullString, favicon uuid.NullUUID, now time.Time) []driver.Value {
 	return []driver.Value{
 		tenantID,
 		"#f6f2e9",
@@ -154,6 +161,7 @@ func tenantThemeSelectRow(tenantID uuid.UUID, primaryColor, secondaryColor, acce
 		"#3c78c2",
 		"#f3f8ff",
 		logo,
+		favicon,
 		now,
 	}
 }
@@ -168,10 +176,11 @@ func TestGetTenantThemeReturnsConfiguredTheme(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	logo := sql.NullString{String: "https://cdn.example.com/logo.png", Valid: true}
+	favicon := uuid.NullUUID{UUID: uuid.MustParse("99999999-9999-4999-8999-999999999999"), Valid: true}
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#123456", "#abcdef", "#654321", logo, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#123456", "#abcdef", "#654321", logo, favicon, now)...))
 
 	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
@@ -194,6 +203,9 @@ func TestGetTenantThemeReturnsConfiguredTheme(t *testing.T) {
 	if resp.Msg.Theme.LogoUrl != "https://cdn.example.com/logo.png" {
 		t.Fatalf("logo_url = %q, want https://cdn.example.com/logo.png", resp.Msg.Theme.LogoUrl)
 	}
+	if resp.Msg.Theme.FaviconUrl != "/images/tenants/99999999-9999-4999-8999-999999999999" {
+		t.Fatalf("favicon_url = %q, want /images/tenants/99999999-9999-4999-8999-999999999999", resp.Msg.Theme.FaviconUrl)
+	}
 	assertExpectations(t, mock)
 }
 
@@ -209,7 +221,7 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
-			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", sql.NullString{}, now)...))
+			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", sql.NullString{}, uuid.NullUUID{}, now)...))
 
 	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.GetTenantThemeRequest{
@@ -231,6 +243,9 @@ func TestGetTenantThemeReturnsDefaultsWhenUnset(t *testing.T) {
 	}
 	if resp.Msg.Theme.LogoUrl != "" {
 		t.Fatalf("logo_url = %q, want empty", resp.Msg.Theme.LogoUrl)
+	}
+	if resp.Msg.Theme.FaviconUrl != "" {
+		t.Fatalf("favicon_url = %q, want empty", resp.Msg.Theme.FaviconUrl)
 	}
 	assertExpectations(t, mock)
 }
@@ -332,7 +347,7 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 			logo,
 		).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
-			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", logo, now)...))
+			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", logo, uuid.NullUUID{}, now)...))
 
 	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
 	req := connect.NewRequest(&publiraadminv1.UpsertTenantThemeRequest{
@@ -384,6 +399,145 @@ func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	}
 	if resp.Msg.Theme.LogoUrl != "https://cdn.example.com/new-logo.png" {
 		t.Fatalf("logo_url = %q, want https://cdn.example.com/new-logo.png", resp.Msg.Theme.LogoUrl)
+	}
+	assertExpectations(t, mock)
+}
+
+func testSquarePNG(t *testing.T, size int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			img.Set(x, y, color.RGBA{R: uint8(x), G: uint8(y), B: 0x40, A: 0xff})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+func TestUploadTenantFaviconStoresImageAndPointsThemeAtIt(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	previousImageID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
+	storedImageID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", sql.NullString{}, uuid.NullUUID{UUID: previousImageID, Valid: true}, now)...))
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageQuery)).
+		WithArgs(sqlmock.AnyArg(), tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "updated_at", "created_at"}).
+			AddRow(storedImageID, tenantID, now, now))
+	mock.ExpectQuery(regexp.QuoteMeta(createTenantImageVariantQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "tenant_image_id", "label", "storage_provider",
+			"object_key", "content_type", "file_size_bytes", "width", "height", "created_at",
+		}).AddRow(
+			uuid.Must(uuid.NewV7()), tenantID, storedImageID,
+			"original", "s3", "tenants/TENANT001/favicons/favicon.png", "image/png",
+			int64(1024), int32(64), int32(64), now,
+		))
+	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeFaviconImageQuery)).
+		WithArgs(tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}).
+		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
+			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", sql.NullString{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)...))
+	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
+		WithArgs(previousImageID, tenantID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadTenantFaviconRequest{
+		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		FaviconData:        testSquarePNG(t, 64),
+		FaviconContentType: "image/png",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	resp, err := client.UploadTenantFavicon(context.Background(), req)
+	if err != nil {
+		t.Fatalf("UploadTenantFavicon: %v", err)
+	}
+	want := "/images/tenants/" + storedImageID.String()
+	if resp.Msg.Theme.FaviconUrl != want {
+		t.Fatalf("favicon_url = %q, want %q", resp.Msg.Theme.FaviconUrl, want)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestUploadTenantFaviconRejectsUndersizedImage(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
+	req := connect.NewRequest(&publiraadminv1.UploadTenantFaviconRequest{
+		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		FaviconData:        testSquarePNG(t, 16),
+		FaviconContentType: "image/png",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	_, err := client.UploadTenantFavicon(context.Background(), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UploadTenantFavicon code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertExpectations(t, mock)
+}
+
+func TestDeleteTenantFaviconClearsReferenceAndDropsImage(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	currentImageID := uuid.MustParse("33333333-3333-4333-8333-333333333333")
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", sql.NullString{}, uuid.NullUUID{UUID: currentImageID, Valid: true}, now)...))
+	mock.ExpectQuery(regexp.QuoteMeta(setTenantThemeFaviconImageQuery)).
+		WithArgs(tenantID, uuid.NullUUID{}).
+		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
+			AddRow(tenantThemeUpsertRow(tenantID, "#0f7c82", "#d96f4a", "#7aae90", sql.NullString{}, uuid.NullUUID{}, now)...))
+	mock.ExpectExec(regexp.QuoteMeta(deleteTenantImageQuery)).
+		WithArgs(currentImageID, tenantID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	client := publiraadminv1connect.NewTenantThemeServiceClient(ts.Client(), ts.URL)
+	req := connect.NewRequest(&publiraadminv1.DeleteTenantFaviconRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+	resp, err := client.DeleteTenantFavicon(context.Background(), req)
+	if err != nil {
+		t.Fatalf("DeleteTenantFavicon: %v", err)
+	}
+	if resp.Msg.Theme.FaviconUrl != "" {
+		t.Fatalf("favicon_url = %q, want empty", resp.Msg.Theme.FaviconUrl)
 	}
 	assertExpectations(t, mock)
 }

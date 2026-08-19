@@ -772,8 +772,13 @@ type TenantTheme struct {
 	DestructiveForegroundColor string                 `protobuf:"bytes,26,opt,name=destructive_foreground_color,json=destructiveForegroundColor,proto3" json:"destructive_foreground_color,omitempty"`
 	InfoColor                  string                 `protobuf:"bytes,27,opt,name=info_color,json=infoColor,proto3" json:"info_color,omitempty"`
 	InfoForegroundColor        string                 `protobuf:"bytes,28,opt,name=info_foreground_color,json=infoForegroundColor,proto3" json:"info_foreground_color,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// Tenant favicon, uploaded and stored independently from logo_url. Empty
+	// when the tenant has not set one, which is what makes the public site fall
+	// back to the logo. Replacing the favicon stores a new image, so the URL
+	// itself changes and no separate cache-busting field is needed.
+	FaviconUrl    string `protobuf:"bytes,29,opt,name=favicon_url,json=faviconUrl,proto3" json:"favicon_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TenantTheme) Reset() {
@@ -998,6 +1003,13 @@ func (x *TenantTheme) GetInfoColor() string {
 func (x *TenantTheme) GetInfoForegroundColor() string {
 	if x != nil {
 		return x.InfoForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantTheme) GetFaviconUrl() string {
+	if x != nil {
+		return x.FaviconUrl
 	}
 	return ""
 }
@@ -1267,7 +1279,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x0ffile_size_bytes\x18\x04 \x01(\x03R\rfileSizeBytes\x12#\n" +
 	"\rdisplay_order\x18\x05 \x01(\x05R\fdisplayOrder\x12\x14\n" +
 	"\x05width\x18\x06 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\a \x01(\x05R\x06height\"\xea\t\n" +
+	"\x06height\x18\a \x01(\x05R\x06height\"\x8b\n" +
+	"\n" +
 	"\vTenantTheme\x12#\n" +
 	"\rprimary_color\x18\x01 \x01(\tR\fprimaryColor\x12'\n" +
 	"\x0fsecondary_color\x18\x02 \x01(\tR\x0esecondaryColor\x12!\n" +
@@ -1302,7 +1315,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1cdestructive_foreground_color\x18\x1a \x01(\tR\x1adestructiveForegroundColor\x12\x1d\n" +
 	"\n" +
 	"info_color\x18\x1b \x01(\tR\tinfoColor\x122\n" +
-	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColor\"\xdc\x01\n" +
+	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColor\x12\x1f\n" +
+	"\vfavicon_url\x18\x1d \x01(\tR\n" +
+	"faviconUrl\"\xdc\x01\n" +
 	"\x04Page\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +

@@ -11,6 +11,11 @@ import { applyCacheTag, tenantSiteTag } from "./cache-tags";
 export interface TenantSiteInfo {
   copyrightText?: string;
   domain: string;
+  /**
+   * Tenant favicon served by the image server, absent while the tenant has not
+   * uploaded one. Icon resolution falls back to the logo then (#549).
+   */
+  faviconUrl?: string;
   name: string;
   publicId: string;
   siteDescription?: string;
@@ -70,6 +75,7 @@ export const getTenantSiteInfo = async (
     return {
       copyrightText: response.copyrightText?.trim(),
       domain: response.tenantDomain?.trim() ?? "",
+      faviconUrl: response.theme?.faviconUrl?.trim() || undefined,
       name,
       publicId,
       siteDescription: response.siteDescription?.trim(),
