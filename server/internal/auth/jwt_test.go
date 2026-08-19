@@ -149,4 +149,13 @@ func TestIssueMediaToken(t *testing.T) {
 			t.Fatal("IssueMediaToken() error = nil, want an error")
 		}
 	})
+
+	// Verifiers skip the tenant check when the claim is absent, which is right
+	// for a platform access token and wrong for a media URL: it would work
+	// against every tenant.
+	t.Run("refuses to issue a token that is not scoped to a tenant", func(t *testing.T) {
+		if _, _, err := manager.IssueMediaToken("user-public-id", "  ", "episode-id", 0, now); err == nil {
+			t.Fatal("IssueMediaToken() error = nil, want an error")
+		}
+	})
 }

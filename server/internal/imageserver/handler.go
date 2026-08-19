@@ -191,8 +191,14 @@ func (h *Handler) episodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth
 	if claims.TenantID != "" && claims.TenantID != tenantID.String() {
 		return nil, false
 	}
-	if audience == auth.AudienceMedia && strings.TrimSpace(claims.EpisodeID) == "" {
-		return nil, false
+	// An absent tenant means "not tenant-scoped", which a media token must
+	// never be: skipping the check above would make one URL work against every
+	// tenant's image-server. Both scopes are demanded here rather than trusted
+	// from the issuer.
+	if audience == auth.AudienceMedia {
+		if strings.TrimSpace(claims.TenantID) == "" || strings.TrimSpace(claims.EpisodeID) == "" {
+			return nil, false
+		}
 	}
 	return claims, true
 }

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
@@ -376,6 +377,31 @@ func TestEpisodeImageMediaToken(t *testing.T) {
 
 	t.Run("a token from before a password change stops working", func(t *testing.T) {
 		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), issue(t, episodeID, 3, time.Now()))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	// IssueMediaToken will not mint this, so it is signed here directly: the
+	// point is that image-server demands the tenant scope rather than trusting
+	// the issuer to have set it.
+	t.Run("a media token without a tenant does not unlock the body", func(t *testing.T) {
+		claims := auth.AccessTokenClaims{
+			EpisodeID:          episodeID.String(),
+			CredentialsVersion: 4,
+			RegisteredClaims: jwt.RegisteredClaims{
+				Issuer:    auth.JWTIssuer,
+				Subject:   "reader-public-id",
+				Audience:  jwt.ClaimStrings{auth.AudienceMedia},
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(auth.MediaTokenTTL)),
+			},
+		}
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(testMediaJWTSecret))
+		if err != nil {
+			t.Fatalf("SignedString: %v", err)
+		}
+		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), token)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}

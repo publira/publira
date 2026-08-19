@@ -123,12 +123,20 @@ func (m *TokenManager) IssueMediaToken(
 	if subjectPublicID == "" {
 		return "", time.Time{}, errors.New("subject is required")
 	}
+	// An access token may omit the tenant (platform tokens do), and verifiers
+	// skip the tenant check when it is absent. A media token that took that
+	// route would be accepted by every tenant's image-server, so it is
+	// required here rather than merely expected.
+	tenantID = strings.TrimSpace(tenantID)
+	if tenantID == "" {
+		return "", time.Time{}, errors.New("tenant is required")
+	}
 	episodeID = strings.TrimSpace(episodeID)
 	if episodeID == "" {
 		return "", time.Time{}, errors.New("episode is required")
 	}
 	return m.sign(AccessTokenClaims{
-		TenantID:           strings.TrimSpace(tenantID),
+		TenantID:           tenantID,
 		CredentialsVersion: credentialsVersion,
 		EpisodeID:          episodeID,
 	}, subjectPublicID, AudienceMedia, MediaTokenTTL, now)
