@@ -28,6 +28,8 @@
 
 カタログの中身を増やすのは各画面の Issue です。このディレクトリは置き場と形式だけを決めます。読み取り側は動的パスを組み立てず、ロケールごとに静的なパスを書きます。
 
+アプリ横断の共有コピー（RPC エラー分類、フォームのバリデーション要約、`searchParamEnum` の拒否メッセージ）は `errors.*` に置きます。`@publira/utils/catalog` と `@publira/api-client/error-messages` がここを読みます。
+
 ### TypeScript（`@publira/utils/i18n`）
 
 ```ts

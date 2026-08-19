@@ -230,6 +230,7 @@ jobs:
               - *docs_excluded
               - 'apps/**'
               - 'packages/**'
+              - 'locales/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'

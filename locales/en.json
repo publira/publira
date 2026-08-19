@@ -20,6 +20,18 @@
       "subject": "{tenant_name} admin invitation"
     }
   },
+  "errors": {
+    "disallowed_value": "This value is not allowed.",
+    "rpc": {
+      "conflict": "Cannot save because this data already exists.",
+      "forbidden": "You do not have permission to perform this action.",
+      "invalid-argument": "The submitted values are invalid.",
+      "not-found": "The requested item could not be found.",
+      "unauthenticated": "Your session is no longer valid. Please sign in again.",
+      "unavailable": "Could not connect to the server. Please try again later."
+    },
+    "validation": "Please check the information you entered."
+  },
   "locale": {
     "en": "English",
     "ja": "Japanese"

@@ -5,6 +5,7 @@ import {
   toFieldErrors,
   toFormErrorMessage,
   VALIDATION_ERROR_MESSAGE,
+  validationErrorMessage,
 } from "./field-errors";
 
 const schema = z.object({
@@ -85,6 +86,27 @@ describe("toFormErrorMessage", () => {
     expect(toFormErrorMessage(error)).toBe(VALIDATION_ERROR_MESSAGE);
     expect(toFormErrorMessage(error, { fallback: "保存できません。" })).toBe(
       "保存できません。"
+    );
+  });
+
+  it("uses the locale-specific shared wording when asked", () => {
+    const error = new z.ZodError([]);
+
+    expect(toFormErrorMessage(error, { locale: "en" })).toBe(
+      validationErrorMessage("en")
+    );
+  });
+});
+
+describe("validationErrorMessage", () => {
+  it("keeps the Japanese default when locale is omitted", () => {
+    expect(validationErrorMessage()).toBe("入力内容を確認してください。");
+    expect(VALIDATION_ERROR_MESSAGE).toBe(validationErrorMessage());
+  });
+
+  it("returns English when locale is en", () => {
+    expect(validationErrorMessage("en")).toBe(
+      "Please check the information you entered."
     );
   });
 });

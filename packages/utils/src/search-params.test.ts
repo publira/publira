@@ -132,6 +132,26 @@ describe("searchParamEnum", () => {
   it("fails without a fallback", () => {
     expect(searchParamEnum(["asc"]).safeParse("desc").success).toBe(false);
   });
+
+  it("rejects with the Japanese shared wording by default", () => {
+    const parsed = searchParamEnum(["asc"]).safeParse("desc");
+    expect(parsed.success).toBe(false);
+    if (parsed.success) {
+      throw new Error("expected the schema to reject this input");
+    }
+
+    expect(parsed.error.issues[0]?.message).toBe("許可されていない値です。");
+  });
+
+  it("rejects with the English shared wording when locale is en", () => {
+    const parsed = searchParamEnum(["asc"], { locale: "en" }).safeParse("desc");
+    expect(parsed.success).toBe(false);
+    if (parsed.success) {
+      throw new Error("expected the schema to reject this input");
+    }
+
+    expect(parsed.error.issues[0]?.message).toBe("This value is not allowed.");
+  });
 });
 
 describe("searchParamNumber", () => {

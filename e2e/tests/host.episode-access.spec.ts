@@ -62,6 +62,11 @@ test.describe("web-host episode access", () => {
     await page.getByRole("link", { name: "ログインして閲覧する" }).click();
 
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
+    // The login shell streams a form whose hidden returnTo is "/" until
+    // searchParams resolve. Submitting that fallback lands on the catalog.
+    await expect(page.locator('input[name="returnTo"]')).toHaveValue(
+      paidEpisodePath
+    );
     await page.getByLabel(/メールアドレス/u).fill(SEED_MEMBER.email);
     await page.getByLabel(/パスワード/u).fill(SEED_MEMBER.password);
     await page.getByRole("button", { name: "ログイン" }).click();

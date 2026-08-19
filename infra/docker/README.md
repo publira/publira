@@ -267,14 +267,14 @@ docker build -f infra/docker/web/Dockerfile \
 
 | ロール | 代表ターゲット | 監視 path（概要） |
 | --- | --- | --- |
-| web | `web-host` | `apps/**`, `packages/**`, lockfile / turbo, `infra/docker/web/**` |
+| web | `web-host` | `apps/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/web/**` |
 | api | `api-server` | `server/**`, `infra/docker/api/**` |
 | image | `image-server` | `server/**`, `infra/docker/image/**` |
 | batch | `publish-episodes` | `server/**`, `infra/docker/batch/**` |
 | node | `email-renderer` | `apps/email-renderer/**`, `packages/**`, `locales/**`, lockfile / turbo, `infra/docker/node/**` |
 
 `server/**` 変更時は api、batch、image の代表をビルドする（共有モジュールのため）。  
-`locales/**` は node ロールだけが見る。`@publira/email-templates` がリポジトリルートの文言カタログを相対 import してバンドルするため。
+`locales/**` は web と node が見る。`@publira/utils/catalog` と `@publira/email-templates` がリポジトリルートの文言カタログを相対 import してバンドルするため。
 
 実装: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) の `docker` ジョブ。  
 ジョブ計画: [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh)（path filter 結果から Docker 行列を決定）。  
@@ -311,7 +311,7 @@ docker build -f infra/docker/web/Dockerfile \
    | ベース pull 失敗 / digest | レジストリ・digest 更新・Renovate PR の取りこぼし |
    | Web smoke (`/livez`) のみ失敗 | エントリポイント経路・`PORT`・standalone 出力（ビルドは成功している） |
    | Node smoke で `Cannot find package` | 実行時依存が `dependencies` ではなく `devDependencies` / `peerDependencies` にある（`pnpm install --prod` に載らない） |
-   | Node ロールで `locales/*.json` が解決できない | `turbo prune` はリポジトリルートの `locales/` を含めないため、builder 段で明示 `COPY` する必要がある |
+   | Web / Node ロールで `locales/*.json` が解決できない | `turbo prune` はリポジトリルートの `locales/` を含めないため、builder 段で明示 `COPY` する必要がある |
 
 4. **CI だけ失敗する場合**
    - ランナー arch / Buildx とローカルの差（Go は `TARGETOS`/`TARGETARCH` を既定固定しない）

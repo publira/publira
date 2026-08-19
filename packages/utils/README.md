@@ -10,9 +10,10 @@
 - `listSupportedTimeZones` / `isValidTimeZone`: テナントタイムゾーン設定 UI 向けの IANA タイムゾーン一覧と検証
 - `@publira/utils/search-params`: `searchParams`（`string | string[] | undefined`）を zod で検証するためのスキーマ生成関数
 - `@publira/utils/form-data`: `FormData` を zod の検証対象オブジェクトへ変換するヘルパー
-- `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー
+- `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー。共有バリデーション文言は `validationErrorMessage(locale)`（省略時は日本語の `VALIDATION_ERROR_MESSAGE`）
 - `@publira/utils/cached-read`: `"use cache"` の読み取りで失敗を「値」として返し、その失敗をキャッシュに残さないためのヘルパー
 - `@publira/utils/i18n`: ロケール判定と、動的 `import()` したメッセージカタログからキーに一致する文字列を返すヘルパー
+- `@publira/utils/catalog`: ルート `locales/*.json` への同期照会。`rpcErrorMessage` やフォームヘルパーが `catch` / `safeParse` 内で使う
 - `@publira/utils/image-loader`: `next/image` から image-server (Manael) の変換・縮小を使うためのカスタムローダー
 
 ## 使い方
@@ -125,6 +126,7 @@ const filters = filtersSchema.parse(await searchParams);
 - `searchParamNumber` は 10 進の整数・小数だけを受ける（`0x10` / `1e3` / `Infinity` は不正）。`integer` は既定で `true`
 - `maxLength` 超過は既定で不正。`truncate: true` のときだけ切り詰める（サロゲートペアは割らない）
 - `searchParamDate` は `Temporal` で暦の妥当性まで見るため、実行時に polyfill が必要
+- `searchParamEnum` の拒否メッセージは `errors.disallowed_value`。`locale` を渡すとその言語になり、省略時は日本語
 
 実例: [`web-admin` の監査ログフィルタ](../../apps/web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
 
@@ -135,7 +137,7 @@ const filters = filtersSchema.parse(await searchParams);
 ```ts
 import {
   toFieldErrors,
-  VALIDATION_ERROR_MESSAGE,
+  validationErrorMessage,
 } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 
@@ -150,7 +152,7 @@ const parsed = seriesSchema.safeParse(
 if (!parsed.success) {
   return {
     fieldErrors: toFieldErrors(parsed.error),
-    message: VALIDATION_ERROR_MESSAGE,
+    message: validationErrorMessage(locale),
     ok: false,
   };
 }
@@ -258,6 +260,7 @@ const greeting = getMessage(catalog, "greeting", { name: "山田" });
 - 存在するキーは一致した文字列を返し、`{name}` だけを補間する
 - 未知キーは開発時に throw、本番ではキーをそのまま返す
 - TypeScript のカタログモジュールを手で書く場合は、`export default { … } satisfies Messages` でも欠け・余剰を型エラーにできる
+- 共有 RPC / バリデーション文言（`errors.rpc.*` / `errors.validation` / `errors.disallowed_value`）は `catch` や `safeParse` から同期で読むため、`@publira/utils/catalog` が両方のロケールを静的 import する。画面カタログはこれまでどおり `loadMessages` の動的 `import()`
 
 ## `next/image` のローダー（`image-loader`）
 

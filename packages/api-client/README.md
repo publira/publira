@@ -139,7 +139,7 @@ try {
 }
 ```
 
-文言は `@publira/api-client/error-messages` の `rpcErrorMessage(error, fallback, overrides?)` に集約しています。3 アプリで同じ RPC エラーが同じ文言になるよう、共通表をここに置いています。
+文言は `@publira/api-client/error-messages` の `rpcErrorMessage(error, fallback, options?)` に集約しています。3 アプリで同じ RPC エラーが同じ文言になるよう、共通表をルートの `locales/*.json`（`errors.rpc.*`）に置いています。`locale` を省略すると従来どおり日本語です。
 
 ```ts
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
@@ -149,7 +149,10 @@ return {
     error,
     "著者の保存に失敗しました。時間をおいて再試行してください。",
     {
-      "invalid-argument": "画像の設定を確認してください。",
+      locale,
+      overrides: {
+        "invalid-argument": "画像の設定を確認してください。",
+      },
     }
   ),
   ok: false,
