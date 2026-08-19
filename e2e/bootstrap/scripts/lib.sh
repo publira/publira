@@ -167,34 +167,6 @@ port_in_use() {
     netstat -ltn 2>/dev/null | grep -qE ":${port}\\b"
 }
 
-http_status_body() {
-  local url="$1" tmpfile code
-  tmpfile="$(mktemp)"
-  code="$(curl -sS -o "${tmpfile}" -w '%{http_code}' --max-time 5 "${url}" 2>/dev/null || true)"
-  printf '%s\n' "${code}"
-  cat "${tmpfile}" 2>/dev/null || true
-  rm -f "${tmpfile}"
-}
-
-# 200 with `"status":"ok"` in the JSON body.
-check_http_json_ok() {
-  local url="$1" out code
-  out="$(http_status_body "${url}")"
-  code="$(printf '%s' "${out}" | sed -n '1p')"
-  [[ "${code}" == "200" ]] || return 1
-  printf '%s' "${out}" | tail -n +2 | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
-}
-
-# 200 with a plain-text body of exactly `ok` — a substring match would also
-# accept bodies like `not ok`.
-check_http_text_ok() {
-  local url="$1" out code
-  out="$(http_status_body "${url}")"
-  code="$(printf '%s' "${out}" | sed -n '1p')"
-  [[ "${code}" == "200" ]] || return 1
-  printf '%s' "${out}" | tail -n +2 | grep -qx '[[:space:]]*ok[[:space:]]*'
-}
-
 # Compose state + service logs, for a failed run (CI uploads LOG_DIR).
 collect_diagnostics() {
   bootstrap_err "collecting diagnostics into ${LOG_DIR}"

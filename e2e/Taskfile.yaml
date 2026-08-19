@@ -81,6 +81,6 @@ tasks:
       - bash {{.E2E_DIR}}/scripts/stop-apps.sh
 
   wait-ready:
-    desc: "Poll readiness probes (fails with readiness failed: <name>)"
+    desc: "Wait for HTTP readiness probes via wait4x (fails with readiness failed: <name>)"
     cmds:
       - bash {{.E2E_DIR}}/scripts/wait-ready.sh

@@ -39,7 +39,7 @@ tasks:
       - bash "{{.BOOTSTRAP_DIR}}/scripts/dev-up.sh"
 
   dev-wait:
-    desc: "Phase 4b: poll every service health probe"
+    desc: "Phase 4b: wait for every service health probe via wait4x"
     cmds:
       - bash "{{.BOOTSTRAP_DIR}}/scripts/dev-wait.sh"
 

@@ -15,7 +15,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 ensure_run_dirs
 
-for cmd in docker task psql migrate; do
+for cmd in docker task psql migrate wait4x; do
   if ! command -v "${cmd}" >/dev/null 2>&1; then
     bootstrap_fail "required command not found: ${cmd}"
   fi

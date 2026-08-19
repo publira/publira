@@ -4,8 +4,13 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+# Per-probe budget. compose --wait (up.sh) already covered postgres / redis /
+# rustfs container healthchecks; this script only probes host-reachable HTTP.
 TIMEOUT_SEC="${E2E_READY_TIMEOUT_SEC:-90}"
 INTERVAL_SEC="${E2E_READY_INTERVAL_SEC:-1}"
+
+# Matches the previous grep for `"status": "ok"` (optional spaces around `:`).
+JSON_OK_REGEX='"status"[[:space:]]*:[[:space:]]*"ok"'
 
 fail_readiness() {
   local name="$1"
@@ -22,100 +27,80 @@ fail_readiness() {
   exit 1
 }
 
-wait_until() {
+require_wait4x() {
+  if command -v wait4x >/dev/null 2>&1; then
+    return 0
+  fi
+  e2e_err "wait4x is not installed (needed to wait for HTTP readiness probes)"
+  exit 1
+}
+
+# wait4x owns the poll, interval, and deadline. This only names the probe so
+# fail_readiness can keep the previous diagnostics.
+wait_http() {
   local name="$1"
-  shift
-  local deadline=$((SECONDS + TIMEOUT_SEC))
-  while ((SECONDS < deadline)); do
-    if "$@"; then
-      e2e_log "ready: ${name}"
-      return 0
-    fi
-    sleep "${INTERVAL_SEC}"
-  done
+  local url="$2"
+  shift 2
+  if wait4x http "${url}" \
+    --timeout "${TIMEOUT_SEC}s" \
+    --interval "${INTERVAL_SEC}s" \
+    --connection-timeout 3s \
+    --quiet \
+    --no-color \
+    --expect-status-code 200 \
+    "$@"; then
+    e2e_log "ready: ${name}"
+    return 0
+  fi
   fail_readiness "${name}" "timed out after ${TIMEOUT_SEC}s"
 }
 
-check_pg_isready() {
-  local id
-  id="$(compose ps -q postgres 2>/dev/null || true)"
-  [[ -n "${id}" ]] || return 1
-  docker exec "${id}" pg_isready -U postgres -d publira >/dev/null 2>&1
-}
-
-check_redis_ping() {
-  local id
-  id="$(compose ps -q redis 2>/dev/null || true)"
-  [[ -n "${id}" ]] || return 1
-  docker exec "${id}" redis-cli ping 2>/dev/null | grep -qx PONG
-}
-
-check_rustfs_health() {
-  local code
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 \
-    "http://127.0.0.1:${E2E_RUSTFS_PORT}/health" 2>/dev/null || true)"
-  [[ "${code}" == "200" ]]
-}
-
-check_http_body() {
-  local url="$1"
-  local expect="$2"
-  local tmpfile code body
-  tmpfile="$(mktemp)"
-  code="$(curl -sS -o "${tmpfile}" -w '%{http_code}' --max-time 3 "${url}" 2>/dev/null || true)"
-  body="$(cat "${tmpfile}" 2>/dev/null || true)"
-  rm -f "${tmpfile}"
-  [[ "${code}" == "200" && "${body}" == *"${expect}"* ]]
-}
-
-check_http_json_ok() {
-  local url="$1"
-  local tmpfile code body
-  tmpfile="$(mktemp)"
-  code="$(curl -sS -o "${tmpfile}" -w '%{http_code}' --max-time 3 "${url}" 2>/dev/null || true)"
-  body="$(cat "${tmpfile}" 2>/dev/null || true)"
-  rm -f "${tmpfile}"
-  [[ "${code}" == "200" ]] || return 1
-  printf '%s' "${body}" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'
-}
-
+require_wait4x
 e2e_log "waiting for readiness (timeout ${TIMEOUT_SEC}s)"
 
-wait_until "postgres" check_pg_isready
-wait_until "redis" check_redis_ping
-# Checked from the host (not `docker exec`): the API servers reach RustFS
-# through the published port, so a container-only probe would miss it.
-wait_until "rustfs" check_rustfs_health
+# Checked from the host (not the compose healthcheck): the API servers reach
+# RustFS through the published port, so a container-only probe would miss it.
+wait_http "rustfs" "http://127.0.0.1:${E2E_RUSTFS_PORT}/health"
 
-wait_until "public-api/readyz" check_http_json_ok \
-  "http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}/readyz"
+wait_http "public-api/readyz" \
+  "http://127.0.0.1:${E2E_PUBLIC_API_GRPC_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
 
-wait_until "admin-api/readyz" check_http_json_ok \
-  "http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}/readyz"
+wait_http "admin-api/readyz" \
+  "http://127.0.0.1:${E2E_ADMIN_API_GRPC_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
 
-wait_until "platform-api/readyz" check_http_json_ok \
-  "http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}/readyz"
+wait_http "platform-api/readyz" \
+  "http://127.0.0.1:${E2E_PLATFORM_API_GRPC_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
 
 # Use localhost (not 127.0.0.1) to match browser Host / server bind hostname.
-wait_until "web-host/livez" check_http_body \
-  "http://localhost:${E2E_WEB_HOST_PORT}/livez" "ok"
+# Substring `ok`, matching the previous check_http_body.
+wait_http "web-host/livez" \
+  "http://localhost:${E2E_WEB_HOST_PORT}/livez" \
+  --expect-body-regex "ok"
 
-wait_until "web-host/readyz" check_http_json_ok \
-  "http://localhost:${E2E_WEB_HOST_PORT}/readyz"
+wait_http "web-host/readyz" \
+  "http://localhost:${E2E_WEB_HOST_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
 
 # web-admin binds 0.0.0.0; probe via 127.0.0.1 (tenant resolution is skipped
 # for /livez and /readyz in proxy.ts).
-wait_until "web-admin/livez" check_http_body \
-  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/livez" "ok"
+wait_http "web-admin/livez" \
+  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/livez" \
+  --expect-body-regex "ok"
 
-wait_until "web-admin/readyz" check_http_json_ok \
-  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/readyz"
+wait_http "web-admin/readyz" \
+  "http://127.0.0.1:${E2E_WEB_ADMIN_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
 
 # web-platform also binds 0.0.0.0; probes skip setup / session checks.
-wait_until "web-platform/livez" check_http_body \
-  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/livez" "ok"
+wait_http "web-platform/livez" \
+  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/livez" \
+  --expect-body-regex "ok"
 
-wait_until "web-platform/readyz" check_http_json_ok \
-  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/readyz"
+wait_http "web-platform/readyz" \
+  "http://127.0.0.1:${E2E_WEB_PLATFORM_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
 
 e2e_log "all readiness checks passed"

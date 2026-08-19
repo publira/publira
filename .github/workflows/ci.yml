@@ -11,6 +11,8 @@ env:
   MIGRATE_VERSION: 4.19.1
   # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver-coerced
   GOLANGCI_LINT_VERSION: 2.12.2
+  # renovate: datasource=github-releases depName=wait4x/wait4x versioning=semver-coerced
+  WAIT4X_VERSION: 3.7.1
   # renovate: datasource=flutter-version depName=flutter
   FLUTTER_VERSION: 3.47.0
 
@@ -731,6 +733,23 @@ jobs:
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
           rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
 
+      - name: Setup / Install wait4x
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) wait4x_arch="amd64" ;;
+            arm64) wait4x_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="wait4x-linux-${wait4x_arch}.tar.gz"
+          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
+          (cd /tmp && sha256sum -c "${archive}.sha256sum")
+          tar -xzf "/tmp/${archive}" -C /tmp wait4x
+          sudo install -m 0755 /tmp/wait4x /usr/local/bin/wait4x
+          rm -f "/tmp/${archive}" "/tmp/${archive}.sha256sum" /tmp/wait4x
+
       - name: Dependencies / Install
         run: task deps
 
@@ -809,6 +828,23 @@ jobs:
           tar -xzf "/tmp/${archive}" -C /tmp migrate
           sudo install -m 0755 /tmp/migrate /usr/local/bin/migrate
           rm -f "/tmp/${archive}" /tmp/sha256sum.txt /tmp/migrate
+
+      - name: Setup / Install wait4x
+        run: |
+          set -euo pipefail
+          arch="$(dpkg --print-architecture)"
+          case "$arch" in
+            amd64) wait4x_arch="amd64" ;;
+            arm64) wait4x_arch="arm64" ;;
+            *) echo "Unsupported architecture: $arch"; exit 1 ;;
+          esac
+          archive="wait4x-linux-${wait4x_arch}.tar.gz"
+          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}" -o "/tmp/${archive}"
+          curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${archive}.sha256sum" -o "/tmp/${archive}.sha256sum"
+          (cd /tmp && sha256sum -c "${archive}.sha256sum")
+          tar -xzf "/tmp/${archive}" -C /tmp wait4x
+          sudo install -m 0755 /tmp/wait4x /usr/local/bin/wait4x
+          rm -f "/tmp/${archive}" "/tmp/${archive}.sha256sum" /tmp/wait4x
 
       # Installs dependencies itself (`task setup`); no separate deps step.
       # Always tears the compose project and dev processes down (trap).

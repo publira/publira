@@ -12,6 +12,7 @@ Dev Container Traefik のホストベースルーティングは、同じく Pla
 ## 前提
 
 - Docker（Compose v2）が使えること（Dev Container の DinD 可）
+- [wait4x](https://github.com/wait4x/wait4x)（HTTP readiness 待ち。Dev Container に同梱。CI は `Test / E2E` でインストール）
 - リポジトリルートで `task deps` 済み
 - 初回のみ Playwright の OS 依存（Chromium）:
 
@@ -60,7 +61,7 @@ task e2e
 | `bash e2e/scripts/api-server.sh <start\|start-wait\|stop>` | api-server だけを操作（障害シナリオが使用） |
 | `bash e2e/scripts/admin-api-server.sh <start\|start-wait\|stop>` | admin-api-server だけを操作 |
 | `bash e2e/scripts/platform-api-server.sh <start\|start-wait\|stop>` | platform-api-server だけを操作 |
-| `task e2e:wait-ready` | readiness ポーリング（失敗時は `readiness failed: …`） |
+| `task e2e:wait-ready` | wait4x で HTTP readiness 待ち（失敗時は `readiness failed: …`） |
 | `task e2e:test` | Playwright のみ（stack 起動済み前提） |
 | `task e2e:test-lib` | `E2E_RUN_DIR` 隔離と compose project lock の確認（Docker 不要。`task e2e` からも走る） |
 | `task e2e:down` | アプリ停止 + compose 削除（volume 含む） |
@@ -181,9 +182,9 @@ Node 側の `request` fixture は OS の名前解決を使うので、`localhost
 | readiness | ログに `readiness failed: <name>`。Playwright は起動しない |
 | Playwright | `Playwright tests failed`。`test-results/` / `playwright-report/` / `.run/logs/` を確認 |
 
-`wait-ready` のチェック順:
+`wait-ready` のチェック順（postgres / redis / rustfs のコンテナ healthcheck は `task e2e:up` の `docker compose up --wait` が担う。RustFS だけは公開ポートもホストから確認する）:
 
-1. compose postgres / redis healthy、`GET :9003/health` → 200（RustFS。ホストから叩いて公開ポートごと確認する）
+1. `GET :9003/health` → 200（RustFS。ホストから叩いて公開ポートごと確認する）
 2. `GET :8100/readyz` → `status=ok`（public API）
 3. `GET :8101/readyz` → `status=ok`（admin API）
 4. `GET :8102/readyz` → `status=ok`（platform API）
