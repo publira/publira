@@ -273,6 +273,7 @@ type PlatformAuditLog struct {
 type PlatformConfig struct {
 	Singleton       bool      `json:"singleton"`
 	DefaultTimezone string    `json:"default_timezone"`
+	DefaultLocale   string    `json:"default_locale"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
@@ -420,6 +421,7 @@ type Tenant struct {
 	Status                    string         `json:"status"`
 	AdminDomain               sql.NullString `json:"admin_domain"`
 	Timezone                  string         `json:"timezone"`
+	DefaultLocale             string         `json:"default_locale"`
 }
 
 type TenantAdminInvitation struct {

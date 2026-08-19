@@ -53,12 +53,13 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 	defer cancel()
 
 	tenant, err := dbmodels.New(e.DB).CreateTenant(ctx, dbmodels.CreateTenantParams{
-		ID:          uuid.Must(uuid.NewV7()),
-		PublicID:    publicID,
-		Domain:      domain,
-		AdminDomain: sql.NullString{String: adminDomain, Valid: true},
-		Name:        name,
-		Timezone:    tenanttz.Default,
+		ID:            uuid.Must(uuid.NewV7()),
+		PublicID:      publicID,
+		Domain:        domain,
+		AdminDomain:   sql.NullString{String: adminDomain, Valid: true},
+		Name:          name,
+		Timezone:      tenanttz.Default,
+		DefaultLocale: "ja",
 	})
 	if err != nil {
 		t.Fatalf("CreateTenant %s: %v", publicID, err)

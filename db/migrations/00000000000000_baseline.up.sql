@@ -345,9 +345,15 @@ CREATE TABLE platform_config (
     -- it is the fallback when a tenant row has no usable timezone.
     -- Strict allow-list validation is enforced at the application/API layer.
     default_timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
+    -- Platform-wide default UI locale. New tenants start from this value and
+    -- it is the fallback when a tenant row has no usable default_locale.
+    -- Canonical codes live in locales/*.json (first cut: ja / en).
+    -- Strict allow-list validation is enforced at the application/API layer.
+    default_locale text DEFAULT 'ja'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT platform_config_default_timezone_not_blank_check CHECK ((btrim(default_timezone) <> '')),
+    CONSTRAINT platform_config_default_locale_not_blank_check CHECK ((btrim(default_locale) <> '')),
     CONSTRAINT platform_config_singleton_check CHECK (singleton)
 );
 
@@ -614,8 +620,13 @@ CREATE TABLE tenants (
     -- IANA time zone name for tenant wall-clock display/input (e.g. Asia/Tokyo, America/Los_Angeles, UTC).
     -- Strict allow-list validation is enforced at the application/API layer.
     timezone text DEFAULT 'Asia/Tokyo'::text NOT NULL,
+    -- Default UI locale when the user has not chosen one (e.g. ja, en).
+    -- Canonical codes live in locales/*.json (first cut: ja / en).
+    -- Strict allow-list validation is enforced at the application/API layer.
+    default_locale text DEFAULT 'ja'::text NOT NULL,
     CONSTRAINT tenants_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying])::text[]))),
-    CONSTRAINT tenants_timezone_not_blank_check CHECK ((btrim(timezone) <> ''))
+    CONSTRAINT tenants_timezone_not_blank_check CHECK ((btrim(timezone) <> '')),
+    CONSTRAINT tenants_default_locale_not_blank_check CHECK ((btrim(default_locale) <> ''))
 );
 
 -- TABLE: user_email_change_tokens

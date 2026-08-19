@@ -164,18 +164,18 @@ const (
 )
 
 func integrationTenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}
+	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}
 }
 
 func platformConfigColumns() []string {
-	return []string{"singleton", "default_timezone", "created_at", "updated_at"}
+	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at"}
 }
 
 // expectPlatformConfigLookup expects the read of the platform settings row and
-// answers it with the given default time zone.
-func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone string, now time.Time) {
+// answers it with the given default time zone and locale.
+func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, now, now))
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
 }
 
 func integrationOperatorColumns() []string {

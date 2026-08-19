@@ -25,7 +25,7 @@ const (
 )
 
 func tenantTestColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}
+	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}
 }
 
 func tenantScopedUserColumns() []string {
@@ -37,7 +37,7 @@ func tenantMemberColumns() []string {
 }
 
 func addTenantRow(rows *sqlmock.Rows, id uuid.UUID, publicID, name string, createdAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, publicID, publicID+".example.com", name, nil, createdAt, tenantStatusActive, nil, tenanttz.Default)
+	return rows.AddRow(id, publicID, publicID+".example.com", name, nil, createdAt, tenantStatusActive, nil, tenanttz.Default, "ja")
 }
 
 func TestTenantToProtoExposesTimezone(t *testing.T) {
@@ -302,7 +302,7 @@ func TestListTenantMembersSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testListTenantMembersDescQuery)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
@@ -335,7 +335,7 @@ func TestListTenantMembersEmptyList(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testListTenantMembersDescQuery)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
@@ -375,7 +375,7 @@ func TestAddTenantMemberSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
@@ -419,7 +419,7 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByEmailForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "alice@example.com").
@@ -490,7 +490,7 @@ func TestAddTenantMemberUserNotFound(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "NOTFOUND").
@@ -516,7 +516,7 @@ func TestAddTenantMemberAlreadyExists(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
@@ -547,7 +547,7 @@ func TestUpdateTenantMemberRoleSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
@@ -591,7 +591,7 @@ func TestUpdateTenantMemberRoleMemberNotFound(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
@@ -622,7 +622,7 @@ func TestRemoveTenantMemberSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").
@@ -654,7 +654,7 @@ func TestRemoveTenantMemberNotFound(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetTenantByPublicIDQuery)).
 		WithArgs("TENANT001").
 		WillReturnRows(sqlmock.NewRows(tenantTestColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Test Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
 
 	mock.ExpectQuery(regexp.QuoteMeta(testGetUserByPublicIDForTenantQuery)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "USER000001").

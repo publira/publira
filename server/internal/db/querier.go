@@ -64,7 +64,7 @@ type Querier interface {
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
 	// プラットフォーム管理者向けテナント作成
-	// timezone は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+	// timezone / default_locale は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
 	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
@@ -472,6 +472,8 @@ type Querier interface {
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) error
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)
+	// テナントの既定ロケールを更新する
+	UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error)
 	// テナントの名前・ドメインを更新する
 	UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoParams) (Tenant, error)
 	// テナントの状態 (active / suspended) を更新する
@@ -496,6 +498,8 @@ type Querier interface {
 	UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
 	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
+	// プラットフォーム既定ロケールを作成または更新する
+	UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error)
 	// プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
 	UpsertPlatformDefaultTimezone(ctx context.Context, defaultTimezone string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)

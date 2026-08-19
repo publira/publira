@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	getTenantByIDQuery                            = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
+	getTenantByIDQuery                            = "-- name: GetTenantByID :one\nSELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale\nFROM tenants\nWHERE id = $1\nLIMIT 1\n"
 	listActiveSeriesIDsByPublishedAtDescQuery     = "-- name: ListActiveSeriesIDsByPublishedAtDesc :many\nSELECT s.id\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.is_published = true\n    AND s.published_at IS NOT NULL\n    AND s.published_at <= NOW()\n    AND (\n        $2::uuid IS NULL\n        OR (\n            $3::boolean\n            AND (s.published_at, s.id) <= (\n                $4::timestamptz,\n                $2::uuid\n            )\n        )\n        OR (\n            NOT $3::boolean\n            AND (s.published_at, s.id) < (\n                $4::timestamptz,\n                $2::uuid\n            )\n        )\n    )\nORDER BY s.published_at DESC,\n    s.id DESC\nLIMIT $5\n"
 	listActiveSeriesIDsByPublishedAtAscQuery      = "-- name: ListActiveSeriesIDsByPublishedAtAsc :many\nSELECT s.id\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.is_published = true\n    AND s.published_at IS NOT NULL\n    AND s.published_at <= NOW()\n    AND (\n        $2::uuid IS NULL\n        OR (\n            $3::boolean\n            AND (s.published_at, s.id) >= (\n                $4::timestamptz,\n                $2::uuid\n            )\n        )\n        OR (\n            NOT $3::boolean\n            AND (s.published_at, s.id) > (\n                $4::timestamptz,\n                $2::uuid\n            )\n        )\n    )\nORDER BY s.published_at ASC,\n    s.id ASC\nLIMIT $5\n"
 	listActiveSeriesIDsByTitleAscQuery            = "-- name: ListActiveSeriesIDsByTitleAsc :many\nSELECT s.id\nFROM series s\nWHERE s.tenant_id = $1\n    AND s.is_published = true\n    AND s.published_at IS NOT NULL\n    AND s.published_at <= NOW()\n    AND (\n        $2::uuid IS NULL\n        OR (\n            $3::boolean\n            AND (s.title, s.id) >= (\n                $4::text,\n                $2::uuid\n            )\n        )\n        OR (\n            NOT $3::boolean\n            AND (s.title, s.id) > (\n                $4::text,\n                $2::uuid\n            )\n        )\n    )\nORDER BY s.title ASC,\n    s.id ASC\nLIMIT $5\n"
@@ -74,8 +74,8 @@ func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID strin
 func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone string) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone"}).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}).
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, "ja"))
 }
 
 func assertPublicExpectations(t *testing.T, mock sqlmock.Sqlmock) {

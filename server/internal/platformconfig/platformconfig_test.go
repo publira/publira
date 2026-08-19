@@ -48,6 +48,47 @@ func TestDefaultTimeZone(t *testing.T) {
 	}
 }
 
+func TestDefaultLocale(t *testing.T) {
+	tests := []struct {
+		name   string
+		stored string
+		err    error
+		want   string
+	}{
+		{name: "configured value is used", stored: "en", want: "en"},
+		{name: "surrounding spaces are trimmed", stored: "  en  ", want: "en"},
+		{name: "blank row falls back to the built-in default", stored: "   ", want: defaultLocale},
+		{name: "missing row falls back to the built-in default", err: sql.ErrNoRows, want: defaultLocale},
+		{name: "unreadable row falls back to the built-in default", err: errors.New("connection reset"), want: defaultLocale},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			q := &stubQuerier{config: dbmodels.PlatformConfig{DefaultLocale: tt.stored}, err: tt.err}
+			if got := DefaultLocale(context.Background(), q); got != tt.want {
+				t.Fatalf("DefaultLocale = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDefaultsReadsTheSettingsRowOnce(t *testing.T) {
+	q := &stubQuerier{config: dbmodels.PlatformConfig{
+		DefaultTimezone: "America/Los_Angeles",
+		DefaultLocale:   "en",
+	}}
+	timezone, locale := Defaults(context.Background(), q)
+	if timezone != "America/Los_Angeles" {
+		t.Fatalf("timezone = %q, want America/Los_Angeles", timezone)
+	}
+	if locale != "en" {
+		t.Fatalf("locale = %q, want en", locale)
+	}
+	if q.calls != 1 {
+		t.Fatalf("settings row was read %d times, want 1", q.calls)
+	}
+}
+
 func TestDefaultTimeZoneFuncReadsLazilyAndOnce(t *testing.T) {
 	q := &stubQuerier{config: dbmodels.PlatformConfig{DefaultTimezone: "Europe/Berlin"}}
 	defaultTimeZone := DefaultTimeZoneFunc(context.Background(), q)

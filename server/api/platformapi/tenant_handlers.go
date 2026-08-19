@@ -226,19 +226,20 @@ func (s *platformServer) CreateTenant(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// The platform default is applied explicitly instead of relying on the
-	// tenants.timezone column default, so an install that changed the default
-	// starts every new tenant on it.
-	defaultTimezone := platformconfig.DefaultTimeZone(ctx, txq)
+	// Platform defaults are applied explicitly instead of relying on the
+	// column defaults, so an install that changed either starts every new
+	// tenant on them.
+	defaultTimezone, defaultLocale := platformconfig.Defaults(ctx, txq)
 
 	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
 		return txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
-			ID:          tenantID,
-			PublicID:    publicID,
-			Domain:      domain,
-			AdminDomain: adminDomain,
-			Name:        name,
-			Timezone:    defaultTimezone,
+			ID:            tenantID,
+			PublicID:      publicID,
+			Domain:        domain,
+			AdminDomain:   adminDomain,
+			Name:          name,
+			Timezone:      defaultTimezone,
+			DefaultLocale: defaultLocale,
 		})
 	})
 	if err != nil {

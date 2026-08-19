@@ -13,3 +13,12 @@ UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
     updated_at = NOW()
 RETURNING *;
+
+-- name: UpsertPlatformDefaultLocale :one
+-- プラットフォーム既定ロケールを作成または更新する
+INSERT INTO platform_config (singleton, default_locale, updated_at)
+VALUES (TRUE, sqlc.arg('default_locale'), NOW()) ON CONFLICT (singleton) DO
+UPDATE
+SET default_locale = EXCLUDED.default_locale,
+    updated_at = NOW()
+RETURNING *;

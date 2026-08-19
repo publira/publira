@@ -42,9 +42,9 @@ ORDER BY created_at ASC, id ASC
 LIMIT sqlc.arg('limit');
 -- name: CreateTenant :one
 -- プラットフォーム管理者向けテナント作成
--- timezone は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone)
-VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'))
+-- timezone / default_locale は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
+VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'))
 RETURNING *;
 -- name: UpdateTenantStatus :one
 -- テナントの状態 (active / suspended) を更新する
@@ -62,6 +62,12 @@ RETURNING *;
 -- テナントの表示タイムゾーン (IANA 名) を更新する
 UPDATE tenants
 SET timezone = sqlc.arg('timezone')
+WHERE id = sqlc.arg('id')
+RETURNING *;
+-- name: UpdateTenantDefaultLocale :one
+-- テナントの既定ロケールを更新する
+UPDATE tenants
+SET default_locale = sqlc.arg('default_locale')
 WHERE id = sqlc.arg('id')
 RETURNING *;
 -- name: GetTenantByDomains :one

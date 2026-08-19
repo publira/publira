@@ -9,6 +9,7 @@ import (
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/gen/publira/platform/v1/publirasplatformv1connect"
+	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -25,6 +26,28 @@ func tenantTimezoneByPublicID(t *testing.T, pg *testutil.PostgresEnv, publicID s
 		t.Fatalf("select tenants.timezone for %s: %v", publicID, err)
 	}
 	return timezone
+}
+
+func tenantDefaultLocaleByPublicID(t *testing.T, pg *testutil.PostgresEnv, publicID string) string {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var locale string
+	if err := pg.DB.QueryRowContext(ctx, `SELECT default_locale FROM tenants WHERE public_id = $1`, publicID).Scan(&locale); err != nil {
+		t.Fatalf("select tenants.default_locale for %s: %v", publicID, err)
+	}
+	return locale
+}
+
+func upsertPlatformDefaultLocale(t *testing.T, pg *testutil.PostgresEnv, locale string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := dbmodels.New(pg.DB).UpsertPlatformDefaultLocale(ctx, locale); err != nil {
+		t.Fatalf("UpsertPlatformDefaultLocale %s: %v", locale, err)
+	}
 }
 
 // A database that has only had the migration applied carries no settings row, and
@@ -182,5 +205,40 @@ func TestDBCreateTenantAppliesPlatformDefaultTimezone(t *testing.T) {
 	}
 	if getBefore.Msg.Tenant.Timezone != tenanttz.Default {
 		t.Fatalf("existing tenant.timezone = %q, want %s", getBefore.Msg.Tenant.Timezone, tenanttz.Default)
+	}
+}
+
+func TestDBCreateTenantAppliesPlatformDefaultLocale(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(ts.Client(), ts.URL)
+
+	upsertPlatformDefaultLocale(t, pg, "en")
+
+	beforeResp, err := tenants.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+		Name:   "English Tenant",
+		Domain: "en-locale.example.com",
+	}))
+	if err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	if got := tenantDefaultLocaleByPublicID(t, pg, beforeResp.Msg.Tenant.PublicId); got != "en" {
+		t.Fatalf("stored tenants.default_locale = %q, want en", got)
+	}
+
+	upsertPlatformDefaultLocale(t, pg, "ja")
+
+	afterResp, err := tenants.CreateTenant(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.CreateTenantRequest{
+		Name:   "Japanese Tenant",
+		Domain: "ja-locale.example.com",
+	}))
+	if err != nil {
+		t.Fatalf("CreateTenant (after): %v", err)
+	}
+	if got := tenantDefaultLocaleByPublicID(t, pg, afterResp.Msg.Tenant.PublicId); got != "ja" {
+		t.Fatalf("stored tenants.default_locale = %q, want ja", got)
+	}
+	if got := tenantDefaultLocaleByPublicID(t, pg, beforeResp.Msg.Tenant.PublicId); got != "en" {
+		t.Fatalf("stored tenants.default_locale of the existing tenant = %q, want en", got)
 	}
 }

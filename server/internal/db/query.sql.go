@@ -1114,22 +1114,23 @@ func (q *Queries) CreateSeriesImageVariant(ctx context.Context, arg CreateSeries
 }
 
 const createTenant = `-- name: CreateTenant :one
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone)
-VALUES ($1, $2, $3, $4, $5, 'active', $6)
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
+VALUES ($1, $2, $3, $4, $5, 'active', $6, $7)
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 `
 
 type CreateTenantParams struct {
-	ID          uuid.UUID      `json:"id"`
-	PublicID    string         `json:"public_id"`
-	Domain      string         `json:"domain"`
-	AdminDomain sql.NullString `json:"admin_domain"`
-	Name        string         `json:"name"`
-	Timezone    string         `json:"timezone"`
+	ID            uuid.UUID      `json:"id"`
+	PublicID      string         `json:"public_id"`
+	Domain        string         `json:"domain"`
+	AdminDomain   sql.NullString `json:"admin_domain"`
+	Name          string         `json:"name"`
+	Timezone      string         `json:"timezone"`
+	DefaultLocale string         `json:"default_locale"`
 }
 
 // プラットフォーム管理者向けテナント作成
-// timezone は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
+// timezone / default_locale は列の DEFAULT に任せず、プラットフォーム既定値を明示的に適用する
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
 	row := q.db.QueryRowContext(ctx, createTenant,
 		arg.ID,
@@ -1138,6 +1139,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		arg.AdminDomain,
 		arg.Name,
 		arg.Timezone,
+		arg.DefaultLocale,
 	)
 	var i Tenant
 	err := row.Scan(
@@ -1150,6 +1152,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }
@@ -1753,7 +1756,7 @@ func (q *Queries) GetActiveAccessTicketForUserEpisode(ctx context.Context, arg G
 }
 
 const getAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone
+SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
     ON t.admin_domain = candidate.domain
@@ -1779,6 +1782,7 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }
@@ -3093,7 +3097,7 @@ func (q *Queries) GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, 
 }
 
 const getTenantByDomains = `-- name: GetTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone
+SELECT t.id, t.public_id, t.domain, t.name, t.default_reading_period_hours, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
@@ -3114,12 +3118,13 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }
 
 const getTenantByID = `-- name: GetTenantByID :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE id = $1
 LIMIT 1
@@ -3138,12 +3143,13 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }
 
 const getTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -3162,6 +3168,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }
@@ -8232,7 +8239,7 @@ func (q *Queries) ListTenantUsersDesc(ctx context.Context, arg ListTenantUsersDe
 }
 
 const listTenantsAsc = `-- name: ListTenantsAsc :many
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
@@ -8289,6 +8296,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 			&i.Status,
 			&i.AdminDomain,
 			&i.Timezone,
+			&i.DefaultLocale,
 		); err != nil {
 			return nil, err
 		}
@@ -8304,7 +8312,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 }
 
 const listTenantsDesc = `-- name: ListTenantsDesc :many
-SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+SELECT id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR public_id ILIKE '%' || $2::text || '%')
@@ -8364,6 +8372,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 			&i.Status,
 			&i.AdminDomain,
 			&i.Timezone,
+			&i.DefaultLocale,
 		); err != nil {
 			return nil, err
 		}
@@ -9047,11 +9056,42 @@ func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfig
 	return i, err
 }
 
+const updateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
+UPDATE tenants
+SET default_locale = $1
+WHERE id = $2
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
+`
+
+type UpdateTenantDefaultLocaleParams struct {
+	DefaultLocale string    `json:"default_locale"`
+	ID            uuid.UUID `json:"id"`
+}
+
+// テナントの既定ロケールを更新する
+func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenantDefaultLocaleParams) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, updateTenantDefaultLocale, arg.DefaultLocale, arg.ID)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Name,
+		&i.DefaultReadingPeriodHours,
+		&i.CreatedAt,
+		&i.Status,
+		&i.AdminDomain,
+		&i.Timezone,
+		&i.DefaultLocale,
+	)
+	return i, err
+}
+
 const updateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
 SET name = $1, domain = $2, admin_domain = $3
 WHERE public_id = $4
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantInfoParams struct {
@@ -9080,6 +9120,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }
@@ -9088,7 +9129,7 @@ const updateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE public_id = $1
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantStatusParams struct {
@@ -9110,6 +9151,7 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }
@@ -9118,7 +9160,7 @@ const updateTenantTimezone = `-- name: UpdateTenantTimezone :one
 UPDATE tenants
 SET timezone = $1
 WHERE id = $2
-RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone
+RETURNING id, public_id, domain, name, default_reading_period_hours, created_at, status, admin_domain, timezone, default_locale
 `
 
 type UpdateTenantTimezoneParams struct {
@@ -9140,6 +9182,7 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 		&i.Status,
 		&i.AdminDomain,
 		&i.Timezone,
+		&i.DefaultLocale,
 	)
 	return i, err
 }

@@ -247,12 +247,13 @@ func seedTenant(t *testing.T, pg *testutil.PostgresEnv, publicID, domain, name s
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	tenant, err := dbmodels.New(pg.DB).CreateTenant(ctx, dbmodels.CreateTenantParams{
-		ID:          uuid.Must(uuid.NewV7()),
-		PublicID:    publicID,
-		Domain:      domain,
-		AdminDomain: nullableString("admin-" + domain),
-		Name:        name,
-		Timezone:    tenanttz.Default,
+		ID:            uuid.Must(uuid.NewV7()),
+		PublicID:      publicID,
+		Domain:        domain,
+		AdminDomain:   nullableString("admin-" + domain),
+		Name:          name,
+		Timezone:      tenanttz.Default,
+		DefaultLocale: "ja",
 	})
 	if err != nil {
 		t.Fatalf("CreateTenant %s: %v", publicID, err)
