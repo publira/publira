@@ -11,10 +11,15 @@ import { Field, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SectionError } from "@publira/ui-components/section-error";
 import { formatDateTime } from "@publira/utils";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
 import {
@@ -51,6 +56,10 @@ interface TenantDetailPageProps {
     tenant_id: string;
   }>;
 }
+
+const tenantDetailParamsSchema = z.object({
+  tenant_id: routeParamString(),
+});
 
 const TenantDetailSkeleton = () => (
   <PlatformPageContent>
@@ -104,7 +113,11 @@ const TenantLoadError = ({ message }: { message: string }) => (
 const TenantDetailContent = async ({
   params,
 }: Pick<TenantDetailPageProps, "params">) => {
-  const { tenant_id: tenantId } = await params;
+  const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { tenant_id: tenantId } = parsedParams;
 
   const [tenantResult, timeZone] = await Promise.all([
     getPlatformTenant(tenantId),

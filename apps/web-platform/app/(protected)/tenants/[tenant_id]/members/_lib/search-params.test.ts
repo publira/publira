@@ -4,22 +4,7 @@ import {
   buildMemberInvitationsPath,
   buildMembersPath,
   parseMemberInvitationFilters,
-  parseTenantMembersParams,
 } from "./search-params";
-
-describe("parseTenantMembersParams", () => {
-  it("前後空白を除いた tenant_id を返す", () => {
-    expect(parseTenantMembersParams({ tenant_id: " TENANT001 " })).toEqual({
-      tenantId: "TENANT001",
-    });
-  });
-
-  it("空や未指定は拒否する", () => {
-    expect(parseTenantMembersParams({ tenant_id: "   " })).toBeNull();
-    expect(parseTenantMembersParams({})).toBeNull();
-    expect(parseTenantMembersParams({ tenant_id: ["a", "b"] })).toBeNull();
-  });
-});
 
 describe("parseMemberInvitationFilters", () => {
   it("ページ token をそのまま受け取る", () => {

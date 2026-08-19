@@ -1,12 +1,14 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import {
   AdminPage,
@@ -40,15 +42,20 @@ export const metadata: Metadata = {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
 
+const editEpisodeParamsSchema = z.object({
+  episode_id: routeParamString(),
+  series_id: routeParamString(),
+});
+
 const EditEpisodePage = async ({
   params,
 }: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">) => {
-  const [{ episode_id, series_id }, tenantId] = await Promise.all([
-    params,
-    getTenantId(),
-  ]);
-  guardPlaceholder(series_id);
-  guardPlaceholder(episode_id);
+  const [rawParams, tenantId] = await Promise.all([params, getTenantId()]);
+  const parsedParams = parseRouteParams(editEpisodeParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { episode_id, series_id } = parsedParams;
 
   const [episodeResult, imagesResult, timeZone] = await Promise.all([
     getEpisode({

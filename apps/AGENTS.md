@@ -59,6 +59,7 @@ Good in-repo examples:
 
 - `web-admin` audit-log filters define normalization and validation in one zod schema, then expose only the parsed `AuditLogFilters`: [`audit-logs/_lib/search-params.ts`](web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
 - `web-admin` theme settings use `safeParse`, map zod field errors into the Action state, and call the update function only with `parsed.data`: [`settings/_lib/actions.ts`](web-admin/app/%5Btenant_id%5D/%28protected%29/settings/_lib/actions.ts)
+- Detail routes parse the whole `params` object with `@publira/utils/route-params` and `notFound()` on failure, then pass only the parsed ids into `lib/`: [`web-host` series detail](web-host/app/%5Btenant_id%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
 
 Choose failure handling at the boundary:
 
@@ -71,10 +72,11 @@ The normalization every boundary needs lives in `@publira/utils`, so a screen wr
 | Boundary | Use |
 | --- | --- |
 | `searchParams` | `@publira/utils/search-params`: `searchParamString` / `searchParamStringArray` / `searchParamEnum` / `searchParamNumber` / `searchParamBoolean` / `searchParamDate` |
+| Dynamic segments | `@publira/utils/route-params`: `routeParamString` / `routeParamStringArray` / `parseRouteParams` — compose a schema for the whole `params` object, then `notFound()` when parse returns `null` |
 | `FormData` | `@publira/utils/form-data`: `toFormDataInput(formData, fields)`, declaring each field as `value` / `values` / `file` / `files` |
 | `safeParse` failure → Action state | `@publira/utils/field-errors`: `toFieldErrors`, `toFormErrorMessage`, `validationErrorMessage` / `VALIDATION_ERROR_MESSAGE` |
 
-The `searchParams` factories encode the failure decision above in one place: passing `fallback` gives a schema that never fails and resolves to that explicit safe default, and omitting it gives a schema that reports an issue so the page can `notFound()`. Do not re-add a local `z.preprocess` that only trims and length-checks — extend the shared schema instead, and keep genuinely screen-specific rules (which action values exist, which sort keys a table has) at the call site.
+The `searchParams` factories encode the failure decision above in one place: passing `fallback` gives a schema that never fails and resolves to that explicit safe default, and omitting it gives a schema that reports an issue so the page can `notFound()`. The `routeParamString` / `routeParamStringArray` factories have no fallback: a failed parse is `notFound()`, the same outcome as a missing record. Do not re-add a local `z.preprocess` that only trims and length-checks — extend the shared schema instead, and keep genuinely screen-specific rules (which action values exist, which sort keys a table has) at the call site.
 
 Frontend validation is for typed application flow and prompt user feedback. It does **not** replace validation and authorization in the Go server; every RPC input must still be validated at the server's own trust boundary.
 

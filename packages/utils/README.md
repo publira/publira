@@ -9,6 +9,7 @@
 - `parseInstant` / `toInstantIsoString` / `startOfDayIsoString` / `endOfDayIsoString`: 絶対時刻のパース・比較、フォーム値の正規化、date-only フィルタの日境界
 - `listSupportedTimeZones` / `isValidTimeZone`: テナントタイムゾーン設定 UI 向けの IANA タイムゾーン一覧と検証
 - `@publira/utils/search-params`: `searchParams`（`string | string[] | undefined`）を zod で検証するためのスキーマ生成関数
+- `@publira/utils/route-params`: 動的ルートセグメント（`params`）を zod で検証するためのスキーマ生成関数
 - `@publira/utils/form-data`: `FormData` を zod の検証対象オブジェクトへ変換するヘルパー
 - `@publira/utils/field-errors`: `safeParse` の失敗を Server Action の ActionState 形状へ落とすヘルパー。共有バリデーション文言は `validationErrorMessage(locale)`（省略時は日本語の `VALIDATION_ERROR_MESSAGE`）
 - `@publira/utils/cached-read`: `"use cache"` の読み取りで失敗を「値」として返し、その失敗をキャッシュに残さないためのヘルパー
@@ -129,6 +130,36 @@ const filters = filtersSchema.parse(await searchParams);
 - `searchParamEnum` の拒否メッセージは `errors.disallowed_value`。`locale` を渡すとその言語になり、省略時は日本語
 
 実例: [`web-admin` の監査ログフィルタ](../../apps/web-admin/app/%5Btenant_id%5D/%28protected%29/audit-logs/_lib/search-params.ts)
+
+### 動的ルートセグメント（`params`）
+
+`fallback` は無い。識別子として成立しない値はリソースが無いのと同じ `notFound()` にする（存在有無を漏らさない）。
+
+```ts
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
+import { notFound } from "next/navigation";
+import { z } from "zod";
+
+const paramsSchema = z.object({
+  series_id: routeParamString(),
+});
+
+const parsed = parseRouteParams(paramsSchema, await params);
+if (!parsed) {
+  notFound();
+}
+
+await getSeries(parsed.series_id);
+```
+
+- 単一セグメントは `routeParamString()`。trim・空文字拒否・長さ上限（既定 255）・`generateStaticParams` の placeholder 拒否
+- catch-all（`[...slug]`）は `routeParamStringArray()`。空配列・非配列は不正。各要素は `routeParamString()` と同じ規則
+- ページは `params` 全体のスキーマを組み立て、`parseRouteParams` の出力だけを `lib/` へ渡す。失敗は必ず `notFound()`（`safeParse` の `null` を別の既定表示にしない）
+
+実例: [`web-host` のシリーズ詳細](../../apps/web-host/app/%5Btenant_id%5D/%28site%29/series/%5Bseries_id%5D/page.tsx)
 
 ### `FormData` と Server Action
 

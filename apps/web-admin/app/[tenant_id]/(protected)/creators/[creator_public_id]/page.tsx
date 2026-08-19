@@ -1,13 +1,15 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   AdminPage,
@@ -52,11 +54,18 @@ interface EditCreatorPageProps {
   }>;
 }
 
+const editCreatorParamsSchema = z.object({
+  creator_public_id: routeParamString(),
+});
+
 const EditCreatorFormData = async ({
   params,
 }: Pick<EditCreatorPageProps, "params">) => {
-  const { creator_public_id: creatorPublicId } = await params;
-  guardPlaceholder(creatorPublicId);
+  const parsedParams = parseRouteParams(editCreatorParamsSchema, await params);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { creator_public_id: creatorPublicId } = parsedParams;
 
   const tenantId = await getTenantId();
   const result = await getCreator({

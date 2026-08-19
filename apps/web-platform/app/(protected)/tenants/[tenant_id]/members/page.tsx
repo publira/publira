@@ -1,10 +1,15 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { Card, CardContent, CardHeader } from "@publira/ui-components/card";
 import { SectionError } from "@publira/ui-components/section-error";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   PlatformPage,
@@ -38,7 +43,6 @@ import {
   buildMemberInvitationsPath,
   buildMembersPath,
   parseMemberInvitationFilters,
-  parseTenantMembersParams,
 } from "./_lib/search-params";
 
 export const metadata: Metadata = {
@@ -48,6 +52,10 @@ export const metadata: Metadata = {
 const invitationPageSize = 20;
 
 type TenantMembersPageProps = PageProps<"/tenants/[tenant_id]/members">;
+
+const tenantMembersParamsSchema = z.object({
+  tenant_id: routeParamString(),
+});
 
 const TenantMembersSkeleton = () => (
   <PlatformPageContent>
@@ -90,11 +98,14 @@ const TenantMembersContent = async ({
   params,
   searchParams,
 }: Pick<TenantMembersPageProps, "params" | "searchParams">) => {
-  const parsedParams = parseTenantMembersParams(await params);
+  const parsedParams = parseRouteParams(
+    tenantMembersParamsSchema,
+    await params
+  );
   if (!parsedParams) {
     notFound();
   }
-  const { tenantId } = parsedParams;
+  const { tenant_id: tenantId } = parsedParams;
   const pageFilters = parseMemberInvitationFilters(await searchParams);
 
   const [tenantResult, membersResult, invitationsResult, timeZone] =

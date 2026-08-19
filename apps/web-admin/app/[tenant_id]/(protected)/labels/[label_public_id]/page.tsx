@@ -1,14 +1,16 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   AdminPage,
@@ -41,6 +43,10 @@ interface EditLabelPageProps {
     tab?: string;
   }>;
 }
+
+const editLabelParamsSchema = z.object({
+  label_public_id: routeParamString(),
+});
 
 export const metadata: Metadata = {
   title: "レーベル編集",
@@ -84,11 +90,15 @@ const EditLabelTabNav = async ({
   params,
   searchParams,
 }: EditLabelPageProps) => {
-  const [{ label_public_id: labelPublicId }, activeTab] = await Promise.all([
+  const [rawParams, activeTab] = await Promise.all([
     params,
     resolveActiveTab(searchParams),
   ]);
-  guardPlaceholder(labelPublicId);
+  const parsedParams = parseRouteParams(editLabelParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { label_public_id: labelPublicId } = parsedParams;
 
   return <LabelTabNav current={activeTab} labelId={labelPublicId} />;
 };
@@ -97,9 +107,16 @@ const EditLabelFormData = async ({
   params,
   searchParams,
 }: EditLabelPageProps) => {
-  const [{ label_public_id: labelPublicId }, activeTab, tenantId] =
-    await Promise.all([params, resolveActiveTab(searchParams), getTenantId()]);
-  guardPlaceholder(labelPublicId);
+  const [rawParams, activeTab, tenantId] = await Promise.all([
+    params,
+    resolveActiveTab(searchParams),
+    getTenantId(),
+  ]);
+  const parsedParams = parseRouteParams(editLabelParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { label_public_id: labelPublicId } = parsedParams;
 
   const result = await getLabel({
     publicId: labelPublicId,

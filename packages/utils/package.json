@@ -51,6 +51,10 @@
       "types": "./dist/search-params.d.mts",
       "default": "./dist/search-params.mjs"
     },
+    "./route-params": {
+      "types": "./dist/route-params.d.mts",
+      "default": "./dist/route-params.mjs"
+    },
     "./form-data": {
       "types": "./dist/form-data.d.mts",
       "default": "./dist/form-data.mjs"
