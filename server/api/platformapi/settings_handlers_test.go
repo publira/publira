@@ -60,7 +60,7 @@ func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 	now := time.Now()
 	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultTimezoneQuery)).
 		WithArgs("America/Los_Angeles").
-		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "America/Los_Angeles", now, now))
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "America/Los_Angeles", "ja", now, now))
 	expectOperatorAuditLogInsert(mock)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{

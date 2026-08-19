@@ -233,12 +233,13 @@ func (s *platformServer) CreateTenant(
 
 	tenant, err := publicid.InsertTx(ctx, tx, func(publicID string) (dbmodels.Tenant, error) {
 		return txq.CreateTenant(ctx, dbmodels.CreateTenantParams{
-			ID:          tenantID,
-			PublicID:    publicID,
-			Domain:      domain,
-			AdminDomain: adminDomain,
-			Name:        name,
-			Timezone:    defaultTimezone,
+			ID:            tenantID,
+			PublicID:      publicID,
+			Domain:        domain,
+			AdminDomain:   adminDomain,
+			Name:          name,
+			Timezone:      defaultTimezone,
+			DefaultLocale: "ja",
 		})
 	})
 	if err != nil {

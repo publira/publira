@@ -10,7 +10,7 @@ import (
 )
 
 const getPlatformConfig = `-- name: GetPlatformConfig :one
-SELECT singleton, default_timezone, created_at, updated_at
+SELECT singleton, default_timezone, default_locale, created_at, updated_at
 FROM platform_config
 WHERE singleton = TRUE
 LIMIT 1
@@ -23,6 +23,30 @@ func (q *Queries) GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	err := row.Scan(
 		&i.Singleton,
 		&i.DefaultTimezone,
+		&i.DefaultLocale,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertPlatformDefaultLocale = `-- name: UpsertPlatformDefaultLocale :one
+INSERT INTO platform_config (singleton, default_locale, updated_at)
+VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
+UPDATE
+SET default_locale = EXCLUDED.default_locale,
+    updated_at = NOW()
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at
+`
+
+// プラットフォーム既定ロケールを作成または更新する
+func (q *Queries) UpsertPlatformDefaultLocale(ctx context.Context, defaultLocale string) (PlatformConfig, error) {
+	row := q.db.QueryRowContext(ctx, upsertPlatformDefaultLocale, defaultLocale)
+	var i PlatformConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.DefaultTimezone,
+		&i.DefaultLocale,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -35,7 +59,7 @@ VALUES (TRUE, $1, NOW()) ON CONFLICT (singleton) DO
 UPDATE
 SET default_timezone = EXCLUDED.default_timezone,
     updated_at = NOW()
-RETURNING singleton, default_timezone, created_at, updated_at
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at
 `
 
 // プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
@@ -45,6 +69,7 @@ func (q *Queries) UpsertPlatformDefaultTimezone(ctx context.Context, defaultTime
 	err := row.Scan(
 		&i.Singleton,
 		&i.DefaultTimezone,
+		&i.DefaultLocale,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

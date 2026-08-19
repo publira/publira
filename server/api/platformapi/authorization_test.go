@@ -97,7 +97,7 @@ func TestPlatformAuditorCanReadPlatformSettings(t *testing.T) {
 	now := time.Now()
 	expectIntegrationAuth(mock, uuid.Nil, uuid.Must(uuid.NewV7()), auth.RolePlatformAuditor, now)
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "Asia/Tokyo", now, now))
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "Asia/Tokyo", "ja", now, now))
 
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetPlatformSettings(context.Background(), newAuthedIntegrationRequest(publirasplatformv1.GetPlatformSettingsRequest{}))
