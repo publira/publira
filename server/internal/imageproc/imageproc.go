@@ -371,6 +371,7 @@ const (
 //
 // 入力バリデーション:
 //   - 10MB 以内、image/* content_type
+//   - ピクセル数が MaxPixels 以内
 //   - センタークロップ後の一辺が 32px 以上
 //
 // 出力は常に PNG です。favicon は透過を保ったまま小さなサイズで描画されるため、
@@ -389,6 +390,20 @@ func BuildFavicon(raw []byte, contentType string) (Variant, error) {
 	}
 	if !strings.HasPrefix(ct, "image/") {
 		return Variant{}, errors.New("content_type must be image/*")
+	}
+
+	// 展開後のサイズはヘッダから先に検査します。入力バイト数の上限だけでは、
+	// 小さな PNG / WebP が巨大な寸法を宣言してデコードでメモリを食い潰す経路を
+	// 塞げません。
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return Variant{}, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
 	}
 
 	src, _, err := image.Decode(bytes.NewReader(raw))

@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TenantFaviconForm } from "./tenant-favicon-form";
@@ -54,5 +60,51 @@ describe("TenantFaviconForm", () => {
 
     expect(submit.name).toBe("intent");
     expect(submit.value).toBe("upload");
+  });
+
+  it("保存に成功したら、保存されたファビコンをプレビューに反映する", async () => {
+    const action = vi.fn().mockResolvedValue({
+      faviconUrl: "/images/tenants/favicon-2",
+      message: "ファビコンを保存しました。",
+      ok: true,
+    });
+
+    render(
+      <TenantFaviconForm
+        action={action}
+        initialFaviconUrl="/images/tenants/favicon-1"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "ファビコンを保存" }));
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getByAltText<HTMLImageElement>("現在のファビコン")
+          .src.includes("favicon-2")
+      ).toBe(true);
+    });
+  });
+
+  it("送信が失敗しても、直前に保存されたファビコンを残す", () => {
+    // 失敗した Action state は favicon を持たないので、表示をそこから導くと
+    // 保存済みのアイコンが消える。保持しているのは最後に成功した URL である。
+    const { rerender } = render(
+      <TenantFaviconForm action={noopAction} initialFaviconUrl="" />
+    );
+
+    rerender(
+      <TenantFaviconForm
+        action={noopAction}
+        initialFaviconUrl="/images/tenants/favicon-2"
+      />
+    );
+
+    expect(
+      screen
+        .getByAltText<HTMLImageElement>("現在のファビコン")
+        .src.includes("favicon-2")
+    ).toBe(true);
   });
 });

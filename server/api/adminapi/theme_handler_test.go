@@ -430,6 +430,9 @@ func TestUploadTenantFaviconStoresImageAndPointsThemeAtIt(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
@@ -508,6 +511,9 @@ func TestDeleteTenantFaviconClearsReferenceAndDropsImage(t *testing.T) {
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(lockTenantForUpdateQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tenantID))
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).

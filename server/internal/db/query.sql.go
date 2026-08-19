@@ -8403,6 +8403,24 @@ func (q *Queries) LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSer
 	return id, err
 }
 
+const lockTenantForUpdate = `-- name: LockTenantForUpdate :one
+SELECT id
+FROM tenants
+WHERE id = $1
+FOR UPDATE
+`
+
+// Lock the tenant row so concurrent tenant favicon uploads and deletes
+// serialize. The following read of the current favicon must be a separate
+// statement: READ COMMITTED freezes its snapshot at statement start, so waiting
+// for the lock in the same statement would still see the pre-wait row.
+func (q *Queries) LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, lockTenantForUpdate, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const markAllAnnouncementsAsRead = `-- name: MarkAllAnnouncementsAsRead :execrows
 INSERT INTO announcement_reads (announcement_id, user_id, read_at)
 SELECT n.id, $2, NOW()

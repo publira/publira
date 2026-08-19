@@ -18,10 +18,7 @@ import {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "#lib/email-settings-shared";
-import {
-  optionalFileFormSchema,
-  requiredTrimmedString,
-} from "#lib/form-schemas";
+import { requiredTrimmedString } from "#lib/form-schemas";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
   tenantTimezoneCacheTag,
@@ -98,20 +95,45 @@ const tenantThemeSchema = z.object({
 });
 
 /**
+ * The Go server re-checks all of this and stays the authority. Checking size and
+ * type here keeps a rejected file from being read into memory and shipped over
+ * the RPC first — the `accept` attribute constrains the file picker, not a
+ * request someone posts directly.
+ */
+const FAVICON_MAX_BYTES = 10 * 1024 * 1024;
+const FAVICON_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+const faviconFileSchema = z
+  .custom<File>((value) => value instanceof File, {
+    error: "画像ファイルを選択してください。",
+  })
+  .refine((file) => file.size <= FAVICON_MAX_BYTES, {
+    error: "画像は 10MB 以下にしてください。",
+  })
+  .refine((file) => FAVICON_CONTENT_TYPES.has(file.type), {
+    error: "JPEG / PNG / WebP の画像を選択してください。",
+  });
+
+/**
  * Upload and delete share one Action so the card renders the current favicon
  * straight from the Action state: with a state per operation there is no way to
  * tell which of the two ran last.
  */
-const tenantFaviconSchema = z
-  .object({
-    favicon: optionalFileFormSchema,
-    intent: z.enum(["upload", "delete"], { error: "不正な操作です。" }),
+const tenantFaviconSchema = z.discriminatedUnion("intent", [
+  z.object({
+    favicon: faviconFileSchema,
+    intent: z.literal("upload"),
     tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
-  })
-  .refine((value) => value.intent !== "upload" || value.favicon !== undefined, {
-    error: "画像ファイルを選択してください。",
-    path: ["favicon"],
-  });
+  }),
+  z.object({
+    intent: z.literal("delete"),
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  }),
+]);
 
 /**
  * The Go server validates against the IANA tzdata it embeds
@@ -332,21 +354,20 @@ export const updateTenantFaviconAction = async (
     };
   }
 
-  const { favicon, intent, tenantId } = parsed.data;
-  const isDelete = intent === "delete";
-  const faviconData = favicon
-    ? new Uint8Array(await favicon.arrayBuffer())
-    : new Uint8Array();
+  const input = parsed.data;
+  const isDelete = input.intent === "delete";
 
-  const result = await withAdminSessionReauth(() => {
-    if (isDelete) {
-      return deleteTenantFavicon(tenantId);
+  // The file is read into memory inside the callback, so an unauthorized caller
+  // never gets a 10MB upload buffered on its behalf.
+  const result = await withAdminSessionReauth(async () => {
+    if (input.intent === "delete") {
+      return deleteTenantFavicon(input.tenantId);
     }
 
     return uploadTenantFavicon({
-      faviconContentType: favicon?.type ?? "",
-      faviconData,
-      tenantId,
+      faviconContentType: input.favicon.type,
+      faviconData: new Uint8Array(await input.favicon.arrayBuffer()),
+      tenantId: input.tenantId,
     });
   });
 
@@ -358,8 +379,8 @@ export const updateTenantFaviconAction = async (
   }
 
   // Refresh the public site's tenant read and this screen's own private cache.
-  updateTag(`tenant:${tenantId}:site`);
-  updateTag(tenantThemeCacheTag(tenantId));
+  updateTag(`tenant:${input.tenantId}:site`);
+  updateTag(tenantThemeCacheTag(input.tenantId));
 
   return {
     faviconUrl: result.faviconUrl,

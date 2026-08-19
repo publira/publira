@@ -423,6 +423,11 @@ type Querier interface {
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
+	// Lock the tenant row so concurrent tenant favicon uploads and deletes
+	// serialize. The following read of the current favicon must be a separate
+	// statement: READ COMMITTED freezes its snapshot at statement start, so waiting
+	// for the lock in the same statement would still see the pre-wait row.
+	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// 指定ユーザーの未読お知らせを一括既読化
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
 	MarkAllNotificationsAsRead(ctx context.Context, arg MarkAllNotificationsAsReadParams) (int64, error)

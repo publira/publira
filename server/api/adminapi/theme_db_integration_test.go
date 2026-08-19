@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"image/png"
 	"strings"
+	"sync"
 	"testing"
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
@@ -120,5 +121,52 @@ func TestDBTenantFaviconIsPerTenant(t *testing.T) {
 	}
 	if other.Msg.Theme.FaviconUrl != "" {
 		t.Fatalf("second tenant favicon_url = %q, want empty", other.Msg.Theme.FaviconUrl)
+	}
+}
+
+// Concurrent changes must not each read the same previous favicon: the one that
+// commits last would then leave the image the other stored behind with nothing
+// pointing at it.
+func TestDBTenantFaviconConcurrentChangesLeaveOneImage(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	themes := env.themeClient()
+
+	const concurrentUploads = 4
+	var wg sync.WaitGroup
+	errs := make([]error, concurrentUploads)
+	for i := range concurrentUploads {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, errs[i] = themes.UploadTenantFavicon(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.UploadTenantFaviconRequest{
+				Tenant:             tenant.tenantContext(),
+				FaviconData:        faviconSourcePNG(t, 64, 64),
+				FaviconContentType: "image/png",
+			}))
+		}()
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("UploadTenantFavicon[%d]: %v", i, err)
+		}
+	}
+
+	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 1 {
+		t.Fatalf("tenant_images rows = %d, want 1", got)
+	}
+
+	fetched, err := themes.GetTenantTheme(context.Background(), newAdminDBRequest(tenant, &publiraadminv1.GetTenantThemeRequest{
+		Tenant: tenant.tenantContext(),
+	}))
+	if err != nil {
+		t.Fatalf("GetTenantTheme: %v", err)
+	}
+	surviving := env.countRows(t,
+		"SELECT count(*) FROM tenant_images WHERE tenant_id = $1 AND '/images/tenants/' || id::text = $2",
+		tenant.Tenant.ID, fetched.Msg.Theme.FaviconUrl)
+	if surviving != 1 {
+		t.Fatalf("favicon_url %q does not point at the surviving tenant image", fetched.Msg.Theme.FaviconUrl)
 	}
 }

@@ -2,6 +2,8 @@ package imageproc_test
 
 import (
 	"bytes"
+	"encoding/binary"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -271,5 +273,32 @@ func TestBuildFavicon_RejectsNonImageContentType(t *testing.T) {
 func TestBuildFavicon_RejectsEmptyData(t *testing.T) {
 	if _, err := imageproc.BuildFavicon(nil, "image/png"); err == nil {
 		t.Fatal("want error for empty data")
+	}
+}
+
+// pngHeaderWithDeclaredSize は IHDR だけを持つ PNG を組み立てます。
+// image.DecodeConfig は IHDR しか読まないため、実データを伴わずに巨大な寸法を
+// 宣言した入稿を再現できます。
+func pngHeaderWithDeclaredSize(width, height uint32) []byte {
+	var ihdr bytes.Buffer
+	ihdr.WriteString("IHDR")
+	_ = binary.Write(&ihdr, binary.BigEndian, width)
+	_ = binary.Write(&ihdr, binary.BigEndian, height)
+	ihdr.Write([]byte{8, 6, 0, 0, 0}) // bit depth, color type, compression, filter, interlace
+
+	var buf bytes.Buffer
+	buf.Write([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'})
+	_ = binary.Write(&buf, binary.BigEndian, uint32(13))
+	buf.Write(ihdr.Bytes())
+	_ = binary.Write(&buf, binary.BigEndian, crc32.ChecksumIEEE(ihdr.Bytes()))
+	return buf.Bytes()
+}
+
+func TestBuildFavicon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
+	// 入稿バイト数は数十バイトでも、展開すれば 16 億ピクセルになる画像。
+	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
+
+	if _, err := imageproc.BuildFavicon(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
 	}
 }

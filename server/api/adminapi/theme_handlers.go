@@ -227,6 +227,11 @@ func (s *adminServer) storeTenantFavicon(ctx context.Context, tenant dbmodels.Te
 // favicon when it is nil, and drops the tenant image the theme pointed at
 // before. The writes share one tenant-scoped transaction, so a failure never
 // leaves the theme referencing an image whose variant row was not written.
+//
+// The tenant row is locked before the current favicon is read. Two concurrent
+// changes would otherwise read the same previous image, and whichever commits
+// last would leave the image the other stored behind with nothing pointing at
+// it.
 func (s *adminServer) applyTenantFavicon(ctx context.Context, tenant dbmodels.Tenant, faviconVariant *imageproc.Variant) (*publirattypesv1.TenantTheme, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -235,6 +240,10 @@ func (s *adminServer) applyTenantFavicon(ctx context.Context, tenant dbmodels.Te
 	defer tx.Rollback() //nolint:errcheck
 
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+
+	if _, err := s.queriesFor(txCtx).LockTenantForUpdate(txCtx, tenant.ID); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock tenant for favicon change", err, "tenant_id", tenant.ID.String())
+	}
 
 	current, err := s.queriesFor(txCtx).GetTenantThemeByTenantID(txCtx, tenant.ID)
 	if err != nil {

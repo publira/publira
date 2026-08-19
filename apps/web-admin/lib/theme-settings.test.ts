@@ -204,7 +204,7 @@ describe("theme-settings", () => {
     );
   });
 
-  it("favicon のアップロードが拒否された場合はサーバのメッセージを返す", async () => {
+  it("favicon が拒否されてもサーバの英文はそのまま出さない", async () => {
     mockUploadTenantFaviconApi.mockRejectedValueOnce(
       new ConnectError(
         "favicon image must be at least 32x32",
@@ -220,9 +220,9 @@ describe("theme-settings", () => {
       tenantId: "TENANT001",
     });
 
-    expect(result).toEqual({
-      message: "favicon image must be at least 32x32",
-      ok: false,
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).not.toContain("favicon image must be at least");
+    }
   });
 });

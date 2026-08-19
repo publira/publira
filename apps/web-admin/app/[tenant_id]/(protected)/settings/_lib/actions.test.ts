@@ -206,6 +206,13 @@ const pngFile = () =>
     type: "image/png",
   });
 
+/** Only the reported size matters to the schema, so the bytes stay cheap. */
+const oversizedPngFile = () => {
+  const file = pngFile();
+  Object.defineProperty(file, "size", { value: 10 * 1024 * 1024 + 1 });
+  return file;
+};
+
 describe("updateTenantFaviconAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -280,9 +287,47 @@ describe("updateTenantFaviconAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
+  it("上限を超えるファイルは読み込まずに拒否する", async () => {
+    const file = oversizedPngFile();
+    const arrayBuffer = vi.spyOn(file, "arrayBuffer");
+
+    const { updateTenantFaviconAction } = await import("./actions");
+
+    const result = await updateTenantFaviconAction(
+      null,
+      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+    );
+
+    expect(result).toEqual({
+      message: "画像は 10MB 以下にしてください。",
+      ok: false,
+    });
+    expect(arrayBuffer).not.toHaveBeenCalled();
+    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+  });
+
+  it("受け付けない MIME type のファイルは拒否する", async () => {
+    const file = new File([new Uint8Array([1])], "favicon.svg", {
+      type: "image/svg+xml",
+    });
+
+    const { updateTenantFaviconAction } = await import("./actions");
+
+    const result = await updateTenantFaviconAction(
+      null,
+      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+    );
+
+    expect(result).toEqual({
+      message: "JPEG / PNG / WebP の画像を選択してください。",
+      ok: false,
+    });
+    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+  });
+
   it("アップロードに失敗した場合はキャッシュを更新しない", async () => {
     mockUploadTenantFavicon.mockResolvedValueOnce({
-      message: "favicon image must be at least 32x32",
+      message: "ファビコンのアップロードに失敗しました。",
       ok: false,
     });
 
@@ -294,7 +339,7 @@ describe("updateTenantFaviconAction", () => {
     );
 
     expect(result).toEqual({
-      message: "favicon image must be at least 32x32",
+      message: "ファビコンのアップロードに失敗しました。",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

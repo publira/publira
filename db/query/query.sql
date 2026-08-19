@@ -218,6 +218,16 @@ SET background_color = EXCLUDED.background_color,
     updated_at = NOW()
 RETURNING *;
 
+-- name: LockTenantForUpdate :one
+-- Lock the tenant row so concurrent tenant favicon uploads and deletes
+-- serialize. The following read of the current favicon must be a separate
+-- statement: READ COMMITTED freezes its snapshot at statement start, so waiting
+-- for the lock in the same statement would still see the pre-wait row.
+SELECT id
+FROM tenants
+WHERE id = $1
+FOR UPDATE;
+
 -- name: SetTenantThemeFaviconImage :one
 -- The theme row is created on demand: a tenant can upload a favicon before it
 -- has ever saved a color, and the colors then keep their column defaults.

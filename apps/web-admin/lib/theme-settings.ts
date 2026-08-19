@@ -12,6 +12,7 @@ import {
   rethrowUnauthenticatedRpcError,
 } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
+import { mentionsFaviconRejection } from "./image-rejection";
 import { getAccessToken } from "./session";
 
 export interface UpdateTenantThemeSettingsInput extends TenantThemeColors {
@@ -49,6 +50,8 @@ const genericFaviconUploadErrorMessage =
   "ファビコンのアップロードに失敗しました。時間をおいて再試行してください。";
 const genericFaviconDeleteErrorMessage =
   "ファビコンの削除に失敗しました。時間をおいて再試行してください。";
+const rejectedFaviconMessage =
+  "画像を読み込めませんでした。32x32px 以上の JPEG / PNG / WebP を選択してください。";
 const sessionErrorMessage = "セッションが無効です。再ログインしてください。";
 
 /**
@@ -71,6 +74,22 @@ const parseErrorMessage = (error: unknown, fallback: string): string => {
     precondition: serverMessage,
   });
 };
+
+/**
+ * The favicon rejections are worded here rather than taken from the server: the
+ * handler answers in English, and the two cases it rejects — a source smaller
+ * than 32px and an image it cannot decode — are already covered by one sentence
+ * naming what the screen accepts. The `favicon_data` field violation is what
+ * separates a rejected image from any other `invalid_argument`.
+ */
+const parseFaviconErrorMessage = (error: unknown, fallback: string): string =>
+  rpcErrorMessage(
+    error,
+    fallback,
+    mentionsFaviconRejection(error)
+      ? { "invalid-argument": rejectedFaviconMessage }
+      : undefined
+  );
 
 const toTenantTheme = (
   theme?: Partial<TenantThemeColors> | null
@@ -201,7 +220,10 @@ export const uploadTenantFavicon = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericFaviconUploadErrorMessage),
+      message: parseFaviconErrorMessage(
+        error,
+        genericFaviconUploadErrorMessage
+      ),
       ok: false,
     };
   }
@@ -227,7 +249,10 @@ export const deleteTenantFavicon = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericFaviconDeleteErrorMessage),
+      message: parseFaviconErrorMessage(
+        error,
+        genericFaviconDeleteErrorMessage
+      ),
       ok: false,
     };
   }

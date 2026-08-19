@@ -18,7 +18,7 @@ import {
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import Image from "next/image";
-import { useActionState, useRef } from "react";
+import { useActionState, useRef, useState } from "react";
 
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -41,9 +41,26 @@ export const TenantFaviconForm = ({
   const formRef = useRef<HTMLFormElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
-  // The Action returns the stored favicon, so the card never needs to mirror it
-  // into state: the last completed operation is the one being rendered.
-  const faviconUrl = state?.ok ? state.faviconUrl : initialFaviconUrl;
+  // What the card shows is the last favicon the server confirmed — not the last
+  // Action state. Deriving it from `state` alone would put the pre-upload icon
+  // back the moment a later attempt is rejected, because a failure carries no
+  // favicon of its own.
+  const [faviconUrl, setFaviconUrl] = useState(initialFaviconUrl);
+  const [prevInitialFaviconUrl, setPrevInitialFaviconUrl] =
+    useState(initialFaviconUrl);
+  const [prevState, setPrevState] = useState(state);
+
+  if (initialFaviconUrl !== prevInitialFaviconUrl) {
+    setPrevInitialFaviconUrl(initialFaviconUrl);
+    setFaviconUrl(initialFaviconUrl);
+  }
+
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state?.ok) {
+      setFaviconUrl(state.faviconUrl);
+    }
+  }
 
   return (
     <Card>
