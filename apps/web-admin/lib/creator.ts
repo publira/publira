@@ -1,3 +1,4 @@
+import type { Creator } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
@@ -77,18 +78,19 @@ const genericMutationErrorMessage =
 const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
   rpcErrorMessage(error, fallbackMessage);
 
-const mapCreator = (creator: {
-  publicId: string;
-  name: string;
-  profileText: string;
-  iconImageUrl?: string;
-  iconImageFileSizeBytes?: bigint | number;
-  iconImageUpdatedAt?: string;
-}): CreatorItem => ({
-  iconImageFileSizeBytes:
-    creator.iconImageFileSizeBytes === undefined
-      ? 0
-      : Number(creator.iconImageFileSizeBytes),
+/** The generated `Creator` fields {@link mapCreator} reads (see `series.ts`). */
+type RawCreator = Pick<
+  Creator,
+  | "iconImageFileSizeBytes"
+  | "iconImageUpdatedAt"
+  | "iconImageUrl"
+  | "name"
+  | "profileText"
+  | "publicId"
+>;
+
+const mapCreator = (creator: RawCreator): CreatorItem => ({
+  iconImageFileSizeBytes: Number(creator.iconImageFileSizeBytes ?? 0),
   iconImageUpdatedAt: creator.iconImageUpdatedAt ?? "",
   iconImageUrl: creator.iconImageUrl ?? "",
   name: creator.name,

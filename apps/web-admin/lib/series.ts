@@ -1,3 +1,4 @@
+import type { Series } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
@@ -105,26 +106,27 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
       "対象のシリーズが見つかりませんでした。ページを再読み込みして、もう一度お試しください。",
   });
 
-const mapSeries = (series: {
-  publicId: string;
-  title: string;
-  synopsis: string;
-  readingPeriodHours?: number;
-  isPublished?: boolean;
-  publishedAt?: string;
-  label?: { publicId: string; name: string };
-  creators: { publicId: string; name: string }[];
-  eyeCatchImageVariants?: {
-    variantType?: string;
-    label?: string;
-    url?: string;
-    contentType?: string;
-    width?: number;
-    height?: number;
-    fileSizeBytes?: bigint | number;
-  }[];
-  eyeCatchImageUpdatedAt?: string;
-}): SeriesItem => ({
+/**
+ * The generated `Series` fields {@link mapSeries} reads. Naming them against
+ * the message type is what makes a proto rename fail here — a restated
+ * structural type keeps compiling, and the mapper silently substitutes an empty
+ * string for the field it can no longer find.
+ */
+type RawSeries = Pick<
+  Series,
+  | "creators"
+  | "eyeCatchImageUpdatedAt"
+  | "eyeCatchImageVariants"
+  | "isPublished"
+  | "label"
+  | "publicId"
+  | "publishedAt"
+  | "readingPeriodHours"
+  | "synopsis"
+  | "title"
+>;
+
+const mapSeries = (series: RawSeries): SeriesItem => ({
   creatorNames: (series.creators ?? []).flatMap((creator) => {
     const name = creator.name.trim();
     return name.length > 0 ? [name] : [];
@@ -138,10 +140,7 @@ const mapSeries = (series: {
     (variant) => {
       const mappedVariant = {
         contentType: variant.contentType ?? "",
-        fileSizeBytes:
-          variant.fileSizeBytes === undefined
-            ? 0
-            : Number(variant.fileSizeBytes),
+        fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
         height: variant.height ?? 0,
         label: variant.label ?? "",
         url: variant.url ?? "",
