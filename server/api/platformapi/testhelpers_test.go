@@ -172,10 +172,10 @@ func platformConfigColumns() []string {
 }
 
 // expectPlatformConfigLookup expects the read of the platform settings row and
-// answers it with the given default time zone.
-func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone string, now time.Time) {
+// answers it with the given default time zone and locale.
+func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
 	mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
-		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, "ja", now, now))
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
 }
 
 func integrationOperatorColumns() []string {

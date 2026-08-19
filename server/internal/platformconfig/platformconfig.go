@@ -16,19 +16,46 @@ type Querier interface {
 	GetPlatformConfig(ctx context.Context) (dbmodels.PlatformConfig, error)
 }
 
+// defaultLocale mirrors the tenants.default_locale and
+// platform_config.default_locale column defaults. It is the last resort when
+// the settings row cannot be read.
+const defaultLocale = "ja"
+
+// Defaults returns the platform-wide default time zone and locale from a
+// single read of the settings row. A missing or unreadable row (fresh
+// install, DB hiccup) falls back to the column defaults so callers always
+// get usable values instead of an unset state.
+func Defaults(ctx context.Context, q Querier) (timezone, locale string) {
+	timezone, locale = tenanttz.Default, defaultLocale
+	config, err := q.GetPlatformConfig(ctx)
+	if err != nil {
+		return timezone, locale
+	}
+	if trimmed := strings.TrimSpace(config.DefaultTimezone); trimmed != "" {
+		timezone = trimmed
+	}
+	if trimmed := strings.TrimSpace(config.DefaultLocale); trimmed != "" {
+		locale = trimmed
+	}
+	return timezone, locale
+}
+
 // DefaultTimeZone returns the platform-wide default IANA time zone. The
 // singleton row is the source of truth; a missing or unreadable row (fresh
 // install, DB hiccup) falls back to tenanttz.Default so callers always get a
 // usable zone instead of an unset state.
 func DefaultTimeZone(ctx context.Context, q Querier) string {
-	config, err := q.GetPlatformConfig(ctx)
-	if err != nil {
-		return tenanttz.Default
-	}
-	if trimmed := strings.TrimSpace(config.DefaultTimezone); trimmed != "" {
-		return trimmed
-	}
-	return tenanttz.Default
+	timezone, _ := Defaults(ctx, q)
+	return timezone
+}
+
+// DefaultLocale returns the platform-wide default UI locale. The singleton
+// row is the source of truth; a missing or unreadable row falls back to the
+// column default so callers always get a usable locale instead of an unset
+// state.
+func DefaultLocale(ctx context.Context, q Querier) string {
+	_, locale := Defaults(ctx, q)
+	return locale
 }
 
 // DefaultTimeZoneFunc returns a lazy accessor for DefaultTimeZone. Read paths

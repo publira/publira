@@ -27,7 +27,7 @@ func newPlatformSettingsActorContext() context.Context {
 func TestGetPlatformSettingsReturnsStoredTimezone(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
-	expectPlatformConfigLookup(mock, "America/Los_Angeles", now)
+	expectPlatformConfigLookup(mock, "America/Los_Angeles", "ja", now)
 
 	resp, err := server.GetPlatformSettings(context.Background(), connect.NewRequest(&publirasplatformv1.GetPlatformSettingsRequest{}))
 	if err != nil {
