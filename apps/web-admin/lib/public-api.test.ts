@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockCacheLife, mockCacheTag, mockGetTenant } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
@@ -27,6 +27,10 @@ describe("getTenantName", () => {
     mockCacheLife.mockReset();
     mockCacheTag.mockReset();
     mockGetTenant.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("公開 API のテナント名を返す", async () => {
