@@ -2018,6 +2018,7 @@ ORDER BY ei.display_order ASC,
 
 -- name: GetEpisodeImageAccessByIDForUser :one
 SELECT ei.id,
+    ei.episode_id,
     eiv.object_key,
     eiv.content_type,
     (

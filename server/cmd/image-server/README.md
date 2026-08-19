@@ -29,3 +29,13 @@ Manael は libvips を使うため、ビルドと実行には `libvips-dev`（�
 - `PUBLIRA_IMAGE_CACHE_TTL` (任意。変換結果の TTL。Go duration または秒数。既定 `1h`)
 
 変換はリクエストの `Accept`（`image/webp` / `image/avif`）と `w` / `h` / `fit` / `q` クエリに従います。中間キャッシュのキーも同じ入力から決まります。ヒット時はレスポンスヘッダ `X-Publira-Image-Cache: hit`、ミス時は `miss` です。
+
+## エピソード本文画像の認可
+
+`GET /images/episodes/{media_id}` は次の順で読者を特定します。
+
+1. `Authorization: Bearer <JWT>`（audience `public`）
+2. クエリ `t=<JWT>`（audience `media`。ブラウザの `<img>` はヘッダーを付けられないため、`GetEpisodeDetail` が URL に付けて返す）
+3. どちらも無い / 検証に失敗した場合は無記名扱い
+
+特定できた場合は `GetEpisodeImageAccessByIDForUser`、無記名なら `GetEpisodeImagePublicAccessByIDForTenant` で判定します。どちらも「`price = 0` / 有効な purchase / 有効な access ticket」という API と同じ規則です。`media` トークンは発行元のエピソード以外には効かず、クエリの `t` は中間キャッシュのキーに含めません。詳細は [server/README.md](../../README.md) の認証節を参照してください。

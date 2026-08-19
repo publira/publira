@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -672,6 +674,21 @@ func (s *apiServer) GetSeriesDetail(
 	return res, nil
 }
 
+// withMediaToken hands the reader an image URL that already carries their
+// credential. A free body has no token and stays a plain public URL.
+// image-server reads sizing from the query too, so the token is added to
+// whatever query the URL already has rather than assuming there is none.
+func withMediaToken(imageURL string, token string) string {
+	if token == "" {
+		return imageURL
+	}
+	separator := "?"
+	if strings.Contains(imageURL, "?") {
+		separator = "&"
+	}
+	return imageURL + separator + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
+}
+
 func (s *apiServer) GetEpisodeDetail(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetEpisodeDetailRequest],
@@ -690,6 +707,7 @@ func (s *apiServer) GetEpisodeDetail(
 
 	access := publirav1.EpisodeAccess_EPISODE_ACCESS_LOCKED
 	includeImages := false
+	mediaToken := ""
 	if row.Price == 0 {
 		access = publirav1.EpisodeAccess_EPISODE_ACCESS_FREE
 		includeImages = true
@@ -718,6 +736,26 @@ func (s *apiServer) GetEpisodeDetail(
 			if hasAccess.Valid && hasAccess.Bool {
 				access = publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED
 				includeImages = true
+				// The reader fetches these images from image-server with an
+				// <img>, which cannot carry the bearer this RPC was called
+				// with. The token below is what makes that request identify
+				// the same reader; image-server still checks the grant.
+				token, _, tokenErr := s.tokens.IssueMediaToken(
+					session.User.PublicID,
+					tenant.ID.String(),
+					row.ID.String(),
+					session.User.CredentialsVersion,
+					time.Now(),
+				)
+				if tokenErr != nil {
+					s.logger.ErrorContext(ctx, "failed to issue episode media token",
+						"tenant_id", tenant.ID.String(),
+						"episode_public_id", req.Msg.PublicId,
+						"error", tokenErr,
+					)
+					return nil, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+				}
+				mediaToken = token
 			}
 		}
 	}
@@ -735,7 +773,9 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 		res.Msg.Images = make([]*publirattypesv1.EpisodeImage, 0, len(images))
 		for _, image := range images {
-			res.Msg.Images = append(res.Msg.Images, protomapper.EpisodeImageFromEpisodeImage(image))
+			mapped := protomapper.EpisodeImageFromEpisodeImage(image)
+			mapped.ImageUrl = withMediaToken(mapped.ImageUrl, mediaToken)
+			res.Msg.Images = append(res.Msg.Images, mapped)
 		}
 	}
 
