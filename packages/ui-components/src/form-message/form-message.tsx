@@ -22,7 +22,7 @@ const formMessageVariants = cva(
   }
 );
 
-export type FormMessageProps = ComponentPropsWithoutRef<"p"> &
+export type FormMessageProps = Omit<ComponentPropsWithoutRef<"p">, "role"> &
   VariantProps<typeof formMessageVariants>;
 
 const iconByVariant = {
@@ -47,9 +47,9 @@ export const FormMessage = ({
     // keeps pointing at the detached nodes, so every later message is written
     // to a <span> the document no longer contains (#1070).
     <p
-      role="status"
       {...props}
       className={cn(formMessageVariants({ variant: tone }), className)}
+      role="status"
     >
       <span
         aria-hidden="true"
