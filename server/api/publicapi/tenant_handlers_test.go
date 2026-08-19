@@ -144,6 +144,9 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	if resp.Msg.Timezone != "Asia/Tokyo" {
 		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)
 	}
+	if resp.Msg.DefaultLocale != "ja" {
+		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
+	}
 	assertPublicExpectations(t, mock)
 }
 
@@ -201,6 +204,98 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 	}
 	if resp.Msg.Timezone != "Asia/Tokyo" {
 		t.Fatalf("timezone = %q, want Asia/Tokyo", resp.Msg.Timezone)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "en")
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantFallsBackToPlatformDefaultLocale(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectPlatformConfigLookup(mock, "Asia/Tokyo", "en", now)
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantFallsBackToDefaultLocale(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantConfigByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(getTenantThemeByTenantIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
+
+	client := publirav1connect.NewTenantServiceClient(testServer.Client(), testServer.URL)
+	resp, err := client.GetTenant(context.Background(), connect.NewRequest(&publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}))
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.Msg.DefaultLocale == "" {
+		t.Fatal("default_locale is empty, want a resolved locale")
+	}
+	if resp.Msg.DefaultLocale != "ja" {
+		t.Fatalf("default_locale = %q, want ja", resp.Msg.DefaultLocale)
 	}
 	assertPublicExpectations(t, mock)
 }

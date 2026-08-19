@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -57,9 +58,9 @@ func TestDefaultLocale(t *testing.T) {
 	}{
 		{name: "configured value is used", stored: "en", want: "en"},
 		{name: "surrounding spaces are trimmed", stored: "  en  ", want: "en"},
-		{name: "blank row falls back to the built-in default", stored: "   ", want: defaultLocale},
-		{name: "missing row falls back to the built-in default", err: sql.ErrNoRows, want: defaultLocale},
-		{name: "unreadable row falls back to the built-in default", err: errors.New("connection reset"), want: defaultLocale},
+		{name: "blank row falls back to the built-in default", stored: "   ", want: locale.Default},
+		{name: "missing row falls back to the built-in default", err: sql.ErrNoRows, want: locale.Default},
+		{name: "unreadable row falls back to the built-in default", err: errors.New("connection reset"), want: locale.Default},
 	}
 
 	for _, tt := range tests {
@@ -99,6 +100,23 @@ func TestDefaultTimeZoneFuncReadsLazilyAndOnce(t *testing.T) {
 	for range 3 {
 		if got := defaultTimeZone(); got != "Europe/Berlin" {
 			t.Fatalf("DefaultTimeZoneFunc() = %q, want Europe/Berlin", got)
+		}
+	}
+	if q.calls != 1 {
+		t.Fatalf("settings row was read %d times, want 1", q.calls)
+	}
+}
+
+func TestDefaultLocaleFuncReadsLazilyAndOnce(t *testing.T) {
+	q := &stubQuerier{config: dbmodels.PlatformConfig{DefaultLocale: "en"}}
+	defaultLocale := DefaultLocaleFunc(context.Background(), q)
+	if q.calls != 0 {
+		t.Fatalf("settings row was read %d times before the accessor was called, want 0", q.calls)
+	}
+
+	for range 3 {
+		if got := defaultLocale(); got != "en" {
+			t.Fatalf("DefaultLocaleFunc() = %q, want en", got)
 		}
 	}
 	if q.calls != 1 {

@@ -2,22 +2,34 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
 
 	"connectrpc.com/connect"
 
 	publirasplatformv1 "github.com/publira/publira/server/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/auditlog"
+	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
+
+func platformSettingsFromConfig(config dbmodels.PlatformConfig) *publirasplatformv1.PlatformSettings {
+	return &publirasplatformv1.PlatformSettings{
+		DefaultTimezone: tenanttz.Resolve(config.DefaultTimezone, nil),
+		DefaultLocale:   locale.Resolve(config.DefaultLocale, nil),
+	}
+}
 
 func (s *platformServer) GetPlatformSettings(
 	ctx context.Context,
 	_req *connect.Request[publirasplatformv1.GetPlatformSettingsRequest],
 ) (*connect.Response[publirasplatformv1.GetPlatformSettingsResponse], error) {
+	timezone, defaultLocale := platformconfig.Defaults(ctx, s.queriesFor(ctx))
 	return connect.NewResponse(&publirasplatformv1.GetPlatformSettingsResponse{
 		Settings: &publirasplatformv1.PlatformSettings{
-			DefaultTimezone: platformconfig.DefaultTimeZone(ctx, s.queriesFor(ctx)),
+			DefaultTimezone: timezone,
+			DefaultLocale:   defaultLocale,
 		},
 	}), nil
 }
@@ -31,9 +43,18 @@ func (s *platformServer) UpdatePlatformSettings(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	updated, err := s.queriesFor(ctx).UpsertPlatformDefaultTimezone(ctx, timezone)
+	params := dbmodels.UpsertPlatformSettingsParams{DefaultTimezone: timezone}
+	if req.Msg.DefaultLocale != nil {
+		defaultLocale, err := locale.Normalize(*req.Msg.DefaultLocale)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		params.DefaultLocale = sql.NullString{String: defaultLocale, Valid: true}
+	}
+
+	updated, err := s.queriesFor(ctx).UpsertPlatformSettings(ctx, params)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to update platform default timezone", err)
+		return nil, s.internalDBError(ctx, "failed to update platform settings", err)
 	}
 
 	if actor, ok := platformActorFromContext(ctx); ok {
@@ -49,8 +70,6 @@ func (s *platformServer) UpdatePlatformSettings(
 	}
 
 	return connect.NewResponse(&publirasplatformv1.UpdatePlatformSettingsResponse{
-		Settings: &publirasplatformv1.PlatformSettings{
-			DefaultTimezone: updated.DefaultTimezone,
-		},
+		Settings: platformSettingsFromConfig(updated),
 	}), nil
 }

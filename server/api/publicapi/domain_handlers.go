@@ -8,6 +8,8 @@ import (
 
 	"connectrpc.com/connect"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/platformconfig"
 )
 
 func (s *apiServer) GetTenantByDomain(
@@ -35,6 +37,7 @@ func (s *apiServer) GetTenantByDomain(
 	}
 
 	return connect.NewResponse(&publirav1.GetTenantByDomainResponse{
-		TenantId: tenant.ID.String(),
+		TenantId:      tenant.ID.String(),
+		DefaultLocale: locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }

@@ -68,7 +68,10 @@ func (x *GetTenantByDomainRequest) GetDomains() []string {
 type GetTenantByDomainResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Primary key (UUID) for internal routing / TenantContext.
-	TenantId      string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	TenantId string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// Resolved tenant default locale (ja, en) so the host proxy can pick a
+	// redirect in one round trip. Never empty.
+	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -110,6 +113,13 @@ func (x *GetTenantByDomainResponse) GetTenantId() string {
 	return ""
 }
 
+func (x *GetTenantByDomainResponse) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
+}
+
 var File_publira_v1_domain_proto protoreflect.FileDescriptor
 
 const file_publira_v1_domain_proto_rawDesc = "" +
@@ -117,9 +127,10 @@ const file_publira_v1_domain_proto_rawDesc = "" +
 	"\x17publira/v1/domain.proto\x12\n" +
 	"publira.v1\"4\n" +
 	"\x18GetTenantByDomainRequest\x12\x18\n" +
-	"\adomains\x18\x01 \x03(\tR\adomains\"8\n" +
+	"\adomains\x18\x01 \x03(\tR\adomains\"_\n" +
 	"\x19GetTenantByDomainResponse\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId2s\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12%\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale2s\n" +
 	"\rDomainService\x12b\n" +
 	"\x11GetTenantByDomain\x12$.publira.v1.GetTenantByDomainRequest\x1a%.publira.v1.GetTenantByDomainResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 

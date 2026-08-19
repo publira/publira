@@ -67,15 +67,38 @@ func (p *testStorageProvider) Upload(_ context.Context, req storage.UploadReques
 	}, nil
 }
 
+func publicTenantColumns() []string {
+	return []string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}
+}
+
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
-	expectTenantLookupWithTimezone(mock, tenantID, publicID, now, "Asia/Tokyo")
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "Asia/Tokyo", "ja")
 }
 
 func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone string) {
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, timezone, "ja")
+}
+
+func expectTenantLookupWithDefaultLocale(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, defaultLocale string) {
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "Asia/Tokyo", defaultLocale)
+}
+
+func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone, defaultLocale string) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
 		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "domain", "name", "default_reading_period_hours", "created_at", "status", "admin_domain", "timezone", "default_locale"}).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, "ja"))
+		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
+}
+
+const getPlatformConfigQuery = "-- name: GetPlatformConfig :one\n"
+
+func publicPlatformConfigColumns() []string {
+	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at"}
+}
+
+func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).
+		WillReturnRows(sqlmock.NewRows(publicPlatformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
 }
 
 func assertPublicExpectations(t *testing.T, mock sqlmock.Sqlmock) {

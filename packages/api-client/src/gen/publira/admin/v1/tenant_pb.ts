@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/tenant.proto.
  */
 export const file_publira_admin_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJMoACChVUZW5hbnRTZXR0aW5nc1NlcnZpY2USbgoRR2V0VGVuYW50VGltZXpvbmUSKi5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGltZXpvbmVSZXNwb25zZSIAEncKFFVwZGF0ZVRlbmFudFRpbWV6b25lEi0ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlcXVlc3QaLi5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVRlbmFudFRpbWV6b25lUmVzcG9uc2UiAEJHWkVnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL2FkbWluL3YxL3RlbmFudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJLChhHZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ii0KGUdldFRlbmFudFRpbWV6b25lUmVzcG9uc2USEAoIdGltZXpvbmUYASABKAkiYAobVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCgh0aW1lem9uZRgCIAEoCSIwChxVcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlEhAKCHRpbWV6b25lGAEgASgJIlAKHUdldFRlbmFudERlZmF1bHRMb2NhbGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCI4Ch5HZXRUZW5hbnREZWZhdWx0TG9jYWxlUmVzcG9uc2USFgoOZGVmYXVsdF9sb2NhbGUYASABKAkiawogVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJIjsKIVVwZGF0ZVRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZRIWCg5kZWZhdWx0X2xvY2FsZRgBIAEoCTKIBAoVVGVuYW50U2V0dGluZ3NTZXJ2aWNlEm4KEUdldFRlbmFudFRpbWV6b25lEioucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaW1lem9uZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRpbWV6b25lUmVzcG9uc2UiABJ3ChRVcGRhdGVUZW5hbnRUaW1lem9uZRItLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50VGltZXpvbmVSZXF1ZXN0Gi4ucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnRUaW1lem9uZVJlc3BvbnNlIgASfQoWR2V0VGVuYW50RGVmYXVsdExvY2FsZRIvLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50RGVmYXVsdExvY2FsZVJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERlZmF1bHRMb2NhbGVSZXNwb25zZSIAEoYBChlVcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlEjIucHVibGlyYS5hZG1pbi52MS5VcGRhdGVUZW5hbnREZWZhdWx0TG9jYWxlUmVxdWVzdBozLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlVGVuYW50RGVmYXVsdExvY2FsZVJlc3BvbnNlIgBCR1pFZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantTimezoneRequest
@@ -92,6 +92,83 @@ export const UpdateTenantTimezoneResponseSchema: GenMessage<UpdateTenantTimezone
   messageDesc(file_publira_admin_v1_tenant, 3);
 
 /**
+ * @generated from message publira.admin.v1.GetTenantDefaultLocaleRequest
+ */
+export type GetTenantDefaultLocaleRequest = Message<"publira.admin.v1.GetTenantDefaultLocaleRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantDefaultLocaleRequest.
+ * Use `create(GetTenantDefaultLocaleRequestSchema)` to create a new message.
+ */
+export const GetTenantDefaultLocaleRequestSchema: GenMessage<GetTenantDefaultLocaleRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 4);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantDefaultLocaleResponse
+ */
+export type GetTenantDefaultLocaleResponse = Message<"publira.admin.v1.GetTenantDefaultLocaleResponse"> & {
+  /**
+   * UI locale code (ja, en). Never empty; the default is applied when unset.
+   *
+   * @generated from field: string default_locale = 1;
+   */
+  defaultLocale: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantDefaultLocaleResponse.
+ * Use `create(GetTenantDefaultLocaleResponseSchema)` to create a new message.
+ */
+export const GetTenantDefaultLocaleResponseSchema: GenMessage<GetTenantDefaultLocaleResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 5);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantDefaultLocaleRequest
+ */
+export type UpdateTenantDefaultLocaleRequest = Message<"publira.admin.v1.UpdateTenantDefaultLocaleRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * UI locale code (ja, en). Unknown or blank codes are rejected.
+   *
+   * @generated from field: string default_locale = 2;
+   */
+  defaultLocale: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantDefaultLocaleRequest.
+ * Use `create(UpdateTenantDefaultLocaleRequestSchema)` to create a new message.
+ */
+export const UpdateTenantDefaultLocaleRequestSchema: GenMessage<UpdateTenantDefaultLocaleRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 6);
+
+/**
+ * @generated from message publira.admin.v1.UpdateTenantDefaultLocaleResponse
+ */
+export type UpdateTenantDefaultLocaleResponse = Message<"publira.admin.v1.UpdateTenantDefaultLocaleResponse"> & {
+  /**
+   * @generated from field: string default_locale = 1;
+   */
+  defaultLocale: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpdateTenantDefaultLocaleResponse.
+ * Use `create(UpdateTenantDefaultLocaleResponseSchema)` to create a new message.
+ */
+export const UpdateTenantDefaultLocaleResponseSchema: GenMessage<UpdateTenantDefaultLocaleResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_tenant, 7);
+
+/**
  * テナント単位の運用設定（サイト文言用の TenantConfig / 配色用の TenantTheme とは別責務）
  *
  * @generated from service publira.admin.v1.TenantSettingsService
@@ -112,6 +189,22 @@ export const TenantSettingsService: GenService<{
     methodKind: "unary";
     input: typeof UpdateTenantTimezoneRequestSchema;
     output: typeof UpdateTenantTimezoneResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale
+   */
+  getTenantDefaultLocale: {
+    methodKind: "unary";
+    input: typeof GetTenantDefaultLocaleRequestSchema;
+    output: typeof GetTenantDefaultLocaleResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale
+   */
+  updateTenantDefaultLocale: {
+    methodKind: "unary";
+    input: typeof UpdateTenantDefaultLocaleRequestSchema;
+    output: typeof UpdateTenantDefaultLocaleResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_tenant, 0);

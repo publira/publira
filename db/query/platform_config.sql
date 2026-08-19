@@ -22,3 +22,22 @@ UPDATE
 SET default_locale = EXCLUDED.default_locale,
     updated_at = NOW()
 RETURNING *;
+
+-- name: UpsertPlatformSettings :one
+-- プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
+-- default_locale が NULL なら既存値（新規行なら列 DEFAULT の ja）を残す。
+INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
+VALUES (
+        TRUE,
+        sqlc.arg('default_timezone'),
+        COALESCE(sqlc.narg('default_locale')::text, 'ja'),
+        NOW()
+    ) ON CONFLICT (singleton) DO
+UPDATE
+SET default_timezone = EXCLUDED.default_timezone,
+    default_locale = COALESCE(
+        sqlc.narg('default_locale')::text,
+        platform_config.default_locale
+    ),
+    updated_at = NOW()
+RETURNING *;

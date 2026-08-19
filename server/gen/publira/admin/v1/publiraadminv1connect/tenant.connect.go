@@ -39,12 +39,20 @@ const (
 	// TenantSettingsServiceUpdateTenantTimezoneProcedure is the fully-qualified name of the
 	// TenantSettingsService's UpdateTenantTimezone RPC.
 	TenantSettingsServiceUpdateTenantTimezoneProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantTimezone"
+	// TenantSettingsServiceGetTenantDefaultLocaleProcedure is the fully-qualified name of the
+	// TenantSettingsService's GetTenantDefaultLocale RPC.
+	TenantSettingsServiceGetTenantDefaultLocaleProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantDefaultLocale"
+	// TenantSettingsServiceUpdateTenantDefaultLocaleProcedure is the fully-qualified name of the
+	// TenantSettingsService's UpdateTenantDefaultLocale RPC.
+	TenantSettingsServiceUpdateTenantDefaultLocaleProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantDefaultLocale"
 )
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
 type TenantSettingsServiceClient interface {
 	GetTenantTimezone(context.Context, *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error)
 	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
+	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
+	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
 }
 
 // NewTenantSettingsServiceClient constructs a client for the publira.admin.v1.TenantSettingsService
@@ -70,13 +78,27 @@ func NewTenantSettingsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantTimezone")),
 			connect.WithClientOptions(opts...),
 		),
+		getTenantDefaultLocale: connect.NewClient[v1.GetTenantDefaultLocaleRequest, v1.GetTenantDefaultLocaleResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceGetTenantDefaultLocaleProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantDefaultLocale")),
+			connect.WithClientOptions(opts...),
+		),
+		updateTenantDefaultLocale: connect.NewClient[v1.UpdateTenantDefaultLocaleRequest, v1.UpdateTenantDefaultLocaleResponse](
+			httpClient,
+			baseURL+TenantSettingsServiceUpdateTenantDefaultLocaleProcedure,
+			connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantDefaultLocale")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // tenantSettingsServiceClient implements TenantSettingsServiceClient.
 type tenantSettingsServiceClient struct {
-	getTenantTimezone    *connect.Client[v1.GetTenantTimezoneRequest, v1.GetTenantTimezoneResponse]
-	updateTenantTimezone *connect.Client[v1.UpdateTenantTimezoneRequest, v1.UpdateTenantTimezoneResponse]
+	getTenantTimezone         *connect.Client[v1.GetTenantTimezoneRequest, v1.GetTenantTimezoneResponse]
+	updateTenantTimezone      *connect.Client[v1.UpdateTenantTimezoneRequest, v1.UpdateTenantTimezoneResponse]
+	getTenantDefaultLocale    *connect.Client[v1.GetTenantDefaultLocaleRequest, v1.GetTenantDefaultLocaleResponse]
+	updateTenantDefaultLocale *connect.Client[v1.UpdateTenantDefaultLocaleRequest, v1.UpdateTenantDefaultLocaleResponse]
 }
 
 // GetTenantTimezone calls publira.admin.v1.TenantSettingsService.GetTenantTimezone.
@@ -89,11 +111,23 @@ func (c *tenantSettingsServiceClient) UpdateTenantTimezone(ctx context.Context, 
 	return c.updateTenantTimezone.CallUnary(ctx, req)
 }
 
+// GetTenantDefaultLocale calls publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale.
+func (c *tenantSettingsServiceClient) GetTenantDefaultLocale(ctx context.Context, req *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error) {
+	return c.getTenantDefaultLocale.CallUnary(ctx, req)
+}
+
+// UpdateTenantDefaultLocale calls publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale.
+func (c *tenantSettingsServiceClient) UpdateTenantDefaultLocale(ctx context.Context, req *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error) {
+	return c.updateTenantDefaultLocale.CallUnary(ctx, req)
+}
+
 // TenantSettingsServiceHandler is an implementation of the publira.admin.v1.TenantSettingsService
 // service.
 type TenantSettingsServiceHandler interface {
 	GetTenantTimezone(context.Context, *connect.Request[v1.GetTenantTimezoneRequest]) (*connect.Response[v1.GetTenantTimezoneResponse], error)
 	UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error)
+	GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error)
+	UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error)
 }
 
 // NewTenantSettingsServiceHandler builds an HTTP handler from the service implementation. It
@@ -115,12 +149,28 @@ func NewTenantSettingsServiceHandler(svc TenantSettingsServiceHandler, opts ...c
 		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantTimezone")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tenantSettingsServiceGetTenantDefaultLocaleHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceGetTenantDefaultLocaleProcedure,
+		svc.GetTenantDefaultLocale,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("GetTenantDefaultLocale")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantSettingsServiceUpdateTenantDefaultLocaleHandler := connect.NewUnaryHandler(
+		TenantSettingsServiceUpdateTenantDefaultLocaleProcedure,
+		svc.UpdateTenantDefaultLocale,
+		connect.WithSchema(tenantSettingsServiceMethods.ByName("UpdateTenantDefaultLocale")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/publira.admin.v1.TenantSettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TenantSettingsServiceGetTenantTimezoneProcedure:
 			tenantSettingsServiceGetTenantTimezoneHandler.ServeHTTP(w, r)
 		case TenantSettingsServiceUpdateTenantTimezoneProcedure:
 			tenantSettingsServiceUpdateTenantTimezoneHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceGetTenantDefaultLocaleProcedure:
+			tenantSettingsServiceGetTenantDefaultLocaleHandler.ServeHTTP(w, r)
+		case TenantSettingsServiceUpdateTenantDefaultLocaleProcedure:
+			tenantSettingsServiceUpdateTenantDefaultLocaleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -136,4 +186,12 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantTimezone(context.Conte
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantTimezone(context.Context, *connect.Request[v1.UpdateTenantTimezoneRequest]) (*connect.Response[v1.UpdateTenantTimezoneResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantTimezone is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantDefaultLocale(context.Context, *connect.Request[v1.GetTenantDefaultLocaleRequest]) (*connect.Response[v1.GetTenantDefaultLocaleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale is not implemented"))
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantDefaultLocale(context.Context, *connect.Request[v1.UpdateTenantDefaultLocaleRequest]) (*connect.Response[v1.UpdateTenantDefaultLocaleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale is not implemented"))
 }

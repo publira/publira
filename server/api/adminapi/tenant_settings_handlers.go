@@ -11,6 +11,7 @@ import (
 
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -77,5 +78,64 @@ func (s *adminServer) UpdateTenantTimezone(
 
 	return connect.NewResponse(&publiraadminv1.UpdateTenantTimezoneResponse{
 		Timezone: tenanttz.Resolve(updated.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
+	}), nil
+}
+
+// tenantDefaultLocaleRevalidateTags lists the public site caches that render
+// tenant-facing copy, so a default locale change is reflected right away.
+func tenantDefaultLocaleRevalidateTags(tenantID string) []string {
+	return tenantTimezoneRevalidateTags(tenantID)
+}
+
+func (s *adminServer) GetTenantDefaultLocale(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.GetTenantDefaultLocaleRequest],
+) (*connect.Response[publiraadminv1.GetTenantDefaultLocaleResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&publiraadminv1.GetTenantDefaultLocaleResponse{
+		DefaultLocale: locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, s.queriesFor(ctx))),
+	}), nil
+}
+
+func (s *adminServer) UpdateTenantDefaultLocale(
+	ctx context.Context,
+	req *connect.Request[publiraadminv1.UpdateTenantDefaultLocaleRequest],
+) (*connect.Response[publiraadminv1.UpdateTenantDefaultLocaleResponse], error) {
+	tenant, err := s.tenantByContext(ctx, req.Msg.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+
+	defaultLocale, err := locale.Normalize(req.Msg.DefaultLocale)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	updated, err := s.queriesFor(ctx).UpdateTenantDefaultLocale(ctx, dbmodels.UpdateTenantDefaultLocaleParams{
+		ID:            tenant.ID,
+		DefaultLocale: defaultLocale,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("tenant not found"))
+		}
+		return nil, s.internalDBError(ctx, "failed to update tenant default locale", err, "tenant_id", tenant.ID.String())
+	}
+
+	if s.reval != nil {
+		if err := s.reval.RevalidateTags(ctx, tenant.ID.String(), tenant.Domain, tenantDefaultLocaleRevalidateTags(tenant.ID.String())); err != nil {
+			s.logger.Warn("failed to request next revalidate after tenant default locale update", "tenant_public_id", tenant.PublicID, "error", err)
+		}
+	}
+
+	return connect.NewResponse(&publiraadminv1.UpdateTenantDefaultLocaleResponse{
+		DefaultLocale: locale.Resolve(updated.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, s.queriesFor(ctx))),
 	}), nil
 }

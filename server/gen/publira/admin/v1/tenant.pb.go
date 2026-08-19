@@ -208,6 +208,192 @@ func (x *UpdateTenantTimezoneResponse) GetTimezone() string {
 	return ""
 }
 
+type GetTenantDefaultLocaleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantDefaultLocaleRequest) Reset() {
+	*x = GetTenantDefaultLocaleRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantDefaultLocaleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantDefaultLocaleRequest) ProtoMessage() {}
+
+func (x *GetTenantDefaultLocaleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantDefaultLocaleRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantDefaultLocaleRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetTenantDefaultLocaleRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type GetTenantDefaultLocaleResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// UI locale code (ja, en). Never empty; the default is applied when unset.
+	DefaultLocale string `protobuf:"bytes,1,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantDefaultLocaleResponse) Reset() {
+	*x = GetTenantDefaultLocaleResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantDefaultLocaleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantDefaultLocaleResponse) ProtoMessage() {}
+
+func (x *GetTenantDefaultLocaleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantDefaultLocaleResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantDefaultLocaleResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetTenantDefaultLocaleResponse) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
+}
+
+type UpdateTenantDefaultLocaleRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// UI locale code (ja, en). Unknown or blank codes are rejected.
+	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTenantDefaultLocaleRequest) Reset() {
+	*x = UpdateTenantDefaultLocaleRequest{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantDefaultLocaleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantDefaultLocaleRequest) ProtoMessage() {}
+
+func (x *UpdateTenantDefaultLocaleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantDefaultLocaleRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTenantDefaultLocaleRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UpdateTenantDefaultLocaleRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UpdateTenantDefaultLocaleRequest) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
+}
+
+type UpdateTenantDefaultLocaleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DefaultLocale string                 `protobuf:"bytes,1,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTenantDefaultLocaleResponse) Reset() {
+	*x = UpdateTenantDefaultLocaleResponse{}
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTenantDefaultLocaleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTenantDefaultLocaleResponse) ProtoMessage() {}
+
+func (x *UpdateTenantDefaultLocaleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_tenant_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTenantDefaultLocaleResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTenantDefaultLocaleResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_tenant_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateTenantDefaultLocaleResponse) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
+}
+
 var File_publira_admin_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_tenant_proto_rawDesc = "" +
@@ -221,10 +407,21 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1a\n" +
 	"\btimezone\x18\x02 \x01(\tR\btimezone\":\n" +
 	"\x1cUpdateTenantTimezoneResponse\x12\x1a\n" +
-	"\btimezone\x18\x01 \x01(\tR\btimezone2\x80\x02\n" +
+	"\btimezone\x18\x01 \x01(\tR\btimezone\"X\n" +
+	"\x1dGetTenantDefaultLocaleRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"G\n" +
+	"\x1eGetTenantDefaultLocaleResponse\x12%\n" +
+	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale\"\x82\x01\n" +
+	" UpdateTenantDefaultLocaleRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12%\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"J\n" +
+	"!UpdateTenantDefaultLocaleResponse\x12%\n" +
+	"\x0edefault_locale\x18\x01 \x01(\tR\rdefaultLocale2\x88\x04\n" +
 	"\x15TenantSettingsService\x12n\n" +
 	"\x11GetTenantTimezone\x12*.publira.admin.v1.GetTenantTimezoneRequest\x1a+.publira.admin.v1.GetTenantTimezoneResponse\"\x00\x12w\n" +
-	"\x14UpdateTenantTimezone\x12-.publira.admin.v1.UpdateTenantTimezoneRequest\x1a..publira.admin.v1.UpdateTenantTimezoneResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x14UpdateTenantTimezone\x12-.publira.admin.v1.UpdateTenantTimezoneRequest\x1a..publira.admin.v1.UpdateTenantTimezoneResponse\"\x00\x12}\n" +
+	"\x16GetTenantDefaultLocale\x12/.publira.admin.v1.GetTenantDefaultLocaleRequest\x1a0.publira.admin.v1.GetTenantDefaultLocaleResponse\"\x00\x12\x86\x01\n" +
+	"\x19UpdateTenantDefaultLocale\x122.publira.admin.v1.UpdateTenantDefaultLocaleRequest\x1a3.publira.admin.v1.UpdateTenantDefaultLocaleResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_tenant_proto_rawDescOnce sync.Once
@@ -238,26 +435,36 @@ func file_publira_admin_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_tenant_proto_rawDescData
 }
 
-var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_publira_admin_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_admin_v1_tenant_proto_goTypes = []any{
-	(*GetTenantTimezoneRequest)(nil),     // 0: publira.admin.v1.GetTenantTimezoneRequest
-	(*GetTenantTimezoneResponse)(nil),    // 1: publira.admin.v1.GetTenantTimezoneResponse
-	(*UpdateTenantTimezoneRequest)(nil),  // 2: publira.admin.v1.UpdateTenantTimezoneRequest
-	(*UpdateTenantTimezoneResponse)(nil), // 3: publira.admin.v1.UpdateTenantTimezoneResponse
-	(*v1.TenantContext)(nil),             // 4: publira.types.v1.TenantContext
+	(*GetTenantTimezoneRequest)(nil),          // 0: publira.admin.v1.GetTenantTimezoneRequest
+	(*GetTenantTimezoneResponse)(nil),         // 1: publira.admin.v1.GetTenantTimezoneResponse
+	(*UpdateTenantTimezoneRequest)(nil),       // 2: publira.admin.v1.UpdateTenantTimezoneRequest
+	(*UpdateTenantTimezoneResponse)(nil),      // 3: publira.admin.v1.UpdateTenantTimezoneResponse
+	(*GetTenantDefaultLocaleRequest)(nil),     // 4: publira.admin.v1.GetTenantDefaultLocaleRequest
+	(*GetTenantDefaultLocaleResponse)(nil),    // 5: publira.admin.v1.GetTenantDefaultLocaleResponse
+	(*UpdateTenantDefaultLocaleRequest)(nil),  // 6: publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	(*UpdateTenantDefaultLocaleResponse)(nil), // 7: publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	(*v1.TenantContext)(nil),                  // 8: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_tenant_proto_depIdxs = []int32{
-	4, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	4, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 2: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
-	2, // 3: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
-	1, // 4: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
-	3, // 5: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	8, // 0: publira.admin.v1.GetTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8, // 1: publira.admin.v1.UpdateTenantTimezoneRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8, // 2: publira.admin.v1.GetTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	8, // 3: publira.admin.v1.UpdateTenantDefaultLocaleRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0, // 4: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
+	2, // 5: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
+	4, // 6: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
+	6, // 7: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	1, // 8: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
+	3, // 9: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
+	5, // 10: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
+	7, // 11: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	8, // [8:12] is the sub-list for method output_type
+	4, // [4:8] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_tenant_proto_init() }
@@ -271,7 +478,7 @@ func file_publira_admin_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_tenant_proto_rawDesc), len(file_publira_admin_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

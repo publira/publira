@@ -28,8 +28,11 @@ type PlatformSettings struct {
 	// IANA time zone name (e.g. Asia/Tokyo, America/Los_Angeles, UTC) applied to
 	// newly created tenants. Never empty in a response.
 	DefaultTimezone string `protobuf:"bytes,1,opt,name=default_timezone,json=defaultTimezone,proto3" json:"default_timezone,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// UI locale code (ja, en) applied to newly created tenants. Never empty in a
+	// response.
+	DefaultLocale string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PlatformSettings) Reset() {
@@ -65,6 +68,13 @@ func (*PlatformSettings) Descriptor() ([]byte, []int) {
 func (x *PlatformSettings) GetDefaultTimezone() string {
 	if x != nil {
 		return x.DefaultTimezone
+	}
+	return ""
+}
+
+func (x *PlatformSettings) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
 	}
 	return ""
 }
@@ -152,8 +162,11 @@ func (x *GetPlatformSettingsResponse) GetSettings() *PlatformSettings {
 type UpdatePlatformSettingsRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	DefaultTimezone string                 `protobuf:"bytes,1,opt,name=default_timezone,json=defaultTimezone,proto3" json:"default_timezone,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Presence-aware so a timezone-only save can omit the field. When set,
+	// unknown or blank codes are rejected before any write.
+	DefaultLocale *string `protobuf:"bytes,2,opt,name=default_locale,json=defaultLocale,proto3,oneof" json:"default_locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdatePlatformSettingsRequest) Reset() {
@@ -189,6 +202,13 @@ func (*UpdatePlatformSettingsRequest) Descriptor() ([]byte, []int) {
 func (x *UpdatePlatformSettingsRequest) GetDefaultTimezone() string {
 	if x != nil {
 		return x.DefaultTimezone
+	}
+	return ""
+}
+
+func (x *UpdatePlatformSettingsRequest) GetDefaultLocale() string {
+	if x != nil && x.DefaultLocale != nil {
+		return *x.DefaultLocale
 	}
 	return ""
 }
@@ -241,14 +261,17 @@ var File_publira_platform_v1_settings_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_settings_proto_rawDesc = "" +
 	"\n" +
-	"\"publira/platform/v1/settings.proto\x12\x13publira.platform.v1\"=\n" +
+	"\"publira/platform/v1/settings.proto\x12\x13publira.platform.v1\"d\n" +
 	"\x10PlatformSettings\x12)\n" +
-	"\x10default_timezone\x18\x01 \x01(\tR\x0fdefaultTimezone\"\x1c\n" +
+	"\x10default_timezone\x18\x01 \x01(\tR\x0fdefaultTimezone\x12%\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\"\x1c\n" +
 	"\x1aGetPlatformSettingsRequest\"`\n" +
 	"\x1bGetPlatformSettingsResponse\x12A\n" +
-	"\bsettings\x18\x01 \x01(\v2%.publira.platform.v1.PlatformSettingsR\bsettings\"J\n" +
+	"\bsettings\x18\x01 \x01(\v2%.publira.platform.v1.PlatformSettingsR\bsettings\"\x89\x01\n" +
 	"\x1dUpdatePlatformSettingsRequest\x12)\n" +
-	"\x10default_timezone\x18\x01 \x01(\tR\x0fdefaultTimezone\"c\n" +
+	"\x10default_timezone\x18\x01 \x01(\tR\x0fdefaultTimezone\x12*\n" +
+	"\x0edefault_locale\x18\x02 \x01(\tH\x00R\rdefaultLocale\x88\x01\x01B\x11\n" +
+	"\x0f_default_locale\"c\n" +
 	"\x1eUpdatePlatformSettingsResponse\x12A\n" +
 	"\bsettings\x18\x01 \x01(\v2%.publira.platform.v1.PlatformSettingsR\bsettings2\x9b\x02\n" +
 	"\x17PlatformSettingsService\x12z\n" +
@@ -294,6 +317,7 @@ func file_publira_platform_v1_settings_proto_init() {
 	if File_publira_platform_v1_settings_proto != nil {
 		return
 	}
+	file_publira_platform_v1_settings_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

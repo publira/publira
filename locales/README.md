@@ -68,3 +68,12 @@ raw, err := files.ReadFile(locale + ".json")
 1. `ja.json` にキーを足す
 2. 同じキーを `en.json` にも足す（訳が未定なら英語でも、空文字にはしない）
 3. `pnpm --filter @publira/utils typecheck` が通ることを確認する（`ExactCatalog` の検査が `packages/utils` のテストから掛かる）
+
+## ロケールを増やすとき
+
+対応ロケール一覧は TypeScript と Go で二重管理です。ファイルを足すだけでは足りません。
+
+1. このディレクトリに `<code>.json` を足し、上の「キーを足すとき」どおり `ja.json` と同じキーにする
+2. `packages/utils/src/i18n.ts` の `LOCALES`（と `INTL_LOCALES`）にコードを足す
+3. `server/internal/locale` の `Supported` に同じコードを足す（テナント / プラットフォーム既定言語の API 検証がここを見る）
+4. 各アプリの `loadMessages` 呼び出しが持つ importer マップにも静的な `import()` を足す

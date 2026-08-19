@@ -25,8 +25,29 @@ message UpdateTenantTimezoneResponse {
   string timezone = 1;
 }
 
+message GetTenantDefaultLocaleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantDefaultLocaleResponse {
+  // UI locale code (ja, en). Never empty; the default is applied when unset.
+  string default_locale = 1;
+}
+
+message UpdateTenantDefaultLocaleRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // UI locale code (ja, en). Unknown or blank codes are rejected.
+  string default_locale = 2;
+}
+
+message UpdateTenantDefaultLocaleResponse {
+  string default_locale = 1;
+}
+
 // テナント単位の運用設定（サイト文言用の TenantConfig / 配色用の TenantTheme とは別責務）
 service TenantSettingsService {
   rpc GetTenantTimezone(GetTenantTimezoneRequest) returns (GetTenantTimezoneResponse) {}
   rpc UpdateTenantTimezone(UpdateTenantTimezoneRequest) returns (UpdateTenantTimezoneResponse) {}
+  rpc GetTenantDefaultLocale(GetTenantDefaultLocaleRequest) returns (GetTenantDefaultLocaleResponse) {}
+  rpc UpdateTenantDefaultLocale(UpdateTenantDefaultLocaleRequest) returns (UpdateTenantDefaultLocaleResponse) {}
 }

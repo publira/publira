@@ -503,6 +503,9 @@ type Querier interface {
 	// プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
 	UpsertPlatformDefaultTimezone(ctx context.Context, defaultTimezone string) (PlatformConfig, error)
 	UpsertPlatformSMTPConfig(ctx context.Context, arg UpsertPlatformSMTPConfigParams) (PlatformSmtpConfig, error)
+	// プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
+	// default_locale が NULL なら既存値（新規行なら列 DEFAULT の ja）を残す。
+	UpsertPlatformSettings(ctx context.Context, arg UpsertPlatformSettingsParams) (PlatformConfig, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)

@@ -7,6 +7,7 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 )
 
 const getPlatformConfig = `-- name: GetPlatformConfig :one
@@ -65,6 +66,44 @@ RETURNING singleton, default_timezone, default_locale, created_at, updated_at
 // プラットフォーム既定タイムゾーン (IANA 名) を作成または更新する
 func (q *Queries) UpsertPlatformDefaultTimezone(ctx context.Context, defaultTimezone string) (PlatformConfig, error) {
 	row := q.db.QueryRowContext(ctx, upsertPlatformDefaultTimezone, defaultTimezone)
+	var i PlatformConfig
+	err := row.Scan(
+		&i.Singleton,
+		&i.DefaultTimezone,
+		&i.DefaultLocale,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertPlatformSettings = `-- name: UpsertPlatformSettings :one
+INSERT INTO platform_config (singleton, default_timezone, default_locale, updated_at)
+VALUES (
+        TRUE,
+        $1,
+        COALESCE($2::text, 'ja'),
+        NOW()
+    ) ON CONFLICT (singleton) DO
+UPDATE
+SET default_timezone = EXCLUDED.default_timezone,
+    default_locale = COALESCE(
+        $2::text,
+        platform_config.default_locale
+    ),
+    updated_at = NOW()
+RETURNING singleton, default_timezone, default_locale, created_at, updated_at
+`
+
+type UpsertPlatformSettingsParams struct {
+	DefaultTimezone string         `json:"default_timezone"`
+	DefaultLocale   sql.NullString `json:"default_locale"`
+}
+
+// プラットフォーム既定タイムゾーンと既定ロケールを原子的に作成または更新する。
+// default_locale が NULL なら既存値（新規行なら列 DEFAULT の ja）を残す。
+func (q *Queries) UpsertPlatformSettings(ctx context.Context, arg UpsertPlatformSettingsParams) (PlatformConfig, error) {
+	row := q.db.QueryRowContext(ctx, upsertPlatformSettings, arg.DefaultTimezone, arg.DefaultLocale)
 	var i PlatformConfig
 	err := row.Scan(
 		&i.Singleton,

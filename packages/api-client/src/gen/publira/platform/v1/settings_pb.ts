@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/settings.proto.
  */
 export const file_publira_platform_v1_settings: GenFile = /*@__PURE__*/
-  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL3NldHRpbmdzLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIiwKEFBsYXRmb3JtU2V0dGluZ3MSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCSIcChpHZXRQbGF0Zm9ybVNldHRpbmdzUmVxdWVzdCJWChtHZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MiOQodVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCSJZCh5VcGRhdGVQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MymwIKF1BsYXRmb3JtU2V0dGluZ3NTZXJ2aWNlEnoKE0dldFBsYXRmb3JtU2V0dGluZ3MSLy5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldFBsYXRmb3JtU2V0dGluZ3NSZXF1ZXN0GjAucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2UiABKDAQoWVXBkYXRlUGxhdGZvcm1TZXR0aW5ncxIyLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QaMy5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZSIAQk5aTGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
+  fileDesc("CiJwdWJsaXJhL3BsYXRmb3JtL3YxL3NldHRpbmdzLnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIkQKEFBsYXRmb3JtU2V0dGluZ3MSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCSIcChpHZXRQbGF0Zm9ybVNldHRpbmdzUmVxdWVzdCJWChtHZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MiaQodVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QSGAoQZGVmYXVsdF90aW1lem9uZRgBIAEoCRIbCg5kZWZhdWx0X2xvY2FsZRgCIAEoCUgAiAEBQhEKD19kZWZhdWx0X2xvY2FsZSJZCh5VcGRhdGVQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2USNwoIc2V0dGluZ3MYASABKAsyJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2V0dGluZ3MymwIKF1BsYXRmb3JtU2V0dGluZ3NTZXJ2aWNlEnoKE0dldFBsYXRmb3JtU2V0dGluZ3MSLy5wdWJsaXJhLnBsYXRmb3JtLnYxLkdldFBsYXRmb3JtU2V0dGluZ3NSZXF1ZXN0GjAucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVNldHRpbmdzUmVzcG9uc2UiABKDAQoWVXBkYXRlUGxhdGZvcm1TZXR0aW5ncxIyLnB1YmxpcmEucGxhdGZvcm0udjEuVXBkYXRlUGxhdGZvcm1TZXR0aW5nc1JlcXVlc3QaMy5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtU2V0dGluZ3NSZXNwb25zZSIAQk5aTGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
 
 /**
  * Platform-wide settings that are not tied to a single tenant. Email/SMTP has its
@@ -26,6 +26,14 @@ export type PlatformSettings = Message<"publira.platform.v1.PlatformSettings"> &
    * @generated from field: string default_timezone = 1;
    */
   defaultTimezone: string;
+
+  /**
+   * UI locale code (ja, en) applied to newly created tenants. Never empty in a
+   * response.
+   *
+   * @generated from field: string default_locale = 2;
+   */
+  defaultLocale: string;
 };
 
 /**
@@ -73,6 +81,14 @@ export type UpdatePlatformSettingsRequest = Message<"publira.platform.v1.UpdateP
    * @generated from field: string default_timezone = 1;
    */
   defaultTimezone: string;
+
+  /**
+   * Presence-aware so a timezone-only save can omit the field. When set,
+   * unknown or blank codes are rejected before any write.
+   *
+   * @generated from field: optional string default_locale = 2;
+   */
+  defaultLocale?: string | undefined;
 };
 
 /**

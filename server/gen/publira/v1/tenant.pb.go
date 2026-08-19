@@ -78,7 +78,10 @@ type GetTenantResponse struct {
 	Theme *v1.TenantTheme `protobuf:"bytes,7,opt,name=theme,proto3" json:"theme,omitempty"`
 	// IANA time zone name used to render tenant wall-clock date/time (e.g. Asia/Tokyo).
 	// Never empty; the default is applied when unset.
-	Timezone      string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	Timezone string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	// UI locale code used when the visitor has not chosen one (ja, en). Never
+	// empty; the default is applied when unset.
+	DefaultLocale string `protobuf:"bytes,9,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -169,6 +172,13 @@ func (x *GetTenantResponse) GetTimezone() string {
 	return ""
 }
 
+func (x *GetTenantResponse) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
+}
+
 var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_v1_tenant_proto_rawDesc = "" +
@@ -176,7 +186,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x17publira/v1/tenant.proto\x12\n" +
 	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xc9\x02\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xf0\x02\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -186,7 +196,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x10site_description\x18\x05 \x01(\tR\x0fsiteDescription\x12!\n" +
 	"\fsite_tagline\x18\x06 \x01(\tR\vsiteTagline\x123\n" +
 	"\x05theme\x18\a \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\x12\x1a\n" +
-	"\btimezone\x18\b \x01(\tR\btimezone2[\n" +
+	"\btimezone\x18\b \x01(\tR\btimezone\x12%\n" +
+	"\x0edefault_locale\x18\t \x01(\tR\rdefaultLocale2[\n" +
 	"\rTenantService\x12J\n" +
 	"\tGetTenant\x12\x1c.publira.v1.GetTenantRequest\x1a\x1d.publira.v1.GetTenantResponse\"\x00B<Z:github.com/publira/publira/server/gen/publira/v1;publirav1b\x06proto3"
 
