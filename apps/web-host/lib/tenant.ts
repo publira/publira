@@ -1,4 +1,5 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
+import type { TenantImageVariant as TenantImageVariantMessage } from "@publira/api-client/public/types";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
@@ -54,18 +55,23 @@ const trimmed = (value?: string): string | undefined => value?.trim();
 const nonEmpty = (value?: string): string | undefined =>
   value?.trim() || undefined;
 
+/**
+ * The generated `TenantImageVariant` fields {@link toTenantImageVariants} reads
+ * (see `catalog.ts`).
+ */
+type RawTenantImageVariant = Pick<
+  TenantImageVariantMessage,
+  | "contentType"
+  | "fileSizeBytes"
+  | "height"
+  | "label"
+  | "url"
+  | "variantType"
+  | "width"
+>;
+
 const toTenantImageVariants = (
-  variants:
-    | {
-        label?: string;
-        variantType?: string;
-        url?: string;
-        contentType?: string;
-        width?: number;
-        height?: number;
-        fileSizeBytes?: bigint | number;
-      }[]
-    | undefined
+  variants: RawTenantImageVariant[] | undefined
 ): TenantImageVariant[] | undefined => {
   const mapped = (variants ?? []).flatMap((variant) => {
     const mappedVariant = {

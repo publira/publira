@@ -5,6 +5,10 @@ import {
   isRpcError,
 } from "@publira/api-client/errors";
 import { EpisodeAccess } from "@publira/api-client/public/catalog";
+import type {
+  EpisodeImage,
+  SeriesEyeCatchVariant,
+} from "@publira/api-client/public/types";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
@@ -29,18 +33,26 @@ export interface EyeCatchImageVariant {
   fileSizeBytes: number;
 }
 
+/**
+ * The generated `SeriesEyeCatchVariant` fields {@link toEyeCatchImageVariants}
+ * reads. Naming them against the message type is what makes a proto rename fail
+ * here — a restated structural type keeps compiling, the empty string it
+ * substitutes fails the check below, and the page then renders its no-image
+ * placeholder with nothing pointing at the cause.
+ */
+type RawEyeCatchImageVariant = Pick<
+  SeriesEyeCatchVariant,
+  | "contentType"
+  | "fileSizeBytes"
+  | "height"
+  | "label"
+  | "url"
+  | "variantType"
+  | "width"
+>;
+
 export const toEyeCatchImageVariants = (
-  variants:
-    | {
-        variantType?: string;
-        label?: string;
-        url?: string;
-        contentType?: string;
-        width?: number;
-        height?: number;
-        fileSizeBytes?: bigint | number;
-      }[]
-    | undefined
+  variants: RawEyeCatchImageVariant[] | undefined
 ): EyeCatchImageVariant[] | undefined => {
   const mapped = (variants ?? []).flatMap((variant) => {
     const mappedVariant = {
@@ -176,18 +188,20 @@ export const toEpisodeAccessState = (
 export const isPublicEpisodeBody = (access: EpisodeAccessState): boolean =>
   access === "free";
 
+/** The generated `EpisodeImage` fields {@link mapEpisodeImages} reads. */
+type RawEpisodeImage = Pick<
+  EpisodeImage,
+  | "contentType"
+  | "displayOrder"
+  | "fileSizeBytes"
+  | "height"
+  | "id"
+  | "imageUrl"
+  | "width"
+>;
+
 const mapEpisodeImages = (
-  images:
-    | {
-        contentType?: string;
-        displayOrder?: number;
-        fileSizeBytes?: bigint | number;
-        height?: number;
-        id?: string;
-        imageUrl?: string;
-        width?: number;
-      }[]
-    | undefined
+  images: RawEpisodeImage[] | undefined
 ): EpisodeImageItem[] =>
   (images ?? [])
     .map((image) => ({

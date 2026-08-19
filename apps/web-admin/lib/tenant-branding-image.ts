@@ -1,3 +1,5 @@
+import type { TenantImageVariant } from "@publira/api-client/admin/types";
+
 /**
  * The theme's icon and logo arrive the way the eye-catch images do — the
  * image's `updated_at` plus its variants — rather than as a URL string. A
@@ -19,15 +21,23 @@ export interface TenantBrandingImage {
   variants: TenantBrandingImageVariant[];
 }
 
-interface RawTenantImageVariant {
-  label?: string;
-  variantType?: string;
-  url?: string;
-  contentType?: string;
-  width?: number;
-  height?: number;
-  fileSizeBytes?: bigint | number;
-}
+/**
+ * The generated `TenantImageVariant` fields {@link toVariants} reads. Naming
+ * them against the message type is what makes a proto rename fail here — a
+ * restated structural type keeps compiling, the empty string it substitutes
+ * fails the check below, and the card then reads as「未設定」with nothing
+ * pointing at the cause.
+ */
+type RawTenantImageVariant = Pick<
+  TenantImageVariant,
+  | "contentType"
+  | "fileSizeBytes"
+  | "height"
+  | "label"
+  | "url"
+  | "variantType"
+  | "width"
+>;
 
 const toVariants = (
   variants: RawTenantImageVariant[] | undefined

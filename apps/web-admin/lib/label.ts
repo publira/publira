@@ -1,3 +1,4 @@
+import type { Label } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
@@ -92,29 +93,19 @@ const mapErrorToMessage = (error: unknown, fallbackMessage: string): string =>
     "invalid-argument": invalidArgumentMessage(error),
   });
 
-const mapLabel = (label: {
-  publicId: string;
-  name: string;
-  eyeCatchImageUpdatedAt?: string;
-  eyeCatchImageVariants?: {
-    variantType?: string;
-    label?: string;
-    url?: string;
-    contentType?: string;
-    width?: number;
-    height?: number;
-    fileSizeBytes?: bigint | number;
-  }[];
-}): LabelItem => ({
+/** The generated `Label` fields {@link mapLabel} reads (see `series.ts`). */
+type RawLabel = Pick<
+  Label,
+  "eyeCatchImageUpdatedAt" | "eyeCatchImageVariants" | "name" | "publicId"
+>;
+
+const mapLabel = (label: RawLabel): LabelItem => ({
   eyeCatchImageUpdatedAt: label.eyeCatchImageUpdatedAt ?? "",
   eyeCatchImageVariants: (label.eyeCatchImageVariants ?? []).flatMap(
     (variant) => {
       const mappedVariant = {
         contentType: variant.contentType ?? "",
-        fileSizeBytes:
-          variant.fileSizeBytes === undefined
-            ? 0
-            : Number(variant.fileSizeBytes),
+        fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
         height: variant.height ?? 0,
         label: variant.label ?? "",
         url: variant.url ?? "",
