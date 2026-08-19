@@ -35,7 +35,7 @@ export const sharedCatalog = (locale?: Locale | string): SharedMessages =>
   CATALOGS[parseLocale(locale)];
 
 export const sharedMessage = (
-  key: MessageKey<SharedMessages> | string,
+  key: MessageKey<SharedMessages>,
   locale?: Locale | string
 ): string => getMessage(sharedCatalog(locale), key);
 
