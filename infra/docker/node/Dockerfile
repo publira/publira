@@ -69,8 +69,9 @@ RUN pnpm install --frozen-lockfile
 COPY --from=prepare /app/out/full/ .
 
 # The message catalogs live at the repository root, outside the pnpm workspace, so
-# `turbo prune` leaves them behind. @publira/email-templates imports them relatively
-# and bundles them into its dist, which is why they are only needed at build time.
+# `turbo prune` leaves them behind. @publira/email-templates and @publira/utils/catalog
+# import them relatively and bundle them into dist, which is why they are only
+# needed at build time.
 COPY --from=prepare /app/locales ./locales
 
 RUN pnpm turbo run build --filter="@publira/${APP_NAME}"

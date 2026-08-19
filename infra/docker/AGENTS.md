@@ -54,7 +54,7 @@ Dev Container is **out of scope** here: [`.devcontainer/Dockerfile`](../../.devc
 4. **No Docker `HEALTHCHECK`** on distroless runners (no shell/wget). Orchestrator probes for API / image-server / Web:
    - liveness `GET /livez`
    - readiness `GET /readyz`
-5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`).
+5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`). `turbo prune` does not carry repo-root assets; `@publira/utils/catalog` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
 6. **Node**: also `turbo prune --docker`, but there is no standalone output. The runner gets a `pnpm install --frozen-lockfile --prod` tree plus every workspace `dist/`; sources and dev dependencies stay in the builder, and the pack stage renames `apps/${APP_NAME}` to `apps/node` so the distroless `CMD` is a fixed path. Two consequences:
    - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.
    - `turbo prune` does not carry repo-root assets. `@publira/email-templates` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
