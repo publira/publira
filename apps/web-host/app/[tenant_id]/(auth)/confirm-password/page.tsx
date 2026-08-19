@@ -2,6 +2,7 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -17,6 +18,32 @@ import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 export const metadata: Metadata = {
   title: "新しいパスワード設定",
 };
+
+/**
+ * Cache Components streams the static shell first. An operable fallback
+ * with `token=""` would submit an empty token, or flash the invalid-link
+ * copy, before `searchParams` resolve (#994).
+ */
+const ConfirmPasswordFormSkeleton = () => (
+  <>
+    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-44" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <Skeleton className="mt-2 h-10 w-full" />
+      </div>
+    </div>
+    <div className="mt-4 flex justify-center">
+      <Skeleton className="h-4 w-40" />
+    </div>
+  </>
+);
 
 const ConfirmPasswordForm = async ({
   token,
@@ -140,7 +167,7 @@ const ConfirmPasswordPageContent = async ({
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
         ) : null}
       </div>
-      <Suspense fallback={<ConfirmPasswordForm token="" />}>
+      <Suspense fallback={<ConfirmPasswordFormSkeleton />}>
         <ConfirmPasswordFormContent searchParams={searchParams} />
       </Suspense>
     </div>
@@ -152,7 +179,7 @@ const ConfirmPasswordPageFallback = () => (
     <div className="mb-8 text-center">
       <h1 className="font-serif text-2xl font-semibold">サイト</h1>
     </div>
-    <ConfirmPasswordForm token="" />
+    <ConfirmPasswordFormSkeleton />
   </div>
 );
 

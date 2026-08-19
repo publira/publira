@@ -62,8 +62,8 @@ test.describe("web-host episode access", () => {
     await page.getByRole("link", { name: "ログインして閲覧する" }).click();
 
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
-    // The login shell streams a form whose hidden returnTo is "/" until
-    // searchParams resolve. Submitting that fallback lands on the catalog.
+    // The login shell is a non-interactive skeleton until searchParams
+    // resolve. Wait for the real form's returnTo, not the catalog default.
     await expect(page.locator('input[name="returnTo"]')).toHaveValue(
       paidEpisodePath
     );
