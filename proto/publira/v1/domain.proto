@@ -11,6 +11,9 @@ message GetTenantByDomainRequest {
 message GetTenantByDomainResponse {
   // Primary key (UUID) for internal routing / TenantContext.
   string tenant_id = 1;
+  // Resolved tenant default locale (ja, en) so the host proxy can pick a
+  // redirect in one round trip. Never empty.
+  string default_locale = 2;
 }
 
 service DomainService {

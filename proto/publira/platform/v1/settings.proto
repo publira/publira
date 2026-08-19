@@ -10,6 +10,9 @@ message PlatformSettings {
   // IANA time zone name (e.g. Asia/Tokyo, America/Los_Angeles, UTC) applied to
   // newly created tenants. Never empty in a response.
   string default_timezone = 1;
+  // UI locale code (ja, en) applied to newly created tenants. Never empty in a
+  // response.
+  string default_locale = 2;
 }
 
 message GetPlatformSettingsRequest {}
@@ -20,6 +23,9 @@ message GetPlatformSettingsResponse {
 
 message UpdatePlatformSettingsRequest {
   string default_timezone = 1;
+  // When non-empty, the platform default locale is replaced. Blank leaves the
+  // stored locale unchanged so a timezone-only save stays valid.
+  string default_locale = 2;
 }
 
 message UpdatePlatformSettingsResponse {

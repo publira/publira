@@ -107,5 +107,8 @@ func TestPlatformAuditorCanReadPlatformSettings(t *testing.T) {
 	if got := resp.Msg.GetSettings().GetDefaultTimezone(); got != "Asia/Tokyo" {
 		t.Fatalf("default_timezone = %q, want Asia/Tokyo", got)
 	}
+	if got := resp.Msg.GetSettings().GetDefaultLocale(); got != "ja" {
+		t.Fatalf("default_locale = %q, want ja", got)
+	}
 	assertIntegrationExpectations(t, mock)
 }

@@ -31,6 +31,7 @@ const (
 	getTenantThemeByTenantIDQuery                            = "-- name: GetTenantThemeByTenantID :one\n"
 	upsertTenantThemeQuery                                   = "-- name: UpsertTenantTheme :one\n"
 	updateTenantTimezoneQuery                                = "-- name: UpdateTenantTimezone :one\n"
+	updateTenantDefaultLocaleQuery                           = "-- name: UpdateTenantDefaultLocale :one\n"
 	listAccessTicketsForTenantAscQuery                       = "-- name: ListAccessTicketsForTenantAsc :many\n"
 	listAccessTicketsForTenantDescQuery                      = "-- name: ListAccessTicketsForTenantDesc :many\n"
 	listSeriesByTenantAscQuery                               = "-- name: ListSeriesByTenantAsc :many\n"
@@ -122,14 +123,22 @@ func tenantColumns() []string {
 }
 
 func expectTenantLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time) {
-	expectTenantLookupWithTimezone(mock, tenantID, publicID, now, "Asia/Tokyo")
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "Asia/Tokyo", "ja")
 }
 
 func expectTenantLookupWithTimezone(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone string) {
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, timezone, "ja")
+}
+
+func expectTenantLookupWithDefaultLocale(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, defaultLocale string) {
+	expectTenantLookupWithSettings(mock, tenantID, publicID, now, "Asia/Tokyo", defaultLocale)
+}
+
+func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, publicID string, now time.Time, timezone, defaultLocale string) {
 	mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, "ja"))
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
 }
 
 // issueTestAdminToken creates a signed JWT for admin API tests.

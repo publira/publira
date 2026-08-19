@@ -62,6 +62,7 @@ const (
 	// プラットフォーム全体設定
 	testGetPlatformConfigQuery             = "-- name: GetPlatformConfig :one\n"
 	testUpsertPlatformDefaultTimezoneQuery = "-- name: UpsertPlatformDefaultTimezone :one\n"
+	testUpsertPlatformDefaultLocaleQuery   = "-- name: UpsertPlatformDefaultLocale :one\n"
 
 	// エンドユーザー
 	testListEndUsersDescQuery           = "-- name: ListEndUsersDesc :many\n"

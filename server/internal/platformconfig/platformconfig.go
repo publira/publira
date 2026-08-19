@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	dbmodels "github.com/publira/publira/server/internal/db"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -16,28 +17,23 @@ type Querier interface {
 	GetPlatformConfig(ctx context.Context) (dbmodels.PlatformConfig, error)
 }
 
-// defaultLocale mirrors the tenants.default_locale and
-// platform_config.default_locale column defaults. It is the last resort when
-// the settings row cannot be read.
-const defaultLocale = "ja"
-
 // Defaults returns the platform-wide default time zone and locale from a
 // single read of the settings row. A missing or unreadable row (fresh
 // install, DB hiccup) falls back to the column defaults so callers always
 // get usable values instead of an unset state.
-func Defaults(ctx context.Context, q Querier) (timezone, locale string) {
-	timezone, locale = tenanttz.Default, defaultLocale
+func Defaults(ctx context.Context, q Querier) (timezone, defaultLocale string) {
+	timezone, defaultLocale = tenanttz.Default, locale.Default
 	config, err := q.GetPlatformConfig(ctx)
 	if err != nil {
-		return timezone, locale
+		return timezone, defaultLocale
 	}
 	if trimmed := strings.TrimSpace(config.DefaultTimezone); trimmed != "" {
 		timezone = trimmed
 	}
 	if trimmed := strings.TrimSpace(config.DefaultLocale); trimmed != "" {
-		locale = trimmed
+		defaultLocale = trimmed
 	}
-	return timezone, locale
+	return timezone, defaultLocale
 }
 
 // DefaultTimeZone returns the platform-wide default IANA time zone. The
@@ -54,8 +50,8 @@ func DefaultTimeZone(ctx context.Context, q Querier) string {
 // column default so callers always get a usable locale instead of an unset
 // state.
 func DefaultLocale(ctx context.Context, q Querier) string {
-	_, locale := Defaults(ctx, q)
-	return locale
+	_, defaultLocale := Defaults(ctx, q)
+	return defaultLocale
 }
 
 // DefaultTimeZoneFunc returns a lazy accessor for DefaultTimeZone. Read paths
@@ -63,13 +59,25 @@ func DefaultLocale(ctx context.Context, q Querier) string {
 // only consulted for a tenant row that has no usable time zone of its own: the
 // settings row is then read at most once, and only when that actually happens.
 func DefaultTimeZoneFunc(ctx context.Context, q Querier) func() string {
+	return lazyDefault(ctx, q, DefaultTimeZone)
+}
+
+// DefaultLocaleFunc returns a lazy accessor for DefaultLocale. Read paths
+// use it as the fallback of locale.Resolve, where the platform default is
+// only consulted for a tenant row that has no usable locale of its own: the
+// settings row is then read at most once, and only when that actually happens.
+func DefaultLocaleFunc(ctx context.Context, q Querier) func() string {
+	return lazyDefault(ctx, q, DefaultLocale)
+}
+
+func lazyDefault(ctx context.Context, q Querier, read func(context.Context, Querier) string) func() string {
 	var (
 		once  sync.Once
 		value string
 	)
 	return func() string {
 		once.Do(func() {
-			value = DefaultTimeZone(ctx, q)
+			value = read(ctx, q)
 		})
 		return value
 	}
