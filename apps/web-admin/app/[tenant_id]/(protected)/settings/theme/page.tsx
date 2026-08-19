@@ -18,10 +18,12 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
 import { SettingsTabNav } from "../_components/settings-tab-nav";
-import { TenantFaviconForm } from "../_components/tenant-favicon-form";
+import { TenantIconForm } from "../_components/tenant-icon-form";
+import { TenantLogoForm } from "../_components/tenant-logo-form";
 import { ThemeSettingsForm } from "../_components/theme-settings-form";
 import {
-  updateTenantFaviconAction,
+  updateTenantIconAction,
+  updateTenantLogoAction,
   updateTenantThemeSettingsAction,
 } from "../_lib/actions";
 
@@ -67,9 +69,13 @@ const SettingsThemeForms = async () => {
 
   return (
     <>
-      <TenantFaviconForm
-        action={updateTenantFaviconAction}
-        initialFaviconUrl={themeResult.faviconUrl}
+      <TenantLogoForm
+        action={updateTenantLogoAction}
+        initialLogo={themeResult.logo}
+      />
+      <TenantIconForm
+        action={updateTenantIconAction}
+        initialIcon={themeResult.icon}
       />
       <ThemeSettingsForm
         action={updateTenantThemeSettingsAction}
@@ -86,7 +92,7 @@ const SettingsThemePage = () => (
         <AdminPageEyebrow>Console</AdminPageEyebrow>
         <AdminPageTitle>設定</AdminPageTitle>
         <AdminPageDescription>
-          テナントごとのテーマカラーとファビコンを管理します。
+          テナントごとのテーマカラー、ロゴ、アイコンを管理します。
         </AdminPageDescription>
       </AdminPageHeading>
     </AdminPageHeader>

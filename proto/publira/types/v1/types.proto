@@ -89,11 +89,31 @@ message EpisodeImage {
   int32 height = 7;
 }
 
+// A stored tenant branding image, in the shape the eye-catch images already
+// use. `variant_type` names what the image is for — `logo` or `icon` — the
+// way the eye-catch variants name their aspect ratio; it is not a size. Sizes
+// are the image server's job: it resizes on request from the stored master.
+message TenantImageVariant {
+  string label = 1;
+  string url = 2;
+  string content_type = 3;
+  int32 width = 4;
+  int32 height = 5;
+  int64 file_size_bytes = 6;
+  string variant_type = 7;
+}
+
 message TenantTheme {
+  // 4 held `logo_url` and 29 held `icon_url`, single URL strings. Both are
+  // stored tenant images now and are carried the way `Series` carries its
+  // eye-catch — variants plus the image's `updated_at` — so the old names are
+  // reserved to keep a client from reading the new values as the old ones.
+  reserved 4, 29;
+  reserved "logo_url", "icon_url";
+
   string primary_color = 1;
   string secondary_color = 2;
   string accent_color = 3;
-  string logo_url = 4;
   string background_color = 5;
   string foreground_color = 6;
   string surface_color = 7;
@@ -118,11 +138,13 @@ message TenantTheme {
   string destructive_foreground_color = 26;
   string info_color = 27;
   string info_foreground_color = 28;
-  // Tenant favicon, uploaded and stored independently from logo_url. Empty
-  // when the tenant has not set one, which is what makes the public site fall
-  // back to the logo. Replacing the favicon stores a new image, so the URL
-  // itself changes and no separate cache-busting field is needed.
-  string favicon_url = 29;
+  // Tenant icon, uploaded and stored independently from the logo. The
+  // variant list is empty when the tenant has not set one.
+  string icon_image_updated_at = 30;
+  repeated TenantImageVariant icon_image_variants = 31;
+  // Tenant logo. The variant list is empty when the tenant has not set one.
+  string logo_image_updated_at = 32;
+  repeated TenantImageVariant logo_image_variants = 33;
 }
 
 message Page {

@@ -35,6 +35,16 @@ const tenantResponse = {
   timezone: "America/Los_Angeles",
 };
 
+const brandingVariant = (url: string) => ({
+  contentType: "image/png",
+  fileSizeBytes: 1024,
+  height: 64,
+  label: "original",
+  url,
+  variantType: "icon",
+  width: 64,
+});
+
 describe("tenant", () => {
   beforeEach(() => {
     mockGetTenant.mockReset();
@@ -51,23 +61,53 @@ describe("tenant", () => {
     expect(info?.timeZone).toBe("America/Los_Angeles");
   });
 
-  it("テナント favicon が設定されていればサイト情報から取得できる", async () => {
+  it("テナント icon が設定されていればバリアントを取得できる", async () => {
     mockGetTenant.mockResolvedValueOnce({
       ...tenantResponse,
-      theme: { faviconUrl: "/images/tenants/favicon-1" },
+      theme: {
+        iconImageUpdatedAt: "2026-08-19T00:00:00.000Z",
+        iconImageVariants: [brandingVariant("/images/tenants/icon-1")],
+      },
     });
 
     const info = await getTenantSiteInfo("TENANT_001");
 
-    expect(info?.faviconUrl).toBe("/images/tenants/favicon-1");
+    expect(info?.iconImageUpdatedAt).toBe("2026-08-19T00:00:00.000Z");
+    expect(info?.iconImageVariants).toEqual([
+      brandingVariant("/images/tenants/icon-1"),
+    ]);
   });
 
-  it("テナント favicon が未設定なら favicon の URL を持たない", async () => {
+  it("テナント icon が未設定ならバリアントを持たない", async () => {
     mockGetTenant.mockResolvedValueOnce(tenantResponse);
 
     const info = await getTenantSiteInfo("TENANT_001");
 
-    expect(info?.faviconUrl).toBeUndefined();
+    expect(info?.iconImageVariants).toBeUndefined();
+  });
+
+  it("テナントロゴが設定されていればバリアントを取得できる", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      theme: {
+        logoImageUpdatedAt: "2026-08-19T00:00:00.000Z",
+        logoImageVariants: [brandingVariant("/images/tenants/logo-1")],
+      },
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.logoImageVariants).toEqual([
+      brandingVariant("/images/tenants/logo-1"),
+    ]);
+  });
+
+  it("テナントロゴが未設定ならバリアントを持たない", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.logoImageVariants).toBeUndefined();
   });
 
   it("フィールドが空のときは既定タイムゾーンにフォールバックする", async () => {

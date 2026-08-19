@@ -742,12 +742,107 @@ func (x *EpisodeImage) GetHeight() int32 {
 	return 0
 }
 
+// A stored tenant branding image, in the shape the eye-catch images already
+// use. `variant_type` names what the image is for — `logo` or `icon` — the
+// way the eye-catch variants name their aspect ratio; it is not a size. Sizes
+// are the image server's job: it resizes on request from the stored master.
+type TenantImageVariant struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	ContentType   string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Width         int32                  `protobuf:"varint,4,opt,name=width,proto3" json:"width,omitempty"`
+	Height        int32                  `protobuf:"varint,5,opt,name=height,proto3" json:"height,omitempty"`
+	FileSizeBytes int64                  `protobuf:"varint,6,opt,name=file_size_bytes,json=fileSizeBytes,proto3" json:"file_size_bytes,omitempty"`
+	VariantType   string                 `protobuf:"bytes,7,opt,name=variant_type,json=variantType,proto3" json:"variant_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantImageVariant) Reset() {
+	*x = TenantImageVariant{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantImageVariant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantImageVariant) ProtoMessage() {}
+
+func (x *TenantImageVariant) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantImageVariant.ProtoReflect.Descriptor instead.
+func (*TenantImageVariant) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *TenantImageVariant) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *TenantImageVariant) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *TenantImageVariant) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *TenantImageVariant) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *TenantImageVariant) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *TenantImageVariant) GetFileSizeBytes() int64 {
+	if x != nil {
+		return x.FileSizeBytes
+	}
+	return 0
+}
+
+func (x *TenantImageVariant) GetVariantType() string {
+	if x != nil {
+		return x.VariantType
+	}
+	return ""
+}
+
 type TenantTheme struct {
 	state                      protoimpl.MessageState `protogen:"open.v1"`
 	PrimaryColor               string                 `protobuf:"bytes,1,opt,name=primary_color,json=primaryColor,proto3" json:"primary_color,omitempty"`
 	SecondaryColor             string                 `protobuf:"bytes,2,opt,name=secondary_color,json=secondaryColor,proto3" json:"secondary_color,omitempty"`
 	AccentColor                string                 `protobuf:"bytes,3,opt,name=accent_color,json=accentColor,proto3" json:"accent_color,omitempty"`
-	LogoUrl                    string                 `protobuf:"bytes,4,opt,name=logo_url,json=logoUrl,proto3" json:"logo_url,omitempty"`
 	BackgroundColor            string                 `protobuf:"bytes,5,opt,name=background_color,json=backgroundColor,proto3" json:"background_color,omitempty"`
 	ForegroundColor            string                 `protobuf:"bytes,6,opt,name=foreground_color,json=foregroundColor,proto3" json:"foreground_color,omitempty"`
 	SurfaceColor               string                 `protobuf:"bytes,7,opt,name=surface_color,json=surfaceColor,proto3" json:"surface_color,omitempty"`
@@ -772,18 +867,20 @@ type TenantTheme struct {
 	DestructiveForegroundColor string                 `protobuf:"bytes,26,opt,name=destructive_foreground_color,json=destructiveForegroundColor,proto3" json:"destructive_foreground_color,omitempty"`
 	InfoColor                  string                 `protobuf:"bytes,27,opt,name=info_color,json=infoColor,proto3" json:"info_color,omitempty"`
 	InfoForegroundColor        string                 `protobuf:"bytes,28,opt,name=info_foreground_color,json=infoForegroundColor,proto3" json:"info_foreground_color,omitempty"`
-	// Tenant favicon, uploaded and stored independently from logo_url. Empty
-	// when the tenant has not set one, which is what makes the public site fall
-	// back to the logo. Replacing the favicon stores a new image, so the URL
-	// itself changes and no separate cache-busting field is needed.
-	FaviconUrl    string `protobuf:"bytes,29,opt,name=favicon_url,json=faviconUrl,proto3" json:"favicon_url,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Tenant icon, uploaded and stored independently from the logo. The
+	// variant list is empty when the tenant has not set one.
+	IconImageUpdatedAt string                `protobuf:"bytes,30,opt,name=icon_image_updated_at,json=iconImageUpdatedAt,proto3" json:"icon_image_updated_at,omitempty"`
+	IconImageVariants  []*TenantImageVariant `protobuf:"bytes,31,rep,name=icon_image_variants,json=iconImageVariants,proto3" json:"icon_image_variants,omitempty"`
+	// Tenant logo. The variant list is empty when the tenant has not set one.
+	LogoImageUpdatedAt string                `protobuf:"bytes,32,opt,name=logo_image_updated_at,json=logoImageUpdatedAt,proto3" json:"logo_image_updated_at,omitempty"`
+	LogoImageVariants  []*TenantImageVariant `protobuf:"bytes,33,rep,name=logo_image_variants,json=logoImageVariants,proto3" json:"logo_image_variants,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TenantTheme) Reset() {
 	*x = TenantTheme{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[9]
+	mi := &file_publira_types_v1_types_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -795,7 +892,7 @@ func (x *TenantTheme) String() string {
 func (*TenantTheme) ProtoMessage() {}
 
 func (x *TenantTheme) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[9]
+	mi := &file_publira_types_v1_types_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +905,7 @@ func (x *TenantTheme) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantTheme.ProtoReflect.Descriptor instead.
 func (*TenantTheme) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TenantTheme) GetPrimaryColor() string {
@@ -828,13 +925,6 @@ func (x *TenantTheme) GetSecondaryColor() string {
 func (x *TenantTheme) GetAccentColor() string {
 	if x != nil {
 		return x.AccentColor
-	}
-	return ""
-}
-
-func (x *TenantTheme) GetLogoUrl() string {
-	if x != nil {
-		return x.LogoUrl
 	}
 	return ""
 }
@@ -1007,11 +1097,32 @@ func (x *TenantTheme) GetInfoForegroundColor() string {
 	return ""
 }
 
-func (x *TenantTheme) GetFaviconUrl() string {
+func (x *TenantTheme) GetIconImageUpdatedAt() string {
 	if x != nil {
-		return x.FaviconUrl
+		return x.IconImageUpdatedAt
 	}
 	return ""
+}
+
+func (x *TenantTheme) GetIconImageVariants() []*TenantImageVariant {
+	if x != nil {
+		return x.IconImageVariants
+	}
+	return nil
+}
+
+func (x *TenantTheme) GetLogoImageUpdatedAt() string {
+	if x != nil {
+		return x.LogoImageUpdatedAt
+	}
+	return ""
+}
+
+func (x *TenantTheme) GetLogoImageVariants() []*TenantImageVariant {
+	if x != nil {
+		return x.LogoImageVariants
+	}
+	return nil
 }
 
 type Page struct {
@@ -1029,7 +1140,7 @@ type Page struct {
 
 func (x *Page) Reset() {
 	*x = Page{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[10]
+	mi := &file_publira_types_v1_types_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1041,7 +1152,7 @@ func (x *Page) String() string {
 func (*Page) ProtoMessage() {}
 
 func (x *Page) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[10]
+	mi := &file_publira_types_v1_types_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1054,7 +1165,7 @@ func (x *Page) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Page.ProtoReflect.Descriptor instead.
 func (*Page) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{10}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Page) GetId() string {
@@ -1123,7 +1234,7 @@ type PageVersion struct {
 
 func (x *PageVersion) Reset() {
 	*x = PageVersion{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[11]
+	mi := &file_publira_types_v1_types_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1135,7 +1246,7 @@ func (x *PageVersion) String() string {
 func (*PageVersion) ProtoMessage() {}
 
 func (x *PageVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[11]
+	mi := &file_publira_types_v1_types_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1148,7 +1259,7 @@ func (x *PageVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageVersion.ProtoReflect.Descriptor instead.
 func (*PageVersion) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *PageVersion) GetId() string {
@@ -1279,13 +1390,19 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x0ffile_size_bytes\x18\x04 \x01(\x03R\rfileSizeBytes\x12#\n" +
 	"\rdisplay_order\x18\x05 \x01(\x05R\fdisplayOrder\x12\x14\n" +
 	"\x05width\x18\x06 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\a \x01(\x05R\x06height\"\x8b\n" +
-	"\n" +
+	"\x06height\x18\a \x01(\x05R\x06height\"\xd8\x01\n" +
+	"\x12TenantImageVariant\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12!\n" +
+	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12\x14\n" +
+	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x05 \x01(\x05R\x06height\x12&\n" +
+	"\x0ffile_size_bytes\x18\x06 \x01(\x03R\rfileSizeBytes\x12!\n" +
+	"\fvariant_type\x18\a \x01(\tR\vvariantType\"\x81\f\n" +
 	"\vTenantTheme\x12#\n" +
 	"\rprimary_color\x18\x01 \x01(\tR\fprimaryColor\x12'\n" +
 	"\x0fsecondary_color\x18\x02 \x01(\tR\x0esecondaryColor\x12!\n" +
-	"\faccent_color\x18\x03 \x01(\tR\vaccentColor\x12\x19\n" +
-	"\blogo_url\x18\x04 \x01(\tR\alogoUrl\x12)\n" +
+	"\faccent_color\x18\x03 \x01(\tR\vaccentColor\x12)\n" +
 	"\x10background_color\x18\x05 \x01(\tR\x0fbackgroundColor\x12)\n" +
 	"\x10foreground_color\x18\x06 \x01(\tR\x0fforegroundColor\x12#\n" +
 	"\rsurface_color\x18\a \x01(\tR\fsurfaceColor\x128\n" +
@@ -1315,9 +1432,11 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1cdestructive_foreground_color\x18\x1a \x01(\tR\x1adestructiveForegroundColor\x12\x1d\n" +
 	"\n" +
 	"info_color\x18\x1b \x01(\tR\tinfoColor\x122\n" +
-	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColor\x12\x1f\n" +
-	"\vfavicon_url\x18\x1d \x01(\tR\n" +
-	"faviconUrl\"\xdc\x01\n" +
+	"\x15info_foreground_color\x18\x1c \x01(\tR\x13infoForegroundColor\x121\n" +
+	"\x15icon_image_updated_at\x18\x1e \x01(\tR\x12iconImageUpdatedAt\x12T\n" +
+	"\x13icon_image_variants\x18\x1f \x03(\v2$.publira.types.v1.TenantImageVariantR\x11iconImageVariants\x121\n" +
+	"\x15logo_image_updated_at\x18  \x01(\tR\x12logoImageUpdatedAt\x12T\n" +
+	"\x13logo_image_variants\x18! \x03(\v2$.publira.types.v1.TenantImageVariantR\x11logoImageVariantsJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xdc\x01\n" +
 	"\x04Page\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
@@ -1353,7 +1472,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(*TenantContext)(nil),         // 0: publira.types.v1.TenantContext
 	(*User)(nil),                  // 1: publira.types.v1.User
@@ -1364,20 +1483,23 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*Series)(nil),                // 6: publira.types.v1.Series
 	(*Episode)(nil),               // 7: publira.types.v1.Episode
 	(*EpisodeImage)(nil),          // 8: publira.types.v1.EpisodeImage
-	(*TenantTheme)(nil),           // 9: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 10: publira.types.v1.Page
-	(*PageVersion)(nil),           // 11: publira.types.v1.PageVersion
+	(*TenantImageVariant)(nil),    // 9: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 10: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 11: publira.types.v1.Page
+	(*PageVersion)(nil),           // 12: publira.types.v1.PageVersion
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	5, // 0: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	4, // 1: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
 	3, // 2: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
 	5, // 3: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	9, // 4: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	9, // 5: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -1391,7 +1513,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

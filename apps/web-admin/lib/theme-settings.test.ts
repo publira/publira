@@ -3,17 +3,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockCacheTag,
-  mockDeleteTenantFaviconApi,
+  mockDeleteTenantIconApi,
+  mockDeleteTenantLogoApi,
   mockGetSessionId,
   mockGetTenantThemeApi,
-  mockUploadTenantFaviconApi,
+  mockUploadTenantIconApi,
+  mockUploadTenantLogoApi,
   mockUpsertTenantThemeApi,
 } = vi.hoisted(() => ({
   mockCacheTag: vi.fn(),
-  mockDeleteTenantFaviconApi: vi.fn(),
+  mockDeleteTenantIconApi: vi.fn(),
+  mockDeleteTenantLogoApi: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockGetTenantThemeApi: vi.fn(),
-  mockUploadTenantFaviconApi: vi.fn(),
+  mockUploadTenantIconApi: vi.fn(),
+  mockUploadTenantLogoApi: vi.fn(),
   mockUpsertTenantThemeApi: vi.fn(),
 }));
 
@@ -28,13 +32,57 @@ vi.mock("./session", () => ({
 vi.mock("@publira/api-client/admin/client", () => ({
   createAdminApiClient: () => ({
     theme: {
-      deleteTenantFavicon: mockDeleteTenantFaviconApi,
+      deleteTenantIcon: mockDeleteTenantIconApi,
+      deleteTenantLogo: mockDeleteTenantLogoApi,
       getTenantTheme: mockGetTenantThemeApi,
-      uploadTenantFavicon: mockUploadTenantFaviconApi,
+      uploadTenantIcon: mockUploadTenantIconApi,
+      uploadTenantLogo: mockUploadTenantLogoApi,
       upsertTenantTheme: mockUpsertTenantThemeApi,
     },
   }),
 }));
+
+const brandingImageUpdatedAt = "2026-08-19T00:00:00.000Z";
+
+/**
+ * `file_size_bytes` is an int64, so the wire value is a `bigint` and the mapper
+ * is what narrows it. A fixture that already held a `number` on both sides
+ * never ran that conversion. (`BigInt(...)` rather than `1024n`: the app's
+ * TypeScript target is ES2017, which has no bigint literal.)
+ */
+const brandingImageFileSizeBytes = 1024;
+
+const brandingVariant = (variantType: string) => ({
+  contentType: "image/png",
+  height: 64,
+  label: "original",
+  variantType,
+  width: 64,
+});
+
+/** The API answer for a stored branding image, with the URL the server built. */
+const storedImageResponse = (url: string, variantType: string) => ({
+  updatedAt: brandingImageUpdatedAt,
+  variants: [
+    {
+      ...brandingVariant(variantType),
+      fileSizeBytes: BigInt(brandingImageFileSizeBytes),
+      url,
+    },
+  ],
+});
+
+/** What the mapper has to produce from it. */
+const storedImage = (url: string, variantType: string) => ({
+  updatedAt: brandingImageUpdatedAt,
+  variants: [
+    {
+      ...brandingVariant(variantType),
+      fileSizeBytes: brandingImageFileSizeBytes,
+      url,
+    },
+  ],
+});
 
 const fullTheme = {
   accentColor: "#7aae90",
@@ -80,7 +128,12 @@ describe("theme-settings", () => {
 
     const result = await getTenantThemeSettings("TENANT001");
 
-    expect(result).toEqual({ faviconUrl: "", ok: true, theme: fullTheme });
+    expect(result).toEqual({
+      icon: null,
+      logo: null,
+      ok: true,
+      theme: fullTheme,
+    });
 
     expect(mockCacheTag).toHaveBeenCalledWith(
       "tenant:TENANT001:theme-settings"
@@ -140,15 +193,21 @@ describe("theme-settings", () => {
     });
 
     expect(result).toEqual({
-      faviconUrl: "",
+      icon: null,
+      logo: null,
       ok: true,
       theme: updatedTheme,
     });
   });
 
-  it("favicon が設定されている場合はその URL も返す", async () => {
+  it("icon が設定されている場合はそのバリアントも返す", async () => {
+    const stored = storedImageResponse("/images/tenants/icon-1", "icon");
     mockGetTenantThemeApi.mockResolvedValueOnce({
-      theme: { ...fullTheme, faviconUrl: "/images/tenants/favicon-1" },
+      theme: {
+        ...fullTheme,
+        iconImageUpdatedAt: stored.updatedAt,
+        iconImageVariants: stored.variants,
+      },
     });
 
     const { getTenantThemeSettings } = await import("./theme-settings");
@@ -156,73 +215,194 @@ describe("theme-settings", () => {
     const result = await getTenantThemeSettings("TENANT001");
 
     expect(result).toEqual({
-      faviconUrl: "/images/tenants/favicon-1",
+      icon: storedImage("/images/tenants/icon-1", "icon"),
+      logo: null,
       ok: true,
       theme: fullTheme,
     });
   });
 
-  it("favicon をアップロードすると保存後の URL を返す", async () => {
-    mockUploadTenantFaviconApi.mockResolvedValueOnce({
-      theme: { ...fullTheme, faviconUrl: "/images/tenants/favicon-2" },
+  it("寸法のないバリアントは未設定として扱う", async () => {
+    // プレビューは保存時の width / height でレイアウトするため、寸法のない
+    // バリアントを通すと 0x0 の見えない画像になる。未設定として扱う。
+    const stored = storedImageResponse("/images/tenants/icon-1", "icon");
+    mockGetTenantThemeApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        iconImageUpdatedAt: stored.updatedAt,
+        iconImageVariants: [{ ...stored.variants[0], height: 0, width: 0 }],
+      },
     });
 
-    const { uploadTenantFavicon } = await import("./theme-settings");
+    const { getTenantThemeSettings } = await import("./theme-settings");
 
-    const faviconData = new Uint8Array([1, 2, 3]);
-    const result = await uploadTenantFavicon({
-      faviconContentType: "image/png",
-      faviconData,
+    const result = await getTenantThemeSettings("TENANT001");
+
+    expect(result).toEqual({
+      icon: null,
+      logo: null,
+      ok: true,
+      theme: fullTheme,
+    });
+  });
+
+  it("icon をアップロードすると保存後のバリアントを返す", async () => {
+    const stored = storedImageResponse("/images/tenants/icon-2", "icon");
+    mockUploadTenantIconApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        iconImageUpdatedAt: stored.updatedAt,
+        iconImageVariants: stored.variants,
+      },
+    });
+
+    const { uploadTenantIcon } = await import("./theme-settings");
+
+    const iconData = new Uint8Array([1, 2, 3]);
+    const result = await uploadTenantIcon({
+      iconContentType: "image/png",
+      iconData,
       tenantId: "TENANT001",
     });
 
     expect(result).toEqual({
-      faviconUrl: "/images/tenants/favicon-2",
+      icon: storedImage("/images/tenants/icon-2", "icon"),
       ok: true,
     });
-    expect(mockUploadTenantFaviconApi).toHaveBeenCalledWith(
+    expect(mockUploadTenantIconApi).toHaveBeenCalledWith(
       {
-        faviconContentType: "image/png",
-        faviconData,
+        iconContentType: "image/png",
+        iconData,
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
 
-  it("favicon の削除に成功した場合は空の URL を返す", async () => {
-    mockDeleteTenantFaviconApi.mockResolvedValueOnce({ theme: fullTheme });
+  it("icon の削除に成功した場合はバリアントなしを返す", async () => {
+    mockDeleteTenantIconApi.mockResolvedValueOnce({ theme: fullTheme });
 
-    const { deleteTenantFavicon } = await import("./theme-settings");
+    const { deleteTenantIcon } = await import("./theme-settings");
 
-    const result = await deleteTenantFavicon("TENANT001");
+    const result = await deleteTenantIcon("TENANT001");
 
-    expect(result).toEqual({ faviconUrl: "", ok: true });
-    expect(mockDeleteTenantFaviconApi).toHaveBeenCalledWith(
+    expect(result).toEqual({ icon: null, ok: true });
+    expect(mockDeleteTenantIconApi).toHaveBeenCalledWith(
       { tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
 
-  it("favicon が拒否されてもサーバの英文はそのまま出さない", async () => {
-    mockUploadTenantFaviconApi.mockRejectedValueOnce(
+  it("icon が拒否されてもサーバの英文はそのまま出さない", async () => {
+    mockUploadTenantIconApi.mockRejectedValueOnce(
       new ConnectError(
-        "favicon image must be at least 32x32",
+        "icon image must be at least 32x32",
         Code.InvalidArgument
       )
     );
 
-    const { uploadTenantFavicon } = await import("./theme-settings");
+    const { uploadTenantIcon } = await import("./theme-settings");
 
-    const result = await uploadTenantFavicon({
-      faviconContentType: "image/png",
-      faviconData: new Uint8Array([1]),
+    const result = await uploadTenantIcon({
+      iconContentType: "image/png",
+      iconData: new Uint8Array([1]),
       tenantId: "TENANT001",
     });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.message).not.toContain("favicon image must be at least");
+      expect(result.message).not.toContain("icon image must be at least");
+    }
+  });
+
+  it("ロゴが設定されている場合はそのバリアントも返す", async () => {
+    const stored = storedImageResponse("/images/tenants/logo-1", "logo");
+    mockGetTenantThemeApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        logoImageUpdatedAt: stored.updatedAt,
+        logoImageVariants: stored.variants,
+      },
+    });
+
+    const { getTenantThemeSettings } = await import("./theme-settings");
+
+    const result = await getTenantThemeSettings("TENANT001");
+
+    expect(result).toEqual({
+      icon: null,
+      logo: storedImage("/images/tenants/logo-1", "logo"),
+      ok: true,
+      theme: fullTheme,
+    });
+  });
+
+  it("ロゴをアップロードすると保存後のバリアントを返す", async () => {
+    const stored = storedImageResponse("/images/tenants/logo-2", "logo");
+    mockUploadTenantLogoApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        logoImageUpdatedAt: stored.updatedAt,
+        logoImageVariants: stored.variants,
+      },
+    });
+
+    const { uploadTenantLogo } = await import("./theme-settings");
+
+    const logoData = new Uint8Array([1, 2, 3]);
+    const result = await uploadTenantLogo({
+      logoContentType: "image/png",
+      logoData,
+      tenantId: "TENANT001",
+    });
+
+    expect(result).toEqual({
+      logo: storedImage("/images/tenants/logo-2", "logo"),
+      ok: true,
+    });
+    expect(mockUploadTenantLogoApi).toHaveBeenCalledWith(
+      {
+        logoContentType: "image/png",
+        logoData,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("ロゴの削除に成功した場合はバリアントなしを返す", async () => {
+    mockDeleteTenantLogoApi.mockResolvedValueOnce({ theme: fullTheme });
+
+    const { deleteTenantLogo } = await import("./theme-settings");
+
+    const result = await deleteTenantLogo("TENANT001");
+
+    expect(result).toEqual({ logo: null, ok: true });
+    expect(mockDeleteTenantLogoApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("ロゴが拒否されてもサーバの英文はそのまま出さない", async () => {
+    mockUploadTenantLogoApi.mockRejectedValueOnce(
+      new ConnectError(
+        "logo image must be at least 32x32",
+        Code.InvalidArgument
+      )
+    );
+
+    const { uploadTenantLogo } = await import("./theme-settings");
+
+    const result = await uploadTenantLogo({
+      logoContentType: "image/png",
+      logoData: new Uint8Array([1]),
+      tenantId: "TENANT001",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).not.toContain("logo image must be at least");
     }
   });
 });

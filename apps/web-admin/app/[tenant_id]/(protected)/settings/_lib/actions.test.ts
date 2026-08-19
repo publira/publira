@@ -1,17 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockDeleteTenantFavicon,
+  mockDeleteTenantIcon,
+  mockDeleteTenantLogo,
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantTimezone,
-  mockUploadTenantFavicon,
+  mockUploadTenantIcon,
+  mockUploadTenantLogo,
 } = vi.hoisted(() => ({
-  mockDeleteTenantFavicon: vi.fn(),
+  mockDeleteTenantIcon: vi.fn(),
+  mockDeleteTenantLogo: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
-  mockUploadTenantFavicon: vi.fn(),
+  mockUploadTenantIcon: vi.fn(),
+  mockUploadTenantLogo: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -41,11 +45,13 @@ vi.mock("#lib/tenant-timezone", () => ({
 }));
 
 vi.mock("#lib/theme-settings", () => ({
-  deleteTenantFavicon: mockDeleteTenantFavicon,
+  deleteTenantIcon: mockDeleteTenantIcon,
+  deleteTenantLogo: mockDeleteTenantLogo,
   tenantThemeCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:theme-settings`,
   updateTenantThemeSettings: vi.fn(),
-  uploadTenantFavicon: mockUploadTenantFavicon,
+  uploadTenantIcon: mockUploadTenantIcon,
+  uploadTenantLogo: mockUploadTenantLogo,
 }));
 
 const timezoneFormData = (values: Record<string, string>): FormData => {
@@ -187,7 +193,7 @@ describe("updateTenantTimezoneAction", () => {
   });
 });
 
-const faviconFormData = (
+const iconFormData = (
   values: Record<string, string>,
   file?: File
 ): FormData => {
@@ -196,13 +202,28 @@ const faviconFormData = (
     formData.set(name, value);
   }
   if (file) {
-    formData.set("favicon", file);
+    formData.set("icon", file);
   }
   return formData;
 };
 
+const storedImage = (url: string) => ({
+  updatedAt: "2026-08-19T00:00:00.000Z",
+  variants: [
+    {
+      contentType: "image/png",
+      fileSizeBytes: 1024,
+      height: 64,
+      label: "original",
+      url,
+      variantType: "icon",
+      width: 64,
+    },
+  ],
+});
+
 const pngFile = () =>
-  new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "favicon.png", {
+  new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "icon.png", {
     type: "image/png",
   });
 
@@ -213,7 +234,7 @@ const oversizedPngFile = () => {
   return file;
 };
 
-describe("updateTenantFaviconAction", () => {
+describe("updateTenantIconAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -221,26 +242,26 @@ describe("updateTenantFaviconAction", () => {
   });
 
   it("選択された画像をアップロードし、公開サイトと設定画面のキャッシュを更新する", async () => {
-    mockUploadTenantFavicon.mockResolvedValueOnce({
-      faviconUrl: "/images/tenants/favicon-1",
+    mockUploadTenantIcon.mockResolvedValueOnce({
+      icon: storedImage("/images/tenants/icon-1"),
       ok: true,
     });
 
-    const { updateTenantFaviconAction } = await import("./actions");
+    const { updateTenantIconAction } = await import("./actions");
 
-    const result = await updateTenantFaviconAction(
+    const result = await updateTenantIconAction(
       null,
-      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
+      iconFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
     );
 
     expect(result).toEqual({
-      faviconUrl: "/images/tenants/favicon-1",
-      message: "ファビコンを保存しました。",
+      icon: storedImage("/images/tenants/icon-1"),
+      message: "アイコンを保存しました。",
       ok: true,
     });
-    expect(mockUploadTenantFavicon).toHaveBeenCalledWith({
-      faviconContentType: "image/png",
-      faviconData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    expect(mockUploadTenantIcon).toHaveBeenCalledWith({
+      iconContentType: "image/png",
+      iconData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
       tenantId: "TENANT001",
     });
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
@@ -250,40 +271,37 @@ describe("updateTenantFaviconAction", () => {
   });
 
   it("削除では画像を送らずに削除 API を呼ぶ", async () => {
-    mockDeleteTenantFavicon.mockResolvedValueOnce({
-      faviconUrl: "",
-      ok: true,
-    });
+    mockDeleteTenantIcon.mockResolvedValueOnce({ icon: null, ok: true });
 
-    const { updateTenantFaviconAction } = await import("./actions");
+    const { updateTenantIconAction } = await import("./actions");
 
-    const result = await updateTenantFaviconAction(
+    const result = await updateTenantIconAction(
       null,
-      faviconFormData({ intent: "delete", tenant_id: "TENANT001" })
+      iconFormData({ intent: "delete", tenant_id: "TENANT001" })
     );
 
     expect(result).toEqual({
-      faviconUrl: "",
-      message: "ファビコンを削除しました。",
+      icon: null,
+      message: "アイコンを削除しました。",
       ok: true,
     });
-    expect(mockDeleteTenantFavicon).toHaveBeenCalledWith("TENANT001");
-    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+    expect(mockDeleteTenantIcon).toHaveBeenCalledWith("TENANT001");
+    expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
   it("画像を選ばずにアップロードした場合は API を呼ばない", async () => {
-    const { updateTenantFaviconAction } = await import("./actions");
+    const { updateTenantIconAction } = await import("./actions");
 
-    const result = await updateTenantFaviconAction(
+    const result = await updateTenantIconAction(
       null,
-      faviconFormData({ intent: "upload", tenant_id: "TENANT001" })
+      iconFormData({ intent: "upload", tenant_id: "TENANT001" })
     );
 
     expect(result).toEqual({
       message: "画像ファイルを選択してください。",
       ok: false,
     });
-    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+    expect(mockUploadTenantIcon).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
@@ -291,11 +309,11 @@ describe("updateTenantFaviconAction", () => {
     const file = oversizedPngFile();
     const arrayBuffer = vi.spyOn(file, "arrayBuffer");
 
-    const { updateTenantFaviconAction } = await import("./actions");
+    const { updateTenantIconAction } = await import("./actions");
 
-    const result = await updateTenantFaviconAction(
+    const result = await updateTenantIconAction(
       null,
-      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+      iconFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
     );
 
     expect(result).toEqual({
@@ -303,43 +321,187 @@ describe("updateTenantFaviconAction", () => {
       ok: false,
     });
     expect(arrayBuffer).not.toHaveBeenCalled();
-    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+    expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
   it("受け付けない MIME type のファイルは拒否する", async () => {
-    const file = new File([new Uint8Array([1])], "favicon.svg", {
+    const file = new File([new Uint8Array([1])], "icon.svg", {
       type: "image/svg+xml",
     });
 
-    const { updateTenantFaviconAction } = await import("./actions");
+    const { updateTenantIconAction } = await import("./actions");
 
-    const result = await updateTenantFaviconAction(
+    const result = await updateTenantIconAction(
       null,
-      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+      iconFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
     );
 
     expect(result).toEqual({
       message: "JPEG / PNG / WebP の画像を選択してください。",
       ok: false,
     });
-    expect(mockUploadTenantFavicon).not.toHaveBeenCalled();
+    expect(mockUploadTenantIcon).not.toHaveBeenCalled();
   });
 
   it("アップロードに失敗した場合はキャッシュを更新しない", async () => {
-    mockUploadTenantFavicon.mockResolvedValueOnce({
-      message: "ファビコンのアップロードに失敗しました。",
+    mockUploadTenantIcon.mockResolvedValueOnce({
+      message: "アイコンのアップロードに失敗しました。",
       ok: false,
     });
 
-    const { updateTenantFaviconAction } = await import("./actions");
+    const { updateTenantIconAction } = await import("./actions");
 
-    const result = await updateTenantFaviconAction(
+    const result = await updateTenantIconAction(
       null,
-      faviconFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
+      iconFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
     );
 
     expect(result).toEqual({
-      message: "ファビコンのアップロードに失敗しました。",
+      message: "アイコンのアップロードに失敗しました。",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const logoFormData = (
+  values: Record<string, string>,
+  file?: File
+): FormData => {
+  const formData = new FormData();
+  for (const [name, value] of Object.entries(values)) {
+    formData.set(name, value);
+  }
+  if (file) {
+    formData.set("logo", file);
+  }
+  return formData;
+};
+
+describe("updateTenantLogoAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("選択された画像をアップロードし、公開サイトと設定画面のキャッシュを更新する", async () => {
+    mockUploadTenantLogo.mockResolvedValueOnce({
+      logo: storedImage("/images/tenants/logo-1"),
+      ok: true,
+    });
+
+    const { updateTenantLogoAction } = await import("./actions");
+
+    const result = await updateTenantLogoAction(
+      null,
+      logoFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
+    );
+
+    expect(result).toEqual({
+      logo: storedImage("/images/tenants/logo-1"),
+      message: "ロゴを保存しました。",
+      ok: true,
+    });
+    expect(mockUploadTenantLogo).toHaveBeenCalledWith({
+      logoContentType: "image/png",
+      logoData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+      tenantId: "TENANT001",
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
+  });
+
+  it("削除では画像を送らずに削除 API を呼ぶ", async () => {
+    mockDeleteTenantLogo.mockResolvedValueOnce({ logo: null, ok: true });
+
+    const { updateTenantLogoAction } = await import("./actions");
+
+    const result = await updateTenantLogoAction(
+      null,
+      logoFormData({ intent: "delete", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      logo: null,
+      message: "ロゴを削除しました。",
+      ok: true,
+    });
+    expect(mockDeleteTenantLogo).toHaveBeenCalledWith("TENANT001");
+    expect(mockUploadTenantLogo).not.toHaveBeenCalled();
+  });
+
+  it("画像を選ばずにアップロードした場合は API を呼ばない", async () => {
+    const { updateTenantLogoAction } = await import("./actions");
+
+    const result = await updateTenantLogoAction(
+      null,
+      logoFormData({ intent: "upload", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "画像ファイルを選択してください。",
+      ok: false,
+    });
+    expect(mockUploadTenantLogo).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("上限を超えるファイルは読み込まずに拒否する", async () => {
+    const file = oversizedPngFile();
+    const arrayBuffer = vi.spyOn(file, "arrayBuffer");
+
+    const { updateTenantLogoAction } = await import("./actions");
+
+    const result = await updateTenantLogoAction(
+      null,
+      logoFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+    );
+
+    expect(result).toEqual({
+      message: "画像は 10MB 以下にしてください。",
+      ok: false,
+    });
+    expect(arrayBuffer).not.toHaveBeenCalled();
+    expect(mockUploadTenantLogo).not.toHaveBeenCalled();
+  });
+
+  it("受け付けない MIME type のファイルは拒否する", async () => {
+    const file = new File([new Uint8Array([1])], "logo.svg", {
+      type: "image/svg+xml",
+    });
+
+    const { updateTenantLogoAction } = await import("./actions");
+
+    const result = await updateTenantLogoAction(
+      null,
+      logoFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+    );
+
+    expect(result).toEqual({
+      message: "JPEG / PNG / WebP の画像を選択してください。",
+      ok: false,
+    });
+    expect(mockUploadTenantLogo).not.toHaveBeenCalled();
+  });
+
+  it("アップロードに失敗した場合はキャッシュを更新しない", async () => {
+    mockUploadTenantLogo.mockResolvedValueOnce({
+      message: "ロゴのアップロードに失敗しました。",
+      ok: false,
+    });
+
+    const { updateTenantLogoAction } = await import("./actions");
+
+    const result = await updateTenantLogoAction(
+      null,
+      logoFormData({ intent: "upload", tenant_id: "TENANT001" }, pngFile())
+    );
+
+    expect(result).toEqual({
+      message: "ロゴのアップロードに失敗しました。",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

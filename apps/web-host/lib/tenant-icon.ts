@@ -15,21 +15,23 @@ interface TenantIcons {
 }
 
 /**
- * Icons for the public site (#549). The uploaded tenant favicon is already a
+ * Icons for the public site (#549). The uploaded tenant icon is already a
  * square PNG by the time the image server hands it out
- * (`imageproc.BuildFavicon`), so it is linked as it is served; a tenant without
- * one declares no icon and keeps the browser's default.
+ * (`imageproc.BuildIcon`), so it is linked as it is served; a tenant without
+ * one has no icon variant, declares no icon, and keeps the browser's
+ * default.
  *
  * No `type` / `sizes` on the link: the image server negotiates the encoding
- * from the browser's `Accept`, so the bytes are not always the stored PNG.
+ * from the browser's `Accept`, so the bytes are not always the stored PNG, and
+ * it resizes the stored master on request rather than serving fixed sizes.
  */
 export const resolveTenantIcons = (
   info: TenantSiteInfo | null
 ): TenantIcons | undefined => {
-  const faviconUrl = info?.faviconUrl?.trim();
-  if (!faviconUrl) {
+  const iconUrl = info?.iconImageVariants?.[0]?.url.trim();
+  if (!iconUrl) {
     return undefined;
   }
 
-  return { apple: [{ url: faviconUrl }], icon: [{ url: faviconUrl }] };
+  return { apple: [{ url: iconUrl }], icon: [{ url: iconUrl }] };
 };

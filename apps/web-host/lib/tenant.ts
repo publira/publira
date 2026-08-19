@@ -8,14 +8,32 @@ import { cacheLife } from "next/cache";
 import { apiClient } from "./api-client";
 import { applyCacheTag, tenantSiteTag } from "./cache-tags";
 
+/**
+ * A stored tenant branding image, carried the way the eye-catch variants are
+ * (`catalog.ts`). Absent while the tenant has not uploaded one.
+ */
+export interface TenantImageVariant {
+  label: string;
+  variantType: string;
+  url: string;
+  contentType: string;
+  width: number;
+  height: number;
+  fileSizeBytes: number;
+}
+
 export interface TenantSiteInfo {
   copyrightText?: string;
   domain: string;
+  /** The public site's `rel="icon"` (#549); no icon is declared without it. */
+  iconImageUpdatedAt?: string;
+  iconImageVariants?: TenantImageVariant[];
   /**
-   * Tenant favicon served by the image server, absent while the tenant has not
-   * uploaded one. Icon resolution falls back to the logo then (#549).
+   * Rendering the logo in the site chrome is #549's; this only makes the stored
+   * image reachable.
    */
-  faviconUrl?: string;
+  logoImageUpdatedAt?: string;
+  logoImageVariants?: TenantImageVariant[];
   name: string;
   publicId: string;
   siteDescription?: string;
@@ -25,6 +43,47 @@ export interface TenantSiteInfo {
   /** IANA zone every tenant-facing wall clock on the public site is rendered in. */
   timeZone: string;
 }
+
+/**
+ * Proto scalars arrive as `""` rather than absent, so an optional field has to
+ * be narrowed before it lands on {@link TenantSiteInfo}. `trimmed` keeps an
+ * empty string as an empty string; `nonEmpty` drops it, for the fields whose
+ * consumers distinguish "unset" from "set to nothing".
+ */
+const trimmed = (value?: string): string | undefined => value?.trim();
+const nonEmpty = (value?: string): string | undefined =>
+  value?.trim() || undefined;
+
+const toTenantImageVariants = (
+  variants:
+    | {
+        label?: string;
+        variantType?: string;
+        url?: string;
+        contentType?: string;
+        width?: number;
+        height?: number;
+        fileSizeBytes?: bigint | number;
+      }[]
+    | undefined
+): TenantImageVariant[] | undefined => {
+  const mapped = (variants ?? []).flatMap((variant) => {
+    const mappedVariant = {
+      contentType: variant.contentType ?? "",
+      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      height: variant.height ?? 0,
+      label: variant.label ?? "",
+      url: variant.url ?? "",
+      variantType: variant.variantType ?? "",
+      width: variant.width ?? 0,
+    };
+    return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+      ? [mappedVariant]
+      : [];
+  });
+
+  return mapped.length > 0 ? mapped : undefined;
+};
 
 const buildTenantSiteLabel = (tenantName: string): string => {
   const normalizedTenantName = tenantName.trim();
@@ -65,26 +124,33 @@ export const getTenantSiteInfo = async (
     });
 
     // Display / short code for UI — not used for internal routing.
-    const publicId = response.tenantPublicId?.trim() ?? "";
+    const publicId = trimmed(response.tenantPublicId) ?? "";
     if (!publicId) {
       return null;
     }
 
-    const name = response.tenantName?.trim() ?? "";
+    const name = trimmed(response.tenantName) ?? "";
 
     return {
-      copyrightText: response.copyrightText?.trim(),
-      domain: response.tenantDomain?.trim() ?? "",
-      faviconUrl: response.theme?.faviconUrl?.trim() || undefined,
+      copyrightText: trimmed(response.copyrightText),
+      domain: trimmed(response.tenantDomain) ?? "",
+      iconImageUpdatedAt: nonEmpty(response.theme?.iconImageUpdatedAt),
+      iconImageVariants: toTenantImageVariants(
+        response.theme?.iconImageVariants
+      ),
+      logoImageUpdatedAt: nonEmpty(response.theme?.logoImageUpdatedAt),
+      logoImageVariants: toTenantImageVariants(
+        response.theme?.logoImageVariants
+      ),
       name,
       publicId,
-      siteDescription: response.siteDescription?.trim(),
+      siteDescription: trimmed(response.siteDescription),
       siteLabel: buildTenantSiteLabel(name),
-      siteTagline: response.siteTagline?.trim(),
+      siteTagline: trimmed(response.siteTagline),
       theme: resolveTenantThemeColors(response.theme),
       // The server resolves the zone before answering (`tenanttz.Resolve`), so
       // the fallback only covers a response shape that predates the field.
-      timeZone: response.timezone?.trim() || DEFAULT_TIME_ZONE,
+      timeZone: nonEmpty(response.timezone) ?? DEFAULT_TIME_ZONE,
     };
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {

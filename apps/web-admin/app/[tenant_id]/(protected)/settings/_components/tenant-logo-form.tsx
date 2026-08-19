@@ -20,54 +20,59 @@ import { Input } from "@publira/ui-components/input";
 import Image from "next/image";
 import { useActionState, useRef, useState } from "react";
 
+import { tenantBrandingVariant } from "#lib/tenant-branding-image";
+import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import type { TenantFaviconActionState } from "../settings-types";
+import type { TenantLogoActionState } from "../settings-types";
 
-interface TenantFaviconFormProps {
+interface TenantLogoFormProps {
   action: (
-    prevState: TenantFaviconActionState,
+    prevState: TenantLogoActionState,
     formData: FormData
-  ) => Promise<TenantFaviconActionState>;
-  initialFaviconUrl: string;
+  ) => Promise<TenantLogoActionState>;
+  initialLogo: TenantBrandingImage | null;
 }
 
-export const TenantFaviconForm = ({
+export const TenantLogoForm = ({
   action,
-  initialFaviconUrl,
-}: TenantFaviconFormProps) => {
+  initialLogo,
+}: TenantLogoFormProps) => {
   const tenantId = useTenantId();
   const [state, formAction, isPending] = useActionState(action, null);
   const formRef = useRef<HTMLFormElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
-  // What the card shows is the last favicon the server confirmed — not the last
-  // Action state. Deriving it from `state` alone would put the pre-upload icon
+  // What the card shows is the last logo the server confirmed — not the last
+  // Action state. Deriving it from `state` alone would put the pre-upload image
   // back the moment a later attempt is rejected, because a failure carries no
-  // favicon of its own.
-  const [faviconUrl, setFaviconUrl] = useState(initialFaviconUrl);
-  const [prevInitialFaviconUrl, setPrevInitialFaviconUrl] =
-    useState(initialFaviconUrl);
+  // logo of its own.
+  const [logo, setLogo] = useState(initialLogo);
+  const [prevInitialLogo, setPrevInitialLogo] = useState(initialLogo);
   const [prevState, setPrevState] = useState(state);
 
-  if (initialFaviconUrl !== prevInitialFaviconUrl) {
-    setPrevInitialFaviconUrl(initialFaviconUrl);
-    setFaviconUrl(initialFaviconUrl);
+  if (initialLogo !== prevInitialLogo) {
+    setPrevInitialLogo(initialLogo);
+    setLogo(initialLogo);
   }
 
   if (state !== prevState) {
     setPrevState(state);
     if (state?.ok) {
-      setFaviconUrl(state.faviconUrl);
+      setLogo(state.logo);
     }
   }
+
+  // The stored master carries its own width and height, so the preview is laid
+  // out at the logo's real aspect ratio instead of a guessed one.
+  const preview = tenantBrandingVariant(logo);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ファビコン</CardTitle>
+        <CardTitle>ロゴ</CardTitle>
         <CardDescription>
-          公開サイトのタブに表示するアイコンです。ロゴとは別に設定でき、未設定のときはロゴが使われます。
+          公開サイトのブランド表示に使う画像です。縦横比はそのまま保存されます。
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -75,34 +80,34 @@ export const TenantFaviconForm = ({
           <input name="tenant_id" type="hidden" value={tenantId} />
 
           <Field>
-            <FieldLabel>現在のファビコン</FieldLabel>
+            <FieldLabel>現在のロゴ</FieldLabel>
             <FieldContent>
-              {faviconUrl ? (
+              {preview ? (
                 <Image
-                  alt="現在のファビコン"
-                  className="size-16 rounded-md border bg-card object-contain"
-                  height={64}
-                  src={faviconUrl}
-                  width={64}
+                  alt="現在のロゴ"
+                  className="h-16 w-auto max-w-full rounded-md border bg-card object-contain"
+                  height={preview.height}
+                  src={preview.url}
+                  width={preview.width}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  ファビコンは設定されていません。
+                  ロゴは設定されていません。
                 </p>
               )}
             </FieldContent>
           </Field>
 
           <Field>
-            <FieldLabel>ファビコン画像</FieldLabel>
+            <FieldLabel>ロゴ画像</FieldLabel>
             <FieldContent>
               <Input
                 accept="image/jpeg,image/png,image/webp"
-                name="favicon"
+                name="logo"
                 type="file"
               />
               <FieldDescription>
-                JPEG/PNG/WebP、10MB以下、32x32px以上の画像を選択してください。中央を正方形に切り出して保存します。
+                JPEG/PNG/WebP、10MB以下、縦横とも32px以上の画像を選択してください。長辺が1024pxを超える場合は縮小して保存します。
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -114,15 +119,15 @@ export const TenantFaviconForm = ({
           ) : null}
 
           <div className="flex justify-end gap-2">
-            {faviconUrl ? (
+            {preview ? (
               <ConfirmDialog
                 actionText="削除する"
                 actionVariant="destructive"
-                description="公開サイトのアイコンはロゴ、またはデフォルトのアイコンに戻ります。"
+                description="公開サイトのブランド表示はテナント名に戻ります。"
                 onAction={() => {
                   formRef.current?.requestSubmit(deleteButtonRef.current);
                 }}
-                title="ファビコンを削除しますか？"
+                title="ロゴを削除しますか？"
                 trigger={
                   <Button disabled={isPending} type="button" variant="outline">
                     削除
@@ -137,7 +142,7 @@ export const TenantFaviconForm = ({
               type="submit"
               value="delete"
             >
-              ファビコンを削除
+              ロゴを削除
             </button>
             <Button
               disabled={isPending}
@@ -145,7 +150,7 @@ export const TenantFaviconForm = ({
               type="submit"
               value="upload"
             >
-              {isPending ? "保存中..." : "ファビコンを保存"}
+              {isPending ? "保存中..." : "ロゴを保存"}
             </Button>
           </div>
         </form>

@@ -1,6 +1,7 @@
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 
 import type { TenantSmtpSettings } from "#lib/email-settings";
+import type { TenantBrandingImage } from "#lib/tenant-branding-image";
 
 export type SiteSettingsActionState =
   | {
@@ -59,11 +60,23 @@ export type ThemeSettingsActionState =
     }
   | null;
 
-export type TenantFaviconActionState =
+export type TenantIconActionState =
   | {
       ok: true;
       message: string;
-      faviconUrl: string;
+      icon: TenantBrandingImage | null;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
+export type TenantLogoActionState =
+  | {
+      ok: true;
+      message: string;
+      logo: TenantBrandingImage | null;
     }
   | {
       ok: false;

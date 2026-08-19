@@ -14,24 +14,38 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   ...overrides,
 });
 
+const iconVariant = (url: string) => ({
+  contentType: "image/png",
+  fileSizeBytes: 1024,
+  height: 64,
+  label: "original",
+  url,
+  variantType: "icon",
+  width: 64,
+});
+
 describe("resolveTenantIcons", () => {
-  it("favicon が設定されていれば配信 URL を指す", () => {
+  it("icon が設定されていれば配信 URL を指す", () => {
     const icons = resolveTenantIcons(
-      siteInfo({ faviconUrl: "/images/tenants/favicon-1" })
+      siteInfo({
+        iconImageVariants: [iconVariant("/images/tenants/icon-1")],
+      })
     );
 
     expect(icons).toEqual({
-      apple: [{ url: "/images/tenants/favicon-1" }],
-      icon: [{ url: "/images/tenants/favicon-1" }],
+      apple: [{ url: "/images/tenants/icon-1" }],
+      icon: [{ url: "/images/tenants/icon-1" }],
     });
   });
 
-  it("favicon が未設定ならアイコンを宣言しない", () => {
+  it("icon が未設定ならアイコンを宣言しない", () => {
     expect(resolveTenantIcons(siteInfo({}))).toBeUndefined();
     expect(resolveTenantIcons(null)).toBeUndefined();
   });
 
   it("空白だけの値は未設定として扱う", () => {
-    expect(resolveTenantIcons(siteInfo({ faviconUrl: "  " }))).toBeUndefined();
+    expect(
+      resolveTenantIcons(siteInfo({ iconImageVariants: [iconVariant("  ")] }))
+    ).toBeUndefined();
   });
 });

@@ -457,6 +457,7 @@ type TenantImageVariant struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	TenantImageID   uuid.UUID `json:"tenant_image_id"`
 	Label           string    `json:"label"`
+	VariantType     string    `json:"variant_type"`
 	StorageProvider string    `json:"storage_provider"`
 	ObjectKey       string    `json:"object_key"`
 	ContentType     string    `json:"content_type"`
@@ -482,37 +483,37 @@ type TenantSmtpConfig struct {
 }
 
 type TenantTheme struct {
-	TenantID                   uuid.UUID      `json:"tenant_id"`
-	PrimaryColor               string         `json:"primary_color"`
-	SecondaryColor             string         `json:"secondary_color"`
-	AccentColor                string         `json:"accent_color"`
-	LogoUrl                    sql.NullString `json:"logo_url"`
-	UpdatedAt                  time.Time      `json:"updated_at"`
-	BackgroundColor            string         `json:"background_color"`
-	ForegroundColor            string         `json:"foreground_color"`
-	SurfaceColor               string         `json:"surface_color"`
-	SurfaceForegroundColor     string         `json:"surface_foreground_color"`
-	CardColor                  string         `json:"card_color"`
-	CardForegroundColor        string         `json:"card_foreground_color"`
-	PopoverColor               string         `json:"popover_color"`
-	PopoverForegroundColor     string         `json:"popover_foreground_color"`
-	PrimaryForegroundColor     string         `json:"primary_foreground_color"`
-	SecondaryForegroundColor   string         `json:"secondary_foreground_color"`
-	AccentForegroundColor      string         `json:"accent_foreground_color"`
-	MutedColor                 string         `json:"muted_color"`
-	MutedForegroundColor       string         `json:"muted_foreground_color"`
-	BorderColor                string         `json:"border_color"`
-	InputColor                 string         `json:"input_color"`
-	RingColor                  string         `json:"ring_color"`
-	SuccessColor               string         `json:"success_color"`
-	SuccessForegroundColor     string         `json:"success_foreground_color"`
-	WarningColor               string         `json:"warning_color"`
-	WarningForegroundColor     string         `json:"warning_foreground_color"`
-	DestructiveColor           string         `json:"destructive_color"`
-	DestructiveForegroundColor string         `json:"destructive_foreground_color"`
-	InfoColor                  string         `json:"info_color"`
-	InfoForegroundColor        string         `json:"info_foreground_color"`
-	FaviconImageID             uuid.NullUUID  `json:"favicon_image_id"`
+	TenantID                   uuid.UUID     `json:"tenant_id"`
+	PrimaryColor               string        `json:"primary_color"`
+	SecondaryColor             string        `json:"secondary_color"`
+	AccentColor                string        `json:"accent_color"`
+	UpdatedAt                  time.Time     `json:"updated_at"`
+	BackgroundColor            string        `json:"background_color"`
+	ForegroundColor            string        `json:"foreground_color"`
+	SurfaceColor               string        `json:"surface_color"`
+	SurfaceForegroundColor     string        `json:"surface_foreground_color"`
+	CardColor                  string        `json:"card_color"`
+	CardForegroundColor        string        `json:"card_foreground_color"`
+	PopoverColor               string        `json:"popover_color"`
+	PopoverForegroundColor     string        `json:"popover_foreground_color"`
+	PrimaryForegroundColor     string        `json:"primary_foreground_color"`
+	SecondaryForegroundColor   string        `json:"secondary_foreground_color"`
+	AccentForegroundColor      string        `json:"accent_foreground_color"`
+	MutedColor                 string        `json:"muted_color"`
+	MutedForegroundColor       string        `json:"muted_foreground_color"`
+	BorderColor                string        `json:"border_color"`
+	InputColor                 string        `json:"input_color"`
+	RingColor                  string        `json:"ring_color"`
+	SuccessColor               string        `json:"success_color"`
+	SuccessForegroundColor     string        `json:"success_foreground_color"`
+	WarningColor               string        `json:"warning_color"`
+	WarningForegroundColor     string        `json:"warning_foreground_color"`
+	DestructiveColor           string        `json:"destructive_color"`
+	DestructiveForegroundColor string        `json:"destructive_foreground_color"`
+	InfoColor                  string        `json:"info_color"`
+	InfoForegroundColor        string        `json:"info_foreground_color"`
+	IconImageID                uuid.NullUUID `json:"icon_image_id"`
+	LogoImageID                uuid.NullUUID `json:"logo_image_id"`
 }
 
 type TenantUserRole struct {

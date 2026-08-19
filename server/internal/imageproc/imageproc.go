@@ -358,30 +358,39 @@ func BuildEyeCatchVariants(raw []byte, contentType string) ([]Variant, error) {
 	return variants, nil
 }
 
-// FaviconMaxBytes / FaviconMinDimension / FaviconMaxDimension はテナント
-// favicon の入稿制約です。最小 32px は 32x32 の描画に耐える下限、最大 512px は
-// apple-touch-icon まで賄える上限で、それを超える入稿は縮小します。
+// TenantVariantTypeLogo / TenantVariantTypeIcon はテナントのブランディング
+// 画像の用途です。series の variant_type (portrait / square / …) と同じ位置づけで、
+// サイズではありません。配信サイズは image-server が保存済みマスターから
+// リクエスト時に縮小して作ります。
 const (
-	FaviconMaxBytes     = 10 << 20
-	FaviconMinDimension = 32
-	FaviconMaxDimension = 512
+	TenantVariantTypeLogo = "logo"
+	TenantVariantTypeIcon = "icon"
 )
 
-// BuildFavicon は入稿画像からテナント favicon のバリアントを 1 つ生成します。
+// IconMaxBytes / IconMinDimension / IconMaxDimension はテナント
+// icon の入稿制約です。最小 32px は 32x32 の描画に耐える下限、最大 512px は
+// apple-touch-icon まで賄える上限で、それを超える入稿は縮小します。
+const (
+	IconMaxBytes     = 10 << 20
+	IconMinDimension = 32
+	IconMaxDimension = 512
+)
+
+// BuildIcon は入稿画像からテナント icon のバリアントを 1 つ生成します。
 //
 // 入力バリデーション:
 //   - 10MB 以内、image/* content_type
 //   - ピクセル数が MaxPixels 以内
 //   - センタークロップ後の一辺が 32px 以上
 //
-// 出力は常に PNG です。favicon は透過を保ったまま小さなサイズで描画されるため、
+// 出力は常に PNG です。icon は透過を保ったまま小さなサイズで描画されるため、
 // JPEG に落とすと背景が潰れます。
-func BuildFavicon(raw []byte, contentType string) (Variant, error) {
+func BuildIcon(raw []byte, contentType string) (Variant, error) {
 	if len(raw) == 0 {
 		return Variant{}, errors.New("image data is required")
 	}
-	if len(raw) > FaviconMaxBytes {
-		return Variant{}, fmt.Errorf("image size exceeds %d bytes", FaviconMaxBytes)
+	if len(raw) > IconMaxBytes {
+		return Variant{}, fmt.Errorf("image size exceeds %d bytes", IconMaxBytes)
 	}
 
 	ct := strings.TrimSpace(contentType)
@@ -413,20 +422,20 @@ func BuildFavicon(raw []byte, contentType string) (Variant, error) {
 
 	cropped := centerCropToAspect(src, 1, 1)
 	size := cropped.Bounds().Dx()
-	if size < FaviconMinDimension {
-		return Variant{}, fmt.Errorf("favicon image must be at least %dx%d", FaviconMinDimension, FaviconMinDimension)
+	if size < IconMinDimension {
+		return Variant{}, fmt.Errorf("icon image must be at least %dx%d", IconMinDimension, IconMinDimension)
 	}
-	if size > FaviconMaxDimension {
-		size = FaviconMaxDimension
+	if size > IconMaxDimension {
+		size = IconMaxDimension
 	}
 
 	encoded, err := encode(cropped, size, size, "image/png")
 	if err != nil {
-		return Variant{}, fmt.Errorf("encode favicon: %w", err)
+		return Variant{}, fmt.Errorf("encode icon: %w", err)
 	}
 
 	return Variant{
-		VariantType: "favicon",
+		VariantType: TenantVariantTypeIcon,
 		Label:       "original",
 		ContentType: "image/png",
 		Extension:   ".png",
@@ -434,4 +443,97 @@ func BuildFavicon(raw []byte, contentType string) (Variant, error) {
 		Height:      size,
 		Data:        encoded,
 	}, nil
+}
+
+// LogoMaxBytes / LogoMinDimension / LogoMaxDimension はテナント logo の入稿制限です。
+//
+// icon と違い縦横比は保ちます。logo は多くがワードマークで、正方形に切り出すと
+// 文字が欠けるためです。長辺だけを LogoMaxDimension に収めます。
+const (
+	LogoMaxBytes     = 10 << 20
+	LogoMinDimension = 32
+	LogoMaxDimension = 1024
+)
+
+// BuildLogo は入稿画像からテナント logo のバリアントを 1 つ生成します。
+//
+// 入力バリデーション:
+//   - 10MB 以内、image/* content_type
+//   - ピクセル数が MaxPixels 以内
+//   - 短辺が 32px 以上 (長辺を縮小したあとの寸法も含む)
+//
+// 出力は常に PNG です。logo は背景色の異なるヘッダーに重ねて置かれるため、
+// JPEG に落とすと透過が失われて周囲に矩形が出ます。
+func BuildLogo(raw []byte, contentType string) (Variant, error) {
+	if len(raw) == 0 {
+		return Variant{}, errors.New("image data is required")
+	}
+	if len(raw) > LogoMaxBytes {
+		return Variant{}, fmt.Errorf("image size exceeds %d bytes", LogoMaxBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return Variant{}, errors.New("content_type must be image/*")
+	}
+
+	// 展開後のサイズはヘッダから先に検査します。入力バイト数の上限だけでは、
+	// 小さな PNG / WebP が巨大な寸法を宣言してデコードでメモリを食い潰す経路を
+	// 塞げません。
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return Variant{}, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
+	}
+	if cfg.Width < LogoMinDimension || cfg.Height < LogoMinDimension {
+		return Variant{}, fmt.Errorf("logo image must be at least %dx%d", LogoMinDimension, LogoMinDimension)
+	}
+
+	src, _, err := image.Decode(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+
+	// 短辺の下限は縮小後にも効かせます。入稿時に両辺が 32px 以上でも、
+	// 20000x40 のような極端に細長い入力は長辺を 1024px に収める過程で短辺が
+	// 数 px まで潰れ、ロゴとして使えない画像が保存されるためです。
+	width, height := fitWithinLongestEdge(cfg.Width, cfg.Height, LogoMaxDimension)
+	if width < LogoMinDimension || height < LogoMinDimension {
+		return Variant{}, fmt.Errorf("logo image aspect ratio is too extreme: %dx%d after scaling is below %dpx", width, height, LogoMinDimension)
+	}
+
+	encoded, err := encode(src, width, height, "image/png")
+	if err != nil {
+		return Variant{}, fmt.Errorf("encode logo: %w", err)
+	}
+
+	return Variant{
+		VariantType: TenantVariantTypeLogo,
+		Label:       "original",
+		ContentType: "image/png",
+		Extension:   ".png",
+		Width:       width,
+		Height:      height,
+		Data:        encoded,
+	}, nil
+}
+
+// fitWithinLongestEdge は縦横比を保ったまま長辺を maxEdge に収めた寸法を返します。
+// 長辺がすでに maxEdge 以下なら入力をそのまま返し、拡大はしません。
+func fitWithinLongestEdge(sourceWidth, sourceHeight, maxEdge int) (width, height int) {
+	if sourceWidth <= maxEdge && sourceHeight <= maxEdge {
+		return sourceWidth, sourceHeight
+	}
+	if sourceWidth >= sourceHeight {
+		return maxEdge, scaledHeight(sourceWidth, sourceHeight, maxEdge)
+	}
+	return scaledHeight(sourceHeight, sourceWidth, maxEdge), maxEdge
 }

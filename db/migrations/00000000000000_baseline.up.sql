@@ -524,6 +524,7 @@ CREATE TABLE tenant_image_variants (
     tenant_id uuid NOT NULL,
     tenant_image_id uuid NOT NULL,
     label character varying(32) NOT NULL,
+    variant_type character varying(16) NOT NULL,
     storage_provider character varying(32) NOT NULL,
     object_key text NOT NULL,
     content_type character varying(255) NOT NULL,
@@ -533,6 +534,7 @@ CREATE TABLE tenant_image_variants (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT tenant_image_variants_file_size_bytes_check CHECK ((file_size_bytes > 0)),
     CONSTRAINT tenant_image_variants_height_check CHECK ((height > 0)),
+    CONSTRAINT tenant_image_variants_variant_type_check CHECK (((variant_type)::text = ANY ((ARRAY['logo'::character varying, 'icon'::character varying])::text[]))),
     CONSTRAINT tenant_image_variants_width_check CHECK ((width > 0))
 );
 
@@ -569,7 +571,6 @@ CREATE TABLE tenant_themes (
     primary_color character varying(32) DEFAULT '#0f7c82'::character varying NOT NULL,
     secondary_color character varying(32) DEFAULT '#d96f4a'::character varying NOT NULL,
     accent_color character varying(32) DEFAULT '#7aae90'::character varying NOT NULL,
-    logo_url text,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     background_color character varying(32) DEFAULT '#f6f2e9'::character varying NOT NULL,
     foreground_color character varying(32) DEFAULT '#1e2b38'::character varying NOT NULL,
@@ -595,7 +596,8 @@ CREATE TABLE tenant_themes (
     destructive_foreground_color character varying(32) DEFAULT '#fff4f4'::character varying NOT NULL,
     info_color character varying(32) DEFAULT '#3c78c2'::character varying NOT NULL,
     info_foreground_color character varying(32) DEFAULT '#f3f8ff'::character varying NOT NULL,
-    favicon_image_id uuid
+    icon_image_id uuid,
+    logo_image_id uuid
 );
 
 -- TABLE: tenant_user_roles
@@ -1331,6 +1333,11 @@ CREATE UNIQUE INDEX uq_label_image_variants_label_image_type_width ON label_imag
 -- INDEX: uq_series_image_variants_series_image_type_width
 CREATE UNIQUE INDEX uq_series_image_variants_series_image_type_width ON series_image_variants USING btree (series_image_id, variant_type, width);
 
+-- INDEX: uq_tenant_image_variants_image_type
+-- A branding image holds one variant per type, so the pair is unique. It is also
+-- how the image server and the theme read look the rows up.
+CREATE UNIQUE INDEX uq_tenant_image_variants_image_type ON tenant_image_variants USING btree (tenant_image_id, variant_type);
+
 -- FK CONSTRAINT: access_tickets access_tickets_created_by_user_id_fkey
 -- Single-column on purpose: multi-column FK with ON DELETE SET NULL would also null tenant_id.
 ALTER TABLE ONLY access_tickets
@@ -1633,9 +1640,13 @@ ALTER TABLE ONLY tenant_images
 ALTER TABLE ONLY tenant_smtp_config
     ADD CONSTRAINT tenant_smtp_config_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
--- FK CONSTRAINT: tenant_themes tenant_themes_favicon_image_id_fkey
+-- FK CONSTRAINT: tenant_themes tenant_themes_icon_image_id_fkey
 ALTER TABLE ONLY tenant_themes
-    ADD CONSTRAINT tenant_themes_favicon_image_id_fkey FOREIGN KEY (favicon_image_id) REFERENCES tenant_images(id) ON DELETE SET NULL;
+    ADD CONSTRAINT tenant_themes_icon_image_id_fkey FOREIGN KEY (icon_image_id) REFERENCES tenant_images(id) ON DELETE SET NULL;
+
+-- FK CONSTRAINT: tenant_themes tenant_themes_logo_image_id_fkey
+ALTER TABLE ONLY tenant_themes
+    ADD CONSTRAINT tenant_themes_logo_image_id_fkey FOREIGN KEY (logo_image_id) REFERENCES tenant_images(id) ON DELETE SET NULL;
 
 -- FK CONSTRAINT: tenant_themes tenant_themes_tenant_id_fkey
 ALTER TABLE ONLY tenant_themes

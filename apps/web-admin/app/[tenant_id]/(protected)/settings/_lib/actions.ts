@@ -25,10 +25,12 @@ import {
   updateTenantTimezone,
 } from "#lib/tenant-timezone";
 import {
-  deleteTenantFavicon,
+  deleteTenantIcon,
+  deleteTenantLogo,
   tenantThemeCacheTag,
   updateTenantThemeSettings,
-  uploadTenantFavicon,
+  uploadTenantIcon,
+  uploadTenantLogo,
 } from "#lib/theme-settings";
 
 import type {
@@ -37,7 +39,8 @@ import type {
   ThemeSettingsActionState,
   ThemeSettingsFieldErrors,
   TenantEmailSettingsFormState,
-  TenantFaviconActionState,
+  TenantIconActionState,
+  TenantLogoActionState,
   TenantSmtpTestFormState,
   TenantTimezoneActionState,
 } from "../settings-types";
@@ -95,38 +98,56 @@ const tenantThemeSchema = z.object({
 });
 
 /**
+ * The icon and the logo accept the same file. They differ in how the server
+ * normalizes what it is given — a square crop for the icon, the source aspect
+ * ratio kept for the logo — not in what it takes, so the two are one schema
+ * rather than two that have to be kept identical by hand.
+ *
  * The Go server re-checks all of this and stays the authority. Checking size and
  * type here keeps a rejected file from being read into memory and shipped over
  * the RPC first — the `accept` attribute constrains the file picker, not a
  * request someone posts directly.
  */
-const FAVICON_MAX_BYTES = 10 * 1024 * 1024;
-const FAVICON_CONTENT_TYPES = new Set([
+const BRANDING_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const BRANDING_IMAGE_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
 ]);
 
-const faviconFileSchema = z
+const brandingImageFileSchema = z
   .custom<File>((value) => value instanceof File, {
     error: "画像ファイルを選択してください。",
   })
-  .refine((file) => file.size <= FAVICON_MAX_BYTES, {
+  .refine((file) => file.size <= BRANDING_IMAGE_MAX_BYTES, {
     error: "画像は 10MB 以下にしてください。",
   })
-  .refine((file) => FAVICON_CONTENT_TYPES.has(file.type), {
+  .refine((file) => BRANDING_IMAGE_CONTENT_TYPES.has(file.type), {
     error: "JPEG / PNG / WebP の画像を選択してください。",
   });
 
 /**
- * Upload and delete share one Action so the card renders the current favicon
+ * Upload and delete share one Action so the card renders the current icon
  * straight from the Action state: with a state per operation there is no way to
  * tell which of the two ran last.
  */
-const tenantFaviconSchema = z.discriminatedUnion("intent", [
+const tenantIconSchema = z.discriminatedUnion("intent", [
   z.object({
-    favicon: faviconFileSchema,
+    icon: brandingImageFileSchema,
     intent: z.literal("upload"),
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  }),
+  z.object({
+    intent: z.literal("delete"),
+    tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
+  }),
+]);
+
+/** Upload and delete share one Action, for the reason the icon's does. */
+const tenantLogoSchema = z.discriminatedUnion("intent", [
+  z.object({
+    intent: z.literal("upload"),
+    logo: brandingImageFileSchema,
     tenantId: requiredTrimmedString("テナント ID が見つかりません。"),
   }),
   z.object({
@@ -335,13 +356,13 @@ export const updateTenantThemeSettingsAction = async (
   };
 };
 
-export const updateTenantFaviconAction = async (
-  _prevState: TenantFaviconActionState,
+export const updateTenantIconAction = async (
+  _prevState: TenantIconActionState,
   formData: FormData
-): Promise<TenantFaviconActionState> => {
-  const parsed = tenantFaviconSchema.safeParse(
+): Promise<TenantIconActionState> => {
+  const parsed = tenantIconSchema.safeParse(
     toFormDataInput(formData, {
-      favicon: { kind: "file", name: "favicon" },
+      icon: { kind: "file", name: "icon" },
       intent: { kind: "value", name: "intent" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
@@ -361,12 +382,12 @@ export const updateTenantFaviconAction = async (
   // never gets a 10MB upload buffered on its behalf.
   const result = await withAdminSessionReauth(async () => {
     if (input.intent === "delete") {
-      return deleteTenantFavicon(input.tenantId);
+      return deleteTenantIcon(input.tenantId);
     }
 
-    return uploadTenantFavicon({
-      faviconContentType: input.favicon.type,
-      faviconData: new Uint8Array(await input.favicon.arrayBuffer()),
+    return uploadTenantIcon({
+      iconContentType: input.icon.type,
+      iconData: new Uint8Array(await input.icon.arrayBuffer()),
       tenantId: input.tenantId,
     });
   });
@@ -383,10 +404,62 @@ export const updateTenantFaviconAction = async (
   updateTag(tenantThemeCacheTag(input.tenantId));
 
   return {
-    faviconUrl: result.faviconUrl,
-    message: isDelete
-      ? "ファビコンを削除しました。"
-      : "ファビコンを保存しました。",
+    icon: result.icon,
+    message: isDelete ? "アイコンを削除しました。" : "アイコンを保存しました。",
+    ok: true,
+  };
+};
+
+export const updateTenantLogoAction = async (
+  _prevState: TenantLogoActionState,
+  formData: FormData
+): Promise<TenantLogoActionState> => {
+  const parsed = tenantLogoSchema.safeParse(
+    toFormDataInput(formData, {
+      intent: { kind: "value", name: "intent" },
+      logo: { kind: "file", name: "logo" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return {
+      message: toFormErrorMessage(parsed.error),
+      ok: false,
+    };
+  }
+
+  const input = parsed.data;
+  const isDelete = input.intent === "delete";
+
+  // The file is read into memory inside the callback, so an unauthorized caller
+  // never gets a 10MB upload buffered on its behalf.
+  const result = await withAdminSessionReauth(async () => {
+    if (input.intent === "delete") {
+      return deleteTenantLogo(input.tenantId);
+    }
+
+    return uploadTenantLogo({
+      logoContentType: input.logo.type,
+      logoData: new Uint8Array(await input.logo.arrayBuffer()),
+      tenantId: input.tenantId,
+    });
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // Refresh the public site's tenant read and this screen's own private cache.
+  updateTag(`tenant:${input.tenantId}:site`);
+  updateTag(tenantThemeCacheTag(input.tenantId));
+
+  return {
+    logo: result.logo,
+    message: isDelete ? "ロゴを削除しました。" : "ロゴを保存しました。",
     ok: true,
   };
 };

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/types/v1/types.proto.
  */
 export const file_publira_types_v1_types: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIiIKDVRlbmFudENvbnRleHQSEQoJdGVuYW50X2lkGAEgASgJIjUKBFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCSIwCgtBY2Nlc3NUb2tlbhINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJIqkBCgdDcmVhdG9yEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkSFAoMcHJvZmlsZV90ZXh0GAQgASgJEhYKDmljb25faW1hZ2VfdXJsGAUgASgJEiIKGmljb25faW1hZ2VfZmlsZV9zaXplX2J5dGVzGAYgASgDEh0KFWljb25faW1hZ2VfdXBkYXRlZF9hdBgHIAEoCSKXAQoFTGFiZWwSEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSIgoaZXllX2NhdGNoX2ltYWdlX3VwZGF0ZWRfYXQYAyABKAkSSQoYZXllX2NhdGNoX2ltYWdlX3ZhcmlhbnRzGAQgAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeWVDYXRjaFZhcmlhbnQilwEKFVNlcmllc0V5ZUNhdGNoVmFyaWFudBINCgVsYWJlbBgBIAEoCRIUCgx2YXJpYW50X3R5cGUYByABKAkSCwoDdXJsGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRINCgV3aWR0aBgEIAEoBRIOCgZoZWlnaHQYBSABKAUSFwoPZmlsZV9zaXplX2J5dGVzGAYgASgDItYCCgZTZXJpZXMSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhAKCHN5bm9wc2lzGAMgASgJEiYKBWxhYmVsGAQgASgLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbBIrCghjcmVhdG9ycxgFIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBRIUCgxpc19wdWJsaXNoZWQYCyABKAgSFAoMcHVibGlzaGVkX2F0GAwgASgJEiIKGmV5ZV9jYXRjaF9pbWFnZV91cGRhdGVkX2F0GAkgASgJEkkKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50cxgKIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50SgQIBxAISgQICBAJIqkBCgdFcGlzb2RlEhEKCXB1YmxpY19pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRITCgtvcmRlcl9pbmRleBgDIAEoBRINCgVwcmljZRgEIAEoBRIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgFIAEoBRIOCgZzdGF0dXMYBiABKAkSFAoMc2NoZWR1bGVkX2F0GAcgASgJEhQKDHB1Ymxpc2hlZF9hdBgIIAEoCSKSAQoMRXBpc29kZUltYWdlEgoKAmlkGAEgASgJEhEKCWltYWdlX3VybBgCIAEoCRIUCgxjb250ZW50X3R5cGUYAyABKAkSFwoPZmlsZV9zaXplX2J5dGVzGAQgASgDEhUKDWRpc3BsYXlfb3JkZXIYBSABKAUSDQoFd2lkdGgYBiABKAUSDgoGaGVpZ2h0GAcgASgFIpQGCgtUZW5hbnRUaGVtZRIVCg1wcmltYXJ5X2NvbG9yGAEgASgJEhcKD3NlY29uZGFyeV9jb2xvchgCIAEoCRIUCgxhY2NlbnRfY29sb3IYAyABKAkSEAoIbG9nb191cmwYBCABKAkSGAoQYmFja2dyb3VuZF9jb2xvchgFIAEoCRIYChBmb3JlZ3JvdW5kX2NvbG9yGAYgASgJEhUKDXN1cmZhY2VfY29sb3IYByABKAkSIAoYc3VyZmFjZV9mb3JlZ3JvdW5kX2NvbG9yGAggASgJEhIKCmNhcmRfY29sb3IYCSABKAkSHQoVY2FyZF9mb3JlZ3JvdW5kX2NvbG9yGAogASgJEhUKDXBvcG92ZXJfY29sb3IYCyABKAkSIAoYcG9wb3Zlcl9mb3JlZ3JvdW5kX2NvbG9yGAwgASgJEiAKGHByaW1hcnlfZm9yZWdyb3VuZF9jb2xvchgNIAEoCRIiChpzZWNvbmRhcnlfZm9yZWdyb3VuZF9jb2xvchgOIAEoCRIfChdhY2NlbnRfZm9yZWdyb3VuZF9jb2xvchgPIAEoCRITCgttdXRlZF9jb2xvchgQIAEoCRIeChZtdXRlZF9mb3JlZ3JvdW5kX2NvbG9yGBEgASgJEhQKDGJvcmRlcl9jb2xvchgSIAEoCRITCgtpbnB1dF9jb2xvchgTIAEoCRISCgpyaW5nX2NvbG9yGBQgASgJEhUKDXN1Y2Nlc3NfY29sb3IYFSABKAkSIAoYc3VjY2Vzc19mb3JlZ3JvdW5kX2NvbG9yGBYgASgJEhUKDXdhcm5pbmdfY29sb3IYFyABKAkSIAoYd2FybmluZ19mb3JlZ3JvdW5kX2NvbG9yGBggASgJEhkKEWRlc3RydWN0aXZlX2NvbG9yGBkgASgJEiQKHGRlc3RydWN0aXZlX2ZvcmVncm91bmRfY29sb3IYGiABKAkSEgoKaW5mb19jb2xvchgbIAEoCRIdChVpbmZvX2ZvcmVncm91bmRfY29sb3IYHCABKAkSEwoLZmF2aWNvbl91cmwYHSABKAkikAEKBFBhZ2USCgoCaWQYASABKAkSDAoEc2x1ZxgCIAEoCRINCgV0aXRsZRgDIAEoCRIcChRwdWJsaXNoZWRfdmVyc2lvbl9pZBgEIAEoCRISCgpjcmVhdGVkX2F0GAUgASgJEhIKCnVwZGF0ZWRfYXQYBiABKAkSGQoRZGlzcGxheV9pbl9mb290ZXIYByABKAgiwgEKC1BhZ2VWZXJzaW9uEgoKAmlkGAEgASgJEg8KB3BhZ2VfaWQYAiABKAkSFgoOdmVyc2lvbl9udW1iZXIYAyABKAUSGAoQY29udGVudF9tYXJrZG93bhgEIAEoCRIWCg5hdXRob3JfdXNlcl9pZBgFIAEoCRIOCgZzdGF0dXMYBiABKAkSEgoKcHVibGlzaF9hdBgHIAEoCRISCgpjcmVhdGVkX2F0GAggASgJEhQKDHB1Ymxpc2hlZF9hdBgJIAEoCUJIWkZnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvZ2VuL3B1YmxpcmEvdHlwZXMvdjE7cHVibGlyYXR0eXBlc3YxYgZwcm90bzM");
+  fileDesc("ChxwdWJsaXJhL3R5cGVzL3YxL3R5cGVzLnByb3RvEhBwdWJsaXJhLnR5cGVzLnYxIiIKDVRlbmFudENvbnRleHQSEQoJdGVuYW50X2lkGAEgASgJIjUKBFVzZXISEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcm9sZRgDIAEoCSIwCgtBY2Nlc3NUb2tlbhINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJIqkBCgdDcmVhdG9yEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkSFAoMcHJvZmlsZV90ZXh0GAQgASgJEhYKDmljb25faW1hZ2VfdXJsGAUgASgJEiIKGmljb25faW1hZ2VfZmlsZV9zaXplX2J5dGVzGAYgASgDEh0KFWljb25faW1hZ2VfdXBkYXRlZF9hdBgHIAEoCSKXAQoFTGFiZWwSEQoJcHVibGljX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSIgoaZXllX2NhdGNoX2ltYWdlX3VwZGF0ZWRfYXQYAyABKAkSSQoYZXllX2NhdGNoX2ltYWdlX3ZhcmlhbnRzGAQgAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeWVDYXRjaFZhcmlhbnQilwEKFVNlcmllc0V5ZUNhdGNoVmFyaWFudBINCgVsYWJlbBgBIAEoCRIUCgx2YXJpYW50X3R5cGUYByABKAkSCwoDdXJsGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRINCgV3aWR0aBgEIAEoBRIOCgZoZWlnaHQYBSABKAUSFwoPZmlsZV9zaXplX2J5dGVzGAYgASgDItYCCgZTZXJpZXMSEQoJcHVibGljX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhAKCHN5bm9wc2lzGAMgASgJEiYKBWxhYmVsGAQgASgLMhcucHVibGlyYS50eXBlcy52MS5MYWJlbBIrCghjcmVhdG9ycxgFIAMoCzIZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvchIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgGIAEoBRIUCgxpc19wdWJsaXNoZWQYCyABKAgSFAoMcHVibGlzaGVkX2F0GAwgASgJEiIKGmV5ZV9jYXRjaF9pbWFnZV91cGRhdGVkX2F0GAkgASgJEkkKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50cxgKIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50SgQIBxAISgQICBAJIqkBCgdFcGlzb2RlEhEKCXB1YmxpY19pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRITCgtvcmRlcl9pbmRleBgDIAEoBRINCgVwcmljZRgEIAEoBRIcChRyZWFkaW5nX3BlcmlvZF9ob3VycxgFIAEoBRIOCgZzdGF0dXMYBiABKAkSFAoMc2NoZWR1bGVkX2F0GAcgASgJEhQKDHB1Ymxpc2hlZF9hdBgIIAEoCSKSAQoMRXBpc29kZUltYWdlEgoKAmlkGAEgASgJEhEKCWltYWdlX3VybBgCIAEoCRIUCgxjb250ZW50X3R5cGUYAyABKAkSFwoPZmlsZV9zaXplX2J5dGVzGAQgASgDEhUKDWRpc3BsYXlfb3JkZXIYBSABKAUSDQoFd2lkdGgYBiABKAUSDgoGaGVpZ2h0GAcgASgFIpQBChJUZW5hbnRJbWFnZVZhcmlhbnQSDQoFbGFiZWwYASABKAkSCwoDdXJsGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRINCgV3aWR0aBgEIAEoBRIOCgZoZWlnaHQYBSABKAUSFwoPZmlsZV9zaXplX2J5dGVzGAYgASgDEhQKDHZhcmlhbnRfdHlwZRgHIAEoCSLRBwoLVGVuYW50VGhlbWUSFQoNcHJpbWFyeV9jb2xvchgBIAEoCRIXCg9zZWNvbmRhcnlfY29sb3IYAiABKAkSFAoMYWNjZW50X2NvbG9yGAMgASgJEhgKEGJhY2tncm91bmRfY29sb3IYBSABKAkSGAoQZm9yZWdyb3VuZF9jb2xvchgGIAEoCRIVCg1zdXJmYWNlX2NvbG9yGAcgASgJEiAKGHN1cmZhY2VfZm9yZWdyb3VuZF9jb2xvchgIIAEoCRISCgpjYXJkX2NvbG9yGAkgASgJEh0KFWNhcmRfZm9yZWdyb3VuZF9jb2xvchgKIAEoCRIVCg1wb3BvdmVyX2NvbG9yGAsgASgJEiAKGHBvcG92ZXJfZm9yZWdyb3VuZF9jb2xvchgMIAEoCRIgChhwcmltYXJ5X2ZvcmVncm91bmRfY29sb3IYDSABKAkSIgoac2Vjb25kYXJ5X2ZvcmVncm91bmRfY29sb3IYDiABKAkSHwoXYWNjZW50X2ZvcmVncm91bmRfY29sb3IYDyABKAkSEwoLbXV0ZWRfY29sb3IYECABKAkSHgoWbXV0ZWRfZm9yZWdyb3VuZF9jb2xvchgRIAEoCRIUCgxib3JkZXJfY29sb3IYEiABKAkSEwoLaW5wdXRfY29sb3IYEyABKAkSEgoKcmluZ19jb2xvchgUIAEoCRIVCg1zdWNjZXNzX2NvbG9yGBUgASgJEiAKGHN1Y2Nlc3NfZm9yZWdyb3VuZF9jb2xvchgWIAEoCRIVCg13YXJuaW5nX2NvbG9yGBcgASgJEiAKGHdhcm5pbmdfZm9yZWdyb3VuZF9jb2xvchgYIAEoCRIZChFkZXN0cnVjdGl2ZV9jb2xvchgZIAEoCRIkChxkZXN0cnVjdGl2ZV9mb3JlZ3JvdW5kX2NvbG9yGBogASgJEhIKCmluZm9fY29sb3IYGyABKAkSHQoVaW5mb19mb3JlZ3JvdW5kX2NvbG9yGBwgASgJEh0KFWljb25faW1hZ2VfdXBkYXRlZF9hdBgeIAEoCRJBChNpY29uX2ltYWdlX3ZhcmlhbnRzGB8gAygLMiQucHVibGlyYS50eXBlcy52MS5UZW5hbnRJbWFnZVZhcmlhbnQSHQoVbG9nb19pbWFnZV91cGRhdGVkX2F0GCAgASgJEkEKE2xvZ29faW1hZ2VfdmFyaWFudHMYISADKAsyJC5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudEltYWdlVmFyaWFudEoECAQQBUoECB0QHlIIbG9nb191cmxSCGljb25fdXJsIpABCgRQYWdlEgoKAmlkGAEgASgJEgwKBHNsdWcYAiABKAkSDQoFdGl0bGUYAyABKAkSHAoUcHVibGlzaGVkX3ZlcnNpb25faWQYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRISCgp1cGRhdGVkX2F0GAYgASgJEhkKEWRpc3BsYXlfaW5fZm9vdGVyGAcgASgIIsIBCgtQYWdlVmVyc2lvbhIKCgJpZBgBIAEoCRIPCgdwYWdlX2lkGAIgASgJEhYKDnZlcnNpb25fbnVtYmVyGAMgASgFEhgKEGNvbnRlbnRfbWFya2Rvd24YBCABKAkSFgoOYXV0aG9yX3VzZXJfaWQYBSABKAkSDgoGc3RhdHVzGAYgASgJEhIKCnB1Ymxpc2hfYXQYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIUCgxwdWJsaXNoZWRfYXQYCSABKAlCSFpGZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2dlbi9wdWJsaXJhL3R5cGVzL3YxO3B1YmxpcmF0dHlwZXN2MWIGcHJvdG8z");
 
 /**
  * TenantContext identifies a tenant for internal RPC wiring.
@@ -375,6 +375,58 @@ export const EpisodeImageSchema: GenMessage<EpisodeImage> = /*@__PURE__*/
   messageDesc(file_publira_types_v1_types, 8);
 
 /**
+ * A stored tenant branding image, in the shape the eye-catch images already
+ * use. `variant_type` names what the image is for — `logo` or `icon` — the
+ * way the eye-catch variants name their aspect ratio; it is not a size. Sizes
+ * are the image server's job: it resizes on request from the stored master.
+ *
+ * @generated from message publira.types.v1.TenantImageVariant
+ */
+export type TenantImageVariant = Message<"publira.types.v1.TenantImageVariant"> & {
+  /**
+   * @generated from field: string label = 1;
+   */
+  label: string;
+
+  /**
+   * @generated from field: string url = 2;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string content_type = 3;
+   */
+  contentType: string;
+
+  /**
+   * @generated from field: int32 width = 4;
+   */
+  width: number;
+
+  /**
+   * @generated from field: int32 height = 5;
+   */
+  height: number;
+
+  /**
+   * @generated from field: int64 file_size_bytes = 6;
+   */
+  fileSizeBytes: bigint;
+
+  /**
+   * @generated from field: string variant_type = 7;
+   */
+  variantType: string;
+};
+
+/**
+ * Describes the message publira.types.v1.TenantImageVariant.
+ * Use `create(TenantImageVariantSchema)` to create a new message.
+ */
+export const TenantImageVariantSchema: GenMessage<TenantImageVariant> = /*@__PURE__*/
+  messageDesc(file_publira_types_v1_types, 9);
+
+/**
  * @generated from message publira.types.v1.TenantTheme
  */
 export type TenantTheme = Message<"publira.types.v1.TenantTheme"> & {
@@ -392,11 +444,6 @@ export type TenantTheme = Message<"publira.types.v1.TenantTheme"> & {
    * @generated from field: string accent_color = 3;
    */
   accentColor: string;
-
-  /**
-   * @generated from field: string logo_url = 4;
-   */
-  logoUrl: string;
 
   /**
    * @generated from field: string background_color = 5;
@@ -519,14 +566,29 @@ export type TenantTheme = Message<"publira.types.v1.TenantTheme"> & {
   infoForegroundColor: string;
 
   /**
-   * Tenant favicon, uploaded and stored independently from logo_url. Empty
-   * when the tenant has not set one, which is what makes the public site fall
-   * back to the logo. Replacing the favicon stores a new image, so the URL
-   * itself changes and no separate cache-busting field is needed.
+   * Tenant icon, uploaded and stored independently from the logo. The
+   * variant list is empty when the tenant has not set one.
    *
-   * @generated from field: string favicon_url = 29;
+   * @generated from field: string icon_image_updated_at = 30;
    */
-  faviconUrl: string;
+  iconImageUpdatedAt: string;
+
+  /**
+   * @generated from field: repeated publira.types.v1.TenantImageVariant icon_image_variants = 31;
+   */
+  iconImageVariants: TenantImageVariant[];
+
+  /**
+   * Tenant logo. The variant list is empty when the tenant has not set one.
+   *
+   * @generated from field: string logo_image_updated_at = 32;
+   */
+  logoImageUpdatedAt: string;
+
+  /**
+   * @generated from field: repeated publira.types.v1.TenantImageVariant logo_image_variants = 33;
+   */
+  logoImageVariants: TenantImageVariant[];
 };
 
 /**
@@ -534,7 +596,7 @@ export type TenantTheme = Message<"publira.types.v1.TenantTheme"> & {
  * Use `create(TenantThemeSchema)` to create a new message.
  */
 export const TenantThemeSchema: GenMessage<TenantTheme> = /*@__PURE__*/
-  messageDesc(file_publira_types_v1_types, 9);
+  messageDesc(file_publira_types_v1_types, 10);
 
 /**
  * @generated from message publira.types.v1.Page
@@ -581,7 +643,7 @@ export type Page = Message<"publira.types.v1.Page"> & {
  * Use `create(PageSchema)` to create a new message.
  */
 export const PageSchema: GenMessage<Page> = /*@__PURE__*/
-  messageDesc(file_publira_types_v1_types, 10);
+  messageDesc(file_publira_types_v1_types, 11);
 
 /**
  * @generated from message publira.types.v1.PageVersion
@@ -638,5 +700,5 @@ export type PageVersion = Message<"publira.types.v1.PageVersion"> & {
  * Use `create(PageVersionSchema)` to create a new message.
  */
 export const PageVersionSchema: GenMessage<PageVersion> = /*@__PURE__*/
-  messageDesc(file_publira_types_v1_types, 11);
+  messageDesc(file_publira_types_v1_types, 12);
 

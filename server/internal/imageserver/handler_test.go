@@ -40,8 +40,10 @@ type stubTenantQueries struct {
 	publicErr     error
 	creator       dbmodels.GetCreatorImageByIDForTenantRow
 	creatorErr    error
-	tenant        dbmodels.GetTenantImageByIDForTenantRow
+	tenant        dbmodels.GetTenantImageVariantByTypeForTenantRow
 	tenantErr     error
+	tenantKey     tenantVariantKey
+	tenantParams  *dbmodels.GetTenantImageVariantByTypeForTenantParams
 	userRef       dbmodels.GetUserByPublicIDForTenantRow
 	userRefErr    error
 	user          dbmodels.User
@@ -54,12 +56,29 @@ func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodel
 	return s.creator, s.creatorErr
 }
 
-func (s stubTenantQueries) GetTenantImageByIDForTenant(context.Context, dbmodels.GetTenantImageByIDForTenantParams) (dbmodels.GetTenantImageByIDForTenantRow, error) {
-	if s.tenantErr != nil {
-		return dbmodels.GetTenantImageByIDForTenantRow{}, s.tenantErr
+// tenantVariantKey is the tuple the real query filters on. The stub answers
+// only for an exact match so that a handler which dropped the tenant or the
+// variant type from the lookup fails the test instead of being served a row.
+type tenantVariantKey struct {
+	tenantImageID uuid.UUID
+	tenantID      uuid.UUID
+	variantType   string
+}
+
+func (s stubTenantQueries) GetTenantImageVariantByTypeForTenant(_ context.Context, arg dbmodels.GetTenantImageVariantByTypeForTenantParams) (dbmodels.GetTenantImageVariantByTypeForTenantRow, error) {
+	if s.tenantParams != nil {
+		*s.tenantParams = arg
 	}
-	if s.tenant.ObjectKey == "" {
-		return dbmodels.GetTenantImageByIDForTenantRow{}, sql.ErrNoRows
+	if s.tenantErr != nil {
+		return dbmodels.GetTenantImageVariantByTypeForTenantRow{}, s.tenantErr
+	}
+	requested := tenantVariantKey{
+		tenantImageID: arg.TenantImageID,
+		tenantID:      arg.TenantID,
+		variantType:   arg.VariantType,
+	}
+	if s.tenant.ObjectKey == "" || requested != s.tenantKey {
+		return dbmodels.GetTenantImageVariantByTypeForTenantRow{}, sql.ErrNoRows
 	}
 	return s.tenant, nil
 }
@@ -464,26 +483,33 @@ func TestCreatorImageConvertsToWebP(t *testing.T) {
 	}
 }
 
-func TestTenantImageServesStoredFavicon(t *testing.T) {
+func TestTenantImageServesStoredIcon(t *testing.T) {
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
 	store := &countingStore{
 		objects: map[string]storedObject{
-			"tenants/acme/favicons/favicon.png": {data: testJPEG(), contentType: "image/png"},
+			"tenants/acme/icons/icon.png": {data: testJPEG(), contentType: "image/png"},
 		},
 	}
+	var params dbmodels.GetTenantImageVariantByTypeForTenantParams
 	srv := newTestServer(t,
 		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
 		stubFactory{q: stubTenantQueries{
-			tenant: dbmodels.GetTenantImageByIDForTenantRow{
-				ObjectKey:   "tenants/acme/favicons/favicon.png",
+			tenant: dbmodels.GetTenantImageVariantByTypeForTenantRow{
+				ObjectKey:   "tenants/acme/icons/icon.png",
 				ContentType: "image/png",
 			},
+			tenantKey: tenantVariantKey{
+				tenantImageID: mediaID,
+				tenantID:      tenantID,
+				variantType:   "icon",
+			},
+			tenantParams: &params,
 		}},
 		store,
 	)
 
-	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String()+"/icon", nil)
 	req.Host = "example.test"
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)
@@ -492,6 +518,85 @@ func TestTenantImageServesStoredFavicon(t *testing.T) {
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=3600" {
 		t.Fatalf("Cache-Control = %q, want public, max-age=3600", got)
+	}
+	if params.TenantImageID != mediaID {
+		t.Fatalf("tenant_image_id = %s, want %s", params.TenantImageID, mediaID)
+	}
+	if params.TenantID != tenantID {
+		t.Fatalf("tenant_id = %s, want %s", params.TenantID, tenantID)
+	}
+	if params.VariantType != "icon" {
+		t.Fatalf("variant_type = %q, want icon", params.VariantType)
+	}
+}
+
+// The route is keyed by variant_type, so a tenant that stored only an icon must
+// not have it served as its logo.
+func TestTenantImageUnknownVariantTypeReturnsNotFound(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	var params dbmodels.GetTenantImageVariantByTypeForTenantParams
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: stubTenantQueries{
+			tenant: dbmodels.GetTenantImageVariantByTypeForTenantRow{
+				ObjectKey:   "tenants/acme/icons/icon.png",
+				ContentType: "image/png",
+			},
+			tenantKey: tenantVariantKey{
+				tenantImageID: mediaID,
+				tenantID:      tenantID,
+				variantType:   "icon",
+			},
+			tenantParams: &params,
+		}},
+		&countingStore{objects: map[string]storedObject{
+			"tenants/acme/icons/icon.png": {data: testJPEG(), contentType: "image/png"},
+		}},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String()+"/logo", nil)
+	req.Host = "example.test"
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+	if params.VariantType != "logo" {
+		t.Fatalf("variant_type = %q, want logo", params.VariantType)
+	}
+}
+
+// The image belongs to the tenant the host resolved to, so another tenant's
+// media_id must not be served even when the object exists in the store.
+func TestTenantImageOfAnotherTenantReturnsNotFound(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	otherTenantID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	mediaID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: stubTenantQueries{
+			tenant: dbmodels.GetTenantImageVariantByTypeForTenantRow{
+				ObjectKey:   "tenants/acme/icons/icon.png",
+				ContentType: "image/png",
+			},
+			tenantKey: tenantVariantKey{
+				tenantImageID: mediaID,
+				tenantID:      otherTenantID,
+				variantType:   "icon",
+			},
+		}},
+		&countingStore{objects: map[string]storedObject{
+			"tenants/acme/icons/icon.png": {data: testJPEG(), contentType: "image/png"},
+		}},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String()+"/icon", nil)
+	req.Host = "example.test"
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }
 
@@ -504,7 +609,7 @@ func TestTenantImageMissingReturnsNotFound(t *testing.T) {
 		&countingStore{objects: map[string]storedObject{}},
 	)
 
-	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String()+"/icon", nil)
 	req.Host = "example.test"
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)

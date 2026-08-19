@@ -1265,6 +1265,7 @@ INSERT INTO tenant_image_variants (
         tenant_id,
         tenant_image_id,
         label,
+        variant_type,
         storage_provider,
         object_key,
         content_type,
@@ -1272,8 +1273,8 @@ INSERT INTO tenant_image_variants (
         width,
         height
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, tenant_id, tenant_image_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, tenant_id, tenant_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height, created_at
 `
 
 type CreateTenantImageVariantParams struct {
@@ -1281,6 +1282,7 @@ type CreateTenantImageVariantParams struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	TenantImageID   uuid.UUID `json:"tenant_image_id"`
 	Label           string    `json:"label"`
+	VariantType     string    `json:"variant_type"`
 	StorageProvider string    `json:"storage_provider"`
 	ObjectKey       string    `json:"object_key"`
 	ContentType     string    `json:"content_type"`
@@ -1295,6 +1297,7 @@ func (q *Queries) CreateTenantImageVariant(ctx context.Context, arg CreateTenant
 		arg.TenantID,
 		arg.TenantImageID,
 		arg.Label,
+		arg.VariantType,
 		arg.StorageProvider,
 		arg.ObjectKey,
 		arg.ContentType,
@@ -1308,6 +1311,7 @@ func (q *Queries) CreateTenantImageVariant(ctx context.Context, arg CreateTenant
 		&i.TenantID,
 		&i.TenantImageID,
 		&i.Label,
+		&i.VariantType,
 		&i.StorageProvider,
 		&i.ObjectKey,
 		&i.ContentType,
@@ -3225,35 +3229,31 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 	return i, err
 }
 
-const getTenantImageByIDForTenant = `-- name: GetTenantImageByIDForTenant :one
+const getTenantImageVariantByTypeForTenant = `-- name: GetTenantImageVariantByTypeForTenant :one
 SELECT tiv.object_key,
     tiv.content_type
-FROM tenant_images ti
-JOIN LATERAL (
-    SELECT object_key, content_type
-    FROM tenant_image_variants
-    WHERE tenant_image_id = ti.id
-    ORDER BY width DESC
-    LIMIT 1
-) tiv ON true
-WHERE ti.id = $1
+FROM tenant_image_variants tiv
+JOIN tenant_images ti ON ti.id = tiv.tenant_image_id
+WHERE tiv.tenant_image_id = $1
     AND ti.tenant_id = $2
+    AND tiv.variant_type = $3
 LIMIT 1
 `
 
-type GetTenantImageByIDForTenantParams struct {
-	ID       uuid.UUID `json:"id"`
-	TenantID uuid.UUID `json:"tenant_id"`
+type GetTenantImageVariantByTypeForTenantParams struct {
+	TenantImageID uuid.UUID `json:"tenant_image_id"`
+	TenantID      uuid.UUID `json:"tenant_id"`
+	VariantType   string    `json:"variant_type"`
 }
 
-type GetTenantImageByIDForTenantRow struct {
+type GetTenantImageVariantByTypeForTenantRow struct {
 	ObjectKey   string `json:"object_key"`
 	ContentType string `json:"content_type"`
 }
 
-func (q *Queries) GetTenantImageByIDForTenant(ctx context.Context, arg GetTenantImageByIDForTenantParams) (GetTenantImageByIDForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, getTenantImageByIDForTenant, arg.ID, arg.TenantID)
-	var i GetTenantImageByIDForTenantRow
+func (q *Queries) GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getTenantImageVariantByTypeForTenant, arg.TenantImageID, arg.TenantID, arg.VariantType)
+	var i GetTenantImageVariantByTypeForTenantRow
 	err := row.Scan(&i.ObjectKey, &i.ContentType)
 	return i, err
 }
@@ -3288,46 +3288,52 @@ SELECT
     COALESCE(tt.destructive_foreground_color, '#fff4f4') AS destructive_foreground_color,
     COALESCE(tt.info_color, '#3c78c2') AS info_color,
     COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,
-    tt.logo_url,
-    tt.favicon_image_id,
+    tt.icon_image_id,
+    fi.updated_at AS icon_image_updated_at,
+    tt.logo_image_id,
+    li.updated_at AS logo_image_updated_at,
     COALESCE(tt.updated_at, NOW()) AS updated_at
 FROM tenants t
 LEFT JOIN tenant_themes tt ON tt.tenant_id = t.id
+LEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id
+LEFT JOIN tenant_images li ON li.id = tt.logo_image_id
 WHERE t.id = $1
 `
 
 type GetTenantThemeByTenantIDRow struct {
-	TenantID                   uuid.UUID      `json:"tenant_id"`
-	BackgroundColor            string         `json:"background_color"`
-	ForegroundColor            string         `json:"foreground_color"`
-	SurfaceColor               string         `json:"surface_color"`
-	SurfaceForegroundColor     string         `json:"surface_foreground_color"`
-	CardColor                  string         `json:"card_color"`
-	CardForegroundColor        string         `json:"card_foreground_color"`
-	PopoverColor               string         `json:"popover_color"`
-	PopoverForegroundColor     string         `json:"popover_foreground_color"`
-	PrimaryColor               string         `json:"primary_color"`
-	PrimaryForegroundColor     string         `json:"primary_foreground_color"`
-	SecondaryColor             string         `json:"secondary_color"`
-	SecondaryForegroundColor   string         `json:"secondary_foreground_color"`
-	AccentColor                string         `json:"accent_color"`
-	AccentForegroundColor      string         `json:"accent_foreground_color"`
-	MutedColor                 string         `json:"muted_color"`
-	MutedForegroundColor       string         `json:"muted_foreground_color"`
-	BorderColor                string         `json:"border_color"`
-	InputColor                 string         `json:"input_color"`
-	RingColor                  string         `json:"ring_color"`
-	SuccessColor               string         `json:"success_color"`
-	SuccessForegroundColor     string         `json:"success_foreground_color"`
-	WarningColor               string         `json:"warning_color"`
-	WarningForegroundColor     string         `json:"warning_foreground_color"`
-	DestructiveColor           string         `json:"destructive_color"`
-	DestructiveForegroundColor string         `json:"destructive_foreground_color"`
-	InfoColor                  string         `json:"info_color"`
-	InfoForegroundColor        string         `json:"info_foreground_color"`
-	LogoUrl                    sql.NullString `json:"logo_url"`
-	FaviconImageID             uuid.NullUUID  `json:"favicon_image_id"`
-	UpdatedAt                  time.Time      `json:"updated_at"`
+	TenantID                   uuid.UUID     `json:"tenant_id"`
+	BackgroundColor            string        `json:"background_color"`
+	ForegroundColor            string        `json:"foreground_color"`
+	SurfaceColor               string        `json:"surface_color"`
+	SurfaceForegroundColor     string        `json:"surface_foreground_color"`
+	CardColor                  string        `json:"card_color"`
+	CardForegroundColor        string        `json:"card_foreground_color"`
+	PopoverColor               string        `json:"popover_color"`
+	PopoverForegroundColor     string        `json:"popover_foreground_color"`
+	PrimaryColor               string        `json:"primary_color"`
+	PrimaryForegroundColor     string        `json:"primary_foreground_color"`
+	SecondaryColor             string        `json:"secondary_color"`
+	SecondaryForegroundColor   string        `json:"secondary_foreground_color"`
+	AccentColor                string        `json:"accent_color"`
+	AccentForegroundColor      string        `json:"accent_foreground_color"`
+	MutedColor                 string        `json:"muted_color"`
+	MutedForegroundColor       string        `json:"muted_foreground_color"`
+	BorderColor                string        `json:"border_color"`
+	InputColor                 string        `json:"input_color"`
+	RingColor                  string        `json:"ring_color"`
+	SuccessColor               string        `json:"success_color"`
+	SuccessForegroundColor     string        `json:"success_foreground_color"`
+	WarningColor               string        `json:"warning_color"`
+	WarningForegroundColor     string        `json:"warning_foreground_color"`
+	DestructiveColor           string        `json:"destructive_color"`
+	DestructiveForegroundColor string        `json:"destructive_foreground_color"`
+	InfoColor                  string        `json:"info_color"`
+	InfoForegroundColor        string        `json:"info_foreground_color"`
+	IconImageID                uuid.NullUUID `json:"icon_image_id"`
+	IconImageUpdatedAt         sql.NullTime  `json:"icon_image_updated_at"`
+	LogoImageID                uuid.NullUUID `json:"logo_image_id"`
+	LogoImageUpdatedAt         sql.NullTime  `json:"logo_image_updated_at"`
+	UpdatedAt                  time.Time     `json:"updated_at"`
 }
 
 func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error) {
@@ -3362,8 +3368,10 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (G
 		&i.DestructiveForegroundColor,
 		&i.InfoColor,
 		&i.InfoForegroundColor,
-		&i.LogoUrl,
-		&i.FaviconImageID,
+		&i.IconImageID,
+		&i.IconImageUpdatedAt,
+		&i.LogoImageID,
+		&i.LogoImageUpdatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -7755,6 +7763,63 @@ func (q *Queries) ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTe
 	return items, nil
 }
 
+const listTenantImageVariantsByImageIDs = `-- name: ListTenantImageVariantsByImageIDs :many
+SELECT tenant_image_id,
+    variant_type,
+    label,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+FROM tenant_image_variants
+WHERE tenant_image_id = ANY($1::uuid [])
+ORDER BY tenant_image_id,
+    variant_type
+`
+
+type ListTenantImageVariantsByImageIDsRow struct {
+	TenantImageID uuid.UUID `json:"tenant_image_id"`
+	VariantType   string    `json:"variant_type"`
+	Label         string    `json:"label"`
+	ContentType   string    `json:"content_type"`
+	FileSizeBytes int64     `json:"file_size_bytes"`
+	Width         int32     `json:"width"`
+	Height        int32     `json:"height"`
+}
+
+// The theme carries the icon and the logo together, so both images' variants
+// are read in one statement rather than one query per slot.
+func (q *Queries) ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTenantImageVariantsByImageIDs, pq.Array(imageIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantImageVariantsByImageIDsRow
+	for rows.Next() {
+		var i ListTenantImageVariantsByImageIDsRow
+		if err := rows.Scan(
+			&i.TenantImageID,
+			&i.VariantType,
+			&i.Label,
+			&i.ContentType,
+			&i.FileSizeBytes,
+			&i.Width,
+			&i.Height,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenantMemberIDs = `-- name: ListTenantMemberIDs :many
 SELECT u.id
 FROM users u
@@ -8419,10 +8484,11 @@ WHERE id = $1
 FOR UPDATE
 `
 
-// Lock the tenant row so concurrent tenant favicon uploads and deletes
-// serialize. The following read of the current favicon must be a separate
-// statement: READ COMMITTED freezes its snapshot at statement start, so waiting
-// for the lock in the same statement would still see the pre-wait row.
+// Lock the tenant row so concurrent tenant branding image uploads and deletes
+// (icon, logo) serialize. The following read of the current image must be a
+// separate statement: READ COMMITTED freezes its snapshot at statement start,
+// so waiting for the lock in the same statement would still see the pre-wait
+// row.
 func (q *Queries) LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, lockTenantForUpdate, id)
 	var id_2 uuid.UUID
@@ -8669,31 +8735,30 @@ func (q *Queries) RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg
 	return i, err
 }
 
-const setTenantThemeFaviconImage = `-- name: SetTenantThemeFaviconImage :one
-INSERT INTO tenant_themes (tenant_id, favicon_image_id, updated_at)
+const setTenantThemeIconImage = `-- name: SetTenantThemeIconImage :one
+INSERT INTO tenant_themes (tenant_id, icon_image_id, updated_at)
 VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
-SET favicon_image_id = EXCLUDED.favicon_image_id,
+SET icon_image_id = EXCLUDED.icon_image_id,
     updated_at = NOW()
-RETURNING tenant_id, primary_color, secondary_color, accent_color, logo_url, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, favicon_image_id
+RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id
 `
 
-type SetTenantThemeFaviconImageParams struct {
-	TenantID       uuid.UUID     `json:"tenant_id"`
-	FaviconImageID uuid.NullUUID `json:"favicon_image_id"`
+type SetTenantThemeIconImageParams struct {
+	TenantID    uuid.UUID     `json:"tenant_id"`
+	IconImageID uuid.NullUUID `json:"icon_image_id"`
 }
 
-// The theme row is created on demand: a tenant can upload a favicon before it
+// The theme row is created on demand: a tenant can upload a icon before it
 // has ever saved a color, and the colors then keep their column defaults.
-func (q *Queries) SetTenantThemeFaviconImage(ctx context.Context, arg SetTenantThemeFaviconImageParams) (TenantTheme, error) {
-	row := q.db.QueryRowContext(ctx, setTenantThemeFaviconImage, arg.TenantID, arg.FaviconImageID)
+func (q *Queries) SetTenantThemeIconImage(ctx context.Context, arg SetTenantThemeIconImageParams) (TenantTheme, error) {
+	row := q.db.QueryRowContext(ctx, setTenantThemeIconImage, arg.TenantID, arg.IconImageID)
 	var i TenantTheme
 	err := row.Scan(
 		&i.TenantID,
 		&i.PrimaryColor,
 		&i.SecondaryColor,
 		&i.AccentColor,
-		&i.LogoUrl,
 		&i.UpdatedAt,
 		&i.BackgroundColor,
 		&i.ForegroundColor,
@@ -8719,7 +8784,64 @@ func (q *Queries) SetTenantThemeFaviconImage(ctx context.Context, arg SetTenantT
 		&i.DestructiveForegroundColor,
 		&i.InfoColor,
 		&i.InfoForegroundColor,
-		&i.FaviconImageID,
+		&i.IconImageID,
+		&i.LogoImageID,
+	)
+	return i, err
+}
+
+const setTenantThemeLogoImage = `-- name: SetTenantThemeLogoImage :one
+INSERT INTO tenant_themes (tenant_id, logo_image_id, updated_at)
+VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
+UPDATE
+SET logo_image_id = EXCLUDED.logo_image_id,
+    updated_at = NOW()
+RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id
+`
+
+type SetTenantThemeLogoImageParams struct {
+	TenantID    uuid.UUID     `json:"tenant_id"`
+	LogoImageID uuid.NullUUID `json:"logo_image_id"`
+}
+
+// The theme row is created on demand, the same way the icon does it: a
+// tenant can upload a logo before it has ever saved a color, and the colors
+// then keep their column defaults.
+func (q *Queries) SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThemeLogoImageParams) (TenantTheme, error) {
+	row := q.db.QueryRowContext(ctx, setTenantThemeLogoImage, arg.TenantID, arg.LogoImageID)
+	var i TenantTheme
+	err := row.Scan(
+		&i.TenantID,
+		&i.PrimaryColor,
+		&i.SecondaryColor,
+		&i.AccentColor,
+		&i.UpdatedAt,
+		&i.BackgroundColor,
+		&i.ForegroundColor,
+		&i.SurfaceColor,
+		&i.SurfaceForegroundColor,
+		&i.CardColor,
+		&i.CardForegroundColor,
+		&i.PopoverColor,
+		&i.PopoverForegroundColor,
+		&i.PrimaryForegroundColor,
+		&i.SecondaryForegroundColor,
+		&i.AccentForegroundColor,
+		&i.MutedColor,
+		&i.MutedForegroundColor,
+		&i.BorderColor,
+		&i.InputColor,
+		&i.RingColor,
+		&i.SuccessColor,
+		&i.SuccessForegroundColor,
+		&i.WarningColor,
+		&i.WarningForegroundColor,
+		&i.DestructiveColor,
+		&i.DestructiveForegroundColor,
+		&i.InfoColor,
+		&i.InfoForegroundColor,
+		&i.IconImageID,
+		&i.LogoImageID,
 	)
 	return i, err
 }
@@ -9501,7 +9623,6 @@ INSERT INTO tenant_themes (
         destructive_foreground_color,
         info_color,
         info_foreground_color,
-        logo_url,
         updated_at
     )
 VALUES (
@@ -9533,7 +9654,6 @@ VALUES (
         $26,
         $27,
         $28,
-        $29,
         NOW()
     ) ON CONFLICT (tenant_id) DO
 UPDATE
@@ -9564,41 +9684,39 @@ SET background_color = EXCLUDED.background_color,
     destructive_foreground_color = EXCLUDED.destructive_foreground_color,
     info_color = EXCLUDED.info_color,
     info_foreground_color = EXCLUDED.info_foreground_color,
-    logo_url = EXCLUDED.logo_url,
     updated_at = NOW()
-RETURNING tenant_id, primary_color, secondary_color, accent_color, logo_url, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, favicon_image_id
+RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id
 `
 
 type UpsertTenantThemeParams struct {
-	TenantID                   uuid.UUID      `json:"tenant_id"`
-	BackgroundColor            string         `json:"background_color"`
-	ForegroundColor            string         `json:"foreground_color"`
-	SurfaceColor               string         `json:"surface_color"`
-	SurfaceForegroundColor     string         `json:"surface_foreground_color"`
-	CardColor                  string         `json:"card_color"`
-	CardForegroundColor        string         `json:"card_foreground_color"`
-	PopoverColor               string         `json:"popover_color"`
-	PopoverForegroundColor     string         `json:"popover_foreground_color"`
-	PrimaryColor               string         `json:"primary_color"`
-	PrimaryForegroundColor     string         `json:"primary_foreground_color"`
-	SecondaryColor             string         `json:"secondary_color"`
-	SecondaryForegroundColor   string         `json:"secondary_foreground_color"`
-	AccentColor                string         `json:"accent_color"`
-	AccentForegroundColor      string         `json:"accent_foreground_color"`
-	MutedColor                 string         `json:"muted_color"`
-	MutedForegroundColor       string         `json:"muted_foreground_color"`
-	BorderColor                string         `json:"border_color"`
-	InputColor                 string         `json:"input_color"`
-	RingColor                  string         `json:"ring_color"`
-	SuccessColor               string         `json:"success_color"`
-	SuccessForegroundColor     string         `json:"success_foreground_color"`
-	WarningColor               string         `json:"warning_color"`
-	WarningForegroundColor     string         `json:"warning_foreground_color"`
-	DestructiveColor           string         `json:"destructive_color"`
-	DestructiveForegroundColor string         `json:"destructive_foreground_color"`
-	InfoColor                  string         `json:"info_color"`
-	InfoForegroundColor        string         `json:"info_foreground_color"`
-	LogoUrl                    sql.NullString `json:"logo_url"`
+	TenantID                   uuid.UUID `json:"tenant_id"`
+	BackgroundColor            string    `json:"background_color"`
+	ForegroundColor            string    `json:"foreground_color"`
+	SurfaceColor               string    `json:"surface_color"`
+	SurfaceForegroundColor     string    `json:"surface_foreground_color"`
+	CardColor                  string    `json:"card_color"`
+	CardForegroundColor        string    `json:"card_foreground_color"`
+	PopoverColor               string    `json:"popover_color"`
+	PopoverForegroundColor     string    `json:"popover_foreground_color"`
+	PrimaryColor               string    `json:"primary_color"`
+	PrimaryForegroundColor     string    `json:"primary_foreground_color"`
+	SecondaryColor             string    `json:"secondary_color"`
+	SecondaryForegroundColor   string    `json:"secondary_foreground_color"`
+	AccentColor                string    `json:"accent_color"`
+	AccentForegroundColor      string    `json:"accent_foreground_color"`
+	MutedColor                 string    `json:"muted_color"`
+	MutedForegroundColor       string    `json:"muted_foreground_color"`
+	BorderColor                string    `json:"border_color"`
+	InputColor                 string    `json:"input_color"`
+	RingColor                  string    `json:"ring_color"`
+	SuccessColor               string    `json:"success_color"`
+	SuccessForegroundColor     string    `json:"success_foreground_color"`
+	WarningColor               string    `json:"warning_color"`
+	WarningForegroundColor     string    `json:"warning_foreground_color"`
+	DestructiveColor           string    `json:"destructive_color"`
+	DestructiveForegroundColor string    `json:"destructive_foreground_color"`
+	InfoColor                  string    `json:"info_color"`
+	InfoForegroundColor        string    `json:"info_foreground_color"`
 }
 
 func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error) {
@@ -9631,7 +9749,6 @@ func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemePa
 		arg.DestructiveForegroundColor,
 		arg.InfoColor,
 		arg.InfoForegroundColor,
-		arg.LogoUrl,
 	)
 	var i TenantTheme
 	err := row.Scan(
@@ -9639,7 +9756,6 @@ func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemePa
 		&i.PrimaryColor,
 		&i.SecondaryColor,
 		&i.AccentColor,
-		&i.LogoUrl,
 		&i.UpdatedAt,
 		&i.BackgroundColor,
 		&i.ForegroundColor,
@@ -9665,7 +9781,8 @@ func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemePa
 		&i.DestructiveForegroundColor,
 		&i.InfoColor,
 		&i.InfoForegroundColor,
-		&i.FaviconImageID,
+		&i.IconImageID,
+		&i.LogoImageID,
 	)
 	return i, err
 }

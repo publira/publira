@@ -26,7 +26,7 @@ type ResolverQuerier interface {
 
 type TenantScopedQuerier interface {
 	GetCreatorImageByIDForTenant(ctx context.Context, arg dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error)
-	GetTenantImageByIDForTenant(ctx context.Context, arg dbmodels.GetTenantImageByIDForTenantParams) (dbmodels.GetTenantImageByIDForTenantRow, error)
+	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg dbmodels.GetTenantImageVariantByTypeForTenantParams) (dbmodels.GetTenantImageVariantByTypeForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error)
@@ -86,7 +86,7 @@ func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFacto
 	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
 	mux.HandleFunc("GET /images/labels/{media_id}/{variant_type}/{width}", h.handleGetLabelImage)
 	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
-	mux.HandleFunc("GET /images/tenants/{media_id}", h.handleGetTenantImage)
+	mux.HandleFunc("GET /images/tenants/{media_id}/{variant_type}", h.handleGetTenantImage)
 	return &Server{mux: mux, origin: origin}, nil
 }
 
@@ -310,9 +310,12 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 	h.serveConverted(w, r, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600")
 }
 
-// handleGetTenantImage serves a tenant branding image — currently the tenant
-// favicon. The tenant is resolved from the host, so a media id only ever
-// resolves against the tenant whose domain the request arrived on.
+// handleGetTenantImage serves a tenant branding image — the logo or the
+// icon, named by variant_type the way the series route names its aspect
+// ratio. The tenant is resolved from the host, so a media id only ever resolves
+// against the tenant whose domain the request arrived on. Renditions are not
+// stored per size: Manael resizes the stored master when the request carries
+// its `w` parameter.
 func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -332,6 +335,11 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid media_id", http.StatusBadRequest)
 		return
 	}
+	variantType := strings.TrimSpace(r.PathValue("variant_type"))
+	if variantType == "" {
+		http.Error(w, "variant_type is required", http.StatusBadRequest)
+		return
+	}
 
 	tenantQueries, cleanup, err := h.tenantFactory.ForTenant(ctx, tenant.ID)
 	if err != nil {
@@ -341,9 +349,10 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cleanup()
 
-	imageRow, err := tenantQueries.GetTenantImageByIDForTenant(ctx, dbmodels.GetTenantImageByIDForTenantParams{
-		ID:       mediaID,
-		TenantID: tenant.ID,
+	imageRow, err := tenantQueries.GetTenantImageVariantByTypeForTenant(ctx, dbmodels.GetTenantImageVariantByTypeForTenantParams{
+		TenantImageID: mediaID,
+		TenantID:      tenant.ID,
+		VariantType:   variantType,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
