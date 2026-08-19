@@ -1,14 +1,16 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   AdminPage,
@@ -66,6 +68,10 @@ interface EditSeriesPageProps {
   }>;
 }
 
+const editSeriesParamsSchema = z.object({
+  series_id: routeParamString(),
+});
+
 const resolveActiveTab = async (
   searchParams: EditSeriesPageProps["searchParams"]
 ): Promise<"basic" | "eye-catch"> => parseEditTab(await searchParams);
@@ -92,11 +98,15 @@ const EditSeriesTabs = async ({
   params,
   searchParams,
 }: EditSeriesPageProps) => {
-  const [{ series_id: seriesId }, activeTab] = await Promise.all([
+  const [rawParams, activeTab] = await Promise.all([
     params,
     resolveActiveTab(searchParams),
   ]);
-  guardPlaceholder(seriesId);
+  const parsedParams = parseRouteParams(editSeriesParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { series_id: seriesId } = parsedParams;
 
   return <SeriesTabNav current={activeTab} seriesId={seriesId} />;
 };
@@ -117,12 +127,16 @@ const EditSeriesFormData = async ({
   params,
   searchParams,
 }: EditSeriesPageProps) => {
-  const [{ series_id: seriesId }, activeTab, tenantId] = await Promise.all([
+  const [rawParams, activeTab, tenantId] = await Promise.all([
     params,
     resolveActiveTab(searchParams),
     getTenantId(),
   ]);
-  guardPlaceholder(seriesId);
+  const parsedParams = parseRouteParams(editSeriesParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { series_id: seriesId } = parsedParams;
   if (activeTab === "eye-catch") {
     const result = await getSeries({ publicId: seriesId, tenantId });
     if (!result.ok) {

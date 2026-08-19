@@ -1,11 +1,13 @@
 import { CollectionIcon } from "@publira/icons";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholders,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { PageLoadError } from "#components/page-load-error";
@@ -14,6 +16,10 @@ import { getTenantId } from "#lib/tenant-id";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
+
+const seriesDetailParamsSchema = z.object({
+  series_id: routeParamString(),
+});
 
 const SeriesDetailSkeleton = () => (
   <div className="mx-auto max-w-5xl px-6 py-12">
@@ -39,11 +45,15 @@ const SeriesDetailSkeleton = () => (
 const SeriesDetailContent = async (
   props: PageProps<"/[tenant_id]/series/[series_id]">
 ) => {
-  const [{ series_id }, tenantId] = await Promise.all([
+  const [rawParams, tenantId] = await Promise.all([
     props.params,
     getTenantId(),
   ]);
-  guardPlaceholders({ series_id });
+  const parsedParams = parseRouteParams(seriesDetailParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { series_id } = parsedParams;
 
   // Missing / unpublished / other-tenant series all resolve to `null`, and the
   // public site must not tell those apart. A failed read is a value as well:

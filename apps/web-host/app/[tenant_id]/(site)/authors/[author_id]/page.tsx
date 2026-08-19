@@ -1,12 +1,14 @@
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholders,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { PageLoadError } from "#components/page-load-error";
 import { getPublishedAuthorDetail } from "#lib/authors";
@@ -22,6 +24,10 @@ import {
 const AUTHOR_SERIES_PAGE_SIZE = 20;
 
 type AuthorDetailPageProps = PageProps<"/[tenant_id]/authors/[author_id]">;
+
+const authorDetailParamsSchema = z.object({
+  author_id: routeParamString(),
+});
 
 /**
  * `"use cache"` keys on the serialized arguments, so metadata and the page
@@ -62,13 +68,16 @@ export const generateMetadata = async ({
   params,
   searchParams,
 }: AuthorDetailPageProps): Promise<Metadata> => {
-  const [{ author_id }, tenantId, resolvedSearchParams] = await Promise.all([
+  const [rawParams, tenantId, resolvedSearchParams] = await Promise.all([
     params,
     getTenantId(),
     searchParams,
   ]);
-
-  guardPlaceholders({ author_id });
+  const parsedParams = parseRouteParams(authorDetailParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { author_id } = parsedParams;
 
   const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
 
@@ -221,13 +230,16 @@ const AuthorDetailContent = async ({
   params,
   searchParams,
 }: AuthorDetailPageProps) => {
-  const [{ author_id }, tenantId, resolvedSearchParams] = await Promise.all([
+  const [rawParams, tenantId, resolvedSearchParams] = await Promise.all([
     params,
     getTenantId(),
     searchParams,
   ]);
-
-  guardPlaceholders({ author_id });
+  const parsedParams = parseRouteParams(authorDetailParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { author_id } = parsedParams;
 
   const { token } = parseAuthorDetailSearchParams(resolvedSearchParams);
 

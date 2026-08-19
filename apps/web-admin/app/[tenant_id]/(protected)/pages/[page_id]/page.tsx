@@ -1,13 +1,15 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { SectionError } from "@publira/ui-components/section-error";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholder,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   AdminPage,
@@ -40,6 +42,10 @@ interface EditPagePageProps {
     tenant_id: string;
   }>;
 }
+
+const editPageParamsSchema = z.object({
+  page_id: routeParamString(),
+});
 
 export const metadata: Metadata = {
   title: "ページ編集",
@@ -74,8 +80,11 @@ const PageLoadError = ({ message }: { message: string }) => (
 const PageWorkspaceData = async ({
   params,
 }: Pick<EditPagePageProps, "params">) => {
-  const { page_id: pageId } = await params;
-  guardPlaceholder(pageId);
+  const parsedParams = parseRouteParams(editPageParamsSchema, await params);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { page_id: pageId } = parsedParams;
 
   const tenantId = await getTenantId();
   const [pageResult, versionsResult, timeZone] = await Promise.all([

@@ -9,10 +9,15 @@ import {
 } from "@publira/ui-components/card";
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { formatDateTime } from "@publira/utils";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   PlatformPage,
@@ -54,6 +59,10 @@ interface OperatorDetailPageProps {
   }>;
 }
 
+const operatorDetailParamsSchema = z.object({
+  operator_public_id: routeParamString(),
+});
+
 const OperatorDetailSkeleton = () => (
   <PlatformPageContent>
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
@@ -85,7 +94,14 @@ const OperatorDetailSkeleton = () => (
 const OperatorDetailContent = async ({
   params,
 }: Pick<OperatorDetailPageProps, "params">) => {
-  const { operator_public_id: operatorPublicId } = await params;
+  const parsedParams = parseRouteParams(
+    operatorDetailParamsSchema,
+    await params
+  );
+  if (!parsedParams) {
+    notFound();
+  }
+  const { operator_public_id: operatorPublicId } = parsedParams;
 
   const [operator, currentOperatorResult, timeZone] = await Promise.all([
     getPlatformOperator(operatorPublicId),

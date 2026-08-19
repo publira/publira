@@ -1,11 +1,13 @@
 import { formatDateTime } from "@publira/utils";
+import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
-  createPlaceholderStaticParams,
-  guardPlaceholders,
-} from "@publira/utils/next-static-params";
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { PageLoadError } from "#components/page-load-error";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -18,6 +20,11 @@ import { parsePurchaseSearchParams } from "./_lib/purchase-search-params";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
+
+const episodeDetailParamsSchema = z.object({
+  episode_id: routeParamString(),
+  series_id: routeParamString(),
+});
 
 const EpisodeSkeleton = () => (
   <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -41,10 +48,16 @@ const EpisodeBodySkeleton = () => (
 const EpisodeContent = async (
   props: PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">
 ) => {
-  const [{ episode_id, series_id }, tenantId, searchParams] = await Promise.all(
-    [props.params, getTenantId(), props.searchParams]
-  );
-  guardPlaceholders({ episode_id, series_id });
+  const [rawParams, tenantId, searchParams] = await Promise.all([
+    props.params,
+    getTenantId(),
+    props.searchParams,
+  ]);
+  const parsedParams = parseRouteParams(episodeDetailParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { episode_id, series_id } = parsedParams;
   const purchaseSearchParams = parsePurchaseSearchParams(searchParams);
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to

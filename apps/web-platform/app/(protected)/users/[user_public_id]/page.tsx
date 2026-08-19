@@ -10,10 +10,15 @@ import {
 import { Field, FieldLabel } from "@publira/ui-components/field";
 import { SectionError } from "@publira/ui-components/section-error";
 import { formatDate } from "@publira/utils";
+import {
+  parseRouteParams,
+  routeParamString,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   PlatformPage,
@@ -48,6 +53,10 @@ interface UserDetailPageProps {
     user_public_id: string;
   }>;
 }
+
+const userDetailParamsSchema = z.object({
+  user_public_id: routeParamString(),
+});
 
 const UserDetailSkeleton = () => (
   <PlatformPageContent>
@@ -97,7 +106,11 @@ const UserLoadError = ({ message }: { message: string }) => (
 const UserDetailContent = async ({
   params,
 }: Pick<UserDetailPageProps, "params">) => {
-  const { user_public_id: userPublicId } = await params;
+  const parsedParams = parseRouteParams(userDetailParamsSchema, await params);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { user_public_id: userPublicId } = parsedParams;
 
   const [userResult, currentOperatorResult, timeZone] = await Promise.all([
     getPlatformEndUser(userPublicId),

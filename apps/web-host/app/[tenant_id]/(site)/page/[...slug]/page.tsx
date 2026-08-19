@@ -1,11 +1,15 @@
 import {
   createPlaceholderStaticParams,
-  guardPlaceholder,
   STATIC_PARAM_PLACEHOLDER,
 } from "@publira/utils/next-static-params";
+import {
+  parseRouteParams,
+  routeParamStringArray,
+} from "@publira/utils/route-params";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { PageLoadError } from "#components/page-load-error";
 import { getPublishedPage } from "#lib/pages";
@@ -20,21 +24,22 @@ export const generateStaticParams = () => [
   },
 ];
 
-const guardCatchAllSlug = (slug: string[] | undefined): void => {
-  if (!slug || slug.length === 0) {
-    guardPlaceholder(STATIC_PARAM_PLACEHOLDER);
-    return;
-  }
-  for (const segment of slug) {
-    guardPlaceholder(segment);
-  }
-};
+const publishedPageParamsSchema = z.object({
+  slug: routeParamStringArray(),
+});
 
 export const generateMetadata = async (
   props: PageProps<"/[tenant_id]/page/[...slug]">
 ): Promise<Metadata> => {
-  const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
-  guardCatchAllSlug(slug);
+  const [rawParams, tenantId] = await Promise.all([
+    props.params,
+    getTenantId(),
+  ]);
+  const parsedParams = parseRouteParams(publishedPageParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { slug } = parsedParams;
 
   const result = await getPublishedPage(tenantId, slug);
 
@@ -61,8 +66,15 @@ const PublishedPageSkeleton = () => (
 const PublishedPageBody = async (
   props: PageProps<"/[tenant_id]/page/[...slug]">
 ) => {
-  const [{ slug }, tenantId] = await Promise.all([props.params, getTenantId()]);
-  guardCatchAllSlug(slug);
+  const [rawParams, tenantId] = await Promise.all([
+    props.params,
+    getTenantId(),
+  ]);
+  const parsedParams = parseRouteParams(publishedPageParamsSchema, rawParams);
+  if (!parsedParams) {
+    notFound();
+  }
+  const { slug } = parsedParams;
 
   // Missing / unpublished / other-tenant pages all resolve to `null`. A genuine
   // fetch failure is a value as well: a `"use cache"` fill that throws fails
