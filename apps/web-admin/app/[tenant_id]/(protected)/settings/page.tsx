@@ -1,6 +1,7 @@
 import { SectionError } from "@publira/ui-components/section-error";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import {
   AdminPage,
@@ -11,6 +12,7 @@ import {
   AdminPageHeading,
   AdminPageTitle,
 } from "#components/admin-page";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantSiteSettings } from "#lib/site-settings";
@@ -32,7 +34,24 @@ export const metadata: Metadata = {
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
-const SettingsPage = async () => {
+const SettingsFormsSkeleton = () => (
+  <div className="grid gap-6">
+    <div className="rounded-2xl border border-border/70 bg-card p-6">
+      <div className="mb-4 h-6 w-40 animate-pulse rounded bg-muted" />
+      <div className="grid gap-3">
+        <div className="h-10 animate-pulse rounded bg-muted/70" />
+        <div className="h-24 animate-pulse rounded bg-muted/70" />
+        <div className="h-10 animate-pulse rounded bg-muted/70" />
+      </div>
+    </div>
+    <div className="rounded-2xl border border-border/70 bg-card p-6">
+      <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
+      <div className="h-10 animate-pulse rounded bg-muted/70" />
+    </div>
+  </div>
+);
+
+const SettingsForms = async () => {
   const tenantId = await getTenantId();
 
   const [settingsResult, timezoneResult, currentUserResult] = await Promise.all(
@@ -50,46 +69,55 @@ const SettingsPage = async () => {
   );
 
   return (
-    <AdminPage>
-      <AdminPageHeader>
-        <AdminPageHeading>
-          <AdminPageEyebrow>Console</AdminPageEyebrow>
-          <AdminPageTitle>設定</AdminPageTitle>
-          <AdminPageDescription>
-            テナントごとの公開表示設定を管理します。
-          </AdminPageDescription>
-        </AdminPageHeading>
-      </AdminPageHeader>
-      <AdminPageContent>
-        <div className="grid gap-6">
-          <SettingsTabNav current="basic" />
+    <>
+      {settingsResult.ok ? (
+        <SiteSettingsForm
+          action={updateSiteSettingsAction}
+          initialSettings={settingsResult.settings}
+        />
+      ) : (
+        <SectionError
+          description={settingsResult.message}
+          title="設定を表示できませんでした"
+        />
+      )}
 
-          {settingsResult.ok ? (
-            <SiteSettingsForm
-              action={updateSiteSettingsAction}
-              initialSettings={settingsResult.settings}
-            />
-          ) : (
-            <SectionError
-              description={settingsResult.message}
-              title="設定を表示できませんでした"
-            />
-          )}
-
-          <TenantTimezoneForm
-            action={updateTenantTimezoneAction}
-            canEdit={isTenantAdminRole(
-              currentUserResult.ok ? currentUserResult.user.role : undefined
-            )}
-            initialTimezone={timezoneResult.timezone}
-            loadErrorMessage={
-              timezoneResult.ok ? undefined : timezoneResult.message
-            }
-          />
-        </div>
-      </AdminPageContent>
-    </AdminPage>
+      <TenantTimezoneForm
+        action={updateTenantTimezoneAction}
+        canEdit={isTenantAdminRole(
+          currentUserResult.ok ? currentUserResult.user.role : undefined
+        )}
+        initialTimezone={timezoneResult.timezone}
+        loadErrorMessage={
+          timezoneResult.ok ? undefined : timezoneResult.message
+        }
+      />
+    </>
   );
 };
+
+const SettingsPage = () => (
+  <AdminPage>
+    <AdminPageHeader>
+      <AdminPageHeading>
+        <AdminPageEyebrow>Console</AdminPageEyebrow>
+        <AdminPageTitle>設定</AdminPageTitle>
+        <AdminPageDescription>
+          テナントごとの公開表示設定を管理します。
+        </AdminPageDescription>
+      </AdminPageHeading>
+    </AdminPageHeader>
+    <AdminPageContent>
+      <div className="grid gap-6">
+        <SettingsTabNav current="basic" />
+        <SectionErrorBoundary title="設定を表示できませんでした">
+          <Suspense fallback={<SettingsFormsSkeleton />}>
+            <SettingsForms />
+          </Suspense>
+        </SectionErrorBoundary>
+      </div>
+    </AdminPageContent>
+  </AdminPage>
+);
 
 export default SettingsPage;

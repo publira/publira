@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { tenant_id } from "next/root-params";
 import type { ReactNode } from "react";
 
+import { tenantIdFormSchema } from "#lib/auth-input";
 import { getTenantName } from "#lib/public-api";
 
 import "../globals.css";
@@ -20,10 +21,15 @@ export const generateMetadata = async (): Promise<Metadata> => {
   }
   guardPlaceholder(tenantId);
 
+  const parsed = tenantIdFormSchema.safeParse(tenantId);
+  if (!parsed.success) {
+    return { title: "管理画面" };
+  }
+
   // `getTenantName` degrades to `null` when the public API is unavailable, so
   // an outage leaves the console titled 「管理画面」 instead of failing every
   // route (#672).
-  const tenantName = await getTenantName(tenantId);
+  const tenantName = await getTenantName(parsed.data);
   const base = tenantName ? `${tenantName} 管理画面` : "管理画面";
 
   return {
