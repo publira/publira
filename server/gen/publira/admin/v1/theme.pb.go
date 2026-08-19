@@ -206,31 +206,31 @@ func (x *UpsertTenantThemeResponse) GetTheme() *v1.TenantTheme {
 	return nil
 }
 
-// Uploading again replaces the stored favicon, so there is no separate replace
+// Uploading again replaces the stored icon, so there is no separate replace
 // RPC.
-type UploadTenantFaviconRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	FaviconData        []byte                 `protobuf:"bytes,2,opt,name=favicon_data,json=faviconData,proto3" json:"favicon_data,omitempty"`
-	FaviconContentType string                 `protobuf:"bytes,3,opt,name=favicon_content_type,json=faviconContentType,proto3" json:"favicon_content_type,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+type UploadTenantIconRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	IconData        []byte                 `protobuf:"bytes,2,opt,name=icon_data,json=iconData,proto3" json:"icon_data,omitempty"`
+	IconContentType string                 `protobuf:"bytes,3,opt,name=icon_content_type,json=iconContentType,proto3" json:"icon_content_type,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
-func (x *UploadTenantFaviconRequest) Reset() {
-	*x = UploadTenantFaviconRequest{}
+func (x *UploadTenantIconRequest) Reset() {
+	*x = UploadTenantIconRequest{}
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UploadTenantFaviconRequest) String() string {
+func (x *UploadTenantIconRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UploadTenantFaviconRequest) ProtoMessage() {}
+func (*UploadTenantIconRequest) ProtoMessage() {}
 
-func (x *UploadTenantFaviconRequest) ProtoReflect() protoreflect.Message {
+func (x *UploadTenantIconRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -242,53 +242,53 @@ func (x *UploadTenantFaviconRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UploadTenantFaviconRequest.ProtoReflect.Descriptor instead.
-func (*UploadTenantFaviconRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use UploadTenantIconRequest.ProtoReflect.Descriptor instead.
+func (*UploadTenantIconRequest) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *UploadTenantFaviconRequest) GetTenant() *v1.TenantContext {
+func (x *UploadTenantIconRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
 	return nil
 }
 
-func (x *UploadTenantFaviconRequest) GetFaviconData() []byte {
+func (x *UploadTenantIconRequest) GetIconData() []byte {
 	if x != nil {
-		return x.FaviconData
+		return x.IconData
 	}
 	return nil
 }
 
-func (x *UploadTenantFaviconRequest) GetFaviconContentType() string {
+func (x *UploadTenantIconRequest) GetIconContentType() string {
 	if x != nil {
-		return x.FaviconContentType
+		return x.IconContentType
 	}
 	return ""
 }
 
-type UploadTenantFaviconResponse struct {
+type UploadTenantIconResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Theme         *v1.TenantTheme        `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *UploadTenantFaviconResponse) Reset() {
-	*x = UploadTenantFaviconResponse{}
+func (x *UploadTenantIconResponse) Reset() {
+	*x = UploadTenantIconResponse{}
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UploadTenantFaviconResponse) String() string {
+func (x *UploadTenantIconResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UploadTenantFaviconResponse) ProtoMessage() {}
+func (*UploadTenantIconResponse) ProtoMessage() {}
 
-func (x *UploadTenantFaviconResponse) ProtoReflect() protoreflect.Message {
+func (x *UploadTenantIconResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -300,39 +300,39 @@ func (x *UploadTenantFaviconResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UploadTenantFaviconResponse.ProtoReflect.Descriptor instead.
-func (*UploadTenantFaviconResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use UploadTenantIconResponse.ProtoReflect.Descriptor instead.
+func (*UploadTenantIconResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *UploadTenantFaviconResponse) GetTheme() *v1.TenantTheme {
+func (x *UploadTenantIconResponse) GetTheme() *v1.TenantTheme {
 	if x != nil {
 		return x.Theme
 	}
 	return nil
 }
 
-type DeleteTenantFaviconRequest struct {
+type DeleteTenantIconRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteTenantFaviconRequest) Reset() {
-	*x = DeleteTenantFaviconRequest{}
+func (x *DeleteTenantIconRequest) Reset() {
+	*x = DeleteTenantIconRequest{}
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteTenantFaviconRequest) String() string {
+func (x *DeleteTenantIconRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteTenantFaviconRequest) ProtoMessage() {}
+func (*DeleteTenantIconRequest) ProtoMessage() {}
 
-func (x *DeleteTenantFaviconRequest) ProtoReflect() protoreflect.Message {
+func (x *DeleteTenantIconRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -344,39 +344,39 @@ func (x *DeleteTenantFaviconRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteTenantFaviconRequest.ProtoReflect.Descriptor instead.
-func (*DeleteTenantFaviconRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteTenantIconRequest.ProtoReflect.Descriptor instead.
+func (*DeleteTenantIconRequest) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *DeleteTenantFaviconRequest) GetTenant() *v1.TenantContext {
+func (x *DeleteTenantIconRequest) GetTenant() *v1.TenantContext {
 	if x != nil {
 		return x.Tenant
 	}
 	return nil
 }
 
-type DeleteTenantFaviconResponse struct {
+type DeleteTenantIconResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Theme         *v1.TenantTheme        `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteTenantFaviconResponse) Reset() {
-	*x = DeleteTenantFaviconResponse{}
+func (x *DeleteTenantIconResponse) Reset() {
+	*x = DeleteTenantIconResponse{}
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteTenantFaviconResponse) String() string {
+func (x *DeleteTenantIconResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteTenantFaviconResponse) ProtoMessage() {}
+func (*DeleteTenantIconResponse) ProtoMessage() {}
 
-func (x *DeleteTenantFaviconResponse) ProtoReflect() protoreflect.Message {
+func (x *DeleteTenantIconResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_publira_admin_v1_theme_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -388,12 +388,206 @@ func (x *DeleteTenantFaviconResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteTenantFaviconResponse.ProtoReflect.Descriptor instead.
-func (*DeleteTenantFaviconResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteTenantIconResponse.ProtoReflect.Descriptor instead.
+func (*DeleteTenantIconResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *DeleteTenantFaviconResponse) GetTheme() *v1.TenantTheme {
+func (x *DeleteTenantIconResponse) GetTheme() *v1.TenantTheme {
+	if x != nil {
+		return x.Theme
+	}
+	return nil
+}
+
+// Uploading again replaces the stored logo, so there is no separate replace
+// RPC.
+type UploadTenantLogoRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	LogoData        []byte                 `protobuf:"bytes,2,opt,name=logo_data,json=logoData,proto3" json:"logo_data,omitempty"`
+	LogoContentType string                 `protobuf:"bytes,3,opt,name=logo_content_type,json=logoContentType,proto3" json:"logo_content_type,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UploadTenantLogoRequest) Reset() {
+	*x = UploadTenantLogoRequest{}
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadTenantLogoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadTenantLogoRequest) ProtoMessage() {}
+
+func (x *UploadTenantLogoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadTenantLogoRequest.ProtoReflect.Descriptor instead.
+func (*UploadTenantLogoRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UploadTenantLogoRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *UploadTenantLogoRequest) GetLogoData() []byte {
+	if x != nil {
+		return x.LogoData
+	}
+	return nil
+}
+
+func (x *UploadTenantLogoRequest) GetLogoContentType() string {
+	if x != nil {
+		return x.LogoContentType
+	}
+	return ""
+}
+
+type UploadTenantLogoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Theme         *v1.TenantTheme        `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadTenantLogoResponse) Reset() {
+	*x = UploadTenantLogoResponse{}
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadTenantLogoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadTenantLogoResponse) ProtoMessage() {}
+
+func (x *UploadTenantLogoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadTenantLogoResponse.ProtoReflect.Descriptor instead.
+func (*UploadTenantLogoResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UploadTenantLogoResponse) GetTheme() *v1.TenantTheme {
+	if x != nil {
+		return x.Theme
+	}
+	return nil
+}
+
+type DeleteTenantLogoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTenantLogoRequest) Reset() {
+	*x = DeleteTenantLogoRequest{}
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTenantLogoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTenantLogoRequest) ProtoMessage() {}
+
+func (x *DeleteTenantLogoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTenantLogoRequest.ProtoReflect.Descriptor instead.
+func (*DeleteTenantLogoRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *DeleteTenantLogoRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type DeleteTenantLogoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Theme         *v1.TenantTheme        `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTenantLogoResponse) Reset() {
+	*x = DeleteTenantLogoResponse{}
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTenantLogoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTenantLogoResponse) ProtoMessage() {}
+
+func (x *DeleteTenantLogoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_theme_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTenantLogoResponse.ProtoReflect.Descriptor instead.
+func (*DeleteTenantLogoResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_theme_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DeleteTenantLogoResponse) GetTheme() *v1.TenantTheme {
 	if x != nil {
 		return x.Theme
 	}
@@ -413,22 +607,34 @@ const file_publira_admin_v1_theme_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x123\n" +
 	"\x05theme\x18\x02 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\"P\n" +
 	"\x19UpsertTenantThemeResponse\x123\n" +
-	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\"\xaa\x01\n" +
-	"\x1aUploadTenantFaviconRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12!\n" +
-	"\ffavicon_data\x18\x02 \x01(\fR\vfaviconData\x120\n" +
-	"\x14favicon_content_type\x18\x03 \x01(\tR\x12faviconContentType\"R\n" +
-	"\x1bUploadTenantFaviconResponse\x123\n" +
-	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\"U\n" +
-	"\x1aDeleteTenantFaviconRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"R\n" +
-	"\x1bDeleteTenantFaviconResponse\x123\n" +
-	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme2\xd7\x03\n" +
+	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\"\x9b\x01\n" +
+	"\x17UploadTenantIconRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\ticon_data\x18\x02 \x01(\fR\biconData\x12*\n" +
+	"\x11icon_content_type\x18\x03 \x01(\tR\x0ficonContentType\"O\n" +
+	"\x18UploadTenantIconResponse\x123\n" +
+	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\"R\n" +
+	"\x17DeleteTenantIconRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"O\n" +
+	"\x18DeleteTenantIconResponse\x123\n" +
+	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\"\x9b\x01\n" +
+	"\x17UploadTenantLogoRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tlogo_data\x18\x02 \x01(\fR\blogoData\x12*\n" +
+	"\x11logo_content_type\x18\x03 \x01(\tR\x0flogoContentType\"O\n" +
+	"\x18UploadTenantLogoResponse\x123\n" +
+	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme\"R\n" +
+	"\x17DeleteTenantLogoRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"O\n" +
+	"\x18DeleteTenantLogoResponse\x123\n" +
+	"\x05theme\x18\x01 \x01(\v2\x1d.publira.types.v1.TenantThemeR\x05theme2\x9f\x05\n" +
 	"\x12TenantThemeService\x12e\n" +
 	"\x0eGetTenantTheme\x12'.publira.admin.v1.GetTenantThemeRequest\x1a(.publira.admin.v1.GetTenantThemeResponse\"\x00\x12n\n" +
-	"\x11UpsertTenantTheme\x12*.publira.admin.v1.UpsertTenantThemeRequest\x1a+.publira.admin.v1.UpsertTenantThemeResponse\"\x00\x12t\n" +
-	"\x13UploadTenantFavicon\x12,.publira.admin.v1.UploadTenantFaviconRequest\x1a-.publira.admin.v1.UploadTenantFaviconResponse\"\x00\x12t\n" +
-	"\x13DeleteTenantFavicon\x12,.publira.admin.v1.DeleteTenantFaviconRequest\x1a-.publira.admin.v1.DeleteTenantFaviconResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x11UpsertTenantTheme\x12*.publira.admin.v1.UpsertTenantThemeRequest\x1a+.publira.admin.v1.UpsertTenantThemeResponse\"\x00\x12k\n" +
+	"\x10UploadTenantIcon\x12).publira.admin.v1.UploadTenantIconRequest\x1a*.publira.admin.v1.UploadTenantIconResponse\"\x00\x12k\n" +
+	"\x10DeleteTenantIcon\x12).publira.admin.v1.DeleteTenantIconRequest\x1a*.publira.admin.v1.DeleteTenantIconResponse\"\x00\x12k\n" +
+	"\x10UploadTenantLogo\x12).publira.admin.v1.UploadTenantLogoRequest\x1a*.publira.admin.v1.UploadTenantLogoResponse\"\x00\x12k\n" +
+	"\x10DeleteTenantLogo\x12).publira.admin.v1.DeleteTenantLogoRequest\x1a*.publira.admin.v1.DeleteTenantLogoResponse\"\x00BGZEgithub.com/publira/publira/server/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_theme_proto_rawDescOnce sync.Once
@@ -442,42 +648,54 @@ func file_publira_admin_v1_theme_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_theme_proto_rawDescData
 }
 
-var file_publira_admin_v1_theme_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_publira_admin_v1_theme_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_publira_admin_v1_theme_proto_goTypes = []any{
-	(*GetTenantThemeRequest)(nil),       // 0: publira.admin.v1.GetTenantThemeRequest
-	(*GetTenantThemeResponse)(nil),      // 1: publira.admin.v1.GetTenantThemeResponse
-	(*UpsertTenantThemeRequest)(nil),    // 2: publira.admin.v1.UpsertTenantThemeRequest
-	(*UpsertTenantThemeResponse)(nil),   // 3: publira.admin.v1.UpsertTenantThemeResponse
-	(*UploadTenantFaviconRequest)(nil),  // 4: publira.admin.v1.UploadTenantFaviconRequest
-	(*UploadTenantFaviconResponse)(nil), // 5: publira.admin.v1.UploadTenantFaviconResponse
-	(*DeleteTenantFaviconRequest)(nil),  // 6: publira.admin.v1.DeleteTenantFaviconRequest
-	(*DeleteTenantFaviconResponse)(nil), // 7: publira.admin.v1.DeleteTenantFaviconResponse
-	(*v1.TenantContext)(nil),            // 8: publira.types.v1.TenantContext
-	(*v1.TenantTheme)(nil),              // 9: publira.types.v1.TenantTheme
+	(*GetTenantThemeRequest)(nil),     // 0: publira.admin.v1.GetTenantThemeRequest
+	(*GetTenantThemeResponse)(nil),    // 1: publira.admin.v1.GetTenantThemeResponse
+	(*UpsertTenantThemeRequest)(nil),  // 2: publira.admin.v1.UpsertTenantThemeRequest
+	(*UpsertTenantThemeResponse)(nil), // 3: publira.admin.v1.UpsertTenantThemeResponse
+	(*UploadTenantIconRequest)(nil),   // 4: publira.admin.v1.UploadTenantIconRequest
+	(*UploadTenantIconResponse)(nil),  // 5: publira.admin.v1.UploadTenantIconResponse
+	(*DeleteTenantIconRequest)(nil),   // 6: publira.admin.v1.DeleteTenantIconRequest
+	(*DeleteTenantIconResponse)(nil),  // 7: publira.admin.v1.DeleteTenantIconResponse
+	(*UploadTenantLogoRequest)(nil),   // 8: publira.admin.v1.UploadTenantLogoRequest
+	(*UploadTenantLogoResponse)(nil),  // 9: publira.admin.v1.UploadTenantLogoResponse
+	(*DeleteTenantLogoRequest)(nil),   // 10: publira.admin.v1.DeleteTenantLogoRequest
+	(*DeleteTenantLogoResponse)(nil),  // 11: publira.admin.v1.DeleteTenantLogoResponse
+	(*v1.TenantContext)(nil),          // 12: publira.types.v1.TenantContext
+	(*v1.TenantTheme)(nil),            // 13: publira.types.v1.TenantTheme
 }
 var file_publira_admin_v1_theme_proto_depIdxs = []int32{
-	8,  // 0: publira.admin.v1.GetTenantThemeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 1: publira.admin.v1.GetTenantThemeResponse.theme:type_name -> publira.types.v1.TenantTheme
-	8,  // 2: publira.admin.v1.UpsertTenantThemeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 3: publira.admin.v1.UpsertTenantThemeRequest.theme:type_name -> publira.types.v1.TenantTheme
-	9,  // 4: publira.admin.v1.UpsertTenantThemeResponse.theme:type_name -> publira.types.v1.TenantTheme
-	8,  // 5: publira.admin.v1.UploadTenantFaviconRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 6: publira.admin.v1.UploadTenantFaviconResponse.theme:type_name -> publira.types.v1.TenantTheme
-	8,  // 7: publira.admin.v1.DeleteTenantFaviconRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,  // 8: publira.admin.v1.DeleteTenantFaviconResponse.theme:type_name -> publira.types.v1.TenantTheme
-	0,  // 9: publira.admin.v1.TenantThemeService.GetTenantTheme:input_type -> publira.admin.v1.GetTenantThemeRequest
-	2,  // 10: publira.admin.v1.TenantThemeService.UpsertTenantTheme:input_type -> publira.admin.v1.UpsertTenantThemeRequest
-	4,  // 11: publira.admin.v1.TenantThemeService.UploadTenantFavicon:input_type -> publira.admin.v1.UploadTenantFaviconRequest
-	6,  // 12: publira.admin.v1.TenantThemeService.DeleteTenantFavicon:input_type -> publira.admin.v1.DeleteTenantFaviconRequest
-	1,  // 13: publira.admin.v1.TenantThemeService.GetTenantTheme:output_type -> publira.admin.v1.GetTenantThemeResponse
-	3,  // 14: publira.admin.v1.TenantThemeService.UpsertTenantTheme:output_type -> publira.admin.v1.UpsertTenantThemeResponse
-	5,  // 15: publira.admin.v1.TenantThemeService.UploadTenantFavicon:output_type -> publira.admin.v1.UploadTenantFaviconResponse
-	7,  // 16: publira.admin.v1.TenantThemeService.DeleteTenantFavicon:output_type -> publira.admin.v1.DeleteTenantFaviconResponse
-	13, // [13:17] is the sub-list for method output_type
-	9,  // [9:13] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	12, // 0: publira.admin.v1.GetTenantThemeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 1: publira.admin.v1.GetTenantThemeResponse.theme:type_name -> publira.types.v1.TenantTheme
+	12, // 2: publira.admin.v1.UpsertTenantThemeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 3: publira.admin.v1.UpsertTenantThemeRequest.theme:type_name -> publira.types.v1.TenantTheme
+	13, // 4: publira.admin.v1.UpsertTenantThemeResponse.theme:type_name -> publira.types.v1.TenantTheme
+	12, // 5: publira.admin.v1.UploadTenantIconRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 6: publira.admin.v1.UploadTenantIconResponse.theme:type_name -> publira.types.v1.TenantTheme
+	12, // 7: publira.admin.v1.DeleteTenantIconRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 8: publira.admin.v1.DeleteTenantIconResponse.theme:type_name -> publira.types.v1.TenantTheme
+	12, // 9: publira.admin.v1.UploadTenantLogoRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 10: publira.admin.v1.UploadTenantLogoResponse.theme:type_name -> publira.types.v1.TenantTheme
+	12, // 11: publira.admin.v1.DeleteTenantLogoRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 12: publira.admin.v1.DeleteTenantLogoResponse.theme:type_name -> publira.types.v1.TenantTheme
+	0,  // 13: publira.admin.v1.TenantThemeService.GetTenantTheme:input_type -> publira.admin.v1.GetTenantThemeRequest
+	2,  // 14: publira.admin.v1.TenantThemeService.UpsertTenantTheme:input_type -> publira.admin.v1.UpsertTenantThemeRequest
+	4,  // 15: publira.admin.v1.TenantThemeService.UploadTenantIcon:input_type -> publira.admin.v1.UploadTenantIconRequest
+	6,  // 16: publira.admin.v1.TenantThemeService.DeleteTenantIcon:input_type -> publira.admin.v1.DeleteTenantIconRequest
+	8,  // 17: publira.admin.v1.TenantThemeService.UploadTenantLogo:input_type -> publira.admin.v1.UploadTenantLogoRequest
+	10, // 18: publira.admin.v1.TenantThemeService.DeleteTenantLogo:input_type -> publira.admin.v1.DeleteTenantLogoRequest
+	1,  // 19: publira.admin.v1.TenantThemeService.GetTenantTheme:output_type -> publira.admin.v1.GetTenantThemeResponse
+	3,  // 20: publira.admin.v1.TenantThemeService.UpsertTenantTheme:output_type -> publira.admin.v1.UpsertTenantThemeResponse
+	5,  // 21: publira.admin.v1.TenantThemeService.UploadTenantIcon:output_type -> publira.admin.v1.UploadTenantIconResponse
+	7,  // 22: publira.admin.v1.TenantThemeService.DeleteTenantIcon:output_type -> publira.admin.v1.DeleteTenantIconResponse
+	9,  // 23: publira.admin.v1.TenantThemeService.UploadTenantLogo:output_type -> publira.admin.v1.UploadTenantLogoResponse
+	11, // 24: publira.admin.v1.TenantThemeService.DeleteTenantLogo:output_type -> publira.admin.v1.DeleteTenantLogoResponse
+	19, // [19:25] is the sub-list for method output_type
+	13, // [13:19] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_theme_proto_init() }
@@ -491,7 +709,7 @@ func file_publira_admin_v1_theme_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_theme_proto_rawDesc), len(file_publira_admin_v1_theme_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

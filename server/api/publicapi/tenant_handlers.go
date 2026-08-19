@@ -5,10 +5,12 @@ import (
 	"database/sql"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
+	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
 	"github.com/publira/publira/server/internal/tenanttz"
@@ -49,7 +51,8 @@ func (s *apiServer) GetTenant(
 	var theme *publirattypesv1.TenantTheme
 	themeRow, themeErr := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
 	if themeErr == nil {
-		theme = protomapper.TenantThemeFromGetRow(themeRow)
+		iconVariants, logoVariants := tenantBrandingImageVariants(ctx, queries, themeRow)
+		theme = protomapper.TenantThemeFromGetRow(themeRow, iconVariants, logoVariants)
 	} else if themeErr != sql.ErrNoRows {
 		// Theme is branding only; keep GetTenant available even if theme load fails.
 		_ = themeErr
@@ -66,4 +69,33 @@ func (s *apiServer) GetTenant(
 		Timezone:        tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:   locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, queries)),
 	}), nil
+}
+
+// tenantBrandingImageVariants reads the variants of the theme's icon and
+// logo. Branding is not worth failing GetTenant over — the same reason the
+// theme read itself is tolerated above — so a failed lookup yields no variants
+// and the colors still answer.
+func tenantBrandingImageVariants(
+	ctx context.Context,
+	queries Querier,
+	row dbmodels.GetTenantThemeByTenantIDRow,
+) (iconVariants, logoVariants []*publirattypesv1.TenantImageVariant) {
+	imageIDs := make([]uuid.UUID, 0, 2)
+	if row.IconImageID.Valid {
+		imageIDs = append(imageIDs, row.IconImageID.UUID)
+	}
+	if row.LogoImageID.Valid {
+		imageIDs = append(imageIDs, row.LogoImageID.UUID)
+	}
+	if len(imageIDs) == 0 {
+		return nil, nil
+	}
+
+	variantRows, err := queries.ListTenantImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, nil
+	}
+	byImageID := protomapper.TenantImageVariantsByImageID(variantRows)
+
+	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID]
 }

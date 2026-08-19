@@ -148,7 +148,7 @@ type Querier interface {
 	// ユーザーが所属するテナントを取得
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
-	GetTenantImageByIDForTenant(ctx context.Context, arg GetTenantImageByIDForTenantParams) (GetTenantImageByIDForTenantRow, error)
+	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
@@ -392,6 +392,9 @@ type Querier interface {
 	// 次ページは降順、前ページは昇順のクエリで索引を走査し、前ページだけ
 	// handler で表示順へ戻す。cursor の共通仕様は proto/README.md を参照。
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
+	// The theme carries the icon and the logo together, so both images' variants
+	// are read in one statement rather than one query per slot.
+	ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error)
 	// Worker fan-out: members are tenant users that do not hold a tenant role.
 	ListTenantMemberIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	ListTenantMembersAsc(ctx context.Context, arg ListTenantMembersAscParams) ([]ListTenantMembersAscRow, error)
@@ -423,10 +426,11 @@ type Querier interface {
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByPublicIDForTenant(ctx context.Context, arg LockSeriesByPublicIDForTenantParams) (uuid.UUID, error)
-	// Lock the tenant row so concurrent tenant favicon uploads and deletes
-	// serialize. The following read of the current favicon must be a separate
-	// statement: READ COMMITTED freezes its snapshot at statement start, so waiting
-	// for the lock in the same statement would still see the pre-wait row.
+	// Lock the tenant row so concurrent tenant branding image uploads and deletes
+	// (icon, logo) serialize. The following read of the current image must be a
+	// separate statement: READ COMMITTED freezes its snapshot at statement start,
+	// so waiting for the lock in the same statement would still see the pre-wait
+	// row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// 指定ユーザーの未読お知らせを一括既読化
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
@@ -452,9 +456,13 @@ type Querier interface {
 	RevokeAccessTicketByPublicIDForTenant(ctx context.Context, arg RevokeAccessTicketByPublicIDForTenantParams) (AccessTicket, error)
 	// ページの公開バージョンIDを更新する
 	SetPagePublishedVersion(ctx context.Context, arg SetPagePublishedVersionParams) (Page, error)
-	// The theme row is created on demand: a tenant can upload a favicon before it
+	// The theme row is created on demand: a tenant can upload a icon before it
 	// has ever saved a color, and the colors then keep their column defaults.
-	SetTenantThemeFaviconImage(ctx context.Context, arg SetTenantThemeFaviconImageParams) (TenantTheme, error)
+	SetTenantThemeIconImage(ctx context.Context, arg SetTenantThemeIconImageParams) (TenantTheme, error)
+	// The theme row is created on demand, the same way the icon does it: a
+	// tenant can upload a logo before it has ever saved a color, and the colors
+	// then keep their column defaults.
+	SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThemeLogoImageParams) (TenantTheme, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error

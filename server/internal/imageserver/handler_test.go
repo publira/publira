@@ -40,7 +40,7 @@ type stubTenantQueries struct {
 	publicErr     error
 	creator       dbmodels.GetCreatorImageByIDForTenantRow
 	creatorErr    error
-	tenant        dbmodels.GetTenantImageByIDForTenantRow
+	tenant        dbmodels.GetTenantImageVariantByTypeForTenantRow
 	tenantErr     error
 	userRef       dbmodels.GetUserByPublicIDForTenantRow
 	userRefErr    error
@@ -54,12 +54,12 @@ func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodel
 	return s.creator, s.creatorErr
 }
 
-func (s stubTenantQueries) GetTenantImageByIDForTenant(context.Context, dbmodels.GetTenantImageByIDForTenantParams) (dbmodels.GetTenantImageByIDForTenantRow, error) {
+func (s stubTenantQueries) GetTenantImageVariantByTypeForTenant(context.Context, dbmodels.GetTenantImageVariantByTypeForTenantParams) (dbmodels.GetTenantImageVariantByTypeForTenantRow, error) {
 	if s.tenantErr != nil {
-		return dbmodels.GetTenantImageByIDForTenantRow{}, s.tenantErr
+		return dbmodels.GetTenantImageVariantByTypeForTenantRow{}, s.tenantErr
 	}
 	if s.tenant.ObjectKey == "" {
-		return dbmodels.GetTenantImageByIDForTenantRow{}, sql.ErrNoRows
+		return dbmodels.GetTenantImageVariantByTypeForTenantRow{}, sql.ErrNoRows
 	}
 	return s.tenant, nil
 }
@@ -464,26 +464,26 @@ func TestCreatorImageConvertsToWebP(t *testing.T) {
 	}
 }
 
-func TestTenantImageServesStoredFavicon(t *testing.T) {
+func TestTenantImageServesStoredIcon(t *testing.T) {
 	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	mediaID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
 	store := &countingStore{
 		objects: map[string]storedObject{
-			"tenants/acme/favicons/favicon.png": {data: testJPEG(), contentType: "image/png"},
+			"tenants/acme/icons/icon.png": {data: testJPEG(), contentType: "image/png"},
 		},
 	}
 	srv := newTestServer(t,
 		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
 		stubFactory{q: stubTenantQueries{
-			tenant: dbmodels.GetTenantImageByIDForTenantRow{
-				ObjectKey:   "tenants/acme/favicons/favicon.png",
+			tenant: dbmodels.GetTenantImageVariantByTypeForTenantRow{
+				ObjectKey:   "tenants/acme/icons/icon.png",
 				ContentType: "image/png",
 			},
 		}},
 		store,
 	)
 
-	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String()+"/icon", nil)
 	req.Host = "example.test"
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)
@@ -504,7 +504,7 @@ func TestTenantImageMissingReturnsNotFound(t *testing.T) {
 		&countingStore{objects: map[string]storedObject{}},
 	)
 
-	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/images/tenants/"+mediaID.String()+"/icon", nil)
 	req.Host = "example.test"
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)

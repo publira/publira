@@ -23,29 +23,51 @@ message UpsertTenantThemeResponse {
   publira.types.v1.TenantTheme theme = 1;
 }
 
-// Uploading again replaces the stored favicon, so there is no separate replace
+// Uploading again replaces the stored icon, so there is no separate replace
 // RPC.
-message UploadTenantFaviconRequest {
+message UploadTenantIconRequest {
   publira.types.v1.TenantContext tenant = 1;
-  bytes favicon_data = 2;
-  string favicon_content_type = 3;
+  bytes icon_data = 2;
+  string icon_content_type = 3;
 }
 
-message UploadTenantFaviconResponse {
+message UploadTenantIconResponse {
   publira.types.v1.TenantTheme theme = 1;
 }
 
-message DeleteTenantFaviconRequest {
+message DeleteTenantIconRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
 
-message DeleteTenantFaviconResponse {
+message DeleteTenantIconResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
+// Uploading again replaces the stored logo, so there is no separate replace
+// RPC.
+message UploadTenantLogoRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bytes logo_data = 2;
+  string logo_content_type = 3;
+}
+
+message UploadTenantLogoResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
+message DeleteTenantLogoRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message DeleteTenantLogoResponse {
   publira.types.v1.TenantTheme theme = 1;
 }
 
 service TenantThemeService {
   rpc GetTenantTheme(GetTenantThemeRequest) returns (GetTenantThemeResponse) {}
   rpc UpsertTenantTheme(UpsertTenantThemeRequest) returns (UpsertTenantThemeResponse) {}
-  rpc UploadTenantFavicon(UploadTenantFaviconRequest) returns (UploadTenantFaviconResponse) {}
-  rpc DeleteTenantFavicon(DeleteTenantFaviconRequest) returns (DeleteTenantFaviconResponse) {}
+  rpc UploadTenantIcon(UploadTenantIconRequest) returns (UploadTenantIconResponse) {}
+  rpc DeleteTenantIcon(DeleteTenantIconRequest) returns (DeleteTenantIconResponse) {}
+  rpc UploadTenantLogo(UploadTenantLogoRequest) returns (UploadTenantLogoResponse) {}
+  rpc DeleteTenantLogo(DeleteTenantLogoRequest) returns (DeleteTenantLogoResponse) {}
 }

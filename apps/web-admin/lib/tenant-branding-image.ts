@@ -1,0 +1,67 @@
+/**
+ * The theme's icon and logo arrive the way the eye-catch images do — the
+ * image's `updated_at` plus its variants — rather than as a URL string. A
+ * tenant that has not uploaded one has no variants, so an empty list is how a
+ * screen tells "unset" from "set".
+ */
+export interface TenantBrandingImageVariant {
+  label: string;
+  variantType: string;
+  url: string;
+  contentType: string;
+  width: number;
+  height: number;
+  fileSizeBytes: number;
+}
+
+export interface TenantBrandingImage {
+  updatedAt: string;
+  variants: TenantBrandingImageVariant[];
+}
+
+interface RawTenantImageVariant {
+  label?: string;
+  variantType?: string;
+  url?: string;
+  contentType?: string;
+  width?: number;
+  height?: number;
+  fileSizeBytes?: bigint | number;
+}
+
+const toVariants = (
+  variants: RawTenantImageVariant[] | undefined
+): TenantBrandingImageVariant[] =>
+  (variants ?? []).flatMap((variant) => {
+    const mapped = {
+      contentType: variant.contentType ?? "",
+      fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+      height: variant.height ?? 0,
+      label: variant.label ?? "",
+      url: variant.url ?? "",
+      variantType: variant.variantType ?? "",
+      width: variant.width ?? 0,
+    };
+    return mapped.label.length > 0 && mapped.url.length > 0 ? [mapped] : [];
+  });
+
+/** `null` when the tenant has not uploaded this image. */
+export const toTenantBrandingImage = (
+  updatedAt: string | undefined,
+  variants: RawTenantImageVariant[] | undefined
+): TenantBrandingImage | null => {
+  const mapped = toVariants(variants);
+  if (mapped.length === 0) {
+    return null;
+  }
+  return { updatedAt: updatedAt?.trim() ?? "", variants: mapped };
+};
+
+/**
+ * The variant a preview should render. `variantType` names what the image is
+ * for, not a size — the image server resizes the stored master on request — so
+ * a branding image has one variant and this returns it.
+ */
+export const tenantBrandingVariant = (
+  image: TenantBrandingImage | null
+): TenantBrandingImageVariant | null => image?.variants[0] ?? null;

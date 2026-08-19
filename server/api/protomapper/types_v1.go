@@ -202,7 +202,15 @@ func LabelWithImage(
 	return label
 }
 
-func TenantThemeFromGetRow(row dbmodels.GetTenantThemeByTenantIDRow) *publirattypesv1.TenantTheme {
+// TenantTheme carries its branding images the way Series carries its eye-catch:
+// the image's updated_at plus its variants, with the served URL built here. A
+// tenant that has not uploaded one has no variants, which is how a caller tells
+// "unset" from "set".
+func TenantThemeFromGetRow(
+	row dbmodels.GetTenantThemeByTenantIDRow,
+	iconVariants []*publirattypesv1.TenantImageVariant,
+	logoVariants []*publirattypesv1.TenantImageVariant,
+) *publirattypesv1.TenantTheme {
 	theme := &publirattypesv1.TenantTheme{
 		PrimaryColor:               row.PrimaryColor,
 		SecondaryColor:             row.SecondaryColor,
@@ -232,55 +240,47 @@ func TenantThemeFromGetRow(row dbmodels.GetTenantThemeByTenantIDRow) *publiratty
 		InfoColor:                  row.InfoColor,
 		InfoForegroundColor:        row.InfoForegroundColor,
 	}
-	if row.LogoUrl.Valid {
-		theme.LogoUrl = row.LogoUrl.String
+	if row.IconImageUpdatedAt.Valid {
+		theme.IconImageUpdatedAt = row.IconImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 	}
-	theme.FaviconUrl = tenantFaviconURL(row.FaviconImageID)
+	if len(iconVariants) > 0 {
+		theme.IconImageVariants = iconVariants
+	}
+	if row.LogoImageUpdatedAt.Valid {
+		theme.LogoImageUpdatedAt = row.LogoImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if len(logoVariants) > 0 {
+		theme.LogoImageVariants = logoVariants
+	}
 	return theme
 }
 
-func TenantThemeFromModel(model dbmodels.TenantTheme) *publirattypesv1.TenantTheme {
-	theme := &publirattypesv1.TenantTheme{
-		PrimaryColor:               model.PrimaryColor,
-		SecondaryColor:             model.SecondaryColor,
-		AccentColor:                model.AccentColor,
-		BackgroundColor:            model.BackgroundColor,
-		ForegroundColor:            model.ForegroundColor,
-		SurfaceColor:               model.SurfaceColor,
-		SurfaceForegroundColor:     model.SurfaceForegroundColor,
-		CardColor:                  model.CardColor,
-		CardForegroundColor:        model.CardForegroundColor,
-		PopoverColor:               model.PopoverColor,
-		PopoverForegroundColor:     model.PopoverForegroundColor,
-		PrimaryForegroundColor:     model.PrimaryForegroundColor,
-		SecondaryForegroundColor:   model.SecondaryForegroundColor,
-		AccentForegroundColor:      model.AccentForegroundColor,
-		MutedColor:                 model.MutedColor,
-		MutedForegroundColor:       model.MutedForegroundColor,
-		BorderColor:                model.BorderColor,
-		InputColor:                 model.InputColor,
-		RingColor:                  model.RingColor,
-		SuccessColor:               model.SuccessColor,
-		SuccessForegroundColor:     model.SuccessForegroundColor,
-		WarningColor:               model.WarningColor,
-		WarningForegroundColor:     model.WarningForegroundColor,
-		DestructiveColor:           model.DestructiveColor,
-		DestructiveForegroundColor: model.DestructiveForegroundColor,
-		InfoColor:                  model.InfoColor,
-		InfoForegroundColor:        model.InfoForegroundColor,
+// TenantImageVariantsByImageID groups the variants of both branding images by
+// the image they belong to, so one read of tenant_image_variants serves the
+// icon and the logo.
+func TenantImageVariantsByImageID(
+	rows []dbmodels.ListTenantImageVariantsByImageIDsRow,
+) map[uuid.UUID][]*publirattypesv1.TenantImageVariant {
+	byImageID := make(map[uuid.UUID][]*publirattypesv1.TenantImageVariant, len(rows))
+	for _, row := range rows {
+		byImageID[row.TenantImageID] = append(byImageID[row.TenantImageID], &publirattypesv1.TenantImageVariant{
+			Label:         row.Label,
+			VariantType:   row.VariantType,
+			Url:           TenantImageURL(row.TenantImageID, row.VariantType),
+			ContentType:   row.ContentType,
+			Width:         row.Width,
+			Height:        row.Height,
+			FileSizeBytes: row.FileSizeBytes,
+		})
 	}
-	if model.LogoUrl.Valid {
-		theme.LogoUrl = model.LogoUrl.String
-	}
-	theme.FaviconUrl = tenantFaviconURL(model.FaviconImageID)
-	return theme
+	return byImageID
 }
 
-// The favicon is served by the image server from the tenant image it points
-// at, so an upload that stores a new image also changes this URL.
-func tenantFaviconURL(faviconImageID uuid.NullUUID) string {
-	if !faviconImageID.Valid {
-		return ""
-	}
-	return fmt.Sprintf("/images/tenants/%s", faviconImageID.UUID.String())
+// TenantImageURL is the image server route a stored tenant image is served
+// from, keyed by what the image is for the same way the series route is keyed
+// by aspect ratio. A replace stores a new image, so this URL changes on its own
+// and needs no cache-busting query. Callers that want a smaller rendition add
+// the image server's own `w` parameter; nothing is pre-generated per size.
+func TenantImageURL(tenantImageID uuid.UUID, variantType string) string {
+	return fmt.Sprintf("/images/tenants/%s/%s", tenantImageID.String(), variantType)
 }

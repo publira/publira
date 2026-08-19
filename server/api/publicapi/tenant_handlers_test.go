@@ -19,7 +19,7 @@ import (
 
 const (
 	getTenantConfigByTenantIDQuery = "-- name: GetTenantConfigByTenantID :one\nSELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline\nFROM tenant_config\nWHERE tenant_id = $1\nLIMIT 1\n"
-	getTenantThemeByTenantIDQuery  = "-- name: GetTenantThemeByTenantID :one\nSELECT\n    t.id AS tenant_id,\n    COALESCE(tt.background_color, '#f6f2e9') AS background_color,\n    COALESCE(tt.foreground_color, '#1e2b38') AS foreground_color,\n    COALESCE(tt.surface_color, '#fbf8f2') AS surface_color,\n    COALESCE(tt.surface_foreground_color, '#1e2b38') AS surface_foreground_color,\n    COALESCE(tt.card_color, '#fffdf8') AS card_color,\n    COALESCE(tt.card_foreground_color, '#1e2b38') AS card_foreground_color,\n    COALESCE(tt.popover_color, '#fffdf8') AS popover_color,\n    COALESCE(tt.popover_foreground_color, '#1e2b38') AS popover_foreground_color,\n    COALESCE(tt.primary_color, '#0f7c82') AS primary_color,\n    COALESCE(tt.primary_foreground_color, '#f4fbfb') AS primary_foreground_color,\n    COALESCE(tt.secondary_color, '#d96f4a') AS secondary_color,\n    COALESCE(tt.secondary_foreground_color, '#fff6f1') AS secondary_foreground_color,\n    COALESCE(tt.accent_color, '#7aae90') AS accent_color,\n    COALESCE(tt.accent_foreground_color, '#0f2a1f') AS accent_foreground_color,\n    COALESCE(tt.muted_color, '#e9e1d3') AS muted_color,\n    COALESCE(tt.muted_foreground_color, '#5c6773') AS muted_foreground_color,\n    COALESCE(tt.border_color, '#d7ccba') AS border_color,\n    COALESCE(tt.input_color, '#e3d8c7') AS input_color,\n    COALESCE(tt.ring_color, '#2d8d93') AS ring_color,\n    COALESCE(tt.success_color, '#2f8f5b') AS success_color,\n    COALESCE(tt.success_foreground_color, '#f3fcf7') AS success_foreground_color,\n    COALESCE(tt.warning_color, '#c4872a') AS warning_color,\n    COALESCE(tt.warning_foreground_color, '#fff8ea') AS warning_foreground_color,\n    COALESCE(tt.destructive_color, '#b54444') AS destructive_color,\n    COALESCE(tt.destructive_foreground_color, '#fff4f4') AS destructive_foreground_color,\n    COALESCE(tt.info_color, '#3c78c2') AS info_color,\n    COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,\n    tt.logo_url,\n    tt.favicon_image_id,\n    COALESCE(tt.updated_at, NOW()) AS updated_at\nFROM tenants t\nLEFT JOIN tenant_themes tt ON tt.tenant_id = t.id\nWHERE t.id = $1\n"
+	getTenantThemeByTenantIDQuery  = "-- name: GetTenantThemeByTenantID :one\nSELECT\n    t.id AS tenant_id,\n    COALESCE(tt.background_color, '#f6f2e9') AS background_color,\n    COALESCE(tt.foreground_color, '#1e2b38') AS foreground_color,\n    COALESCE(tt.surface_color, '#fbf8f2') AS surface_color,\n    COALESCE(tt.surface_foreground_color, '#1e2b38') AS surface_foreground_color,\n    COALESCE(tt.card_color, '#fffdf8') AS card_color,\n    COALESCE(tt.card_foreground_color, '#1e2b38') AS card_foreground_color,\n    COALESCE(tt.popover_color, '#fffdf8') AS popover_color,\n    COALESCE(tt.popover_foreground_color, '#1e2b38') AS popover_foreground_color,\n    COALESCE(tt.primary_color, '#0f7c82') AS primary_color,\n    COALESCE(tt.primary_foreground_color, '#f4fbfb') AS primary_foreground_color,\n    COALESCE(tt.secondary_color, '#d96f4a') AS secondary_color,\n    COALESCE(tt.secondary_foreground_color, '#fff6f1') AS secondary_foreground_color,\n    COALESCE(tt.accent_color, '#7aae90') AS accent_color,\n    COALESCE(tt.accent_foreground_color, '#0f2a1f') AS accent_foreground_color,\n    COALESCE(tt.muted_color, '#e9e1d3') AS muted_color,\n    COALESCE(tt.muted_foreground_color, '#5c6773') AS muted_foreground_color,\n    COALESCE(tt.border_color, '#d7ccba') AS border_color,\n    COALESCE(tt.input_color, '#e3d8c7') AS input_color,\n    COALESCE(tt.ring_color, '#2d8d93') AS ring_color,\n    COALESCE(tt.success_color, '#2f8f5b') AS success_color,\n    COALESCE(tt.success_foreground_color, '#f3fcf7') AS success_foreground_color,\n    COALESCE(tt.warning_color, '#c4872a') AS warning_color,\n    COALESCE(tt.warning_foreground_color, '#fff8ea') AS warning_foreground_color,\n    COALESCE(tt.destructive_color, '#b54444') AS destructive_color,\n    COALESCE(tt.destructive_foreground_color, '#fff4f4') AS destructive_foreground_color,\n    COALESCE(tt.info_color, '#3c78c2') AS info_color,\n    COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,\n    tt.icon_image_id,\n    fi.updated_at AS icon_image_updated_at,\n    tt.logo_image_id,\n    li.updated_at AS logo_image_updated_at,\n    COALESCE(tt.updated_at, NOW()) AS updated_at\nFROM tenants t\nLEFT JOIN tenant_themes tt ON tt.tenant_id = t.id\nLEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id\nLEFT JOIN tenant_images li ON li.id = tt.logo_image_id\nWHERE t.id = $1\n"
 )
 
 func tenantThemeSelectColumns() []string {
@@ -52,8 +52,10 @@ func tenantThemeSelectColumns() []string {
 		"destructive_foreground_color",
 		"info_color",
 		"info_foreground_color",
-		"logo_url",
-		"favicon_image_id",
+		"icon_image_id",
+		"icon_image_updated_at",
+		"logo_image_id",
+		"logo_image_updated_at",
 		"updated_at",
 	}
 }
@@ -88,8 +90,10 @@ func tenantThemeSelectRow(tenantID uuid.UUID, primaryColor string, now time.Time
 		"#fff4f4",
 		"#3c78c2",
 		"#f3f8ff",
-		sql.NullString{},
 		uuid.NullUUID{},
+		sql.NullTime{},
+		uuid.NullUUID{},
+		sql.NullTime{},
 		now,
 	}
 }

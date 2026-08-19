@@ -219,13 +219,13 @@ func TestBuildEyeCatchVariants_RejectsTooSmallImage(t *testing.T) {
 	}
 }
 
-// --- TestBuildFavicon ---
+// --- TestBuildIcon ---
 
-func TestBuildFavicon_CropsNonSquareSourceToSquarePNG(t *testing.T) {
+func TestBuildIcon_CropsNonSquareSourceToSquarePNG(t *testing.T) {
 	raw := makeJPEG(t, 400, 200)
-	variant, err := imageproc.BuildFavicon(raw, "image/jpeg")
+	variant, err := imageproc.BuildIcon(raw, "image/jpeg")
 	if err != nil {
-		t.Fatalf("BuildFavicon: %v", err)
+		t.Fatalf("BuildIcon: %v", err)
 	}
 	if variant.Width != 200 || variant.Height != 200 {
 		t.Fatalf("size = %dx%d, want 200x200", variant.Width, variant.Height)
@@ -245,33 +245,33 @@ func TestBuildFavicon_CropsNonSquareSourceToSquarePNG(t *testing.T) {
 	}
 }
 
-func TestBuildFavicon_ScalesOversizedSourceDown(t *testing.T) {
+func TestBuildIcon_ScalesOversizedSourceDown(t *testing.T) {
 	raw := makePNG(t, 2000, 2000)
-	variant, err := imageproc.BuildFavicon(raw, "image/png")
+	variant, err := imageproc.BuildIcon(raw, "image/png")
 	if err != nil {
-		t.Fatalf("BuildFavicon: %v", err)
+		t.Fatalf("BuildIcon: %v", err)
 	}
-	if variant.Width != imageproc.FaviconMaxDimension || variant.Height != imageproc.FaviconMaxDimension {
-		t.Fatalf("size = %dx%d, want %dx%d", variant.Width, variant.Height, imageproc.FaviconMaxDimension, imageproc.FaviconMaxDimension)
+	if variant.Width != imageproc.IconMaxDimension || variant.Height != imageproc.IconMaxDimension {
+		t.Fatalf("size = %dx%d, want %dx%d", variant.Width, variant.Height, imageproc.IconMaxDimension, imageproc.IconMaxDimension)
 	}
 }
 
-func TestBuildFavicon_RejectsTooSmallImage(t *testing.T) {
+func TestBuildIcon_RejectsTooSmallImage(t *testing.T) {
 	raw := makePNG(t, 16, 16)
-	if _, err := imageproc.BuildFavicon(raw, "image/png"); err == nil {
+	if _, err := imageproc.BuildIcon(raw, "image/png"); err == nil {
 		t.Fatal("want error for an image below the minimum dimension")
 	}
 }
 
-func TestBuildFavicon_RejectsNonImageContentType(t *testing.T) {
+func TestBuildIcon_RejectsNonImageContentType(t *testing.T) {
 	raw := makePNG(t, 64, 64)
-	if _, err := imageproc.BuildFavicon(raw, "application/pdf"); err == nil {
+	if _, err := imageproc.BuildIcon(raw, "application/pdf"); err == nil {
 		t.Fatal("want error for a non-image content type")
 	}
 }
 
-func TestBuildFavicon_RejectsEmptyData(t *testing.T) {
-	if _, err := imageproc.BuildFavicon(nil, "image/png"); err == nil {
+func TestBuildIcon_RejectsEmptyData(t *testing.T) {
+	if _, err := imageproc.BuildIcon(nil, "image/png"); err == nil {
 		t.Fatal("want error for empty data")
 	}
 }
@@ -294,11 +294,93 @@ func pngHeaderWithDeclaredSize(width, height uint32) []byte {
 	return buf.Bytes()
 }
 
-func TestBuildFavicon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
+func TestBuildIcon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
 	// 入稿バイト数は数十バイトでも、展開すれば 16 億ピクセルになる画像。
 	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
 
-	if _, err := imageproc.BuildFavicon(raw, "image/png"); err == nil {
+	if _, err := imageproc.BuildIcon(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
+	}
+}
+
+// --- TestBuildLogo ---
+
+func TestBuildLogo_KeepsAspectRatioAndEncodesPNG(t *testing.T) {
+	raw := makeJPEG(t, 400, 200)
+	variant, err := imageproc.BuildLogo(raw, "image/jpeg")
+	if err != nil {
+		t.Fatalf("BuildLogo: %v", err)
+	}
+	if variant.Width != 400 || variant.Height != 200 {
+		t.Fatalf("size = %dx%d, want 400x200", variant.Width, variant.Height)
+	}
+	if variant.ContentType != "image/png" {
+		t.Fatalf("content_type = %q, want image/png", variant.ContentType)
+	}
+	if variant.Extension != ".png" {
+		t.Fatalf("extension = %q, want .png", variant.Extension)
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(variant.Data))
+	if err != nil {
+		t.Fatalf("DecodeConfig: %v", err)
+	}
+	if cfg.Width != 400 || cfg.Height != 200 {
+		t.Fatalf("encoded size = %dx%d, want 400x200", cfg.Width, cfg.Height)
+	}
+}
+
+func TestBuildLogo_ScalesLongestEdgeDownKeepingAspectRatio(t *testing.T) {
+	raw := makePNG(t, 4000, 1000)
+	variant, err := imageproc.BuildLogo(raw, "image/png")
+	if err != nil {
+		t.Fatalf("BuildLogo: %v", err)
+	}
+	if variant.Width != imageproc.LogoMaxDimension {
+		t.Fatalf("width = %d, want %d", variant.Width, imageproc.LogoMaxDimension)
+	}
+	if variant.Height != imageproc.LogoMaxDimension/4 {
+		t.Fatalf("height = %d, want %d", variant.Height, imageproc.LogoMaxDimension/4)
+	}
+}
+
+func TestBuildLogo_ScalesTallSourceByItsHeight(t *testing.T) {
+	raw := makePNG(t, 1000, 4000)
+	variant, err := imageproc.BuildLogo(raw, "image/png")
+	if err != nil {
+		t.Fatalf("BuildLogo: %v", err)
+	}
+	if variant.Height != imageproc.LogoMaxDimension {
+		t.Fatalf("height = %d, want %d", variant.Height, imageproc.LogoMaxDimension)
+	}
+	if variant.Width != imageproc.LogoMaxDimension/4 {
+		t.Fatalf("width = %d, want %d", variant.Width, imageproc.LogoMaxDimension/4)
+	}
+}
+
+func TestBuildLogo_RejectsShortEdgeBelowMinimum(t *testing.T) {
+	raw := makePNG(t, 400, 16)
+	if _, err := imageproc.BuildLogo(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose short edge is below the minimum")
+	}
+}
+
+func TestBuildLogo_RejectsNonImageContentType(t *testing.T) {
+	raw := makePNG(t, 400, 200)
+	if _, err := imageproc.BuildLogo(raw, "application/pdf"); err == nil {
+		t.Fatal("want error for a non-image content type")
+	}
+}
+
+func TestBuildLogo_RejectsEmptyData(t *testing.T) {
+	if _, err := imageproc.BuildLogo(nil, "image/png"); err == nil {
+		t.Fatal("want error for empty data")
+	}
+}
+
+func TestBuildLogo_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
+	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
+
+	if _, err := imageproc.BuildLogo(raw, "image/png"); err == nil {
 		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
 	}
 }

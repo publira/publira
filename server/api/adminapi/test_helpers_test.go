@@ -53,7 +53,9 @@ const (
 	lockTenantForUpdateQuery                                 = "-- name: LockTenantForUpdate :one\n"
 	createTenantImageQuery                                   = "-- name: CreateTenantImage :one\n"
 	createTenantImageVariantQuery                            = "-- name: CreateTenantImageVariant :one\n"
-	setTenantThemeFaviconImageQuery                          = "-- name: SetTenantThemeFaviconImage :one\n"
+	setTenantThemeIconImageQuery                             = "-- name: SetTenantThemeIconImage :one\n"
+	setTenantThemeLogoImageQuery                             = "-- name: SetTenantThemeLogoImage :one\n"
+	listTenantImageVariantsByImageIDsQuery                   = "-- name: ListTenantImageVariantsByImageIDs :many\n"
 	deleteTenantImageQuery                                   = "-- name: DeleteTenantImage :exec\n"
 	testUserPublicID                                         = "USER001"
 )

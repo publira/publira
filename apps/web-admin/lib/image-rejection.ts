@@ -14,6 +14,10 @@ export const mentionsImageRejection = (error: unknown): boolean =>
   rpcErrorHasFieldViolation(error, "eye_catch_image_data") ||
   rpcErrorHasFieldViolation(error, "eye_catch_image_content_type");
 
-/** Whether an `invalid_argument` rejection is about the uploaded favicon. */
-export const mentionsFaviconRejection = (error: unknown): boolean =>
-  rpcErrorHasFieldViolation(error, "favicon_data");
+/** Whether an `invalid_argument` rejection is about the uploaded icon. */
+export const mentionsIconRejection = (error: unknown): boolean =>
+  rpcErrorHasFieldViolation(error, "icon_data");
+
+/** Whether an `invalid_argument` rejection is about the uploaded logo. */
+export const mentionsLogoRejection = (error: unknown): boolean =>
+  rpcErrorHasFieldViolation(error, "logo_data");

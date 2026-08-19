@@ -121,11 +121,15 @@ SELECT
     COALESCE(tt.destructive_foreground_color, '#fff4f4') AS destructive_foreground_color,
     COALESCE(tt.info_color, '#3c78c2') AS info_color,
     COALESCE(tt.info_foreground_color, '#f3f8ff') AS info_foreground_color,
-    tt.logo_url,
-    tt.favicon_image_id,
+    tt.icon_image_id,
+    fi.updated_at AS icon_image_updated_at,
+    tt.logo_image_id,
+    li.updated_at AS logo_image_updated_at,
     COALESCE(tt.updated_at, NOW()) AS updated_at
 FROM tenants t
 LEFT JOIN tenant_themes tt ON tt.tenant_id = t.id
+LEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id
+LEFT JOIN tenant_images li ON li.id = tt.logo_image_id
 WHERE t.id = $1;
 -- name: UpsertTenantTheme :one
 INSERT INTO tenant_themes (
@@ -157,7 +161,6 @@ INSERT INTO tenant_themes (
         destructive_foreground_color,
         info_color,
         info_foreground_color,
-        logo_url,
         updated_at
     )
 VALUES (
@@ -189,7 +192,6 @@ VALUES (
         $26,
         $27,
         $28,
-        $29,
         NOW()
     ) ON CONFLICT (tenant_id) DO
 UPDATE
@@ -220,27 +222,38 @@ SET background_color = EXCLUDED.background_color,
     destructive_foreground_color = EXCLUDED.destructive_foreground_color,
     info_color = EXCLUDED.info_color,
     info_foreground_color = EXCLUDED.info_foreground_color,
-    logo_url = EXCLUDED.logo_url,
     updated_at = NOW()
 RETURNING *;
 
 -- name: LockTenantForUpdate :one
--- Lock the tenant row so concurrent tenant favicon uploads and deletes
--- serialize. The following read of the current favicon must be a separate
--- statement: READ COMMITTED freezes its snapshot at statement start, so waiting
--- for the lock in the same statement would still see the pre-wait row.
+-- Lock the tenant row so concurrent tenant branding image uploads and deletes
+-- (icon, logo) serialize. The following read of the current image must be a
+-- separate statement: READ COMMITTED freezes its snapshot at statement start,
+-- so waiting for the lock in the same statement would still see the pre-wait
+-- row.
 SELECT id
 FROM tenants
 WHERE id = $1
 FOR UPDATE;
 
--- name: SetTenantThemeFaviconImage :one
--- The theme row is created on demand: a tenant can upload a favicon before it
+-- name: SetTenantThemeIconImage :one
+-- The theme row is created on demand: a tenant can upload a icon before it
 -- has ever saved a color, and the colors then keep their column defaults.
-INSERT INTO tenant_themes (tenant_id, favicon_image_id, updated_at)
+INSERT INTO tenant_themes (tenant_id, icon_image_id, updated_at)
 VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
-SET favicon_image_id = EXCLUDED.favicon_image_id,
+SET icon_image_id = EXCLUDED.icon_image_id,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: SetTenantThemeLogoImage :one
+-- The theme row is created on demand, the same way the icon does it: a
+-- tenant can upload a logo before it has ever saved a color, and the colors
+-- then keep their column defaults.
+INSERT INTO tenant_themes (tenant_id, logo_image_id, updated_at)
+VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
+UPDATE
+SET logo_image_id = EXCLUDED.logo_image_id,
     updated_at = NOW()
 RETURNING *;
 
@@ -259,6 +272,7 @@ INSERT INTO tenant_image_variants (
         tenant_id,
         tenant_image_id,
         label,
+        variant_type,
         storage_provider,
         object_key,
         content_type,
@@ -266,27 +280,37 @@ INSERT INTO tenant_image_variants (
         width,
         height
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
+
+-- name: ListTenantImageVariantsByImageIDs :many
+-- The theme carries the icon and the logo together, so both images' variants
+-- are read in one statement rather than one query per slot.
+SELECT tenant_image_id,
+    variant_type,
+    label,
+    content_type,
+    file_size_bytes,
+    width,
+    height
+FROM tenant_image_variants
+WHERE tenant_image_id = ANY(@image_ids::uuid [])
+ORDER BY tenant_image_id,
+    variant_type;
 
 -- name: DeleteTenantImage :exec
 DELETE FROM tenant_images
 WHERE id = $1
     AND tenant_id = $2;
 
--- name: GetTenantImageByIDForTenant :one
+-- name: GetTenantImageVariantByTypeForTenant :one
 SELECT tiv.object_key,
     tiv.content_type
-FROM tenant_images ti
-JOIN LATERAL (
-    SELECT object_key, content_type
-    FROM tenant_image_variants
-    WHERE tenant_image_id = ti.id
-    ORDER BY width DESC
-    LIMIT 1
-) tiv ON true
-WHERE ti.id = $1
+FROM tenant_image_variants tiv
+JOIN tenant_images ti ON ti.id = tiv.tenant_image_id
+WHERE tiv.tenant_image_id = $1
     AND ti.tenant_id = $2
+    AND tiv.variant_type = $3
 LIMIT 1;
 
 -- name: CreateUserEmailVerificationToken :one

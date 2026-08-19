@@ -39,20 +39,28 @@ const (
 	// TenantThemeServiceUpsertTenantThemeProcedure is the fully-qualified name of the
 	// TenantThemeService's UpsertTenantTheme RPC.
 	TenantThemeServiceUpsertTenantThemeProcedure = "/publira.admin.v1.TenantThemeService/UpsertTenantTheme"
-	// TenantThemeServiceUploadTenantFaviconProcedure is the fully-qualified name of the
-	// TenantThemeService's UploadTenantFavicon RPC.
-	TenantThemeServiceUploadTenantFaviconProcedure = "/publira.admin.v1.TenantThemeService/UploadTenantFavicon"
-	// TenantThemeServiceDeleteTenantFaviconProcedure is the fully-qualified name of the
-	// TenantThemeService's DeleteTenantFavicon RPC.
-	TenantThemeServiceDeleteTenantFaviconProcedure = "/publira.admin.v1.TenantThemeService/DeleteTenantFavicon"
+	// TenantThemeServiceUploadTenantIconProcedure is the fully-qualified name of the
+	// TenantThemeService's UploadTenantIcon RPC.
+	TenantThemeServiceUploadTenantIconProcedure = "/publira.admin.v1.TenantThemeService/UploadTenantIcon"
+	// TenantThemeServiceDeleteTenantIconProcedure is the fully-qualified name of the
+	// TenantThemeService's DeleteTenantIcon RPC.
+	TenantThemeServiceDeleteTenantIconProcedure = "/publira.admin.v1.TenantThemeService/DeleteTenantIcon"
+	// TenantThemeServiceUploadTenantLogoProcedure is the fully-qualified name of the
+	// TenantThemeService's UploadTenantLogo RPC.
+	TenantThemeServiceUploadTenantLogoProcedure = "/publira.admin.v1.TenantThemeService/UploadTenantLogo"
+	// TenantThemeServiceDeleteTenantLogoProcedure is the fully-qualified name of the
+	// TenantThemeService's DeleteTenantLogo RPC.
+	TenantThemeServiceDeleteTenantLogoProcedure = "/publira.admin.v1.TenantThemeService/DeleteTenantLogo"
 )
 
 // TenantThemeServiceClient is a client for the publira.admin.v1.TenantThemeService service.
 type TenantThemeServiceClient interface {
 	GetTenantTheme(context.Context, *connect.Request[v1.GetTenantThemeRequest]) (*connect.Response[v1.GetTenantThemeResponse], error)
 	UpsertTenantTheme(context.Context, *connect.Request[v1.UpsertTenantThemeRequest]) (*connect.Response[v1.UpsertTenantThemeResponse], error)
-	UploadTenantFavicon(context.Context, *connect.Request[v1.UploadTenantFaviconRequest]) (*connect.Response[v1.UploadTenantFaviconResponse], error)
-	DeleteTenantFavicon(context.Context, *connect.Request[v1.DeleteTenantFaviconRequest]) (*connect.Response[v1.DeleteTenantFaviconResponse], error)
+	UploadTenantIcon(context.Context, *connect.Request[v1.UploadTenantIconRequest]) (*connect.Response[v1.UploadTenantIconResponse], error)
+	DeleteTenantIcon(context.Context, *connect.Request[v1.DeleteTenantIconRequest]) (*connect.Response[v1.DeleteTenantIconResponse], error)
+	UploadTenantLogo(context.Context, *connect.Request[v1.UploadTenantLogoRequest]) (*connect.Response[v1.UploadTenantLogoResponse], error)
+	DeleteTenantLogo(context.Context, *connect.Request[v1.DeleteTenantLogoRequest]) (*connect.Response[v1.DeleteTenantLogoResponse], error)
 }
 
 // NewTenantThemeServiceClient constructs a client for the publira.admin.v1.TenantThemeService
@@ -78,16 +86,28 @@ func NewTenantThemeServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(tenantThemeServiceMethods.ByName("UpsertTenantTheme")),
 			connect.WithClientOptions(opts...),
 		),
-		uploadTenantFavicon: connect.NewClient[v1.UploadTenantFaviconRequest, v1.UploadTenantFaviconResponse](
+		uploadTenantIcon: connect.NewClient[v1.UploadTenantIconRequest, v1.UploadTenantIconResponse](
 			httpClient,
-			baseURL+TenantThemeServiceUploadTenantFaviconProcedure,
-			connect.WithSchema(tenantThemeServiceMethods.ByName("UploadTenantFavicon")),
+			baseURL+TenantThemeServiceUploadTenantIconProcedure,
+			connect.WithSchema(tenantThemeServiceMethods.ByName("UploadTenantIcon")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteTenantFavicon: connect.NewClient[v1.DeleteTenantFaviconRequest, v1.DeleteTenantFaviconResponse](
+		deleteTenantIcon: connect.NewClient[v1.DeleteTenantIconRequest, v1.DeleteTenantIconResponse](
 			httpClient,
-			baseURL+TenantThemeServiceDeleteTenantFaviconProcedure,
-			connect.WithSchema(tenantThemeServiceMethods.ByName("DeleteTenantFavicon")),
+			baseURL+TenantThemeServiceDeleteTenantIconProcedure,
+			connect.WithSchema(tenantThemeServiceMethods.ByName("DeleteTenantIcon")),
+			connect.WithClientOptions(opts...),
+		),
+		uploadTenantLogo: connect.NewClient[v1.UploadTenantLogoRequest, v1.UploadTenantLogoResponse](
+			httpClient,
+			baseURL+TenantThemeServiceUploadTenantLogoProcedure,
+			connect.WithSchema(tenantThemeServiceMethods.ByName("UploadTenantLogo")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteTenantLogo: connect.NewClient[v1.DeleteTenantLogoRequest, v1.DeleteTenantLogoResponse](
+			httpClient,
+			baseURL+TenantThemeServiceDeleteTenantLogoProcedure,
+			connect.WithSchema(tenantThemeServiceMethods.ByName("DeleteTenantLogo")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -95,10 +115,12 @@ func NewTenantThemeServiceClient(httpClient connect.HTTPClient, baseURL string, 
 
 // tenantThemeServiceClient implements TenantThemeServiceClient.
 type tenantThemeServiceClient struct {
-	getTenantTheme      *connect.Client[v1.GetTenantThemeRequest, v1.GetTenantThemeResponse]
-	upsertTenantTheme   *connect.Client[v1.UpsertTenantThemeRequest, v1.UpsertTenantThemeResponse]
-	uploadTenantFavicon *connect.Client[v1.UploadTenantFaviconRequest, v1.UploadTenantFaviconResponse]
-	deleteTenantFavicon *connect.Client[v1.DeleteTenantFaviconRequest, v1.DeleteTenantFaviconResponse]
+	getTenantTheme    *connect.Client[v1.GetTenantThemeRequest, v1.GetTenantThemeResponse]
+	upsertTenantTheme *connect.Client[v1.UpsertTenantThemeRequest, v1.UpsertTenantThemeResponse]
+	uploadTenantIcon  *connect.Client[v1.UploadTenantIconRequest, v1.UploadTenantIconResponse]
+	deleteTenantIcon  *connect.Client[v1.DeleteTenantIconRequest, v1.DeleteTenantIconResponse]
+	uploadTenantLogo  *connect.Client[v1.UploadTenantLogoRequest, v1.UploadTenantLogoResponse]
+	deleteTenantLogo  *connect.Client[v1.DeleteTenantLogoRequest, v1.DeleteTenantLogoResponse]
 }
 
 // GetTenantTheme calls publira.admin.v1.TenantThemeService.GetTenantTheme.
@@ -111,14 +133,24 @@ func (c *tenantThemeServiceClient) UpsertTenantTheme(ctx context.Context, req *c
 	return c.upsertTenantTheme.CallUnary(ctx, req)
 }
 
-// UploadTenantFavicon calls publira.admin.v1.TenantThemeService.UploadTenantFavicon.
-func (c *tenantThemeServiceClient) UploadTenantFavicon(ctx context.Context, req *connect.Request[v1.UploadTenantFaviconRequest]) (*connect.Response[v1.UploadTenantFaviconResponse], error) {
-	return c.uploadTenantFavicon.CallUnary(ctx, req)
+// UploadTenantIcon calls publira.admin.v1.TenantThemeService.UploadTenantIcon.
+func (c *tenantThemeServiceClient) UploadTenantIcon(ctx context.Context, req *connect.Request[v1.UploadTenantIconRequest]) (*connect.Response[v1.UploadTenantIconResponse], error) {
+	return c.uploadTenantIcon.CallUnary(ctx, req)
 }
 
-// DeleteTenantFavicon calls publira.admin.v1.TenantThemeService.DeleteTenantFavicon.
-func (c *tenantThemeServiceClient) DeleteTenantFavicon(ctx context.Context, req *connect.Request[v1.DeleteTenantFaviconRequest]) (*connect.Response[v1.DeleteTenantFaviconResponse], error) {
-	return c.deleteTenantFavicon.CallUnary(ctx, req)
+// DeleteTenantIcon calls publira.admin.v1.TenantThemeService.DeleteTenantIcon.
+func (c *tenantThemeServiceClient) DeleteTenantIcon(ctx context.Context, req *connect.Request[v1.DeleteTenantIconRequest]) (*connect.Response[v1.DeleteTenantIconResponse], error) {
+	return c.deleteTenantIcon.CallUnary(ctx, req)
+}
+
+// UploadTenantLogo calls publira.admin.v1.TenantThemeService.UploadTenantLogo.
+func (c *tenantThemeServiceClient) UploadTenantLogo(ctx context.Context, req *connect.Request[v1.UploadTenantLogoRequest]) (*connect.Response[v1.UploadTenantLogoResponse], error) {
+	return c.uploadTenantLogo.CallUnary(ctx, req)
+}
+
+// DeleteTenantLogo calls publira.admin.v1.TenantThemeService.DeleteTenantLogo.
+func (c *tenantThemeServiceClient) DeleteTenantLogo(ctx context.Context, req *connect.Request[v1.DeleteTenantLogoRequest]) (*connect.Response[v1.DeleteTenantLogoResponse], error) {
+	return c.deleteTenantLogo.CallUnary(ctx, req)
 }
 
 // TenantThemeServiceHandler is an implementation of the publira.admin.v1.TenantThemeService
@@ -126,8 +158,10 @@ func (c *tenantThemeServiceClient) DeleteTenantFavicon(ctx context.Context, req 
 type TenantThemeServiceHandler interface {
 	GetTenantTheme(context.Context, *connect.Request[v1.GetTenantThemeRequest]) (*connect.Response[v1.GetTenantThemeResponse], error)
 	UpsertTenantTheme(context.Context, *connect.Request[v1.UpsertTenantThemeRequest]) (*connect.Response[v1.UpsertTenantThemeResponse], error)
-	UploadTenantFavicon(context.Context, *connect.Request[v1.UploadTenantFaviconRequest]) (*connect.Response[v1.UploadTenantFaviconResponse], error)
-	DeleteTenantFavicon(context.Context, *connect.Request[v1.DeleteTenantFaviconRequest]) (*connect.Response[v1.DeleteTenantFaviconResponse], error)
+	UploadTenantIcon(context.Context, *connect.Request[v1.UploadTenantIconRequest]) (*connect.Response[v1.UploadTenantIconResponse], error)
+	DeleteTenantIcon(context.Context, *connect.Request[v1.DeleteTenantIconRequest]) (*connect.Response[v1.DeleteTenantIconResponse], error)
+	UploadTenantLogo(context.Context, *connect.Request[v1.UploadTenantLogoRequest]) (*connect.Response[v1.UploadTenantLogoResponse], error)
+	DeleteTenantLogo(context.Context, *connect.Request[v1.DeleteTenantLogoRequest]) (*connect.Response[v1.DeleteTenantLogoResponse], error)
 }
 
 // NewTenantThemeServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -149,16 +183,28 @@ func NewTenantThemeServiceHandler(svc TenantThemeServiceHandler, opts ...connect
 		connect.WithSchema(tenantThemeServiceMethods.ByName("UpsertTenantTheme")),
 		connect.WithHandlerOptions(opts...),
 	)
-	tenantThemeServiceUploadTenantFaviconHandler := connect.NewUnaryHandler(
-		TenantThemeServiceUploadTenantFaviconProcedure,
-		svc.UploadTenantFavicon,
-		connect.WithSchema(tenantThemeServiceMethods.ByName("UploadTenantFavicon")),
+	tenantThemeServiceUploadTenantIconHandler := connect.NewUnaryHandler(
+		TenantThemeServiceUploadTenantIconProcedure,
+		svc.UploadTenantIcon,
+		connect.WithSchema(tenantThemeServiceMethods.ByName("UploadTenantIcon")),
 		connect.WithHandlerOptions(opts...),
 	)
-	tenantThemeServiceDeleteTenantFaviconHandler := connect.NewUnaryHandler(
-		TenantThemeServiceDeleteTenantFaviconProcedure,
-		svc.DeleteTenantFavicon,
-		connect.WithSchema(tenantThemeServiceMethods.ByName("DeleteTenantFavicon")),
+	tenantThemeServiceDeleteTenantIconHandler := connect.NewUnaryHandler(
+		TenantThemeServiceDeleteTenantIconProcedure,
+		svc.DeleteTenantIcon,
+		connect.WithSchema(tenantThemeServiceMethods.ByName("DeleteTenantIcon")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantThemeServiceUploadTenantLogoHandler := connect.NewUnaryHandler(
+		TenantThemeServiceUploadTenantLogoProcedure,
+		svc.UploadTenantLogo,
+		connect.WithSchema(tenantThemeServiceMethods.ByName("UploadTenantLogo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tenantThemeServiceDeleteTenantLogoHandler := connect.NewUnaryHandler(
+		TenantThemeServiceDeleteTenantLogoProcedure,
+		svc.DeleteTenantLogo,
+		connect.WithSchema(tenantThemeServiceMethods.ByName("DeleteTenantLogo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/publira.admin.v1.TenantThemeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -167,10 +213,14 @@ func NewTenantThemeServiceHandler(svc TenantThemeServiceHandler, opts ...connect
 			tenantThemeServiceGetTenantThemeHandler.ServeHTTP(w, r)
 		case TenantThemeServiceUpsertTenantThemeProcedure:
 			tenantThemeServiceUpsertTenantThemeHandler.ServeHTTP(w, r)
-		case TenantThemeServiceUploadTenantFaviconProcedure:
-			tenantThemeServiceUploadTenantFaviconHandler.ServeHTTP(w, r)
-		case TenantThemeServiceDeleteTenantFaviconProcedure:
-			tenantThemeServiceDeleteTenantFaviconHandler.ServeHTTP(w, r)
+		case TenantThemeServiceUploadTenantIconProcedure:
+			tenantThemeServiceUploadTenantIconHandler.ServeHTTP(w, r)
+		case TenantThemeServiceDeleteTenantIconProcedure:
+			tenantThemeServiceDeleteTenantIconHandler.ServeHTTP(w, r)
+		case TenantThemeServiceUploadTenantLogoProcedure:
+			tenantThemeServiceUploadTenantLogoHandler.ServeHTTP(w, r)
+		case TenantThemeServiceDeleteTenantLogoProcedure:
+			tenantThemeServiceDeleteTenantLogoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -188,10 +238,18 @@ func (UnimplementedTenantThemeServiceHandler) UpsertTenantTheme(context.Context,
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantThemeService.UpsertTenantTheme is not implemented"))
 }
 
-func (UnimplementedTenantThemeServiceHandler) UploadTenantFavicon(context.Context, *connect.Request[v1.UploadTenantFaviconRequest]) (*connect.Response[v1.UploadTenantFaviconResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantThemeService.UploadTenantFavicon is not implemented"))
+func (UnimplementedTenantThemeServiceHandler) UploadTenantIcon(context.Context, *connect.Request[v1.UploadTenantIconRequest]) (*connect.Response[v1.UploadTenantIconResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantThemeService.UploadTenantIcon is not implemented"))
 }
 
-func (UnimplementedTenantThemeServiceHandler) DeleteTenantFavicon(context.Context, *connect.Request[v1.DeleteTenantFaviconRequest]) (*connect.Response[v1.DeleteTenantFaviconResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantThemeService.DeleteTenantFavicon is not implemented"))
+func (UnimplementedTenantThemeServiceHandler) DeleteTenantIcon(context.Context, *connect.Request[v1.DeleteTenantIconRequest]) (*connect.Response[v1.DeleteTenantIconResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantThemeService.DeleteTenantIcon is not implemented"))
+}
+
+func (UnimplementedTenantThemeServiceHandler) UploadTenantLogo(context.Context, *connect.Request[v1.UploadTenantLogoRequest]) (*connect.Response[v1.UploadTenantLogoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantThemeService.UploadTenantLogo is not implemented"))
+}
+
+func (UnimplementedTenantThemeServiceHandler) DeleteTenantLogo(context.Context, *connect.Request[v1.DeleteTenantLogoRequest]) (*connect.Response[v1.DeleteTenantLogoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("publira.admin.v1.TenantThemeService.DeleteTenantLogo is not implemented"))
 }
