@@ -27,7 +27,7 @@ const getTenantPublicInfo = async (
   tenantId: string
 ): Promise<TenantPublicInfo | null> => {
   "use cache";
-  cacheLife({ stale: 30 });
+  cacheLife("hours");
 
   const normalized = tenantId.trim();
   if (!normalized) {
