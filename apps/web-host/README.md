@@ -35,6 +35,10 @@ pnpm dev
 
 `next.config.ts` の `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` で、`next/image` が image-server の Manael 変換を直接使います。`/images/...` を読むときだけ要求幅を `w` として渡し、WebP / AVIF はブラウザの `Accept` で決まります。`blob:` の一時プレビューなど image-server を経由しない `<Image>` は `unoptimized` のままにしてください。ローダーの実装と仕様は [`packages/utils/README.md`](../../packages/utils/README.md) にあります。
 
+### サイトアイコン (favicon / apple-touch-icon)
+
+`link rel="icon"` と `link rel="apple-touch-icon"` は、テナント favicon が設定されていればその配信 URL（`/images/tenants/{media_id}`）を指します。画像は image-server が配り、正方形の PNG への整形はアップロード時にサーバー側で済んでいるため、web-host 側での変換はありません。未設定のテナントではアイコンを宣言せず、ブラウザの既定に任せます。
+
 ### エピソード購入
 
 有料エピソードの「購入手続きへ」は Stripe Checkout へ遷移します。Stripe から戻った後、`checkout.session.completed` Webhook の購入反映が本文画像へのアクセスを許可します。web-host 自身に Stripe の秘密鍵は置きません。公開 API の `PUBLIRA_WEB_HOST_URL` にこのアプリの絶対 URL（例: `http://localhost:3000`）を設定し、Stripe / Webhook の設定手順は [server README](../../server/README.md#stripe-checkoutエピソード購入) を参照してください。
