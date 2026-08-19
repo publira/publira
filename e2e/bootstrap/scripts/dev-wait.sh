@@ -6,7 +6,14 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-deadline=$((SECONDS + BOOTSTRAP_DEV_TIMEOUT_SEC))
+# Matches the previous grep for `"status": "ok"` (optional spaces around `:`).
+JSON_OK_REGEX='"status"[[:space:]]*:[[:space:]]*"ok"'
+# Whole-body `ok`, matching the previous check_http_text_ok (exact line).
+LIVEZ_REGEX='^[[:space:]]*ok[[:space:]]*$'
+
+if ! command -v wait4x >/dev/null 2>&1; then
+  bootstrap_fail "required command not found: wait4x"
+fi
 
 dev_is_running() {
   local pgid
@@ -14,32 +21,50 @@ dev_is_running() {
   [[ -n "${pgid}" ]] && kill -0 "-${pgid}" 2>/dev/null
 }
 
-wait_for_probe() {
+# wait4x cannot abort when `task dev` dies mid-wait (that would need a second
+# poll loop). After it returns, distinguish "process gone" from "probe still
+# failing" so the error matches the previous wait_for_probe messages.
+fail_probe() {
+  local name="$1" url="$2"
+  if ! dev_is_running; then
+    bootstrap_fail "task dev exited before ${name} became ready; see ${DEV_LOG}"
+  fi
+  bootstrap_fail "readiness failed: ${name} (${url}) — timed out after ${BOOTSTRAP_DEV_TIMEOUT_SEC}s"
+}
+
+wait_http_probe() {
   local name="$1" url="$2" kind="$3"
-  local checker="check_http_json_ok"
+  local remaining=$((BOOTSTRAP_DEV_TIMEOUT_SEC - SECONDS))
+  local body_regex="${JSON_OK_REGEX}"
+
+  # Shared budget across probes, same as the previous deadline. wait4x --timeout
+  # 0 is unlimited, so treat a spent budget as a failure before invoking it.
+  if ((remaining <= 0)); then
+    fail_probe "${name}" "${url}"
+  fi
   if [[ "${kind}" == "text" ]]; then
-    checker="check_http_text_ok"
+    body_regex="${LIVEZ_REGEX}"
   fi
 
-  while ((SECONDS < deadline)); do
-    if "${checker}" "${url}"; then
-      bootstrap_log "ready: ${name} (${url})"
-      return 0
-    fi
-    if ! dev_is_running; then
-      bootstrap_fail "task dev exited before ${name} became ready; see ${DEV_LOG}"
-    fi
-    sleep "${BOOTSTRAP_DEV_INTERVAL_SEC}"
-  done
-
-  bootstrap_fail "readiness failed: ${name} (${url}) — timed out after ${BOOTSTRAP_DEV_TIMEOUT_SEC}s"
+  if wait4x http "${url}" \
+    --timeout "${remaining}s" \
+    --interval "${BOOTSTRAP_DEV_INTERVAL_SEC}s" \
+    --connection-timeout 5s \
+    --quiet \
+    --no-color \
+    --expect-status-code 200 \
+    --expect-body-regex "${body_regex}"; then
+    bootstrap_log "ready: ${name} (${url})"
+    return 0
+  fi
+  fail_probe "${name}" "${url}"
 }
 
 bootstrap_log "waiting for services (budget ${BOOTSTRAP_DEV_TIMEOUT_SEC}s)"
 
 while IFS=$'\t' read -r name url kind; do
   [[ -n "${name}" ]] || continue
-  wait_for_probe "${name}" "${url}" "${kind}"
+  wait_http_probe "${name}" "${url}" "${kind}"
 done < <(bootstrap_probes)
 
 for port in "${BOOTSTRAP_DEV_PORTS[@]}"; do

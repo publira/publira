@@ -10,6 +10,8 @@ ARG BUF_VERSION=1.72.0
 ARG MIGRATE_VERSION=4.19.1
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver-coerced
 ARG GOLANGCI_LINT_VERSION=2.12.2
+# renovate: datasource=github-releases depName=wait4x/wait4x versioning=semver-coerced
+ARG WAIT4X_VERSION=3.7.1
 # renovate: datasource=flutter-version depName=flutter
 ARG FLUTTER_VERSION=3.47.0
 
@@ -41,7 +43,16 @@ RUN set -eux; \
 	curl -fsSL "https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/${golangci_lint_dir}.tar.gz" \
 		| tar -xz -C /tmp "${golangci_lint_dir}/golangci-lint"; \
 	install -m 0755 "/tmp/${golangci_lint_dir}/golangci-lint" /usr/local/bin/golangci-lint; \
-	rm -rf "/tmp/${golangci_lint_dir}"
+	rm -rf "/tmp/${golangci_lint_dir}"; \
+	wait4x_archive="wait4x-linux-${arch}.tar.gz"; \
+	curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${wait4x_archive}" \
+		-o "/tmp/${wait4x_archive}"; \
+	curl -fsSL "https://github.com/wait4x/wait4x/releases/download/v${WAIT4X_VERSION}/${wait4x_archive}.sha256sum" \
+		-o "/tmp/${wait4x_archive}.sha256sum"; \
+	(cd /tmp && sha256sum -c "${wait4x_archive}.sha256sum"); \
+	tar -xzf "/tmp/${wait4x_archive}" -C /tmp wait4x; \
+	install -m 0755 /tmp/wait4x /usr/local/bin/wait4x; \
+	rm -f "/tmp/${wait4x_archive}" "/tmp/${wait4x_archive}.sha256sum" /tmp/wait4x
 
 # Install Flutter SDK
 ENV FLUTTER_HOME=/usr/local/flutter

@@ -13,7 +13,7 @@ PostgreSQL 18 のデータディレクトリ仕様と Compose の volume マウ�
 ## 前提
 
 - Docker（Compose v2, `!override` を解釈できる版）
-- `task` / `psql` / `migrate` / Node.js / pnpm / Go / `aws`（S3 バケット作成に使う。Dev Container は `aws-cli` feature で同梱）
+- `task` / `psql` / `migrate` / [wait4x](https://github.com/wait4x/wait4x) / Node.js / pnpm / Go / `aws`（S3 バケット作成に使う。Dev Container は `aws-cli` feature と wait4x を同梱。CI は `Test / Bootstrap` で wait4x をインストール）
 - 下記ポートが空いていること
 
 | 用途 | ポート | 備考 |
@@ -41,7 +41,7 @@ task e2e:bootstrap
 | `task e2e:bootstrap:setup` | phase 2: `task setup` と migration / seed の検証 |
 | `task e2e:bootstrap:restart-db` | phase 3: DB と RustFS の再起動後の永続性検証 |
 | `task e2e:bootstrap:dev-up` | phase 4a: `task dev` をバックグラウンド起動 |
-| `task e2e:bootstrap:dev-wait` | phase 4b: 全サービスの health probe |
+| `task e2e:bootstrap:dev-wait` | phase 4b: wait4x で全サービスの health probe 待ち |
 | `task e2e:bootstrap:dev-down` | `task dev` のプロセスグループを停止 |
 | `task e2e:bootstrap:down` | teardown（`dev-down` + compose 削除） |
 
