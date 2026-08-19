@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -675,11 +676,17 @@ func (s *apiServer) GetSeriesDetail(
 
 // withMediaToken hands the reader an image URL that already carries their
 // credential. A free body has no token and stays a plain public URL.
+// image-server reads sizing from the query too, so the token is added to
+// whatever query the URL already has rather than assuming there is none.
 func withMediaToken(imageURL string, token string) string {
 	if token == "" {
 		return imageURL
 	}
-	return imageURL + "?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
+	separator := "?"
+	if strings.Contains(imageURL, "?") {
+		separator = "&"
+	}
+	return imageURL + separator + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
 }
 
 func (s *apiServer) GetEpisodeDetail(
