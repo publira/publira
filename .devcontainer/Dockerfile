@@ -13,7 +13,7 @@ ARG GOLANGCI_LINT_VERSION=2.12.2
 # renovate: datasource=github-releases depName=wait4x/wait4x versioning=semver-coerced
 ARG WAIT4X_VERSION=3.7.1
 # renovate: datasource=flutter-version depName=flutter
-ARG FLUTTER_VERSION=3.47.0
+ARG FLUTTER_VERSION=3.47.1
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
  && apt-get -y install --no-install-recommends postgresql-client \
