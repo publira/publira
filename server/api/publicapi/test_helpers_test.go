@@ -90,6 +90,17 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
 }
 
+const getPlatformConfigQuery = "-- name: GetPlatformConfig :one\n"
+
+func publicPlatformConfigColumns() []string {
+	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at"}
+}
+
+func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).
+		WillReturnRows(sqlmock.NewRows(publicPlatformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
+}
+
 func assertPublicExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 	t.Helper()
 	if err := mock.ExpectationsWereMet(); err != nil {

@@ -214,7 +214,7 @@ func TestDBUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 
 	updateResp, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: tenanttz.Default,
-		DefaultLocale:   "en",
+		DefaultLocale:   optionalLocale("en"),
 	}))
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
@@ -242,15 +242,15 @@ func TestDBUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 
 	if _, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "America/Los_Angeles",
-		DefaultLocale:   "en",
+		DefaultLocale:   optionalLocale("en"),
 	})); err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
 
-	for _, defaultLocale := range []string{"fr", "EN", "en-US"} {
+	for _, defaultLocale := range []string{"fr", "EN", "en-US", "", "   "} {
 		_, err := client.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
 			DefaultTimezone: "Europe/Berlin",
-			DefaultLocale:   defaultLocale,
+			DefaultLocale:   optionalLocale(defaultLocale),
 		}))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("UpdatePlatformSettings(%q) code = %v, want invalid_argument", defaultLocale, connect.CodeOf(err))
@@ -277,7 +277,7 @@ func TestDBCreateTenantAppliesPlatformDefaultLocale(t *testing.T) {
 
 	if _, err := settings.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: tenanttz.Default,
-		DefaultLocale:   "en",
+		DefaultLocale:   optionalLocale("en"),
 	})); err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
 	}
@@ -295,7 +295,7 @@ func TestDBCreateTenantAppliesPlatformDefaultLocale(t *testing.T) {
 
 	if _, err := settings.UpdatePlatformSettings(context.Background(), newDBAuthedRequest(operator, publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: tenanttz.Default,
-		DefaultLocale:   "ja",
+		DefaultLocale:   optionalLocale("ja"),
 	})); err != nil {
 		t.Fatalf("UpdatePlatformSettings (after): %v", err)
 	}

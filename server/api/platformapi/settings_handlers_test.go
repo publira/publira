@@ -25,6 +25,10 @@ func newPlatformSettingsActorContext() context.Context {
 	})
 }
 
+func optionalLocale(value string) *string {
+	return &value
+}
+
 func TestGetPlatformSettingsReturnsStoredTimezone(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
@@ -65,8 +69,8 @@ func TestGetPlatformSettingsFallsBackWhenRowIsMissing(t *testing.T) {
 func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
-	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultTimezoneQuery)).
-		WithArgs("America/Los_Angeles").
+	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
+		WithArgs("America/Los_Angeles", sql.NullString{}).
 		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "America/Los_Angeles", "ja", now, now))
 	expectOperatorAuditLogInsert(mock)
 
@@ -89,17 +93,14 @@ func TestUpdatePlatformSettingsPersistsTimezone(t *testing.T) {
 func TestUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 	now := time.Now()
-	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultTimezoneQuery)).
-		WithArgs("America/Los_Angeles").
-		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "America/Los_Angeles", "ja", now, now))
-	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultLocaleQuery)).
-		WithArgs("en").
+	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
+		WithArgs("America/Los_Angeles", sql.NullString{String: "en", Valid: true}).
 		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, "America/Los_Angeles", "en", now, now))
 	expectOperatorAuditLogInsert(mock)
 
 	resp, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 		DefaultTimezone: "America/Los_Angeles",
-		DefaultLocale:   "  en  ",
+		DefaultLocale:   optionalLocale("  en  "),
 	}))
 	if err != nil {
 		t.Fatalf("UpdatePlatformSettings: %v", err)
@@ -115,8 +116,8 @@ func TestUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 
 func TestUpdatePlatformSettingsDatabaseErrorIsHidden(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
-	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformDefaultTimezoneQuery)).
-		WithArgs("America/Los_Angeles").
+	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
+		WithArgs("America/Los_Angeles", sql.NullString{}).
 		WillReturnError(errors.New(`pq: relation "platform_config" does not exist`))
 
 	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
@@ -178,7 +179,7 @@ func TestUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 
 			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
 				DefaultTimezone: "America/Los_Angeles",
-				DefaultLocale:   tt.locale,
+				DefaultLocale:   optionalLocale(tt.locale),
 			}))
 			if connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
@@ -190,4 +191,49 @@ func TestUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 			assertOperatorHandlerExpectations(t, mock)
 		})
 	}
+}
+
+func TestUpdatePlatformSettingsRejectsBlankLocaleWhenSet(t *testing.T) {
+	tests := []struct {
+		name   string
+		locale string
+	}{
+		{name: "empty", locale: ""},
+		{name: "blank", locale: "   "},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+
+			_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+				DefaultTimezone: "America/Los_Angeles",
+				DefaultLocale:   optionalLocale(tt.locale),
+			}))
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("UpdatePlatformSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+			}
+			if !errors.Is(err, locale.ErrInvalid) {
+				t.Fatalf("UpdatePlatformSettings error = %v, want locale.ErrInvalid", err)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
+	}
+}
+
+func TestUpdatePlatformSettingsWritesTimezoneAndLocaleAtomically(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	mock.ExpectQuery(regexp.QuoteMeta(testUpsertPlatformSettingsQuery)).
+		WithArgs("America/Los_Angeles", sql.NullString{String: "en", Valid: true}).
+		WillReturnError(errors.New(`pq: could not serialize access`))
+
+	_, err := server.UpdatePlatformSettings(newPlatformSettingsActorContext(), connect.NewRequest(&publirasplatformv1.UpdatePlatformSettingsRequest{
+		DefaultTimezone: "America/Los_Angeles",
+		DefaultLocale:   optionalLocale("en"),
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("UpdatePlatformSettings code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
+	}
+	// A single upsert means a failed write cannot leave timezone updated and locale unchanged.
+	assertOperatorHandlerExpectations(t, mock)
 }

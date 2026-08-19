@@ -26,6 +26,7 @@ const (
 	getUserByIDQuery                                         = "-- name: GetUserByID :one\n"
 	listTenantRolesByUserAndTenantQuery                      = "-- name: ListTenantUserRoles :many\n"
 	getPlatformSMTPConfigQuery                               = "-- name: GetPlatformSMTPConfig :one\n"
+	getPlatformConfigQuery                                   = "-- name: GetPlatformConfig :one\n"
 	getTenantSMTPConfigByTenantIDQuery                       = "-- name: GetTenantSMTPConfigByTenantID :one\n"
 	upsertTenantSMTPConfigQuery                              = "-- name: UpsertTenantSMTPConfig :one\n"
 	getTenantThemeByTenantIDQuery                            = "-- name: GetTenantThemeByTenantID :one\n"
@@ -139,6 +140,15 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, publicID, "tenant.example", "Tenant", nil, now, "active", nil, timezone, defaultLocale))
+}
+
+func platformConfigColumns() []string {
+	return []string{"singleton", "default_timezone", "default_locale", "created_at", "updated_at"}
+}
+
+func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLocale string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).
+		WillReturnRows(sqlmock.NewRows(platformConfigColumns()).AddRow(true, defaultTimezone, defaultLocale, now, now))
 }
 
 // issueTestAdminToken creates a signed JWT for admin API tests.

@@ -60,9 +60,8 @@ const (
 	testUpsertPlatformSMTPConfigQuery      = "-- name: UpsertPlatformSMTPConfig :one\n"
 
 	// プラットフォーム全体設定
-	testGetPlatformConfigQuery             = "-- name: GetPlatformConfig :one\n"
-	testUpsertPlatformDefaultTimezoneQuery = "-- name: UpsertPlatformDefaultTimezone :one\n"
-	testUpsertPlatformDefaultLocaleQuery   = "-- name: UpsertPlatformDefaultLocale :one\n"
+	testGetPlatformConfigQuery      = "-- name: GetPlatformConfig :one\n"
+	testUpsertPlatformSettingsQuery = "-- name: UpsertPlatformSettings :one\n"
 
 	// エンドユーザー
 	testListEndUsersDescQuery           = "-- name: ListEndUsersDesc :many\n"

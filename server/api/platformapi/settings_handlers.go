@@ -2,7 +2,7 @@ package platformapi
 
 import (
 	"context"
-	"strings"
+	"database/sql"
 
 	"connectrpc.com/connect"
 
@@ -42,25 +42,19 @@ func (s *platformServer) UpdatePlatformSettings(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	// A blank locale is a no-op so the existing timezone-only save stays valid.
-	// Unknown codes are still rejected before any write.
-	var defaultLocale string
-	if strings.TrimSpace(req.Msg.DefaultLocale) != "" {
-		defaultLocale, err = locale.Normalize(req.Msg.DefaultLocale)
+
+	params := dbmodels.UpsertPlatformSettingsParams{DefaultTimezone: timezone}
+	if req.Msg.DefaultLocale != nil {
+		defaultLocale, err := locale.Normalize(*req.Msg.DefaultLocale)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+		params.DefaultLocale = sql.NullString{String: defaultLocale, Valid: true}
 	}
 
-	updated, err := s.queriesFor(ctx).UpsertPlatformDefaultTimezone(ctx, timezone)
+	updated, err := s.queriesFor(ctx).UpsertPlatformSettings(ctx, params)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to update platform default timezone", err)
-	}
-	if defaultLocale != "" {
-		updated, err = s.queriesFor(ctx).UpsertPlatformDefaultLocale(ctx, defaultLocale)
-		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to update platform default locale", err)
-		}
+		return nil, s.internalDBError(ctx, "failed to update platform settings", err)
 	}
 
 	if actor, ok := platformActorFromContext(ctx); ok {

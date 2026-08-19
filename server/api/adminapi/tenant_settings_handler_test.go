@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"database/sql"
 	"regexp"
 	"testing"
 	"time"
@@ -197,6 +198,29 @@ func TestGetTenantDefaultLocaleReturnsConfiguredValue(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+func TestGetTenantDefaultLocaleFallsBackToPlatformDefault(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	expectPlatformConfigLookup(mock, "Asia/Tokyo", "en", now)
+
+	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
+	resp, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, sessionToken))
+	if err != nil {
+		t.Fatalf("GetTenantDefaultLocale: %v", err)
+	}
+	if resp.Msg.DefaultLocale != "en" {
+		t.Fatalf("default_locale = %q, want en", resp.Msg.DefaultLocale)
+	}
+	assertExpectations(t, mock)
+}
+
 func TestGetTenantDefaultLocaleFallsBackToDefault(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
@@ -205,6 +229,7 @@ func TestGetTenantDefaultLocaleFallsBackToDefault(t *testing.T) {
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
 	expectTenantLookupWithDefaultLocale(mock, tenantID, "TENANT001", now, "")
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "editor")
+	mock.ExpectQuery(regexp.QuoteMeta(getPlatformConfigQuery)).WillReturnError(sql.ErrNoRows)
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(ts.Client(), ts.URL)
 	resp, err := client.GetTenantDefaultLocale(context.Background(), newTenantSettingsRequest(&publiraadminv1.GetTenantDefaultLocaleRequest{

@@ -23,9 +23,9 @@ message GetPlatformSettingsResponse {
 
 message UpdatePlatformSettingsRequest {
   string default_timezone = 1;
-  // When non-empty, the platform default locale is replaced. Blank leaves the
-  // stored locale unchanged so a timezone-only save stays valid.
-  string default_locale = 2;
+  // Presence-aware so a timezone-only save can omit the field. When set,
+  // unknown or blank codes are rejected before any write.
+  optional string default_locale = 2;
 }
 
 message UpdatePlatformSettingsResponse {
