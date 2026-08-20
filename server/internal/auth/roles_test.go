@@ -70,3 +70,25 @@ func TestResolveTenantRole(t *testing.T) {
 		})
 	}
 }
+
+func TestIsTenantStaff(t *testing.T) {
+	tests := []struct {
+		name  string
+		roles []string
+		want  bool
+	}{
+		{name: "tenant admin", roles: []string{RoleTenantAdmin}, want: true},
+		{name: "tenant editor", roles: []string{RoleTenantEditor}, want: true},
+		{name: "tenant auditor", roles: []string{RoleTenantAuditor}, want: true},
+		{name: "unknown role", roles: []string{"custom"}, want: false},
+		{name: "no roles", roles: nil, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsTenantStaff(tt.roles); got != tt.want {
+				t.Fatalf("IsTenantStaff() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

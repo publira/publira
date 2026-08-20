@@ -258,7 +258,7 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | --- | --- |
 | 環境変数 | `PUBLIRA_AUTH_JWT_SECRET`（**必須**。32 バイト以上。フォールバックは無く、未設定・短すぎる場合は API サーバーと画像サーバーが起動に失敗） |
 | TTL | 24h |
-| Audience | `public` / `admin` / `platform` / `media` |
+| Audience | `public` / `admin` / `platform` / `media` / `admin-media` |
 | 失効 | `users.credentials_version` / `platform_users.credentials_version`（パスワード変更等で +1） |
 | Next Cookie | `PUBLIRA_AUTH_SECRET`（**必須**。32 バイト以上。JWE 用で API の JWT secret とは別。フォールバックは無く、未設定・短すぎる場合は例外） / Cookie 名: `publira_web_host_auth` 等 |
 
@@ -274,6 +274,19 @@ API は email + password で **HS256 JWT アクセストークン** を発行し
 | 失効 | アクセストークンと同じ `users.credentials_version` |
 
 トークンは読者を名乗るだけで、閲覧可否そのものは `image-server` が purchases / access_tickets を都度参照して判定します（API と同じ規則）。無料エピソード（`price = 0`）の URL にトークンは付きません。
+
+### 管理メディアトークン (audience `admin-media`)
+
+管理画面のエピソード画像プレビューもブラウザの `<img>` / `next/image` 経由なので、`Authorization` は付きません。`ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages` は本文画像 URL にクエリ `t=<JWT>` を付けて返します。
+
+| 項目 | 値 |
+| --- | --- |
+| Audience | `admin-media`（`media` とも `admin` とも別。公開 image-server と管理 API へは通らない） |
+| TTL | 15 分 |
+| スコープ | 発行元のエピソード 1 話分のみ（claim `eid`） |
+| 失効 | アクセストークンと同じ `users.credentials_version` |
+
+トークンは管理者を名乗るだけで、`admin-image-server` がテナント所属と管理ロール（`tenant_admin` / `tenant_editor` / `tenant_auditor`）を都度参照して判定します。公開状態と価格は見ません。
 
 ## API サーバ分離
 

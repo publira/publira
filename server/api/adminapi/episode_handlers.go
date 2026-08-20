@@ -18,6 +18,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/episodeimages"
 	"github.com/publira/publira/server/internal/pagination"
@@ -574,7 +575,7 @@ func (s *adminServer) UploadEpisodeImages(
 	if err != nil {
 		return nil, err
 	}
-	items, err := episodeimages.Service{Queries: s.queriesFor(ctx), Storage: s.storage, Recorder: s.recorderFor(ctx)}.Upload(ctx, episodeimages.UploadRequest{
+	items, episodeID, err := episodeimages.Service{Queries: s.queriesFor(ctx), Storage: s.storage, Recorder: s.recorderFor(ctx)}.Upload(ctx, episodeimages.UploadRequest{
 		Tenant:          tenant,
 		SeriesPublicID:  req.Msg.SeriesPublicId,
 		EpisodePublicID: req.Msg.EpisodePublicId,
@@ -585,6 +586,9 @@ func (s *adminServer) UploadEpisodeImages(
 		Headers:         req.Header(),
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := s.attachAdminMediaToken(ctx, tenant.ID, episodeID, items); err != nil {
 		return nil, err
 	}
 
@@ -618,6 +622,9 @@ func (s *adminServer) ListEpisodeImages(
 	images := make([]*publirattypesv1.EpisodeImage, 0, len(rows))
 	for _, row := range rows {
 		images = append(images, protomapper.EpisodeImageFromEpisodeImage(row))
+	}
+	if err := s.attachAdminMediaToken(ctx, tenant.ID, episode.ID, images); err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&publiraadminv1.ListEpisodeImagesResponse{Images: images}), nil
@@ -693,8 +700,49 @@ func (s *adminServer) ReorderEpisodeImages(
 	for _, row := range updatedRows {
 		images = append(images, protomapper.EpisodeImageFromEpisodeImage(row))
 	}
+	if err := s.attachAdminMediaToken(ctx, tenant.ID, episode.ID, images); err != nil {
+		return nil, err
+	}
 
 	return connect.NewResponse(&publiraadminv1.ReorderEpisodeImagesResponse{Images: images}), nil
+}
+
+// attachAdminMediaToken puts the short-lived credential a browser <img> needs
+// onto each image URL. The admin access token cannot travel with that
+// request, and without this query token admin-image-server would apply the
+// public publish/price rule.
+func (s *adminServer) attachAdminMediaToken(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	episodeID uuid.UUID,
+	images []*publirattypesv1.EpisodeImage,
+) error {
+	if len(images) == 0 {
+		return nil
+	}
+	session, ok := rpcmiddleware.SessionContextFromContext(ctx)
+	if !ok || s.tokens == nil {
+		return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	}
+	token, _, err := s.tokens.IssueAdminMediaToken(
+		session.User.PublicID,
+		tenantID.String(),
+		episodeID.String(),
+		session.User.CredentialsVersion,
+		time.Now(),
+	)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to issue episode admin media token",
+			"tenant_id", tenantID.String(),
+			"episode_id", episodeID.String(),
+			"error", err,
+		)
+		return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+	}
+	for _, image := range images {
+		image.ImageUrl = auth.WithMediaTokenQuery(image.ImageUrl, token)
+	}
+	return nil
 }
 
 func (s *adminServer) UpdateEpisodePublishSchedule(

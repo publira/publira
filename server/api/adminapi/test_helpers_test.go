@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"testing"
 	"time"
@@ -49,6 +50,8 @@ const (
 	getEpisodeByPublicIDForTenantQuery                       = "-- name: GetEpisodeByPublicIDForTenant :one\n"
 	getEpisodeByPublicIDForTenantAndSeriesQuery              = "-- name: GetEpisodeByPublicIDForTenantAndSeries :one\n"
 	getMaxEpisodeImageDisplayOrderByEpisodeIDQuery           = "-- name: GetMaxEpisodeImageDisplayOrderByEpisodeID :one\n"
+	listEpisodeImagesByEpisodeIDQuery                        = "-- name: ListEpisodeImagesByEpisodeID :many\nSELECT\n    ei.id,\n    ei.tenant_id,\n    ei.episode_id,\n    ei.display_order,\n    ei.created_at,\n    eiv.content_type,\n    eiv.file_size_bytes,\n    eiv.width,\n    eiv.height\nFROM episode_images ei\nJOIN LATERAL (\n    SELECT content_type, file_size_bytes, width, height\n    FROM episode_image_variants\n    WHERE episode_image_id = ei.id\n    ORDER BY width DESC\n    LIMIT 1\n) eiv ON true\nWHERE ei.episode_id = $1\nORDER BY ei.display_order ASC,\n    ei.created_at ASC\n"
+	updateEpisodeImageDisplayOrderByIDForEpisodeQuery        = "-- name: UpdateEpisodeImageDisplayOrderByIDForEpisode :exec\n"
 	updateEpisodePublishScheduleByPublicIDForTenantQuery     = "-- name: UpdateEpisodePublishScheduleByPublicIDForTenant :exec\n"
 	lockTenantForUpdateQuery                                 = "-- name: LockTenantForUpdate :one\n"
 	createTenantImageQuery                                   = "-- name: CreateTenantImage :one\n"
@@ -194,6 +197,37 @@ func assertExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 	t.Helper()
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet SQL expectations: %v", err)
+	}
+}
+
+func assertAdminMediaToken(t *testing.T, imageURL string, tenantID, episodeID uuid.UUID, credentialsVersion int32) {
+	t.Helper()
+	parsed, err := url.Parse(imageURL)
+	if err != nil {
+		t.Fatalf("image url %q: %v", imageURL, err)
+	}
+	token := parsed.Query().Get(auth.MediaTokenQueryParam)
+	if token == "" {
+		t.Fatalf("image url %q has no admin media token", imageURL)
+	}
+	claims, err := testutil.TokenManager().Verify(token, auth.AudienceAdminMedia)
+	if err != nil {
+		t.Fatalf("Verify admin media token: %v", err)
+	}
+	if claims.Subject != testUserPublicID {
+		t.Errorf("admin media token subject = %q, want %q", claims.Subject, testUserPublicID)
+	}
+	if claims.TenantID != tenantID.String() {
+		t.Errorf("admin media token tenant = %q, want %q", claims.TenantID, tenantID.String())
+	}
+	if claims.EpisodeID != episodeID.String() {
+		t.Errorf("admin media token episode = %q, want %q", claims.EpisodeID, episodeID.String())
+	}
+	if claims.CredentialsVersion != credentialsVersion {
+		t.Errorf("admin media token credentials version = %d, want %d", claims.CredentialsVersion, credentialsVersion)
+	}
+	if _, err := testutil.TokenManager().Verify(token, auth.AudienceMedia); err == nil {
+		t.Error("admin media token verified as a reader media token")
 	}
 }
 

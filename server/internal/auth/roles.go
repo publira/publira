@@ -41,6 +41,18 @@ func IsPlatformRole(role string) bool {
 	return ResolvePlatformRole([]string{role}) != ""
 }
 
+// IsTenantStaff reports whether any of the roles is a tenant-admin, editor,
+// or auditor. Image preview and the admin API both treat these three as
+// staff: having any other string in tenant_user_roles is not enough.
+func IsTenantStaff(roles []string) bool {
+	switch ResolveTenantRole(roles) {
+	case RoleTenantAdmin, RoleTenantEditor, RoleTenantAuditor:
+		return true
+	default:
+		return false
+	}
+}
+
 func ResolveTenantRole(roles []string) string {
 	bestPriority := -1
 	bestRole := ""

@@ -133,6 +133,16 @@ func TestIssueMediaToken(t *testing.T) {
 		}
 	})
 
+	t.Run("does not verify as an admin-media token", func(t *testing.T) {
+		token, _, err := manager.IssueMediaToken("user-public-id", "tenant-id", "episode-id", 0, now)
+		if err != nil {
+			t.Fatalf("IssueMediaToken() error = %v", err)
+		}
+		if _, err := manager.Verify(token, AudienceAdminMedia); err == nil {
+			t.Fatal("Verify() error = nil, want an audience error")
+		}
+	})
+
 	t.Run("expires after MediaTokenTTL", func(t *testing.T) {
 		issuedAt := now.Add(-MediaTokenTTL - time.Minute)
 		token, _, err := manager.IssueMediaToken("user-public-id", "tenant-id", "episode-id", 0, issuedAt)
@@ -158,4 +168,84 @@ func TestIssueMediaToken(t *testing.T) {
 			t.Fatal("IssueMediaToken() error = nil, want an error")
 		}
 	})
+}
+
+func TestIssueAdminMediaToken(t *testing.T) {
+	manager := NewTokenManager([]byte(testSecret))
+	now := time.Now()
+
+	t.Run("carries the staff member, the tenant, and the one episode it previews", func(t *testing.T) {
+		token, expiresAt, err := manager.IssueAdminMediaToken("user-public-id", "tenant-id", "episode-id", 3, now)
+		if err != nil {
+			t.Fatalf("IssueAdminMediaToken() error = %v", err)
+		}
+		if want := now.Add(MediaTokenTTL); !expiresAt.Equal(want) {
+			t.Errorf("expiresAt = %v, want %v", expiresAt, want)
+		}
+
+		claims, err := manager.Verify(token, AudienceAdminMedia)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		if claims.Subject != "user-public-id" {
+			t.Errorf("subject = %q, want %q", claims.Subject, "user-public-id")
+		}
+		if claims.TenantID != "tenant-id" {
+			t.Errorf("tenant = %q, want %q", claims.TenantID, "tenant-id")
+		}
+		if claims.EpisodeID != "episode-id" {
+			t.Errorf("episode = %q, want %q", claims.EpisodeID, "episode-id")
+		}
+		if claims.CredentialsVersion != 3 {
+			t.Errorf("credentials version = %d, want 3", claims.CredentialsVersion)
+		}
+	})
+
+	t.Run("does not verify as a reader media token", func(t *testing.T) {
+		token, _, err := manager.IssueAdminMediaToken("user-public-id", "tenant-id", "episode-id", 0, now)
+		if err != nil {
+			t.Fatalf("IssueAdminMediaToken() error = %v", err)
+		}
+		if _, err := manager.Verify(token, AudienceMedia); err == nil {
+			t.Fatal("Verify() error = nil, want an audience error")
+		}
+	})
+
+	t.Run("does not verify as an admin access token", func(t *testing.T) {
+		token, _, err := manager.IssueAdminMediaToken("user-public-id", "tenant-id", "episode-id", 0, now)
+		if err != nil {
+			t.Fatalf("IssueAdminMediaToken() error = %v", err)
+		}
+		if _, err := manager.Verify(token, AudienceAdmin); err == nil {
+			t.Fatal("Verify() error = nil, want an audience error")
+		}
+	})
+
+	t.Run("an admin access token does not verify as an admin-media token", func(t *testing.T) {
+		token, _, err := manager.Issue("user-public-id", AudienceAdmin, "tenant-id", RoleTenantEditor, 0, now)
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		if _, err := manager.Verify(token, AudienceAdminMedia); err == nil {
+			t.Fatal("Verify() error = nil, want an audience error")
+		}
+	})
+}
+
+func TestWithMediaTokenQuery(t *testing.T) {
+	if got := WithMediaTokenQuery("/images/episodes/x", ""); got != "/images/episodes/x" {
+		t.Errorf("empty token = %q, want the original URL", got)
+	}
+	if got := WithMediaTokenQuery("/images/episodes/x", "tok"); got != "/images/episodes/x?t=tok" {
+		t.Errorf("plain URL = %q, want query appended with ?", got)
+	}
+	if got := WithMediaTokenQuery("/images/episodes/x?w=16", "tok"); got != "/images/episodes/x?w=16&t=tok" {
+		t.Errorf("existing query = %q, want token appended with &", got)
+	}
+	if got := WithMediaTokenQuery("/images/episodes/x#page", "tok"); got != "/images/episodes/x?t=tok#page" {
+		t.Errorf("fragment URL = %q, want token before the fragment", got)
+	}
+	if got := WithMediaTokenQuery("/images/episodes/x?w=16#page", "tok"); got != "/images/episodes/x?w=16&t=tok#page" {
+		t.Errorf("query and fragment = %q, want token in the query", got)
+	}
 }

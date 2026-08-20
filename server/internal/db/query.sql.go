@@ -2132,6 +2132,53 @@ func (q *Queries) GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetE
 	return i, err
 }
 
+const getEpisodeImageByIDForTenant = `-- name: GetEpisodeImageByIDForTenant :one
+SELECT ei.id,
+    ei.episode_id,
+    eiv.object_key,
+    eiv.content_type
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE ei.id = $1
+    AND s.tenant_id = $2
+LIMIT 1
+`
+
+type GetEpisodeImageByIDForTenantParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetEpisodeImageByIDForTenantRow struct {
+	ID          uuid.UUID `json:"id"`
+	EpisodeID   uuid.UUID `json:"episode_id"`
+	ObjectKey   string    `json:"object_key"`
+	ContentType string    `json:"content_type"`
+}
+
+// Tenant-staff preview: membership and role are evaluated in the handler.
+// This query only answers whether the image belongs to the tenant, with no
+// publish or price gate.
+func (q *Queries) GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpisodeImageByIDForTenantParams) (GetEpisodeImageByIDForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, getEpisodeImageByIDForTenant, arg.ID, arg.TenantID)
+	var i GetEpisodeImageByIDForTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.EpisodeID,
+		&i.ObjectKey,
+		&i.ContentType,
+	)
+	return i, err
+}
+
 const getEpisodeImagePublicAccessByIDForTenant = `-- name: GetEpisodeImagePublicAccessByIDForTenant :one
 SELECT ei.id,
     eiv.object_key,
