@@ -242,4 +242,10 @@ func TestWithMediaTokenQuery(t *testing.T) {
 	if got := WithMediaTokenQuery("/images/episodes/x?w=16", "tok"); got != "/images/episodes/x?w=16&t=tok" {
 		t.Errorf("existing query = %q, want token appended with &", got)
 	}
+	if got := WithMediaTokenQuery("/images/episodes/x#page", "tok"); got != "/images/episodes/x?t=tok#page" {
+		t.Errorf("fragment URL = %q, want token before the fragment", got)
+	}
+	if got := WithMediaTokenQuery("/images/episodes/x?w=16#page", "tok"); got != "/images/episodes/x?w=16&t=tok#page" {
+		t.Errorf("query and fragment = %q, want token in the query", got)
+	}
 }

@@ -181,11 +181,16 @@ func WithMediaTokenQuery(imageURL string, token string) string {
 	if token == "" {
 		return imageURL
 	}
+	fragment := ""
+	if before, after, found := strings.Cut(imageURL, "#"); found {
+		imageURL = before
+		fragment = "#" + after
+	}
 	separator := "?"
 	if strings.Contains(imageURL, "?") {
 		separator = "&"
 	}
-	return imageURL + separator + MediaTokenQueryParam + "=" + url.QueryEscape(token)
+	return imageURL + separator + MediaTokenQueryParam + "=" + url.QueryEscape(token) + fragment
 }
 
 func (m *TokenManager) sign(
