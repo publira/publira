@@ -2,6 +2,7 @@ import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -16,6 +17,34 @@ import { parseLoginSearchParams } from "./_lib/search-params";
 export const metadata: Metadata = {
   title: "ログイン",
 };
+
+/**
+ * Cache Components streams the static shell first. An operable fallback form
+ * would submit `returnTo="/"` before `searchParams` resolve (#994).
+ */
+const LoginFormSkeleton = () => (
+  <>
+    <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <Skeleton className="mt-2 h-10 w-full" />
+      </div>
+      <div className="flex justify-end">
+        <Skeleton className="h-4 w-40" />
+      </div>
+    </div>
+    <div className="mt-4 flex justify-center">
+      <Skeleton className="h-4 w-56" />
+    </div>
+  </>
+);
 
 const LoginForm = async ({
   errorMessage,
@@ -150,7 +179,7 @@ const LoginPageContent = async ({
           <p className="mt-2 text-sm text-muted-foreground">{siteTagline}</p>
         ) : null}
       </div>
-      <Suspense fallback={<LoginForm returnToPath="/" />}>
+      <Suspense fallback={<LoginFormSkeleton />}>
         <LoginFormContent searchParams={searchParams} />
       </Suspense>
     </div>
@@ -162,7 +191,7 @@ const LoginPageFallback = () => (
     <div className="mb-8 text-center">
       <h1 className="font-serif text-2xl font-semibold">サイト</h1>
     </div>
-    <LoginForm returnToPath="/" />
+    <LoginFormSkeleton />
   </div>
 );
 
