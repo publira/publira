@@ -21,6 +21,7 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale, loadAdminMessages } from "#lib/locale";
 import { setAdminLocaleAction } from "#lib/locale-action";
 import { getTenantSiteSettings } from "#lib/site-settings";
+import { getTenantDefaultLocale } from "#lib/tenant-default-locale";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
@@ -28,9 +29,12 @@ import { LocaleForm } from "./_components/locale-form";
 import type { LocaleFormOption } from "./_components/locale-form";
 import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
+import { TenantDefaultLocaleForm } from "./_components/tenant-default-locale-form";
+import type { TenantDefaultLocaleFormOption } from "./_components/tenant-default-locale-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 import {
   updateSiteSettingsAction,
+  updateTenantDefaultLocaleAction,
   updateTenantTimezoneAction,
 } from "./_lib/actions";
 
@@ -60,7 +64,7 @@ const LocaleSectionSkeleton = () => (
  * the settings screen still prerenders.
  */
 const LocaleSection = async () => {
-  const locale = await getLocale();
+  const locale = await getLocale(await getTenantId());
   const messages = await loadAdminMessages(locale);
 
   const options: LocaleFormOption[] = LOCALES.map((value) => ({
@@ -93,24 +97,51 @@ const SettingsFormsSkeleton = () => (
       <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
       <div className="h-10 animate-pulse rounded bg-muted/70" />
     </div>
+    <div className="rounded-2xl border border-border/70 bg-card p-6">
+      <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
+      <div className="h-10 animate-pulse rounded bg-muted/70" />
+    </div>
   </div>
 );
+
+const tenantDefaultLocaleOptions = async (
+  tenantId: string
+): Promise<TenantDefaultLocaleFormOption[]> => {
+  const locale = await getLocale(tenantId);
+  const messages = await loadAdminMessages(locale);
+
+  return LOCALES.map((value) => ({
+    label: getMessage(messages, `locale.${value}`),
+    locale: value,
+  }));
+};
 
 const SettingsForms = async () => {
   const tenantId = await getTenantId();
 
-  const [settingsResult, timezoneResult, currentUserResult] = await Promise.all(
-    [
-      getTenantSiteSettings(tenantId),
-      getTenantTimezone(tenantId),
-      getAdminCurrentUser(tenantId),
-    ]
-  );
+  const [
+    settingsResult,
+    timezoneResult,
+    defaultLocaleResult,
+    currentUserResult,
+    options,
+  ] = await Promise.all([
+    getTenantSiteSettings(tenantId),
+    getTenantTimezone(tenantId),
+    getTenantDefaultLocale(tenantId),
+    getAdminCurrentUser(tenantId),
+    tenantDefaultLocaleOptions(tenantId),
+  ]);
 
   await redirectToLoginIfSessionRejected(
     settingsResult,
     timezoneResult,
+    defaultLocaleResult,
     currentUserResult
+  );
+
+  const canEdit = isTenantAdminRole(
+    currentUserResult.ok ? currentUserResult.user.role : undefined
   );
 
   return (
@@ -129,13 +160,21 @@ const SettingsForms = async () => {
 
       <TenantTimezoneForm
         action={updateTenantTimezoneAction}
-        canEdit={isTenantAdminRole(
-          currentUserResult.ok ? currentUserResult.user.role : undefined
-        )}
+        canEdit={canEdit}
         initialTimezone={timezoneResult.timezone}
         loadErrorMessage={
           timezoneResult.ok ? undefined : timezoneResult.message
         }
+      />
+
+      <TenantDefaultLocaleForm
+        action={updateTenantDefaultLocaleAction}
+        canEdit={canEdit}
+        initialDefaultLocale={defaultLocaleResult.defaultLocale}
+        loadErrorMessage={
+          defaultLocaleResult.ok ? undefined : defaultLocaleResult.message
+        }
+        options={options}
       />
     </>
   );

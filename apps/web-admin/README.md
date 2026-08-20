@@ -11,10 +11,11 @@
 ## 表示ロケール
 
 - UI ロケールは Cookie `publira_locale`（`Path=/`、`SameSite=Lax`、`Max-Age` 1 年、`httpOnly` なし）に保存する。URL には出さない。ホストが同じならテナントをまたいでも同じ Cookie を使う
-- 未設定・未知の値は `ja` に落ちる（`@publira/utils/i18n` の `parseLocaleCookie`）
-- 読み取りは `lib/locale.ts` の `getLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す。Server Actions は `cookies()` を直接読む
+- 解決順は Cookie → テナント既定言語 → `ja`。対応していない Cookie 値は未設定と同じ扱いでテナント既定言語に落ちる。未認証画面（ログインなど）は admin API を呼べないので Cookie か `ja` のまま
+- 読み取りは `lib/locale.ts` の `getLocale(tenantId?)`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す。Server Actions は `cookies()` を直接読む。テナント既定言語へのフォールバックは `tenantId` を渡したときだけ行い、ログイン画面などは引数無しで `ja` に落ちる
+- テナント既定言語は `/settings` の「既定言語」カード。`lib/tenant-default-locale.ts` が `"use cache: private"` で読み、保存時に `updateTag` する
 - メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadAdminMessages(locale)` が動的 `import()` する
-- 切替は `/settings` の「表示言語」カード。Server Action `setAdminLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
+- 個人の切替は `/settings` の「表示言語」カード。Server Action `setAdminLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
 - `<html lang>` は `[tenant_id]/layout.tsx` の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
 
 ## 開発

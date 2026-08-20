@@ -3,6 +3,7 @@
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { LOCALES } from "@publira/utils/i18n";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
@@ -21,6 +22,10 @@ import {
 import { requiredTrimmedString } from "#lib/form-schemas";
 import { updateTenantSiteSettings } from "#lib/site-settings";
 import {
+  tenantDefaultLocaleCacheTag,
+  updateTenantDefaultLocale,
+} from "#lib/tenant-default-locale";
+import {
   tenantTimezoneCacheTag,
   updateTenantTimezone,
 } from "#lib/tenant-timezone";
@@ -36,13 +41,14 @@ import {
 import type {
   EmailChangeActionState,
   SiteSettingsActionState,
-  ThemeSettingsActionState,
-  ThemeSettingsFieldErrors,
+  TenantDefaultLocaleActionState,
   TenantEmailSettingsFormState,
   TenantIconActionState,
   TenantLogoActionState,
   TenantSmtpTestFormState,
   TenantTimezoneActionState,
+  ThemeSettingsActionState,
+  ThemeSettingsFieldErrors,
 } from "../settings-types";
 
 interface ParsedTenantSmtpFormData {
@@ -169,6 +175,17 @@ const tenantTimezoneSchema = z.object({
     .refine(isValidTimeZone, {
       error: "有効なタイムゾーンを選択してください。",
     }),
+});
+
+/**
+ * The Go server validates against the supported locale list
+ * (`server/internal/locale`) and stays the authority; this only gives the
+ * operator immediate feedback instead of a round trip.
+ */
+const tenantDefaultLocaleSchema = z.object({
+  defaultLocale: z.enum(LOCALES, {
+    error: "言語を選択してください。",
+  }),
 });
 
 const tenantThemeFormFieldMap = [
@@ -509,6 +526,57 @@ export const updateTenantTimezoneAction = async (
     message: "タイムゾーンを保存しました。",
     ok: true,
     timezone: result.timezone,
+  };
+};
+
+export const updateTenantDefaultLocaleAction = async (
+  _prevState: TenantDefaultLocaleActionState,
+  formData: FormData
+): Promise<TenantDefaultLocaleActionState> => {
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) {
+    return {
+      message: "テナント ID が見つかりません。",
+      ok: false,
+    };
+  }
+
+  const parsed = tenantDefaultLocaleSchema.safeParse(
+    toFormDataInput(formData, {
+      defaultLocale: { kind: "value", name: "default_locale" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return {
+      message: toFormErrorMessage(parsed.error),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantDefaultLocale({
+      defaultLocale: parsed.data.defaultLocale,
+      tenantId,
+    })
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen and cookie-less `getLocale()` read the default
+  // through a private cache, so without this the operator would keep seeing
+  // the previous value in the same session.
+  updateTag(tenantDefaultLocaleCacheTag(tenantId));
+
+  return {
+    defaultLocale: result.defaultLocale,
+    message: "既定言語を保存しました。",
+    ok: true,
   };
 };
 
