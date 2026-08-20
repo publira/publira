@@ -100,9 +100,14 @@ export default defineConfig({
        * The injected source is `LOCALE_LANG_SCRIPT`, a constant built from
        * `LOCALES` and `LOCALE_COOKIE_NAME` in `@publira/utils/i18n`. No
        * request-derived value reaches it, and the script writes an attribute
-       * rather than markup. See AGENTS.md "UI ロケール" (#867).
+       * rather than markup. See AGENTS.md "UI ロケール" (#867, #868).
+       *
+       * `web-platform` owns `app/layout.tsx`. `web-admin` rewrites onto
+       * `/[tenant_id]/...`, so the same document lives at
+       * `app/[tenant_id]/layout.tsx` — one directory deep, which `*` matches
+       * without also covering `(protected)/layout.tsx`.
        */
-      files: ["apps/*/app/layout.tsx"],
+      files: ["apps/*/app/layout.tsx", "apps/web-admin/app/*/layout.tsx"],
       rules: {
         "react/no-danger": "off",
       },
@@ -116,7 +121,7 @@ export default defineConfig({
        * session would tie a display setting to sign-in without protecting
        * anything. Every other cookie write in these apps stays covered — the
        * override names this one file per app. See AGENTS.md "UI ロケール"
-       * (#867).
+       * (#867, #868).
        */
       files: ["apps/*/lib/locale-action.ts"],
       rules: {

@@ -358,7 +358,7 @@ UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知�
 
 共有層はリクエスト状態を読まない。`cookies()` と `next/root-params` はアプリ側に残す。
 
-- **`cookies()` は `<Suspense>` の内側だけ。** Cache Components 下でロケール読みを境界の外に置くと、そのルートから静的シェルが消える。読み取りはアプリの `lib/locale.ts`（`getPlatformLocale()` 等）にまとめ、呼ぶのはセクション用の async コンポーネントからにする
+- **`cookies()` は `<Suspense>` の内側だけ。** Cache Components 下でロケール読みを境界の外に置くと、そのルートから静的シェルが消える。読み取りはアプリの `lib/locale.ts`（`getPlatformLocale()` / `getLocale()` 等）にまとめ、呼ぶのはセクション用の async コンポーネントからにする
 - **`"use cache"` の中でロケールを読まない。** locale は引数で渡し、キャッシュキーの一部にする
 - **メッセージ待ちは `Suspense` + `Skeleton`。** 静的シェルはロケール非依存
 - **`import()` のパスをテンプレート文字列にしない。** ロケールごとに静的なパスを書く（`loadMessages` の importer）
@@ -379,7 +379,10 @@ UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知�
 
 切替は Server Action で Cookie を書く。Client から `document.cookie` を書かない。値は `LOCALES` の zod スキーマで検証し、外れた値は書かずに捨てる。Cookie は `Path=/`、`SameSite=Lax`、`Max-Age` は `LOCALE_COOKIE_MAX_AGE`。
 
-実装例: `web-platform` の `lib/locale.ts` / `lib/locale-action.ts` と `/settings/general` の「表示言語」カード（[#867](https://github.com/publira/publira/issues/867)）。
+実装例:
+
+- `web-platform` の `lib/locale.ts` / `lib/locale-action.ts` と `/settings/general` の「表示言語」カード（[#867](https://github.com/publira/publira/issues/867)）
+- `web-admin` の `lib/locale.ts`（`getLocale()`）/ `lib/locale-action.ts` と `/settings` の「表示言語」カード（[#868](https://github.com/publira/publira/issues/868)）
 
 ## Icons: `@publira/icons`, never inline `<svg>`
 

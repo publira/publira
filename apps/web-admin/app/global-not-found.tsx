@@ -15,6 +15,11 @@ import "./globals.css";
  * tokens are imported here because this file bypasses the tenant root layout.
  * Tenant-specific `/theme.css` is intentionally omitted: there is no tenant
  * context on an unmatched URL.
+ *
+ * `lang` stays `ja` rather than following the locale cookie the way the tenant
+ * layout does. This document has no layout to resolve a locale in and renders
+ * as a static page, so its copy cannot follow the cookie either — pointing the
+ * attribute at `en` would only mislabel the Japanese text below.
  */
 export const metadata: Metadata = {
   description: "お探しの項目は削除されたか、URL が変更された可能性があります。",

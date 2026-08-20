@@ -8,6 +8,15 @@
 - 公開設定 (予約公開を含む)
 - テナントごとのブランド設定 (テーマ・ロゴ等)
 
+## 表示ロケール
+
+- UI ロケールは Cookie `publira_locale`（`Path=/`、`SameSite=Lax`、`Max-Age` 1 年、`httpOnly` なし）に保存する。URL には出さない。ホストが同じならテナントをまたいでも同じ Cookie を使う
+- 未設定・未知の値は `ja` に落ちる（`@publira/utils/i18n` の `parseLocaleCookie`）
+- 読み取りは `lib/locale.ts` の `getLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す。Server Actions は `cookies()` を直接読む
+- メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadAdminMessages(locale)` が動的 `import()` する
+- 切替は `/settings` の「表示言語」カード。Server Action `setAdminLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
+- `<html lang>` は `[tenant_id]/layout.tsx` の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
+
 ## 開発
 
 ```bash
