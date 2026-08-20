@@ -38,4 +38,4 @@ Manael は libvips を使うため、ビルドと実行には `libvips-dev`（�
 2. クエリ `t=<JWT>`（audience `media`。ブラウザの `<img>` はヘッダーを付けられないため、`GetEpisodeDetail` が URL に付けて返す）
 3. どちらも無い / 検証に失敗した場合は無記名扱い
 
-特定できた場合は `GetEpisodeImageAccessByIDForUser`、無記名なら `GetEpisodeImagePublicAccessByIDForTenant` で判定します。どちらも「`price = 0` / 有効な purchase / 有効な access ticket」という API と同じ規則です。`media` トークンは発行元のエピソード以外には効かず、クエリの `t` は中間キャッシュのキーに含めません。詳細は [server/README.md](../../README.md) の認証節を参照してください。
+特定できた場合は `GetEpisodeImageAccessByIDForUser`、無記名なら `GetEpisodeImagePublicAccessByIDForTenant` で判定します。どちらも「`price = 0` / 有効な purchase / 有効な access ticket」という API と同じ規則です。`media` トークンは発行元のエピソード以外には効かず、クエリの `t` は中間キャッシュのキーに含めません。管理画面向けの `admin-media` トークンはこのプロセスでは検証しません。詳細は [server/README.md](../../README.md) の認証節を参照してください。

@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/url"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -674,21 +672,6 @@ func (s *apiServer) GetSeriesDetail(
 	return res, nil
 }
 
-// withMediaToken hands the reader an image URL that already carries their
-// credential. A free body has no token and stays a plain public URL.
-// image-server reads sizing from the query too, so the token is added to
-// whatever query the URL already has rather than assuming there is none.
-func withMediaToken(imageURL string, token string) string {
-	if token == "" {
-		return imageURL
-	}
-	separator := "?"
-	if strings.Contains(imageURL, "?") {
-		separator = "&"
-	}
-	return imageURL + separator + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
-}
-
 func (s *apiServer) GetEpisodeDetail(
 	ctx context.Context,
 	req *connect.Request[publirav1.GetEpisodeDetailRequest],
@@ -774,7 +757,7 @@ func (s *apiServer) GetEpisodeDetail(
 		res.Msg.Images = make([]*publirattypesv1.EpisodeImage, 0, len(images))
 		for _, image := range images {
 			mapped := protomapper.EpisodeImageFromEpisodeImage(image)
-			mapped.ImageUrl = withMediaToken(mapped.ImageUrl, mediaToken)
+			mapped.ImageUrl = auth.WithMediaTokenQuery(mapped.ImageUrl, mediaToken)
 			res.Msg.Images = append(res.Msg.Images, mapped)
 		}
 	}

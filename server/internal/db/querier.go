@@ -101,6 +101,10 @@ type Querier interface {
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
+	// Tenant-staff preview: membership and role are evaluated in the handler.
+	// This query only answers whether the image belongs to the tenant, with no
+	// publish or price gate.
+	GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpisodeImageByIDForTenantParams) (GetEpisodeImageByIDForTenantRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
 	GetItemRecommendFeatures(ctx context.Context, arg GetItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)

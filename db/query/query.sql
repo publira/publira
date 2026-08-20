@@ -2167,6 +2167,28 @@ WHERE ei.id = $1
     AND s.tenant_id = $2
 LIMIT 1;
 
+-- Tenant-staff preview: membership and role are evaluated in the handler.
+-- This query only answers whether the image belongs to the tenant, with no
+-- publish or price gate.
+-- name: GetEpisodeImageByIDForTenant :one
+SELECT ei.id,
+    ei.episode_id,
+    eiv.object_key,
+    eiv.content_type
+FROM episode_images ei
+JOIN LATERAL (
+    SELECT object_key, content_type
+    FROM episode_image_variants
+    WHERE episode_image_id = ei.id
+    ORDER BY width DESC
+    LIMIT 1
+) eiv ON true
+    JOIN episodes e ON e.id = ei.episode_id
+    JOIN series s ON s.id = e.series_id
+WHERE ei.id = $1
+    AND s.tenant_id = $2
+LIMIT 1;
+
 -- name: GetEpisodeImagePublicAccessByIDForTenant :one
 SELECT ei.id,
     eiv.object_key,

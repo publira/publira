@@ -60,18 +60,22 @@ type UploadRequest struct {
 	Headers         http.Header
 }
 
-func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattypesv1.EpisodeImage, error) {
+func (s Service) Upload(ctx context.Context, req UploadRequest) ([]*publirattypesv1.EpisodeImage, uuid.UUID, error) {
 	imageInputs, err := collectInputs(req.Images, req.ArchiveData, req.ArchiveFilename, req.ArchiveType, req.SeriesPublicID)
 	if err != nil {
-		return nil, err
+		return nil, uuid.Nil, err
 	}
 
 	episodeID, episodePublicID, err := s.resolveEpisode(ctx, req.Tenant.ID, req.SeriesPublicID, req.EpisodePublicID)
 	if err != nil {
-		return nil, err
+		return nil, uuid.Nil, err
 	}
 
-	return s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
+	items, err := s.storeImages(ctx, req.Tenant, episodeID, episodePublicID, imageInputs, req.Headers)
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
+	return items, episodeID, nil
 }
 
 func collectInputs(images []*publiraadminv1.EpisodeImageUpload, archiveData []byte, archiveFilename string, archiveType string, seriesPublicID string) ([]archiveimages.Input, error) {

@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -30,9 +31,15 @@ const (
 	// against the API, and an API access token cannot be pasted into an image
 	// URL.
 	AudienceMedia = "media"
-	// MediaTokenQueryParam is where an AudienceMedia token rides on an image
-	// URL. image-server ignores it when building its conversion cache key, so
-	// two readers of the same image still share one cached rendition.
+	// AudienceAdminMedia is the admin-image-server counterpart: a URL-borne
+	// credential for tenant staff, not a reader. Public image-server never
+	// verifies this audience, so a copied admin preview URL cannot unlock
+	// unpublished bodies on the public host.
+	AudienceAdminMedia = "admin-media"
+	// MediaTokenQueryParam is where an AudienceMedia or AudienceAdminMedia
+	// token rides on an image URL. image-server ignores it when building its
+	// conversion cache key, so two viewers of the same image still share one
+	// cached rendition.
 	MediaTokenQueryParam = "t"
 )
 
@@ -42,8 +49,8 @@ type AccessTokenClaims struct {
 	TenantID           string `json:"tid,omitempty"`
 	Role               string `json:"role,omitempty"`
 	CredentialsVersion int32  `json:"cv"`
-	// EpisodeID scopes an AudienceMedia token to one episode (primary key
-	// UUID). API access tokens leave it empty.
+	// EpisodeID scopes an AudienceMedia or AudienceAdminMedia token to one
+	// episode (primary key UUID). API access tokens leave it empty.
 	EpisodeID string `json:"eid,omitempty"`
 	jwt.RegisteredClaims
 }
@@ -119,6 +126,30 @@ func (m *TokenManager) IssueMediaToken(
 	credentialsVersion int32,
 	now time.Time,
 ) (token string, expiresAt time.Time, err error) {
+	return m.issueScopedMediaToken(subjectPublicID, tenantID, episodeID, credentialsVersion, now, AudienceMedia)
+}
+
+// IssueAdminMediaToken is the admin-image-server counterpart of
+// IssueMediaToken. The grant it names is tenant staff membership, not a
+// purchase or ticket, and only admin-image-server verifies this audience.
+func (m *TokenManager) IssueAdminMediaToken(
+	subjectPublicID string,
+	tenantID string,
+	episodeID string,
+	credentialsVersion int32,
+	now time.Time,
+) (token string, expiresAt time.Time, err error) {
+	return m.issueScopedMediaToken(subjectPublicID, tenantID, episodeID, credentialsVersion, now, AudienceAdminMedia)
+}
+
+func (m *TokenManager) issueScopedMediaToken(
+	subjectPublicID string,
+	tenantID string,
+	episodeID string,
+	credentialsVersion int32,
+	now time.Time,
+	audience string,
+) (token string, expiresAt time.Time, err error) {
 	subjectPublicID = strings.TrimSpace(subjectPublicID)
 	if subjectPublicID == "" {
 		return "", time.Time{}, errors.New("subject is required")
@@ -139,7 +170,22 @@ func (m *TokenManager) IssueMediaToken(
 		TenantID:           tenantID,
 		CredentialsVersion: credentialsVersion,
 		EpisodeID:          episodeID,
-	}, subjectPublicID, AudienceMedia, MediaTokenTTL, now)
+	}, subjectPublicID, audience, MediaTokenTTL, now)
+}
+
+// WithMediaTokenQuery hands an image URL the short-lived credential a
+// browser <img> (or next/image loader) will send. image-server also reads
+// sizing from the query, so the token is added to whatever query the URL
+// already has rather than assuming there is none.
+func WithMediaTokenQuery(imageURL string, token string) string {
+	if token == "" {
+		return imageURL
+	}
+	separator := "?"
+	if strings.Contains(imageURL, "?") {
+		separator = "&"
+	}
+	return imageURL + separator + MediaTokenQueryParam + "=" + url.QueryEscape(token)
 }
 
 func (m *TokenManager) sign(

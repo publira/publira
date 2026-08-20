@@ -30,9 +30,11 @@ type TenantScopedQuerier interface {
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error)
+	GetEpisodeImageByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeImageByIDForTenantParams) (dbmodels.GetEpisodeImageByIDForTenantRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams) (dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow, error)
 	GetUserByPublicIDForTenant(ctx context.Context, arg dbmodels.GetUserByPublicIDForTenantParams) (dbmodels.GetUserByPublicIDForTenantRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (dbmodels.User, error)
+	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
 type TenantScopedQuerierFactory interface {
@@ -60,20 +62,38 @@ type Handler struct {
 	cache           ImageCache
 	proxy           http.Handler
 	maxConverted    int
+	// previewForTenantStaff is set on admin-image-server. It accepts
+	// AudienceAdminMedia query tokens and serves an episode image when the
+	// named user holds a tenant staff role, ignoring publish state and price.
+	// Public image-server leaves it false, so those tokens never unlock a body
+	// there.
+	previewForTenantStaff bool
 }
 
 func NewHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) (*Server, error) {
+	return newHandler(resolver, tenantFactory, objects, logger, db, tokens, false)
+}
+
+// NewAdminHandler is the admin-image-server constructor. Episode bodies are
+// still gated, but a tenant-staff admin-media token unlocks them regardless of
+// publish state or price.
+func NewAdminHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager) (*Server, error) {
+	return newHandler(resolver, tenantFactory, objects, logger, db, tokens, true)
+}
+
+func newHandler(resolver ResolverQuerier, tenantFactory TenantScopedQuerierFactory, objects ObjectStore, logger *slog.Logger, db *sql.DB, tokens *auth.TokenManager, previewForTenantStaff bool) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	h := &Handler{
-		resolverQuerier: resolver,
-		tenantFactory:   tenantFactory,
-		objects:         objects,
-		logger:          logger,
-		tokens:          tokens,
-		cache:           newImageCacheFromEnv(logger),
-		maxConverted:    defaultMaxConvertedBytes,
+		resolverQuerier:       resolver,
+		tenantFactory:         tenantFactory,
+		objects:               objects,
+		logger:                logger,
+		tokens:                tokens,
+		cache:                 newImageCacheFromEnv(logger),
+		maxConverted:          defaultMaxConvertedBytes,
+		previewForTenantStaff: previewForTenantStaff,
 	}
 	origin, proxy, err := startOriginAndProxy(h)
 	if err != nil {
@@ -137,6 +157,26 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			objectKey = access.ObjectKey
 			contentTypeFromDB = access.ContentType
 			cacheControl = "private, max-age=60"
+		}
+	}
+
+	if objectKey == "" && h.previewForTenantStaff {
+		if claims, ok := h.adminEpisodeImageClaims(r, tenant.ID); ok {
+			access, err := h.grantedAdminEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, claims)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					http.Error(w, "image not found", http.StatusNotFound)
+					return
+				}
+				h.logger.ErrorContext(ctx, "failed to evaluate admin image access", "error", err, "media_id", mediaID.String())
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			if access != nil {
+				objectKey = access.ObjectKey
+				contentTypeFromDB = access.ContentType
+				cacheControl = "private, max-age=60"
+			}
 		}
 	}
 
@@ -217,27 +257,13 @@ func (h *Handler) grantedEpisodeImage(
 	mediaID uuid.UUID,
 	claims *auth.AccessTokenClaims,
 ) (*dbmodels.GetEpisodeImageAccessByIDForUserRow, error) {
-	userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-		PublicID: claims.Subject,
-		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
-	})
+	user, err := h.activeUserForClaims(ctx, tenantQueries, tenantID, claims)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, err
 	}
-	user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+	if user == nil {
 		return nil, nil
 	}
-	tracing.SetEndUser(ctx, user.PublicID)
 
 	access, err := tenantQueries.GetEpisodeImageAccessByIDForUser(ctx, dbmodels.GetEpisodeImageAccessByIDForUserParams{
 		ID:       mediaID,
@@ -259,6 +285,100 @@ func (h *Handler) grantedEpisodeImage(
 		return nil, nil
 	}
 	return &access, nil
+}
+
+// adminEpisodeImageClaims is the admin-image-server counterpart of
+// episodeImageClaims. Only AudienceAdminMedia on the query is accepted: an
+// admin access token in the URL would be a session, and a reader media token
+// is evaluated on the public path instead.
+func (h *Handler) adminEpisodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth.AccessTokenClaims, bool) {
+	if h.tokens == nil {
+		return nil, false
+	}
+	rawToken := strings.TrimSpace(r.URL.Query().Get(auth.MediaTokenQueryParam))
+	if rawToken == "" {
+		return nil, false
+	}
+	claims, err := h.tokens.Verify(rawToken, auth.AudienceAdminMedia)
+	if err != nil {
+		return nil, false
+	}
+	if claims.TenantID != tenantID.String() {
+		return nil, false
+	}
+	if strings.TrimSpace(claims.EpisodeID) == "" {
+		return nil, false
+	}
+	return claims, true
+}
+
+// grantedAdminEpisodeImage evaluates a verified admin-media token against one
+// image. Tenant staff see the body regardless of publish state or price; a
+// nil row with a nil error means the credential is not staff (or is scoped
+// to a different episode) and the caller falls back to the public rule.
+func (h *Handler) grantedAdminEpisodeImage(
+	ctx context.Context,
+	tenantQueries TenantScopedQuerier,
+	tenantID uuid.UUID,
+	mediaID uuid.UUID,
+	claims *auth.AccessTokenClaims,
+) (*dbmodels.GetEpisodeImageByIDForTenantRow, error) {
+	user, err := h.activeUserForClaims(ctx, tenantQueries, tenantID, claims)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, nil
+	}
+	roles, err := tenantQueries.ListTenantUserRoles(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	if !auth.IsTenantStaff(roles) {
+		return nil, nil
+	}
+
+	access, err := tenantQueries.GetEpisodeImageByIDForTenant(ctx, dbmodels.GetEpisodeImageByIDForTenantParams{
+		ID:       mediaID,
+		TenantID: tenantID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims.EpisodeID != access.EpisodeID.String() {
+		return nil, nil
+	}
+	return &access, nil
+}
+
+func (h *Handler) activeUserForClaims(
+	ctx context.Context,
+	tenantQueries TenantScopedQuerier,
+	tenantID uuid.UUID,
+	claims *auth.AccessTokenClaims,
+) (*dbmodels.User, error) {
+	userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
+		PublicID: claims.Subject,
+		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	user, err := tenantQueries.GetUserByID(ctx, userRef.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+		return nil, nil
+	}
+	tracing.SetEndUser(ctx, user.PublicID)
+	return &user, nil
 }
 
 func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) {

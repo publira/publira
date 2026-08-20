@@ -70,7 +70,7 @@ func main() {
 	resolverQueries := dbmodels.New(db)
 	tenantFactory := imageserver.NewDBTenantScopedFactory(db, logger)
 
-	imageHandler, err := imageserver.NewHandler(
+	imageHandler, err := imageserver.NewAdminHandler(
 		resolverQueries,
 		tenantFactory,
 		objectStore,

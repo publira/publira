@@ -36,20 +36,25 @@ func (s stubResolver) GetAdminTenantByDomains(context.Context, []string) (dbmode
 }
 
 type stubTenantQueries struct {
-	public        dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow
-	publicErr     error
-	creator       dbmodels.GetCreatorImageByIDForTenantRow
-	creatorErr    error
-	tenant        dbmodels.GetTenantImageVariantByTypeForTenantRow
-	tenantErr     error
-	tenantKey     tenantVariantKey
-	tenantParams  *dbmodels.GetTenantImageVariantByTypeForTenantParams
-	userRef       dbmodels.GetUserByPublicIDForTenantRow
-	userRefErr    error
-	user          dbmodels.User
-	userErr       error
-	userAccess    dbmodels.GetEpisodeImageAccessByIDForUserRow
-	userAccessErr error
+	public           dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow
+	publicErr        error
+	creator          dbmodels.GetCreatorImageByIDForTenantRow
+	creatorErr       error
+	tenant           dbmodels.GetTenantImageVariantByTypeForTenantRow
+	tenantErr        error
+	tenantKey        tenantVariantKey
+	tenantParams     *dbmodels.GetTenantImageVariantByTypeForTenantParams
+	userRef          dbmodels.GetUserByPublicIDForTenantRow
+	userRefErr       error
+	user             dbmodels.User
+	userErr          error
+	userAccess       dbmodels.GetEpisodeImageAccessByIDForUserRow
+	userAccessErr    error
+	adminImage       dbmodels.GetEpisodeImageByIDForTenantRow
+	adminImageErr    error
+	adminImageTenant uuid.UUID
+	roles            []string
+	rolesErr         error
 }
 
 func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error) {
@@ -95,8 +100,25 @@ func (s stubTenantQueries) GetEpisodeImageAccessByIDForUser(context.Context, dbm
 	return s.userAccess, s.userAccessErr
 }
 
+func (s stubTenantQueries) GetEpisodeImageByIDForTenant(_ context.Context, arg dbmodels.GetEpisodeImageByIDForTenantParams) (dbmodels.GetEpisodeImageByIDForTenantRow, error) {
+	if s.adminImageErr != nil {
+		return dbmodels.GetEpisodeImageByIDForTenantRow{}, s.adminImageErr
+	}
+	if s.adminImage.ObjectKey == "" || arg.ID != s.adminImage.ID || arg.TenantID != s.adminImageTenant {
+		return dbmodels.GetEpisodeImageByIDForTenantRow{}, sql.ErrNoRows
+	}
+	return s.adminImage, nil
+}
+
 func (s stubTenantQueries) GetEpisodeImagePublicAccessByIDForTenant(context.Context, dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams) (dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow, error) {
 	return s.public, s.publicErr
+}
+
+func (s stubTenantQueries) ListTenantUserRoles(context.Context, uuid.UUID) ([]string, error) {
+	if s.rolesErr != nil {
+		return nil, s.rolesErr
+	}
+	return s.roles, nil
 }
 
 func (s stubTenantQueries) GetUserByPublicIDForTenant(context.Context, dbmodels.GetUserByPublicIDForTenantParams) (dbmodels.GetUserByPublicIDForTenantRow, error) {
@@ -163,8 +185,20 @@ func newTestServer(t *testing.T, resolver ResolverQuerier, factory TenantScopedQ
 
 func newTestServerWithTokens(t *testing.T, resolver ResolverQuerier, factory TenantScopedQuerierFactory, store ObjectStore, tokens *auth.TokenManager) *Server {
 	t.Helper()
+	return newTestServerWithConstructor(t, resolver, factory, store, tokens, NewHandler)
+}
+
+func newTestServerWithConstructor(
+	t *testing.T,
+	resolver ResolverQuerier,
+	factory TenantScopedQuerierFactory,
+	store ObjectStore,
+	tokens *auth.TokenManager,
+	construct func(ResolverQuerier, TenantScopedQuerierFactory, ObjectStore, *slog.Logger, *sql.DB, *auth.TokenManager) (*Server, error),
+) *Server {
+	t.Helper()
 	t.Setenv("PUBLIRA_REDIS_URL", "disabled")
-	srv, err := NewHandler(resolver, factory, store, nil, nil, tokens)
+	srv, err := construct(resolver, factory, store, nil, nil, tokens)
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -444,6 +478,158 @@ func TestEpisodeImageMediaToken(t *testing.T) {
 			t.Fatalf("Issue() error = %v", err)
 		}
 		rec := serve(t, paidEpisodeQueries(mediaID, episodeID, userID, 4), accessToken)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+}
+
+func unpublishedPaidEpisodeQueries(mediaID, episodeID, userID uuid.UUID, credentialsVersion int32, tenantID uuid.UUID, roles []string) stubTenantQueries {
+	q := paidEpisodeQueries(mediaID, episodeID, userID, credentialsVersion)
+	q.public.IsPublished = sql.NullBool{Bool: false, Valid: true}
+	q.public.HasPublicAccess = false
+	q.userAccess.IsPublished = sql.NullBool{Bool: false, Valid: true}
+	q.userAccess.HasAccess = sql.NullBool{Bool: false, Valid: true}
+	q.adminImage = dbmodels.GetEpisodeImageByIDForTenantRow{
+		ID:          mediaID,
+		EpisodeID:   episodeID,
+		ObjectKey:   "episodes/page.jpg",
+		ContentType: "image/jpeg",
+	}
+	q.adminImageTenant = tenantID
+	q.roles = roles
+	q.userRef = dbmodels.GetUserByPublicIDForTenantRow{ID: userID, PublicID: "admin-public-id", Status: "active"}
+	q.user = dbmodels.User{
+		ID:                 userID,
+		PublicID:           "admin-public-id",
+		Status:             "active",
+		CredentialsVersion: credentialsVersion,
+	}
+	return q
+}
+
+// Admin-image-server accepts a distinct audience so a copied preview URL
+// cannot be replayed against public image-server, and tenant staff can see
+// draft / paid bodies the public rule would 403.
+func TestEpisodeImageAdminMediaToken(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	episodeID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	userID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	tokens := auth.NewTokenManager([]byte(testMediaJWTSecret))
+
+	serve := func(t *testing.T, queries stubTenantQueries, token string, construct func(ResolverQuerier, TenantScopedQuerierFactory, ObjectStore, *slog.Logger, *sql.DB, *auth.TokenManager) (*Server, error)) *httptest.ResponseRecorder {
+		t.Helper()
+		srv := newTestServerWithConstructor(t,
+			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "admin.example.test"}},
+			stubFactory{q: queries},
+			&countingStore{objects: map[string]storedObject{
+				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+			}},
+			tokens,
+			construct,
+		)
+		target := "/images/episodes/" + mediaID.String() +
+			"?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(token)
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		req.Host = "admin.example.test"
+		req.Header.Set("Accept", "image/webp")
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+
+	issue := func(t *testing.T, scopedEpisodeID uuid.UUID, credentialsVersion int32, issuedAt time.Time) string {
+		t.Helper()
+		token, _, err := tokens.IssueAdminMediaToken("admin-public-id", tenantID.String(), scopedEpisodeID.String(), credentialsVersion, issuedAt)
+		if err != nil {
+			t.Fatalf("IssueAdminMediaToken() error = %v", err)
+		}
+		return token
+	}
+
+	staffQueries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, tenantID, []string{auth.RoleTenantEditor})
+
+	for _, role := range []string{auth.RoleTenantAdmin, auth.RoleTenantEditor, auth.RoleTenantAuditor} {
+		t.Run("serves a draft paid body to "+role, func(t *testing.T) {
+			queries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, tenantID, []string{role})
+			rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), NewAdminHandler)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+			}
+			if got := rec.Header().Get("Cache-Control"); got != "private, max-age=60" {
+				t.Errorf("Cache-Control = %q, want %q", got, "private, max-age=60")
+			}
+			if rec.Body.Len() == 0 {
+				t.Error("body is empty")
+			}
+		})
+	}
+
+	t.Run("public image-server ignores an admin-media token", func(t *testing.T) {
+		rec := serve(t, staffQueries, issue(t, episodeID, 4, time.Now()), NewHandler)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("a reader media token does not unlock a draft on admin-image-server", func(t *testing.T) {
+		token, _, err := tokens.IssueMediaToken("admin-public-id", tenantID.String(), episodeID.String(), 4, time.Now())
+		if err != nil {
+			t.Fatalf("IssueMediaToken() error = %v", err)
+		}
+		rec := serve(t, staffQueries, token, NewAdminHandler)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("a token issued for another episode does not unlock this one", func(t *testing.T) {
+		otherEpisodeID := uuid.MustParse("88888888-8888-8888-8888-888888888888")
+		rec := serve(t, staffQueries, issue(t, otherEpisodeID, 4, time.Now()), NewAdminHandler)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("an expired token stops working", func(t *testing.T) {
+		issuedAt := time.Now().Add(-auth.MediaTokenTTL - time.Minute)
+		rec := serve(t, staffQueries, issue(t, episodeID, 4, issuedAt), NewAdminHandler)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("a token from before a password change stops working", func(t *testing.T) {
+		rec := serve(t, staffQueries, issue(t, episodeID, 3, time.Now()), NewAdminHandler)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("a user without a tenant staff role does not unlock the body", func(t *testing.T) {
+		queries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, tenantID, nil)
+		rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), NewAdminHandler)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("another tenant's image is not found", func(t *testing.T) {
+		otherTenantID := uuid.MustParse("99999999-9999-9999-9999-999999999999")
+		queries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, otherTenantID, []string{auth.RoleTenantAdmin})
+		rec := serve(t, queries, issue(t, episodeID, 4, time.Now()), NewAdminHandler)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+		}
+	})
+
+	t.Run("an admin access token pasted into the query does not unlock the body", func(t *testing.T) {
+		accessToken, _, err := tokens.Issue("admin-public-id", auth.AudienceAdmin, tenantID.String(), auth.RoleTenantEditor, 4, time.Now())
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		rec := serve(t, staffQueries, accessToken, NewAdminHandler)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}

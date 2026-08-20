@@ -557,6 +557,47 @@ func TestUploadEpisodeImagesSuccess(t *testing.T) {
 	if resp.Msg.Images[1].Width != 1 || resp.Msg.Images[1].Height != 1 {
 		t.Fatalf("second image size = %dx%d, want 1x1", resp.Msg.Images[1].Width, resp.Msg.Images[1].Height)
 	}
+	assertAdminMediaToken(t, resp.Msg.Images[0].ImageUrl, tenantID, episodeID)
+	assertAdminMediaToken(t, resp.Msg.Images[1].ImageUrl, tenantID, episodeID)
+	assertExpectations(t, mock)
+}
+
+func TestListEpisodeImagesAttachesAdminMediaToken(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	imageID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+	mock.ExpectQuery(regexp.QuoteMeta(getEpisodeByPublicIDForTenantQuery)).
+		WithArgs(tenantID, "EPISODE001").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at"}).
+			AddRow(episodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "draft", nil, nil))
+	mock.ExpectQuery(regexp.QuoteMeta(listEpisodeImagesByEpisodeIDQuery)).
+		WithArgs(episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "episode_id", "display_order", "created_at", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(imageID, tenantID, episodeID, int32(1), now, "image/jpeg", int64(2048), int32(1600), int32(900)))
+
+	client := publiraadminv1connect.NewAdminSeriesServiceClient(testServer.Client(), testServer.URL)
+	req := connect.NewRequest(&publiraadminv1.ListEpisodeImagesRequest{
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodePublicId: "EPISODE001",
+	})
+	req.Header().Set("Authorization", "Bearer "+sessionToken)
+
+	resp, err := client.ListEpisodeImages(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ListEpisodeImages: %v", err)
+	}
+	if len(resp.Msg.Images) != 1 {
+		t.Fatalf("images count = %d, want 1", len(resp.Msg.Images))
+	}
+	assertAdminMediaToken(t, resp.Msg.Images[0].ImageUrl, tenantID, episodeID)
 	assertExpectations(t, mock)
 }
 
