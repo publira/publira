@@ -5,6 +5,7 @@ const {
   mockDeleteTenantLogo,
   mockGetAccessToken,
   mockUpdateTag,
+  mockUpdateTenantDefaultLocale,
   mockUpdateTenantTimezone,
   mockUploadTenantIcon,
   mockUploadTenantLogo,
@@ -13,6 +14,7 @@ const {
   mockDeleteTenantLogo: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockUpdateTenantDefaultLocale: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
   mockUploadTenantLogo: vi.fn(),
@@ -39,6 +41,12 @@ vi.mock("#lib/site-settings", () => ({
   updateTenantSiteSettings: vi.fn(),
 }));
 
+vi.mock("#lib/tenant-default-locale", () => ({
+  tenantDefaultLocaleCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:default-locale`,
+  updateTenantDefaultLocale: mockUpdateTenantDefaultLocale,
+}));
+
 vi.mock("#lib/tenant-timezone", () => ({
   tenantTimezoneCacheTag: (tenantId: string) => `tenant:${tenantId}:timezone`,
   updateTenantTimezone: mockUpdateTenantTimezone,
@@ -54,7 +62,7 @@ vi.mock("#lib/theme-settings", () => ({
   uploadTenantLogo: mockUploadTenantLogo,
 }));
 
-const timezoneFormData = (values: Record<string, string>): FormData => {
+const textFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
@@ -81,7 +89,7 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      timezoneFormData({
+      textFormData({
         tenant_id: "TENANT001",
         timezone: "America/Los_Angeles",
       })
@@ -109,7 +117,7 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      timezoneFormData({ tenant_id: "TENANT001", timezone: "Asia/Calcutta" })
+      textFormData({ tenant_id: "TENANT001", timezone: "Asia/Calcutta" })
     );
 
     expect(result).toEqual({
@@ -134,7 +142,7 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      timezoneFormData({ tenant_id: "TENANT001", timezone })
+      textFormData({ tenant_id: "TENANT001", timezone })
     );
 
     expect(result).toEqual({
@@ -150,7 +158,7 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      timezoneFormData({ tenant_id: "TENANT001", timezone: "  " })
+      textFormData({ tenant_id: "TENANT001", timezone: "  " })
     );
 
     expect(result).toEqual({
@@ -165,7 +173,7 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      timezoneFormData({ timezone: "Asia/Tokyo" })
+      textFormData({ timezone: "Asia/Tokyo" })
     );
 
     expect(result).toEqual({
@@ -185,7 +193,98 @@ describe("updateTenantTimezoneAction", () => {
 
     const result = await updateTenantTimezoneAction(
       null,
-      timezoneFormData({ tenant_id: "TENANT001", timezone: "Asia/Tokyo" })
+      textFormData({ tenant_id: "TENANT001", timezone: "Asia/Tokyo" })
+    );
+
+    expect(result).toEqual({ message: "権限がありません。", ok: false });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateTenantDefaultLocaleAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("対応ロケールを保存し、キャッシュタグを更新する", async () => {
+    mockUpdateTenantDefaultLocale.mockResolvedValueOnce({
+      defaultLocale: "en",
+      ok: true,
+    });
+
+    const { updateTenantDefaultLocaleAction } = await import("./actions");
+
+    const result = await updateTenantDefaultLocaleAction(
+      null,
+      textFormData({
+        default_locale: "en",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      defaultLocale: "en",
+      message: "既定言語を保存しました。",
+      ok: true,
+    });
+    expect(mockUpdateTenantDefaultLocale).toHaveBeenCalledWith({
+      defaultLocale: "en",
+      tenantId: "TENANT001",
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:default-locale"
+    );
+  });
+
+  it.each([
+    { label: "未知のロケール", locale: "fr" },
+    { label: "大文字のコード", locale: "EN" },
+    { label: "BCP 47 タグ", locale: "ja-JP" },
+    { label: "空文字", locale: "  " },
+  ])("$label は API を呼ばずに拒否する", async ({ locale }) => {
+    const { updateTenantDefaultLocaleAction } = await import("./actions");
+
+    const result = await updateTenantDefaultLocaleAction(
+      null,
+      textFormData({ default_locale: locale, tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "言語を選択してください。",
+      ok: false,
+    });
+    expect(mockUpdateTenantDefaultLocale).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("テナント ID がない場合は保存しない", async () => {
+    const { updateTenantDefaultLocaleAction } = await import("./actions");
+
+    const result = await updateTenantDefaultLocaleAction(
+      null,
+      textFormData({ default_locale: "en" })
+    );
+
+    expect(result).toEqual({
+      message: "テナント ID が見つかりません。",
+      ok: false,
+    });
+    expect(mockUpdateTenantDefaultLocale).not.toHaveBeenCalled();
+  });
+
+  it("保存に失敗した場合はメッセージを返し、キャッシュタグを更新しない", async () => {
+    mockUpdateTenantDefaultLocale.mockResolvedValueOnce({
+      message: "権限がありません。",
+      ok: false,
+    });
+
+    const { updateTenantDefaultLocaleAction } = await import("./actions");
+
+    const result = await updateTenantDefaultLocaleAction(
+      null,
+      textFormData({ default_locale: "en", tenant_id: "TENANT001" })
     );
 
     expect(result).toEqual({ message: "権限がありません。", ok: false });

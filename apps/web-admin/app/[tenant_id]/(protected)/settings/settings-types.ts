@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/utils/i18n";
 import type { TenantThemeColors } from "@publira/utils/theme-css-variables";
 
 import type { TenantSmtpSettings } from "#lib/email-settings";
@@ -89,6 +90,18 @@ export type TenantTimezoneActionState =
       ok: true;
       message: string;
       timezone: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
+
+export type TenantDefaultLocaleActionState =
+  | {
+      ok: true;
+      message: string;
+      defaultLocale: Locale;
     }
   | {
       ok: false;
