@@ -109,6 +109,93 @@ The same rules apply to all three apps:
 - **Never swallow an unclassifiable error** (`internal`, `unimplemented`, or a throw that is not an RPC error at all). A `catch` returning `null` / `false` / `[]` still calls `rethrowUnclassifiedRpcError(error)` first.
 - The exceptions are logout (the cookie must clear either way), non-critical chrome such as footer links, and every `catch` inside a `"use cache"` scope — that one cannot rethrow, because the fill would fail the whole request (see **A `"use cache"` function must not throw** below). Each one records why in a comment.
 
+## RPC responses: `Pick` the generated message, never restate it
+
+A `lib/` mapper that turns an RPC response into an app-facing value declares its input as `Pick<GeneratedMessage, ...>`, naming exactly the fields that mapper reads. It must not restate the message shape as a hand-written structural type (#1072).
+
+The generated messages come from `@publira/api-client`:
+
+| What the mapper reads | Where the type comes from |
+| --- | --- |
+| A shared `publira.types.v1` entity — `Series`, `Label`, `Creator`, `Episode`, `EpisodeImage`, `SeriesEyeCatchVariant`, `TenantImageVariant`, `TenantTheme`, `Page`, `User` | `@publira/api-client/admin/types` (`web-admin`) or `@publira/api-client/public/types` (`web-host`). Both re-export the same messages; import from the subpath that matches the API the app calls |
+| A service's own message, which has no `types` subpath — every `publira.platform.v1` message, and list responses | Derive it from the client method: `Awaited<ReturnType<PlatformApiClient["tenants"]["listTenants"]>>["tenants"][number]` |
+
+The reason is not brevity. A restated input type is looser than the response it describes — every field written optional — and nothing attaches it to the proto. Rename or remove a field and that type still compiles, so the mapper's `?? ""` / `?? 0` quietly stands in for a field that no longer exists. For the image variants that is invisible: the empty `label` / `url` fails the mapper's own emptiness check, every variant is dropped, and the screen renders its no-image placeholder with nothing pointing at the cause (#1072). Named against the message, the same rename fails at the mapper during `pnpm preflight` — `TS2344` on the `Pick` key list, or `TS2339` on the property the body reads.
+
+`Pick` rather than the message type itself, for two reasons. The generated messages carry `$typeName`, so a bare `Series` parameter makes every caller and every test fixture build a whole message. And the key list is the declaration of what this mapper actually depends on: a field the mapper stops reading leaves the list, and the dependency shrinks with it.
+
+### NG (do not)
+
+```ts
+// NG: the message shape restated by hand — looser than the response, and
+// unattached to the proto
+const toEyeCatchImageVariants = (
+  variants:
+    | {
+        variantType?: string;
+        label?: string;
+        url?: string;
+        contentType?: string;
+        width?: number;
+        height?: number;
+        fileSizeBytes?: bigint | number;
+      }[]
+    | undefined
+): EyeCatchImageVariant[] | undefined => {
+  /* ... */
+};
+
+// NG: the whole generated message — forces $typeName on every caller and
+// fixture, and stops saying which fields this mapper reads
+const toEyeCatchImageVariants = (
+  variants: SeriesEyeCatchVariant[] | undefined
+): EyeCatchImageVariant[] | undefined => {
+  /* ... */
+};
+```
+
+### OK (preferred)
+
+```ts
+import type { SeriesEyeCatchVariant } from "@publira/api-client/public/types";
+
+/**
+ * The generated `SeriesEyeCatchVariant` fields {@link toEyeCatchImageVariants}
+ * reads. Naming them against the message type is what makes a proto rename fail
+ * here — a restated structural type keeps compiling, the empty string it
+ * substitutes fails the check below, and the page then renders its no-image
+ * placeholder with nothing pointing at the cause.
+ */
+type RawEyeCatchImageVariant = Pick<
+  SeriesEyeCatchVariant,
+  | "contentType"
+  | "fileSizeBytes"
+  | "height"
+  | "label"
+  | "url"
+  | "variantType"
+  | "width"
+>;
+
+const toEyeCatchImageVariants = (
+  variants: RawEyeCatchImageVariant[] | undefined
+): EyeCatchImageVariant[] | undefined => {
+  /* ... */
+};
+```
+
+Good in-repo examples: [`web-host` `catalog.ts`](web-host/lib/catalog.ts) (`RawEyeCatchImageVariant`, `RawEpisodeImage`), [`web-admin` `series.ts`](web-admin/lib/series.ts) (`RawSeries`), and [`web-platform` `tenants.test.ts`](web-platform/lib/tenants.test.ts) for the client-method derivation.
+
+### What stays in the mapper
+
+The generated message is the mapper's **input** type only. The app-facing result type stays hand-written in the app, so screens are not coupled to the proto, and the conversion between the two stays in the mapper body:
+
+- **`bigint` → `number`.** `SeriesEyeCatchVariant.fileSizeBytes` is `bigint`; the app-facing field is `number`. Keep `Number(variant.fileSizeBytes ?? 0)` in the body rather than widening the app type.
+- **The `?? ""` / `?? 0` defaults.** They cover values that did not come through the deserializer — the partial mock responses the mappers' unit tests pass in. Deriving the input type does not make them redundant.
+- **Adoption conditions** (dropping a variant with an empty `label` / `url`, zero-dimension checks) are the mapper's own rules and are unaffected.
+
+A value that is not a generated message in the first place — an already-mapped app type, or JSON parsed out of a string field such as the platform notification `payload` — is outside this rule. Type it against whatever schema actually validates it.
+
 ## Failure display: `SectionError` and `SectionErrorBoundary`
 
 A failure that only kills part of a page must not be hand-rolled into that page. Two shared pieces cover it (#647), and which one a screen reaches for follows from what it is holding:
