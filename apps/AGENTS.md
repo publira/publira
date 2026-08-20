@@ -367,11 +367,13 @@ UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知�
 
 ルート layout で Cookie を読むことはできない。`<html>` 属性には逃がし先の `<Suspense>` 境界がなく、`cookies()` を待てば配下の全ルートが静的シェルを失う。代わりに次の 3 点で解決する。
 
-1. ルート layout（と `global-not-found.tsx`）は `lang={DEFAULT_LOCALE}` を静的に描画し、`suppressHydrationWarning` を付ける
+1. ルート layout は `lang={DEFAULT_LOCALE}` を静的に描画し、`suppressHydrationWarning` を付ける
 2. `<head>` に `LOCALE_LANG_SCRIPT`（`@publira/utils/i18n` の定数）をインラインスクリプトとして置く。ブラウザは解析中に Cookie を読んで属性を差し替える
-3. 切替 UI 側のクリックハンドラが `document.documentElement.lang` を書く。スクリプトはフルロード時にしか走らず、Server Action の再描画は静的な属性値を変えないので React は DOM に触らない
+3. 切替 UI が **Action の解決後に** `document.documentElement.lang` を書く。スクリプトはフルロード時にしか走らず、Server Action の再描画は静的な属性値を変えないので React は DOM に触らない。クリックハンドラで書くと、Action が失敗したときに Cookie にも画面文言にも無い言語を文書が名乗る
 
 この 3 点目のために Cookie は `httpOnly` にしない。`instant = false` は選択肢に入らない（**Never use `instant = false`** を参照）。
+
+`global-not-found.tsx` はこの対象外で、`lang="ja"` のままにする。この文書は layout を通らない静的ページで、本文自体がロケールに追従できないので、属性だけ切り替えても本文の言語を偽るだけになる。
 
 ### 切替
 

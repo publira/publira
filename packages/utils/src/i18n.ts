@@ -41,10 +41,11 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  *
  * Two things follow for the caller. The element needs
  * `suppressHydrationWarning`, because the DOM no longer matches what React
- * rendered. And a Server Action that changes the cookie has to set
- * `document.documentElement.lang` itself: this runs on a full page load only,
- * and the statically rendered attribute is identical across renders, so React
- * has no reason to touch the DOM after the Action.
+ * rendered. And the UI that changes the cookie has to set
+ * `document.documentElement.lang` itself, once its Server Action resolved:
+ * this script runs on a full page load only, and the statically rendered
+ * attribute is identical across renders, so React has no reason to touch the
+ * DOM after the Action.
  *
  * Everything interpolated below is a constant of this module, so no
  * request-derived value reaches the script source.

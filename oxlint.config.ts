@@ -102,7 +102,7 @@ export default defineConfig({
        * request-derived value reaches it, and the script writes an attribute
        * rather than markup. See AGENTS.md "UI ロケール" (#867).
        */
-      files: ["apps/*/app/layout.tsx", "apps/*/app/global-not-found.tsx"],
+      files: ["apps/*/app/layout.tsx"],
       rules: {
         "react/no-danger": "off",
       },

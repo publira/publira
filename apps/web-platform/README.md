@@ -38,7 +38,7 @@
 - 読み取りは `lib/locale.ts` の `getPlatformLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す
 - メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadPlatformMessages(locale)` が動的 `import()` する
 - 切替は `/settings/general` の「表示言語」カード。Server Action `setPlatformLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
-- `<html lang>` はルート layout の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照
+- `<html lang>` はルート layout の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
 
 ### web-admin との役割分担
 

@@ -314,7 +314,7 @@ const RootLayout = ({ children }: LayoutProps<"/">) => (
 
 - `suppressHydrationWarning` が要る。スクリプトが書き換えた DOM を React が描画結果で上書きしないための指定
 - Cookie は `httpOnly` にできない。スクリプトが `document.cookie` から読む
-- Server Action で Cookie を変えたときは、切替 UI 側が `document.documentElement.lang` も書く。スクリプトはフルロード時にしか走らず、静的に描画した属性は再描画しても値が変わらないので React は DOM に触らない
+- Server Action で Cookie を変えたときは、切替 UI 側が **Action の解決後に** `document.documentElement.lang` も書く。スクリプトはフルロード時にしか走らず、静的に描画した属性は再描画しても値が変わらないので React は DOM に触らない。送信前に書くと、Action が失敗したときに属性だけが選択値になる
 - スクリプトに埋まる値は本モジュールの定数だけで、リクエスト由来の値は入らない
 
 ## `next/image` のローダー（`image-loader`）

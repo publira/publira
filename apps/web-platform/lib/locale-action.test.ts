@@ -19,6 +19,12 @@ const formData = (values: Record<string, string>): FormData => {
 
 const importAction = () => import("./locale-action");
 
+const importOptions = async () => {
+  const localeModule = await import("./locale");
+
+  return localeModule.platformLocaleCookieOptions;
+};
+
 describe("setPlatformLocaleAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -31,10 +37,12 @@ describe("setPlatformLocaleAction", () => {
 
     await setPlatformLocaleAction(formData({ locale: "en" }));
 
+    // The whole option object, so `sameSite` / `path` / `maxAge` / `httpOnly`
+    // cannot drift between the Action and the contract pinned in locale.test.ts.
     expect(mockSet).toHaveBeenCalledWith(
       "publira_locale",
       "en",
-      expect.objectContaining({ maxAge: 31_536_000, path: "/" })
+      await importOptions()
     );
   });
 
