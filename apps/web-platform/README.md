@@ -31,6 +31,15 @@
 - 本文: `PlatformPage` でページヘッダーと本文コンテナを統一
 - モバイル: サイドバーをドロワーとして再利用
 
+### 表示ロケール
+
+- UI ロケールは Cookie `publira_locale`（`Path=/`、`SameSite=Lax`、`Max-Age` 1 年、`httpOnly` なし）に保存する。URL には出さない
+- 未設定・未知の値は `ja` に落ちる（`@publira/utils/i18n` の `parseLocaleCookie`）
+- 読み取りは `lib/locale.ts` の `getPlatformLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す
+- メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadPlatformMessages(locale)` が動的 `import()` する
+- 切替は `/settings/general` の「表示言語」カード。Server Action `setPlatformLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
+- `<html lang>` はルート layout の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定
+
 ### web-admin との役割分担
 
 - web-platform: テナント横断オペレーション

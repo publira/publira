@@ -33,7 +33,9 @@
     "validation": "Please check the information you entered."
   },
   "locale": {
+    "description": "The language this console is shown in. It is stored in your browser and reused on your next visit.",
     "en": "English",
-    "ja": "Japanese"
+    "ja": "Japanese",
+    "label": "Display language"
   }
 }

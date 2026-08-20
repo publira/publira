@@ -21,6 +21,37 @@ export const DEFAULT_LOCALE: Locale = "ja";
 /** Cookie that stores the UI locale for apps that do not put lang in the URL. */
 export const LOCALE_COOKIE_NAME = "publira_locale";
 
+/**
+ * A year, in seconds. The locale is a preference rather than session state, so
+ * the cookie is meant to outlive the sign-in that set it.
+ */
+export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+/**
+ * Source of the inline `<head>` script that applies the locale cookie to
+ * `<html lang>` before the browser paints.
+ *
+ * An app that keeps the locale in a cookie cannot resolve `<html lang>` on the
+ * server: under Cache Components a `cookies()` read above every `<Suspense>`
+ * boundary leaves the route with no static shell, and the `<html>` element has
+ * no child boundary the read could move into. So the root layout renders
+ * {@link DEFAULT_LOCALE} statically and this script corrects the attribute
+ * while the document is still being parsed — the pattern Next.js documents for
+ * cookie-driven `<html>` attributes ("How to prevent flash before hydration").
+ *
+ * Two things follow for the caller. The element needs
+ * `suppressHydrationWarning`, because the DOM no longer matches what React
+ * rendered. And the UI that changes the cookie has to set
+ * `document.documentElement.lang` itself, once its Server Action resolved:
+ * this script runs on a full page load only, and the statically rendered
+ * attribute is identical across renders, so React has no reason to touch the
+ * DOM after the Action.
+ *
+ * Everything interpolated below is a constant of this module, so no
+ * request-derived value reaches the script source.
+ */
+export const LOCALE_LANG_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${LOCALE_COOKIE_NAME}=([^;]*)/);if(!m){return}var l=decodeURIComponent(m[1]).trim();if(${JSON.stringify(LOCALES)}.indexOf(l)<0){return}document.documentElement.lang=l}catch(e){}})()`;
+
 const LOCALE_SET: ReadonlySet<string> = new Set(LOCALES);
 
 /** Named `{placeholder}` only — no ICU, no plurals. */

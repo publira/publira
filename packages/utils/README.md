@@ -287,11 +287,35 @@ const greeting = getMessage(catalog, "greeting", { name: "山田" });
 ```
 
 - 未知のロケール文字列は `ja` に落ちる（`parseLocale` / `parseLocaleCookie`）
-- Cookie 名定数は `LOCALE_COOKIE_NAME`（`publira_locale`）。`cookies()` は呼ばない
+- Cookie 名定数は `LOCALE_COOKIE_NAME`（`publira_locale`）、有効期間は `LOCALE_COOKIE_MAX_AGE`（1 年）。`cookies()` は呼ばない
 - 存在するキーは一致した文字列を返し、`{name}` だけを補間する
 - 未知キーは開発時に throw、本番ではキーをそのまま返す
 - TypeScript のカタログモジュールを手で書く場合は、`export default { … } satisfies Messages` でも欠け・余剰を型エラーにできる
 - 共有 RPC / バリデーション文言（`errors.rpc.*` / `errors.validation` / `errors.disallowed_value`）は `catch` や `safeParse` から同期で読むため、`@publira/utils/catalog` が両方のロケールを静的 import する。画面カタログはこれまでどおり `loadMessages` の動的 `import()`
+
+### Cookie アプリの `<html lang>`（`LOCALE_LANG_SCRIPT`）
+
+ロケールを URL に出さないアプリ（`web-platform` / `web-admin`）では、`<html lang>` をサーバーで解決できません。Cache Components 下でルート layout が `cookies()` を待つと、その配下の全ルートから静的シェルが消えます。`<html>` 属性には逃がし先の `<Suspense>` 境界がないので、`instant = false` 以外の解決策は「描画前にクライアントで直す」しかありません。
+
+`LOCALE_LANG_SCRIPT` はそのためのインラインスクリプトのソースです。ルート layout は `lang={DEFAULT_LOCALE}` を静的に描画し、`<head>` に置いたこのスクリプトが解析中に Cookie を読んで属性を差し替えます（Next.js が Cookie 由来の `<html>` 属性に対して案内している ["How to prevent flash before hydration"](https://nextjs.org/docs/app/guides/preventing-flash-before-hydration) と同じ手口）。
+
+```tsx
+import { DEFAULT_LOCALE, LOCALE_LANG_SCRIPT } from "@publira/utils/i18n";
+
+const RootLayout = ({ children }: LayoutProps<"/">) => (
+  <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+    <head>
+      <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
+    </head>
+    <body>{children}</body>
+  </html>
+);
+```
+
+- `suppressHydrationWarning` が要る。スクリプトが書き換えた DOM を React が描画結果で上書きしないための指定
+- Cookie は `httpOnly` にできない。スクリプトが `document.cookie` から読む
+- Server Action で Cookie を変えたときは、切替 UI 側が **Action の解決後に** `document.documentElement.lang` も書く。スクリプトはフルロード時にしか走らず、静的に描画した属性は再描画しても値が変わらないので React は DOM に触らない。送信前に書くと、Action が失敗したときに属性だけが選択値になる
+- スクリプトに埋まる値は本モジュールの定数だけで、リクエスト由来の値は入らない
 
 ## `next/image` のローダー（`image-loader`）
 
