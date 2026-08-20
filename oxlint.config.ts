@@ -76,6 +76,55 @@ export default defineConfig({
     },
     {
       /**
+       * `LOCALE_LANG_SCRIPT` ships as JavaScript source, so the only test that
+       * proves anything runs it: asserting on the string would still pass on a
+       * script the browser cannot execute. The "dynamic" code is a constant of
+       * the module under test, evaluated in a fresh context against a
+       * `document` stub.
+       */
+      files: ["packages/utils/src/i18n.test.ts"],
+      rules: {
+        "sonarjs/code-eval": "off",
+      },
+    },
+    {
+      /**
+       * The locale cookie has to reach `<html lang>` before the browser paints,
+       * and under Cache Components the root layout cannot read it — a
+       * `cookies()` call above every `<Suspense>` boundary leaves the route
+       * with no static shell, and an `<html>` attribute has no child boundary
+       * to move into. So the layout renders the default locale and an inline
+       * `<head>` script corrects it during parsing, which is the pattern
+       * Next.js documents for cookie-driven `<html>` attributes.
+       *
+       * The injected source is `LOCALE_LANG_SCRIPT`, a constant built from
+       * `LOCALES` and `LOCALE_COOKIE_NAME` in `@publira/utils/i18n`. No
+       * request-derived value reaches it, and the script writes an attribute
+       * rather than markup. See AGENTS.md "UI ロケール" (#867).
+       */
+      files: ["apps/*/app/layout.tsx", "apps/*/app/global-not-found.tsx"],
+      rules: {
+        "react/no-danger": "off",
+      },
+    },
+    {
+      /**
+       * The locale Action writes a UI preference, not privileged state: it
+       * stores one of `LOCALES` in `publira_locale`, and every read parses that
+       * cookie again (`parseLocaleCookie`), so a forged or hand-edited value
+       * resolves to `ja` rather than reaching application code. Requiring a
+       * session would tie a display setting to sign-in without protecting
+       * anything. Every other cookie write in these apps stays covered — the
+       * override names this one file per app. See AGENTS.md "UI ロケール"
+       * (#867).
+       */
+      files: ["apps/*/lib/locale-action.ts"],
+      rules: {
+        "react-doctor/server-auth-actions": "off",
+      },
+    },
+    {
+      /**
        * `packages/icons` is the one place allowed to touch `lucide-react`: it
        * is the wrapper that gives every icon the same props and the same
        * import path. See AGENTS.md "Icons" (#690).

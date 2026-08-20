@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, LOCALE_LANG_SCRIPT } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -11,7 +12,10 @@ import "./globals.css";
  * resources under a signed-in operator session and keeps the console chrome.
  *
  * Requires `experimental.globalNotFound` in `next.config.ts`. Styles and brand
- * tokens are imported here because this file bypasses `app/layout.tsx`.
+ * tokens are imported here because this file bypasses `app/layout.tsx`, and so
+ * is the inline script that applies the locale cookie to `<html lang>` — the
+ * copy below stays Japanese until the console's wording is localized, but the
+ * attribute should not claim a language the reader did not choose.
  */
 export const metadata: Metadata = {
   description: "お探しの項目は削除されたか、URL が変更された可能性があります。",
@@ -19,7 +23,10 @@ export const metadata: Metadata = {
 };
 
 const GlobalNotFound = () => (
-  <html lang="ja">
+  <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+    <head>
+      <script dangerouslySetInnerHTML={{ __html: LOCALE_LANG_SCRIPT }} />
+    </head>
     <body className="min-h-dvh bg-background text-foreground antialiased">
       <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-24 text-center">
         <p className="text-sm tracking-wide text-muted-foreground uppercase">

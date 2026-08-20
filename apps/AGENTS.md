@@ -346,6 +346,39 @@ try {
 }
 ```
 
+## UI ロケール
+
+UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知の値はすべて `ja` に落ちる。i18n ライブラリは入れない（Epic [#864](https://github.com/publira/publira/issues/864)）。
+
+| レイヤ | 置き場 |
+| --- | --- |
+| ロケール判定・カタログ読み込み・`{name}` 補間 | `@publira/utils/i18n`（`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`） |
+| メッセージ本体 | リポジトリルートの `locales/{locale}.json`（Go / Flutter と共通） |
+| ロケールの解決元 | `web-platform` / `web-admin` は Cookie `publira_locale`、`web-host` は URL の `locale` セグメント |
+
+共有層はリクエスト状態を読まない。`cookies()` と `next/root-params` はアプリ側に残す。
+
+- **`cookies()` は `<Suspense>` の内側だけ。** Cache Components 下でロケール読みを境界の外に置くと、そのルートから静的シェルが消える。読み取りはアプリの `lib/locale.ts`（`getPlatformLocale()` 等）にまとめ、呼ぶのはセクション用の async コンポーネントからにする
+- **`"use cache"` の中でロケールを読まない。** locale は引数で渡し、キャッシュキーの一部にする
+- **メッセージ待ちは `Suspense` + `Skeleton`。** 静的シェルはロケール非依存
+- **`import()` のパスをテンプレート文字列にしない。** ロケールごとに静的なパスを書く（`loadMessages` の importer）
+
+### Cookie アプリの `<html lang>`
+
+ルート layout で Cookie を読むことはできない。`<html>` 属性には逃がし先の `<Suspense>` 境界がなく、`cookies()` を待てば配下の全ルートが静的シェルを失う。代わりに次の 3 点で解決する。
+
+1. ルート layout（と `global-not-found.tsx`）は `lang={DEFAULT_LOCALE}` を静的に描画し、`suppressHydrationWarning` を付ける
+2. `<head>` に `LOCALE_LANG_SCRIPT`（`@publira/utils/i18n` の定数）をインラインスクリプトとして置く。ブラウザは解析中に Cookie を読んで属性を差し替える
+3. 切替 UI 側のクリックハンドラが `document.documentElement.lang` を書く。スクリプトはフルロード時にしか走らず、Server Action の再描画は静的な属性値を変えないので React は DOM に触らない
+
+この 3 点目のために Cookie は `httpOnly` にしない。`instant = false` は選択肢に入らない（**Never use `instant = false`** を参照）。
+
+### 切替
+
+切替は Server Action で Cookie を書く。Client から `document.cookie` を書かない。値は `LOCALES` の zod スキーマで検証し、外れた値は書かずに捨てる。Cookie は `Path=/`、`SameSite=Lax`、`Max-Age` は `LOCALE_COOKIE_MAX_AGE`。
+
+実装例: `web-platform` の `lib/locale.ts` / `lib/locale-action.ts` と `/settings/general` の「表示言語」カード（[#867](https://github.com/publira/publira/issues/867)）。
+
 ## Icons: `@publira/icons`, never inline `<svg>`
 
 Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to (#690).

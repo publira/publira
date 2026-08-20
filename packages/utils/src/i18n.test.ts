@@ -1,3 +1,5 @@
+import { runInNewContext } from "node:vm";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import enCatalog from "../../../locales/en.json" with { type: "json" };
@@ -7,7 +9,9 @@ import {
   getMessage,
   isLocale,
   loadMessages,
+  LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
+  LOCALE_LANG_SCRIPT,
   LOCALES,
   parseLocale,
   parseLocaleCookie,
@@ -34,6 +38,21 @@ const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
 
 const missing: unknown = undefined;
 
+/**
+ * Run the script source the way a browser would, against a `document` stub.
+ * Asserting on the string instead would pass on a script that never runs, and
+ * a context is how the browser gets it — not a call this module makes.
+ */
+const applyLangScript = (cookie: string): string => {
+  const documentStub = {
+    cookie,
+    documentElement: { lang: DEFAULT_LOCALE },
+  };
+  runInNewContext(LOCALE_LANG_SCRIPT, { document: documentStub });
+
+  return documentStub.documentElement.lang;
+};
+
 const asModuleNamespace = <T extends object>(value: T): T =>
   Object.defineProperty(value, Symbol.toStringTag, {
     value: "Module",
@@ -44,6 +63,31 @@ describe("LOCALES", () => {
     expect(LOCALES).toEqual(["ja", "en"]);
     expect(DEFAULT_LOCALE).toBe("ja");
     expect(LOCALE_COOKIE_NAME).toBe("publira_locale");
+    expect(LOCALE_COOKIE_MAX_AGE).toBe(31_536_000);
+  });
+});
+
+describe("LOCALE_LANG_SCRIPT", () => {
+  it("applies a supported locale from the cookie", () => {
+    expect(applyLangScript("publira_locale=en")).toBe("en");
+    expect(applyLangScript("theme=dark; publira_locale=en; other=1")).toBe(
+      "en"
+    );
+    expect(applyLangScript("publira_locale=%20en%20")).toBe("en");
+  });
+
+  it("leaves the rendered default in place for anything else", () => {
+    expect(applyLangScript("")).toBe("ja");
+    expect(applyLangScript("theme=dark")).toBe("ja");
+    expect(applyLangScript("publira_locale=fr")).toBe("ja");
+    expect(applyLangScript("publira_locale=")).toBe("ja");
+    expect(applyLangScript("publira_locale=%E2%98%83")).toBe("ja");
+    // A name that merely ends with the cookie name is a different cookie.
+    expect(applyLangScript("not_publira_locale=en")).toBe("ja");
+  });
+
+  it("survives a cookie value that cannot be decoded", () => {
+    expect(applyLangScript("publira_locale=%E0%A4%A")).toBe("ja");
   });
 });
 
