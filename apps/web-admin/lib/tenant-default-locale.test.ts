@@ -108,7 +108,7 @@ describe("tenant-default-locale", () => {
     );
   });
 
-  it("更新時の invalid_argument はサーバのメッセージをそのまま返す", async () => {
+  it("更新時の invalid_argument は共通の入力エラーメッセージを返す", async () => {
     mockUpdateTenantDefaultLocaleApi.mockRejectedValueOnce(
       new ConnectError(
         "default_locale must be a supported locale",
@@ -125,7 +125,7 @@ describe("tenant-default-locale", () => {
     });
 
     expect(result).toEqual({
-      message: "default_locale must be a supported locale",
+      message: "入力内容に誤りがあります。",
       ok: false,
     });
   });

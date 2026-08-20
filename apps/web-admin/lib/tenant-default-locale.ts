@@ -1,8 +1,5 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import {
-  rethrowUnclassifiedRpcError,
-  rpcErrorRawMessage,
-} from "@publira/api-client/errors";
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { DEFAULT_LOCALE, parseLocale } from "@publira/utils/i18n";
 import type { Locale } from "@publira/utils/i18n";
 import { cacheTag } from "next/cache";
@@ -47,18 +44,6 @@ const sessionErrorMessage = "セッションが無効です。再ログインし
 export const tenantDefaultLocaleCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:default-locale`;
 
-/**
- * The server rejects an unknown locale with `invalid_argument` and names the
- * field, which is more useful to the operator than the generic wording.
- * Everything else takes the shared copy.
- */
-const parseErrorMessage = (error: unknown, fallback: string): string => {
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
-  return rpcErrorMessage(error, fallback, {
-    "invalid-argument": serverMessage,
-  });
-};
-
 const resolveDefaultLocale = (value: string | undefined): Locale =>
   parseLocale(value?.trim());
 
@@ -96,7 +81,7 @@ export const getTenantDefaultLocale = async (
     rethrowUnclassifiedRpcError(error);
     return {
       defaultLocale: DEFAULT_LOCALE,
-      message: parseErrorMessage(error, genericLoadErrorMessage),
+      message: rpcErrorMessage(error, genericLoadErrorMessage),
       ok: false,
       requiresSignIn: isUnauthenticatedError(error),
     };
@@ -147,7 +132,7 @@ export const updateTenantDefaultLocale = async (input: {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     return {
-      message: parseErrorMessage(error, genericUpdateErrorMessage),
+      message: rpcErrorMessage(error, genericUpdateErrorMessage),
       ok: false,
     };
   }
