@@ -18,12 +18,12 @@
   "devDependencies": {
     "eslint-plugin-github": "6.1.2",
     "eslint-plugin-sonarjs": "4.2.0",
-    "oxfmt": "0.63.0",
-    "oxlint": "1.78.0",
+    "oxfmt": "0.64.0",
+    "oxlint": "1.79.0",
     "oxlint-plugin-react-doctor": "0.9.12",
     "turbo": "2.10.10",
     "typescript": "catalog:",
-    "ultracite": "7.10.5"
+    "ultracite": "7.10.6"
   },
   "packageManager": "pnpm@11.22.0"
 }
