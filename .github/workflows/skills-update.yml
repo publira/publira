@@ -2,7 +2,7 @@ name: Skills Update
 
 env:
   # renovate: datasource=npm depName=skills
-  SKILLS_VERSION: 1.5.22
+  SKILLS_VERSION: 1.5.23
 
 on:
   schedule:
