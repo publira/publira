@@ -1,6 +1,6 @@
 import { defineConfig } from "oxlint";
 import core from "ultracite/oxlint/core";
-import jsPlugins from "ultracite/oxlint/js-plugins";
+import jsPlugins, { jsPluginSettings } from "ultracite/oxlint/js-plugins";
 import next from "ultracite/oxlint/next";
 import nextJsPlugins from "ultracite/oxlint/next/js-plugins";
 import react from "ultracite/oxlint/react";
@@ -213,24 +213,5 @@ export default defineConfig({
     // Complexity gates are valuable but need dedicated refactors; enable later.
     "sonarjs/too-many-break-or-continue-in-loop": "off",
   },
-  settings: {
-    /**
-     * `portedRuleMode` picks the default options for the ~117 rules React
-     * Doctor ported from eslint-plugin-react, jsx-a11y, and react-refresh:
-     * `curated` is React Doctor's own lower-noise tuning, anything else is
-     * the upstream rule's contract. Up to 0.9.11 the curated tuning was the
-     * only behavior; 0.9.12 introduced the switch and made upstream the
-     * default, so `curated` is what this repository was already linted under.
-     *
-     * What the upstream contract breaks here is
-     * `react-doctor/only-export-components`, which loses the framework
-     * allow-list: every App Router route file becomes an error, because
-     * `metadata` / `generateMetadata` / `generateStaticParams` are
-     * non-component exports Next.js requires to live in `page.tsx` and
-     * `layout.tsx`, and so does every component file that co-locates a
-     * constant (`buttonVariants`, the email templates' subject and preview).
-     * Those are conventions here, not Fast Refresh hazards.
-     */
-    "react-doctor": { portedRuleMode: "curated" },
-  },
+  settings: jsPluginSettings,
 });
