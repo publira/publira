@@ -10,7 +10,7 @@
 #     -t publira/publish-episodes:local \
 #     .
 
-FROM golang:1.27-bookworm@sha256:4cdeb0986daca9cfb8b0485f762778a149206025d80ae4212fde9a8dacedca55 AS builder
+FROM golang:1.27-bookworm@sha256:a9278c7936a41f7d33dae94784df33442e71fb4d6943a08100cf1898845c5bea AS builder
 
 WORKDIR /src
 
