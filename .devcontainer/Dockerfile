@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/go:2.1.6-1.26-bookworm@sha256:1a3df7e2f24378acfb7c1048b7b018813112f280f011bad4aa9b02fff600481e
+FROM mcr.microsoft.com/devcontainers/go:2.2.1-1.26-bookworm@sha256:95e1ea23d6282242a0b21c7b8c3369f20286cc9472756d29ecc4a9c442912f4d
 
 # renovate: datasource=github-releases depName=go-task/task versioning=semver-coerced
 ARG TASK_VERSION=3.53.1
