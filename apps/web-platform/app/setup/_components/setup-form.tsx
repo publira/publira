@@ -3,36 +3,45 @@
 import { ActionForm } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
+import type { ReactNode } from "react";
 
 import { setupAction } from "../_lib/actions";
 
-export const SetupForm = () => (
+/** Nodes rather than strings; see `LoginFormCopy` for why. */
+export interface SetupFormCopy {
+  confirmPasswordLabel: ReactNode;
+  emailLabel: ReactNode;
+  nameLabel: ReactNode;
+  passwordLabel: ReactNode;
+  pendingLabel: ReactNode;
+  submitLabel: ReactNode;
+}
+
+export const SetupForm = ({
+  copy,
+  nameInput,
+}: {
+  copy: SetupFormCopy;
+  /** Carries a localized `placeholder`, which an attribute cannot stream. */
+  nameInput: ReactNode;
+}) => (
   <ActionForm
     action={setupAction}
     className="space-y-4"
-    pendingLabel="作成中..."
+    pendingLabel={copy.pendingLabel}
     submitClassName="mt-2 w-full"
-    submitLabel="管理ユーザーを作成する"
+    submitLabel={copy.submitLabel}
   >
     <Field>
       <FieldLabel htmlFor="name" required>
-        氏名
+        {copy.nameLabel}
       </FieldLabel>
-      <FieldContent>
-        <Input
-          autoComplete="name"
-          id="name"
-          name="name"
-          placeholder="管理者 太郎"
-          required
-          type="text"
-        />
-      </FieldContent>
+      <FieldContent>{nameInput}</FieldContent>
     </Field>
 
     <Field>
       <FieldLabel htmlFor="email" required>
-        メールアドレス
+        {copy.emailLabel}
       </FieldLabel>
       <FieldContent>
         <Input
@@ -48,7 +57,7 @@ export const SetupForm = () => (
 
     <Field>
       <FieldLabel htmlFor="password" required>
-        パスワード
+        {copy.passwordLabel}
       </FieldLabel>
       <FieldContent>
         <Input
@@ -64,7 +73,7 @@ export const SetupForm = () => (
 
     <Field>
       <FieldLabel htmlFor="confirmPassword" required>
-        パスワード（確認）
+        {copy.confirmPasswordLabel}
       </FieldLabel>
       <FieldContent>
         <Input

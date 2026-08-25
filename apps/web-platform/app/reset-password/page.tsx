@@ -1,9 +1,18 @@
+import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
+import { Suspense } from "react";
+
+import { Message } from "#components/message";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { ResetPasswordForm } from "./_components/reset-password-form";
 
-export const metadata: Metadata = {
-  title: "パスワード再設定",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.auth.reset_password.title") };
 };
 
 const ResetPasswordPage = () => (
@@ -12,11 +21,36 @@ const ResetPasswordPage = () => (
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          登録済みのメールアドレス宛てに、再設定リンクを送信します。
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password.description" />
+          </Suspense>
         </p>
       </div>
 
-      <ResetPasswordForm />
+      <ResetPasswordForm
+        copy={{
+          emailLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="platform.auth.fields.email_label" />
+            </Suspense>
+          ),
+          pendingLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.auth.reset_password.pending" />
+            </Suspense>
+          ),
+          submitLabel: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.auth.reset_password.submit" />
+            </Suspense>
+          ),
+          toLogin: (
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.auth.reset_password.to_login" />
+            </Suspense>
+          ),
+        }}
+      />
     </div>
   </main>
 );

@@ -1,107 +1,106 @@
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
+import type { PlatformMessageKey } from "#components/message";
 import { confirmPlatformEmailChange } from "#lib/email-change";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
-export const metadata: Metadata = {
-  title: "メールアドレス変更確認",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return { title: getMessage(messages, "platform.auth.confirm_email.title") };
 };
 
-const ConfirmationResult = async ({ token }: { token: string }) => {
-  if (!token) {
-    return (
-      <>
-        <section className="space-y-3 text-sm leading-6">
-          <p>確認リンクが無効です。</p>
-        </section>
-        <div className="text-center text-sm">
-          <Link
-            className="font-medium text-primary hover:underline"
-            href="/settings/account"
-          >
-            設定へ戻る
-          </Link>
-        </div>
-      </>
-    );
-  }
-
-  const result = await confirmPlatformEmailChange(token);
-  let message =
-    "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。";
-
-  if (result) {
-    if (result.changed) {
-      message = "メールアドレスの変更が完了しました。";
-    } else if (result.confirmed) {
-      message =
-        result.pendingConfirmationFor === "current_email"
-          ? "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。"
-          : "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。";
-    }
-  }
-
-  return (
-    <>
-      <section className="space-y-3 text-sm leading-6">
-        <p>{message}</p>
-      </section>
-      <div className="text-center text-sm">
-        <Link
-          className="font-medium text-primary hover:underline"
-          href={result?.changed ? "/" : "/settings/account"}
-        >
-          {result?.changed ? "ダッシュボードへ" : "設定へ戻る"}
-        </Link>
-      </div>
-    </>
-  );
-};
-
-const ConfirmationFallback = () => (
+const ConfirmationBody = ({
+  href,
+  link,
+  message,
+}: {
+  href: string;
+  link: PlatformMessageKey;
+  message: PlatformMessageKey;
+}) => (
   <>
-    <header className="text-center">
-      <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Platform Console</p>
-    </header>
     <section className="space-y-3 text-sm leading-6">
-      <p>確認処理を実行しています...</p>
+      <p>
+        <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+          <Message message={message} />
+        </Suspense>
+      </p>
     </section>
     <div className="text-center text-sm">
-      <Link
-        className="font-medium text-primary hover:underline"
-        href="/settings/account"
-      >
-        設定へ戻る
+      <Link className="font-medium text-primary hover:underline" href={href}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message={link} />
+        </Suspense>
       </Link>
     </div>
   </>
 );
 
-const ConfirmEmailPageContent = async ({
+const ConfirmationSkeleton = () => (
+  <>
+    <section className="space-y-3">
+      <Skeleton className="h-5 w-full" />
+      <Skeleton className="h-5 w-2/3" />
+    </section>
+    <div className="text-center">
+      <Skeleton className="mx-auto h-5 w-28" />
+    </div>
+  </>
+);
+
+/** Which sentence this screen shows is the RPC's answer. */
+const ConfirmationResult = async ({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) => {
-  await connection();
-
   const { token } = parseConfirmEmailSearchParams(await searchParams);
 
-  return (
-    <>
-      <header className="text-center">
-        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          メールアドレス変更確認
-        </p>
-      </header>
+  if (!token) {
+    return (
+      <ConfirmationBody
+        href="/settings/account"
+        link="platform.auth.confirm_email.back_to_settings"
+        message="platform.auth.confirm_email.invalid_link"
+      />
+    );
+  }
 
-      <ConfirmationResult token={token} />
-    </>
+  const result = await confirmPlatformEmailChange(token);
+
+  if (result?.changed) {
+    return (
+      <ConfirmationBody
+        href="/"
+        link="platform.auth.confirm_email.to_dashboard"
+        message="platform.auth.confirm_email.changed"
+      />
+    );
+  }
+
+  let message: PlatformMessageKey = "platform.auth.confirm_email.failed";
+  if (result?.confirmed) {
+    message =
+      result.pendingConfirmationFor === "current_email"
+        ? "platform.auth.confirm_email.pending_current_email"
+        : "platform.auth.confirm_email.pending_new_email";
+  }
+
+  return (
+    <ConfirmationBody
+      href="/settings/account"
+      link="platform.auth.confirm_email.back_to_settings"
+      message={message}
+    />
   );
 };
 
@@ -112,8 +111,17 @@ const ConfirmEmailPage = ({
 }) => (
   <main className="flex min-h-dvh items-center justify-center px-4 py-10">
     <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-      <Suspense fallback={<ConfirmationFallback />}>
-        <ConfirmEmailPageContent searchParams={searchParams} />
+      <header className="text-center">
+        <h1 className="font-serif text-2xl font-semibold">Publira</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+            <Message message="platform.auth.confirm_email.title" />
+          </Suspense>
+        </p>
+      </header>
+
+      <Suspense fallback={<ConfirmationSkeleton />}>
+        <ConfirmationResult searchParams={searchParams} />
       </Suspense>
     </div>
   </main>

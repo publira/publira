@@ -2,34 +2,49 @@
 
 import { ActionForm } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { loginAction } from "../_lib/actions";
 
+/**
+ * Copy arrives as already-rendered nodes, not strings: each one carries its own
+ * `<Suspense>` boundary, so this form is part of the static shell and only the
+ * labels stream in.
+ */
+export interface LoginFormCopy {
+  emailLabel: ReactNode;
+  forgotPassword: ReactNode;
+  passwordLabel: ReactNode;
+  pendingLabel: ReactNode;
+  submitLabel: ReactNode;
+}
+
 export const LoginForm = ({
-  nextPath,
-  resetDone,
-  sessionRevoked,
+  copy,
+  flash,
+  nextField,
 }: {
-  nextPath?: string;
-  resetDone?: boolean;
-  sessionRevoked?: boolean;
+  copy: LoginFormCopy;
+  /** Flash messages from the query. Renders nothing until it resolves. */
+  flash: ReactNode;
+  /** Hidden `next` field from the query. Nothing to show while it resolves. */
+  nextField: ReactNode;
 }) => (
   <>
     <ActionForm
       action={loginAction}
       className="space-y-4"
-      pendingLabel="ログイン中..."
+      pendingLabel={copy.pendingLabel}
       submitClassName="mt-2 w-full"
-      submitLabel="ログイン"
+      submitLabel={copy.submitLabel}
     >
-      <input name="next" type="hidden" value={nextPath} />
+      {nextField}
 
       <Field>
         <FieldLabel htmlFor="email" required>
-          メールアドレス
+          {copy.emailLabel}
         </FieldLabel>
         <FieldContent>
           <Input
@@ -45,7 +60,7 @@ export const LoginForm = ({
 
       <Field>
         <FieldLabel htmlFor="password" required>
-          パスワード
+          {copy.passwordLabel}
         </FieldLabel>
         <FieldContent>
           <Input
@@ -59,17 +74,7 @@ export const LoginForm = ({
         </FieldContent>
       </Field>
 
-      {sessionRevoked ? (
-        <FormMessage variant="destructive">
-          セッションの有効期限が切れました。もう一度ログインしてください。
-        </FormMessage>
-      ) : null}
-
-      {resetDone ? (
-        <FormMessage variant="success">
-          パスワードが再設定されました。新しいパスワードでログインしてください。
-        </FormMessage>
-      ) : null}
+      {flash}
     </ActionForm>
 
     <div className="mt-4 text-center text-sm">
@@ -77,7 +82,7 @@ export const LoginForm = ({
         className="font-medium text-primary hover:underline"
         href="/reset-password"
       >
-        パスワードを忘れた場合
+        {copy.forgotPassword}
       </Link>
     </div>
   </>

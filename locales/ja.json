@@ -37,5 +37,87 @@
     "en": "英語",
     "ja": "日本語",
     "label": "表示言語"
+  },
+  "platform": {
+    "auth": {
+      "confirm_email": {
+        "back_to_settings": "設定へ戻る",
+        "changed": "メールアドレスの変更が完了しました。",
+        "failed": "メールアドレスの変更に失敗しました。リンクの有効期限切れ、または無効なリンクの可能性があります。",
+        "invalid_link": "確認リンクが無効です。",
+        "pending_current_email": "この確認は完了しました。現在のメールアドレス側の確認が完了すると変更が反映されます。",
+        "pending_new_email": "この確認は完了しました。新しいメールアドレス側の確認が完了すると変更が反映されます。",
+        "title": "メールアドレス変更確認",
+        "to_dashboard": "ダッシュボードへ"
+      },
+      "confirm_password": {
+        "confirm_password_label": "新しいパスワード（確認）",
+        "description": "新しいパスワードを入力してください。設定後はログイン画面からすぐに利用できます。",
+        "expired": "この再設定リンクは有効期限が切れています。",
+        "failure_help": "もう一度メール送信からやり直すと、新しい再設定リンクを受け取れます。",
+        "invalid": "この再設定リンクは無効です。",
+        "password_label": "新しいパスワード",
+        "password_mismatch": "パスワード確認が一致しません。",
+        "request_again": "再設定メールを送信",
+        "submit": "新しいパスワードを設定",
+        "title": "新しいパスワードの設定",
+        "to_login": "ログイン画面へ"
+      },
+      "errors": {
+        "new_password_required": "新しいパスワードを入力してください。",
+        "reset_confirm_failed": "パスワード再設定に失敗しました。時間をおいて再試行してください。",
+        "reset_link_expired": "再設定リンクの有効期限が切れています。もう一度メール送信からやり直してください。",
+        "reset_link_invalid": "再設定リンクが無効です。もう一度メール送信からやり直してください。",
+        "reset_request_failed": "再設定メールの送信に失敗しました。時間をおいて再試行してください。",
+        "reset_request_invalid_email": "メールアドレスを確認してください。",
+        "setup_already_completed": "セットアップは既に完了しています。ログイン画面からサインインしてください。",
+        "setup_failed": "セットアップに失敗しました。時間をおいて再試行してください。"
+      },
+      "fields": {
+        "email_invalid": "メールアドレスの形式が正しくありません。",
+        "email_label": "メールアドレス",
+        "email_required": "メールアドレスを入力してください。",
+        "invalid_token": "確認リンクが無効です。",
+        "password_label": "パスワード",
+        "password_required": "パスワードを入力してください。"
+      },
+      "login": {
+        "eyebrow": "Platform Console ログイン",
+        "failed": "メールアドレスまたはパスワードが正しくありません。",
+        "forgot_password": "パスワードを忘れた場合",
+        "pending": "ログイン中...",
+        "reset_done": "パスワードが再設定されました。新しいパスワードでログインしてください。",
+        "session_revoked": "セッションの有効期限が切れました。もう一度ログインしてください。",
+        "submit": "ログイン",
+        "title": "ログイン"
+      },
+      "reset_password": {
+        "description": "登録済みのメールアドレス宛てに、再設定リンクを送信します。",
+        "pending": "送信中...",
+        "submit": "再設定メールを送信",
+        "title": "パスワード再設定",
+        "to_login": "ログイン画面へ戻る"
+      },
+      "reset_password_requested": {
+        "check_spam": "メール内のリンクから新しいパスワードを設定してください。届かない場合は、迷惑メールフォルダもご確認ください。",
+        "sent": "メールアドレスが登録されている場合、パスワード再設定メールを送信しました。",
+        "sent_to": "送信先: {email}",
+        "title": "再設定メール送信完了",
+        "to_login": "ログイン画面へ戻る",
+        "try_another_email": "別のメールアドレスで試す"
+      },
+      "setup": {
+        "api_unavailable": "APIサーバーに接続できません。サーバーの起動状態を確認してから再試行してください。",
+        "confirm_password_label": "パスワード（確認）",
+        "description": "最初の管理ユーザーアカウントを作成してください。",
+        "name_label": "氏名",
+        "name_placeholder": "管理者 太郎",
+        "name_required": "すべての項目を入力してください。",
+        "password_mismatch": "パスワードと確認用パスワードが一致しません。",
+        "pending": "作成中...",
+        "submit": "管理ユーザーを作成する",
+        "title": "初期セットアップ"
+      }
+    }
   }
 }

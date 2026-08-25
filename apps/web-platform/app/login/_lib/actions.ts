@@ -3,6 +3,7 @@
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
+import { getMessage } from "@publira/utils/i18n";
 import { encryptSessionPayload, resolveAuthSecret } from "@publira/web-session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -18,18 +19,24 @@ import {
   nextPathFormSchema,
   passwordFormSchema,
 } from "#lib/auth-input";
+import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
+import type { PlatformMessages } from "#lib/locale";
 
-const loginFormSchema = z.object({
-  email: emailFormSchema,
-  next: nextPathFormSchema,
-  password: passwordFormSchema,
-});
+const loginFormSchema = (messages: PlatformMessages) =>
+  z.object({
+    email: emailFormSchema(messages),
+    next: nextPathFormSchema,
+    password: passwordFormSchema(messages),
+  });
 
 export const loginAction = async (
   _prevState: FormActionState,
   formData: FormData
 ): Promise<FormActionState> => {
-  const parsed = loginFormSchema.safeParse(
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  const parsed = loginFormSchema(messages).safeParse(
     toFormDataInput(formData, {
       email: "value",
       next: "value",
@@ -38,7 +45,7 @@ export const loginAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error),
+      message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
@@ -48,7 +55,7 @@ export const loginAction = async (
   const result = await loginPlatform(email, password);
   if (!result) {
     return {
-      message: "メールアドレスまたはパスワードが正しくありません。",
+      message: getMessage(messages, "platform.auth.login.failed"),
       ok: false,
     };
   }
