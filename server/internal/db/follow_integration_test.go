@@ -21,6 +21,7 @@ type followTargets struct {
 	otherUser uuid.UUID
 	episodeID uuid.UUID
 	creatorID uuid.UUID
+	seriesID  uuid.UUID
 }
 
 func seedFollowTargets(t *testing.T, ctx context.Context, db *sql.DB, suffix string) followTargets {
@@ -30,7 +31,11 @@ func seedFollowTargets(t *testing.T, ctx context.Context, db *sql.DB, suffix str
 	otherUser := mustInsertUser(t, ctx, db, tenantID, "O"+suffix, "other-"+suffix+"@example.com", "Other "+suffix)
 	episodeID := mustInsertEpisode(t, ctx, db, tenantID, "E"+suffix, "Episode "+suffix)
 	creatorID := mustInsertFollowCreator(t, ctx, db, tenantID, "C"+suffix)
-	return followTargets{tenantID, userID, otherUser, episodeID, creatorID}
+	var seriesID uuid.UUID
+	if err := db.QueryRowContext(ctx, "SELECT series_id FROM episodes WHERE id = $1", episodeID).Scan(&seriesID); err != nil {
+		t.Fatalf("get episode series: %v", err)
+	}
+	return followTargets{tenantID, userID, otherUser, episodeID, creatorID, seriesID}
 }
 
 func mustInsertFollowCreator(t *testing.T, ctx context.Context, db *sql.DB, tenantID uuid.UUID, publicID string) uuid.UUID {
@@ -86,11 +91,17 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 	if _, err := q.CreateCreatorFollow(ctx, dbmodels.CreateCreatorFollowParams{TenantID: a.tenantID, UserID: a.userID, CreatorID: a.creatorID}); err != nil {
 		t.Fatalf("create creator follow: %v", err)
 	}
+	if _, err := q.CreateSeriesFollow(ctx, dbmodels.CreateSeriesFollowParams{TenantID: a.tenantID, UserID: a.userID, SeriesID: a.seriesID}); err != nil {
+		t.Fatalf("create series follow: %v", err)
+	}
 	if _, err := q.CreateEpisodeFollow(ctx, dbmodels.CreateEpisodeFollowParams{TenantID: a.tenantID, UserID: a.userID, EpisodeID: a.episodeID}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("duplicate episode follow error = %v, want sql.ErrNoRows", err)
 	}
 	if _, err := q.CreateCreatorFollow(ctx, dbmodels.CreateCreatorFollowParams{TenantID: a.tenantID, UserID: a.userID, CreatorID: a.creatorID}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("duplicate creator follow error = %v, want sql.ErrNoRows", err)
+	}
+	if _, err := q.CreateSeriesFollow(ctx, dbmodels.CreateSeriesFollowParams{TenantID: a.tenantID, UserID: a.userID, SeriesID: a.seriesID}); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("duplicate series follow error = %v, want sql.ErrNoRows", err)
 	}
 
 	for _, tc := range []struct {
@@ -112,6 +123,12 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 			constraint: "creator_follows_tenant_creator_id_fkey",
 		},
 		{
+			name:       "series from another tenant",
+			statement:  "INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)",
+			arguments:  []any{a.tenantID, a.userID, b.seriesID},
+			constraint: "series_follows_tenant_series_id_fkey",
+		},
+		{
 			name:       "member from another tenant",
 			statement:  "INSERT INTO episode_follows (tenant_id, user_id, episode_id) VALUES ($1, $2, $3)",
 			arguments:  []any{a.tenantID, b.userID, a.episodeID},
@@ -129,10 +146,12 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 	withFollowMember(t, pg, a.tenantID, a.userID, func(ctx context.Context, conn *sql.Conn) {
 		assertFollowCount(t, ctx, conn, "episode_follows", 1)
 		assertFollowCount(t, ctx, conn, "creator_follows", 1)
+		assertFollowCount(t, ctx, conn, "series_follows", 1)
 	})
 	withFollowMember(t, pg, a.tenantID, a.otherUser, func(ctx context.Context, conn *sql.Conn) {
 		assertFollowCount(t, ctx, conn, "episode_follows", 0)
 		assertFollowCount(t, ctx, conn, "creator_follows", 0)
+		assertFollowCount(t, ctx, conn, "series_follows", 0)
 		result, err := conn.ExecContext(ctx, "DELETE FROM episode_follows WHERE episode_id = $1", a.episodeID)
 		if err != nil {
 			t.Fatalf("delete another member's follow: %v", err)
@@ -149,6 +168,7 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 	withFollowMember(t, pg, b.tenantID, b.userID, func(ctx context.Context, conn *sql.Conn) {
 		assertFollowCount(t, ctx, conn, "episode_follows", 0)
 		assertFollowCount(t, ctx, conn, "creator_follows", 0)
+		assertFollowCount(t, ctx, conn, "series_follows", 0)
 	})
 
 	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM users WHERE id = $1", a.userID); err != nil {
@@ -156,6 +176,7 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 	}
 	assertSuperuserFollowCount(t, ctx, pg.DB, "episode_follows", 0)
 	assertSuperuserFollowCount(t, ctx, pg.DB, "creator_follows", 0)
+	assertSuperuserFollowCount(t, ctx, pg.DB, "series_follows", 0)
 
 	targetUser := mustInsertUser(t, ctx, pg.DB, a.tenantID, "TARGFOLA01", "target-follow@example.com", "Target Follow")
 	if _, err := q.CreateEpisodeFollow(ctx, dbmodels.CreateEpisodeFollowParams{TenantID: a.tenantID, UserID: targetUser, EpisodeID: a.episodeID}); err != nil {
@@ -164,14 +185,21 @@ func TestFollowsEnforceTenantAndMemberIsolation(t *testing.T) {
 	if _, err := q.CreateCreatorFollow(ctx, dbmodels.CreateCreatorFollowParams{TenantID: a.tenantID, UserID: targetUser, CreatorID: a.creatorID}); err != nil {
 		t.Fatalf("create creator follow for deletion: %v", err)
 	}
+	if _, err := q.CreateSeriesFollow(ctx, dbmodels.CreateSeriesFollowParams{TenantID: a.tenantID, UserID: targetUser, SeriesID: a.seriesID}); err != nil {
+		t.Fatalf("create series follow for deletion: %v", err)
+	}
 	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM episodes WHERE id = $1", a.episodeID); err != nil {
 		t.Fatalf("delete episode: %v", err)
 	}
 	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM creators WHERE id = $1", a.creatorID); err != nil {
 		t.Fatalf("delete creator: %v", err)
 	}
+	if _, err := pg.DB.ExecContext(ctx, "DELETE FROM series WHERE id = $1", a.seriesID); err != nil {
+		t.Fatalf("delete series: %v", err)
+	}
 	assertSuperuserFollowCount(t, ctx, pg.DB, "episode_follows", 0)
 	assertSuperuserFollowCount(t, ctx, pg.DB, "creator_follows", 0)
+	assertSuperuserFollowCount(t, ctx, pg.DB, "series_follows", 0)
 }
 
 func TestUserFollowsTimelineAndPublishedPredicates(t *testing.T) {
@@ -190,23 +218,29 @@ func TestUserFollowsTimelineAndPublishedPredicates(t *testing.T) {
 	if _, err := q.CreateCreatorFollow(ctx, dbmodels.CreateCreatorFollowParams{TenantID: targets.tenantID, UserID: targets.userID, CreatorID: targets.creatorID}); err != nil {
 		t.Fatalf("create creator follow: %v", err)
 	}
+	if _, err := q.CreateSeriesFollow(ctx, dbmodels.CreateSeriesFollowParams{TenantID: targets.tenantID, UserID: targets.userID, SeriesID: targets.seriesID}); err != nil {
+		t.Fatalf("create series follow: %v", err)
+	}
 	if _, err := pg.DB.ExecContext(ctx, "UPDATE episode_follows SET created_at = NOW() - INTERVAL '2 minutes'"); err != nil {
 		t.Fatalf("set episode followed_at: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE series_follows SET created_at = NOW() - INTERVAL '1 minute'"); err != nil {
+		t.Fatalf("set series followed_at: %v", err)
 	}
 
 	follows, err := q.ListUserFollowsByCreatedAtDesc(ctx, dbmodels.ListUserFollowsByCreatedAtDescParams{TenantID: targets.tenantID, UserID: targets.userID, Limit: 10})
 	if err != nil {
 		t.Fatalf("list follows: %v", err)
 	}
-	if len(follows) != 2 || follows[0].TargetType != "creator" || follows[0].TargetID != targets.creatorID || follows[1].TargetType != "episode" || follows[1].TargetID != targets.episodeID {
-		t.Fatalf("timeline = %#v, want creator then episode", follows)
+	if len(follows) != 3 || follows[0].TargetType != "creator" || follows[0].TargetID != targets.creatorID || follows[1].TargetType != "series" || follows[1].TargetID != targets.seriesID || follows[2].TargetType != "episode" || follows[2].TargetID != targets.episodeID {
+		t.Fatalf("timeline = %#v, want creator then series then episode", follows)
 	}
-	assertPublishedFollow(t, ctx, q, targets, true, true)
+	assertPublishedFollow(t, ctx, q, targets, true, true, true)
 
 	if _, err := pg.DB.ExecContext(ctx, "UPDATE episode_listings SET status = 'draft' WHERE episode_id = $1", targets.episodeID); err != nil {
 		t.Fatalf("unpublish episode: %v", err)
 	}
-	assertPublishedFollow(t, ctx, q, targets, false, true)
+	assertPublishedFollow(t, ctx, q, targets, false, true, true)
 	if _, err := pg.DB.ExecContext(ctx, `
 		UPDATE series s
 		SET is_published = false
@@ -215,13 +249,16 @@ func TestUserFollowsTimelineAndPublishedPredicates(t *testing.T) {
 	`, targets.episodeID); err != nil {
 		t.Fatalf("unpublish series: %v", err)
 	}
-	assertPublishedFollow(t, ctx, q, targets, false, false)
+	assertPublishedFollow(t, ctx, q, targets, false, false, false)
 
 	if affected, err := q.DeleteEpisodeFollow(ctx, dbmodels.DeleteEpisodeFollowParams{TenantID: targets.tenantID, UserID: targets.userID, EpisodeID: targets.episodeID}); err != nil || affected != 1 {
 		t.Fatalf("delete episode follow = %d, %v; want 1, nil", affected, err)
 	}
 	if affected, err := q.DeleteCreatorFollow(ctx, dbmodels.DeleteCreatorFollowParams{TenantID: targets.tenantID, UserID: targets.userID, CreatorID: targets.creatorID}); err != nil || affected != 1 {
 		t.Fatalf("delete creator follow = %d, %v; want 1, nil", affected, err)
+	}
+	if affected, err := q.DeleteSeriesFollow(ctx, dbmodels.DeleteSeriesFollowParams{TenantID: targets.tenantID, UserID: targets.userID, SeriesID: targets.seriesID}); err != nil || affected != 1 {
+		t.Fatalf("delete series follow = %d, %v; want 1, nil", affected, err)
 	}
 	if affected, err := q.DeleteEpisodeFollow(ctx, dbmodels.DeleteEpisodeFollowParams{TenantID: targets.tenantID, UserID: targets.userID, EpisodeID: targets.episodeID}); err != nil || affected != 0 {
 		t.Fatalf("repeat delete episode follow = %d, %v; want 0, nil", affected, err)
@@ -251,7 +288,7 @@ func publishFollowTargets(t *testing.T, ctx context.Context, db *sql.DB, targets
 	}
 }
 
-func assertPublishedFollow(t *testing.T, ctx context.Context, q *dbmodels.Queries, targets followTargets, wantEpisode, wantCreator bool) {
+func assertPublishedFollow(t *testing.T, ctx context.Context, q *dbmodels.Queries, targets followTargets, wantEpisode, wantCreator, wantSeries bool) {
 	t.Helper()
 	episode, err := q.UserFollowsPublishedEpisode(ctx, dbmodels.UserFollowsPublishedEpisodeParams{TenantID: targets.tenantID, UserID: targets.userID, EpisodeID: targets.episodeID})
 	if err != nil || episode != wantEpisode {
@@ -260,6 +297,10 @@ func assertPublishedFollow(t *testing.T, ctx context.Context, q *dbmodels.Querie
 	creator, err := q.UserFollowsPublishedCreator(ctx, dbmodels.UserFollowsPublishedCreatorParams{TenantID: targets.tenantID, UserID: targets.userID, CreatorID: targets.creatorID})
 	if err != nil || creator != wantCreator {
 		t.Fatalf("published creator follow = %v, %v; want %v, nil", creator, err, wantCreator)
+	}
+	series, err := q.UserFollowsPublishedSeries(ctx, dbmodels.UserFollowsPublishedSeriesParams{TenantID: targets.tenantID, UserID: targets.userID, SeriesID: targets.seriesID})
+	if err != nil || series != wantSeries {
+		t.Fatalf("published series follow = %v, %v; want %v, nil", series, err, wantSeries)
 	}
 }
 

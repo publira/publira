@@ -10,7 +10,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { FollowControlSkeleton } from "#components/follow-button";
+import { FollowControl } from "#components/follow-control";
 import { PageLoadError } from "#components/page-load-error";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPublishedAuthorDetail } from "#lib/authors";
 import type { PublishedAuthorDetail } from "#lib/authors";
 import { getTenantSiteLabel } from "#lib/tenant";
@@ -289,9 +292,22 @@ const AuthorDetailContent = async ({
             <p className="mb-3 text-xs tracking-[0.24em] text-muted-foreground uppercase">
               {siteLabel}
             </p>
-            <h1 className="mb-2 font-serif text-4xl font-bold text-foreground">
-              {author.name}
-            </h1>
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-4">
+              <h1 className="font-serif text-4xl font-bold text-foreground">
+                {author.name}
+              </h1>
+              <SectionErrorBoundary title="フォロー操作を表示できませんでした">
+                <Suspense fallback={<FollowControlSkeleton />}>
+                  <FollowControl
+                    publicId={author.id}
+                    returnTo={`/authors/${author.id}`}
+                    targetKind="author"
+                    targetName={author.name}
+                    tenantId={tenantId}
+                  />
+                </Suspense>
+              </SectionErrorBoundary>
+            </div>
             <p className="text-sm text-muted-foreground">
               公開中シリーズ {author.seriesCount} 件
             </p>

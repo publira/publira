@@ -61,8 +61,8 @@ type CreateEpisodeFollowParams struct {
 	EpisodeID uuid.UUID `json:"episode_id"`
 }
 
-// Durable member follows (#1128). Episode and creator follows have distinct
-// source tables; content_events must not be used to model either relation.
+// Durable member follows (#1128). Episode, series, and creator follows have
+// distinct source tables; content_events must not be used to model any of them.
 func (q *Queries) CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error) {
 	row := q.db.QueryRowContext(ctx, createEpisodeFollow, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var i EpisodeFollow
@@ -70,6 +70,35 @@ func (q *Queries) CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFoll
 		&i.TenantID,
 		&i.UserID,
 		&i.EpisodeID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createSeriesFollow = `-- name: CreateSeriesFollow :one
+INSERT INTO series_follows (tenant_id, user_id, series_id)
+VALUES (
+    $1,
+    $2,
+    $3
+)
+ON CONFLICT (tenant_id, user_id, series_id) DO NOTHING
+RETURNING tenant_id, user_id, series_id, created_at
+`
+
+type CreateSeriesFollowParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
+func (q *Queries) CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollowParams) (SeriesFollow, error) {
+	row := q.db.QueryRowContext(ctx, createSeriesFollow, arg.TenantID, arg.UserID, arg.SeriesID)
+	var i SeriesFollow
+	err := row.Scan(
+		&i.TenantID,
+		&i.UserID,
+		&i.SeriesID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -115,6 +144,50 @@ func (q *Queries) DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFoll
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const deleteSeriesFollow = `-- name: DeleteSeriesFollow :execrows
+DELETE FROM series_follows
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND series_id = $3
+`
+
+type DeleteSeriesFollowParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
+func (q *Queries) DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollowParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteSeriesFollow, arg.TenantID, arg.UserID, arg.SeriesID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const getPublishedSeriesByPublicIDForFollow = `-- name: GetPublishedSeriesByPublicIDForFollow :one
+SELECT s.id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.public_id = $2
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+LIMIT 1
+`
+
+type GetPublishedSeriesByPublicIDForFollowParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) GetPublishedSeriesByPublicIDForFollow(ctx context.Context, arg GetPublishedSeriesByPublicIDForFollowParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getPublishedSeriesByPublicIDForFollow, arg.TenantID, arg.PublicID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listPublishedCreatorFollowTargetPublicIDsByIDs = `-- name: ListPublishedCreatorFollowTargetPublicIDsByIDs :many
@@ -222,6 +295,50 @@ func (q *Queries) ListPublishedEpisodeFollowTargetPublicIDsByIDs(ctx context.Con
 	return items, nil
 }
 
+const listPublishedSeriesFollowTargetPublicIDsByIDs = `-- name: ListPublishedSeriesFollowTargetPublicIDsByIDs :many
+SELECT s.id,
+    s.public_id
+FROM series s
+WHERE s.tenant_id = $1
+    AND s.id = ANY($2::uuid [])
+    AND s.is_published = true
+    AND s.published_at IS NOT NULL
+    AND s.published_at <= NOW()
+`
+
+type ListPublishedSeriesFollowTargetPublicIDsByIDsParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Ids      []uuid.UUID `json:"ids"`
+}
+
+type ListPublishedSeriesFollowTargetPublicIDsByIDsRow struct {
+	ID       uuid.UUID `json:"id"`
+	PublicID string    `json:"public_id"`
+}
+
+func (q *Queries) ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedSeriesFollowTargetPublicIDsByIDs, arg.TenantID, pq.Array(arg.Ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedSeriesFollowTargetPublicIDsByIDsRow
+	for rows.Next() {
+		var i ListPublishedSeriesFollowTargetPublicIDsByIDsRow
+		if err := rows.Scan(&i.ID, &i.PublicID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserFollowsByCreatedAtAsc = `-- name: ListUserFollowsByCreatedAtAsc :many
 SELECT target_type,
     target_id,
@@ -265,6 +382,18 @@ FROM (
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
         )
+    UNION ALL
+    SELECT 'series'::text AS target_type,
+        sf.series_id AS target_id,
+        sf.created_at
+    FROM series_follows sf
+        JOIN series s ON s.tenant_id = sf.tenant_id
+            AND s.id = sf.series_id
+    WHERE sf.tenant_id = $1
+        AND sf.user_id = $2
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
 ) AS follows
 WHERE $3::timestamptz IS NULL
     OR (
@@ -381,6 +510,18 @@ FROM (
                 AND s.published_at IS NOT NULL
                 AND s.published_at <= NOW()
         )
+    UNION ALL
+    SELECT 'series'::text AS target_type,
+        sf.series_id AS target_id,
+        sf.created_at
+    FROM series_follows sf
+        JOIN series s ON s.tenant_id = sf.tenant_id
+            AND s.id = sf.series_id
+    WHERE sf.tenant_id = $1
+        AND sf.user_id = $2
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
 ) AS follows
 WHERE $3::timestamptz IS NULL
     OR (
@@ -528,4 +669,34 @@ func (q *Queries) UserFollowsPublishedEpisode(ctx context.Context, arg UserFollo
 	var follows_published_episode bool
 	err := row.Scan(&follows_published_episode)
 	return follows_published_episode, err
+}
+
+const userFollowsPublishedSeries = `-- name: UserFollowsPublishedSeries :one
+SELECT EXISTS (
+    SELECT 1
+    FROM series_follows sf
+        JOIN series s ON s.tenant_id = sf.tenant_id
+            AND s.id = sf.series_id
+    WHERE sf.tenant_id = $1
+        AND sf.user_id = $2
+        AND sf.series_id = $3
+        AND s.is_published = true
+        AND s.published_at IS NOT NULL
+        AND s.published_at <= NOW()
+) AS follows_published_series
+`
+
+type UserFollowsPublishedSeriesParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
+// Matches GetPublishedSeriesByPublicIDForFollow, so an unpublished series is
+// indistinguishable from an unfollowed one.
+func (q *Queries) UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, userFollowsPublishedSeries, arg.TenantID, arg.UserID, arg.SeriesID)
+	var follows_published_series bool
+	err := row.Scan(&follows_published_series)
+	return follows_published_series, err
 }

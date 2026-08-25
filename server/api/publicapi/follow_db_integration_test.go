@@ -25,6 +25,13 @@ func authorFollowTarget(publicID string) *publirav1.FollowTarget {
 	}
 }
 
+func seriesFollowTarget(publicID string) *publirav1.FollowTarget {
+	return &publirav1.FollowTarget{
+		Type:     publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES,
+		PublicId: publicID,
+	}
+}
+
 func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTFOLA", "follow-a.example.com", "Follow A")
@@ -74,6 +81,13 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 	}
 	if !follow(authorFollowTarget(author.PublicID)).Msg.IsFollowing {
 		t.Fatal("author Follow is_following = false")
+	}
+	if !follow(seriesFollowTarget(series.PublicID)).Msg.IsFollowing {
+		t.Fatal("series Follow is_following = false")
+	}
+	follow(seriesFollowTarget(series.PublicID))
+	if got := env.countRows(t, "SELECT COUNT(*) FROM series_follows WHERE tenant_id = $1 AND user_id = $2 AND series_id = $3", tenant.ID, member.ID, series.ID); got != 1 {
+		t.Fatalf("series follow rows = %d, want 1", got)
 	}
 
 	after, err := client.GetMyFollowStatus(context.Background(), request(episodeFollowTarget(episode.PublicID)))
@@ -166,7 +180,7 @@ func TestDBFollowServiceDoesNotRevealUnavailableTargets(t *testing.T) {
 	foreignEpisode := env.PG.SeedEpisode(t, otherTenant.ID, foreignSeries.ID, testutil.EpisodeSeed{PublicID: "EPISODEFOLD", Title: "Foreign episode", Status: testutil.EpisodeStatusPublished})
 	client := env.followClient()
 
-	for _, target := range []*publirav1.FollowTarget{episodeFollowTarget(draftEpisode.PublicID), episodeFollowTarget(foreignEpisode.PublicID), episodeFollowTarget("MISSINGFOLLO")} {
+	for _, target := range []*publirav1.FollowTarget{episodeFollowTarget(draftEpisode.PublicID), episodeFollowTarget(foreignEpisode.PublicID), episodeFollowTarget("MISSINGFOLLO"), seriesFollowTarget(draftSeries.PublicID), seriesFollowTarget(foreignSeries.PublicID), seriesFollowTarget("MISSINGFOLLS")} {
 		_, err := client.Follow(context.Background(), newBearerRequest(&publirav1.FollowRequest{Tenant: tenantContext(tenant), Target: target}, tokenFor(t, tenant, member)))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Fatalf("Follow %q code = %v, want not_found (err=%v)", target.PublicId, connect.CodeOf(err), err)

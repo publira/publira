@@ -1,0 +1,151 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+  mockFollowTarget,
+  mockRequirePublicSession,
+  mockUnfollowTarget,
+  mockUpdateTag,
+} = vi.hoisted(() => ({
+  mockFollowTarget: vi.fn(),
+  mockRequirePublicSession: vi.fn(),
+  mockUnfollowTarget: vi.fn(),
+  mockUpdateTag: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  updateTag: mockUpdateTag,
+}));
+
+vi.mock("./follow", () => ({
+  followTarget: mockFollowTarget,
+  followTargetKinds: ["author", "series"],
+  followsCacheTag: (tenantId: string) => `tenant:${tenantId}:follows`,
+  unfollowTarget: mockUnfollowTarget,
+}));
+
+vi.mock("./auth-session", () => ({
+  requirePublicSession: mockRequirePublicSession,
+  withPublicSessionReauth: (_returnTo: string, run: () => Promise<unknown>) =>
+    run(),
+}));
+
+const formData = (values: Record<string, string>): FormData => {
+  const data = new FormData();
+  for (const [name, value] of Object.entries(values)) {
+    data.set(name, value);
+  }
+  return data;
+};
+
+const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+describe("toggleFollowAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockRequirePublicSession.mockResolvedValue("session-token");
+  });
+
+  it("フォロー成功後に会員のフォローキャッシュだけを更新する", async () => {
+    mockFollowTarget.mockResolvedValueOnce({ isFollowing: true, ok: true });
+
+    const { toggleFollowAction } = await import("./follow-actions");
+    const result = await toggleFollowAction(
+      null,
+      formData({
+        intent: "follow",
+        publicId: "SERIES01",
+        returnTo: "/series/SERIES01",
+        targetKind: "series",
+        tenantId,
+      })
+    );
+
+    expect(result).toEqual({
+      isFollowing: true,
+      message: "フォローしました。",
+      ok: true,
+    });
+    expect(mockFollowTarget).toHaveBeenCalledWith({
+      publicId: "SERIES01",
+      targetKind: "series",
+      tenantId,
+    });
+    expect(mockRequirePublicSession).toHaveBeenCalledWith("/series/SERIES01");
+    expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
+  });
+
+  it("解除成功後に会員のフォローキャッシュだけを更新する", async () => {
+    mockUnfollowTarget.mockResolvedValueOnce({ isFollowing: false, ok: true });
+
+    const { toggleFollowAction } = await import("./follow-actions");
+    const result = await toggleFollowAction(
+      null,
+      formData({
+        intent: "unfollow",
+        publicId: "AUTHOR01",
+        returnTo: "/authors/AUTHOR01",
+        targetKind: "author",
+        tenantId,
+      })
+    );
+
+    expect(result).toEqual({
+      isFollowing: false,
+      message: "フォローを解除しました。",
+      ok: true,
+    });
+    expect(mockUnfollowTarget).toHaveBeenCalledWith({
+      publicId: "AUTHOR01",
+      targetKind: "author",
+      tenantId,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:follows`);
+  });
+
+  it("不正な対象種別は API を呼ばない", async () => {
+    const { toggleFollowAction } = await import("./follow-actions");
+    const result = await toggleFollowAction(
+      null,
+      formData({
+        intent: "follow",
+        publicId: "SERIES01",
+        returnTo: "/series/SERIES01",
+        targetKind: "episode",
+        tenantId,
+      })
+    );
+
+    expect(result).toEqual({
+      message: "入力内容を確認してください。",
+      ok: false,
+    });
+    expect(mockFollowTarget).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("API が拒否したらメッセージを返し、タグは更新しない", async () => {
+    mockFollowTarget.mockResolvedValueOnce({
+      message: "対象が見つかりません。",
+      ok: false,
+    });
+
+    const { toggleFollowAction } = await import("./follow-actions");
+    const result = await toggleFollowAction(
+      null,
+      formData({
+        intent: "follow",
+        publicId: "MISSING01",
+        returnTo: "/series/MISSING01",
+        targetKind: "series",
+        tenantId,
+      })
+    );
+
+    expect(result).toEqual({
+      message: "対象が見つかりません。",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});

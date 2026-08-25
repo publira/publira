@@ -146,6 +146,7 @@ const (
 	FollowTargetType_FOLLOW_TARGET_TYPE_UNSPECIFIED FollowTargetType = 0
 	FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE     FollowTargetType = 1
 	FollowTargetType_FOLLOW_TARGET_TYPE_AUTHOR      FollowTargetType = 2
+	FollowTargetType_FOLLOW_TARGET_TYPE_SERIES      FollowTargetType = 3
 )
 
 // Enum value maps for FollowTargetType.
@@ -154,11 +155,13 @@ var (
 		0: "FOLLOW_TARGET_TYPE_UNSPECIFIED",
 		1: "FOLLOW_TARGET_TYPE_EPISODE",
 		2: "FOLLOW_TARGET_TYPE_AUTHOR",
+		3: "FOLLOW_TARGET_TYPE_SERIES",
 	}
 	FollowTargetType_value = map[string]int32{
 		"FOLLOW_TARGET_TYPE_UNSPECIFIED": 0,
 		"FOLLOW_TARGET_TYPE_EPISODE":     1,
 		"FOLLOW_TARGET_TYPE_AUTHOR":      2,
+		"FOLLOW_TARGET_TYPE_SERIES":      3,
 	}
 )
 
@@ -1757,7 +1760,7 @@ func (x *UnfollowResponse) GetIsFollowing() bool {
 // One currently public target followed by the authenticated member.
 type MyFollow struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Explicitly distinguishes episode and author follows in a mixed timeline.
+	// Explicitly distinguishes episode, author, and series follows in a mixed timeline.
 	TargetType     FollowTargetType `protobuf:"varint,1,opt,name=target_type,json=targetType,proto3,enum=publira.v1.FollowTargetType" json:"target_type,omitempty"`
 	TargetPublicId string           `protobuf:"bytes,2,opt,name=target_public_id,json=targetPublicId,proto3" json:"target_public_id,omitempty"`
 	FollowedAt     string           `protobuf:"bytes,3,opt,name=followed_at,json=followedAt,proto3" json:"followed_at,omitempty"`
@@ -2523,11 +2526,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x1aEPISODE_ACCESS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13EPISODE_ACCESS_FREE\x10\x01\x12\x19\n" +
 	"\x15EPISODE_ACCESS_LOCKED\x10\x02\x12\x1b\n" +
-	"\x17EPISODE_ACCESS_ENTITLED\x10\x03*u\n" +
+	"\x17EPISODE_ACCESS_ENTITLED\x10\x03*\x94\x01\n" +
 	"\x10FollowTargetType\x12\"\n" +
 	"\x1eFOLLOW_TARGET_TYPE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aFOLLOW_TARGET_TYPE_EPISODE\x10\x01\x12\x1d\n" +
-	"\x19FOLLOW_TARGET_TYPE_AUTHOR\x10\x022\xef\x06\n" +
+	"\x19FOLLOW_TARGET_TYPE_AUTHOR\x10\x02\x12\x1d\n" +
+	"\x19FOLLOW_TARGET_TYPE_SERIES\x10\x032\xef\x06\n" +
 	"\x0eCatalogService\x12h\n" +
 	"\x13ListPublishedLabels\x12&.publira.v1.ListPublishedLabelsRequest\x1a'.publira.v1.ListPublishedLabelsResponse\"\x00\x12h\n" +
 	"\x13ListPublishedSeries\x12&.publira.v1.ListPublishedSeriesRequest\x1a'.publira.v1.ListPublishedSeriesResponse\"\x00\x12\\\n" +

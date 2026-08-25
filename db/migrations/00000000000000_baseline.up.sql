@@ -491,6 +491,16 @@ CREATE TABLE series (
     eye_catch_image_id uuid
 );
 
+-- TABLE: series_follows
+-- Series follows are independent from episode and creator follows. Following a
+-- work does not follow its episodes or authors.
+CREATE TABLE series_follows (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    series_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 -- TABLE: series_creators
 CREATE TABLE series_creators (
     series_id uuid NOT NULL,
@@ -1010,6 +1020,10 @@ ALTER TABLE ONLY series
 ALTER TABLE ONLY series
     ADD CONSTRAINT series_tenant_id_id_key UNIQUE (tenant_id, id);
 
+-- CONSTRAINT: series_follows series_follows_pkey
+ALTER TABLE ONLY series_follows
+    ADD CONSTRAINT series_follows_pkey PRIMARY KEY (tenant_id, user_id, series_id);
+
 -- CONSTRAINT: tenant_admin_invitations tenant_admin_invitations_pkey
 ALTER TABLE ONLY tenant_admin_invitations
     ADD CONSTRAINT tenant_admin_invitations_pkey PRIMARY KEY (id);
@@ -1214,6 +1228,9 @@ CREATE INDEX idx_episode_listings_tenant_id ON episode_listings USING btree (ten
 
 -- INDEX: idx_episode_follows_tenant_user_created_at
 CREATE INDEX idx_episode_follows_tenant_user_created_at ON episode_follows USING btree (tenant_id, user_id, created_at DESC, episode_id);
+
+-- INDEX: idx_series_follows_tenant_user_created_at
+CREATE INDEX idx_series_follows_tenant_user_created_at ON series_follows USING btree (tenant_id, user_id, created_at DESC, series_id);
 
 -- INDEX: idx_episodes_series_order_index
 CREATE INDEX idx_episodes_series_order_index ON episodes USING btree (series_id, order_index, id);
@@ -1551,6 +1568,14 @@ ALTER TABLE ONLY episode_follows
 -- FK CONSTRAINT: episode_follows episode_follows_tenant_user_id_fkey
 ALTER TABLE ONLY episode_follows
     ADD CONSTRAINT episode_follows_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: series_follows series_follows_tenant_series_id_fkey
+ALTER TABLE ONLY series_follows
+    ADD CONSTRAINT series_follows_tenant_series_id_fkey FOREIGN KEY (tenant_id, series_id) REFERENCES series(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: series_follows series_follows_tenant_user_id_fkey
+ALTER TABLE ONLY series_follows
+    ADD CONSTRAINT series_follows_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: episodes episodes_series_id_fkey
 ALTER TABLE ONLY episodes
@@ -1899,6 +1924,20 @@ ALTER TABLE episode_follows ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: episode_follows episode_follows_member_isolation
 CREATE POLICY episode_follows_member_isolation ON episode_follows
+    USING (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    )
+    WITH CHECK (
+        (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
+        AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)
+    );
+
+-- ROW SECURITY: series_follows
+ALTER TABLE series_follows ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: series_follows series_follows_member_isolation
+CREATE POLICY series_follows_member_isolation ON series_follows
     USING (
         (tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)
         AND (user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid)

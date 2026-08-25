@@ -407,6 +407,13 @@ type SeriesCreator struct {
 	TenantID     uuid.UUID `json:"tenant_id"`
 }
 
+type SeriesFollow struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type SeriesImage struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
