@@ -37,7 +37,7 @@
 - 解決順は Cookie → プラットフォーム既定言語 → `ja`。対応する Cookie が入っていればそれが常に勝ち、未設定・未知の値だけが既定言語に落ちる。既定言語の読み取り自体が失敗する場合（ログイン画面などセッションがない場合を含む）は `ja`
 - 読み取りは `lib/locale.ts` の `getPlatformLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す
 - メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadPlatformMessages(locale)` が動的 `import()` する。このアプリの画面文言は `platform.*` 名前空間に置く
-- 画面文言は `components/message.tsx` の `<Message message="platform.auth.login.submit" />` で 1 文字列ずつ描く。境界とスケルトンはこのコンポーネントが持つので、周りのカードや入力欄は静的シェルに残る
+- 画面文言は `components/message.tsx` の `<Message message="platform.auth.login.submit" />` を `<Suspense>` で包んで 1 文字列ずつ描く。fallback はその文字列に合わせた `SkeletonLine` にする。周りのカードや入力欄は静的シェルに残る
 - RPC や `searchParams` の結果で描く内容自体が変わるセクション（`/setup` のゲート、`/confirm-email` の確認結果など）は、どのみち全体がスケルトンになる。そこでは `loadPlatformMessages(locale)` を await して文字列として解決する
 - Client Component にはカタログではなく描画済みノードを `copy` プロップ（`LoginFormCopy` など）で渡す。Client 側でカタログを `import()` すると両ロケールがブラウザに載る
 - `placeholder` のように属性でしか渡せない文字列は境界を持てないので、すでにブロックしているセクションから文字列として渡す

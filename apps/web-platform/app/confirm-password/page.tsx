@@ -2,11 +2,10 @@ import { Button, LinkButton } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -77,8 +76,6 @@ const ConfirmPasswordPageContent = async ({
     token?: string | string[];
   }>;
 }) => {
-  await connection();
-
   const { errorMessage, status, token } = parseConfirmPasswordSearchParams(
     await searchParams
   );
@@ -166,10 +163,9 @@ const ConfirmPasswordPage = ({
       <div className="text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          <Message
-            message="platform.auth.confirm_password.title"
-            skeletonClassName="w-48"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="platform.auth.confirm_password.title" />
+          </Suspense>
         </p>
       </div>
 

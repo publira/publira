@@ -1,5 +1,7 @@
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
@@ -18,38 +20,33 @@ const ResetPasswordPage = () => (
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          <Message
-            message="platform.auth.reset_password.description"
-            skeletonClassName="w-full"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password.description" />
+          </Suspense>
         </p>
       </div>
 
       <ResetPasswordForm
         copy={{
           emailLabel: (
-            <Message
-              message="platform.auth.fields.email_label"
-              skeletonClassName="w-28"
-            />
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="platform.auth.fields.email_label" />
+            </Suspense>
           ),
           pendingLabel: (
-            <Message
-              message="platform.auth.reset_password.pending"
-              skeletonClassName="w-16"
-            />
+            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+              <Message message="platform.auth.reset_password.pending" />
+            </Suspense>
           ),
           submitLabel: (
-            <Message
-              message="platform.auth.reset_password.submit"
-              skeletonClassName="w-32"
-            />
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.auth.reset_password.submit" />
+            </Suspense>
           ),
           toLogin: (
-            <Message
-              message="platform.auth.reset_password.to_login"
-              skeletonClassName="w-32"
-            />
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.auth.reset_password.to_login" />
+            </Suspense>
           ),
         }}
       />

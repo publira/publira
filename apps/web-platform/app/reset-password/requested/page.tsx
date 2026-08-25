@@ -1,9 +1,9 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -21,16 +21,15 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 /**
  * The address the mail went to is the only part of this screen that depends on
- * the query, so it is the only part behind a boundary. It is absent as often as
- * it is present, which is why the fallback is nothing rather than a skeleton.
+ * the query, so it is the only part behind a boundary of its own. It is absent
+ * as often as it is present, which is why its fallback is nothing rather than a
+ * skeleton.
  */
 const SentTo = async ({
   searchParams,
 }: {
   searchParams: Promise<{ email?: string | string[] }>;
 }) => {
-  await connection();
-
   const { email } = parseResetPasswordRequestedSearchParams(await searchParams);
   if (!email) {
     return null;
@@ -38,11 +37,12 @@ const SentTo = async ({
 
   return (
     <p className="text-muted-foreground">
-      <Message
-        message="platform.auth.reset_password_requested.sent_to"
-        skeletonClassName="w-56"
-        values={{ email }}
-      />
+      <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+        <Message
+          message="platform.auth.reset_password_requested.sent_to"
+          values={{ email }}
+        />
+      </Suspense>
     </p>
   );
 };
@@ -57,19 +57,17 @@ const ResetPasswordRequestedPage = ({
       <header className="text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          <Message
-            message="platform.auth.reset_password_requested.title"
-            skeletonClassName="w-44"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+            <Message message="platform.auth.reset_password_requested.title" />
+          </Suspense>
         </p>
       </header>
 
       <section className="space-y-3 text-sm leading-6">
         <FormMessage variant="success">
-          <Message
-            message="platform.auth.reset_password_requested.sent"
-            skeletonClassName="w-full"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password_requested.sent" />
+          </Suspense>
         </FormMessage>
 
         <Suspense fallback={null}>
@@ -77,29 +75,26 @@ const ResetPasswordRequestedPage = ({
         </Suspense>
 
         <p className="text-muted-foreground">
-          <Message
-            message="platform.auth.reset_password_requested.check_spam"
-            skeletonClassName="w-full"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.reset_password_requested.check_spam" />
+          </Suspense>
         </p>
       </section>
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <LinkButton className="flex-1" render={<Link href="/login" />}>
-          <Message
-            message="platform.auth.reset_password_requested.to_login"
-            skeletonClassName="w-32"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.auth.reset_password_requested.to_login" />
+          </Suspense>
         </LinkButton>
         <LinkButton
           className="flex-1"
           render={<Link href="/reset-password" />}
           variant="outline"
         >
-          <Message
-            message="platform.auth.reset_password_requested.try_another_email"
-            skeletonClassName="w-40"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.auth.reset_password_requested.try_another_email" />
+          </Suspense>
         </LinkButton>
       </div>
     </div>

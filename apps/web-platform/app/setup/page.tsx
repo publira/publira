@@ -1,9 +1,8 @@
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -25,8 +24,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * boundary that would never buy the reader anything.
  */
 const SetupContent = async () => {
-  await connection();
-
   const setupStatus = await isSetupCompleted();
 
   if (setupStatus === true) {
@@ -90,10 +87,9 @@ const SetupPage = () => (
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          <Message
-            message="platform.auth.setup.title"
-            skeletonClassName="w-32"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="platform.auth.setup.title" />
+          </Suspense>
         </p>
       </div>
 

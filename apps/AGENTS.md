@@ -369,7 +369,17 @@ The shared layer never reads request state: `cookies()` and `next/root-params` s
 
 The shape a screen takes when its copy moves into the catalog. Worked example: `web-platform`'s auth and setup screens ([#871](https://github.com/publira/publira/issues/871)).
 
-- **Give each string its own boundary, not each screen.** A `<Message>` component resolves one key and suspends behind its own `SkeletonLine`, so the card, the inputs, and the buttons around it stay in the static shell (`web-platform`'s `components/message.tsx`). An async section that awaits the catalog and then renders a whole screen takes that structure down with it, and the reader waits on markup that never depended on a message
+- **Give each string its own boundary, not each screen.** A `<Message>` component resolves one key, and the call site wraps it in the `<Suspense>` whose fallback stands in for that one string, so the card, the inputs, and the buttons around it stay in the static shell:
+
+  ```tsx
+  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+    <Message message="platform.auth.login.submit" />
+  </Suspense>
+  ```
+
+  An async section that awaits the catalog and then renders a whole screen takes that structure down with it, and the reader waits on markup that never depended on a message. Write the `<Suspense>` out at the call site rather than hiding it inside the component: it is the standard React mechanism, it is what makes the fallback visible where the size is chosen, and a `fallbackClassName`-style prop forwarding classes into a child is one more name every Tailwind-aware tool has to be told about
+
+- **Do not reach for `connection()` to make a section request-time.** A section that reads `searchParams`, `cookies()`, or a `"use cache: private"` function already defers on its own. Adding `connection()` on top only removes what Cache Components could still have prerendered
 - **Resolve strings directly only inside a section that already blocks.** Where an RPC or a `searchParams` read decides what the section renders at all — the setup gate, the confirmation result — the section is a skeleton either way, so `await loadPlatformMessages(locale)` and use `getMessage` there. Adding boundaries inside a skeleton buys the reader nothing
 - **Client Components take rendered nodes, never catalogs.** Pass copy in as `ReactNode` through a `copy` prop (`LoginFormCopy`), so each string keeps its boundary. An `import()` of a catalog from the client ships both locales to the browser
 - **A string that has to be an attribute has no boundary.** `placeholder`, `aria-label`, and `title` cannot stream, so they come from a section that already blocks, resolved as a string

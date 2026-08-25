@@ -1,4 +1,5 @@
 import { FormMessage } from "@publira/ui-components/form-message";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -44,19 +45,17 @@ const LoginFlash = async ({
     <>
       {sessionRevoked ? (
         <FormMessage variant="destructive">
-          <Message
-            message="platform.auth.login.session_revoked"
-            skeletonClassName="w-full"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.login.session_revoked" />
+          </Suspense>
         </FormMessage>
       ) : null}
 
       {passwordResetDone ? (
         <FormMessage variant="success">
-          <Message
-            message="platform.auth.login.reset_done"
-            skeletonClassName="w-full"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="platform.auth.login.reset_done" />
+          </Suspense>
         </FormMessage>
       ) : null}
     </>
@@ -69,10 +68,9 @@ const LoginPage = ({ searchParams }: PageProps<"/login">) => (
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          <Message
-            message="platform.auth.login.eyebrow"
-            skeletonClassName="w-48"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="platform.auth.login.eyebrow" />
+          </Suspense>
         </p>
       </div>
 
@@ -80,34 +78,29 @@ const LoginPage = ({ searchParams }: PageProps<"/login">) => (
         <LoginForm
           copy={{
             emailLabel: (
-              <Message
-                message="platform.auth.fields.email_label"
-                skeletonClassName="w-28"
-              />
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="platform.auth.fields.email_label" />
+              </Suspense>
             ),
             forgotPassword: (
-              <Message
-                message="platform.auth.login.forgot_password"
-                skeletonClassName="w-36"
-              />
+              <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+                <Message message="platform.auth.login.forgot_password" />
+              </Suspense>
             ),
             passwordLabel: (
-              <Message
-                message="platform.auth.fields.password_label"
-                skeletonClassName="w-20"
-              />
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="platform.auth.fields.password_label" />
+              </Suspense>
             ),
             pendingLabel: (
-              <Message
-                message="platform.auth.login.pending"
-                skeletonClassName="w-20"
-              />
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="platform.auth.login.pending" />
+              </Suspense>
             ),
             submitLabel: (
-              <Message
-                message="platform.auth.login.submit"
-                skeletonClassName="w-16"
-              />
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="platform.auth.login.submit" />
+              </Suspense>
             ),
           }}
           flash={

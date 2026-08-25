@@ -1,8 +1,7 @@
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -48,8 +47,6 @@ const ConfirmationResult = async ({
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) => {
-  await connection();
-
   const { token } = parseConfirmEmailSearchParams(await searchParams);
   const messages = await loadPlatformMessages(await getPlatformLocale());
 
@@ -115,10 +112,9 @@ const ConfirmEmailPage = ({
       <header className="text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          <Message
-            message="platform.auth.confirm_email.title"
-            skeletonClassName="w-44"
-          />
+          <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+            <Message message="platform.auth.confirm_email.title" />
+          </Suspense>
         </p>
       </header>
 
