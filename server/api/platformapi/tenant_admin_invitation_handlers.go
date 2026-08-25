@@ -20,6 +20,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -174,10 +175,11 @@ func (s *platformServer) renderTenantAdminInvitationEmail(ctx context.Context, t
 	if tenantName == "" {
 		tenantName = "Publira"
 	}
-	timeZone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx)))
+	queries := s.queriesFor(ctx)
+	timeZone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries))
 	rendered, err := s.renderer.Render(ctx, emailrenderer.Request{
 		Template: "tenant_admin_invitation",
-		Locale:   "ja",
+		Locale:   locale.Resolve(tenant.DefaultLocale, platformconfig.DefaultLocaleFunc(ctx, queries)),
 		Data: map[string]any{
 			"expires_at":  invitation.ExpiresAt.UTC().Format(time.RFC3339Nano),
 			"invite_url":  inviteURL,

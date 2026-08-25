@@ -259,54 +259,95 @@ func (s *tenantInvitationMailerStub) SendRenderedEmail(_ context.Context, _ emai
 }
 
 func TestSendTenantAdminInvitationEmailRendersAndSendsHTML(t *testing.T) {
-	server, mock := newOperatorHandlerTestServer(t)
-	tenantID := uuid.Must(uuid.NewV7())
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	encryptor := newPasswordResetEncryptor(t)
-	encrypted, err := encryptor.EncryptString("smtp-password")
-	if err != nil {
-		t.Fatalf("EncryptString: %v", err)
+	tests := []struct {
+		name string
+		// tenantLocale is the tenants.default_locale value the invited tenant
+		// row carries; a blank one sends the resolver to the platform default.
+		tenantLocale   string
+		expectPlatform func(mock sqlmock.Sqlmock, now time.Time)
+		wantLocale     string
+	}{
+		{name: "japanese tenant keeps ja", tenantLocale: "ja", wantLocale: "ja"},
+		{name: "english tenant renders in en", tenantLocale: "en", wantLocale: "en"},
+		{
+			name: "blank tenant locale falls back to the platform default",
+			expectPlatform: func(mock sqlmock.Sqlmock, now time.Time) {
+				expectPlatformConfigLookup(mock, "Asia/Tokyo", "en", now)
+			},
+			wantLocale: "en",
+		},
+		{
+			name: "unreadable platform config still sends, in ja",
+			expectPlatform: func(mock sqlmock.Sqlmock, _ time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(testGetPlatformConfigQuery)).
+					WillReturnError(errors.New("platform config is unavailable"))
+			},
+			wantLocale: "ja",
+		},
 	}
-	mock.ExpectQuery(regexp.QuoteMeta("-- name: GetTenantSMTPConfigByTenantID :one\n")).
-		WithArgs(tenantID).
-		WillReturnRows(sqlmock.NewRows([]string{"tenant_id", "smtp_override_enabled", "host", "port", "username", "password_encrypted", "encryption", "from_name", "from_address", "reply_to", "created_at", "updated_at"}).
-			AddRow(tenantID, true, "smtp.example.com", 587, "mailer", encrypted, "starttls", "Publira", "no-reply@example.com", nil, now, now))
-	renderer := &tenantInvitationRendererStub{}
-	mailer := &tenantInvitationMailerStub{}
-	server.encryptor = encryptor
-	server.renderer = renderer
-	server.mailer = mailer
 
-	invitation := dbmodels.TenantAdminInvitation{
-		Email:     "admin@example.com",
-		ExpiresAt: now.Add(24 * time.Hour),
-	}
-	tenant := dbmodels.Tenant{ID: tenantID, Name: "Example Press", AdminDomain: sql.NullString{String: "admin.example.com", Valid: true}, Timezone: "America/New_York"}
-	if err := server.sendTenantAdminInvitationEmail(context.Background(), tenant, invitation, "token"); err != nil {
-		t.Fatalf("sendTenantAdminInvitationEmail: %v", err)
-	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, mock := newOperatorHandlerTestServer(t)
+			tenantID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			encryptor := newPasswordResetEncryptor(t)
+			encrypted, err := encryptor.EncryptString("smtp-password")
+			if err != nil {
+				t.Fatalf("EncryptString: %v", err)
+			}
+			mock.ExpectQuery(regexp.QuoteMeta("-- name: GetTenantSMTPConfigByTenantID :one\n")).
+				WithArgs(tenantID).
+				WillReturnRows(sqlmock.NewRows([]string{"tenant_id", "smtp_override_enabled", "host", "port", "username", "password_encrypted", "encryption", "from_name", "from_address", "reply_to", "created_at", "updated_at"}).
+					AddRow(tenantID, true, "smtp.example.com", 587, "mailer", encrypted, "starttls", "Publira", "no-reply@example.com", nil, now, now))
+			if test.expectPlatform != nil {
+				test.expectPlatform(mock, now)
+			}
+			renderer := &tenantInvitationRendererStub{}
+			mailer := &tenantInvitationMailerStub{}
+			server.encryptor = encryptor
+			server.renderer = renderer
+			server.mailer = mailer
 
-	if renderer.request.Template != "tenant_admin_invitation" || renderer.request.Locale != "ja" || renderer.request.TimeZone != "America/New_York" {
-		t.Fatalf("render request = %+v", renderer.request)
+			invitation := dbmodels.TenantAdminInvitation{
+				Email:     "admin@example.com",
+				ExpiresAt: now.Add(24 * time.Hour),
+			}
+			tenant := dbmodels.Tenant{
+				ID:            tenantID,
+				Name:          "Example Press",
+				AdminDomain:   sql.NullString{String: "admin.example.com", Valid: true},
+				Timezone:      "America/New_York",
+				DefaultLocale: test.tenantLocale,
+			}
+			if err := server.sendTenantAdminInvitationEmail(context.Background(), tenant, invitation, "token"); err != nil {
+				t.Fatalf("sendTenantAdminInvitationEmail: %v", err)
+			}
+
+			if renderer.request.Template != "tenant_admin_invitation" || renderer.request.Locale != test.wantLocale || renderer.request.TimeZone != "America/New_York" {
+				t.Fatalf("render request = %+v, want locale %q", renderer.request, test.wantLocale)
+			}
+			if got := renderer.request.Data["invite_url"]; got != "https://admin.example.com/accept-invite?token=token" {
+				t.Fatalf("invite_url = %q", got)
+			}
+			if got := renderer.request.Data["expires_at"]; got != invitation.ExpiresAt.Format(time.RFC3339Nano) {
+				t.Fatalf("expires_at = %q", got)
+			}
+			if mailer.email != (internalsmtp.RenderedEmail{Subject: "招待", HTML: "<p>招待</p>", Text: "招待"}) {
+				t.Fatalf("sent email = %+v", mailer.email)
+			}
+			assertOperatorHandlerExpectations(t, mock)
+		})
 	}
-	if got := renderer.request.Data["invite_url"]; got != "https://admin.example.com/accept-invite?token=token" {
-		t.Fatalf("invite_url = %q", got)
-	}
-	if got := renderer.request.Data["expires_at"]; got != invitation.ExpiresAt.Format(time.RFC3339Nano) {
-		t.Fatalf("expires_at = %q", got)
-	}
-	if mailer.email != (internalsmtp.RenderedEmail{Subject: "招待", HTML: "<p>招待</p>", Text: "招待"}) {
-		t.Fatalf("sent email = %+v", mailer.email)
-	}
-	assertOperatorHandlerExpectations(t, mock)
 }
 
 func TestRenderTenantAdminInvitationEmailMakesRendererFailureInternal(t *testing.T) {
 	server := &platformServer{renderer: &tenantInvitationRendererStub{err: errors.New("renderer unavailable")}}
 	_, err := server.renderTenantAdminInvitationEmail(context.Background(), dbmodels.Tenant{
-		Name:        "Example Press",
-		AdminDomain: sql.NullString{String: "admin.example.com", Valid: true},
-		Timezone:    "Asia/Tokyo",
+		Name:          "Example Press",
+		AdminDomain:   sql.NullString{String: "admin.example.com", Valid: true},
+		Timezone:      "Asia/Tokyo",
+		DefaultLocale: "ja",
 	}, dbmodels.TenantAdminInvitation{ExpiresAt: time.Now().Add(time.Hour)}, "token")
 	if connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("code = %v, want %v", connect.CodeOf(err), connect.CodeInternal)
