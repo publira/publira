@@ -22,11 +22,15 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@publira/icons";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 
 import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
-import {
-  CONTROL_BUTTON_CLASS,
-  PageFitControl,
-  ReadingDirectionControl,
-} from "./viewer-controls";
+
+/**
+ * The cover stands alone and pairing starts from the page after it, the way a
+ * printed volume opens. Without this the cover would be paired with page 2 and
+ * every spread after it would face the wrong way.
+ */
+const SPREAD_START_INDEX = 1;
+
+const VIEWER_PLUGINS = [acceptNegotiatedImages];
 
 const formatPageStatus: NonNullable<PageStatusProps["format"]> = ({
   firstPage,
@@ -95,18 +99,7 @@ const ViewerPageTemplate = () => {
   );
 };
 
-/**
- * The controls that stay on screen. The page-turn controls inside the viewport
- * fade out while the reader is still, so the way back out of fullscreen and the
- * settings that decide how a page is laid out must not share that visibility.
- */
-const ViewerControlBar = ({
-  episodeTitle,
-  onToggleFullscreen,
-}: {
-  episodeTitle: string;
-  onToggleFullscreen: () => void;
-}) => {
+const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
   const isFullscreen = useSyncExternalStore(
     subscribeToFullscreen,
     isFullscreenOpen,
@@ -118,26 +111,18 @@ const ViewerControlBar = ({
     isFalseOnServer
   );
 
+  if (!canGoFullscreen) {
+    return null;
+  }
+
   return (
-    /* The title takes a row of its own until the viewport is wide enough to
-       hold it beside the controls, so a narrow screen wraps at a chosen place
-       rather than splitting a segmented control down the middle. */
-    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-white/10 bg-black/40 px-3 py-2">
-      <p className="min-w-0 flex-1 basis-full truncate text-sm text-neutral-300 sm:basis-auto">
-        {episodeTitle}
-      </p>
-      <PageFitControl />
-      <ReadingDirectionControl />
-      {canGoFullscreen ? (
-        <button
-          className={CONTROL_BUTTON_CLASS}
-          onClick={onToggleFullscreen}
-          type="button"
-        >
-          {isFullscreen ? "全画面を終了" : "全画面"}
-        </button>
-      ) : null}
-    </div>
+    <button
+      className="shrink-0 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-neutral-100 transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100"
+      onClick={onToggle}
+      type="button"
+    >
+      {isFullscreen ? "全画面を終了" : "全画面"}
+    </button>
   );
 };
 
@@ -164,21 +149,13 @@ const ViewerPageNavigation = () => {
   );
 };
 
-const VIEWER_PLUGINS = [acceptNegotiatedImages];
-
 /**
  * The episode reader. Pages are fetched, decoded, and drawn by
  * `@publira/comic-viewer`, so the body images never become an `<img>` a reader
  * can drag out of the page, and a later encrypted delivery can be dropped in as
  * a plugin hook without changing this layout (#356 / #357).
  */
-export const EpisodeComicViewer = ({
-  episodeTitle,
-  pages,
-}: {
-  episodeTitle: string;
-  pages: ViewerPage[];
-}) => {
+export const EpisodeComicViewer = ({ pages }: { pages: ViewerPage[] }) => {
   const shellRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = useCallback(async () => {
@@ -201,14 +178,10 @@ export const EpisodeComicViewer = ({
   return (
     <div className="h-full w-full bg-neutral-950" ref={shellRef}>
       <ComicViewerRoot
-        className="flex-col"
         pages={pages}
         plugins={VIEWER_PLUGINS}
+        spreadStartIndex={SPREAD_START_INDEX}
       >
-        <ViewerControlBar
-          episodeTitle={episodeTitle}
-          onToggleFullscreen={toggleFullscreen}
-        />
         <Viewport>
           <ViewerPageTemplate />
         </Viewport>
@@ -219,6 +192,7 @@ export const EpisodeComicViewer = ({
                 the Japanese status text still reads left to right. */}
             <PageStatus className="[direction:ltr]" format={formatPageStatus} />
           </PageProgress>
+          <FullscreenButton onToggle={toggleFullscreen} />
         </Toolbar>
         <ViewerPageNavigation />
       </ComicViewerRoot>

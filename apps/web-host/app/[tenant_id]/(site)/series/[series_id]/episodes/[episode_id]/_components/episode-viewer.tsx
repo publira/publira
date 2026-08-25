@@ -24,10 +24,7 @@ export const EpisodeViewer = ({
 
   return (
     <div className={`${VIEWER_HEIGHT_CLASS} w-full`}>
-      <EpisodeComicViewer
-        episodeTitle={episodeTitle}
-        pages={toViewerPages(episodeTitle, images)}
-      />
+      <EpisodeComicViewer pages={toViewerPages(episodeTitle, images)} />
     </div>
   );
 };
