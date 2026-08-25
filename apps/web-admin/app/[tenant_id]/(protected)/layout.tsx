@@ -31,10 +31,10 @@ const AdminLayoutSkeleton = () => (
 const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   const tenantId = await getTenantId();
 
-  const tenantPromise = getTenantForSession(tenantId);
-  const logoPromise = getTenantThemeLogo(tenantId);
-
-  const result = await tenantPromise;
+  const [result, logo] = await Promise.all([
+    getTenantForSession(tenantId),
+    getTenantThemeLogo(tenantId),
+  ]);
   if (!result.ok) {
     // The proxy let this request in on a cookie the API has since rejected,
     // so the console asks for the session again — with the path to come back
@@ -43,8 +43,6 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
     // Invalid/missing session: send back to login instead of a blank 404.
     redirect("/login");
   }
-
-  const logo = await logoPromise;
 
   return (
     <AdminLayout logo={logo} tenant={result.tenant}>
