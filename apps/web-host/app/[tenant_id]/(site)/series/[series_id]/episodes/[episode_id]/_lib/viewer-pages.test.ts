@@ -40,16 +40,10 @@ describe("toViewerPages", () => {
     expect(page?.height).toBe(1800);
   });
 
-  it("メディアトークンを保ったまま縮小版をプレースホルダーにする", () => {
+  it("プレースホルダーは持たせない", () => {
     const [page] = toViewerPages("第1話", [image()]);
 
-    const placeholder = new URL(
-      page?.placeholder ?? "",
-      "https://example.test"
-    );
-    expect(placeholder.pathname).toBe("/images/episodes/IMG_001");
-    expect(placeholder.searchParams.get("token")).toBe("abc");
-    expect(placeholder.searchParams.get("w")).toBe("48");
+    expect(page?.placeholder).toBeUndefined();
   });
 
   it("寸法が記録されていない画像は寸法を伏せる", () => {

@@ -1,14 +1,6 @@
 import type { ViewerPage } from "@publira/comic-viewer";
-import { imageServerLoader } from "@publira/utils/image-loader";
 
 import type { EpisodeImageItem } from "#lib/catalog";
-
-/**
- * Width of the stand-in the viewer decodes and blurs while the full page is
- * still downloading. Manael renders it from the same master, so it costs one
- * small request per page and needs no separately stored rendition.
- */
-const PLACEHOLDER_WIDTH = 48;
 
 /**
  * A stored dimension of `0` means the record predates the size columns, not
@@ -22,6 +14,13 @@ const positiveOrUndefined = (value: number): number | undefined =>
 /**
  * Map episode body images onto the viewer's page list. `images` is already in
  * `displayOrder`, and that order is the reading order the viewer paginates.
+ *
+ * No `placeholder`: image-server resizes a page only while converting it, and
+ * it decides to convert from the request's `Accept`. The viewer loads a
+ * placeholder outside the plugin pipeline that sets that header, so a narrow
+ * `w` on a placeholder URL is ignored and the stand-in downloads the
+ * full-size original a second time. A page with nothing on screen yet shows
+ * the viewer's own loading state instead.
  */
 export const toViewerPages = (
   episodeTitle: string,
@@ -31,10 +30,6 @@ export const toViewerPages = (
     height: positiveOrUndefined(image.height),
     id: image.id,
     mimeType: image.contentType || undefined,
-    placeholder: imageServerLoader({
-      src: image.imageUrl,
-      width: PLACEHOLDER_WIDTH,
-    }),
     src: image.imageUrl,
     title: `${episodeTitle} ${index + 1}ページ`,
     width: positiveOrUndefined(image.width),

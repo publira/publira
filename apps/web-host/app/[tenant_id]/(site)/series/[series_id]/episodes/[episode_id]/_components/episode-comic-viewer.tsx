@@ -21,6 +21,7 @@ import "@publira/comic-viewer/core.css";
 import { ChevronLeftIcon, ChevronRightIcon } from "@publira/icons";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 
+import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
 import {
   CONTROL_BUTTON_CLASS,
   PageFitControl,
@@ -63,12 +64,12 @@ const isFalseOnServer = () => false;
  * decode failed and needs the reader to ask for another attempt.
  */
 const ViewerPageTemplate = () => {
-  const { placeholder, retry, status } = usePageLoadState();
+  const { retry, status } = usePageLoadState();
 
   return (
     <ViewportPage className="relative">
       <PageCanvas />
-      {status === "loading" && !placeholder ? (
+      {status === "loading" ? (
         <p className="absolute inset-0 flex items-center justify-center text-sm text-neutral-400">
           読み込み中…
         </p>
@@ -163,6 +164,8 @@ const ViewerPageNavigation = () => {
   );
 };
 
+const VIEWER_PLUGINS = [acceptNegotiatedImages];
+
 /**
  * The episode reader. Pages are fetched, decoded, and drawn by
  * `@publira/comic-viewer`, so the body images never become an `<img>` a reader
@@ -197,7 +200,11 @@ export const EpisodeComicViewer = ({
 
   return (
     <div className="h-full w-full bg-neutral-950" ref={shellRef}>
-      <ComicViewerRoot className="flex-col" pages={pages}>
+      <ComicViewerRoot
+        className="flex-col"
+        pages={pages}
+        plugins={VIEWER_PLUGINS}
+      >
         <ViewerControlBar
           episodeTitle={episodeTitle}
           onToggleFullscreen={toggleFullscreen}
@@ -208,7 +215,9 @@ export const EpisodeComicViewer = ({
         <Toolbar>
           <PageProgress aria-label="読み進み">
             <PageProgressTrack />
-            <PageStatus format={formatPageStatus} />
+            {/* The toolbar runs rtl so the progress fills the way pages turn;
+                the Japanese status text still reads left to right. */}
+            <PageStatus className="[direction:ltr]" format={formatPageStatus} />
           </PageProgress>
         </Toolbar>
         <ViewerPageNavigation />
