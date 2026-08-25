@@ -187,8 +187,8 @@ github.com/prometheus/otlptranslator v1.0.0 h1:s0LJW/iN9dkIH+EnhiD3BlkkP5QVIUVEo
 github.com/prometheus/otlptranslator v1.0.0/go.mod h1:vRYWnXvI6aWGpsdY/mOT/cbeVRBlPWtBNDb7kGR3uKM=
 github.com/prometheus/procfs v0.21.1 h1:GljZCt+zSTS+NZq88cyQ1LjZ+RCHp3uVuabBWA5+OJI=
 github.com/prometheus/procfs v0.21.1/go.mod h1:aB55Cww9pdSJVHk0hUf0inxWyyjPogFIjmHKYgMKmtY=
-github.com/publira/epub v0.7.0 h1:w0AMbtnFrtuCXiu05luBWRbRMoD8VEviUIeT6HlzEKo=
-github.com/publira/epub v0.7.0/go.mod h1:t6Swj2N4d1DsdPyF1YEg1XkZZX8lh62fMg58djI3Q9o=
+github.com/publira/epub v0.8.0 h1:2q09yGKe0AQpV2JH074T5hKccCfy9Kva+xqdY6rf6LY=
+github.com/publira/epub v0.8.0/go.mod h1:t6Swj2N4d1DsdPyF1YEg1XkZZX8lh62fMg58djI3Q9o=
 github.com/redis/go-redis/v9 v9.22.0 h1:laDvpYXTJtZLloinw1fA5Kqd6HAEH2XKxOkG/PDq2F0=
 github.com/redis/go-redis/v9 v9.22.0/go.mod h1:y2g0Wj8rQvuK0ELM+oxSudcLtC09JScs98I/X9gRWY4=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
