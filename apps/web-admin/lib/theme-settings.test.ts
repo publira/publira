@@ -384,6 +384,41 @@ describe("theme-settings", () => {
     );
   });
 
+  it("シェル用ロゴは設定済みならバリアントを返す", async () => {
+    const stored = storedImageResponse("/images/tenants/logo-1", "logo");
+    mockGetTenantThemeApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        logoImageUpdatedAt: stored.updatedAt,
+        logoImageVariants: stored.variants,
+      },
+    });
+
+    const { getTenantThemeLogo } = await import("./theme-settings");
+
+    await expect(getTenantThemeLogo("TENANT001")).resolves.toEqual(
+      storedImage("/images/tenants/logo-1", "logo")
+    );
+  });
+
+  it("シェル用ロゴは未設定なら null", async () => {
+    mockGetTenantThemeApi.mockResolvedValueOnce({ theme: fullTheme });
+
+    const { getTenantThemeLogo } = await import("./theme-settings");
+
+    await expect(getTenantThemeLogo("TENANT001")).resolves.toBeNull();
+  });
+
+  it("シェル用ロゴはテーマ取得失敗でも null に落とす", async () => {
+    mockGetTenantThemeApi.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    const { getTenantThemeLogo } = await import("./theme-settings");
+
+    await expect(getTenantThemeLogo("TENANT001")).resolves.toBeNull();
+  });
+
   it("ロゴが拒否されてもサーバの英文はそのまま出さない", async () => {
     mockUploadTenantLogoApi.mockRejectedValueOnce(
       new ConnectError(

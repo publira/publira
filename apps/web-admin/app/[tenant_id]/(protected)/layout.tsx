@@ -14,6 +14,7 @@ import { AdminToastProvider } from "#components/admin-toast-provider";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getTenantForSession } from "#lib/tenant-detail";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantThemeLogo } from "#lib/theme-settings";
 
 const AdminLayoutSkeleton = () => (
   <ConsoleLayout>
@@ -30,7 +31,10 @@ const AdminLayoutSkeleton = () => (
 const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   const tenantId = await getTenantId();
 
-  const result = await getTenantForSession(tenantId);
+  const [result, logo] = await Promise.all([
+    getTenantForSession(tenantId),
+    getTenantThemeLogo(tenantId),
+  ]);
   if (!result.ok) {
     // The proxy let this request in on a cookie the API has since rejected,
     // so the console asks for the session again — with the path to come back
@@ -41,7 +45,7 @@ const ProtectedLayoutInner = async ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AdminLayout tenant={result.tenant}>
+    <AdminLayout logo={logo} tenant={result.tenant}>
       <AdminToastProvider>{children}</AdminToastProvider>
     </AdminLayout>
   );
