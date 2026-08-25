@@ -98,6 +98,7 @@ type Querier interface {
 	GetContentRankingSnapshot(ctx context.Context, arg GetContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	GetCreatorByPublicIDForTenant(ctx context.Context, arg GetCreatorByPublicIDForTenantParams) (GetCreatorByPublicIDForTenantRow, error)
 	GetCreatorImageByIDForTenant(ctx context.Context, arg GetCreatorImageByIDForTenantParams) (GetCreatorImageByIDForTenantRow, error)
+	GetEnabledTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
@@ -153,6 +154,7 @@ type Querier interface {
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
+	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmailForTenantParams) (User, error)
@@ -519,6 +521,7 @@ type Querier interface {
 	// default_locale が NULL なら既存値（新規行なら列 DEFAULT の ja）を残す。
 	UpsertPlatformSettings(ctx context.Context, arg UpsertPlatformSettingsParams) (PlatformConfig, error)
 	UpsertSeriesListing(ctx context.Context, arg UpsertSeriesListingParams) (SeriesListing, error)
+	UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenantPaymentConfigParams) (TenantPaymentConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 	// ユーザーの通知設定を作成または更新
