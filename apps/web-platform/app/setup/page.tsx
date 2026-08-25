@@ -1,4 +1,5 @@
 import { FormMessage } from "@publira/ui-components/form-message";
+import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
@@ -16,6 +17,27 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const messages = await loadPlatformMessages(locale);
 
   return { title: getMessage(messages, "platform.auth.setup.title") };
+};
+
+/**
+ * `placeholder` is an attribute, so it cannot be a suspended node the way a
+ * label can. The control that carries one therefore waits on the catalog
+ * itself, behind a boundary the size of the input.
+ */
+const NameInput = async () => {
+  const locale = await getPlatformLocale();
+  const messages = await loadPlatformMessages(locale);
+
+  return (
+    <Input
+      autoComplete="name"
+      id="name"
+      name="name"
+      placeholder={getMessage(messages, "platform.auth.setup.name_placeholder")}
+      required
+      type="text"
+    />
+  );
 };
 
 /** The setup-status RPC decides between the form, a warning, and a redirect. */
@@ -77,6 +99,11 @@ const SetupContent = async () => {
             </Suspense>
           ),
         }}
+        nameInput={
+          <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+            <NameInput />
+          </Suspense>
+        }
       />
     </>
   );

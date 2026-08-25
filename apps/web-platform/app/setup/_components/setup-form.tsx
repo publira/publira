@@ -17,7 +17,14 @@ export interface SetupFormCopy {
   submitLabel: ReactNode;
 }
 
-export const SetupForm = ({ copy }: { copy: SetupFormCopy }) => (
+export const SetupForm = ({
+  copy,
+  nameInput,
+}: {
+  copy: SetupFormCopy;
+  /** Carries a localized `placeholder`, which an attribute cannot stream. */
+  nameInput: ReactNode;
+}) => (
   <ActionForm
     action={setupAction}
     className="space-y-4"
@@ -29,9 +36,7 @@ export const SetupForm = ({ copy }: { copy: SetupFormCopy }) => (
       <FieldLabel htmlFor="name" required>
         {copy.nameLabel}
       </FieldLabel>
-      <FieldContent>
-        <Input autoComplete="name" id="name" name="name" required type="text" />
-      </FieldContent>
+      <FieldContent>{nameInput}</FieldContent>
     </Field>
 
     <Field>
