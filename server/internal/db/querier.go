@@ -513,6 +513,9 @@ type Querier interface {
 	// tenant can upload a logo before it has ever saved a color, and the colors
 	// then keep their column defaults.
 	SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThemeLogoImageParams) (TenantTheme, error)
+	// Release a claim when River already has an in-flight process job for
+	// this event (unique skip). attempts and available_at stay as they were.
+	UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateEpisodeImageDisplayOrderByIDForEpisode(ctx context.Context, arg UpdateEpisodeImageDisplayOrderByIDForEpisodeParams) error
 	UpdateEpisodeOrderIndexByPublicIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByPublicIDForTenantAndSeriesParams) error

@@ -344,3 +344,34 @@ func (q *Queries) RecoverStaleProcessingOutboxEvents(ctx context.Context, staleB
 	}
 	return items, nil
 }
+
+const unclaimOutboxEvent = `-- name: UnclaimOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    updated_at = NOW()
+WHERE id = $1
+    AND status = 'processing'
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at
+`
+
+// Release a claim when River already has an in-flight process job for
+// this event (unique skip). attempts and available_at stay as they were.
+func (q *Queries) UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
+	row := q.db.QueryRowContext(ctx, unclaimOutboxEvent, id)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.Payload,
+		&i.IdempotencyKey,
+		&i.Status,
+		&i.Attempts,
+		&i.AvailableAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

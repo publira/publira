@@ -96,6 +96,17 @@ WHERE id = sqlc.arg('id')
     AND status = 'processing'
 RETURNING *;
 
+-- Release a claim when River already has an in-flight process job for
+-- this event (unique skip). attempts and available_at stay as they were.
+-- name: UnclaimOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
+    AND status = 'processing'
+RETURNING *;
+
 -- Re-queue rows left in processing after a worker crash. updated_at is the
 -- claim time; callers pass now minus the stale-processing grace period.
 -- name: RecoverStaleProcessingOutboxEvents :many

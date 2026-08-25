@@ -315,14 +315,30 @@ func (w *Worker) drain(ctx context.Context) error {
 		return tx.Commit()
 	}
 
-	params := make([]river.InsertManyParams, 0, len(events))
+	enqueued := make([]dbmodels.OutboxEvent, 0, len(events))
 	for _, event := range events {
-		params = append(params, river.InsertManyParams{Args: ProcessArgs{EventID: event.ID}})
-	}
-	if _, err := w.client.InsertManyTx(ctx, tx, params); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "enqueue")
-		return err
+		res, insErr := w.client.InsertTx(ctx, tx, ProcessArgs{EventID: event.ID}, nil)
+		if insErr != nil {
+			span.RecordError(insErr)
+			span.SetStatus(codes.Error, "enqueue")
+			return insErr
+		}
+		if res.UniqueSkippedAsDuplicate {
+			// A process job is still running for this event. The row
+			// must not stay processing: that job may already have
+			// moved it to pending, and a second claim would strand it.
+			if _, uerr := qtx.UnclaimOutboxEvent(ctx, event.ID); uerr != nil && !errors.Is(uerr, sql.ErrNoRows) {
+				span.RecordError(uerr)
+				span.SetStatus(codes.Error, "unclaim")
+				return uerr
+			}
+			w.cfg.Logger.InfoContext(ctx, "deferred outbox event; process job already in flight",
+				"event_id", event.ID,
+				"event_type", event.EventType,
+			)
+			continue
+		}
+		enqueued = append(enqueued, event)
 	}
 	if err := tx.Commit(); err != nil {
 		span.RecordError(err)
@@ -330,7 +346,7 @@ func (w *Worker) drain(ctx context.Context) error {
 		return err
 	}
 
-	for _, event := range events {
+	for _, event := range enqueued {
 		w.metrics.recordClaimed(ctx, event.EventType)
 		attrs := []any{
 			"event_id", event.ID,
@@ -343,7 +359,7 @@ func (w *Worker) drain(ctx context.Context) error {
 		}
 		w.cfg.Logger.InfoContext(ctx, "claimed outbox event", attrs...)
 	}
-	span.SetAttributes(attribute.Int("outbox.claimed", len(events)))
+	span.SetAttributes(attribute.Int("outbox.claimed", len(enqueued)))
 	return nil
 }
 
