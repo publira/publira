@@ -24,27 +24,52 @@ const normalizeLayoutText = (
   return normalized || undefined;
 };
 
-const SiteLayoutBrandText = async ({
+export const SiteLayoutBrandLink = ({
+  brandMark,
   href,
   label,
 }: {
+  brandMark?: ReactNode;
   href: string;
-  label?: string | Promise<string | undefined>;
+  label?: string | null;
 }) => {
-  const resolvedAppLabel = await label;
-  const normalizedLabel = normalizeLayoutText(resolvedAppLabel);
+  const normalizedLabel = normalizeLayoutText(label);
+  const content = brandMark ?? normalizedLabel;
 
-  if (!normalizedLabel) {
+  if (content === undefined || content === null) {
     return null;
   }
 
   return (
     <Link
-      className="font-serif text-lg font-semibold text-foreground transition-colors hover:text-primary"
+      className="inline-flex min-w-0 items-center font-serif text-lg font-semibold text-foreground transition-colors hover:text-primary"
       href={href}
     >
-      {normalizedLabel}
+      {content}
     </Link>
+  );
+};
+
+const SiteLayoutBrandContent = async ({
+  brandMark,
+  href,
+  label,
+}: {
+  brandMark?: ReactNode | Promise<ReactNode | undefined>;
+  href: string;
+  label?: string | Promise<string | undefined>;
+}) => {
+  const [resolvedAppLabel, resolvedBrandMark] = await Promise.all([
+    label,
+    brandMark,
+  ]);
+
+  return (
+    <SiteLayoutBrandLink
+      brandMark={resolvedBrandMark}
+      href={href}
+      label={resolvedAppLabel}
+    />
   );
 };
 
@@ -167,14 +192,16 @@ export const SiteLayoutHeader = ({ children }: { children: ReactNode }) => (
 );
 
 export const SiteLayoutBrand = ({
+  brandMark,
   href = "/",
   label,
 }: {
+  brandMark?: ReactNode | Promise<ReactNode | undefined>;
   href?: string;
   label?: string | Promise<string | undefined>;
 }) => (
   <Suspense fallback={<SiteLayoutBrandSkeleton />}>
-    <SiteLayoutBrandText href={href} label={label} />
+    <SiteLayoutBrandContent brandMark={brandMark} href={href} label={label} />
   </Suspense>
 );
 

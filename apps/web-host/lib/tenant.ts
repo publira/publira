@@ -30,8 +30,8 @@ export interface TenantSiteInfo {
   iconImageUpdatedAt?: string;
   iconImageVariants?: TenantImageVariant[];
   /**
-   * Rendering the logo in the site chrome is #549's; this only makes the stored
-   * image reachable.
+   * The public header brand mark (#542). Absent while the tenant has not
+   * uploaded a logo.
    */
   logoImageUpdatedAt?: string;
   logoImageVariants?: TenantImageVariant[];

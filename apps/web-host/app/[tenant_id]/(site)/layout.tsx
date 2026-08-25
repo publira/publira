@@ -13,6 +13,7 @@ import type { LayoutLinkItem } from "@publira/layouts";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { CatalogSearchForm } from "#components/catalog-search-form";
 import {
@@ -20,12 +21,14 @@ import {
   NotificationBellSkeleton,
 } from "#components/notification-bell";
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
+import { TenantBrandLogo } from "#components/tenant-brand-logo";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { logoutAction } from "#lib/logout-action";
 import { countUnreadNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
 import { getTenantSiteInfo } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
+import { resolveTenantLogoVariant } from "#lib/tenant-logo";
 
 const siteNavItems: LayoutLinkItem[] = [
   { href: "/authors", label: "Authors" },
@@ -82,6 +85,26 @@ const getAppLabel = async (
   return tenantInfo?.siteLabel?.trim() || undefined;
 };
 
+const getBrandMark = async (
+  tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
+): Promise<ReactNode | undefined> => {
+  const tenantInfo = await tenantInfoPromise;
+  const variant = resolveTenantLogoVariant(tenantInfo);
+  if (!variant) {
+    return undefined;
+  }
+
+  const siteLabel = tenantInfo?.siteLabel?.trim() || "サイト";
+  return (
+    <TenantBrandLogo
+      alt={`${siteLabel}のロゴ`}
+      fallbackLabel={siteLabel}
+      priority
+      variant={variant}
+    />
+  );
+};
+
 const getCopyrightText = async (
   tenantInfoPromise: ReturnType<typeof resolveTenantInfo>
 ): Promise<string | undefined> => {
@@ -132,7 +155,10 @@ const TenantLayout = ({ children }: LayoutProps<"/[tenant_id]">) => {
   return (
     <SiteLayout>
       <SiteLayoutHeader>
-        <SiteLayoutBrand label={getAppLabel(tenantInfoPromise)} />
+        <SiteLayoutBrand
+          brandMark={getBrandMark(tenantInfoPromise)}
+          label={getAppLabel(tenantInfoPromise)}
+        />
         <SiteLayoutNav items={siteNavItems} />
         <div className="flex max-w-40 min-w-0 flex-1 justify-end sm:max-w-64">
           <CatalogSearchForm id="catalog-search-header" />
