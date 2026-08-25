@@ -36,8 +36,7 @@ catalog:
   zod: 4.4.3
 
 catalogMode: strict
-# 0.6.1 は pnpm の minimumReleaseAge の窓（24 時間）より新しく、それが明けるまで
-# ロックファイルの検証が通らない。
+# 同じ organization が出しているパッケージなので、公開直後を避ける待機はいらない。
 minimumReleaseAgeExclude:
-  - "@publira/comic-viewer@0.6.1"
+  - "@publira/*"
 savePrefix: ""
