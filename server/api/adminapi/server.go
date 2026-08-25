@@ -297,6 +297,17 @@ func NewHandler(db *sql.DB, queries Querier, storageProvider storage.Provider, l
 		),
 	)
 	mux.Handle(emailPath, emailHandler)
+	paymentPath, paymentHandler := publiraadminv1connect.NewAdminPaymentSettingsServiceHandler(
+		server,
+		traced,
+		connect.WithInterceptors(
+			server.tenantScopedQuerierInterceptor(),
+			rpcmiddleware.NewUnaryContextBuilderInterceptor(
+				rpcmiddleware.BuildAdminSessionContext(server.authenticateSession),
+			),
+		),
+	)
+	mux.Handle(paymentPath, paymentHandler)
 	adminAuthPath, adminAuthHandler := publiraadminv1connect.NewAdminAuthServiceHandler(
 		server,
 		traced,

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	publirav1 "github.com/publira/publira/server/gen/publira/v1"
 	dbmodels "github.com/publira/publira/server/internal/db"
 	"github.com/publira/publira/server/internal/pagination"
+	"github.com/publira/publira/server/internal/paymentsettings"
 )
 
 const (
@@ -65,14 +65,21 @@ func (s *apiServer) StartEpisodeCheckout(
 	if episodePublicID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("episode_public_id is required"))
 	}
-	if s.stripe == nil || s.webHostURL == nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("payments are not configured"))
-	}
 
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Msg.Tenant, req.Header())
 	if err != nil {
 		return nil, err
 	}
+	secrets, err := s.loadEnabledPaymentSecrets(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
+	stripeProvider := s.stripeProvider(secrets.SecretKey)
+	if stripeProvider == nil || s.webHostURL == nil {
+		s.logger.WarnContext(ctx, "checkout refused because payments are not configured", "tenant_id", tenant.ID)
+		return nil, paymentsNotConfiguredError()
+	}
+
 	episode, err := s.queriesFor(ctx).GetPurchasableEpisodeByPublicIDForTenant(ctx, dbmodels.GetPurchasableEpisodeByPublicIDForTenantParams{
 		TenantID: tenant.ID,
 		PublicID: episodePublicID,
@@ -101,7 +108,7 @@ func (s *apiServer) StartEpisodeCheckout(
 
 	successURL := purchaseReturnURL(s.webHostURL, tenant.PublicID, episode.SeriesPublicID, episode.PublicID, "success")
 	cancelURL := purchaseReturnURL(s.webHostURL, tenant.PublicID, episode.SeriesPublicID, episode.PublicID, "cancelled")
-	checkoutURL, err := s.stripe.create(ctx, stripeCheckoutInput{
+	checkoutURL, err := stripeProvider.create(ctx, stripeCheckoutInput{
 		cancelURL:          cancelURL,
 		episodeID:          episode.ID,
 		episodeTitle:       episode.Title,
@@ -346,15 +353,16 @@ func (s *apiServer) ProcessStripeWebhook(
 	if err != nil {
 		return nil, err
 	}
-	webhookSecret := strings.TrimSpace(os.Getenv("STRIPE_WEBHOOK_SECRET"))
-	if webhookSecret == "" {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("stripe webhook is not configured"))
+	secrets, err := s.loadEnabledPaymentSecrets(ctx, tenant.ID)
+	if err != nil {
+		return nil, err
 	}
 	if len(req.Msg.Payload) == 0 || len(req.Msg.Payload) > 64<<10 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe webhook payload"))
 	}
-	event, err := webhook.ConstructEvent(req.Msg.Payload, req.Msg.StripeSignature, webhookSecret)
+	event, err := webhook.ConstructEvent(req.Msg.Payload, req.Msg.StripeSignature, secrets.WebhookSecret)
 	if err != nil {
+		s.logger.WarnContext(ctx, "invalid Stripe webhook signature", "tenant_id", tenant.ID)
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid Stripe signature"))
 	}
 	if event.Type != stripe.EventTypeCheckoutSessionCompleted && event.Type != stripe.EventTypeCheckoutSessionAsyncPaymentSucceeded {
@@ -459,4 +467,40 @@ func stripePurchaseMetadata(session *stripe.CheckoutSession) (uuid.UUID, uuid.UU
 		}
 	}
 	return tenantID, userID, episodeID, int32(price), int32(readingPeriodHours), nil
+}
+
+func paymentsNotConfiguredError() error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New("payments are not configured"))
+}
+
+func (s *apiServer) paymentStore(ctx context.Context) *paymentsettings.Store {
+	return paymentsettings.New(s.queriesFor(ctx), s.encryptor, nil, s.logger)
+}
+
+func (s *apiServer) stripeProvider(secretKey string) stripeSessionCreator {
+	if strings.TrimSpace(secretKey) == "" {
+		return nil
+	}
+	if s.newStripeProvider == nil {
+		provider := newStripeCheckoutProvider(secretKey)
+		if provider == nil {
+			return nil
+		}
+		return provider
+	}
+	return s.newStripeProvider(secretKey)
+}
+
+func (s *apiServer) loadEnabledPaymentSecrets(ctx context.Context, tenantID uuid.UUID) (paymentsettings.Secrets, error) {
+	_, secrets, err := s.paymentStore(ctx).LoadEnabledSecrets(ctx, tenantID)
+	if err != nil {
+		if paymentsettings.IsUnavailable(err) {
+			s.logger.WarnContext(ctx, "tenant payment settings are unavailable",
+				"tenant_id", tenantID,
+			)
+			return paymentsettings.Secrets{}, paymentsNotConfiguredError()
+		}
+		return paymentsettings.Secrets{}, s.internalDBError(ctx, "failed to load tenant payment settings", err, "tenant_id", tenantID.String())
+	}
+	return secrets, nil
 }

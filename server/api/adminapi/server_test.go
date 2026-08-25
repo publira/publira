@@ -25,6 +25,7 @@ func TestAdminHandlerExposesOnlyAdminRoutes(t *testing.T) {
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminAuthService/GetMe", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.TenantThemeService/GetTenantTheme", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminEmailSettingsService/GetTenantEmailSettings", true)
+	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminPaymentSettingsService/GetTenantPaymentSettings", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminDashboardService/GetDashboard", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminAnnouncementService/ListAnnouncements", true)
 	assertRouteRegistered(t, ts, "/publira.admin.v1.AdminNotificationService/ListNotifications", true)

@@ -47,6 +47,18 @@ var (
 	ErrNotEnabled               = errors.New("tenant payment settings are not enabled")
 )
 
+// IsUnavailable reports errors that mean Checkout and Webhook must not run:
+// missing or disabled settings, missing ciphertext, or a decrypt failure.
+// Other errors (for example a database outage) are not unavailable in this
+// sense and should surface as internal failures.
+func IsUnavailable(err error) bool {
+	return errors.Is(err, ErrNotEnabled) ||
+		errors.Is(err, ErrDecryptFailed) ||
+		errors.Is(err, ErrInvalidCiphertext) ||
+		errors.Is(err, ErrSecretMissing) ||
+		errors.Is(err, ErrSecretManagerUnavailable)
+}
+
 type SecretManager interface {
 	EncryptString(plaintext string) (string, error)
 	DecryptString(value string) (string, error)
