@@ -5,7 +5,7 @@
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
     "ghcr.io/devcontainers/features/aws-cli:1.1.4": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:4.0.0": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4.1.0": {
       "version": "29.3.1"
     },
     "ghcr.io/devcontainers/features/node:2.1.0": {
