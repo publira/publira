@@ -29,6 +29,9 @@ export const tenantPageTag = (tenantId: string, pageId: string) =>
 export const tenantNotificationsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:notifications`;
 
+export const tenantFollowsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:follows`;
+
 export const tenantAnnouncementsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements`;
 

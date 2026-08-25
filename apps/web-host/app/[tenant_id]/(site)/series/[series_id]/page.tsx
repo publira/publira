@@ -10,7 +10,10 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
+import { FollowControlSkeleton } from "#components/follow-button";
+import { FollowControl } from "#components/follow-control";
 import { PageLoadError } from "#components/page-load-error";
+import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getSeriesDetail } from "#lib/catalog";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -104,9 +107,20 @@ const SeriesDetailContent = async (
 
         <div>
           <div className="mb-8">
-            <h1 className="mb-2 font-serif text-4xl font-bold">
-              {series.title}
-            </h1>
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-4">
+              <h1 className="font-serif text-4xl font-bold">{series.title}</h1>
+              <SectionErrorBoundary title="フォロー操作を表示できませんでした">
+                <Suspense fallback={<FollowControlSkeleton />}>
+                  <FollowControl
+                    publicId={series.publicId}
+                    returnTo={`/series/${series.publicId}`}
+                    targetKind="series"
+                    targetName={series.title}
+                    tenantId={tenantId}
+                  />
+                </Suspense>
+              </SectionErrorBoundary>
+            </div>
             {series.creatorNames.length > 0 && (
               <p className="mb-2 text-muted-foreground">
                 {series.creatorNames.join("、")}
