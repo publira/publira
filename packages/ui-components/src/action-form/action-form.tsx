@@ -69,10 +69,10 @@ export interface ActionFormProps {
   children: ReactNode | ((props: ActionFormRenderProps) => ReactNode);
   className?: string;
   disabled?: boolean;
-  pendingLabel?: string;
+  pendingLabel?: ReactNode;
   showSuccess?: boolean;
   submitClassName?: string;
-  submitLabel?: string;
+  submitLabel?: ReactNode;
   submitVariant?: ButtonProps["variant"];
 }
 

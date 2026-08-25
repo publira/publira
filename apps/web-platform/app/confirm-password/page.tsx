@@ -9,6 +9,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import type { PlatformMessages } from "#lib/locale";
 
@@ -21,16 +22,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return {
     title: getMessage(messages, "platform.auth.confirm_password.title"),
   };
-};
-
-const ConfirmPasswordEyebrow = async () => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
-
-  return (
-    <p className="mt-2 text-sm text-muted-foreground">
-      {getMessage(messages, "platform.auth.confirm_password.title")}
-    </p>
-  );
 };
 
 const FailureState = ({
@@ -71,6 +62,12 @@ const ConfirmPasswordFallback = () => (
   </div>
 );
 
+/**
+ * The query decides between the form and the expired / invalid states, so the
+ * whole card waits on it either way. Per-string boundaries inside a section
+ * that is already a skeleton would buy the reader nothing, so the copy is
+ * resolved as strings.
+ */
 const ConfirmPasswordPageContent = async ({
   searchParams,
 }: {
@@ -168,9 +165,12 @@ const ConfirmPasswordPage = ({
     <div className="w-full max-w-md space-y-6">
       <div className="text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <Suspense fallback={<Skeleton className="mx-auto mt-2 h-5 w-48" />}>
-          <ConfirmPasswordEyebrow />
-        </Suspense>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Message
+            message="platform.auth.confirm_password.title"
+            skeletonClassName="w-48"
+          />
+        </p>
       </div>
 
       <Suspense fallback={<ConfirmPasswordFallback />}>

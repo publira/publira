@@ -346,56 +346,58 @@ try {
 }
 ```
 
-## UI ロケール
+## UI locale
 
-UI の表示ロケールは `ja` / `en` の二択で、既定は `ja`。未知の値はすべて `ja` に落ちる。i18n ライブラリは入れない（Epic [#864](https://github.com/publira/publira/issues/864)）。
+The UI renders in `ja` or `en`, defaulting to `ja`; every unknown value falls back to `ja`. No i18n library is added (Epic [#864](https://github.com/publira/publira/issues/864)).
 
-| レイヤ | 置き場 |
+| Layer | Where it lives |
 | --- | --- |
-| ロケール判定・カタログ読み込み・`{name}` 補間 | `@publira/utils/i18n`（`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`） |
-| メッセージ本体 | リポジトリルートの `locales/{locale}.json`（Go / Flutter と共通） |
-| ロケールの解決元 | `web-platform` / `web-admin` は Cookie `publira_locale`、`web-host` は URL の `locale` セグメント |
-| Cookie が無いときの落とし先 | `web-platform` はプラットフォーム既定言語（[#1047](https://github.com/publira/publira/issues/1047)）、`web-admin` はテナント既定言語（[#1046](https://github.com/publira/publira/issues/1046)）。どちらも読み取れないときだけ `ja` |
+| Locale parsing, catalog loading, `{name}` interpolation | `@publira/utils/i18n` (`parseLocale` / `parseLocaleCookie` / `loadMessages` / `getMessage`) |
+| The messages themselves | The repo-root `locales/{locale}.json`, shared with Go and Flutter |
+| Where the locale is resolved from | The `publira_locale` cookie in `web-platform` / `web-admin`; the URL's `locale` segment in `web-host` |
+| What a missing cookie falls through to | The platform default locale in `web-platform` ([#1047](https://github.com/publira/publira/issues/1047)), the tenant default locale in `web-admin` ([#1046](https://github.com/publira/publira/issues/1046)). `ja` only when neither can be read |
 
-共有層はリクエスト状態を読まない。`cookies()` と `next/root-params` はアプリ側に残す。
+The shared layer never reads request state: `cookies()` and `next/root-params` stay in the app.
 
-- **`cookies()` は `<Suspense>` の内側だけ。** Cache Components 下でロケール読みを境界の外に置くと、そのルートから静的シェルが消える。読み取りはアプリの `lib/locale.ts`（`getPlatformLocale()` / `getLocale()` 等）にまとめ、呼ぶのはセクション用の async コンポーネントからにする
-- **`"use cache"` の中でロケールを読まない。** locale は引数で渡し、キャッシュキーの一部にする
-- **メッセージ待ちは `Suspense` + `Skeleton`。** 静的シェルはロケール非依存
-- **`import()` のパスをテンプレート文字列にしない。** ロケールごとに静的なパスを書く（`loadMessages` の importer）
-- **Cookie アプリの解決順は Cookie → 管理画面の既定言語 → `ja`。** 対応する Cookie が入っていれば（`ja` でも）常にそれが勝ち、未設定・未知の値だけが既定言語に落ちる。既定言語は API 越しの設定なので、セッションが無いログイン画面や読み取り失敗時は `ja` のままにする
+- **`cookies()` inside `<Suspense>` only.** Under Cache Components a locale read above a boundary costs that route its static shell. Keep the read in the app's `lib/locale.ts` (`getPlatformLocale()` / `getLocale()`), and call it from a component that sits inside a boundary
+- **Never read the locale inside `"use cache"`.** Pass it in as an argument so it becomes part of the cache key
+- **Waiting on a message means `Suspense` + `Skeleton`.** The static shell is locale-independent
+- **Never build an `import()` path with a template string.** Write one static path per locale (`loadMessages`'s importers)
+- **Cookie apps resolve cookie → console default → `ja`.** A supported cookie always wins, `ja` included; only an unset or unknown value falls through to the default. That default is a setting read over the API, so a screen without a session — login above all — and a failed read both stay on `ja`
 
-### 画面をカタログ化する
+### Localizing a screen
 
-1 画面ぶんの文言をカタログへ移すときの形。実装例は `web-platform` の認証・セットアップ画面（[#871](https://github.com/publira/publira/issues/871)）。
+The shape a screen takes when its copy moves into the catalog. Worked example: `web-platform`'s auth and setup screens ([#871](https://github.com/publira/publira/issues/871)).
 
-- **キーはアプリの名前空間の下に置く。** `platform.*` / `admin.*` / `host.*` のように読み手で分け、画面（領域）ごとに区切る。複数画面で使う文言だけを領域の共通セクション（`platform.auth.fields` など）へ上げる。トップレベルの一覧は `locales/README.md`
-- **カタログを引くのは Server Component と Server Action だけ。** Client Component には解決済みの文字列を `copy` プロップ（`LoginFormCopy` など）で渡す。Client からカタログを `import()` すると両ロケールがブラウザに載る
-- **ユーザーに見えるメッセージを持つ zod スキーマは、モジュール定数ではなくカタログを受け取る関数にする。** 文言はリクエストのロケールで決まるので、Server Action か `<Suspense>` の内側でしか解決できない。`toFormErrorMessage(parsed.error, { locale })` と `rpcErrorMessage(error, fallback, { locale, overrides })` にも同じ locale を渡す
-- **`Suspense` の fallback に文章を書かない。** fallback は静的シェルの一部でロケールに追従できない。文言待ちは `Skeleton` にする（「メッセージ待ちは `Suspense` + `Skeleton`」の具体形）
-- **静的シェルに残せるのはロケール非依存のものだけ。** ブランド名やカードの枠は外に置いたままでよいが、見出しや説明文は `<Suspense>` の内側へ移す
-- **`metadata` は `generateMetadata` にする。** `<title>` も画面文言なので、ロケールを読んで組み立てる。本文側にリクエスト時の読み取りがあるルートではそのままストリームされる（`node_modules/next/dist/docs/` の generate-metadata / With Cache Components）
+- **Give each string its own boundary, not each screen.** A `<Message>` component resolves one key and suspends behind its own `SkeletonLine`, so the card, the inputs, and the buttons around it stay in the static shell (`web-platform`'s `components/message.tsx`). An async section that awaits the catalog and then renders a whole screen takes that structure down with it, and the reader waits on markup that never depended on a message
+- **Resolve strings directly only inside a section that already blocks.** Where an RPC or a `searchParams` read decides what the section renders at all — the setup gate, the confirmation result — the section is a skeleton either way, so `await loadPlatformMessages(locale)` and use `getMessage` there. Adding boundaries inside a skeleton buys the reader nothing
+- **Client Components take rendered nodes, never catalogs.** Pass copy in as `ReactNode` through a `copy` prop (`LoginFormCopy`), so each string keeps its boundary. An `import()` of a catalog from the client ships both locales to the browser
+- **A string that has to be an attribute has no boundary.** `placeholder`, `aria-label`, and `title` cannot stream, so they come from a section that already blocks, resolved as a string
+- **Keys live under the app's namespace.** Split by reader (`platform.*` / `admin.*` / `host.*`), then by screen. Lift a string into an area-wide section (`platform.auth.fields`) only once more than one screen uses it. The top-level list is in `locales/README.md`
+- **A zod schema carrying user-facing messages is a function of the catalog, not a module constant.** Its wording depends on the request's locale, which only a Server Action or a suspended section can resolve. Pass the same locale to `toFormErrorMessage(parsed.error, { locale })` and `rpcErrorMessage(error, fallback, { locale, overrides })`
+- **Never write a sentence into a `Suspense` fallback.** A fallback is part of the static shell and cannot follow the locale; use a `Skeleton` sized to the string it stands in for
+- **`metadata` becomes `generateMetadata`.** `<title>` is screen copy too. It streams separately on a route whose body already reads request data (`node_modules/next/dist/docs/`, generate-metadata / With Cache Components)
 
-### Cookie アプリの `<html lang>`
+### `<html lang>` in a cookie app
 
-ルート layout で Cookie を読むことはできない。`<html>` 属性には逃がし先の `<Suspense>` 境界がなく、`cookies()` を待てば配下の全ルートが静的シェルを失う。代わりに次の 3 点で解決する。
+The root layout cannot read the cookie: an `<html>` attribute has no child `<Suspense>` boundary to move the read into, and awaiting `cookies()` there costs every route below it its static shell. Three pieces solve it instead.
 
-1. ルート layout は `lang={DEFAULT_LOCALE}` を静的に描画し、`suppressHydrationWarning` を付ける
-2. `<head>` に `LOCALE_LANG_SCRIPT`（`@publira/utils/i18n` の定数）をインラインスクリプトとして置く。ブラウザは解析中に Cookie を読んで属性を差し替える
-3. 切替 UI が **Action の解決後に** `document.documentElement.lang` を書く。スクリプトはフルロード時にしか走らず、Server Action の再描画は静的な属性値を変えないので React は DOM に触らない。クリックハンドラで書くと、Action が失敗したときに Cookie にも画面文言にも無い言語を文書が名乗る
+1. The root layout renders `lang={DEFAULT_LOCALE}` statically, with `suppressHydrationWarning`
+2. `<head>` carries `LOCALE_LANG_SCRIPT` (a constant of `@publira/utils/i18n`) as an inline script. The browser reads the cookie while parsing and replaces the attribute
+3. The switcher writes `document.documentElement.lang` **after its Action resolves**. The script only runs on a full load, and a Server Action's re-render produces the same static attribute value, so React never touches the DOM. Writing it in the click handler would leave the document claiming a language that neither the cookie nor the copy on screen agrees with whenever the Action fails
 
-この 3 点目のために Cookie は `httpOnly` にしない。`instant = false` は選択肢に入らない（**Never use `instant = false`** を参照）。
+That third piece is why the cookie is not `httpOnly`. `instant = false` is not an option here (see **Never use `instant = false`**).
 
-`global-not-found.tsx` はこの対象外で、`lang="ja"` のままにする。この文書は layout を通らない静的ページで、本文自体がロケールに追従できないので、属性だけ切り替えても本文の言語を偽るだけになる。
+`global-not-found.tsx` is outside all of this and keeps `lang="ja"`. It is a static page that never passes through a layout, and its body cannot follow the locale, so switching the attribute alone would only misreport the language of the text.
 
-### 切替
+### Switching
 
-切替は Server Action で Cookie を書く。Client から `document.cookie` を書かない。値は `LOCALES` の zod スキーマで検証し、外れた値は書かずに捨てる。Cookie は `Path=/`、`SameSite=Lax`、`Max-Age` は `LOCALE_COOKIE_MAX_AGE`。
+The switcher writes the cookie from a Server Action. Never write `document.cookie` from the client. Validate the value against a `LOCALES` zod schema and drop anything outside it rather than storing it. The cookie is `Path=/`, `SameSite=Lax`, with `LOCALE_COOKIE_MAX_AGE`.
 
-実装例:
+Worked examples:
 
-- `web-platform` の `lib/locale.ts` / `lib/locale-action.ts` と `/settings/general` の「表示言語」カード（[#867](https://github.com/publira/publira/issues/867)）
-- `web-admin` の `lib/locale.ts`（`getLocale()`）/ `lib/locale-action.ts` と `/settings` の「表示言語」カード（[#868](https://github.com/publira/publira/issues/868)）
+- `web-platform`: `lib/locale.ts` / `lib/locale-action.ts` and the 表示言語 card on `/settings/general` ([#867](https://github.com/publira/publira/issues/867))
+- `web-admin`: `lib/locale.ts` (`getLocale()`) / `lib/locale-action.ts` and the 表示言語 card on `/settings` ([#868](https://github.com/publira/publira/issues/868))
 
 ## Icons: `@publira/icons`, never inline `<svg>`
 

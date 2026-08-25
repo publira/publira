@@ -5,9 +5,9 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { confirmPlatformEmailChange } from "#lib/email-change";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
-import type { PlatformMessages } from "#lib/locale";
 
 import { parseConfirmEmailSearchParams } from "./_lib/search-params";
 
@@ -15,16 +15,6 @@ export const generateMetadata = async (): Promise<Metadata> => {
   const messages = await loadPlatformMessages(await getPlatformLocale());
 
   return { title: getMessage(messages, "platform.auth.confirm_email.title") };
-};
-
-const ConfirmEmailEyebrow = async () => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
-
-  return (
-    <p className="mt-2 text-sm text-muted-foreground">
-      {getMessage(messages, "platform.auth.confirm_email.title")}
-    </p>
-  );
 };
 
 const ResultLink = ({ children, href }: { children: string; href: string }) => (
@@ -35,13 +25,34 @@ const ResultLink = ({ children, href }: { children: string; href: string }) => (
   </div>
 );
 
+const ConfirmationSkeleton = () => (
+  <>
+    <section className="space-y-3">
+      <Skeleton className="h-5 w-full" />
+      <Skeleton className="h-5 w-2/3" />
+    </section>
+    <div className="text-center">
+      <Skeleton className="mx-auto h-5 w-28" />
+    </div>
+  </>
+);
+
+/**
+ * Which sentence this screen shows is the RPC's answer, so nothing here can
+ * render before that call returns. Per-string boundaries would only add
+ * skeletons inside a section that is already a skeleton, so the copy is
+ * resolved as strings.
+ */
 const ConfirmationResult = async ({
-  messages,
-  token,
+  searchParams,
 }: {
-  messages: PlatformMessages;
-  token: string;
+  searchParams: Promise<{ token?: string | string[] }>;
 }) => {
+  await connection();
+
+  const { token } = parseConfirmEmailSearchParams(await searchParams);
+  const messages = await loadPlatformMessages(await getPlatformLocale());
+
   if (!token) {
     return (
       <>
@@ -94,31 +105,6 @@ const ConfirmationResult = async ({
   );
 };
 
-const ConfirmationSkeleton = () => (
-  <>
-    <section className="space-y-3">
-      <Skeleton className="h-5 w-full" />
-      <Skeleton className="h-5 w-2/3" />
-    </section>
-    <div className="text-center">
-      <Skeleton className="mx-auto h-5 w-28" />
-    </div>
-  </>
-);
-
-const ConfirmEmailPageContent = async ({
-  searchParams,
-}: {
-  searchParams: Promise<{ token?: string | string[] }>;
-}) => {
-  await connection();
-
-  const { token } = parseConfirmEmailSearchParams(await searchParams);
-  const messages = await loadPlatformMessages(await getPlatformLocale());
-
-  return <ConfirmationResult messages={messages} token={token} />;
-};
-
 const ConfirmEmailPage = ({
   searchParams,
 }: {
@@ -128,13 +114,16 @@ const ConfirmEmailPage = ({
     <div className="w-full max-w-md space-y-6 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
       <header className="text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <Suspense fallback={<Skeleton className="mx-auto mt-2 h-5 w-44" />}>
-          <ConfirmEmailEyebrow />
-        </Suspense>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Message
+            message="platform.auth.confirm_email.title"
+            skeletonClassName="w-44"
+          />
+        </p>
       </header>
 
       <Suspense fallback={<ConfirmationSkeleton />}>
-        <ConfirmEmailPageContent searchParams={searchParams} />
+        <ConfirmationResult searchParams={searchParams} />
       </Suspense>
     </div>
   </main>

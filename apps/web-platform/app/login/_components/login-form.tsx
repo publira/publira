@@ -2,36 +2,35 @@
 
 import { ActionForm } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { loginAction } from "../_lib/actions";
 
 /**
- * The screen's copy, resolved on the server. A Client Component never loads a
- * catalog itself — that would ship both locales to the browser.
+ * Copy arrives as already-rendered nodes, not strings: each one carries its own
+ * `<Suspense>` boundary, so this form is part of the static shell and only the
+ * labels stream in.
  */
 export interface LoginFormCopy {
-  emailLabel: string;
-  forgotPassword: string;
-  passwordLabel: string;
-  pendingLabel: string;
-  resetDone: string;
-  sessionRevoked: string;
-  submitLabel: string;
+  emailLabel: ReactNode;
+  forgotPassword: ReactNode;
+  passwordLabel: ReactNode;
+  pendingLabel: ReactNode;
+  submitLabel: ReactNode;
 }
 
 export const LoginForm = ({
   copy,
-  nextPath,
-  resetDone,
-  sessionRevoked,
+  flash,
+  nextField,
 }: {
   copy: LoginFormCopy;
-  nextPath?: string;
-  resetDone?: boolean;
-  sessionRevoked?: boolean;
+  /** Flash messages from the query. Renders nothing until it resolves. */
+  flash: ReactNode;
+  /** Hidden `next` field from the query. Nothing to show while it resolves. */
+  nextField: ReactNode;
 }) => (
   <>
     <ActionForm
@@ -41,7 +40,7 @@ export const LoginForm = ({
       submitClassName="mt-2 w-full"
       submitLabel={copy.submitLabel}
     >
-      <input name="next" type="hidden" value={nextPath} />
+      {nextField}
 
       <Field>
         <FieldLabel htmlFor="email" required>
@@ -75,13 +74,7 @@ export const LoginForm = ({
         </FieldContent>
       </Field>
 
-      {sessionRevoked ? (
-        <FormMessage variant="destructive">{copy.sessionRevoked}</FormMessage>
-      ) : null}
-
-      {resetDone ? (
-        <FormMessage variant="success">{copy.resetDone}</FormMessage>
-      ) : null}
+      {flash}
     </ActionForm>
 
     <div className="mt-4 text-center text-sm">

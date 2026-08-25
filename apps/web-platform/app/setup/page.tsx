@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 import { isSetupCompleted } from "#lib/setup";
 
@@ -17,16 +18,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "platform.auth.setup.title") };
 };
 
-const SetupEyebrow = async () => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
-
-  return (
-    <p className="mt-2 text-sm text-muted-foreground">
-      {getMessage(messages, "platform.auth.setup.title")}
-    </p>
-  );
-};
-
+/**
+ * Nothing inside the card can render before the setup-status RPC answers — it
+ * decides between the form, the unreachable-API message, and a redirect — so
+ * this section resolves its copy as strings instead of giving each string a
+ * boundary that would never buy the reader anything.
+ */
 const SetupContent = async () => {
   await connection();
 
@@ -92,9 +89,12 @@ const SetupPage = () => (
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <Suspense fallback={<Skeleton className="mx-auto mt-2 h-5 w-40" />}>
-          <SetupEyebrow />
-        </Suspense>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Message
+            message="platform.auth.setup.title"
+            skeletonClassName="w-32"
+          />
+        </p>
       </div>
 
       <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">

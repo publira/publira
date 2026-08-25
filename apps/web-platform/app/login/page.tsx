@@ -1,8 +1,9 @@
-import { Skeleton } from "@publira/ui-components";
+import { FormMessage } from "@publira/ui-components/form-message";
 import { getMessage } from "@publira/utils/i18n";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Message } from "#components/message";
 import { getPlatformLocale, loadPlatformMessages } from "#lib/locale";
 
 import { LoginForm } from "./_components/login-form";
@@ -14,76 +15,112 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return { title: getMessage(messages, "platform.auth.login.title") };
 };
 
-const LoginEyebrow = async () => {
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+type LoginSearchParams = PageProps<"/login">["searchParams"];
 
-  return (
-    <p className="mt-2 text-sm text-muted-foreground">
-      {getMessage(messages, "platform.auth.login.eyebrow")}
-    </p>
-  );
-};
-
-const LoginFormWrapper = async ({
+/**
+ * The value the operator is sent back to after signing in. Hidden, so there is
+ * nothing to stand in for it while the query resolves.
+ */
+const NextPathField = async ({
   searchParams,
 }: {
-  searchParams: PageProps<"/login">["searchParams"];
+  searchParams: LoginSearchParams;
 }) => {
-  const { nextPath, passwordResetDone, sessionRevoked } =
-    parseLoginSearchParams(await searchParams);
-  const messages = await loadPlatformMessages(await getPlatformLocale());
+  const { nextPath } = parseLoginSearchParams(await searchParams);
 
-  return (
-    <LoginForm
-      copy={{
-        emailLabel: getMessage(messages, "platform.auth.fields.email_label"),
-        forgotPassword: getMessage(
-          messages,
-          "platform.auth.login.forgot_password"
-        ),
-        passwordLabel: getMessage(
-          messages,
-          "platform.auth.fields.password_label"
-        ),
-        pendingLabel: getMessage(messages, "platform.auth.login.pending"),
-        resetDone: getMessage(messages, "platform.auth.login.reset_done"),
-        sessionRevoked: getMessage(
-          messages,
-          "platform.auth.login.session_revoked"
-        ),
-        submitLabel: getMessage(messages, "platform.auth.login.submit"),
-      }}
-      nextPath={nextPath}
-      resetDone={passwordResetDone}
-      sessionRevoked={sessionRevoked}
-    />
-  );
+  return <input name="next" type="hidden" value={nextPath} />;
 };
 
-const LoginFormSkeleton = () => (
-  <div className="space-y-4">
-    <Skeleton className="h-5 w-1/2" />
-    <Skeleton className="h-5 w-1/2" />
-    <Skeleton className="h-5 w-1/2" />
-    <Skeleton className="h-5 w-1/2" />
-    <Skeleton className="h-5 w-full" />
-  </div>
-);
+const LoginFlash = async ({
+  searchParams,
+}: {
+  searchParams: LoginSearchParams;
+}) => {
+  const { passwordResetDone, sessionRevoked } = parseLoginSearchParams(
+    await searchParams
+  );
+
+  return (
+    <>
+      {sessionRevoked ? (
+        <FormMessage variant="destructive">
+          <Message
+            message="platform.auth.login.session_revoked"
+            skeletonClassName="w-full"
+          />
+        </FormMessage>
+      ) : null}
+
+      {passwordResetDone ? (
+        <FormMessage variant="success">
+          <Message
+            message="platform.auth.login.reset_done"
+            skeletonClassName="w-full"
+          />
+        </FormMessage>
+      ) : null}
+    </>
+  );
+};
 
 const LoginPage = ({ searchParams }: PageProps<"/login">) => (
   <main className="flex min-h-dvh items-center justify-center px-4 py-10">
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
         <h1 className="font-serif text-2xl font-semibold">Publira</h1>
-        <Suspense fallback={<Skeleton className="mx-auto mt-2 h-5 w-48" />}>
-          <LoginEyebrow />
-        </Suspense>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Message
+            message="platform.auth.login.eyebrow"
+            skeletonClassName="w-48"
+          />
+        </p>
       </div>
 
       <div className="space-y-5 rounded-2xl border border-border/70 bg-card p-8 shadow-sm">
-        <Suspense fallback={<LoginFormSkeleton />}>
-          <LoginFormWrapper searchParams={searchParams} />
-        </Suspense>
+        <LoginForm
+          copy={{
+            emailLabel: (
+              <Message
+                message="platform.auth.fields.email_label"
+                skeletonClassName="w-28"
+              />
+            ),
+            forgotPassword: (
+              <Message
+                message="platform.auth.login.forgot_password"
+                skeletonClassName="w-36"
+              />
+            ),
+            passwordLabel: (
+              <Message
+                message="platform.auth.fields.password_label"
+                skeletonClassName="w-20"
+              />
+            ),
+            pendingLabel: (
+              <Message
+                message="platform.auth.login.pending"
+                skeletonClassName="w-20"
+              />
+            ),
+            submitLabel: (
+              <Message
+                message="platform.auth.login.submit"
+                skeletonClassName="w-16"
+              />
+            ),
+          }}
+          flash={
+            <Suspense fallback={null}>
+              <LoginFlash searchParams={searchParams} />
+            </Suspense>
+          }
+          nextField={
+            <Suspense fallback={null}>
+              <NextPathField searchParams={searchParams} />
+            </Suspense>
+          }
+        />
       </div>
     </div>
   </main>

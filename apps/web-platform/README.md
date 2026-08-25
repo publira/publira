@@ -37,9 +37,12 @@
 - 解決順は Cookie → プラットフォーム既定言語 → `ja`。対応する Cookie が入っていればそれが常に勝ち、未設定・未知の値だけが既定言語に落ちる。既定言語の読み取り自体が失敗する場合（ログイン画面などセッションがない場合を含む）は `ja`
 - 読み取りは `lib/locale.ts` の `getPlatformLocale()`。`cookies()` を使うので **`<Suspense>` の内側からのみ**呼ぶ。`"use cache"` の中では呼ばず、locale を引数で渡す
 - メッセージはリポジトリルートの [`locales/*.json`](../../locales/README.md) を `loadPlatformMessages(locale)` が動的 `import()` する。このアプリの画面文言は `platform.*` 名前空間に置く
-- 画面はカタログを Server Component 側で引き、Client Component には解決済みの文字列を `copy` プロップで渡す（`LoginFormCopy` など）。Client 側でカタログを読み込まない
+- 画面文言は `components/message.tsx` の `<Message message="platform.auth.login.submit" />` で 1 文字列ずつ描く。境界とスケルトンはこのコンポーネントが持つので、周りのカードや入力欄は静的シェルに残る
+- RPC や `searchParams` の結果で描く内容自体が変わるセクション（`/setup` のゲート、`/confirm-email` の確認結果など）は、どのみち全体がスケルトンになる。そこでは `loadPlatformMessages(locale)` を await して文字列として解決する
+- Client Component にはカタログではなく描画済みノードを `copy` プロップ（`LoginFormCopy` など）で渡す。Client 側でカタログを `import()` すると両ロケールがブラウザに載る
+- `placeholder` のように属性でしか渡せない文字列は境界を持てないので、すでにブロックしているセクションから文字列として渡す
 - ユーザーに見えるメッセージを持つ zod スキーマは、モジュール定数ではなくカタログを受け取る関数にする（`lib/auth-input.ts` の `emailFormSchema(messages)`）。文言はリクエストのロケールで決まるので、Server Action か Suspense の内側でしか解決できない
-- `Suspense` の fallback は静的シェルの一部なのでロケールに追従できない。文言を待つ間は `Skeleton` を出し、fallback に文章を書かない
+- `Suspense` の fallback は静的シェルの一部なのでロケールに追従できない。fallback に文章を書かず、その文字列に合わせたサイズの `Skeleton` を出す
 - 切替は `/settings/general` の「表示言語」カード。Server Action `setPlatformLocaleAction` が Cookie を書き、同じ往復で画面が再描画される
 - プラットフォーム既定言語は同じ画面の「既定言語」カード（`lib/platform-settings.ts` の `getPlatformSettings` / `updatePlatformDefaultLocale`）。新規テナントの初期言語でもある。保存すると Server Action が `platform:settings` タグを `updateTag` するので、同じセッションの Cookie なし表示にも即反映される
 - `<html lang>` はルート layout の静的属性 + `<head>` のインラインスクリプトで解決する。理由と制約は `packages/utils/README.md` の `LOCALE_LANG_SCRIPT` を参照。`global-not-found.tsx` は layout を通らず本文もロケールに追従できないので `lang="ja"` 固定

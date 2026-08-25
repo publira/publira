@@ -4,15 +4,16 @@ import { ActionForm } from "@publira/ui-components/action-form";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { requestPasswordResetAction } from "../_lib/actions";
 
-/** Resolved on the server; see `LoginFormCopy` for why. */
+/** Nodes rather than strings; see `LoginFormCopy` for why. */
 export interface ResetPasswordFormCopy {
-  emailLabel: string;
-  pendingLabel: string;
-  submitLabel: string;
-  toLogin: string;
+  emailLabel: ReactNode;
+  pendingLabel: ReactNode;
+  submitLabel: ReactNode;
+  toLogin: ReactNode;
 }
 
 export const ResetPasswordForm = ({
