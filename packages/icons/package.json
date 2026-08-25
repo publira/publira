@@ -23,6 +23,14 @@
       "types": "./dist/chevron-down-icon.d.mts",
       "default": "./dist/chevron-down-icon.mjs"
     },
+    "./chevron-left-icon": {
+      "types": "./dist/chevron-left-icon.d.mts",
+      "default": "./dist/chevron-left-icon.mjs"
+    },
+    "./chevron-right-icon": {
+      "types": "./dist/chevron-right-icon.d.mts",
+      "default": "./dist/chevron-right-icon.mjs"
+    },
     "./close-icon": {
       "types": "./dist/close-icon.d.mts",
       "default": "./dist/close-icon.mjs"
@@ -39,9 +47,17 @@
       "types": "./dist/image-icon.d.mts",
       "default": "./dist/image-icon.mjs"
     },
+    "./maximize-icon": {
+      "types": "./dist/maximize-icon.d.mts",
+      "default": "./dist/maximize-icon.mjs"
+    },
     "./menu-icon": {
       "types": "./dist/menu-icon.d.mts",
       "default": "./dist/menu-icon.mjs"
+    },
+    "./minimize-icon": {
+      "types": "./dist/minimize-icon.d.mts",
+      "default": "./dist/minimize-icon.mjs"
     },
     "./settings-icon": {
       "types": "./dist/settings-icon.d.mts",

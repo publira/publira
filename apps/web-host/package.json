@@ -24,6 +24,7 @@
   "dependencies": {
     "@publira/api-client": "workspace:*",
     "@publira/brand": "workspace:*",
+    "@publira/comic-viewer": "catalog:",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",
     "@publira/next-cache-handlers": "workspace:*",

@@ -17,6 +17,7 @@ import { getTenantId } from "#lib/tenant-id";
 
 import { EpisodeBody } from "./_components/episode-body";
 import { parsePurchaseSearchParams } from "./_lib/purchase-search-params";
+import { VIEWER_HEIGHT_CLASS } from "./_lib/viewer-layout";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id", "episode_id");
@@ -26,23 +27,26 @@ const episodeDetailParamsSchema = z.object({
   series_id: routeParamString(),
 });
 
+const EpisodeBodySkeleton = () => (
+  <div
+    aria-busy="true"
+    className={`${VIEWER_HEIGHT_CLASS} w-full animate-pulse bg-neutral-900`}
+  />
+);
+
 const EpisodeSkeleton = () => (
-  <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-      <div className="order-2 space-y-6 lg:order-1">
+  <div>
+    <EpisodeBodySkeleton />
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
         <div className="h-40 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
-        <div className="h-96 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
-      </div>
-      <div className="order-1 space-y-4 lg:order-2">
-        <div className="h-32 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
-        <div className="h-48 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+        <div className="space-y-4">
+          <div className="h-32 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+          <div className="h-48 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
+        </div>
       </div>
     </div>
   </div>
-);
-
-const EpisodeBodySkeleton = () => (
-  <div className="h-96 animate-pulse rounded-3xl border border-border/70 bg-muted/40" />
 );
 
 const EpisodeContent = async (
@@ -85,94 +89,101 @@ const EpisodeContent = async (
     episode.price > 0 ? `¥${episode.price.toLocaleString("ja-JP")}` : "無料";
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <nav className="mb-8 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        <Link className="underline-offset-4 hover:underline" href="/series">
-          シリーズ一覧
-        </Link>
-        <span>／</span>
-        <Link
-          className="underline-offset-4 hover:underline"
-          href={`/series/${series.publicId}`}
-        >
-          シリーズ詳細
-        </Link>
-      </nav>
+    <main>
+      {/* The reader opens the page: everything else is what the reader may
+          want after finishing, so it sits below the pages rather than above
+          them. */}
+      <section
+        aria-label="エピソード本文"
+        className="border-b border-border/70"
+      >
+        <SectionErrorBoundary title="本文を表示できませんでした">
+          <Suspense fallback={<EpisodeBodySkeleton />}>
+            <EpisodeBody
+              access={access}
+              acceptsPayments={tenant?.acceptsPayments ?? false}
+              checkoutSessionId={
+                purchaseSearchParams.checkout === "success"
+                  ? purchaseSearchParams.session_id
+                  : ""
+              }
+              episodePublicId={episode.publicId}
+              episodeTitle={episode.title}
+              images={images}
+              seriesPublicId={series.publicId}
+              tenantId={tenantId}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
+      </section>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-        <article className="order-2 space-y-6 lg:order-1">
-          <header className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
-            <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <span className="rounded-full bg-muted px-3 py-1 font-medium tabular-nums">
-                #{episode.orderIndex}
-              </span>
-              <span
-                className={
-                  episode.price > 0
-                    ? "rounded-full bg-warning/15 px-3 py-1 font-medium text-warning"
-                    : "rounded-full bg-success/15 px-3 py-1 font-medium text-success"
-                }
-              >
-                {priceLabel}
-              </span>
-              <span>
-                公開{" "}
-                {formatDateTime(episode.publishedAt, {
-                  fallback: "未設定",
-                  timeZone,
-                })}
-              </span>
-            </div>
-            <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight sm:text-4xl">
-              {episode.title}
-            </h1>
-            <p className="text-sm text-muted-foreground sm:text-base">
-              シリーズ「{series.title}」のエピソードです。
-            </p>
-          </header>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        {purchaseSearchParams.checkout === "success" ? (
+          <output className="mb-6 block rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+            決済を確認しています。購入が反映されると本文を表示します。
+          </output>
+        ) : null}
+        {purchaseSearchParams.checkout === "cancelled" ? (
+          <output className="mb-6 block rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+            購入手続きをキャンセルしました。料金は発生していません。
+          </output>
+        ) : null}
+        {purchaseSearchParams.checkout === "error" ? (
+          <p
+            className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            role="alert"
+          >
+            購入手続きを開始できませんでした。時間をおいて再試行してください。
+          </p>
+        ) : null}
 
-          <section aria-label="エピソード本文">
-            {purchaseSearchParams.checkout === "success" ? (
-              <output className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
-                決済を確認しています。購入が反映されると本文を表示します。
-              </output>
-            ) : null}
-            {purchaseSearchParams.checkout === "cancelled" ? (
-              <output className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-                購入手続きをキャンセルしました。料金は発生していません。
-              </output>
-            ) : null}
-            {purchaseSearchParams.checkout === "error" ? (
-              <p
-                className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-                role="alert"
-              >
-                購入手続きを開始できませんでした。時間をおいて再試行してください。
-              </p>
-            ) : null}
-            <SectionErrorBoundary title="本文を表示できませんでした">
-              <Suspense fallback={<EpisodeBodySkeleton />}>
-                <EpisodeBody
-                  access={access}
-                  acceptsPayments={tenant?.acceptsPayments ?? false}
-                  checkoutSessionId={
-                    purchaseSearchParams.checkout === "success"
-                      ? purchaseSearchParams.session_id
-                      : ""
+        <nav className="mb-8 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <Link className="underline-offset-4 hover:underline" href="/series">
+            シリーズ一覧
+          </Link>
+          <span>／</span>
+          <Link
+            className="underline-offset-4 hover:underline"
+            href={`/series/${series.publicId}`}
+          >
+            シリーズ詳細
+          </Link>
+        </nav>
+
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+          <article>
+            <header className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
+              <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="rounded-full bg-muted px-3 py-1 font-medium tabular-nums">
+                  #{episode.orderIndex}
+                </span>
+                <span
+                  className={
+                    episode.price > 0
+                      ? "rounded-full bg-warning/15 px-3 py-1 font-medium text-warning"
+                      : "rounded-full bg-success/15 px-3 py-1 font-medium text-success"
                   }
-                  episodePublicId={episode.publicId}
-                  episodeTitle={episode.title}
-                  images={images}
-                  seriesPublicId={series.publicId}
-                  tenantId={tenantId}
-                />
-              </Suspense>
-            </SectionErrorBoundary>
-          </section>
-        </article>
+                >
+                  {priceLabel}
+                </span>
+                <span>
+                  公開{" "}
+                  {formatDateTime(episode.publishedAt, {
+                    fallback: "未設定",
+                    timeZone,
+                  })}
+                </span>
+              </div>
+              <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight sm:text-4xl">
+                {episode.title}
+              </h1>
+              <p className="text-sm text-muted-foreground sm:text-base">
+                シリーズ「{series.title}」のエピソードです。
+              </p>
+            </header>
+          </article>
 
-        <aside className="order-1 lg:order-2">
-          <div className="space-y-4 lg:sticky lg:top-8">
+          <aside className="space-y-4">
             <section className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm">
               <p className="mb-2 text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
                 Series
@@ -241,8 +252,8 @@ const EpisodeContent = async (
                 )}
               </dl>
             </section>
-          </div>
-        </aside>
+          </aside>
+        </div>
       </div>
     </main>
   );

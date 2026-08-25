@@ -1,11 +1,15 @@
 export { BellIcon } from "./bell-icon";
 export { CheckIcon } from "./check-icon";
 export { ChevronDownIcon } from "./chevron-down-icon";
+export { ChevronLeftIcon } from "./chevron-left-icon";
+export { ChevronRightIcon } from "./chevron-right-icon";
 export { CloseIcon } from "./close-icon";
 export { CollectionIcon } from "./collection-icon";
 export { DashboardIcon } from "./dashboard-icon";
 export { ImageIcon } from "./image-icon";
+export { MaximizeIcon } from "./maximize-icon";
 export { MenuIcon } from "./menu-icon";
+export { MinimizeIcon } from "./minimize-icon";
 export { SettingsIcon } from "./settings-icon";
 export type { IconProps } from "./types";
 export { UserIcon } from "./user-icon";
