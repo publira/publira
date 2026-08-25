@@ -75,13 +75,19 @@ export const AdminLayout = ({
   const headerBrand = logoVariant ? (
     <TenantBrandLogo alt={logoAlt} priority variant={logoVariant} />
   ) : null;
+  // ConsoleSidebar falls back to "Publira" when brandMark is omitted. Tenant
+  // chrome always supplies its own mark so the platform name never appears.
   const sidebarBrand = logoVariant ? (
     <TenantBrandLogo
       alt={logoAlt}
       className="h-9 max-w-[11rem]"
       variant={logoVariant}
     />
-  ) : null;
+  ) : (
+    <p className="font-serif text-xl font-semibold tracking-tight text-foreground">
+      {tenant.name}
+    </p>
+  );
 
   return (
     <ConsoleLayout gradient={adminGradient}>

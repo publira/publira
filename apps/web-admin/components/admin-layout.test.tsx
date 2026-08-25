@@ -108,10 +108,11 @@ describe("AdminLayout", () => {
 
     expect(screen.getAllByAltText("青枝出版のロゴ")).toHaveLength(2);
     expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Publira")).toBeNull();
     expect(screen.getByText("Admin Console")).toBeDefined();
   });
 
-  it("ロゴがないときはテナント名のテキストだけになる", () => {
+  it("ロゴがないときはテナント名をブランドにし、Publira は出さない", () => {
     render(
       <AdminLayout logo={null} tenant={tenant}>
         <p>本文</p>
@@ -119,6 +120,7 @@ describe("AdminLayout", () => {
     );
 
     expect(screen.queryByAltText("青枝出版のロゴ")).toBeNull();
+    expect(screen.queryByText("Publira")).toBeNull();
     expect(screen.getAllByText("青枝出版").length).toBeGreaterThan(0);
   });
 });
