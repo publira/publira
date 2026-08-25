@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http/httptest"
-	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -89,7 +88,6 @@ func newPublicPaymentServer(t *testing.T, encryptor *secretcrypto.Manager) publi
 	var logs bytes.Buffer
 	checkout := &capturingCheckoutProvider{url: "https://checkout.stripe.test/cs_test"}
 	server := newAPIServer(db, dbmodels.New(db), &testStorageProvider{}, encryptor, nil, testutil.TokenManager(), slog.New(slog.NewTextHandler(&logs, nil)))
-	server.webHostURL = &url.URL{Scheme: "https", Host: "host.example"}
 	server.newStripeProvider = func(secretKey string) stripeSessionCreator {
 		checkout.secretKey = secretKey
 		return checkout
@@ -150,6 +148,31 @@ func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
 	assertPublicExpectations(t, env.mock)
 }
 
+func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
+	env := newPublicPaymentServer(t, nil)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	env.mock.ExpectQuery(regexp.QuoteMeta(getTenantByIDQuery)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
+			AddRow(tenantID, "TENANT", "", "Tenant", nil, now, "active", nil, "Asia/Tokyo", "ja"))
+	expectAuthSession(env.mock, tenantID, userID, now)
+
+	client := publirav1connect.NewPurchaseServiceClient(env.ts.Client(), env.ts.URL)
+	_, err := client.StartEpisodeCheckout(context.Background(), newAuthedPublicRequest(&publirav1.StartEpisodeCheckoutRequest{
+		EpisodePublicId: "EPISODE001",
+		Tenant:          &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	}, tenantID.String()))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	if env.checkout.secretKey != "" {
+		t.Fatalf("checkout used secret %q, want none", env.checkout.secretKey)
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
 func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	encryptor := newPublicTestEncryptor(t)
 	env := newPublicPaymentServer(t, encryptor)
@@ -182,6 +205,12 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	}
 	if env.checkout.secretKey != testCheckoutSecretKey {
 		t.Fatalf("checkout secret = %q, want tenant secret", env.checkout.secretKey)
+	}
+	if !strings.HasPrefix(env.checkout.input.successURL, "https://tenant.example/series/SERIES001/episodes/EPISODE001") {
+		t.Fatalf("successURL = %q, want tenant domain return URL", env.checkout.input.successURL)
+	}
+	if !strings.Contains(env.checkout.input.successURL, "checkout=success") {
+		t.Fatalf("successURL = %q, want checkout=success", env.checkout.input.successURL)
 	}
 	assertNoSecretLeak(t, env.logs.String())
 	assertPublicExpectations(t, env.mock)

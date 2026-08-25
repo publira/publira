@@ -45,16 +45,15 @@ func newStripeCheckoutProvider(secretKey string) *stripeCheckoutProvider {
 	return &stripeCheckoutProvider{client: stripe.NewClient(secretKey)}
 }
 
-func parseWebHostURL(raw string) (*url.URL, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil, errors.New("PUBLIRA_WEB_HOST_URL is not set")
+func tenantSiteURL(tenant dbmodels.Tenant) (*url.URL, error) {
+	domain := strings.TrimSpace(tenant.Domain)
+	domain = strings.TrimPrefix(domain, "https://")
+	domain = strings.TrimPrefix(domain, "http://")
+	domain = strings.TrimSuffix(domain, "/")
+	if domain == "" {
+		return nil, errors.New("tenant domain is not configured")
 	}
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return nil, errors.New("PUBLIRA_WEB_HOST_URL must be an absolute URL")
-	}
-	return parsed, nil
+	return &url.URL{Scheme: "https", Host: domain}, nil
 }
 
 func (s *apiServer) StartEpisodeCheckout(
@@ -70,12 +69,17 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, err
 	}
+	origin, err := tenantSiteURL(tenant)
+	if err != nil {
+		s.logger.WarnContext(ctx, "checkout refused because tenant domain is not configured", "tenant_id", tenant.ID)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
 	secrets, err := s.loadEnabledPaymentSecrets(ctx, tenant.ID)
 	if err != nil {
 		return nil, err
 	}
 	stripeProvider := s.stripeProvider(secrets.SecretKey)
-	if stripeProvider == nil || s.webHostURL == nil {
+	if stripeProvider == nil {
 		s.logger.WarnContext(ctx, "checkout refused because payments are not configured", "tenant_id", tenant.ID)
 		return nil, paymentsNotConfiguredError()
 	}
@@ -106,8 +110,8 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("episode is already purchased"))
 	}
 
-	successURL := purchaseReturnURL(s.webHostURL, tenant.PublicID, episode.SeriesPublicID, episode.PublicID, "success")
-	cancelURL := purchaseReturnURL(s.webHostURL, tenant.PublicID, episode.SeriesPublicID, episode.PublicID, "cancelled")
+	successURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "success")
+	cancelURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "cancelled")
 	checkoutURL, err := stripeProvider.create(ctx, stripeCheckoutInput{
 		cancelURL:          cancelURL,
 		episodeID:          episode.ID,
@@ -333,9 +337,9 @@ func (p *stripeCheckoutProvider) create(ctx context.Context, input stripeCheckou
 	return session.URL, nil
 }
 
-func purchaseReturnURL(base *url.URL, tenantPublicID, seriesPublicID, episodePublicID, checkout string) string {
+func purchaseReturnURL(base *url.URL, seriesPublicID, episodePublicID, checkout string) string {
 	result := *base
-	result.Path, _ = url.JoinPath(result.Path, tenantPublicID, "series", seriesPublicID, "episodes", episodePublicID)
+	result.Path, _ = url.JoinPath("/", "series", seriesPublicID, "episodes", episodePublicID)
 	query := result.Query()
 	query.Set("checkout", checkout)
 	if checkout == "success" {

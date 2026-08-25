@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -44,7 +42,6 @@ type apiServer struct {
 	tokens            *auth.TokenManager
 	logger            *slog.Logger
 	newStripeProvider func(secretKey string) stripeSessionCreator
-	webHostURL        *url.URL
 }
 
 func invalidSessionError() error {
@@ -110,10 +107,6 @@ func newAPIServer(
 	if logger == nil {
 		logger = slog.Default()
 	}
-	webHostURL, err := parseWebHostURL(os.Getenv("PUBLIRA_WEB_HOST_URL"))
-	if err != nil {
-		logger.Error("Stripe Checkout is disabled because PUBLIRA_WEB_HOST_URL is invalid", "error", err)
-	}
 	return &apiServer{
 		db:        db,
 		queries:   queries,
@@ -125,7 +118,6 @@ func newAPIServer(
 		newStripeProvider: func(secretKey string) stripeSessionCreator {
 			return newStripeCheckoutProvider(secretKey)
 		},
-		webHostURL: webHostURL,
 	}
 }
 

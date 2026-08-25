@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v86"
+
+	dbmodels "github.com/publira/publira/server/internal/db"
 )
 
 func TestStripePurchaseMetadata(t *testing.T) {
@@ -45,18 +47,34 @@ func TestStripePurchaseMetadataRejectsInvalidPrice(t *testing.T) {
 }
 
 func TestPurchaseReturnURL(t *testing.T) {
-	base, err := url.Parse("https://host.example/store")
+	base, err := url.Parse("https://store.example")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := url.Parse(purchaseReturnURL(base, "tenant", "series", "episode", "success"))
+	got, err := url.Parse(purchaseReturnURL(base, "series", "episode", "success"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Path != "/store/tenant/series/series/episodes/episode" {
+	if got.Host != "store.example" {
+		t.Fatalf("host = %q", got.Host)
+	}
+	if got.Path != "/series/series/episodes/episode" {
 		t.Fatalf("path = %q", got.Path)
 	}
 	if got.Query().Get("checkout") != "success" || got.Query().Get("session_id") != "{CHECKOUT_SESSION_ID}" {
 		t.Fatalf("query = %q", got.RawQuery)
+	}
+}
+
+func TestTenantSiteURL(t *testing.T) {
+	got, err := tenantSiteURL(dbmodels.Tenant{Domain: "https://store.example/"})
+	if err != nil {
+		t.Fatalf("tenantSiteURL: %v", err)
+	}
+	if got.String() != "https://store.example" {
+		t.Fatalf("tenantSiteURL = %q, want https://store.example", got.String())
+	}
+	if _, err := tenantSiteURL(dbmodels.Tenant{}); err == nil {
+		t.Fatal("tenantSiteURL empty domain error = nil")
 	}
 }

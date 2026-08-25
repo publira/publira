@@ -96,8 +96,6 @@ func TestDBProcessStripeWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 }
 
 func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
-	t.Setenv("PUBLIRA_WEB_HOST_URL", "https://host.example")
-
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
