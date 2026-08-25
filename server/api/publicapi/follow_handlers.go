@@ -24,6 +24,7 @@ const (
 
 	followTargetEpisode = "episode"
 	followTargetCreator = "creator"
+	followTargetSeries  = "series"
 )
 
 type resolvedFollowTarget struct {
@@ -69,6 +70,18 @@ func (s *apiServer) resolveFollowTarget(
 			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
 		}
 		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow author target", err, "tenant_id", tenantID.String())
+	case publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES:
+		row, err := queries.GetPublishedSeriesByPublicIDForFollow(ctx, dbmodels.GetPublishedSeriesByPublicIDForFollowParams{
+			TenantID: tenantID,
+			PublicID: strings.TrimSpace(target.PublicId),
+		})
+		if err == nil {
+			return resolvedFollowTarget{typeName: followTargetSeries, id: row}, nil
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			return resolvedFollowTarget{}, connect.NewError(connect.CodeNotFound, errors.New("target not found"))
+		}
+		return resolvedFollowTarget{}, s.internalDBError(ctx, "failed to get follow series target", err, "tenant_id", tenantID.String())
 	default:
 		return resolvedFollowTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("target type is invalid"))
 	}
@@ -110,6 +123,12 @@ func (s *apiServer) followStatus(
 			TenantID:  tenantID,
 			UserID:    userID,
 			CreatorID: target.id,
+		})
+	case followTargetSeries:
+		return queries.UserFollowsPublishedSeries(ctx, dbmodels.UserFollowsPublishedSeriesParams{
+			TenantID: tenantID,
+			UserID:   userID,
+			SeriesID: target.id,
 		})
 	default:
 		return false, errors.New("unknown follow target type")
@@ -160,6 +179,8 @@ func (s *apiServer) Follow(
 		_, err = queries.CreateEpisodeFollow(ctx, dbmodels.CreateEpisodeFollowParams{TenantID: tenant.ID, UserID: user.ID, EpisodeID: target.id})
 	case followTargetCreator:
 		_, err = queries.CreateCreatorFollow(ctx, dbmodels.CreateCreatorFollowParams{TenantID: tenant.ID, UserID: user.ID, CreatorID: target.id})
+	case followTargetSeries:
+		_, err = queries.CreateSeriesFollow(ctx, dbmodels.CreateSeriesFollowParams{TenantID: tenant.ID, UserID: user.ID, SeriesID: target.id})
 	}
 	// INSERT .. ON CONFLICT DO NOTHING RETURNING produces sql.ErrNoRows for an
 	// already-followed target. Treat that as the same successful final state.
@@ -191,6 +212,8 @@ func (s *apiServer) Unfollow(
 		_, err = queries.DeleteEpisodeFollow(ctx, dbmodels.DeleteEpisodeFollowParams{TenantID: tenant.ID, UserID: user.ID, EpisodeID: target.id})
 	case followTargetCreator:
 		_, err = queries.DeleteCreatorFollow(ctx, dbmodels.DeleteCreatorFollowParams{TenantID: tenant.ID, UserID: user.ID, CreatorID: target.id})
+	case followTargetSeries:
+		_, err = queries.DeleteSeriesFollow(ctx, dbmodels.DeleteSeriesFollowParams{TenantID: tenant.ID, UserID: user.ID, SeriesID: target.id})
 	}
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to unfollow target", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
@@ -218,7 +241,7 @@ func decodeFollowCursorKeys(cursor pagination.Cursor) (followCursorKeys, error) 
 	if err != nil {
 		return followCursorKeys{}, invalid
 	}
-	if cursor.Keys[1] != followTargetEpisode && cursor.Keys[1] != followTargetCreator {
+	if cursor.Keys[1] != followTargetEpisode && cursor.Keys[1] != followTargetCreator && cursor.Keys[1] != followTargetSeries {
 		return followCursorKeys{}, invalid
 	}
 	targetID, err := uuid.Parse(cursor.Keys[2])
@@ -258,6 +281,7 @@ func mapFollowAscRows(rows []dbmodels.ListUserFollowsByCreatedAtAscRow) []follow
 type followTargetPublicIDs struct {
 	episodes map[uuid.UUID]string
 	creators map[uuid.UUID]string
+	series   map[uuid.UUID]string
 }
 
 // followTargetPublicIDs resolves public identifiers only at the API boundary.
@@ -268,17 +292,21 @@ func (s *apiServer) followTargetPublicIDs(
 	follows []followPageRow,
 ) (followTargetPublicIDs, error) {
 	ids := followTargetPublicIDs{
-		episodes: make(map[uuid.UUID]string),
 		creators: make(map[uuid.UUID]string),
+		episodes: make(map[uuid.UUID]string),
+		series:   make(map[uuid.UUID]string),
 	}
 	episodeIDs := make([]uuid.UUID, 0, len(follows))
 	creatorIDs := make([]uuid.UUID, 0, len(follows))
+	seriesIDs := make([]uuid.UUID, 0, len(follows))
 	for _, follow := range follows {
 		switch follow.targetType {
 		case followTargetEpisode:
 			episodeIDs = append(episodeIDs, follow.targetID)
 		case followTargetCreator:
 			creatorIDs = append(creatorIDs, follow.targetID)
+		case followTargetSeries:
+			seriesIDs = append(seriesIDs, follow.targetID)
 		}
 	}
 
@@ -305,6 +333,18 @@ func (s *apiServer) followTargetPublicIDs(
 		}
 		for _, row := range rows {
 			ids.creators[row.ID] = row.PublicID
+		}
+	}
+	if len(seriesIDs) > 0 {
+		rows, err := queries.ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx, dbmodels.ListPublishedSeriesFollowTargetPublicIDsByIDsParams{
+			TenantID: tenantID,
+			Ids:      seriesIDs,
+		})
+		if err != nil {
+			return followTargetPublicIDs{}, err
+		}
+		for _, row := range rows {
+			ids.series[row.ID] = row.PublicID
 		}
 	}
 	return ids, nil
@@ -346,6 +386,8 @@ func followTargetTypeFromRow(typeName string) (publirav1.FollowTargetType, bool)
 		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_EPISODE, true
 	case followTargetCreator:
 		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_AUTHOR, true
+	case followTargetSeries:
+		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_SERIES, true
 	default:
 		return publirav1.FollowTargetType_FOLLOW_TARGET_TYPE_UNSPECIFIED, false
 	}
@@ -404,6 +446,8 @@ func (s *apiServer) ListMyFollows(
 			publicID = publicIDs.episodes[row.targetID]
 		case followTargetCreator:
 			publicID = publicIDs.creators[row.targetID]
+		case followTargetSeries:
+			publicID = publicIDs.series[row.targetID]
 		}
 		// A target can lose publication between the cursor query and this public
 		// projection. Omit it rather than reveal its identifier.

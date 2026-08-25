@@ -43,8 +43,8 @@ type Querier interface {
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
 	// エピソードのBaseレコードを作成する
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
-	// Durable member follows (#1128). Episode and creator follows have distinct
-	// source tables; content_events must not be used to model either relation.
+	// Durable member follows (#1128). Episode, series, and creator follows have
+	// distinct source tables; content_events must not be used to model any of them.
 	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
 	CreateEpisodeImage(ctx context.Context, arg CreateEpisodeImageParams) (EpisodeImage, error)
 	CreateEpisodeImageVariant(ctx context.Context, arg CreateEpisodeImageVariantParams) (EpisodeImageVariant, error)
@@ -70,6 +70,7 @@ type Querier interface {
 	CreatePurchaseFromStripeCheckout(ctx context.Context, arg CreatePurchaseFromStripeCheckoutParams) (Purchase, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
 	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
+	CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollowParams) (SeriesFollow, error)
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
 	// プラットフォーム管理者向けテナント作成
@@ -90,6 +91,7 @@ type Querier interface {
 	DeletePlatformUserPasswordResetTokensByUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeletePlatformUserRolesByPlatformUserID(ctx context.Context, platformUserID uuid.UUID) error
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
+	DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollowParams) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
 	// テナントユーザーのロールをすべて削除する
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
@@ -152,6 +154,7 @@ type Querier interface {
 	GetPublishedLabelByPublicID(ctx context.Context, arg GetPublishedLabelByPublicIDParams) (GetPublishedLabelByPublicIDRow, error)
 	// テナントの公開中ページをslugで取得する
 	GetPublishedPageBySlugForTenant(ctx context.Context, arg GetPublishedPageBySlugForTenantParams) (GetPublishedPageBySlugForTenantRow, error)
+	GetPublishedSeriesByPublicIDForFollow(ctx context.Context, arg GetPublishedSeriesByPublicIDForFollowParams) (uuid.UUID, error)
 	GetPurchasableEpisodeByPublicIDForTenant(ctx context.Context, arg GetPurchasableEpisodeByPublicIDForTenantParams) (GetPurchasableEpisodeByPublicIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
@@ -381,6 +384,7 @@ type Querier interface {
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// テナントの公開中かつフッター表示対象のページ一覧を取得する
 	ListPublishedPagesForTenant(ctx context.Context, tenantID uuid.UUID) ([]Page, error)
+	ListPublishedSeriesFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedSeriesFollowTargetPublicIDsByIDsParams) ([]ListPublishedSeriesFollowTargetPublicIDsByIDsRow, error)
 	// 著者詳細の関連シリーズ。タイトル + id のキーセット走査。公開判定は
 	// ListActiveSeriesIDsByPublishedAtDesc と同じ述語。
 	// ListActiveSeriesIDsByTitleAsc と同じ形で、creator で絞る。
@@ -580,6 +584,9 @@ type Querier interface {
 	// Matches GetPublishedEpisodeByPublicIDForTenant, so a draft, scheduled, or
 	// otherwise non-public episode is indistinguishable from an unfollowed one.
 	UserFollowsPublishedEpisode(ctx context.Context, arg UserFollowsPublishedEpisodeParams) (bool, error)
+	// Matches GetPublishedSeriesByPublicIDForFollow, so an unpublished series is
+	// indistinguishable from an unfollowed one.
+	UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error)
 	// True when the user may view paid body content for the episode via purchase or active access ticket.
 	// Free episodes (price = 0) are evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (sql.NullBool, error)

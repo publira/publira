@@ -249,6 +249,7 @@ enum FollowTargetType {
   FOLLOW_TARGET_TYPE_UNSPECIFIED = 0;
   FOLLOW_TARGET_TYPE_EPISODE = 1;
   FOLLOW_TARGET_TYPE_AUTHOR = 2;
+  FOLLOW_TARGET_TYPE_SERIES = 3;
 }
 
 // A public catalog target. The public ID is interpreted according to type.
@@ -288,7 +289,7 @@ message UnfollowResponse {
 
 // One currently public target followed by the authenticated member.
 message MyFollow {
-  // Explicitly distinguishes episode and author follows in a mixed timeline.
+  // Explicitly distinguishes episode, author, and series follows in a mixed timeline.
   FollowTargetType target_type = 1;
   string target_public_id = 2;
   string followed_at = 3;
