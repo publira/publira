@@ -96,6 +96,8 @@ stripe listen --forward-to localhost:3000/<tenant_id>/api/v1/webhook/stripe
 
 表示された `whsec_...` を `STRIPE_WEBHOOK_SECRET` に設定します。テストカードは Stripe の `4242 4242 4242 4242`、任意の将来日、有効な CVC を使えます。Webhook は再送されても `stripe_checkout_session_id` の一意制約により購入を重複作成しません。すでに有効な購入があるエピソードは Checkout を開始せず、期限切れ後は再購入できます。
 
+テナント単位の Stripe 秘密鍵と Webhook signing secret は `tenant_payment_config` に `secretcrypto` の封筒形式で保存します。公開読み出しは有効状態とマスク済み hint だけを返し、平文は `paymentsettings.Store.LoadEnabledSecrets` 経由のサーバー内部利用に限ります。Checkout と Webhook は当面プロセス環境変数を使い、テナント設定への切り替えは後続作業です。
+
 ## 画像ストレージ設定
 
 `UploadEpisodeImages` は S3 互換ストレージにアップロードします。`PUBLIRA_S3_BUCKET` が未設定なら、サーバーは起動時に失敗します。

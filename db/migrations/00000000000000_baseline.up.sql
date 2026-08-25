@@ -546,6 +546,26 @@ CREATE TABLE tenant_images (
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+-- TABLE: tenant_payment_config
+-- Per-tenant payment provider credentials. Secret key and webhook signing
+-- secret are stored only as secretcrypto envelopes; hints are masked display
+-- values so callers never need to decrypt to describe configuration state.
+CREATE TABLE tenant_payment_config (
+    tenant_id uuid NOT NULL,
+    provider character varying(32) DEFAULT 'stripe'::character varying NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    secret_key_encrypted text,
+    webhook_secret_encrypted text,
+    secret_key_hint text,
+    webhook_secret_hint text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT tenant_payment_config_provider_check CHECK (((provider)::text = 'stripe'::text)),
+    CONSTRAINT tenant_payment_config_secret_key_encrypted_envelope_check CHECK (((secret_key_encrypted IS NULL) OR (secret_key_encrypted LIKE 'enc:%'::text))),
+    CONSTRAINT tenant_payment_config_webhook_secret_encrypted_envelope_check CHECK (((webhook_secret_encrypted IS NULL) OR (webhook_secret_encrypted LIKE 'enc:%'::text))),
+    CONSTRAINT tenant_payment_config_enabled_requires_secrets CHECK (((NOT enabled) OR ((secret_key_encrypted IS NOT NULL) AND (btrim(secret_key_encrypted) <> ''::text) AND (webhook_secret_encrypted IS NOT NULL) AND (btrim(webhook_secret_encrypted) <> ''::text))))
+);
+
 -- TABLE: tenant_smtp_config
 CREATE TABLE tenant_smtp_config (
     tenant_id uuid NOT NULL,
@@ -943,6 +963,10 @@ ALTER TABLE ONLY tenant_image_variants
 -- CONSTRAINT: tenant_images tenant_images_pkey
 ALTER TABLE ONLY tenant_images
     ADD CONSTRAINT tenant_images_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: tenant_payment_config tenant_payment_config_pkey
+ALTER TABLE ONLY tenant_payment_config
+    ADD CONSTRAINT tenant_payment_config_pkey PRIMARY KEY (tenant_id);
 
 -- CONSTRAINT: tenant_smtp_config tenant_smtp_config_pkey
 ALTER TABLE ONLY tenant_smtp_config
@@ -1636,6 +1660,10 @@ ALTER TABLE ONLY tenant_image_variants
 ALTER TABLE ONLY tenant_images
     ADD CONSTRAINT tenant_images_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: tenant_payment_config tenant_payment_config_tenant_id_fkey
+ALTER TABLE ONLY tenant_payment_config
+    ADD CONSTRAINT tenant_payment_config_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: tenant_smtp_config tenant_smtp_config_tenant_id_fkey
 ALTER TABLE ONLY tenant_smtp_config
     ADD CONSTRAINT tenant_smtp_config_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
@@ -1865,6 +1893,12 @@ ALTER TABLE tenant_images ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: tenant_images tenant_images_tenant_isolation
 CREATE POLICY tenant_images_tenant_isolation ON tenant_images USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: tenant_payment_config
+ALTER TABLE tenant_payment_config ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: tenant_payment_config tenant_payment_config_tenant_isolation
+CREATE POLICY tenant_payment_config_tenant_isolation ON tenant_payment_config USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 -- ROW SECURITY: tenant_smtp_config
 ALTER TABLE tenant_smtp_config ENABLE ROW LEVEL SECURITY;

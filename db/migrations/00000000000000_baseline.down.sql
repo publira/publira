@@ -39,6 +39,7 @@ DROP TABLE IF EXISTS tenant_admin_invitations CASCADE;
 DROP TABLE IF EXISTS tenant_config CASCADE;
 DROP TABLE IF EXISTS tenant_image_variants CASCADE;
 DROP TABLE IF EXISTS tenant_images CASCADE;
+DROP TABLE IF EXISTS tenant_payment_config CASCADE;
 DROP TABLE IF EXISTS tenant_smtp_config CASCADE;
 DROP TABLE IF EXISTS tenant_themes CASCADE;
 DROP TABLE IF EXISTS tenant_user_roles CASCADE;
