@@ -1,4 +1,4 @@
-import type { AdminApiClient } from "@publira/api-client/admin/client";
+import type { TenantEmailSettings } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -88,11 +88,7 @@ const parseErrorMessage = (error: unknown): string => {
  * substitutes an empty string for the field it can no longer find.
  */
 type RawTenantEmailSettings = Pick<
-  NonNullable<
-    Awaited<
-      ReturnType<AdminApiClient["emailSettings"]["getTenantEmailSettings"]>
-    >["settings"]
-  >,
+  TenantEmailSettings,
   | "encryption"
   | "fromAddress"
   | "fromName"

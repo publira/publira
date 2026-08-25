@@ -1,4 +1,4 @@
-import type { AdminApiClient } from "@publira/api-client/admin/client";
+import type { TenantPaymentSettings as RpcTenantPaymentSettings } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -81,11 +81,7 @@ const parseErrorMessage = (error: unknown, fallback: string): string => {
  * `secretKey` by accident would keep compiling too.
  */
 type RawTenantPaymentSettings = Pick<
-  NonNullable<
-    Awaited<
-      ReturnType<AdminApiClient["paymentSettings"]["getTenantPaymentSettings"]>
-    >["settings"]
-  >,
+  RpcTenantPaymentSettings,
   | "enabled"
   | "provider"
   | "ready"

@@ -1,4 +1,7 @@
-import type { AdminApiClient } from "@publira/api-client/admin/client";
+import type {
+  AdminAnnouncement,
+  AdminTenantUser,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
@@ -37,9 +40,7 @@ const mapErrorMessage = (error: unknown, fallback: string): string =>
 
 /** The generated `AdminAnnouncement` fields {@link mapAnnouncement} reads (see `series.ts`). */
 type RawAnnouncement = Pick<
-  Awaited<
-    ReturnType<AdminApiClient["announcement"]["listAnnouncements"]>
-  >["announcements"][number],
+  AdminAnnouncement,
   | "audienceType"
   | "body"
   | "createdAt"
@@ -63,12 +64,7 @@ const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => ({
 });
 
 /** The generated `AdminTenantUser` fields {@link mapUser} reads (see `series.ts`). */
-type RawAnnouncementTargetUser = Pick<
-  Awaited<
-    ReturnType<AdminApiClient["users"]["listTenantUsers"]>
-  >["users"][number],
-  "name" | "publicId"
->;
+type RawAnnouncementTargetUser = Pick<AdminTenantUser, "name" | "publicId">;
 
 const mapUser = (user: RawAnnouncementTargetUser): AnnouncementTargetUser => ({
   name: user.name,

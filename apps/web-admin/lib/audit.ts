@@ -1,4 +1,7 @@
-import type { AdminApiClient } from "@publira/api-client/admin/client";
+import type {
+  AdminAuditLog,
+  AdminTenantUser,
+} from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
@@ -95,9 +98,7 @@ const normalizeDateEnd = (
 
 /** The generated `AdminAuditLog` fields {@link mapAuditLog} reads (see `series.ts`). */
 type RawAuditLog = Pick<
-  Awaited<
-    ReturnType<AdminApiClient["audit"]["listAuditLogs"]>
-  >["auditLogs"][number],
+  AdminAuditLog,
   | "action"
   | "actorName"
   | "actorRole"
@@ -128,9 +129,7 @@ const mapAuditLog = (item: RawAuditLog): AuditLogItem => ({
 
 /** The generated `AdminTenantUser` fields {@link mapAuditActorCandidate} reads (see `series.ts`). */
 type RawAuditActorCandidate = Pick<
-  Awaited<
-    ReturnType<AdminApiClient["users"]["listTenantUsers"]>
-  >["users"][number],
+  AdminTenantUser,
   "name" | "publicId" | "role"
 >;
 

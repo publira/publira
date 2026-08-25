@@ -1,4 +1,4 @@
-import type { AdminApiClient } from "@publira/api-client/admin/client";
+import type { AdminAccessTicket } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -98,9 +98,7 @@ const mapErrorMessage = (error: unknown, fallback: string): string =>
 
 /** The generated `AdminAccessTicket` fields {@link mapTicket} reads (see `series.ts`). */
 type RawAccessTicket = Pick<
-  Awaited<
-    ReturnType<AdminApiClient["accessTickets"]["listAccessTickets"]>
-  >["tickets"][number],
+  AdminAccessTicket,
   | "createdAt"
   | "episodePublicId"
   | "episodeTitle"
