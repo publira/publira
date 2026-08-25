@@ -294,6 +294,31 @@ CREATE TABLE notifications (
     CONSTRAINT notifications_subject_key_check CHECK ((char_length((subject_key)::text) > 0))
 );
 
+-- TABLE: outbox_events
+-- Business-side-effect outbox (#287). Domain writes insert a pending row in
+-- the same transaction. A BYPASSRLS worker claims across tenants; audit
+-- events stay out (#190). tenant_id is nullable so platform-level events
+-- can live here; tenant events must also carry tenant_id in payload.
+CREATE TABLE outbox_events (
+    id uuid NOT NULL,
+    tenant_id uuid,
+    event_type character varying(64) NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    idempotency_key text NOT NULL,
+    status character varying(16) DEFAULT 'pending'::character varying NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    available_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_error text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT outbox_events_attempts_nonneg_check CHECK ((attempts >= 0)),
+    CONSTRAINT outbox_events_event_type_check CHECK ((char_length((event_type)::text) > 0)),
+    CONSTRAINT outbox_events_idempotency_key_check CHECK ((char_length(idempotency_key) > 0)),
+    CONSTRAINT outbox_events_payload_object_check CHECK ((jsonb_typeof(payload) = 'object'::text)),
+    CONSTRAINT outbox_events_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'done'::character varying, 'dead'::character varying])::text[]))),
+    CONSTRAINT outbox_events_tenant_payload_check CHECK (((tenant_id IS NULL) OR ((payload ->> 'tenant_id'::text) IS NOT DISTINCT FROM (tenant_id)::text)))
+);
+
 -- TABLE: page_versions
 CREATE TABLE page_versions (
     id uuid NOT NULL,
@@ -864,6 +889,15 @@ ALTER TABLE ONLY notifications
 ALTER TABLE ONLY notifications
     ADD CONSTRAINT notifications_user_id_notification_type_subject_key_key UNIQUE (user_id, notification_type, subject_key);
 
+-- CONSTRAINT: outbox_events outbox_events_pkey
+ALTER TABLE ONLY outbox_events
+    ADD CONSTRAINT outbox_events_pkey PRIMARY KEY (id);
+
+-- CONSTRAINT: outbox_events outbox_events_idempotency_key_key
+-- Duplicate side-effect inserts (retries of the same API TX) collapse to one row.
+ALTER TABLE ONLY outbox_events
+    ADD CONSTRAINT outbox_events_idempotency_key_key UNIQUE (idempotency_key);
+
 -- CONSTRAINT: page_versions page_versions_page_id_version_number_key
 ALTER TABLE ONLY page_versions
     ADD CONSTRAINT page_versions_page_id_version_number_key UNIQUE (page_id, version_number);
@@ -1221,6 +1255,14 @@ CREATE INDEX idx_notifications_user_created_at ON notifications USING btree (use
 
 -- INDEX: idx_notifications_tenant_user_created_at
 CREATE INDEX idx_notifications_tenant_user_created_at ON notifications USING btree (tenant_id, user_id, created_at DESC, id DESC);
+
+-- INDEX: idx_outbox_events_pending_available_at
+-- Worker drain: pending rows whose available_at has arrived, claimed with
+-- FOR UPDATE SKIP LOCKED in available_at / id order.
+CREATE INDEX idx_outbox_events_pending_available_at ON outbox_events USING btree (available_at, id) WHERE ((status)::text = 'pending'::text);
+
+-- INDEX: idx_outbox_events_tenant_id
+CREATE INDEX idx_outbox_events_tenant_id ON outbox_events USING btree (tenant_id) WHERE (tenant_id IS NOT NULL);
 
 -- INDEX: idx_page_versions_page_id_created_at
 CREATE INDEX idx_page_versions_page_id_created_at ON page_versions USING btree (page_id, created_at DESC);
@@ -1606,6 +1648,10 @@ ALTER TABLE ONLY notifications
 ALTER TABLE ONLY notifications
     ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
+-- FK CONSTRAINT: outbox_events outbox_events_tenant_id_fkey
+ALTER TABLE ONLY outbox_events
+    ADD CONSTRAINT outbox_events_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
 -- FK CONSTRAINT: page_versions page_versions_author_user_id_fkey
 ALTER TABLE ONLY page_versions
     ADD CONSTRAINT page_versions_author_user_id_fkey FOREIGN KEY (author_user_id) REFERENCES users(id);
@@ -1903,6 +1949,15 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: notifications notifications_tenant_isolation
 CREATE POLICY notifications_tenant_isolation ON notifications USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- ROW SECURITY: outbox_events
+-- Tenant-scoped API roles see only their tenant's rows. NULL tenant_id
+-- (platform-level events) is invisible to them; the worker uses a
+-- BYPASSRLS role and reads every claimable row.
+ALTER TABLE outbox_events ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: outbox_events outbox_events_tenant_isolation
+CREATE POLICY outbox_events_tenant_isolation ON outbox_events USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 -- ROW SECURITY: page_versions
 ALTER TABLE page_versions ENABLE ROW LEVEL SECURITY;

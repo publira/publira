@@ -247,6 +247,20 @@ type NotificationRead struct {
 	ReadAt         time.Time `json:"read_at"`
 }
 
+type OutboxEvent struct {
+	ID             uuid.UUID       `json:"id"`
+	TenantID       uuid.NullUUID   `json:"tenant_id"`
+	EventType      string          `json:"event_type"`
+	Payload        json.RawMessage `json:"payload"`
+	IdempotencyKey string          `json:"idempotency_key"`
+	Status         string          `json:"status"`
+	Attempts       int32           `json:"attempts"`
+	AvailableAt    time.Time       `json:"available_at"`
+	LastError      sql.NullString  `json:"last_error"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
+}
+
 type Page struct {
 	ID                 uuid.UUID     `json:"id"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
