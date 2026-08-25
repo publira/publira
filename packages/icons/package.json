@@ -47,9 +47,17 @@
       "types": "./dist/image-icon.d.mts",
       "default": "./dist/image-icon.mjs"
     },
+    "./maximize-icon": {
+      "types": "./dist/maximize-icon.d.mts",
+      "default": "./dist/maximize-icon.mjs"
+    },
     "./menu-icon": {
       "types": "./dist/menu-icon.d.mts",
       "default": "./dist/menu-icon.mjs"
+    },
+    "./minimize-icon": {
+      "types": "./dist/minimize-icon.d.mts",
+      "default": "./dist/minimize-icon.mjs"
     },
     "./settings-icon": {
       "types": "./dist/settings-icon.d.mts",
